@@ -1606,7 +1606,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     };
     unsafe {
         let ptr = header.PathBuffer.as_mut_ptr();
-        ptr.copy_from(abs_path.as_ptr().cast::<MaybeUninit<u16>>(), abs_path.len());
+        ptr.copy_from(abs_path.as_ptr().cast_uninit(), abs_path.len());
 
         let mut ret = 0;
         cvt(c::DeviceIoControl(

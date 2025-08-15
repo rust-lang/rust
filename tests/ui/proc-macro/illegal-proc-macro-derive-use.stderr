@@ -4,11 +4,13 @@ error: the `#[proc_macro_derive]` attribute is only usable with crates of the `p
 LL | #[proc_macro_derive(Foo)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the `#[proc_macro_derive]` attribute may only be used on bare functions
+error: `#[proc_macro_derive]` attribute cannot be used on structs
   --> $DIR/illegal-proc-macro-derive-use.rs:10:1
    |
 LL | #[proc_macro_derive(Foo)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[proc_macro_derive]` can only be applied to functions
 
 error: aborting due to 2 previous errors
 

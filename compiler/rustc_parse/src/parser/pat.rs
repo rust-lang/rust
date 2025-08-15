@@ -24,10 +24,10 @@ use crate::errors::{
     GenericArgsInPatRequireTurbofishSyntax, InclusiveRangeExtraEquals, InclusiveRangeMatchArrow,
     InclusiveRangeNoEnd, InvalidMutInPattern, ParenRangeSuggestion, PatternOnWrongSideOfAt,
     RemoveLet, RepeatedMutInPattern, SwitchRefBoxOrder, TopLevelOrPatternNotAllowed,
-    TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed, UnexpectedExpressionInPattern,
-    UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern, UnexpectedParenInRangePat,
-    UnexpectedParenInRangePatSugg, UnexpectedVertVertBeforeFunctionParam,
-    UnexpectedVertVertInPattern, WrapInParens,
+    TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed, TrailingVertSuggestion,
+    UnexpectedExpressionInPattern, UnexpectedExpressionInPatternSugg, UnexpectedLifetimeInPattern,
+    UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
+    UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
@@ -267,10 +267,9 @@ impl<'a> Parser<'a> {
 
         if let PatKind::Or(pats) = &pat.kind {
             let span = pat.span;
-            let sub = if pats.len() == 1 {
-                Some(TopLevelOrPatternNotAllowedSugg::RemoveLeadingVert {
-                    span: span.with_hi(span.lo() + BytePos(1)),
-                })
+            let sub = if let [_] = &pats[..] {
+                let span = span.with_hi(span.lo() + BytePos(1));
+                Some(TopLevelOrPatternNotAllowedSugg::RemoveLeadingVert { span })
             } else {
                 Some(TopLevelOrPatternNotAllowedSugg::WrapInParens {
                     span,
@@ -362,6 +361,9 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
                     start: lo,
+                    suggestion: TrailingVertSuggestion {
+                        span: self.prev_token.span.shrink_to_hi().with_hi(self.token.span.hi()),
+                    },
                     token: self.token,
                     note_double_vert: self.token.kind == token::OrOr,
                 });

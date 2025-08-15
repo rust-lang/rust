@@ -241,7 +241,7 @@ fn normalize_args(args: &[String]) -> Vec<String> {
     it.collect()
 }
 
-#[derive(Debug, Clone, Default, clap::Subcommand)]
+#[derive(Debug, Clone, clap::Subcommand)]
 pub enum Subcommand {
     #[command(aliases = ["b"], long_about = "\n
     Arguments:
@@ -256,8 +256,11 @@ pub enum Subcommand {
             ./x.py build --stage 0
             ./x.py build ")]
     /// Compile either the compiler or libraries
-    #[default]
-    Build,
+    Build {
+        #[arg(long)]
+        /// Pass `--timings` to Cargo to get crate build timings
+        timings: bool,
+    },
     #[command(aliases = ["c"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
@@ -269,6 +272,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Check all targets
         all_targets: bool,
+        #[arg(long)]
+        /// Pass `--timings` to Cargo to get crate build timings
+        timings: bool,
     },
     /// Run Clippy (uses rustup/cargo-installed clippy binary)
     #[command(long_about = "\n
@@ -494,11 +500,17 @@ Arguments:
     Perf(PerfArgs),
 }
 
+impl Default for Subcommand {
+    fn default() -> Self {
+        Subcommand::Build { timings: false }
+    }
+}
+
 impl Subcommand {
     pub fn kind(&self) -> Kind {
         match self {
             Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build => Kind::Build,
+            Subcommand::Build { .. } => Kind::Build,
             Subcommand::Check { .. } => Kind::Check,
             Subcommand::Clippy { .. } => Kind::Clippy,
             Subcommand::Doc { .. } => Kind::Doc,
@@ -622,6 +634,13 @@ impl Subcommand {
     pub fn json(&self) -> bool {
         match *self {
             Subcommand::Doc { json, .. } => json,
+            _ => false,
+        }
+    }
+
+    pub fn timings(&self) -> bool {
+        match *self {
+            Subcommand::Build { timings, .. } | Subcommand::Check { timings, .. } => timings,
             _ => false,
         }
     }

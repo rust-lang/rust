@@ -32,7 +32,7 @@ trait String {}
 trait OK {}
 
 #[rustc_skip_during_method_dispatch(array)]
-//~^ ERROR: attribute should be applied to a trait
+//~^ ERROR: attribute cannot be used on
 impl OK for () {}
 
 fn main() {}

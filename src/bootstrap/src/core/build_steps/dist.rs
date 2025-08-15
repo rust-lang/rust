@@ -140,7 +140,7 @@ pub struct RustcDocs {
 impl Step for RustcDocs {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -402,7 +402,7 @@ pub struct Rustc {
 impl Step for Rustc {
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc")
@@ -478,7 +478,19 @@ impl Step for Rustc {
             if libdir_relative.to_str() != Some("bin") {
                 let libdir = builder.rustc_libdir(compiler);
                 for entry in builder.read_dir(&libdir) {
-                    if is_dylib(&entry.path()) {
+                    // A safeguard that we will not ship libgccjit.so from the libdir, in case the
+                    // GCC codegen backend is enabled by default.
+                    // Long-term we should probably split the config options for:
+                    // - Include cg_gcc in the rustc sysroot by default
+                    // - Run dist of a specific codegen backend in `x dist` by default
+                    if is_dylib(&entry.path())
+                        && !entry
+                            .path()
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.contains("libgccjit"))
+                            .unwrap_or(false)
+                    {
                         // Don't use custom libdir here because ^lib/ will be resolved again
                         // with installer
                         builder.install(&entry.path(), &image.join("lib"), FileType::NativeLibrary);
@@ -782,7 +794,7 @@ pub struct RustcDev {
 impl Step for RustcDev {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc-dev")
@@ -1012,7 +1024,7 @@ impl Step for Src {
     /// The output path of the src installer tarball
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-src")
@@ -1073,7 +1085,7 @@ impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1221,7 +1233,7 @@ pub struct Cargo {
 impl Step for Cargo {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "cargo");
@@ -1275,7 +1287,7 @@ pub struct RustAnalyzer {
 impl Step for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "rust-analyzer");
@@ -1318,7 +1330,7 @@ pub struct Clippy {
 impl Step for Clippy {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "clippy");
@@ -1366,7 +1378,7 @@ pub struct Miri {
 impl Step for Miri {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "miri");
@@ -1410,12 +1422,13 @@ impl Step for Miri {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CraneliftCodegenBackend {
     pub build_compiler: Compiler,
+    pub target: TargetSelection,
 }
 
 impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         // We only want to build the cranelift backend in `x dist` if the backend was enabled
@@ -1437,6 +1450,7 @@ impl Step for CraneliftCodegenBackend {
                 run.builder.config.host_target,
                 run.target,
             ),
+            target: run.target,
         });
     }
 
@@ -1448,7 +1462,7 @@ impl Step for CraneliftCodegenBackend {
             return None;
         }
 
-        let target = self.build_compiler.host;
+        let target = self.target;
         let compilers =
             RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
         if !target_supports_cranelift_backend(target) {
@@ -1505,7 +1519,7 @@ pub struct Rustfmt {
 impl Step for Rustfmt {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "rustfmt");
@@ -1550,7 +1564,7 @@ pub struct Extended {
 impl Step for Extended {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1608,6 +1622,7 @@ impl Step for Extended {
         add_component!("analysis" => Analysis { compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
             build_compiler: compiler,
+            target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
             build_compiler: compiler,
@@ -2286,7 +2301,7 @@ pub struct LlvmTools {
 
 impl Step for LlvmTools {
     type Output = Option<GeneratedTarball>;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2391,7 +2406,7 @@ pub struct LlvmBitcodeLinker {
 impl Step for LlvmBitcodeLinker {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
@@ -2443,7 +2458,7 @@ pub struct RustDev {
 impl Step for RustDev {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-dev")
@@ -2546,7 +2561,7 @@ pub struct Bootstrap {
 impl Step for Bootstrap {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("bootstrap")
@@ -2586,7 +2601,7 @@ pub struct BuildManifest {
 impl Step for BuildManifest {
     type Output = GeneratedTarball;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("build-manifest")
@@ -2618,7 +2633,7 @@ pub struct ReproducibleArtifacts {
 impl Step for ReproducibleArtifacts {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("reproducible-artifacts")

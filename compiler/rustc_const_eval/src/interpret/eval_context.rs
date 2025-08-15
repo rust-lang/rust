@@ -344,6 +344,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         def: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        let _trace = enter_trace_span!(M, resolve::try_resolve, def = ?def);
         trace!("resolve: {:?}, {:#?}", def, args);
         trace!("typing_env: {:#?}", self.typing_env);
         trace!("args: {:#?}", args);

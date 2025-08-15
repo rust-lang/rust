@@ -223,13 +223,14 @@ pub macro assert_matches {
 /// }
 /// ```
 ///
-/// The `cfg_select!` macro can also be used in expression position:
+/// The `cfg_select!` macro can also be used in expression position, with or without braces on the
+/// right-hand side:
 ///
 /// ```
 /// #![feature(cfg_select)]
 ///
 /// let _some_string = cfg_select! {
-///     unix => { "With great power comes great electricity bills" }
+///     unix => "With great power comes great electricity bills",
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// };
 /// ```

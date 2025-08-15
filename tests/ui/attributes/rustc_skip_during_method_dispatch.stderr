@@ -61,14 +61,13 @@ LL | #[rustc_skip_during_method_dispatch("array")]
    | |                                   didn't expect a literal here
    | help: must be of the form: `#[rustc_skip_during_method_dispatch(array, boxed_slice)]`
 
-error: attribute should be applied to a trait
+error: `#[rustc_skip_during_method_dispatch]` attribute cannot be used on trait impl blocks
   --> $DIR/rustc_skip_during_method_dispatch.rs:34:1
    |
 LL | #[rustc_skip_during_method_dispatch(array)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | impl OK for () {}
-   | ----------------- not a trait
+   |
+   = help: `#[rustc_skip_during_method_dispatch]` can only be applied to traits
 
 error: aborting due to 8 previous errors
 

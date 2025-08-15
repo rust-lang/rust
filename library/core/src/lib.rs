@@ -200,8 +200,6 @@
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(s390x_target_feature)]
-#![feature(sse4a_target_feature)]
-#![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
 #![feature(x86_amx_intrinsics)]
 // tidy-alphabetical-end

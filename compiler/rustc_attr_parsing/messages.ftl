@@ -10,6 +10,12 @@ attr_parsing_empty_attribute =
     unused attribute
     .suggestion = remove this attribute
 
+attr_parsing_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+attr_parsing_invalid_target_lint = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-attr_parsing_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =

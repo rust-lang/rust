@@ -1,6 +1,9 @@
 error[E0412]: cannot find type `S` in this scope
   --> $DIR/arguments.rs:14:8
    |
+LL |         struct S;
+   |                - you might have meant to refer to this struct
+...
 LL |     m!(S, S);
    |        ^ not found in this scope
 
