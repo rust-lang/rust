@@ -13,5 +13,5 @@ use minicore::*;
 fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
-    //~^ ERROR the trait bound `(): Add<A>` is not satisfied
+    //~^ ERROR the trait bound `!: Add<A>` is not satisfied
 }
