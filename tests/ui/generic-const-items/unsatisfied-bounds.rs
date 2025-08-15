@@ -28,7 +28,7 @@ impl<P> Trait<P> for () {
 
 fn main() {
     let () = C::<String>; //~ ERROR the trait bound `String: Copy` is not satisfied
-    let () = K::<()>; //~ ERROR the trait bound `Infallible: From<()>` is not satisfied
+    let () = K::<()>; //~ ERROR the trait bound `!: From<()>` is not satisfied
     let _ = <() as Trait<Vec<u8>>>::A; //~ ERROR the trait bound `Vec<u8>: Copy` is not satisfied
-    let _ = <() as Trait<&'static str>>::B::<()>; //~ ERROR the trait bound `Infallible: From<()>` is not satisfied
+    let _ = <() as Trait<&'static str>>::B::<()>; //~ ERROR the trait bound `!: From<()>` is not satisfied
 }

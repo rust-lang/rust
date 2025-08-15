@@ -30,7 +30,7 @@ error: call to `std::mem::drop` with a value that does not implement `Drop`. Dro
 LL |     drop(make_result_uninhabited_err(Foo));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: argument has type `std::result::Result<main::Foo, std::convert::Infallible>`
+note: argument has type `std::result::Result<main::Foo, !>`
   --> tests/ui/drop_non_drop.rs:51:10
    |
 LL |     drop(make_result_uninhabited_err(Foo));
