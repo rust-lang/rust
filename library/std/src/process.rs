@@ -161,7 +161,6 @@
 ))]
 mod tests;
 
-use crate::convert::Infallible;
 use crate::ffi::OsStr;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
@@ -2590,13 +2589,6 @@ impl Termination for () {
 impl Termination for ! {
     fn report(self) -> ExitCode {
         self
-    }
-}
-
-#[stable(feature = "termination_trait_lib", since = "1.61.0")]
-impl Termination for Infallible {
-    fn report(self) -> ExitCode {
-        match self {}
     }
 }
 
