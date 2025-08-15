@@ -19,7 +19,6 @@
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
-#![feature(never_type)]
 #![feature(pattern_types)]
 #![feature(pattern_type_macro)]
 #![feature(prelude_import)]

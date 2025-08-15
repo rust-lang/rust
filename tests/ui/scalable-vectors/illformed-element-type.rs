@@ -2,7 +2,6 @@
 //@ only-aarch64
 #![allow(internal_features)]
 #![feature(extern_types)]
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 
 struct Foo;

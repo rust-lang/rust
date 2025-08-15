@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![deny(unreachable_patterns)]
-#![feature(never_type)]
 
 #[non_exhaustive]
 pub enum UninhabitedEnum {

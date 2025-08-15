@@ -30,13 +30,12 @@
 //
 // [ii]: https://smallcultfollowing.com/babysteps/blog/2016/09/24/intersection-impls/
 
-
 // check that reservation impls can't be used as normal impls in positive reasoning.
 
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-#![feature(rustc_attrs, never_type)]
+#![feature(rustc_attrs)]
 
 trait MyTrait {}
 
@@ -47,19 +46,25 @@ trait MyFrom<T> {
 }
 
 // Given the "normal" impls for From
-#[rustc_reservation_impl="this impl is reserved"]
+#[rustc_reservation_impl = "this impl is reserved"]
 impl<T> MyFrom<!> for T {
-    fn my_from(x: !) -> Self { match x {} }
+    fn my_from(x: !) -> Self {
+        match x {}
+    }
 }
 
 impl<T> MyFrom<T> for T {
-    fn my_from(x: T) -> Self { x }
+    fn my_from(x: T) -> Self {
+        x
+    }
 }
 
 // ... we *do* want to allow this common pattern, of `From<!> for MySmaht<T>`
 struct MySmaht<T>(T);
 impl<T> MyFrom<T> for MySmaht<T> {
-    fn my_from(x: T) -> Self { MySmaht(x) }
+    fn my_from(x: T) -> Self {
+        MySmaht(x)
+    }
 }
 
 fn main() {}
