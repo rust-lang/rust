@@ -1,6 +1,6 @@
 // tidy-alphabetical-start
 #![allow(rustc::default_hash_types)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_tracked_env)]
 // tidy-alphabetical-end

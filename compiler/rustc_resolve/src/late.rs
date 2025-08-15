@@ -3921,8 +3921,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// A never pattern by definition indicates an unreachable case. For example, matching on
     /// `Result<T, &!>` could look like:
     /// ```rust
-    /// # #![feature(never_type)]
     /// # #![feature(never_patterns)]
+    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn bar(_x: u32) {}
     /// let foo: Result<u32, &!> = Ok(0);
     /// match foo {
@@ -3987,8 +3987,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// A never pattern by definition indicates an unreachable case. For example, destructuring a
     /// `Result<T, &!>` could look like:
     /// ```rust
-    /// # #![feature(never_type)]
     /// # #![feature(never_patterns)]
+    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn foo() -> Result<bool, &'static !> { Ok(true) }
     /// let (Ok(x) | Err(&!)) = foo();
     /// # let _ = x;
