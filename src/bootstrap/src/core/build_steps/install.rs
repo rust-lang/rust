@@ -244,7 +244,7 @@ install!((self, builder, _config),
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), IS_HOST: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { build_compiler: self.compiler, target: self.target }) {
+        if let Some(tarball) = builder.ensure(dist::Miri { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.compiler, self.target) , target: self.target }) {
             install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
             // Miri is only available on nightly
