@@ -1,4 +1,4 @@
-use std::ffi::{CStr, c_char};
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -71,7 +71,7 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
-                args_cstr_buff.as_ptr() as *const c_char,
+                args_cstr_buff.as_ptr(),
                 args_cstr_buff.len(),
                 use_wasm_eh,
             )
