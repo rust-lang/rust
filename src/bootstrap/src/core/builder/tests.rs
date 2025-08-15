@@ -2265,6 +2265,72 @@ mod snapshot {
                 .path("bootstrap")
                 .render_steps(), @"[clippy] rustc 0 <host> -> bootstrap 1 <host>");
     }
+
+    #[test]
+    fn install_extended() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("install")
+                .args(&[
+                    "--set", &format!("install.prefix={}", ctx.dir().display()),
+                    "--set", &format!("install.sysconfdir={}", ctx.dir().display()),
+                    "--set", "build.extended=true"
+                ])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [build] rustdoc 2 <host>
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 2 <host> -> std 2 <host>
+        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [build] rustc 2 <host> -> cargo 3 <host>
+        [dist] rustc 2 <host> -> cargo 3 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        [build] rustc 2 <host> -> WasmComponentLd 3 <host>
+        [build] rustc 2 <host> -> rust-analyzer 3 <host>
+        [dist] rustc 2 <host> -> rust-analyzer 3 <host>
+        [build] rustc 2 <host> -> rustfmt 3 <host>
+        [build] rustc 2 <host> -> cargo-fmt 3 <host>
+        [build] rustc 2 <host> -> clippy-driver 3 <host>
+        [build] rustc 2 <host> -> cargo-clippy 3 <host>
+        [dist] rustc 2 <host> -> clippy 3 <host>
+        [build] rustc 2 <host> -> miri 3 <host>
+        [build] rustc 2 <host> -> cargo-miri 3 <host>
+        [dist] src <>
+        ");
+    }
 }
 
 struct ExecutedSteps {

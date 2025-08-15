@@ -31,6 +31,10 @@ impl TestCtx {
         Self { directory }
     }
 
+    pub fn dir(&self) -> &Path {
+        self.directory.path()
+    }
+
     /// Starts a new invocation of bootstrap that executes `kind` as its top level command
     /// (i.e. `x <kind>`). Returns a builder that configures the created config through CLI flags.
     pub fn config(&self, kind: &str) -> ConfigBuilder {
