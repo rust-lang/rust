@@ -8,7 +8,6 @@ use std::str;
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
@@ -660,10 +659,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 impl<'ll> SimpleCx<'ll> {
-    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
-        assert_eq!(self.type_kind(ty), TypeKind::Function);
-        unsafe { llvm::LLVMGetReturnType(ty) }
-    }
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
         unsafe { llvm::LLVMGlobalGetValueType(val) }
     }
@@ -726,16 +721,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         }
-    }
-
-    pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
-        let mut functions = vec![];
-        let mut func = unsafe { llvm::LLVMGetFirstFunction(self.llmod()) };
-        while let Some(f) = func {
-            functions.push(f);
-            func = unsafe { llvm::LLVMGetNextFunction(f) }
-        }
-        functions
     }
 }
 

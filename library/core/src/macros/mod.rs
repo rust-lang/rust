@@ -1495,6 +1495,7 @@ pub(crate) mod builtin {
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
     #[rustc_builtin_macro]
     pub macro autodiff_forward($item:item) {
         /* compiler built-in */
@@ -1513,6 +1514,7 @@ pub(crate) mod builtin {
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
+    #[allow_internal_unstable(core_intrinsics)]
     #[rustc_builtin_macro]
     pub macro autodiff_reverse($item:item) {
         /* compiler built-in */

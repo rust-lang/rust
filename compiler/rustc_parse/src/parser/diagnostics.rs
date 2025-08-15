@@ -44,6 +44,7 @@ use crate::errors::{
     UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
     UseEqInstead, WrapType,
 };
+use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
 use crate::{exp, fluent_generated as fluent};
 
@@ -2246,6 +2247,7 @@ impl<'a> Parser<'a> {
         pat: Box<ast::Pat>,
         require_name: bool,
         first_param: bool,
+        fn_parse_mode: &crate::parser::item::FnParseMode,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
@@ -2268,7 +2270,14 @@ impl<'a> Parser<'a> {
                 || self.token == token::Lt
                 || self.token == token::CloseParen)
         {
-            let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
+            let maybe_emit_anon_params_note = |this: &mut Self, err: &mut Diag<'_>| {
+                let ed = this.token.span.with_neighbor(this.prev_token.span).edition();
+                if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
+                    && (fn_parse_mode.req_name)(ed)
+                {
+                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                }
+            };
 
             let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span) =
                 match pat.kind {
@@ -2305,7 +2314,7 @@ impl<'a> Parser<'a> {
                                 "_: ".to_string(),
                                 Applicability::MachineApplicable,
                             );
-                            err.note(rfc_note);
+                            maybe_emit_anon_params_note(self, err);
                         }
 
                         return None;
@@ -2313,7 +2322,13 @@ impl<'a> Parser<'a> {
                 };
 
             // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
-            if first_param {
+            if first_param
+                // Only when the fn is a method, we emit this suggestion.
+                && matches!(
+                    fn_parse_mode.context,
+                    FnContext::Trait | FnContext::Impl
+                )
+            {
                 err.span_suggestion_verbose(
                     self_span,
                     "if this is a `self` type, give it a parameter name",
@@ -2337,7 +2352,7 @@ impl<'a> Parser<'a> {
                 type_sugg,
                 Applicability::MachineApplicable,
             );
-            err.note(rfc_note);
+            maybe_emit_anon_params_note(self, err);
 
             // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
             return if self.token == token::Lt { None } else { Some(ident) };

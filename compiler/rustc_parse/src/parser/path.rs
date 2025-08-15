@@ -20,7 +20,9 @@ use crate::errors::{
     PathFoundAttributeInParams, PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
-use crate::parser::{CommaRecoveryMode, ExprKind, RecoverColon, RecoverComma};
+use crate::parser::{
+    CommaRecoveryMode, ExprKind, FnContext, FnParseMode, RecoverColon, RecoverComma,
+};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -399,7 +401,13 @@ impl<'a> Parser<'a> {
 
                     let dcx = self.dcx();
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
-                        let param = p.parse_param_general(|_| false, false, false);
+                        // Inside parenthesized type arguments, we want types only, not names.
+                        let mode = FnParseMode {
+                            context: FnContext::Free,
+                            req_name: |_| false,
+                            req_body: false,
+                        };
+                        let param = p.parse_param_general(&mode, false, false);
                         param.map(move |param| {
                             if !matches!(param.pat.kind, PatKind::Missing) {
                                 dcx.emit_err(FnPathFoundNamedParams {

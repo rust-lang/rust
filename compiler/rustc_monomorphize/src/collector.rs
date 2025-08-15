@@ -205,6 +205,8 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+mod autodiff;
+
 use std::cell::OnceCell;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -235,6 +237,7 @@ use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
+use crate::collector::autodiff::collect_autodiff_fn;
 use crate::errors::{
     self, EncounteredErrorWhileInstantiating, EncounteredErrorWhileInstantiatingGlobalAsm,
     NoOptimizedMir, RecursionLimit,
@@ -786,7 +789,35 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 // *Before* monomorphizing, record that we already handled this mention.
                 self.used_mentioned_items.insert(MentionedItem::Fn(callee_ty));
                 let callee_ty = self.monomorphize(callee_ty);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.used_items)
+
+                // HACK(explicit_tail_calls): collect tail calls to `#[track_caller]` functions as indirect,
+                // because we later call them as such, to prevent issues with ABI incompatibility.
+                // Ideally we'd replace such tail calls with normal call + return, but this requires
+                // post-mono MIR optimizations, which we don't yet have.
+                let force_indirect_call =
+                    if matches!(terminator.kind, mir::TerminatorKind::TailCall { .. })
+                        && let &ty::FnDef(def_id, args) = callee_ty.kind()
+                        && let instance = ty::Instance::expect_resolve(
+                            self.tcx,
+                            ty::TypingEnv::fully_monomorphized(),
+                            def_id,
+                            args,
+                            source,
+                        )
+                        && instance.def.requires_caller_location(self.tcx)
+                    {
+                        true
+                    } else {
+                        false
+                    };
+
+                visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    !force_indirect_call,
+                    source,
+                    &mut self.used_items,
+                )
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -911,6 +942,8 @@ fn visit_instance_use<'tcx>(
         return;
     }
     if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
+        collect_autodiff_fn(tcx, instance, intrinsic, output);
+
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any

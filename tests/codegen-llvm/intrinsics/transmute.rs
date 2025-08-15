@@ -192,12 +192,12 @@ pub unsafe fn check_byte_from_bool(x: bool) -> u8 {
 #[no_mangle]
 pub unsafe fn check_to_pair(x: u64) -> Option<i32> {
     // CHECK: %[[TEMP:.+]] = alloca [8 x i8], align 8
-    // CHECK: call void @llvm.lifetime.start.p0(i64 8, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 8, )?}}ptr %[[TEMP]])
     // CHECK: store i64 %x, ptr %[[TEMP]], align 8
     // CHECK: %[[PAIR0:.+]] = load i32, ptr %[[TEMP]], align 8
     // CHECK: %[[PAIR1P:.+]] = getelementptr inbounds i8, ptr %[[TEMP]], i64 4
     // CHECK: %[[PAIR1:.+]] = load i32, ptr %[[PAIR1P]], align 4
-    // CHECK: call void @llvm.lifetime.end.p0(i64 8, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 8, )?}}ptr %[[TEMP]])
     // CHECK: insertvalue {{.+}}, i32 %[[PAIR0]], 0
     // CHECK: insertvalue {{.+}}, i32 %[[PAIR1]], 1
     transmute(x)
@@ -207,12 +207,12 @@ pub unsafe fn check_to_pair(x: u64) -> Option<i32> {
 #[no_mangle]
 pub unsafe fn check_from_pair(x: Option<i32>) -> u64 {
     // CHECK: %[[TEMP:.+]] = alloca [8 x i8], align 8
-    // CHECK: call void @llvm.lifetime.start.p0(i64 8, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.start.p0({{(i64 8, )?}}ptr %[[TEMP]])
     // CHECK: store i32 %x.0, ptr %[[TEMP]], align 8
     // CHECK: %[[PAIR1P:.+]] = getelementptr inbounds i8, ptr %[[TEMP]], i64 4
     // CHECK: store i32 %x.1, ptr %[[PAIR1P]], align 4
     // CHECK: %[[R:.+]] = load i64, ptr %[[TEMP]], align 8
-    // CHECK: call void @llvm.lifetime.end.p0(i64 8, ptr %[[TEMP]])
+    // CHECK: call void @llvm.lifetime.end.p0({{(i64 8, )?}}ptr %[[TEMP]])
     // CHECK: ret i64 %[[R]]
     transmute(x)
 }

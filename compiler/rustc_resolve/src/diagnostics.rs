@@ -2189,9 +2189,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ast::ExprKind::Struct(struct_expr) = &expr.kind else { return };
         // We don't have to handle type-relative paths because they're forbidden in ADT
         // expressions, but that would change with `#[feature(more_qualified_paths)]`.
-        let Some(Res::Def(_, def_id)) =
-            self.partial_res_map[&struct_expr.path.segments.iter().last().unwrap().id].full_res()
-        else {
+        let Some(segment) = struct_expr.path.segments.last() else { return };
+        let Some(partial_res) = self.partial_res_map.get(&segment.id) else { return };
+        let Some(Res::Def(_, def_id)) = partial_res.full_res() else {
             return;
         };
         let Some(default_fields) = self.field_defaults(def_id) else { return };
