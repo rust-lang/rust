@@ -762,6 +762,29 @@ pub struct Std {
     pub target: TargetSelection,
 }
 
+impl Std {
+    pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
+        // This is a build time optimization for running just `x dist rust-std` (without
+        // `x dist rustc`).
+        // If we know that we will be uplifting a stage2+ library from stage 1 anyway,
+        // there is no point in building a stage2 rustc, which will then not do anything (because
+        // the stdlib will be uplifted).
+        let top_stage = builder.top_stage;
+        let stage = if top_stage > 1
+            && compile::Std::should_be_uplifted_from_stage_1(builder, top_stage, target)
+        {
+            builder.info(&format!(
+                "Note: stage {top_stage} library for `{}` would be uplifted from stage 1, so stage was downgraded from {top_stage} to 1 to avoid needless compiler build(s)",
+                target
+            ));
+            1
+        } else {
+            top_stage
+        };
+        Std { build_compiler: builder.compiler(stage, builder.config.host_target), target }
+    }
+}
+
 impl Step for Std {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
@@ -771,27 +794,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // This is a build time optimization for running just `x dist rust-std` (without
-        // `x dist rustc`).
-        // If we know that we will be uplifting a stage2+ library from stage 1 anyway,
-        // there is no point in building a stage2 rustc, which will then not do anything (because
-        // the stdlib will be uplifted).
-        let top_stage = run.builder.top_stage;
-        let stage = if top_stage > 1
-            && compile::Std::should_be_uplifted_from_stage_1(run.builder, top_stage, run.target)
-        {
-            run.builder.info(&format!(
-                "Note: stage {top_stage} library for `{}` would be uplifted from stage 1, so stage was downgraded from {top_stage} to 1 to avoid needless compiler build(s)",
-                run.target
-            ));
-            1
-        } else {
-            top_stage
-        };
-        run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(stage, run.builder.config.host_target),
-            target: run.target,
-        });
+        run.builder.ensure(Std::new(run.builder, run.target));
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
