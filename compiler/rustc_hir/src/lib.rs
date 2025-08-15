@@ -3,6 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(const_default)]
@@ -10,7 +11,6 @@
 #![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end

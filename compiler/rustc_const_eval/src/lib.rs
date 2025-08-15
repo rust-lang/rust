@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(array_try_map)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
-#![feature(never_type)]
 #![feature(slice_ptr_get)]
 #![feature(trait_alias)]
 #![feature(unqualified_local_imports)]
