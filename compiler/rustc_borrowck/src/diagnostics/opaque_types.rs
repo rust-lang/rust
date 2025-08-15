@@ -13,6 +13,8 @@ use rustc_middle::mir::{self, ConstraintCategory, Location};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
+use rustc_span::Span;
+use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
 use rustc_trait_selection::errors::impl_trait_overcapture_suggestion;
 
 use crate::MirBorrowckCtxt;
@@ -26,13 +28,61 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if errors.is_empty() {
             return;
         }
+
+        let infcx = self.infcx;
         let mut guar = None;
+        let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
+            None;
         for error in errors {
             guar = Some(match error {
-                DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err) => err.report(self.infcx),
+                DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err) => err.report(infcx),
                 DeferredOpaqueTypeError::LifetimeMismatchOpaqueParam(err) => {
-                    self.infcx.dcx().emit_err(err)
+                    infcx.dcx().emit_err(err)
                 }
+                DeferredOpaqueTypeError::UnexpectedHiddenRegion {
+                    opaque_type_key,
+                    hidden_type,
+                    member_region,
+                } => {
+                    let named_ty =
+                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, hidden_type.ty);
+                    let named_key = self
+                        .regioncx
+                        .name_regions_for_member_constraint(infcx.tcx, opaque_type_key);
+                    let named_region =
+                        self.regioncx.name_regions_for_member_constraint(infcx.tcx, member_region);
+                    let diag = unexpected_hidden_region_diagnostic(
+                        infcx,
+                        self.mir_def_id(),
+                        hidden_type.span,
+                        named_ty,
+                        named_region,
+                        named_key,
+                    );
+                    if last_unexpected_hidden_region
+                        != Some((hidden_type.span, named_ty, named_key))
+                    {
+                        last_unexpected_hidden_region =
+                            Some((hidden_type.span, named_ty, named_key));
+                        diag.emit()
+                    } else {
+                        diag.delay_as_bug()
+                    }
+                }
+                DeferredOpaqueTypeError::NonDefiningUseInDefiningScope {
+                    span,
+                    opaque_type_key,
+                } => infcx.dcx().span_err(
+                    span,
+                    format!(
+                        "non-defining use of `{}` in the defining scope",
+                        Ty::new_opaque(
+                            infcx.tcx,
+                            opaque_type_key.def_id.to_def_id(),
+                            opaque_type_key.args
+                        )
+                    ),
+                ),
             });
         }
         let guar = guar.unwrap();
@@ -194,7 +244,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
 
                 // Find a path between the borrow region and our opaque capture.
                 if let Some((path, _)) =
-                    self.regioncx.find_constraint_paths_between_regions(self.borrow_region, |r| {
+                    self.regioncx.find_constraint_path_between_regions(self.borrow_region, |r| {
                         r == opaque_region_vid
                     })
                 {

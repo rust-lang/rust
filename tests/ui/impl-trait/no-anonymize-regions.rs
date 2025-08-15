@@ -1,5 +1,7 @@
 //@ check-pass
-// FIXME(-Znext-solver): enable this test
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 // A regression test for an error in `redis` while working on #139587.
 //

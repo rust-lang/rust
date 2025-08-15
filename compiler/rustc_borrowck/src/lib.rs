@@ -78,7 +78,6 @@ mod dataflow;
 mod def_use;
 mod diagnostics;
 mod handle_placeholders;
-mod member_constraints;
 mod nll;
 mod path_utils;
 mod place_ext;
@@ -335,9 +334,10 @@ fn do_mir_borrowck<'tcx>(
 
     // Run the MIR type-checker.
     let MirTypeckResults {
-        constraints,
+        mut constraints,
         universal_region_relations,
-        opaque_type_values,
+        region_bound_pairs,
+        known_type_outlives_obligations,
         polonius_context,
     } = type_check::type_check(
         root_cx,
@@ -350,6 +350,17 @@ fn do_mir_borrowck<'tcx>(
         &mut polonius_facts,
         &move_data,
         Rc::clone(&location_map),
+    );
+
+    let opaque_type_errors = region_infer::opaque_types::handle_opaque_type_uses(
+        root_cx,
+        &infcx,
+        &body,
+        &universal_region_relations,
+        &region_bound_pairs,
+        &known_type_outlives_obligations,
+        &location_map,
+        &mut constraints,
     );
 
     // Compute non-lexical lifetimes using the constraints computed
@@ -374,8 +385,6 @@ fn do_mir_borrowck<'tcx>(
         polonius_facts,
         polonius_context,
     );
-
-    let opaque_type_errors = regioncx.infer_opaque_types(root_cx, &infcx, opaque_type_values);
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.

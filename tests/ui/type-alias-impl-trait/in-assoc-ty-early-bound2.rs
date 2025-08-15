@@ -13,7 +13,7 @@ impl Foo for () {
     {
         let _ = |x: &'a ()| {
             let _: Self::Assoc<'a> = x;
-            //~^ ERROR `<() as Foo>::Assoc<'a>` captures lifetime that does not appear in bound
+            //~^ ERROR expected generic lifetime parameter, found `'_`
         };
     }
 }

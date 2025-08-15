@@ -5,7 +5,6 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_middle::ty::RegionVid;
 
-use crate::RegionInferenceContext;
 use crate::constraints::ConstraintSccIndex;
 use crate::region_infer::ConstraintSccs;
 use crate::universal_regions::UniversalRegions;
@@ -55,14 +54,5 @@ impl ReverseSccGraph {
             })
             .copied()
             .filter(move |r| duplicates.insert(*r))
-    }
-}
-
-impl RegionInferenceContext<'_> {
-    /// Return the reverse graph of the region SCCs, initialising it if needed.
-    pub(super) fn reverse_scc_graph(&self) -> &ReverseSccGraph {
-        self.rev_scc_graph.get_or_init(|| {
-            ReverseSccGraph::compute(&self.constraint_sccs, self.universal_regions())
-        })
     }
 }
