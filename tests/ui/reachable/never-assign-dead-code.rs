@@ -2,7 +2,6 @@
 //
 //@ check-pass
 
-#![feature(never_type)]
 #![expect(dropping_copy_types)]
 #![warn(unused)]
 

@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(never_type)]
 
 #[derive(Debug, Default)]
 struct Demo {}
