@@ -1782,6 +1782,9 @@ fn named_associated_type_shorthand_candidates<'db, R>(
         TypeNs::SelfType(impl_id) => {
             let trait_ref = db.impl_trait_ns(impl_id)?;
 
+            // FIXME(next-solver): same method in `lower` checks for impl or not
+            // Is that needed here?
+
             // we're _in_ the impl -- the binders get added back later. Correct,
             // but it would be nice to make this more explicit
             search(trait_ref.skip_binder())
