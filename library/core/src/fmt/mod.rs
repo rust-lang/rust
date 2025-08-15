@@ -2881,7 +2881,7 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 impl Debug for ! {
     #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
@@ -2889,7 +2889,7 @@ impl Debug for ! {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
 impl Display for ! {
     #[inline]
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
