@@ -66,6 +66,9 @@ mod ambiguous_macro_only_std {
     mod vec {}
     #[allow(hidden_glob_reexports)]
     mod panic {}
+    // Building std without the allow exported_private_dependencies will create warnings, but then
+    // clippy claims its a useless_attribute. So silence both.
+    #[allow(clippy::useless_attribute)]
     #[allow(exported_private_dependencies)]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     pub use crate::*;
