@@ -25,7 +25,7 @@ use rustc_apfloat::{
     ieee::{Half as f16, Quad as f128},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike};
 use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
@@ -1815,7 +1815,7 @@ impl<'db> Evaluator<'db> {
             let i = self.const_eval_discriminant(it)?;
             return Ok((
                 16,
-                self.layout(crate::next_solver::Ty::new_tup(interner, &[]))?,
+                self.layout(crate::next_solver::Ty::new_empty_tuple(interner))?,
                 Some((0, 16, i)),
             ));
         }

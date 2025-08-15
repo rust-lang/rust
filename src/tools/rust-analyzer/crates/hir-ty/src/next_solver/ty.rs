@@ -9,6 +9,7 @@ use rustc_type_ir::{
     WithCachedTypeInfo,
     inherent::{
         AdtDef, BoundVarLike, GenericArgs as _, IntoKind, ParamLike, PlaceholderLike, SliceLike,
+        Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
@@ -105,6 +106,10 @@ impl<'db> Ty<'db> {
 
     pub fn new_fresh_float(interner: DbInterner<'db>, n: u32) -> Self {
         Ty::new_infer(interner, InferTy::FreshFloatTy(n))
+    }
+
+    pub fn new_empty_tuple(interner: DbInterner<'db>) -> Self {
+        Ty::new_tup(interner, &[])
     }
 
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
