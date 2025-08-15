@@ -1248,7 +1248,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" },
         &0,
         &body,
-        |_, _| Ok(()),
+        &|_, _| Ok(()),
     );
 
     body

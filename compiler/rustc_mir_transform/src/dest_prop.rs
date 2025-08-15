@@ -810,7 +810,7 @@ fn dest_prop_mir_dump<'tcx>(
         let location = points.point_from_location(location);
         live.rows().filter(|&r| live.contains(r, location)).collect::<Vec<_>>()
     };
-    dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
+    dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, &|pass_where, w| {
         if let PassWhere::BeforeLocation(loc) = pass_where {
             writeln!(w, "        // live: {:?}", locals_live_at(loc))?;
         }
