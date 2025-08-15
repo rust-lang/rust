@@ -650,10 +650,6 @@ impl ThinBufferMethods for ThinBuffer {
     fn data(&self) -> &[u8] {
         &[]
     }
-
-    fn thin_link_data(&self) -> &[u8] {
-        unimplemented!();
-    }
 }
 
 pub struct ThinData; //(Arc<TempDir>);
