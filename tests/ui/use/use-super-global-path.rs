@@ -5,15 +5,11 @@ struct Z;
 
 mod foo {
     use ::super::{S, Z};
-    //~^ ERROR: cannot find
-    //~| ERROR: cannot find
-    //~| NOTE: global paths cannot start with `super`
-    //~| NOTE: global paths cannot start with `super`
-    //~| NOTE: duplicate diagnostic
+    //~^ ERROR: global paths cannot start with `super`
+    //~| ERROR: global paths cannot start with `super`
 
     pub fn g() {
-        use ::super::main; //~ ERROR: cannot find `super`
-        //~^ NOTE: global paths cannot start with `super`
+        use ::super::main; //~ ERROR: global paths cannot start with `super`
         main();
     }
 }

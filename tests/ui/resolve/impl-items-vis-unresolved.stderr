@@ -1,4 +1,4 @@
-error[E0433]: cannot find `super` in this scope
+error[E0433]: too many leading `super` keywords
   --> $DIR/impl-items-vis-unresolved.rs:21:13
    |
 LL |         pub(super) fn new() {}

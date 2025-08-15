@@ -5,7 +5,7 @@
 // want to change eventually.
 
 mod foo {
-    pub fn bar() { foo::baz(); } //~ ERROR cannot find `foo`
+    pub fn bar() { foo::baz(); } //~ ERROR cannot find module or crate `foo`
 
     fn baz() { }
 }

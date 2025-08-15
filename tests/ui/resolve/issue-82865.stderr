@@ -1,4 +1,4 @@
-error[E0433]: cannot find `x` in the crate root
+error[E0433]: cannot find module or crate `x` in the crate root
   --> $DIR/issue-82865.rs:5:5
    |
 LL | use x::y::z;

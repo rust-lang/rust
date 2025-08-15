@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `unresolved_crate`
+error[E0433]: cannot find module or crate `unresolved_crate` in the crate root
   --> $DIR/unresolved-import-recovery.rs:3:5
    |
 LL | use unresolved_crate::module::Name;

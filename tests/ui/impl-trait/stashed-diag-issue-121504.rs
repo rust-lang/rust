@@ -4,7 +4,7 @@ trait MyTrait {
     async fn foo(self) -> (Self, i32);
 }
 
-impl MyTrait for xyz::T { //~ ERROR cannot find `xyz`
+impl MyTrait for xyz::T { //~ ERROR cannot find module or crate `xyz`
     async fn foo(self, key: i32) -> (u32, i32) {
         (self, key)
     }

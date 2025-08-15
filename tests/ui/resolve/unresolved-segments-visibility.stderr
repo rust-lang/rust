@@ -1,4 +1,4 @@
-error[E0433]: cannot find `String` in `string`
+error[E0433]: cannot find module `String` in `string`
   --> $DIR/unresolved-segments-visibility.rs:8:34
    |
 LL |         pub(in crate::b::string::String::newy) extern crate alloc as e;

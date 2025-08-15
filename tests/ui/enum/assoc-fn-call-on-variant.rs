@@ -11,6 +11,6 @@ impl E {
 }
 
 fn main() {
-    E::A::f(); //~ ERROR cannot find `A` in `E`
+    E::A::f(); //~ ERROR cannot find module `A` in `E`
     //~^ NOTE: `A` is a variant, not a module
 }

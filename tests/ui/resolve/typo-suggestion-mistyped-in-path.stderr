@@ -31,7 +31,7 @@ LL |     Struc::foo();
    |     use of undeclared type `Struc`
    |     help: a struct with a similar name exists: `Struct`
 
-error[E0433]: cannot find `modul` in this scope
+error[E0433]: cannot find module or crate `modul` in this scope
   --> $DIR/typo-suggestion-mistyped-in-path.rs:31:5
    |
 LL |     modul::foo();

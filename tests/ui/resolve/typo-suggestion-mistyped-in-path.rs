@@ -29,7 +29,7 @@ fn main() {
     //~| NOTE use of undeclared type `Struc`
 
     modul::foo();
-    //~^ ERROR cannot find `modul`
+    //~^ ERROR cannot find module or crate `modul`
     //~| NOTE use of unresolved module or unlinked crate `modul`
 
     module::Struc::foo();

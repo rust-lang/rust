@@ -12,5 +12,5 @@ fn main() {
     let rect = Rectangle::new(3, 4);
     // `area` is not implemented for `Rectangle`, so this should not suggest
     let _ = rect::area();
-    //~^ ERROR: cannot find `rect`
+    //~^ ERROR: cannot find module or crate `rect`
 }

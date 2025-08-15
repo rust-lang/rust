@@ -2,6 +2,6 @@
 fn main() {
     match 0 {
         aaa::bbb(_) => ()
-        //~^ ERROR: cannot find `aaa`
+        //~^ ERROR: cannot find module or crate `aaa`
     };
 }

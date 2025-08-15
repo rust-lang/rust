@@ -4599,7 +4599,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 module,
                 segment_name,
                 error_implied_by_parse_error: _,
-                scope,
+                message,
             } => {
                 return Err(respan(
                     span,
@@ -4608,7 +4608,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         label,
                         suggestion,
                         module,
-                        scope,
+                        message,
                     },
                 ));
             }

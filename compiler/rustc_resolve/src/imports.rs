@@ -993,7 +993,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 error_implied_by_parse_error: _,
-                scope,
+                message,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());
@@ -1004,7 +1004,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             label,
                             suggestion,
                             module,
-                            scope,
+                            message,
                         },
                     );
                 }

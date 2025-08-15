@@ -19,7 +19,7 @@ pub struct RawFloatState;
 impl RawFloatState {
     perftools_inline! {
         pub(super) fn new() {}
-        //~^ ERROR: cannot find
+        //~^ ERROR: too many leading `super` keywords
     }
 }
 

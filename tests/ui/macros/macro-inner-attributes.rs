@@ -14,7 +14,7 @@ test!(b,
 
 #[rustc_dummy]
 fn main() {
-    a::bar(); //~ ERROR: cannot find `a`
+    a::bar(); //~ ERROR: cannot find module or crate `a`
     //~^ NOTE: use of unresolved module or unlinked crate `a`
     b::bar();
 }

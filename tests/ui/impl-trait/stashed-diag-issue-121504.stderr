@@ -1,4 +1,4 @@
-error[E0433]: cannot find `xyz` in this scope
+error[E0433]: cannot find module or crate `xyz` in this scope
   --> $DIR/stashed-diag-issue-121504.rs:7:18
    |
 LL | impl MyTrait for xyz::T {

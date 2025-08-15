@@ -1,3 +1,3 @@
 fn main() {
-    super(); //~ ERROR: cannot find
+    super(); //~ ERROR: too many leading `super` keywords
 }

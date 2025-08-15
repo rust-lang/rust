@@ -1,7 +1,7 @@
 fn main() {
     let foo = thing::len(Vec::new());
-    //~^ ERROR cannot find `thing`
+    //~^ ERROR cannot find module or crate `thing`
 
     let foo = foo::bar::baz();
-    //~^ ERROR cannot find `foo`
+    //~^ ERROR cannot find module or crate `foo`
 }

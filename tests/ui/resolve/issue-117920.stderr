@@ -1,4 +1,4 @@
-error[E0433]: cannot find `super` in this scope
+error[E0433]: too many leading `super` keywords
   --> $DIR/issue-117920.rs:3:5
    |
 LL | use super::A;

@@ -47,6 +47,6 @@ fn main() {
 }
 
 mod pathological {
-    pub(in bad::path) mod m1 {} //~ ERROR: cannot find `bad`
+    pub(in bad::path) mod m1 {} //~ ERROR: cannot find module or crate `bad`
     pub(in foo) mod m2 {} //~ ERROR visibilities can only be restricted to ancestor modules
 }

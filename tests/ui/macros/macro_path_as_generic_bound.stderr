@@ -1,4 +1,4 @@
-error[E0433]: cannot find `m` in this scope
+error[E0433]: cannot find module or crate `m` in this scope
   --> $DIR/macro_path_as_generic_bound.rs:7:6
    |
 LL | foo!(m::m2::A);

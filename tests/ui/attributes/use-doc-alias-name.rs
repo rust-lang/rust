@@ -42,7 +42,7 @@ fn main() {
     //~| HELP: `S5` has a name defined in the doc alias attribute as `DocAliasS5`
 
     not_exist_module::DocAliasS1;
-    //~^ ERROR: cannot find `not_exist_module`
+    //~^ ERROR: cannot find module or crate `not_exist_module`
     //~| HELP: you might be missing a crate named `not_exist_module`
 
     use_doc_alias_name_extern::DocAliasS1;

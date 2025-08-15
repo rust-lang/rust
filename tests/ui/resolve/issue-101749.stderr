@@ -1,4 +1,4 @@
-error[E0433]: cannot find `rect` in this scope
+error[E0433]: cannot find module or crate `rect` in this scope
   --> $DIR/issue-101749.rs:17:13
    |
 LL |     let _ = rect::area();

@@ -1,6 +1,6 @@
 #![crate_type = "lib"]
 
-use super::A; //~ ERROR cannot find
+use super::A; //~ ERROR too many leading `super` keywords
 
 mod b {
     pub trait A {}

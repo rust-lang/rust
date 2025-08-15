@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: could not find `bar` in the list of imported crates
+error[E0433]: cannot find `bar` in the crate root
   --> $DIR/visibility-indeterminate.rs:5:10
    |
 LL | pub(in ::bar) struct Baz {}

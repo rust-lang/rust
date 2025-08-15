@@ -4,9 +4,9 @@ macro_rules! m {
     () => {
         use a::$crate; //~ ERROR: unresolved import `a::$crate`
         //~^ NOTE: no `$crate` in `a`
-        use a::$crate::b; //~ ERROR: cannot find `$crate` in `a`
+        use a::$crate::b; //~ ERROR: `$crate` in paths can only be used in start position
         //~^ NOTE: `$crate` in paths can only be used in start position
-        type A = a::$crate; //~ ERROR: cannot find `$crate` in `a`
+        type A = a::$crate; //~ ERROR: `$crate` in paths can only be used in start position
         //~^ NOTE: `$crate` in paths can only be used in start position
     }
 }
