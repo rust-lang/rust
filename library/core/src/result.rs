@@ -1344,7 +1344,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_good_news() -> Result<String, !> {
@@ -1381,7 +1380,6 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(never_type)]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_bad_news() -> Result<!, String> {
