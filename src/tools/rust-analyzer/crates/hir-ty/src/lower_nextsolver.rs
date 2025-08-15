@@ -1793,7 +1793,6 @@ fn named_associated_type_shorthand_candidates<'db, R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             // This *must* be done first to avoid cycles with
             // `generic_predicates_for_param`, but not sure that it's sufficient,
-            // see FIXME in `search`.
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let trait_name = &db.trait_signature(trait_id).name;
                 tracing::debug!(?trait_name);
