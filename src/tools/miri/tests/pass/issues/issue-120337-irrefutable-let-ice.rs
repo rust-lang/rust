@@ -1,7 +1,6 @@
 // Validation stops the test before the ICE we used to hit
 //@compile-flags: -Zmiri-disable-validation
 
-#![feature(never_type)]
 #[derive(Copy, Clone)]
 pub enum E {
     A(!),
