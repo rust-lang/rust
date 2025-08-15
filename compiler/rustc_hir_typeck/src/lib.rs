@@ -1,8 +1,8 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
-#![feature(never_type)]
 #![feature(trim_prefix_suffix)]
 // tidy-alphabetical-end
 
