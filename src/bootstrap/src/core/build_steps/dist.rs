@@ -916,6 +916,12 @@ fn copy_src_dirs(
     exclude_dirs: &[&str],
     dst_dir: &Path,
 ) {
+    // Iterating, filtering and copying a large number of directories can be quite slow.
+    // Avoid doing it in dry run (and thus also tests).
+    if builder.config.dry_run() {
+        return;
+    }
+
     fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
         let spath = match path.to_str() {
             Some(path) => path,
