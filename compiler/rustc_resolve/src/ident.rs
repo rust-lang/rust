@@ -318,7 +318,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
-        let mut module = self.graph_root;
         for (i, rib) in ribs.iter().enumerate().rev() {
             debug!("walk rib\n{:?}", rib.bindings);
             // Use the rib kind to determine whether we are resolving parameters
@@ -334,51 +333,47 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     *original_rib_ident_def,
                     ribs,
                 )));
-            }
-
-            module = match rib.kind {
-                RibKind::Module(module) => module,
-                RibKind::MacroDefinition(def) if def == self.macro_def(ident.span.ctxt()) => {
-                    // If an invocation of this macro created `ident`, give up on `ident`
-                    // and switch to `ident`'s source from the macro definition.
-                    ident.span.remove_mark();
-                    continue;
-                }
-                _ => continue,
-            };
-
-            match module.kind {
-                ModuleKind::Block => {} // We can see through blocks
-                _ => break,
-            }
-
-            let item = self.cm().resolve_ident_in_module_unadjusted(
-                ModuleOrUniformRoot::Module(module),
-                ident,
-                ns,
-                parent_scope,
-                Shadowing::Unrestricted,
-                finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
-                ignore_binding,
-                None,
-            );
-            if let Ok(binding) = item {
-                // The ident resolves to an item.
+            } else if let RibKind::Block(Some(module)) = rib.kind
+                && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    ns,
+                    parent_scope,
+                    Shadowing::Unrestricted,
+                    finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
+                    ignore_binding,
+                    None,
+                )
+            {
+                // The ident resolves to an item in a block.
                 return Some(LexicalScopeBinding::Item(binding));
+            } else if let RibKind::Module(module) = rib.kind {
+                // Encountered a module item, abandon ribs and look into that module and preludes.
+                return self
+                    .cm()
+                    .early_resolve_ident_in_lexical_scope(
+                        orig_ident,
+                        ScopeSet::Late(ns, module, finalize.map(|finalize| finalize.node_id)),
+                        parent_scope,
+                        finalize,
+                        finalize.is_some(),
+                        ignore_binding,
+                        None,
+                    )
+                    .ok()
+                    .map(LexicalScopeBinding::Item);
+            }
+
+            if let RibKind::MacroDefinition(def) = rib.kind
+                && def == self.macro_def(ident.span.ctxt())
+            {
+                // If an invocation of this macro created `ident`, give up on `ident`
+                // and switch to `ident`'s source from the macro definition.
+                ident.span.remove_mark();
             }
         }
-        self.cm()
-            .early_resolve_ident_in_lexical_scope(
-                orig_ident,
-                ScopeSet::Late(ns, module, finalize.map(|finalize| finalize.node_id)),
-                parent_scope,
-                finalize,
-                finalize.is_some(),
-                ignore_binding,
-                None,
-            )
-            .ok()
-            .map(LexicalScopeBinding::Item)
+
+        unreachable!()
     }
 
     /// Resolve an identifier in lexical scope.
@@ -1171,6 +1166,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
@@ -1263,6 +1259,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
@@ -1356,6 +1353,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for rib in ribs {
                     let (has_generic_params, def_kind) = match rib.kind {
                         RibKind::Normal
+                        | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
