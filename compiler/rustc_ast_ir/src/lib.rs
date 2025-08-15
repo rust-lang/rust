@@ -6,8 +6,8 @@
 //! `rustc_type_ir` for a single import.
 
 // tidy-alphabetical-start
+#![cfg_attr(all(feature = "nightly", bootstrap), feature(never_type))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 // tidy-alphabetical-end
 
