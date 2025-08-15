@@ -107,7 +107,6 @@
     - [Installation](./autodiff/installation.md)
     - [How to debug](./autodiff/debugging.md)
     - [Autodiff flags](./autodiff/flags.md)
-    - [Current limitations](./autodiff/limitations.md)
 
 # Source Code Representation
 

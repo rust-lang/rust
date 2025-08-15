@@ -542,6 +542,7 @@ symbols! {
         audit_that,
         augmented_assignments,
         auto_traits,
+        autodiff,
         autodiff_forward,
         autodiff_reverse,
         automatically_derived,

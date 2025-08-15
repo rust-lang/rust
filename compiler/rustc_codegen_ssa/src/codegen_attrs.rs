@@ -177,14 +177,6 @@ fn process_builtin_attrs(
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    // If our rustc version supports autodiff/enzyme, then we call our handler
-    // to check for any `#[rustc_autodiff(...)]` attributes.
-    // FIXME(jdonszelmann): merge with loop below
-    if cfg!(llvm_enzyme) {
-        let ad = autodiff_attrs(tcx, did.into());
-        codegen_fn_attrs.autodiff_item = ad;
-    }
-
     for attr in attrs.iter() {
         if let hir::Attribute::Parsed(p) = attr {
             match p {
@@ -612,7 +604,7 @@ fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
 /// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
 /// panic, unless we introduced a bug when parsing the autodiff macro.
 //FIXME(jdonszelmann): put in the main loop. No need to have two..... :/ Let's do that when we make autodiff parsed.
-fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();
