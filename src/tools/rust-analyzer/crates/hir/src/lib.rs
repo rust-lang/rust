@@ -680,7 +680,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(s.id.into()).1,
+                                db.field_types_with_diagnostics_ns(s.id.into()).1,
                                 source_map,
                             );
                         }
@@ -692,7 +692,7 @@ impl Module {
                             push_ty_diagnostics(
                                 db,
                                 acc,
-                                db.field_types_with_diagnostics(u.id.into()).1,
+                                db.field_types_with_diagnostics_ns(u.id.into()).1,
                                 source_map,
                             );
                         }
@@ -722,7 +722,7 @@ impl Module {
                                 push_ty_diagnostics(
                                     db,
                                     acc,
-                                    db.field_types_with_diagnostics(v.into()).1,
+                                    db.field_types_with_diagnostics_ns(v.into()).1,
                                     source_map,
                                 );
                                 expr_store_diagnostics(db, acc, source_map);
@@ -738,7 +738,7 @@ impl Module {
                     push_ty_diagnostics(
                         db,
                         acc,
-                        db.type_for_type_alias_with_diagnostics(type_alias.id).1,
+                        db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
                         &source_map,
                     );
                     acc.extend(def.diagnostics(db, style_lints));
@@ -913,13 +913,13 @@ impl Module {
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_self_ty_with_diagnostics(impl_def.id).1,
+                db.impl_self_ty_with_diagnostics_ns(impl_def.id).1,
                 &source_map,
             );
             push_ty_diagnostics(
                 db,
                 acc,
-                db.impl_trait_with_diagnostics(impl_def.id).and_then(|it| it.1),
+                db.impl_trait_with_diagnostics_ns(impl_def.id).and_then(|it| it.1),
                 &source_map,
             );
 
@@ -3646,7 +3646,7 @@ impl AssocItem {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.type_for_type_alias_with_diagnostics(type_alias.id).1,
+                    db.type_for_type_alias_with_diagnostics_ns(type_alias.id).1,
                     &db.type_alias_signature_with_source_map(type_alias.id).1,
                 );
                 for diag in hir_ty::diagnostics::incorrect_case(db, type_alias.id.into()) {
@@ -3782,7 +3782,7 @@ impl GenericDef {
                 push_ty_diagnostics(
                     db,
                     acc,
-                    db.const_param_ty_with_diagnostics(ConstParamId::from_unchecked(
+                    db.const_param_ty_with_diagnostics_ns(ConstParamId::from_unchecked(
                         TypeOrConstParamId { parent: def, local_id: param_id },
                     ))
                     .1,
