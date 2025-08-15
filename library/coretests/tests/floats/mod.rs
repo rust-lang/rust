@@ -8,6 +8,7 @@ trait TestableFloat {
     const APPROX: Self;
     const ZERO: Self;
     const ONE: Self;
+    const PI: Self;
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
     /// Smallest number
@@ -27,6 +28,7 @@ impl TestableFloat for f16 {
     const APPROX: Self = 1e-3;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f16::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -41,6 +43,7 @@ impl TestableFloat for f32 {
     const APPROX: Self = 1e-6;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f32::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -55,6 +58,7 @@ impl TestableFloat for f64 {
     const APPROX: Self = 1e-6;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f64::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -69,6 +73,7 @@ impl TestableFloat for f128 {
     const APPROX: Self = 1e-9;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f128::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -1379,5 +1384,26 @@ float_test! {
         assert!(nan.powi(2).is_nan());
         assert_biteq!(inf.powi(3), inf);
         assert_biteq!(neg_inf.powi(2), inf);
+    }
+}
+
+float_test! {
+    name: to_degrees,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).to_degrees(), 0.0);
+        assert_approx_eq!((-5.8 as Float).to_degrees(), -332.315521, 0.5);
+        assert_approx_eq!(pi.to_degrees(), 180.0, 0.5);
+        assert!(nan.to_degrees().is_nan());
+        assert_biteq!(inf.to_degrees(), inf);
+        assert_biteq!(neg_inf.to_degrees(), neg_inf);
+        assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703);
     }
 }

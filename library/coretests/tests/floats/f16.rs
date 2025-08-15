@@ -55,21 +55,6 @@ fn test_max_recip() {
 }
 
 #[test]
-fn test_to_degrees() {
-    let pi: f16 = consts::PI;
-    let nan: f16 = f16::NAN;
-    let inf: f16 = f16::INFINITY;
-    let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_biteq!(0.0f16.to_degrees(), 0.0);
-    assert_approx_eq!((-5.8f16).to_degrees(), -332.315521, TOL_P2);
-    assert_approx_eq!(pi.to_degrees(), 180.0, TOL_P2);
-    assert!(nan.to_degrees().is_nan());
-    assert_biteq!(inf.to_degrees(), inf);
-    assert_biteq!(neg_inf.to_degrees(), neg_inf);
-    assert_biteq!(1_f16.to_degrees(), 57.2957795130823208767981548141051703);
-}
-
-#[test]
 fn test_to_radians() {
     let pi: f16 = consts::PI;
     let nan: f16 = f16::NAN;
