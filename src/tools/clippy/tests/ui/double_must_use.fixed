@@ -1,6 +1,5 @@
 #![warn(clippy::double_must_use)]
 #![expect(clippy::result_unit_err)]
-#![feature(never_type)]
 
 use std::ops::ControlFlow;
 

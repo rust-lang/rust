@@ -1,5 +1,4 @@
 // rust-lang/miri#4778
-#![feature(never_type)]
 
 #[repr(C)]
 #[allow(dead_code)]

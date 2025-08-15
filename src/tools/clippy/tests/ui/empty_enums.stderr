@@ -1,5 +1,5 @@
 error: enum with no variants
-  --> tests/ui/empty_enums.rs:5:1
+  --> tests/ui/empty_enums.rs:4:1
    |
 LL | enum Empty {}
    | ^^^^^^^^^^^^^

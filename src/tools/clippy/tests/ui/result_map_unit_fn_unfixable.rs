@@ -1,6 +1,5 @@
 //@no-rustfix
 #![warn(clippy::result_map_unit_fn)]
-#![feature(never_type)]
 #![allow(clippy::unnecessary_map_on_constructor)]
 
 struct HasResult {

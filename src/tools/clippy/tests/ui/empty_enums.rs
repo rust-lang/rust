@@ -1,6 +1,5 @@
 #![warn(clippy::empty_enums)]
 // Enable never type to test empty enum lint
-#![feature(never_type)]
 
 enum Empty {}
 //~^ empty_enums

@@ -1,6 +1,5 @@
 #![warn(clippy::uninhabited_references)]
 #![allow(clippy::missing_transmute_annotations)]
-#![feature(never_type)]
 
 fn ret_uninh_ref() -> &'static std::convert::Infallible {
     //~^ uninhabited_references

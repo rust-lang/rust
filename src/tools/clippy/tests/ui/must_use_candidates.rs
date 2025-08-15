@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![allow(
     unused_mut,
     clippy::redundant_allocation,
