@@ -1,4 +1,4 @@
-error[E0080]: transmuting from 8-byte type to 16-byte type: `usize` -> `&[u8]`
+error[E0080]: transmuting from word size type to 2 * word size type: `usize` -> `&[u8]`
   --> $DIR/transmute-size-mismatch-before-typeck.rs:16:29
    |
 LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };

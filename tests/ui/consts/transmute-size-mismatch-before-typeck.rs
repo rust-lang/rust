@@ -1,9 +1,9 @@
-//@ normalize-stderr-64bit: "8 byte" -> "word size"
-//@ normalize-stderr-32bit: "4 byte" -> "word size"
+//@ normalize-stderr-64bit: "8-byte" -> "word size"
+//@ normalize-stderr-32bit: "4-byte" -> "word size"
 //@ normalize-stderr-64bit: "64 bits" -> "word size"
 //@ normalize-stderr-32bit: "32 bits" -> "word size"
-//@ normalize-stderr-64bit: "16 byte" -> "2 * word size"
-//@ normalize-stderr-32bit: "8 byte" -> "2 * word size"
+//@ normalize-stderr-64bit: "16-byte" -> "2 * word size"
+//@ normalize-stderr-32bit: "8-byte" -> "2 * word size"
 //@ normalize-stderr-64bit: "128 bits" -> "2 * word size"
 //@ normalize-stderr-32bit: "64 bits" -> "2 * word size"
 
