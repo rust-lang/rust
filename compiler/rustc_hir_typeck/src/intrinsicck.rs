@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 use tracing::trace;
 
@@ -38,68 +38,12 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     ty
 }
 
-fn check_transmute<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    from: Ty<'tcx>,
-    to: Ty<'tcx>,
-    hir_id: HirId,
-) {
-    let dl = &tcx.data_layout;
-    let span = tcx.hir_span(hir_id);
-    let normalize = |ty| {
-        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
-            ty
-        } else {
-            Ty::new_error_with_message(
-                tcx,
-                span,
-                format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
-            )
-        }
-    };
-    let from = normalize(from);
-    let to = normalize(to);
-    trace!(?from, ?to);
-    if from.has_non_region_infer() || to.has_non_region_infer() {
-        // Note: this path is currently not reached in any test, so any
-        // example that triggers this would be worth minimizing and
-        // converting into a test.
-        tcx.sess.dcx().span_bug(span, "argument to transmute has inference variables");
-    }
-    // Transmutes that are only changing lifetimes are always ok.
-    if from == to {
-        return;
-    }
-
-    let skel = |ty| SizeSkeleton::compute(ty, tcx, typing_env);
-    let sk_from = skel(from);
-    let sk_to = skel(to);
-    trace!(?sk_from, ?sk_to);
-
-    // Check for same size using the skeletons.
-    if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
-        if sk_from.same_size(sk_to) {
-            return;
-        }
-
-        // Special-case transmuting from `typeof(function)` and
-        // `Option<typeof(function)>` to present a clearer error.
-        let from = unpack_option_like(tcx, from);
-        if let (&ty::FnDef(..), SizeSkeleton::Known(size_to, _)) = (from.kind(), sk_to)
-            && size_to == Pointer(dl.instruction_address_space).size(&tcx)
-        {
-            struct_span_code_err!(tcx.sess.dcx(), span, E0591, "can't transmute zero-sized type")
-                .with_note(format!("source type: {from}"))
-                .with_note(format!("target type: {to}"))
-                .with_help("cast with `as` to a pointer instead")
-                .emit();
-            return;
-        }
-    }
-
-    // Try to display a sensible error with as much information as possible.
-    let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
+/// Try to display a sensible error with as much information as possible.
+fn skeleton_string<'tcx>(
+    ty: Ty<'tcx>,
+    sk: Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>>,
+) -> String {
+    match sk {
         Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
         Ok(SizeSkeleton::Known(size, _)) => {
             if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
@@ -122,11 +66,69 @@ fn check_transmute<'tcx>(
             }
         }
         Err(err) => err.to_string(),
+    }
+}
+
+fn check_transmute<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+    hir_id: HirId,
+) {
+    let span = || tcx.hir_span(hir_id);
+    let normalize = |ty| {
+        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
+            ty
+        } else {
+            Ty::new_error_with_message(
+                tcx,
+                span(),
+                format!("tried to normalize non-wf type {ty:#?} in check_transmute"),
+            )
+        }
     };
+
+    let from = normalize(from);
+    let to = normalize(to);
+    trace!(?from, ?to);
+
+    // Transmutes that are only changing lifetimes are always ok.
+    if from == to {
+        return;
+    }
+
+    let sk_from = SizeSkeleton::compute(from, tcx, typing_env);
+    let sk_to = SizeSkeleton::compute(to, tcx, typing_env);
+    trace!(?sk_from, ?sk_to);
+
+    // Check for same size using the skeletons.
+    if let Ok(sk_from) = sk_from
+        && let Ok(sk_to) = sk_to
+    {
+        if sk_from.same_size(sk_to) {
+            return;
+        }
+
+        // Special-case transmuting from `typeof(function)` and
+        // `Option<typeof(function)>` to present a clearer error.
+        let from = unpack_option_like(tcx, from);
+        if let ty::FnDef(..) = from.kind()
+            && let SizeSkeleton::Known(size_to, _) = sk_to
+            && size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
+        {
+            struct_span_code_err!(tcx.sess.dcx(), span(), E0591, "can't transmute zero-sized type")
+                .with_note(format!("source type: {from}"))
+                .with_note(format!("target type: {to}"))
+                .with_help("cast with `as` to a pointer instead")
+                .emit();
+            return;
+        }
+    }
 
     let mut err = struct_span_code_err!(
         tcx.sess.dcx(),
-        span,
+        span(),
         E0512,
         "cannot transmute between types of different sizes, or dependently-sized types"
     );
