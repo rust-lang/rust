@@ -71,10 +71,10 @@
 extern crate alloc as realalloc;
 
 // This is needed to provide macros to the directly imported alloc modules below.
+extern crate std;
 #[prelude_import]
 #[allow(unused_imports)]
 use std::prelude::rust_2024::*;
-extern crate std;
 
 #[cfg(test)]
 extern crate test;
