@@ -27,7 +27,7 @@ use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
-use rustc_session::config::{CrateType, OptLevel, TargetModifier};
+use rustc_session::config::{CrateType, TargetModifier};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId,
@@ -1820,21 +1820,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
-            }
-        }
-
-        // Encode all the deduced parameter attributes for everything that has MIR, even for items
-        // that can't be inlined. But don't if we aren't optimizing in non-incremental mode, to
-        // save the query traffic.
-        if tcx.sess.opts.output_types.should_codegen()
-            && tcx.sess.opts.optimize != OptLevel::No
-            && tcx.sess.opts.incremental.is_none()
-        {
-            for &local_def_id in tcx.mir_keys(()) {
-                if let DefKind::AssocFn | DefKind::Fn = tcx.def_kind(local_def_id) {
-                    record_array!(self.tables.deduced_param_attrs[local_def_id.to_def_id()] <-
-                        self.tcx.deduced_param_attrs(local_def_id.to_def_id()));
-                }
             }
         }
     }

@@ -5,11 +5,10 @@
 //! purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 //! dependent crates can use them.
 
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
-use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
+use rustc_middle::ty::{self, DeducedParamAttrs, Instance, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
@@ -123,7 +122,7 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
 /// dependent crates can use them.
 pub(super) fn deduced_param_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
+    instance: Instance<'tcx>,
 ) -> &'tcx [DeducedParamAttrs] {
     // This computation is unfortunately rather expensive, so don't do it unless we're optimizing.
     // Also skip it in incremental mode.
@@ -138,7 +137,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Codegen won't use this information for anything if all the function parameters are passed
     // directly. Detect that and bail, for compilation speed.
-    let fn_ty = tcx.type_of(def_id).instantiate_identity();
+    let fn_ty = tcx.type_of(instance.def_id()).instantiate_identity();
     if matches!(fn_ty.kind(), ty::FnDef(..))
         && fn_ty
             .fn_sig(tcx)
@@ -151,13 +150,8 @@ pub(super) fn deduced_param_attrs<'tcx>(
         return &[];
     }
 
-    // Don't deduce any attributes for functions that have no MIR.
-    if !tcx.is_mir_available(def_id) {
-        return &[];
-    }
-
-    // Grab the optimized MIR. Analyze it to determine which arguments have been mutated.
-    let body: &Body<'tcx> = tcx.optimized_mir(def_id);
+    // Grab the codegen MIR. Analyze it to determine which arguments have been mutated.
+    let body: &Body<'tcx> = tcx.build_codegen_mir(instance);
     let mut deduce_read_only = DeduceReadOnly::new(body.arg_count);
     deduce_read_only.visit_body(body);
 

@@ -9,10 +9,9 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
-use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::DUMMY_SP;
-use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
     AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
 };
@@ -573,7 +572,7 @@ fn fn_abi_new_uncached<'tcx>(
         // functions from vtable. And for a tls shim, passing the `fn_def_id` would refer to
         // the underlying static. Internally, `deduced_param_attrs` attempts to infer attributes
         // by visit the function body.
-        determined_fn_def_id,
+        instance,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
@@ -585,7 +584,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     cx: &LayoutCx<'tcx>,
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: ExternAbi,
-    fn_def_id: Option<DefId>,
+    instance: Option<Instance<'tcx>>,
 ) {
     if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
@@ -619,7 +618,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
         // as appropriate.
         let deduced_param_attrs =
             if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
-                fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
+                instance.map(|instance| tcx.deduced_param_attrs(instance)).unwrap_or_default()
             } else {
                 &[]
             };
