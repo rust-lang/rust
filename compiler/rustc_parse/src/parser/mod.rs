@@ -1388,15 +1388,26 @@ impl<'a> Parser<'a> {
             // matching `CloseDelim` we are *after* the delimited sequence,
             // i.e. at depth `d - 1`.
             let target_depth = self.token_cursor.stack.len() - 1;
-            loop {
-                // Advance one token at a time, so `TokenCursor::next()`
-                // can capture these tokens if necessary.
+
+            if let Capturing::No = self.capture_state.capturing {
+                // We are not capturing tokens, so skip to the end of the
+                // delimited sequence. This is a perf win when dealing with
+                // declarative macros that pass large `tt` fragments through
+                // multiple rules, as seen in the uom-0.37.0 crate.
+                self.token_cursor.curr.bump_to_end();
                 self.bump();
-                if self.token_cursor.stack.len() == target_depth {
-                    debug_assert!(self.token.kind.close_delim().is_some());
-                    break;
+                debug_assert_eq!(self.token_cursor.stack.len(), target_depth);
+            } else {
+                loop {
+                    // Advance one token at a time, so `TokenCursor::next()`
+                    // can capture these tokens if necessary.
+                    self.bump();
+                    if self.token_cursor.stack.len() == target_depth {
+                        break;
+                    }
                 }
             }
+            debug_assert!(self.token.kind.close_delim().is_some());
 
             // Consume close delimiter
             self.bump();
