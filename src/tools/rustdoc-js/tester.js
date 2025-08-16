@@ -470,7 +470,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
     };
 
     const staticFiles = path.join(doc_folder, "static.files");
-    const searchJs = mostRecentMatch(staticFiles, /search.*\.js$/);
+    const searchJs = mostRecentMatch(staticFiles, /search-[0-9a-f]{8}.*\.js$/);
     const searchModule = require(path.join(staticFiles, searchJs));
     searchModule.initSearch(searchIndex.searchIndex);
     const docSearch = searchModule.docSearch;
