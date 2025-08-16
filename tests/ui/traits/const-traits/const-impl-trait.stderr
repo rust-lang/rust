@@ -6,6 +6,8 @@ LL |     assert!(cmp(&()));
    |             |
    |             required by a bound introduced by this call
    |
+note: trait `PartialEq` is implemented but not `const`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 note: required by a bound in `cmp`
   --> $DIR/const-impl-trait.rs:11:23
    |
