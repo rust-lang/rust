@@ -1,16 +1,18 @@
-use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
-use rustc_hir::attrs::{AttributeKind, Linkage};
+use rustc_hir::attrs::Linkage;
 use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
+use super::prelude::*;
+use super::util::parse_single_integer;
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::MaybeWarn::Allow;
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage, parse_single_integer};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
+use crate::target_checking::Policy::Allow;
+use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 pub(crate) struct LinkNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {

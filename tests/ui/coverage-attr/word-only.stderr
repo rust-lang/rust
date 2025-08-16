@@ -45,7 +45,7 @@ error: `#[coverage]` attribute cannot be used on structs
 LL | #[coverage]
    | ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:26:1
@@ -79,7 +79,7 @@ error: `#[coverage]` attribute cannot be used on associated consts
 LL |     #[coverage]
    |     ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:35:1
@@ -100,7 +100,7 @@ error: `#[coverage]` attribute cannot be used on traits
 LL | #[coverage]
    | ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:39:5
@@ -121,7 +121,7 @@ error: `#[coverage]` attribute cannot be used on associated consts
 LL |     #[coverage]
    |     ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:44:5
@@ -142,7 +142,7 @@ error: `#[coverage]` attribute cannot be used on associated types
 LL |     #[coverage]
    |     ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:50:1
@@ -176,7 +176,7 @@ error: `#[coverage]` attribute cannot be used on associated consts
 LL |     #[coverage]
    |     ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:58:5
@@ -197,7 +197,7 @@ error: `#[coverage]` attribute cannot be used on associated types
 LL |     #[coverage]
    |     ^^^^^^^^^^^
    |
-   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, and crates
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:64:1
