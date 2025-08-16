@@ -66,6 +66,24 @@ fn layout_of<'tcx>(
         return tcx.layout_of(typing_env.as_query_input(ty));
     }
 
+    match typing_env.typing_mode() {
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let res = tcx.layout_of(with_postanalysis.as_query_input(ty));
+            match res {
+                Err(LayoutError::TooGeneric(_)) => {}
+                _ => return res,
+            };
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Analysis { .. }
+        | ty::TypingMode::Borrowck { .. }
+        | ty::TypingMode::PostBorrowckAnalysis { .. }
+        | ty::TypingMode::ErasedNotCoherence(_)
+        | ty::TypingMode::PostAnalysis => {}
+    }
+
     let cx = LayoutCx::new(tcx, typing_env);
 
     let layout = layout_of_uncached(&cx, ty)?;
