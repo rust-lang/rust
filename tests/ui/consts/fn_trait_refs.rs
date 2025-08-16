@@ -1,6 +1,5 @@
-//@ known-bug: #110395
+//@ check-pass
 
-#![feature(const_fn_trait_ref_impls)]
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
 #![feature(const_trait_impl)]
