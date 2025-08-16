@@ -1,4 +1,4 @@
-error: parenthesized lifetime bounds are not supported
+error: lifetime bounds may not be parenthesized
   --> $DIR/trait-object-lifetime-parens.rs:9:21
    |
 LL | fn f<'a, T: Trait + ('a)>() {}
@@ -10,7 +10,7 @@ LL - fn f<'a, T: Trait + ('a)>() {}
 LL + fn f<'a, T: Trait + 'a>() {}
    |
 
-error: parenthesized lifetime bounds are not supported
+error: lifetime bounds may not be parenthesized
   --> $DIR/trait-object-lifetime-parens.rs:12:24
    |
 LL |     let _: Box<Trait + ('a)>;

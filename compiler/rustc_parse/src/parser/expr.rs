@@ -2397,12 +2397,12 @@ impl<'a> Parser<'a> {
         let before = self.prev_token;
         let binder = if self.check_keyword(exp!(For)) {
             let lo = self.token.span;
-            let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
+            let (bound_vars, _) = self.parse_higher_ranked_binder()?;
             let span = lo.to(self.prev_token.span);
 
             self.psess.gated_spans.gate(sym::closure_lifetime_binder, span);
 
-            ClosureBinder::For { span, generic_params: lifetime_defs }
+            ClosureBinder::For { span, generic_params: bound_vars }
         } else {
             ClosureBinder::NotPresent
         };
