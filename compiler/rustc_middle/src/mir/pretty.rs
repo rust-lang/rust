@@ -929,7 +929,10 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({place:?})"),
+            Drop { place, async_fut: None, .. } => write!(fmt, "drop({place:?})"),
+            Drop { place, async_fut: Some(async_fut), .. } => {
+                write!(fmt, "async drop({place:?}; poll={async_fut:?})")
+            }
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
