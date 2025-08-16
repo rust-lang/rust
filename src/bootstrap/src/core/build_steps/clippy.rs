@@ -231,7 +231,7 @@ impl Step for Std {
 /// in-tree rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    build_compiler: Compiler,
+    build_compiler: CompilerForCheck,
     target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
@@ -246,8 +246,7 @@ impl Rustc {
         crates: Vec<String>,
     ) -> Self {
         Self {
-            build_compiler: prepare_compiler_for_check(builder, target, Mode::Rustc)
-                .build_compiler(),
+            build_compiler: prepare_compiler_for_check(builder, target, Mode::Rustc),
             target,
             config,
             crates,
@@ -272,7 +271,7 @@ impl Step for Rustc {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let build_compiler = self.build_compiler;
+        let build_compiler = self.build_compiler.build_compiler();
         let target = self.target;
 
         let mut cargo = builder::Cargo::new(
@@ -285,6 +284,7 @@ impl Step for Rustc {
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+        self.build_compiler.configure_cargo(&mut cargo);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also lint the tests/benches/examples for these crates, rather
@@ -313,7 +313,10 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::clippy("rustc", self.target).built_by(self.build_compiler))
+        Some(
+            StepMetadata::clippy("rustc", self.target)
+                .built_by(self.build_compiler.build_compiler()),
+        )
     }
 }
 
