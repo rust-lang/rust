@@ -4,7 +4,7 @@ error[E0207]: the type parameter `C` is not constrained by the impl trait, self 
 LL | impl<C: ?Sized> A for u8 {
    |      ^ unconstrained type parameter
 
-error: the type has an unknown layout
+error: the type `[u8; <u8 as A>::B]` has an unknown layout
   --> $DIR/unconstrained-param-ice-137308.rs:18:1
    |
 LL | struct S([u8; <u8 as A>::B]);
