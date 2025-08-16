@@ -2105,6 +2105,38 @@ impl PartialEq for PathBuf {
     }
 }
 
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<str> for PathBuf {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        &*self == other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<PathBuf> for str {
+    #[inline]
+    fn eq(&self, other: &PathBuf) -> bool {
+        other == self
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<String> for PathBuf {
+    #[inline]
+    fn eq(&self, other: &String) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<PathBuf> for String {
+    #[inline]
+    fn eq(&self, other: &PathBuf) -> bool {
+        other == self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for PathBuf {
     fn hash<H: Hasher>(&self, h: &mut H) {
@@ -3363,6 +3395,39 @@ impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
         self.components() == other.components()
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<str> for Path {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        let other: &OsStr = other.as_ref();
+        self == other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<Path> for str {
+    #[inline]
+    fn eq(&self, other: &Path) -> bool {
+        other == self
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<String> for Path {
+    #[inline]
+    fn eq(&self, other: &String) -> bool {
+        self == &*other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<Path> for String {
+    #[inline]
+    fn eq(&self, other: &Path) -> bool {
+        other == self
     }
 }
 
