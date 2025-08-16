@@ -437,7 +437,7 @@ async function loadSearchJS(doc_folder, resource_suffix) {
     const staticFiles = path.join(doc_folder, "static.files");
     const stringdexJs = mostRecentMatch(staticFiles, /stringdex.*\.js$/);
     const stringdexModule = require(path.join(staticFiles, stringdexJs));
-    const searchJs = mostRecentMatch(staticFiles, /search.*\.js$/);
+    const searchJs = mostRecentMatch(staticFiles, /search-[0-9a-f]{8}.*\.js$/);
     const searchModule = require(path.join(staticFiles, searchJs));
     globalThis.nonnull = (x, msg) => {
         if (x === null) {
