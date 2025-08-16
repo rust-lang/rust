@@ -46,7 +46,7 @@ impl<'db> GenericArg<'db> {
     pub fn expect_ty(self) -> Ty<'db> {
         match self.kind() {
             GenericArgKind::Type(ty) => ty,
-            _ => panic!("Expected ty, got {:?}", self),
+            _ => panic!("Expected ty, got {self:?}"),
         }
     }
 
