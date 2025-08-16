@@ -19,7 +19,6 @@ use std::ptr;
 
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
-use rustc_macros::TryFromU32;
 
 use super::RustString;
 use super::debuginfo::{
@@ -27,8 +26,8 @@ use super::debuginfo::{
     DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::llvm;
 use crate::llvm::MetadataKindId;
+use crate::{TryFromU32, llvm};
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.

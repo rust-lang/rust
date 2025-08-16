@@ -14,6 +14,7 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
+#![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -65,6 +66,7 @@ mod errors;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
+mod macros;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -73,6 +75,8 @@ mod va_arg;
 mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
+
+pub(crate) use macros::TryFromU32;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
