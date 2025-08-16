@@ -41,19 +41,40 @@ fn to_profiler_name(type_name: &'static str) -> &'static str {
     })
 }
 
-// const wrapper for `if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name }`
-const fn c_name(name: &'static str) -> &'static str {
+// A function that simplifies a pass's type_name. E.g. `Baz`, `Baz<'_>`,
+// `foo::bar::Baz`, and `foo::bar::Baz<'a, 'b>` all become `Baz`.
+//
+// It's `const` for perf reasons: it's called a lot, and doing the string
+// operations at runtime causes a non-trivial slowdown. If
+// `split_once`/`rsplit_once` become `const` its body could be simplified to
+// this:
+// ```ignore (fragment)
+// let name = if let Some((_, tail)) = name.rsplit_once(':') { tail } else { name };
+// let name = if let Some((head, _)) = name.split_once('<') { head } else { name };
+// name
+// ```
+const fn simplify_pass_type_name(name: &'static str) -> &'static str {
     // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-    // and inline into call site
+
+    // Work backwards from the end. If a ':' is hit, strip it and everything before it.
     let bytes = name.as_bytes();
     let mut i = bytes.len();
     while i > 0 && bytes[i - 1] != b':' {
-        i = i - 1;
+        i -= 1;
     }
     let (_, bytes) = bytes.split_at(i);
+
+    // Work forwards from the start of what's left. If a '<' is hit, strip it and everything after
+    // it.
+    let mut i = 0;
+    while i < bytes.len() && bytes[i] != b'<' {
+        i += 1;
+    }
+    let (bytes, _) = bytes.split_at(i);
+
     match std::str::from_utf8(bytes) {
         Ok(name) => name,
-        Err(_) => name,
+        Err(_) => panic!(),
     }
 }
 
@@ -62,12 +83,7 @@ const fn c_name(name: &'static str) -> &'static str {
 /// loop that goes over each available MIR and applies `run_pass`.
 pub(super) trait MirPass<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-        // See copypaste in `MirLint`
-        const {
-            let name = std::any::type_name::<Self>();
-            c_name(name)
-        }
+        const { simplify_pass_type_name(std::any::type_name::<Self>()) }
     }
 
     fn profiler_name(&self) -> &'static str {
@@ -101,12 +117,7 @@ pub(super) trait MirPass<'tcx> {
 /// disabled (via the `Lint` adapter).
 pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
-        // FIXME(const-hack) Simplify the implementation once more `str` methods get const-stable.
-        // See copypaste in `MirPass`
-        const {
-            let name = std::any::type_name::<Self>();
-            c_name(name)
-        }
+        const { simplify_pass_type_name(std::any::type_name::<Self>()) }
     }
 
     fn is_enabled(&self, _sess: &Session) -> bool {

@@ -337,10 +337,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         false
     }
 
-    /// Returns `true` if the region should be printed in
-    /// optional positions, e.g., `&'a T` or `dyn Tr + 'b`.
-    /// This is typically the case for all non-`'_` regions.
-    fn should_print_region(&self, region: ty::Region<'tcx>) -> bool;
+    /// Returns `true` if the region should be printed in optional positions,
+    /// e.g., `&'a T` or `dyn Tr + 'b`. (Regions like the one in `Cow<'static, T>`
+    /// will always be printed.)
+    fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool;
 
     fn reset_type_limit(&mut self) {}
 
@@ -717,7 +717,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Ref(r, ty, mutbl) => {
                 write!(self, "&")?;
-                if self.should_print_region(r) {
+                if self.should_print_optional_region(r) {
                     r.print(self)?;
                     write!(self, " ")?;
                 }
@@ -785,7 +785,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             },
             ty::Adt(def, args) => self.print_def_path(def.did(), args)?,
             ty::Dynamic(data, r, repr) => {
-                let print_r = self.should_print_region(r);
+                let print_r = self.should_print_optional_region(r);
                 if print_r {
                     write!(self, "(")?;
                 }
@@ -2494,7 +2494,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         !self.type_length_limit.value_within_limit(self.printed_type_count)
     }
 
-    fn should_print_region(&self, region: ty::Region<'tcx>) -> bool {
+    fn should_print_optional_region(&self, region: ty::Region<'tcx>) -> bool {
         let highlight = self.region_highlight_mode;
         if highlight.region_highlighted(region).is_some() {
             return true;

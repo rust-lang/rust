@@ -235,22 +235,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
