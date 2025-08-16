@@ -17,7 +17,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use derive_setters::Setters;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lexer;
@@ -1853,7 +1853,7 @@ impl HumanEmitter {
                             && line_idx + 1 == annotated_file.lines.len(),
                     );
 
-                    let mut to_add = FxHashMap::default();
+                    let mut to_add = FxIndexMap::default();
 
                     for (depth, style) in depths {
                         // FIXME(#120456) - is `swap_remove` correct?
