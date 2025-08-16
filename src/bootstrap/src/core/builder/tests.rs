@@ -1057,7 +1057,9 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
         "
         );
     }
@@ -1119,15 +1121,24 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [dist] rustc 1 <host> -> analysis 2 <host>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <host>
+        [dist] rustc 1 <host> -> cargo 2 <host>
         [build] rustc 1 <host> -> rust-analyzer 2 <host>
+        [dist] rustc 1 <host> -> rust-analyzer 2 <host>
         [build] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> cargo-fmt 2 <host>
+        [dist] rustc 1 <host> -> rustfmt 2 <host>
         [build] rustc 1 <host> -> clippy-driver 2 <host>
         [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [dist] rustc 1 <host> -> clippy 2 <host>
         [build] rustc 1 <host> -> miri 2 <host>
         [build] rustc 1 <host> -> cargo-miri 2 <host>
+        [dist] rustc 1 <host> -> miri 2 <host>
+        [dist] rustc 1 <host> -> extended 2 <host>
+        [dist] reproducible-artifacts <host>
         ");
     }
 
@@ -1199,7 +1210,9 @@ mod snapshot {
         [dist] rustc 1 <host> -> std 1 <host>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
         "
         );
     }
@@ -1257,7 +1270,11 @@ mod snapshot {
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
+        [dist] reproducible-artifacts <target1>
         "
         );
     }
@@ -1336,7 +1353,11 @@ mod snapshot {
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
+        [dist] reproducible-artifacts <target1>
         "
         );
     }
@@ -1441,17 +1462,26 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
         [dist] rustc 1 <host> -> std 1 <target1>
+        [dist] rustc 1 <host> -> rustc-dev 2 <target1>
+        [dist] rustc 1 <host> -> analysis 2 <target1>
         [dist] src <>
         [build] rustc 1 <host> -> cargo 2 <target1>
+        [dist] rustc 1 <host> -> cargo 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer 2 <target1>
+        [dist] rustc 1 <host> -> rust-analyzer 2 <target1>
         [build] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> cargo-fmt 2 <target1>
+        [dist] rustc 1 <host> -> rustfmt 2 <target1>
         [build] rustc 1 <host> -> clippy-driver 2 <target1>
         [build] rustc 1 <host> -> cargo-clippy 2 <target1>
+        [dist] rustc 1 <host> -> clippy 2 <target1>
         [build] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
+        [dist] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
+        [dist] rustc 1 <host> -> extended 2 <target1>
+        [dist] reproducible-artifacts <target1>
         ");
     }
 
@@ -1504,7 +1534,22 @@ mod snapshot {
         [dist] rustc <host>
         [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
+        [dist] reproducible-artifacts <host>
+        ");
+    }
+
+    #[test]
+    fn dist_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx
+                .config("dist")
+                .path("bootstrap")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] bootstrap <host>
         ");
     }
 
@@ -2047,6 +2092,195 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
         [doc] rustc 1 <host> -> reference (book) 2 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_ci() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("ci")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [clippy] rustc 1 <host> -> bootstrap 2 <host>
+        [clippy] rustc 1 <host> -> std 1 <host>
+        [clippy] rustc 1 <host> -> rustc 2 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [clippy] rustc 1 <host> -> rustc_codegen_gcc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_compiler_stage1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("compiler")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [clippy] rustc 0 <host> -> rustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_compiler_stage2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [clippy] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_std_stage1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("std")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [clippy] rustc 1 <host> -> std 1 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_std_stage2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("std")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> clippy-driver 2 <host>
+        [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [clippy] rustc 2 <host> -> std 2 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_miri_stage1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("miri")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [check] rustc 0 <host> -> rustc 1 <host>
+        [clippy] rustc 0 <host> -> miri 1 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_miri_stage2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("miri")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [check] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 0 <host> -> clippy-driver 1 <host>
+        [build] rustc 0 <host> -> cargo-clippy 1 <host>
+        [clippy] rustc 1 <host> -> miri 2 <host>
+        ");
+    }
+
+    #[test]
+    fn clippy_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("clippy")
+                .path("bootstrap")
+                .render_steps(), @"[clippy] rustc 0 <host> -> bootstrap 1 <host>");
+    }
+
+    #[test]
+    fn install_extended() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("install")
+                .args(&[
+                    "--set", &format!("install.prefix={}", ctx.dir().display()),
+                    "--set", &format!("install.sysconfdir={}", ctx.dir().display()),
+                    "--set", "build.extended=true"
+                ])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> WasmComponentLd 1 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
+        [build] rustdoc 2 <host>
+        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] docs <host>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
+        [build] rustc 0 <host> -> GenerateCopyright 1 <host>
+        [dist] rustc <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [dist] rustc 1 <host> -> cargo 2 <host>
+        [build] rustc 1 <host> -> rust-analyzer 2 <host>
+        [dist] rustc 1 <host> -> rust-analyzer 2 <host>
+        [build] rustc 1 <host> -> rustfmt 2 <host>
+        [build] rustc 1 <host> -> cargo-fmt 2 <host>
+        [dist] rustc 1 <host> -> rustfmt 2 <host>
+        [build] rustc 1 <host> -> clippy-driver 2 <host>
+        [build] rustc 1 <host> -> cargo-clippy 2 <host>
+        [dist] rustc 1 <host> -> clippy 2 <host>
+        [build] rustc 1 <host> -> miri 2 <host>
+        [build] rustc 1 <host> -> cargo-miri 2 <host>
+        [dist] rustc 1 <host> -> miri 2 <host>
+        [dist] src <>
         ");
     }
 }
