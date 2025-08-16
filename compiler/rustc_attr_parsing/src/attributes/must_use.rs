@@ -1,10 +1,12 @@
 use rustc_errors::DiagArgValue;
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
+use crate::context::MaybeWarn::{Allow, Error};
+use crate::context::{AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
 pub(crate) struct MustUseParser;
@@ -13,7 +15,21 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
     const PATH: &[Symbol] = &[sym::must_use];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Enum),
+        Allow(Target::Struct),
+        Allow(Target::Union),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::ForeignFn),
+        // `impl Trait` in return position can trip
+        // `unused_must_use` if `Trait` is marked as
+        // `#[must_use]`
+        Allow(Target::Trait),
+        Error(Target::WherePredicate),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"
