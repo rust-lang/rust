@@ -6,6 +6,7 @@ LL |     do_something(Type);
    |     |
    |     required by a bound introduced by this call
    |
+   = note: `dep_2_reexport::Type` implements similarly named `dependency::Trait`, but not `Trait`
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced
    |
@@ -92,6 +93,7 @@ LL |     do_something(OtherType);
    |     |
    |     required by a bound introduced by this call
    |
+   = note: `OtherType` implements similarly named `dependency::Trait`, but not `Trait`
 note: there are multiple different versions of crate `dependency` in the dependency graph
   --> replaced
    |

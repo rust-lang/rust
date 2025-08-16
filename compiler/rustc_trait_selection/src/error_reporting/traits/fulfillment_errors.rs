@@ -490,6 +490,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             );
                         }
 
+                        self.suggest_impl_similarly_named_trait(&mut err, &obligation, leaf_trait_predicate);
+
                         self.try_to_add_help_message(
                             &root_obligation,
                             &obligation,

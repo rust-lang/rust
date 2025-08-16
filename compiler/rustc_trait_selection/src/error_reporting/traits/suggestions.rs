@@ -5127,6 +5127,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => {}
         }
     }
+    pub(crate) fn suggest_impl_similarly_named_trait(
+        &self,
+        err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let trait_def_id = trait_predicate.def_id();
+        let trait_name = self.tcx.item_name(trait_def_id);
+
+        // Ensure that the current trait and the other_trait have the same number of args and each arg
+        // has the same kind
+        let trait_has_same_params = |other_trait_def_id: DefId| -> bool {
+            self.tcx.generics_of(trait_def_id).own_counts()
+                == self.tcx.generics_of(other_trait_def_id).own_counts()
+        };
+
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
+            trait_def_id != *def_id
+                && trait_name == self.tcx.item_name(def_id)
+                && trait_has_same_params(*def_id)
+                && self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    self.tcx,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_predicate.map_bound(|tr| ty::TraitPredicate {
+                        trait_ref: ty::TraitRef::new(self.tcx, *def_id, tr.trait_ref.args),
+                        ..tr
+                    }),
+                ))
+        }) {
+            err.note(format!(
+                "`{}` implements similarly named `{}`, but not `{}`",
+                trait_predicate.self_ty(),
+                self.tcx.def_path_str(other_trait_def_id),
+                trait_predicate.print_modifiers_and_trait_path()
+            ));
+        }
+        ()
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.
