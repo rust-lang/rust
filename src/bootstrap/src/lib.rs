@@ -1773,6 +1773,10 @@ impl Build {
         if src == dst {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = tracing::trace_span!(target: "IO", "file-copy-link", ?src, ?dst).entered();
+
         if let Err(e) = fs::remove_file(dst)
             && cfg!(windows)
             && e.kind() != io::ErrorKind::NotFound
@@ -1908,6 +1912,10 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = tracing::trace_span!(target: "IO", "dir-create", ?dir).entered();
+
         t!(fs::create_dir_all(dir))
     }
 
@@ -1915,6 +1923,10 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = tracing::trace_span!(target: "IO", "dir-remove", ?dir).entered();
+
         t!(fs::remove_dir_all(dir))
     }
 
