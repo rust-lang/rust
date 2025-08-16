@@ -11,7 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, TyKind, find_attr};
+use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -476,36 +476,17 @@ pub fn is_unsafe_fn<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 /// Peels off all references on the type. Returns the underlying type, the number of references
-/// removed, and whether the pointer is ultimately mutable or not.
-pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
-    fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
-        match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(*ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(*ty, count + 1, Mutability::Not),
-            _ => (ty, count, mutability),
-        }
+/// removed, and, if there were any such references, whether the pointer is ultimately mutable or
+/// not.
+pub fn peel_and_count_ty_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize, Option<Mutability>) {
+    let mut count = 0;
+    let mut mutbl = None;
+    while let ty::Ref(_, dest_ty, m) = ty.kind() {
+        ty = *dest_ty;
+        count += 1;
+        mutbl.replace(mutbl.map_or(*m, |mutbl: Mutability| mutbl.min(*m)));
     }
-    f(ty, 0, Mutability::Mut)
-}
-
-/// Returns the base type for HIR references and pointers.
-pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-    match &ty.kind {
-        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => walk_ptrs_hir_ty(mut_ty.ty),
-        _ => ty,
-    }
-}
-
-/// Returns the base type for references and raw pointers, and count reference
-/// depth.
-pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
-    fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
-        match ty.kind() {
-            ty::Ref(_, ty, _) => inner(*ty, depth + 1),
-            _ => (ty, depth),
-        }
-    }
-    inner(ty, 0)
+    (ty, count, mutbl)
 }
 
 /// Returns `true` if types `a` and `b` are same types having same `Const` generic args,
