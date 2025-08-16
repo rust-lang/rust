@@ -767,6 +767,7 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
+    ("32s", Unstable(sym::loongarch_target_feature), &[]),
     ("d", Stable, &["f"]),
     ("div32", Unstable(sym::loongarch_target_feature), &[]),
     ("f", Stable, &[]),
