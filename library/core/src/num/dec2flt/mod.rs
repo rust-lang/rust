@@ -124,6 +124,8 @@ macro_rules! from_str_float_impl {
             /// * '2.5E-10'
             /// * '5.'
             /// * '.5', or, equivalently, '0.5'
+            /// * '7'
+            /// * '007'
             /// * 'inf', '-inf', '+infinity', 'NaN'
             ///
             /// Note that alphabetical characters are not case-sensitive.
