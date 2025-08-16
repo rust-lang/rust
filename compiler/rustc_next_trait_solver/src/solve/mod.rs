@@ -130,7 +130,7 @@ where
         }
     }
 
-    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::TraitId) -> QueryResult<I> {
         if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {

@@ -38,7 +38,7 @@ pub enum TypeError<I: Interner> {
 
     Sorts(ExpectedFound<I::Ty>),
     ArgumentSorts(ExpectedFound<I::Ty>, usize),
-    Traits(ExpectedFound<I::DefId>),
+    Traits(ExpectedFound<I::TraitId>),
     VariadicMismatch(ExpectedFound<bool>),
 
     /// Instantiating a type variable with the given type would have
