@@ -1,7 +1,7 @@
-use super::prelude::*;
-
-use crate::session_diagnostics::IllFormedAttributeInputLint;
 use rustc_errors::DiagArgValue;
+
+use super::prelude::*;
+use crate::session_diagnostics::IllFormedAttributeInputLint;
 
 pub(crate) struct MustUseParser;
 

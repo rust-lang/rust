@@ -7,9 +7,9 @@
 //! Specifically, you might not care about managing the state of your [`AttributeParser`]
 //! state machine yourself. In this case you can choose to implement:
 //!
-//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
+//! - [`SingleAttributeParser`](crate::attributes::SingleAttributeParser): makes it easy to implement an attribute which should error if it
 //! appears more than once in a list of attributes
-//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
+//! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
@@ -286,7 +286,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     }
 }
 
-pub(super) type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
+type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
 /// If multiple attributes appear on an element, combines the values of each into a
