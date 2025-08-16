@@ -205,7 +205,7 @@ static TARGETS: &[&str] = &[
 ///
 /// The order here matters, more specific entries should be first.
 static DOCS_FALLBACK: &[(&str, &str)] = &[
-    ("-apple-", "x86_64-apple-darwin"),
+    ("-apple-", "aarch64-apple-darwin"),
     ("aarch64", "aarch64-unknown-linux-gnu"),
     ("arm-", "aarch64-unknown-linux-gnu"),
     ("", "x86_64-unknown-linux-gnu"),
