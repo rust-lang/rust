@@ -1265,12 +1265,7 @@ fn open_flavors() {
     let mut ra = OO::new();
     ra.read(true).append(true);
 
-    #[cfg(windows)]
-    let invalid_options = 87; // ERROR_INVALID_PARAMETER
-    #[cfg(all(unix, not(target_os = "vxworks")))]
-    let invalid_options = "Invalid argument";
-    #[cfg(target_os = "vxworks")]
-    let invalid_options = "invalid argument";
+    let invalid_options = "creating or truncating a file requires write or append access";
 
     // Test various combinations of creation modes and access modes.
     //
@@ -2083,4 +2078,35 @@ fn test_rename_junction() {
     // Make sure that renaming `original` to `dest` preserves the junction point.
     // Junction links are always absolute so we just check the file name is correct.
     assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}
+
+#[test]
+fn test_open_options_invalid_combinations() {
+    use crate::fs::OpenOptions as OO;
+
+    let test_cases: &[(fn() -> OO, &str)] = &[
+        (|| OO::new().create(true).read(true).clone(), "create without write"),
+        (|| OO::new().create_new(true).read(true).clone(), "create_new without write"),
+        (|| OO::new().truncate(true).read(true).clone(), "truncate without write"),
+        (|| OO::new().truncate(true).append(true).clone(), "truncate with append"),
+    ];
+
+    for (make_opts, desc) in test_cases {
+        let opts = make_opts();
+        let result = opts.open("nonexistent.txt");
+        assert!(result.is_err(), "{desc} should fail");
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput, "{desc} - wrong error kind");
+        assert_eq!(
+            err.to_string(),
+            "creating or truncating a file requires write or append access",
+            "{desc} - wrong error message"
+        );
+    }
+
+    let result = OO::new().open("nonexistent.txt");
+    assert!(result.is_err(), "no access mode should fail");
+    let err = result.unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::InvalidInput);
+    assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
 }
