@@ -1,4 +1,5 @@
 // This test ensures that several clickable items actually have the pointer cursor.
+include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 
 // the `[+]/[-]` button
@@ -8,11 +9,7 @@ assert-css: ("#toggle-all-docs", {"cursor": "pointer"})
 assert-css: ("#copy-path", {"cursor": "pointer"})
 
 // the search tabs
-write-into: (".search-input", "Foo")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "Foo"})
 assert-css: ("#search-tabs > button", {"cursor": "pointer"})
 
 // mobile sidebar toggle button

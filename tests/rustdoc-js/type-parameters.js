@@ -4,8 +4,8 @@ const EXPECTED = [
     {
         query: '-> trait:Some',
         others: [
-            { path: 'foo', name: 'alpha' },
             { path: 'foo', name: 'alef' },
+            { path: 'foo', name: 'alpha' },
         ],
     },
     {
@@ -75,10 +75,8 @@ const EXPECTED = [
     {
         query: 'Other',
         in_args: [
-            // because function is called "other", it's sorted first
-            // even though it has higher type distance
-            { path: 'foo', name: 'other' },
             { path: 'foo', name: 'alternate' },
+            { path: 'foo', name: 'other' },
         ],
     },
     {

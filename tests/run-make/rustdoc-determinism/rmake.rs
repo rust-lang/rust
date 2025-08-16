@@ -15,7 +15,7 @@ fn main() {
     rustdoc().input("foo.rs").out_dir(&bar_first).run();
 
     diff()
-        .expected_file(foo_first.join("search-index.js"))
-        .actual_file(bar_first.join("search-index.js"))
+        .expected_file(foo_first.join("search.index/root.js"))
+        .actual_file(bar_first.join("search.index/root.js"))
         .run();
 }

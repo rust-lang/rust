@@ -11,8 +11,8 @@
 //@ has f/trait.Foxtrot.html
 //@ hasraw e/enum.Echo.html 'Foxtrot'
 //@ hasraw trait.impl/f/trait.Foxtrot.js 'enum.Echo.html'
-//@ hasraw search-index.js 'Foxtrot'
-//@ hasraw search-index.js 'Echo'
+//@ hasraw search.index/name/*.js 'Foxtrot'
+//@ hasraw search.index/name/*.js 'Echo'
 
 // document two crates in the same way that cargo does, writing them both
 // into the same output directory

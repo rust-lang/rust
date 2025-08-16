@@ -1,6 +1,7 @@
 // Make sure search stores its data in `window`
 // It needs to use a global to avoid racing on search-index.js and search.js
 // https://github.com/rust-lang/rust/pull/118961
+include: "utils.goml"
 
 // URL query
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=sa'%3Bda'%3Bds"
@@ -9,9 +10,7 @@ assert-window-property-false: {"searchIndex": null}
 
 // Form input
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-write-into: (".search-input", "Foo")
-press-key: 'Enter'
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "Foo"})
 assert-window-property-false: {"searchIndex": null}
 
 // source sidebar

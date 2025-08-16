@@ -9,6 +9,6 @@ const EXPECTED = {
         { 'path': 'std::str', 'name': 'eq' },
     ],
     'returned': [
-        { 'path': 'std::string::String', 'name': 'add' },
+        { 'path': 'std::string::String', 'name': 'new' },
     ],
 };

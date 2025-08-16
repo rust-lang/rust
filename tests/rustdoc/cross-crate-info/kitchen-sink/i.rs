@@ -19,10 +19,10 @@
 //@ has t/trait.Tango.html
 //@ hasraw s/struct.Sierra.html 'Tango'
 //@ hasraw trait.impl/t/trait.Tango.js 'struct.Sierra.html'
-//@ hasraw search-index.js 'Quebec'
-//@ hasraw search-index.js 'Romeo'
-//@ hasraw search-index.js 'Sierra'
-//@ hasraw search-index.js 'Tango'
+//@ hasraw search.index/name/*.js 'Quebec'
+//@ hasraw search.index/name/*.js 'Romeo'
+//@ hasraw search.index/name/*.js 'Sierra'
+//@ hasraw search.index/name/*.js 'Tango'
 //@ has type.impl/s/struct.Sierra.js
 //@ hasraw type.impl/s/struct.Sierra.js 'Tango'
 //@ hasraw type.impl/s/struct.Sierra.js 'Romeo'

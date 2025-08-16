@@ -19,7 +19,7 @@ fn main() {
         .args(&["--extend-css", "z.css"])
         .input("x.rs")
         .run();
-    assert!(path("invocation-only/search-index-xxx.js").exists());
+    assert!(path("invocation-only/search.index/root-xxx.js").exists());
     assert!(path("invocation-only/crates-xxx.js").exists());
     assert!(path("invocation-only/settings.html").exists());
     assert!(path("invocation-only/x/all.html").exists());

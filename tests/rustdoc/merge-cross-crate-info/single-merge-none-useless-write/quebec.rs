@@ -5,7 +5,7 @@
 
 //@ !has index.html
 //@ has quebec/struct.Quebec.html
-//@ !has search-index.js
+//@ !has search.index/name/*.js
 
 // --merge=none doesn't write anything, despite --parts-out-dir
 pub struct Quebec;
