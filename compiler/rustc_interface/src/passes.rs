@@ -1081,7 +1081,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if !tcx.is_typeck_child(def_id.to_def_id()) {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
-                tcx.ensure_ok().mir_borrowck(def_id)
+                tcx.ensure_ok().mir_borrowck(def_id);
+                tcx.ensure_ok().check_transmutes(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
@@ -1101,7 +1102,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 if !tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()) {
                     // Eagerly check the unsubstituted layout for cycles.
                     tcx.ensure_ok().layout_of(
-                        ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                        ty::TypingEnv::codegen(tcx, def_id.to_def_id())
                             .as_query_input(tcx.type_of(def_id).instantiate_identity()),
                     );
                 }

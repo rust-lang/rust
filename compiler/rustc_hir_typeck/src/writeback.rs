@@ -74,6 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_coroutine_interior();
+        wbcx.visit_transmutes();
         wbcx.visit_offset_of_container_types();
 
         wbcx.typeck_results.rvalue_scopes =
@@ -529,6 +530,18 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let (predicate, cause) =
                 self.resolve_coroutine_predicate((*predicate, cause.clone()), &cause.span);
             self.typeck_results.coroutine_stalled_predicates.insert((predicate, cause));
+        }
+    }
+
+    fn visit_transmutes(&mut self) {
+        let tcx = self.tcx();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for &(from, to, hir_id) in self.fcx.deferred_transmute_checks.borrow().iter() {
+            let span = tcx.hir_span(hir_id);
+            let from = self.resolve(from, &span);
+            let to = self.resolve(to, &span);
+            self.typeck_results.transmutes_to_check.push((from, to, hir_id));
         }
     }
 

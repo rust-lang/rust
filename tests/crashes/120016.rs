@@ -1,5 +1,4 @@
 //@ known-bug: #120016
-//@ compile-flags: -Zcrate-attr=feature(const_async_blocks)
 //@ edition: 2021
 
 #![feature(type_alias_impl_trait, const_async_blocks)]
