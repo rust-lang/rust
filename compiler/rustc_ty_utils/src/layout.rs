@@ -65,6 +65,18 @@ fn layout_of<'tcx>(
         return tcx.layout_of(typing_env.as_query_input(ty));
     }
 
+    if let ty::TypingMode::Codegen = typing_env.typing_mode {
+        let with_postanalysis = ty::TypingEnv {
+            typing_mode: ty::TypingMode::PostAnalysis,
+            param_env: typing_env.param_env,
+        };
+        let res = tcx.layout_of(with_postanalysis.as_query_input(ty));
+        match res {
+            Err(LayoutError::TooGeneric(_)) => {}
+            _ => return res,
+        };
+    }
+
     let cx = LayoutCx::new(tcx, typing_env);
 
     let layout = layout_of_uncached(&cx, ty)?;
