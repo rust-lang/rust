@@ -26,6 +26,8 @@
 #![feature(round_char_boundary)]
 #![feature(slice_partition_dedup)]
 #![feature(string_from_utf8_lossy_owned)]
+#![feature(str_internals)]
+#![feature(char_internals)]
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
