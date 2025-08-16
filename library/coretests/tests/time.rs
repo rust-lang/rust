@@ -46,6 +46,13 @@ fn from_weeks_overflow() {
 }
 
 #[test]
+#[should_panic]
+fn from_nanos_u128_overflow() {
+    let overflow = (u64::MAX * NANOS_PER_SEC) + (NANOS_PER_SEC - 1) + 1;
+    let _ = Duration::from_nanos_u128(overflow);
+}
+
+#[test]
 fn constructor_weeks() {
     assert_eq!(Duration::from_weeks(1), Duration::from_secs(7 * 24 * 60 * 60));
     assert_eq!(Duration::from_weeks(0), Duration::ZERO);
@@ -81,6 +88,8 @@ fn secs() {
     assert_eq!(Duration::from_micros(1_000_001).as_secs(), 1);
     assert_eq!(Duration::from_nanos(999_999_999).as_secs(), 0);
     assert_eq!(Duration::from_nanos(1_000_000_001).as_secs(), 1);
+    assert_eq!(Duration::from_nanos_u128(999_999_999).as_secs(), 0);
+    assert_eq!(Duration::from_nanos_u128(1_000_000_001).as_secs(), 1);
 }
 
 #[test]
@@ -95,6 +104,8 @@ fn millis() {
     assert_eq!(Duration::from_micros(1_001_000).subsec_millis(), 1);
     assert_eq!(Duration::from_nanos(999_999_999).subsec_millis(), 999);
     assert_eq!(Duration::from_nanos(1_001_000_000).subsec_millis(), 1);
+    assert_eq!(Duration::from_nanos_u128(999_999_999).subsec_millis(), 999);
+    assert_eq!(Duration::from_nanos_u128(1_001_000_001).subsec_millis(), 1);
 }
 
 #[test]
@@ -109,6 +120,8 @@ fn micros() {
     assert_eq!(Duration::from_micros(1_000_001).subsec_micros(), 1);
     assert_eq!(Duration::from_nanos(999_999_999).subsec_micros(), 999_999);
     assert_eq!(Duration::from_nanos(1_000_001_000).subsec_micros(), 1);
+    assert_eq!(Duration::from_nanos_u128(999_999_999).subsec_micros(), 999_999);
+    assert_eq!(Duration::from_nanos_u128(1_000_001_000).subsec_micros(), 1);
 }
 
 #[test]
@@ -123,6 +136,8 @@ fn nanos() {
     assert_eq!(Duration::from_micros(1_000_001).subsec_nanos(), 1000);
     assert_eq!(Duration::from_nanos(999_999_999).subsec_nanos(), 999_999_999);
     assert_eq!(Duration::from_nanos(1_000_000_001).subsec_nanos(), 1);
+    assert_eq!(Duration::from_nanos_u128(999_999_999).subsec_nanos(), 999_999_999);
+    assert_eq!(Duration::from_nanos_u128(1_000_000_001).subsec_nanos(), 1);
 }
 
 #[test]
