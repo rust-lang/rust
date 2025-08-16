@@ -502,20 +502,47 @@ impl<T, const N: usize> [T; N] {
     ///
     /// # Note on performance and stack usage
     ///
-    /// Unfortunately, usages of this method are currently not always optimized
-    /// as well as they could be. This mainly concerns large arrays, as mapping
-    /// over small arrays seem to be optimized just fine. Also note that in
-    /// debug mode (i.e. without any optimizations), this method can use a lot
-    /// of stack space (a few times the size of the array or more).
+    /// Note that this method is *eager*.  In terms of `Iterator` methods, it's
+    /// more like `.map(…).collect()`, since it returns a new array.
     ///
-    /// Therefore, in performance-critical code, try to avoid using this method
-    /// on large arrays or check the emitted code. Also try to avoid chained
-    /// maps (e.g. `arr.map(...).map(...)`).
+    /// That means that `arr.map(f).map(g)` is, in general, *not* equivalent to
+    /// `array.map(|x| g(f(x)))`, as the former calls `f` 4 times then `g` 4 times,
+    /// whereas the latter interleaves the calls (`fgfgfgfg`).
     ///
-    /// In many cases, you can instead use [`Iterator::map`] by calling `.iter()`
-    /// or `.into_iter()` on your array. `[T; N]::map` is only necessary if you
-    /// really need a new array of the same size as the result. Rust's lazy
-    /// iterators tend to get optimized very well.
+    /// A consequence of this is that it can have fairly-high stack usage, especially
+    /// in debug mode or for long arrays.  The backend may be able to optimize it
+    /// away, but especially for complicated mappings it might not be able to.
+    ///
+    /// If you're doing a one-step `map` and really want an array as the result,
+    /// then absolutely use this method.  Its implementation uses a bunch of tricks
+    /// to help the optimizer handle it well.
+    ///
+    /// However, in many cases you can instead use [`Iterator::map`] by calling
+    /// `.iter()` or `.into_iter()` on your array.  Rust's lazy iterators tend to
+    /// get optimized very well.
+    ///
+    /// For example, rather than doing an array-to-array map of all the elements
+    /// in the array up-front and only iterating after that completes,
+    ///
+    /// ```
+    /// # let my_array = [1, 2, 3];
+    /// # let f = |x: i32| x + 1;
+    /// for x in my_array.map(f) {
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// It's often better to use a lazy iterator map like this
+    ///
+    /// ```
+    /// # let my_array = [1, 2, 3];
+    /// # let f = |x: i32| x + 1;
+    /// for x in my_array.into_iter().map(f) {
+    ///     // ...
+    /// }
+    /// ```
+    ///
+    /// so that the elements are mapped-then-processed one at a time instead.
     ///
     ///
     /// # Examples
