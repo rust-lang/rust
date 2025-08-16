@@ -59,5 +59,21 @@ LL |     for val in x.values_mut() {
    |
    = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
-error: aborting due to 7 previous errors
+error: using `into_iter` can result in unstable query results
+  --> $DIR/query_stability.rs:38:38
+   |
+LL |     FxHashMap::<u32, i32>::default().extend(x);
+   |                                      ^^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: using `into_iter` can result in unstable query results
+  --> $DIR/query_stability.rs:47:9
+   |
+LL |     _ = hide_into_iter(map);
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if you believe this case to be fine, allow this lint and add a comment explaining your rationale
+
+error: aborting due to 9 previous errors
 
