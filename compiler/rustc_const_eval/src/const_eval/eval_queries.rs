@@ -293,6 +293,30 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
+    let ty::PseudoCanonicalInput { typing_env, value } = key;
+
+    // Const eval always happens in PostAnalysis or Codegen mode. See the comment in
+    // `InterpCx::new` for more details.
+    debug_assert_matches!(
+        typing_env.typing_mode,
+        ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen
+    );
+
+    // We are in codegen. It's very likely this constant has been evaluated in PostAnalysis before.
+    // Try to reuse this evaluation, and only re-run if we hit a `TooGeneric` error.
+    if let ty::TypingMode::Codegen = typing_env.typing_mode {
+        let with_postanalysis = ty::TypingEnv {
+            typing_mode: ty::TypingMode::PostAnalysis,
+            param_env: typing_env.param_env,
+        };
+        let with_postanalysis =
+            tcx.eval_to_const_value_raw(with_postanalysis.as_query_input(value));
+        match with_postanalysis {
+            Ok(_) | Err(ErrorHandled::Reported(..)) => return with_postanalysis,
+            Err(ErrorHandled::TooGeneric(_)) => {}
+        }
+    }
+
     tcx.eval_to_allocation_raw(key).map(|val| turn_into_const_value(tcx, val, key))
 }
 

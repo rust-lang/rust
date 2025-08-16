@@ -8,17 +8,25 @@ LL | const FOO: usize = FOO;
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
    |
-error[E0391]: cycle detected when const-evaluating + checking `FOO`
    |
 LL | const FOO: usize = FOO;
    |                    ^^^
    |
-note: ...which requires simplifying constant for the type system `FOO`...
+   |
+LL | const FOO: usize = FOO;
+   |                    ^^^
+   |
+error[E0391]: cycle detected when simplifying constant for the type system `FOO`
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
-   = note: ...which again requires const-evaluating + checking `FOO`, completing the cycle
-note: cycle used when const-evaluating + checking `FOO`
+   |
+note: ...which requires const-evaluating + checking `FOO`...
+   |
+LL | const FOO: usize = FOO;
+   |                    ^^^
+   = note: ...which again requires simplifying constant for the type system `FOO`, completing the cycle
+note: cycle used when simplifying constant for the type system `FOO`
    |
 LL | const FOO: usize = FOO;
    | ^^^^^^^^^^^^^^^^
