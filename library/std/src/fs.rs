@@ -3156,6 +3156,25 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
     fs_imp::set_permissions(path.as_ref(), perm.0)
 }
 
+/// Set the permissions of a file, unless it is a symlink.
+///
+/// Note that the non-final path elements are allowed to be symlinks.
+///
+/// # Platform-specific behavior
+///
+/// Currently unimplemented on Windows.
+///
+/// On Unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
+///
+/// This behavior may change in the future.
+///
+/// [`FilesystemLoop`]: crate::io::ErrorKind::FilesystemLoop
+#[doc(alias = "chmod", alias = "SetFileAttributes")]
+#[unstable(feature = "set_permissions_nofollow", issue = "141607")]
+pub fn set_permissions_nofollow<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
+    fs_imp::set_permissions_nofollow(path.as_ref(), perm)
+}
+
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
