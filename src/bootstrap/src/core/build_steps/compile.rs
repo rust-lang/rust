@@ -12,6 +12,7 @@ use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use std::{env, fs, str};
 
 use serde_derive::Deserialize;
@@ -2568,7 +2569,17 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = t!(t!(path.metadata()).modified());
-    command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    let stamp = BuildStamp::new(path.parent().unwrap())
+        .with_prefix(path.file_name().unwrap().to_str().unwrap())
+        .with_prefix("strip")
+        .add_stamp(previous_mtime.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
+
+    // Running strip can be relatively expensive (~1s on librustc_driver.so), so we don't rerun it
+    // if the file is unchanged.
+    if !stamp.is_up_to_date() {
+        command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    }
+    t!(stamp.write());
 
     let file = t!(fs::File::open(path));
 
