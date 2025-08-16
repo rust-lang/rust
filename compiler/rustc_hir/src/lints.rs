@@ -31,8 +31,28 @@ pub struct AttributeLint<Id> {
 
 #[derive(Clone, Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
-    UnusedDuplicate { this: Span, other: Span, warning: bool },
-    IllFormedAttributeInput { suggestions: Vec<String> },
-    EmptyAttribute { first_span: Span },
-    InvalidTarget { name: Symbol, target: Target, applied: String, only: &'static str },
+    UnusedDuplicate {
+        this: Span,
+        other: Span,
+        warning: bool,
+    },
+    IllFormedAttributeInput {
+        suggestions: Vec<String>,
+    },
+    EmptyAttribute {
+        first_span: Span,
+    },
+
+    /// Copy of `IllFormedAttributeInput`
+    /// specifically for the `invalid_macro_export_arguments` lint until that is removed,
+    /// see <https://github.com/rust-lang/rust/pull/143857#issuecomment-3079175663>
+    InvalidMacroExportArguments {
+        suggestions: Vec<String>,
+    },
+    InvalidTarget {
+        name: Symbol,
+        target: Target,
+        applied: String,
+        only: &'static str,
+    },
 }
