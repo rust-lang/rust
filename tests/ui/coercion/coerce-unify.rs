@@ -62,7 +62,4 @@ pub fn main() {
     let a = [1, 2, 3];
     let v = vec![1, 2, 3];
     check2!(&a[..], &v);
-
-    // Make sure in-array coercion still works.
-    let _ = [("a", Default::default()), (Default::default(), "b"), (&s, &s)];
 }

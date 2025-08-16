@@ -103,7 +103,7 @@ error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:57:23
    |
 LL |     let k = vec!['c', 10];
-   |                       ^^ expected `char`, found `u8`
+   |                       ^^ expected `char`, found integer
    |
 help: replace the comma with a semicolon to create a vector
    |
