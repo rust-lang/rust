@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: FnMut(&'a _)`
+error[E0275]: overflow evaluating the requirement `{closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: Sized`
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "64"]` attribute to your crate (`overflow_during_mono`)
    = note: required for `Filter<IntoIter<i32, 11>, {closure@overflow-during-mono.rs:14:41}>` to implement `Iterator`

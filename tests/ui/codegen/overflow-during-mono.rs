@@ -1,4 +1,4 @@
-//~ ERROR overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: FnMut(&'a _)`
+//~ ERROR overflow evaluating the requirement `{closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: Sized`
 //@ build-fail
 //@ compile-flags: -Zwrite-long-types-to-disk=yes
 
