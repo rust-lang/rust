@@ -1,7 +1,7 @@
-//@ known-bug: #107975
 //@ compile-flags: -Copt-level=2
-//@ run-pass
+//@ run-fail
 //@ ignore-backends: gcc
+//@ min-llvm-version: 21
 
 // https://github.com/rust-lang/rust/issues/107975#issuecomment-1431758601
 
