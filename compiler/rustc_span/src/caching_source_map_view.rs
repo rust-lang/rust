@@ -123,27 +123,25 @@ impl<'sm> CachingSourceMapView<'sm> {
 
         if lo_cache_idx != -1 && hi_cache_idx != -1 {
             // Cache hit for span lo and hi. Check if they belong to the same file.
-            let result = {
-                let lo = &self.line_cache[lo_cache_idx as usize];
-                let hi = &self.line_cache[hi_cache_idx as usize];
+            let lo_file_index = self.line_cache[lo_cache_idx as usize].file_index;
+            let hi_file_index = self.line_cache[hi_cache_idx as usize].file_index;
 
-                if lo.file_index != hi.file_index {
-                    return None;
-                }
-
-                (
-                    lo.file.stable_id,
-                    lo.line_number,
-                    span_data.lo - lo.line.start,
-                    hi.line_number,
-                    span_data.hi - hi.line.start,
-                )
-            };
+            if lo_file_index != hi_file_index {
+                return None;
+            }
 
             self.line_cache[lo_cache_idx as usize].touch(self.time_stamp);
             self.line_cache[hi_cache_idx as usize].touch(self.time_stamp);
 
-            return Some(result);
+            let lo = &self.line_cache[lo_cache_idx as usize];
+            let hi = &self.line_cache[hi_cache_idx as usize];
+            return Some((
+                lo.file.stable_id,
+                lo.line_number,
+                span_data.lo - lo.line.start,
+                hi.line_number,
+                span_data.hi - hi.line.start,
+            ));
         }
 
         // No cache hit or cache hit for only one of span lo and hi.

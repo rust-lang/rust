@@ -645,34 +645,29 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
         let parent = Option::<LocalDefId>::decode(self);
         let tag: u8 = Decodable::decode(self);
 
-        if tag == TAG_PARTIAL_SPAN {
-            return Span::new(BytePos(0), BytePos(0), ctxt, parent);
-        } else if tag == TAG_RELATIVE_SPAN {
-            let dlo = u32::decode(self);
-            let dto = u32::decode(self);
+        let (lo, hi) = match tag {
+            TAG_PARTIAL_SPAN => (BytePos(0), BytePos(0)),
+            TAG_RELATIVE_SPAN => {
+                let dlo = u32::decode(self);
+                let dto = u32::decode(self);
 
-            let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
-            let span = Span::new(
-                enclosing.lo + BytePos::from_u32(dlo),
-                enclosing.lo + BytePos::from_u32(dto),
-                ctxt,
-                parent,
-            );
+                let enclosing = self.tcx.source_span_untracked(parent.unwrap()).data_untracked();
+                (enclosing.lo + BytePos::from_u32(dlo), enclosing.lo + BytePos::from_u32(dto))
+            }
+            TAG_FULL_SPAN => {
+                let file_lo_index = SourceFileIndex::decode(self);
+                let line_lo = usize::decode(self);
+                let col_lo = RelativeBytePos::decode(self);
+                let len = BytePos::decode(self);
 
-            return span;
-        } else {
-            debug_assert_eq!(tag, TAG_FULL_SPAN);
-        }
-
-        let file_lo_index = SourceFileIndex::decode(self);
-        let line_lo = usize::decode(self);
-        let col_lo = RelativeBytePos::decode(self);
-        let len = BytePos::decode(self);
-
-        let file_lo = self.file_index_to_file(file_lo_index);
-        let lo = file_lo.lines()[line_lo - 1] + col_lo;
-        let lo = file_lo.absolute_position(lo);
-        let hi = lo + len;
+                let file_lo = self.file_index_to_file(file_lo_index);
+                let lo = file_lo.lines()[line_lo - 1] + col_lo;
+                let lo = file_lo.absolute_position(lo);
+                let hi = lo + len;
+                (lo, hi)
+            }
+            _ => unreachable!(),
+        };
 
         Span::new(lo, hi, ctxt, parent)
     }
