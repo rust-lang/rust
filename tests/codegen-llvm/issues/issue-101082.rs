@@ -1,6 +1,5 @@
 //@ compile-flags: -Copt-level=3
 //@ revisions: host x86-64 x86-64-v3
-//@ min-llvm-version: 20
 
 //@[host] ignore-x86_64
 
