@@ -516,4 +516,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Build/check now supports forwarding `--timings` flag to cargo.",
     },
+    ChangeInfo {
+        change_id: 145472,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x dist` or `x install` with stage 0. All dist and install commands have to be on stage 1+.",
+    },
 ];
