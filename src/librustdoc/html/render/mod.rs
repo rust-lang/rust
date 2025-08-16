@@ -380,13 +380,14 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType) {
+    fn append(&mut self, item_name: String, item: &clean::Item) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{item_type}.{name}.html", url.join("/"));
+            let new_url = format!("{}/{}", url.join("/"), item.html_filename());
             url.push(name);
+            let item_type = item.type_();
             let name = url.join("::");
-            match *item_type {
+            match item_type {
                 ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
                 ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
                 ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),

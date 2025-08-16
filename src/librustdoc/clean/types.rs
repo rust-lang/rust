@@ -8,7 +8,7 @@ use itertools::Either;
 use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -642,6 +642,18 @@ impl Item {
         ItemType::from(self)
     }
 
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        let type_ = if self.is_macro_placeholder() { ItemType::Macro } else { self.type_() };
+        format!("{type_}.{}.html", self.name.unwrap())
+    }
+
+    /// If the current item is a "fake" macro (ie, `AttrMacroItem | ItemKind::DeriveMacroItem` which
+    /// don't hold any data), it returns `true`.
+    pub(crate) fn is_macro_placeholder(&self) -> bool {
+        matches!(self.kind, ItemKind::AttrMacroItem | ItemKind::DeriveMacroItem)
+    }
+
     pub(crate) fn is_default(&self) -> bool {
         match self.kind {
             ItemKind::MethodItem(_, Some(defaultness)) => {
@@ -924,7 +936,9 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    MacroItem(Macro, Option<MacroKinds>),
+    AttrMacroItem,
+    DeriveMacroItem,
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -974,7 +988,9 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
+            | AttrMacroItem
+            | DeriveMacroItem
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)
@@ -1005,7 +1021,7 @@ impl ItemKind {
                 | ForeignFunctionItem(_, _)
                 | ForeignStaticItem(_, _)
                 | ForeignTypeItem
-                | MacroItem(_)
+                | MacroItem(..)
                 | ProcMacroItem(_)
                 | PrimitiveItem(_)
         )

@@ -7,7 +7,7 @@ use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
+use rustc_hir::def::{CtorKind, MacroKinds};
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
@@ -217,6 +217,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let item_vars = ItemVars {
             typ,
             name: item.name.as_ref().unwrap().as_str(),
+            // If `type_` returns `None`, it means it's a bang macro with multiple kinds, but
+            // since we're generating its documentation page, we can default to the "parent" type,
+            // ie "bang macro".
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
@@ -241,7 +244,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::TypeAliasItem(t) => {
                 write!(buf, "{}", item_type_alias(cx, item, t))
             }
-            clean::MacroItem(m) => write!(buf, "{}", item_macro(cx, item, m)),
+            clean::MacroItem(m, kinds) => write!(buf, "{}", item_macro(cx, item, m, *kinds)),
             clean::ProcMacroItem(m) => {
                 write!(buf, "{}", item_proc_macro(cx, item, m))
             }
@@ -310,8 +313,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
     fmt::from_fn(|w| {
         write!(w, "{}", document(cx, item, None, HeadingOffset::H2))?;
 
-        let mut not_stripped_items =
-            items.iter().filter(|i| !i.is_stripped()).enumerate().collect::<Vec<_>>();
+        let mut not_stripped_items: FxHashMap<ItemType, Vec<(usize, &clean::Item)>> =
+            FxHashMap::default();
+
+        for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
+            not_stripped_items.entry(item.type_()).or_default().push((index, item));
+        }
 
         // the order of item types in the listing
         fn reorder(ty: ItemType) -> u8 {
@@ -334,11 +341,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         }
 
         fn cmp(i1: &clean::Item, i2: &clean::Item, tcx: TyCtxt<'_>) -> Ordering {
-            let rty1 = reorder(i1.type_());
-            let rty2 = reorder(i2.type_());
-            if rty1 != rty2 {
-                return rty1.cmp(&rty2);
-            }
             let is_stable1 =
                 i1.stability(tcx).as_ref().map(|s| s.level.is_stable()).unwrap_or(true);
             let is_stable2 =
@@ -359,8 +361,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let tcx = cx.tcx();
 
         match cx.shared.module_sorting {
-            ModuleSorting::Alphabetical => {
-                not_stripped_items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
+            ModuleSorting::Alphabetical =>
+            {
+                #[allow(rustc::potential_query_instability)]
+                for items in not_stripped_items.values_mut() {
+                    items.sort_by(|(_, i1), (_, i2)| cmp(i1, i2, tcx));
+                }
             }
             ModuleSorting::DeclarationOrder => {}
         }
@@ -383,150 +389,152 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         // can be identical even if the elements are different (mostly in imports).
         // So in case this is an import, we keep everything by adding a "unique id"
         // (which is the position in the vector).
-        not_stripped_items.dedup_by_key(|(idx, i)| {
-            (
-                i.item_id,
-                if i.name.is_some() { Some(full_path(cx, i)) } else { None },
-                i.type_(),
-                if i.is_import() { *idx } else { 0 },
-            )
-        });
+        #[allow(rustc::potential_query_instability)]
+        for items in not_stripped_items.values_mut() {
+            items.dedup_by_key(|(idx, i)| {
+                (
+                    i.item_id,
+                    if i.name.is_some() { Some(full_path(cx, i)) } else { None },
+                    i.type_(),
+                    if i.is_import() { *idx } else { 0 },
+                )
+            });
+        }
 
         debug!("{not_stripped_items:?}");
-        let mut last_section = None;
 
-        for (_, myitem) in &not_stripped_items {
-            let my_section = item_ty_to_section(myitem.type_());
-            if Some(my_section) != last_section {
-                if last_section.is_some() {
-                    w.write_str(ITEM_TABLE_CLOSE)?;
-                }
-                last_section = Some(my_section);
-                let section_id = my_section.id();
-                let tag =
-                    if section_id == "reexports" { REEXPORTS_TABLE_OPEN } else { ITEM_TABLE_OPEN };
-                write!(
-                    w,
-                    "{}",
-                    write_section_heading(my_section.name(), &cx.derive_id(section_id), None, tag)
-                )?;
-            }
+        #[allow(rustc::potential_query_instability)]
+        let mut types = not_stripped_items.keys().copied().collect::<Vec<_>>();
+        types.sort_unstable_by(|a, b| reorder(*a).cmp(&reorder(*b)));
 
-            match myitem.kind {
-                clean::ExternCrateItem { ref src } => {
-                    use crate::html::format::print_anchor;
+        for type_ in types {
+            let my_section = item_ty_to_section(type_);
+            let section_id = my_section.id();
+            let tag =
+                if section_id == "reexports" { REEXPORTS_TABLE_OPEN } else { ITEM_TABLE_OPEN };
+            write!(
+                w,
+                "{}",
+                write_section_heading(my_section.name(), &cx.derive_id(section_id), None, tag)
+            )?;
 
-                    match *src {
-                        Some(src) => {
-                            write!(
-                                w,
-                                "<dt><code>{}extern crate {} as {};",
-                                visibility_print_with_space(myitem, cx),
-                                print_anchor(myitem.item_id.expect_def_id(), src, cx),
-                                EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
-                            )?;
-                        }
-                        None => {
-                            write!(
-                                w,
-                                "<dt><code>{}extern crate {};",
-                                visibility_print_with_space(myitem, cx),
-                                print_anchor(
-                                    myitem.item_id.expect_def_id(),
-                                    myitem.name.unwrap(),
-                                    cx
-                                )
-                            )?;
-                        }
-                    }
-                    w.write_str("</code></dt>")?;
-                }
+            for (_, myitem) in &not_stripped_items[&type_] {
+                match myitem.kind {
+                    clean::ExternCrateItem { ref src } => {
+                        use crate::html::format::print_anchor;
 
-                clean::ImportItem(ref import) => {
-                    let stab_tags = import.source.did.map_or_else(String::new, |import_def_id| {
-                        print_extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
-                    });
-
-                    let id = match import.kind {
-                        clean::ImportKind::Simple(s) => {
-                            format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
-                        }
-                        clean::ImportKind::Glob => String::new(),
-                    };
-                    write!(
-                        w,
-                        "<dt{id}>\
-                            <code>{vis}{imp}</code>{stab_tags}\
-                        </dt>",
-                        vis = visibility_print_with_space(myitem, cx),
-                        imp = import.print(cx)
-                    )?;
-                }
-
-                _ => {
-                    if myitem.name.is_none() {
-                        continue;
-                    }
-
-                    let unsafety_flag = match myitem.kind {
-                        clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
-                            if myitem.fn_header(tcx).unwrap().safety
-                                == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
-                        {
-                            "<sup title=\"unsafe function\">⚠</sup>"
-                        }
-                        clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
-                            "<sup title=\"unsafe static\">⚠</sup>"
-                        }
-                        _ => "",
-                    };
-
-                    let visibility_and_hidden = match myitem.visibility(tcx) {
-                        Some(ty::Visibility::Restricted(_)) => {
-                            if myitem.is_doc_hidden() {
-                                // Don't separate with a space when there are two of them
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
-                            } else {
-                                "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        match *src {
+                            Some(src) => {
+                                write!(
+                                    w,
+                                    "<dt><code>{}extern crate {} as {};",
+                                    visibility_print_with_space(myitem, cx),
+                                    print_anchor(myitem.item_id.expect_def_id(), src, cx),
+                                    EscapeBodyTextWithWbr(myitem.name.unwrap().as_str())
+                                )?;
+                            }
+                            None => {
+                                write!(
+                                    w,
+                                    "<dt><code>{}extern crate {};",
+                                    visibility_print_with_space(myitem, cx),
+                                    print_anchor(
+                                        myitem.item_id.expect_def_id(),
+                                        myitem.name.unwrap(),
+                                        cx
+                                    )
+                                )?;
                             }
                         }
-                        _ if myitem.is_doc_hidden() => {
-                            "<span title=\"Hidden item\">&nbsp;👻</span> "
-                        }
-                        _ => "",
-                    };
+                        w.write_str("</code></dt>")?;
+                    }
 
-                    let docs =
-                        MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx)).into_string();
-                    let (docs_before, docs_after) =
-                        if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
-                    write!(
-                        w,
-                        "<dt>\
-                            <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
-                            {name}\
-                            </a>\
-                            {visibility_and_hidden}\
-                            {unsafety_flag}\
-                            {stab_tags}\
-                        </dt>\
-                        {docs_before}{docs}{docs_after}",
-                        name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
-                        visibility_and_hidden = visibility_and_hidden,
-                        stab_tags = print_extra_info_tags(tcx, myitem, item, None),
-                        class = myitem.type_(),
-                        unsafety_flag = unsafety_flag,
-                        href = print_item_path(myitem.type_(), myitem.name.unwrap().as_str()),
-                        title1 = myitem.type_(),
-                        title2 = full_path(cx, myitem),
-                    )?;
+                    clean::ImportItem(ref import) => {
+                        let stab_tags =
+                            import.source.did.map_or_else(String::new, |import_def_id| {
+                                print_extra_info_tags(tcx, myitem, item, Some(import_def_id))
+                                    .to_string()
+                            });
+
+                        let id = match import.kind {
+                            clean::ImportKind::Simple(s) => {
+                                format!(" id=\"{}\"", cx.derive_id(format!("reexport.{s}")))
+                            }
+                            clean::ImportKind::Glob => String::new(),
+                        };
+                        write!(
+                            w,
+                            "<dt{id}>\
+                                <code>{vis}{imp}</code>{stab_tags}\
+                            </dt>",
+                            vis = visibility_print_with_space(myitem, cx),
+                            imp = import.print(cx)
+                        )?;
+                    }
+
+                    _ => {
+                        if myitem.name.is_none() {
+                            continue;
+                        }
+
+                        let unsafety_flag = match myitem.kind {
+                            clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
+                                if myitem.fn_header(tcx).unwrap().safety
+                                    == hir::HeaderSafety::Normal(hir::Safety::Unsafe) =>
+                            {
+                                "<sup title=\"unsafe function\">⚠</sup>"
+                            }
+                            clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                                "<sup title=\"unsafe static\">⚠</sup>"
+                            }
+                            _ => "",
+                        };
+
+                        let visibility_and_hidden = match myitem.visibility(tcx) {
+                            Some(ty::Visibility::Restricted(_)) => {
+                                if myitem.is_doc_hidden() {
+                                    // Don't separate with a space when there are two of them
+                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                                } else {
+                                    "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                                }
+                            }
+                            _ if myitem.is_doc_hidden() => {
+                                "<span title=\"Hidden item\">&nbsp;👻</span> "
+                            }
+                            _ => "",
+                        };
+
+                        let docs = MarkdownSummaryLine(&myitem.doc_value(), &myitem.links(cx))
+                            .into_string();
+                        let (docs_before, docs_after) =
+                            if docs.is_empty() { ("", "") } else { ("<dd>", "</dd>") };
+                        write!(
+                            w,
+                            "<dt>\
+                                <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
+                                {name}\
+                                </a>\
+                                {visibility_and_hidden}\
+                                {unsafety_flag}\
+                                {stab_tags}\
+                            </dt>\
+                            {docs_before}{docs}{docs_after}",
+                            name = EscapeBodyTextWithWbr(myitem.name.unwrap().as_str()),
+                            visibility_and_hidden = visibility_and_hidden,
+                            stab_tags = print_extra_info_tags(tcx, myitem, item, None),
+                            class = type_,
+                            unsafety_flag = unsafety_flag,
+                            href = print_item_path(myitem),
+                            title1 = myitem.type_(),
+                            title2 = full_path(cx, myitem),
+                        )?;
+                    }
                 }
             }
-        }
-
-        if last_section.is_some() {
             w.write_str(ITEM_TABLE_CLOSE)?;
         }
+
         Ok(())
     })
 }
@@ -1877,8 +1885,13 @@ fn item_variants(
     })
 }
 
-fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
-    fmt::from_fn(|w| {
+fn item_macro(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::Macro,
+    kinds: Option<MacroKinds>,
+) -> impl fmt::Display {
+    fmt::from_fn(move |w| {
         wrap_item(w, |w| {
             // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
             if !t.macro_rules {
@@ -1886,6 +1899,14 @@ fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt:
             }
             write!(w, "{}", Escape(&t.source))
         })?;
+        if let Some(kinds) = kinds {
+            write!(
+                w,
+                "<h3 class='macro-info'>ⓘ This is {} {}</h3>",
+                kinds.article(),
+                kinds.descr(),
+            )?;
+        }
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })
 }
@@ -2257,7 +2278,16 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn print_item_path(ty: ItemType, name: &str) -> impl Display {
+pub(super) fn print_item_path(item: &clean::Item) -> impl Display {
+    fmt::from_fn(move |f| match item.kind {
+        clean::ItemKind::ModuleItem(..) => {
+            write!(f, "{}index.html", ensure_trailing_slash(item.name.unwrap().as_str()))
+        }
+        _ => f.write_str(&item.html_filename()),
+    })
+}
+
+pub(super) fn print_ty_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         _ => write!(f, "{ty}.{name}.html"),
