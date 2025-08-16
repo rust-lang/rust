@@ -1,4 +1,4 @@
 extern "C" fn _f() -> libc::uintptr_t {}
-//~^ ERROR failed to resolve
+//~^ ERROR cannot find
 
 fn main() {}

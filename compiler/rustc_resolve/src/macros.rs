@@ -899,10 +899,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module, segment) =
-                        if let PathResult::Failed { span, label, module, segment_name, .. } =
-                            path_res
-                        {
+                    let (span, message, label, module, segment) = match path_res {
+                        PathResult::Failed {
+                            span, label, module, segment_name, message, ..
+                        } => {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) = self
                                 .cm()
@@ -921,26 +921,52 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, label, module, segment_name)
-                        } else {
+                            (span, message, label, module, segment_name)
+                        }
+                        PathResult::NonModule(partial_res) => {
+                            let found_an = partial_res.base_res().article();
+                            let found_descr = partial_res.base_res().descr();
+                            let scope = match &path[..partial_res.unresolved_segments()] {
+                                [.., prev] => {
+                                    format!("{found_descr} `{}`", prev.ident)
+                                }
+                                _ => found_descr.to_string(),
+                            };
+                            let expected_an = kind.article();
+                            let expected_descr = kind.descr();
+                            let expected_name = path[partial_res.unresolved_segments()].ident;
+
                             (
                                 path_span,
                                 format!(
-                                    "partially resolved path in {} {}",
-                                    kind.article(),
-                                    kind.descr()
+                                    "cannot find {expected_descr} `{expected_name}` in {scope}"
                                 ),
+                                match partial_res.base_res() {
+                                    Res::Def(
+                                        DefKind::Mod | DefKind::Macro(..) | DefKind::ExternCrate,
+                                        _,
+                                    ) => format!(
+                                        "partially resolved path in {expected_an} {expected_descr}",
+                                    ),
+                                    _ => format!(
+                                        "{expected_an} {expected_descr} can't exist within \
+                                         {found_an} {found_descr}"
+                                    ),
+                                },
                                 None,
                                 path.last().map(|segment| segment.ident.name).unwrap(),
                             )
-                        };
+                        }
+                        _ => unreachable!(),
+                    };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: Some(segment),
+                            segment,
                             label,
                             suggestion,
                             module,
+                            message,
                         },
                     );
                 }

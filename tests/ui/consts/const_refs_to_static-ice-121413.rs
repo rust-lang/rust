@@ -6,7 +6,7 @@
 const REF_INTERIOR_MUT: &usize = {
     //~^ HELP consider importing this struct
     static FOO: Sync = AtomicUsize::new(0);
-    //~^ ERROR failed to resolve: use of undeclared type `AtomicUsize`
+    //~^ ERROR cannot find
     //~| WARN trait objects without an explicit `dyn` are deprecated
     //~| ERROR the size for values of type `(dyn Sync + 'static)` cannot be known at compilation time
     //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!

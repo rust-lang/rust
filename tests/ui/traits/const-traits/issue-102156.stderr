@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/issue-102156.rs:4:5
    |
 LL | use core::convert::{From, TryFrom};
@@ -7,7 +7,7 @@ LL | use core::convert::{From, TryFrom};
    |     you might be missing crate `core`
    |     help: try using `std` instead of `core`: `std`
 
-error[E0433]: failed to resolve: you might be missing crate `core`
+error[E0433]: cannot find `core` in the crate root
   --> $DIR/issue-102156.rs:4:5
    |
 LL | use core::convert::{From, TryFrom};

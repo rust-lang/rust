@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
+error[E0433]: cannot find module or crate `a` in the crate root
   --> $DIR/naked-invalid-attr.rs:56:5
    |
 LL | #[::a]
