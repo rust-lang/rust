@@ -1,5 +1,4 @@
 use std::marker::PhantomData;
-use std::mem;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::thinvec::ExtractIf;
@@ -75,6 +74,13 @@ impl<'tcx> ObligationStorage<'tcx> {
         self.pending.push((obligation, stalled_on));
     }
 
+    fn register_overflowed(
+        &mut self,
+        overflowed: impl IntoIterator<Item = PredicateObligation<'tcx>>,
+    ) {
+        self.overflowed.extend(overflowed);
+    }
+
     fn has_pending_obligations(&self) -> bool {
         !self.pending.is_empty() || !self.overflowed.is_empty()
     }
@@ -88,35 +94,14 @@ impl<'tcx> ObligationStorage<'tcx> {
 
     fn drain_pending(
         &mut self,
-        cond: impl Fn(&PredicateObligation<'tcx>) -> bool,
-    ) -> PendingObligations<'tcx> {
-        let (unstalled, pending) =
-            mem::take(&mut self.pending).into_iter().partition(|(o, _)| cond(o));
-        self.pending = pending;
-        unstalled
+        cond: impl Fn(&PredicateObligation<'tcx>, Option<&GoalStalledOn<TyCtxt<'tcx>>>) -> bool,
+    ) -> impl Iterator<Item = (PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)>
+    {
+        ExtractIf::new(&mut self.pending, move |(o, stalled)| cond(o, stalled.as_ref()))
     }
 
-    fn on_fulfillment_overflow(&mut self, infcx: &InferCtxt<'tcx>) {
-        infcx.probe(|_| {
-            // IMPORTANT: we must not use solve any inference variables in the obligations
-            // as this is all happening inside of a probe. We use a probe to make sure
-            // we get all obligations involved in the overflow. We pretty much check: if
-            // we were to do another step of `select_where_possible`, which goals would
-            // change.
-            // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
-            self.overflowed.extend(
-                ExtractIf::new(&mut self.pending, |(o, stalled_on)| {
-                    let goal = o.as_goal();
-                    let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
-                        goal,
-                        o.cause.span,
-                        stalled_on.take(),
-                    );
-                    matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
-                })
-                .map(|(o, _)| o),
-            );
-        })
+    fn num_pending(&self) -> usize {
+        self.pending.len()
     }
 }
 
@@ -131,21 +116,6 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
             obligations: Default::default(),
             usable_in_snapshot: infcx.num_open_snapshots(),
             _errors: PhantomData,
-        }
-    }
-
-    fn inspect_evaluated_obligation(
-        &self,
-        infcx: &InferCtxt<'tcx>,
-        obligation: &PredicateObligation<'tcx>,
-        result: &Result<GoalEvaluation<TyCtxt<'tcx>>, NoSolution>,
-    ) {
-        if let Some(inspector) = infcx.obligation_inspector.get() {
-            let result = match result {
-                Ok(GoalEvaluation { certainty, .. }) => Ok(*certainty),
-                Err(NoSolution) => Err(NoSolution),
-            };
-            (inspector)(infcx, &obligation, result);
         }
     }
 }
@@ -180,19 +150,27 @@ where
     }
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        if self.obligations.num_pending() == 0 {
+            return vec![];
+        }
+
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
+        let delegate = <&SolverDelegate<'tcx>>::from(infcx);
         let mut errors = Vec::new();
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
+            let mut overflowed = vec![];
+            let mut pending = vec![];
+
+            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_, stalled_on| {
+                stalled_on.is_none_or(|s| !delegate.is_still_stalled(s))
+            }) {
                 if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-                    self.obligations.on_fulfillment_overflow(infcx);
-                    // Only return true errors that we have accumulated while processing.
-                    return errors;
+                    overflowed.push(obligation);
+                    continue;
                 }
 
                 let goal = obligation.as_goal();
-                let delegate = <&SolverDelegate<'tcx>>::from(infcx);
                 if let Some(certainty) =
                     delegate.compute_goal_fast_path(goal, obligation.cause.span)
                 {
@@ -204,15 +182,21 @@ where
                         //
                         // Only goals proven via the trait solver should be region dependent.
                         Certainty::Yes => {}
-                        Certainty::Maybe(_) => {
-                            self.obligations.register(obligation, None);
-                        }
+                        Certainty::Maybe(_) => pending.push((obligation, None)),
                     }
                     continue;
                 }
 
                 let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
-                self.inspect_evaluated_obligation(infcx, &obligation, &result);
+
+                if let Some(inspector) = infcx.obligation_inspector.get() {
+                    let result = match result {
+                        Ok(GoalEvaluation { certainty, .. }) => Ok(certainty),
+                        Err(NoSolution) => Err(NoSolution),
+                    };
+                    (inspector)(infcx, &obligation, result);
+                }
+
                 let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
@@ -256,8 +240,17 @@ where
                             infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
                         }
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
+                    Certainty::Maybe(_) => pending.push((obligation, stalled_on)),
                 }
+            }
+
+            if !overflowed.is_empty() {
+                self.obligations.register_overflowed(overflowed);
+                return errors;
+            }
+
+            for (obligation, stalled_on) in pending {
+                self.obligations.register(obligation, stalled_on);
             }
 
             if !any_changed {
@@ -295,7 +288,7 @@ where
         }
 
         self.obligations
-            .drain_pending(|obl| {
+            .drain_pending(|obl, _| {
                 infcx.probe(|_| {
                     infcx
                         .visit_proof_tree(
