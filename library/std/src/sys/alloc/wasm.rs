@@ -16,12 +16,15 @@
 //! The crate itself provides a global allocator which on wasm has no
 //! synchronization as there are no threads!
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#![allow(static_mut_refs)]
+use core::cell::SyncUnsafeCell;
 
 use crate::alloc::{GlobalAlloc, Layout, System};
 
-static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
+struct SyncDlmalloc(dlmalloc::Dlmalloc);
+unsafe impl Sync for SyncDlmalloc {}
+
+static DLMALLOC: SyncUnsafeCell<SyncDlmalloc> =
+    SyncUnsafeCell::new(SyncDlmalloc(dlmalloc::Dlmalloc::new()));
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
@@ -30,7 +33,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -38,7 +41,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -46,7 +49,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
+        unsafe { (*DLMALLOC.get()).0.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
@@ -54,7 +57,7 @@ unsafe impl GlobalAlloc for System {
         // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
-        unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
+        unsafe { (*DLMALLOC.get()).0.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
 }
 
