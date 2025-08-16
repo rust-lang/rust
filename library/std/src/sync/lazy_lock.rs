@@ -2,8 +2,9 @@ use super::poison::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
-use crate::panic::{RefUnwindSafe, UnwindSafe};
+use crate::panic::{self, AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
+use crate::sys::sync::once::ONCE_POISON_PANIC_MSG;
 use crate::{fmt, ptr};
 
 // We use the state of a Once as discriminant value. Upon creation, the state is
@@ -244,21 +245,38 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     #[inline]
     #[stable(feature = "lazy_cell", since = "1.80.0")]
     pub fn force(this: &LazyLock<T, F>) -> &T {
-        this.once.call_once(|| {
-            // SAFETY: `call_once` only runs this closure once, ever.
-            let data = unsafe { &mut *this.data.get() };
-            let f = unsafe { ManuallyDrop::take(&mut data.f) };
-            let value = f();
-            data.value = ManuallyDrop::new(value);
-        });
+        let call_once_closure = || {
+            this.once.call_once(|| {
+                // SAFETY: `call_once` only runs this closure once, ever.
+                let data = unsafe { &mut *this.data.get() };
+                let f = unsafe { ManuallyDrop::take(&mut data.f) };
+                let value = f();
+                data.value = ManuallyDrop::new(value);
+            });
+        };
+
+        // If the internal `Once` is poisoned, it will panic with "Once instance has previously been
+        // poisoned", but we want to panic with "LazyLock instance ..." instead.
+        let result = panic::catch_unwind(AssertUnwindSafe(call_once_closure));
+
+        if let Err(payload) = result {
+            // Check if this is the `Once` poison panic.
+            if let Some(s) = payload.downcast_ref::<String>()
+                && s == ONCE_POISON_PANIC_MSG
+            {
+                panic_poisoned();
+            } else {
+                // This panic came from the closure `f`, so we don't need to change the message.
+                panic::resume_unwind(payload);
+            }
+        }
 
         // SAFETY:
         // There are four possible scenarios:
         // * the closure was called and initialized `value`.
-        // * the closure was called and panicked, so this point is never reached.
+        // * the closure was called and panicked, which we handled above.
         // * the closure was not called, but a previous call initialized `value`.
-        // * the closure was not called because the Once is poisoned, so this point
-        //   is never reached.
+        // * the closure was not called because the Once is poisoned, which we handled above.
         // So `value` has definitely been initialized and will not be modified again.
         unsafe { &*(*this.data.get()).value }
     }

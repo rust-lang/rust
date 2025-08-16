@@ -76,7 +76,7 @@ impl Once {
         match state {
             State::Poisoned if !ignore_poisoning => {
                 // Panic to propagate the poison.
-                panic!("Once instance has previously been poisoned");
+                panic!("{}", super::ONCE_POISON_PANIC_MSG);
             }
             State::Incomplete | State::Poisoned => {
                 self.state.set(State::Running);

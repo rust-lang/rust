@@ -165,3 +165,32 @@ fn lazy_force_mut() {
     p.clear();
     LazyLock::force_mut(&mut lazy);
 }
+
+/// Verifies that when a `LazyLock` is poisoned, it panics with the correct error message ("LazyLock
+/// instance has previously been poisoned") instead of the underlying `Once` error message.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[should_panic(expected = "LazyLock instance has previously been poisoned")]
+fn lazy_lock_poison_message() {
+    let lazy: LazyLock<String> = LazyLock::new(|| panic!("initialization failed"));
+
+    // First access will panic during initialization.
+    let _ = panic::catch_unwind(|| {
+        let _ = &*lazy;
+    });
+
+    // Second access should panic with the poisoned message.
+    let _ = &*lazy;
+}
+
+// Verifies that when the initialization closure panics with a custom message, that message is
+// preserved and not overridden by `LazyLock`.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[should_panic(expected = "custom panic message from closure")]
+fn lazy_lock_preserves_closure_panic_message() {
+    let lazy: LazyLock<String> = LazyLock::new(|| panic!("custom panic message from closure"));
+
+    // This should panic with the original message from the closure.
+    let _ = &*lazy;
+}

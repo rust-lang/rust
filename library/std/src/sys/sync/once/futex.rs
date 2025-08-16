@@ -112,7 +112,7 @@ impl Once {
                 COMPLETE => return,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
-                    panic!("Once instance has previously been poisoned");
+                    panic!("{}", super::ONCE_POISON_PANIC_MSG);
                 }
                 _ => {
                     // Set the QUEUED bit if it has not already been set.
@@ -147,7 +147,7 @@ impl Once {
                 COMPLETE => return,
                 POISONED if !ignore_poisoning => {
                     // Panic to propagate the poison.
-                    panic!("Once instance has previously been poisoned");
+                    panic!("{}", super::ONCE_POISON_PANIC_MSG);
                 }
                 INCOMPLETE | POISONED => {
                     // Try to register the current thread as the one running.

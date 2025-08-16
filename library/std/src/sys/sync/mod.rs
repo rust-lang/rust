@@ -1,6 +1,6 @@
 mod condvar;
 mod mutex;
-mod once;
+pub(crate) mod once; // For `ONCE_POISON_PANIC_MSG`.
 mod once_box;
 mod rwlock;
 mod thread_parking;
