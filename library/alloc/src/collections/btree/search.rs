@@ -1,10 +1,10 @@
-use core::borrow::Borrow;
 use core::cmp::Ordering;
 use core::ops::{Bound, RangeBounds};
 
 use SearchBound::*;
 use SearchResult::*;
 
+use super::cmp::Comparable;
 use super::node::ForceResult::*;
 use super::node::{Handle, NodeRef, marker};
 
@@ -51,8 +51,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         key: &Q,
     ) -> SearchResult<BorrowType, K, V, marker::LeafOrInternal, marker::Leaf>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         loop {
             self = match self.search_node(key) {
@@ -95,7 +94,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     >
     where
         Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
         R: RangeBounds<Q>,
     {
         // Determine if map or set is being searched
@@ -161,8 +160,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         bound: SearchBound<&'r Q>,
     ) -> (Handle<Self, marker::Edge>, SearchBound<&'r Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        Q: ?Sized,
+        K: Comparable<Q>,
     {
         let (edge_idx, bound) = self.find_lower_bound_index(bound);
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
@@ -175,8 +174,8 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
         bound: SearchBound<&'r Q>,
     ) -> (Handle<Self, marker::Edge>, SearchBound<&'r Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        Q: ?Sized,
+        K: Comparable<Q>,
     {
         let (edge_idx, bound) = unsafe { self.find_upper_bound_index(bound, 0) };
         let edge = unsafe { Handle::new_edge(self, edge_idx) };
@@ -197,8 +196,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         key: &Q,
     ) -> SearchResult<BorrowType, K, V, Type, Type>
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         match unsafe { self.find_key_index(key, 0) } {
             IndexResult::KV(idx) => Found(unsafe { Handle::new_kv(self, idx) }),
@@ -216,17 +214,16 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     /// `start_index` must be a valid edge index for the node.
     unsafe fn find_key_index<Q: ?Sized>(&self, key: &Q, start_index: usize) -> IndexResult
     where
-        Q: Ord,
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let node = self.reborrow();
         let keys = node.keys();
         debug_assert!(start_index <= keys.len());
         for (offset, k) in unsafe { keys.get_unchecked(start_index..) }.iter().enumerate() {
-            match key.cmp(k.borrow()) {
-                Ordering::Greater => {}
+            match k.compare(key) {
+                Ordering::Less => {}
                 Ordering::Equal => return IndexResult::KV(start_index + offset),
-                Ordering::Less => return IndexResult::Edge(start_index + offset),
+                Ordering::Greater => return IndexResult::Edge(start_index + offset),
             }
         }
         IndexResult::Edge(keys.len())
@@ -242,8 +239,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         bound: SearchBound<&'r Q>,
     ) -> (usize, SearchBound<&'r Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        Q: ?Sized,
+        K: Comparable<Q>,
     {
         match bound {
             Included(key) => match unsafe { self.find_key_index(key, 0) } {
@@ -270,8 +267,8 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         start_index: usize,
     ) -> (usize, SearchBound<&'r Q>)
     where
-        Q: ?Sized + Ord,
-        K: Borrow<Q>,
+        Q: ?Sized,
+        K: Comparable<Q>,
     {
         match bound {
             Included(key) => match unsafe { self.find_key_index(key, start_index) } {
