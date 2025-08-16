@@ -3,7 +3,6 @@
 use std::ffi::{CStr, CString};
 use std::num::NonZero;
 use std::ptr;
-use std::str::FromStr;
 use std::string::FromUtf8Error;
 
 use libc::c_uint;
@@ -16,7 +15,6 @@ pub(crate) use self::MetadataType::*;
 pub(crate) use self::ffi::*;
 use crate::common::AsCCharPtr;
 
-pub(crate) mod archive_ro;
 pub(crate) mod diagnostic;
 pub(crate) mod enzyme_ffi;
 mod ffi;
@@ -150,21 +148,6 @@ pub(crate) enum CodeGenOptSize {
     CodeGenOptSizeNone = 0,
     CodeGenOptSizeDefault = 1,
     CodeGenOptSizeAggressive = 2,
-}
-
-impl FromStr for ArchiveKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gnu" => Ok(ArchiveKind::K_GNU),
-            "bsd" => Ok(ArchiveKind::K_BSD),
-            "darwin" => Ok(ArchiveKind::K_DARWIN),
-            "coff" => Ok(ArchiveKind::K_COFF),
-            "aix_big" => Ok(ArchiveKind::K_AIXBIG),
-            _ => Err(()),
-        }
-    }
 }
 
 pub(crate) fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
