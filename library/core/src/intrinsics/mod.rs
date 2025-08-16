@@ -2651,6 +2651,18 @@ pub unsafe fn vtable_size(ptr: *const ()) -> usize;
 #[rustc_intrinsic]
 pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 
+/// FIXME: write actual docs (ivarflakstad)
+/// The intrinsic will return the vtable of `t` through the lens of `U`.
+///
+/// # Safety
+///
+/// `ptr` must point to a vtable.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+pub const fn vtable_for<T, U: ptr::Pointee<Metadata = ptr::DynMetadata<U>> + ?Sized>()
+-> Option<ptr::DynMetadata<U>>;
+
 /// The size of a type in bytes.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
