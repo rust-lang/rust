@@ -142,7 +142,7 @@ impl Step for JsonDocs {
 /// various in-tree helper tools (bootstrap, build_helper, tidy),
 /// and also rustc_private tools like rustdoc, clippy, miri or rustfmt.
 ///
-/// It is currently hosted at https://doc.rust-lang.org/nightly/nightly-rustc
+/// It is currently hosted at <https://doc.rust-lang.org/nightly/nightly-rustc>.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustcDocs {
     target: TargetSelection,
