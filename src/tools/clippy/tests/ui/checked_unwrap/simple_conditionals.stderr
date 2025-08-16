@@ -330,7 +330,7 @@ LL |         if X.is_some() {
    |
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
-   = note: `#[deny(static_mut_refs)]` on by default
+   = note: `#[deny(static_mut_refs)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
 error: aborting due to 36 previous errors
 

@@ -9,7 +9,7 @@ LL | impl<'a> Trait for fn(fn(&'a ())) {}
    = warning: the behavior may change in a future release
    = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
    = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
-   = note: `#[warn(coherence_leak_check)]` on by default
+   = note: `#[warn(coherence_leak_check)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: 1 warning emitted
 

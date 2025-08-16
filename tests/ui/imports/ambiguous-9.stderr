@@ -29,7 +29,7 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 warning: ambiguous glob re-exports
   --> $DIR/ambiguous-9.rs:15:13
@@ -85,7 +85,7 @@ note: `date_range` could also refer to the function imported here
 LL |     use super::prelude::*;
    |         ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: `date_range` is ambiguous
@@ -109,5 +109,5 @@ note: `date_range` could also refer to the function imported here
 LL | use prelude::*;
    |     ^^^^^^^^^^
    = help: consider adding an explicit import of `date_range` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
