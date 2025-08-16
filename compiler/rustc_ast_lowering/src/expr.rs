@@ -1941,16 +1941,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
         };
 
-        // `#[allow(unreachable_code)]`
-        let attr = attr::mk_attr_nested_word(
-            &self.tcx.sess.psess.attr_id_generator,
-            AttrStyle::Outer,
-            Safety::Default,
-            sym::allow,
-            sym::unreachable_code,
-            try_span,
-        );
-        let attrs: AttrVec = thin_vec![attr];
+        let attrs: AttrVec = thin_vec![self.unreachable_code_attr(try_span)];
 
         // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
         let continue_arm = {
@@ -2290,6 +2281,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(b.span, hir::ExprKind::Block(b, None))
     }
 
+    /// Wrap an expression in a block, and wrap that block in an expression again.
+    /// Useful for constructing if-expressions, which require expressions of
+    /// kind block.
+    pub(super) fn block_expr_block(
+        &mut self,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> &'hir hir::Expr<'hir> {
+        let b = self.block_expr(expr);
+        self.arena.alloc(self.expr_block(b))
+    }
+
     pub(super) fn expr_array_ref(
         &mut self,
         span: Span,
@@ -2301,6 +2303,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_ref(&mut self, span: Span, expr: &'hir hir::Expr<'hir>) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr))
+    }
+
+    pub(super) fn expr_bool_literal(&mut self, span: Span, val: bool) -> hir::Expr<'hir> {
+        self.expr(span, hir::ExprKind::Lit(Spanned { node: LitKind::Bool(val), span }))
     }
 
     pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
@@ -2335,6 +2341,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(expr.span),
             body: expr,
         }
+    }
+
+    /// `#[allow(unreachable_code)]`
+    pub(super) fn unreachable_code_attr(&mut self, span: Span) -> Attribute {
+        let attr = attr::mk_attr_nested_word(
+            &self.tcx.sess.psess.attr_id_generator,
+            AttrStyle::Outer,
+            Safety::Default,
+            sym::allow,
+            sym::unreachable_code,
+            span,
+        );
+        attr
     }
 }
 

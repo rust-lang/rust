@@ -1,6 +1,18 @@
+use thin_vec::thin_vec;
+
 use crate::LoweringContext;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
+    /// Lowered contracts are guarded with the `contract_checks` compiler flag,
+    /// i.e. the flag turns into a boolean guard in the lowered HIR. The reason
+    /// for not eliminating the contract code entirely when the `contract_checks`
+    /// flag is disabled is so that contracts can be type checked, even when
+    /// they are disabled, which avoids them becoming stale (i.e. out of sync
+    /// with the codebase) over time.
+    ///
+    /// The optimiser should be able to eliminate all contract code guarded
+    /// by `if false`, leaving the original body intact when runtime contract
+    /// checks are disabled.
     pub(super) fn lower_contract(
         &mut self,
         body: impl FnOnce(&mut Self) -> rustc_hir::Expr<'hir>,
@@ -14,14 +26,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 //
                 // into:
                 //
+                // let __postcond = if contract_checks {
+                //     contract_check_requires(PRECOND);
+                //     Some(|ret_val| POSTCOND)
+                // } else {
+                //     None
+                // };
                 // {
-                //      let __postcond = if contracts_checks() {
-                //          contract_check_requires(PRECOND);
-                //          Some(|ret_val| POSTCOND)
-                //      } else {
-                //          None
-                //      };
-                //      contract_check_ensures(__postcond, { body })
+                //     let ret = { body };
+                //
+                //     if contract_checks {
+                //         contract_check_ensures(__postcond, ret)
+                //     } else {
+                //         ret
+                //     }
                 // }
 
                 let precond = self.lower_precond(req);
@@ -41,13 +59,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 //
                 // into:
                 //
+                // let __postcond = if contract_checks {
+                //     Some(|ret_val| POSTCOND)
+                // } else {
+                //     None
+                // };
                 // {
-                //      let __postcond = if contracts_check() {
-                //          Some(|ret_val| POSTCOND)
-                //      } else {
-                //          None
-                //      };
-                //      __postcond({ body })
+                //     let ret = { body };
+                //
+                //     if contract_checks {
+                //         contract_check_ensures(__postcond, ret)
+                //     } else {
+                //         ret
+                //     }
                 // }
 
                 let postcond_checker = self.lower_postcond_checker(ens);
@@ -66,7 +90,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // into:
                 //
                 // {
-                //      if contracts_check() {
+                //      if contracts_checks {
                 //          contract_requires(PRECOND);
                 //      }
                 //      body
@@ -129,11 +153,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let then_block = self.arena.alloc(self.expr_block(&then_block_stmts));
 
         let precond_check = rustc_hir::ExprKind::If(
-            self.expr_call_lang_item_fn(
-                precond.span,
-                rustc_hir::LangItem::ContractChecks,
-                Default::default(),
-            ),
+            self.arena.alloc(self.expr_bool_literal(precond.span, self.tcx.sess.contract_checks())),
             then_block,
             None,
         );
@@ -170,11 +190,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let else_block = self.arena.alloc(self.expr_block(else_block));
 
         let contract_check = rustc_hir::ExprKind::If(
-            self.expr_call_lang_item_fn(
-                span,
-                rustc_hir::LangItem::ContractChecks,
-                Default::default(),
-            ),
+            self.arena.alloc(self.expr_bool_literal(span, self.tcx.sess.contract_checks())),
             then_block,
             Some(else_block),
         );
@@ -249,12 +265,60 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         cond_ident: rustc_span::Ident,
         cond_hir_id: rustc_hir::HirId,
     ) -> &'hir rustc_hir::Expr<'hir> {
+        // {
+        //     let ret = { body };
+        //
+        //     if contract_checks {
+        //         contract_check_ensures(__postcond, ret)
+        //     } else {
+        //         ret
+        //     }
+        // }
+        let ret_ident: rustc_span::Ident = rustc_span::Ident::from_str_and_span("__ret", span);
+
+        // Set up the return `let` statement.
+        let (ret_pat, ret_hir_id) =
+            self.pat_ident_binding_mode_mut(span, ret_ident, rustc_hir::BindingMode::NONE);
+
+        let ret_stmt = self.stmt_let_pat(
+            None,
+            span,
+            Some(expr),
+            self.arena.alloc(ret_pat),
+            rustc_hir::LocalSource::Contract,
+        );
+
+        let ret = self.expr_ident(span, ret_ident, ret_hir_id);
+
         let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
-        let call_expr = self.expr_call_lang_item_fn_mut(
+        let contract_check = self.expr_call_lang_item_fn_mut(
             span,
             rustc_hir::LangItem::ContractCheckEnsures,
-            arena_vec![self; *cond_fn, *expr],
+            arena_vec![self; *cond_fn, *ret],
         );
-        self.arena.alloc(call_expr)
+        let contract_check = self.arena.alloc(contract_check);
+        let call_expr = self.block_expr_block(contract_check);
+
+        // same ident can't be used in 2 places, so we create a new one for the
+        // else branch
+        let ret = self.expr_ident(span, ret_ident, ret_hir_id);
+        let ret_block = self.block_expr_block(ret);
+
+        let contracts_enabled: rustc_hir::Expr<'_> =
+            self.expr_bool_literal(span, self.tcx.sess.contract_checks());
+        let contract_check = self.arena.alloc(self.expr(
+            span,
+            rustc_hir::ExprKind::If(
+                self.arena.alloc(contracts_enabled),
+                call_expr,
+                Some(ret_block),
+            ),
+        ));
+
+        let attrs: rustc_ast::AttrVec = thin_vec![self.unreachable_code_attr(span)];
+        self.lower_attrs(contract_check.hir_id, &attrs, span, rustc_hir::Target::Expression);
+
+        let ret_block = self.block_all(span, arena_vec![self; ret_stmt], Some(contract_check));
+        self.arena.alloc(self.expr_block(self.arena.alloc(ret_block)))
     }
 }
