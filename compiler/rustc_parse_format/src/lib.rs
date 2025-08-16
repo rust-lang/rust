@@ -859,7 +859,7 @@ impl<'input> Parser<'input> {
                 0,
                 ParseError {
                     description: format!(
-                        "expected `{}` (alignment specifier) after `:` in format string",
+                        "expected `{}` (alignment specifier) after `:` in format string; example: `{{:>#X5}}`",
                         alignment
                     ),
                     note: Some(
