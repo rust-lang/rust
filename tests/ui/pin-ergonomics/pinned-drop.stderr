@@ -1,0 +1,512 @@
+error[E0437]: type `Type` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:140:9
+   |
+LL |         type Type = ();
+   |         ^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0438]: const `N` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:141:9
+   |
+LL |         const N: usize = 0;
+   |         ^^^^^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0407]: method `foo` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:142:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0437]: type `Type` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:146:9
+   |
+LL |         type Type = ();
+   |         ^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0438]: const `N` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:147:9
+   |
+LL |         const N: usize = 0;
+   |         ^^^^^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0407]: method `foo` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:148:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0437]: type `Type` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:152:9
+   |
+LL |         type Type = ();
+   |         ^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0438]: const `N` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:153:9
+   |
+LL |         const N: usize = 0;
+   |         ^^^^^^^^^^^^^^^^^^^ not a member of trait `Drop`
+
+error[E0407]: method `foo` is not a member of trait `Drop`
+  --> $DIR/pinned-drop.rs:154:9
+   |
+LL |         fn foo() {}
+   |         ^^^^^^^^^^^ not a member of trait `Drop`
+
+error: could not impl `Drop::drop(&mut self)` for a type that implements `!Unpin`
+  --> $DIR/pinned-drop.rs:35:25
+   |
+LL |         impl_drop!(Foo: fn drop(&mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^ help: consider implement `Drop::pin_drop(&pin mut self)` instead
+   |
+   = help: `impl !Unpin` is intended for pinned projections, which requires the value pinned until it's deallocated
+note: `Unpin` implemented for `drop::mut_self::Foo`
+  --> $DIR/pinned-drop.rs:8:9
+   |
+LL |         impl !Unpin for $name {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         def!(Foo: !Unpin);
+   |         ----------------- in this macro invocation
+   = note: this error originates in the macro `def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: could not impl `Drop::drop(&mut self)` for a type that implements `!Unpin`
+  --> $DIR/pinned-drop.rs:47:25
+   |
+LL |         impl_drop!(Foo: fn drop(self: Pin<&mut Self>) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider implement `Drop::pin_drop(&pin mut self)` instead
+   |
+   = help: `impl !Unpin` is intended for pinned projections, which requires the value pinned until it's deallocated
+note: `Unpin` implemented for `drop::pin_mut_self::Foo`
+  --> $DIR/pinned-drop.rs:8:9
+   |
+LL |         impl !Unpin for $name {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         def!(Foo: !Unpin);
+   |         ----------------- in this macro invocation
+   = note: this error originates in the macro `def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:47:39
+   |
+LL |         impl_drop!(Foo: fn drop(self: Pin<&mut Self>) {});
+   |                                       ^^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self::Foo`, found `Pin<&mut drop::pin_mut_self::Foo>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self::Foo)`
+              found signature `fn(Pin<&mut drop::pin_mut_self::Foo>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Foo: fn drop(self: Pin<&mut Self>) {});
+LL +         impl_drop!(Foo: fn drop(&mut self) {});
+   |
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:49:39
+   |
+LL |         impl_drop!(Bar: fn drop(self: Pin<&mut Self>) {});
+   |                                       ^^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self::Bar`, found `Pin<&mut drop::pin_mut_self::Bar>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self::Bar)`
+              found signature `fn(Pin<&mut drop::pin_mut_self::Bar>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Bar: fn drop(self: Pin<&mut Self>) {});
+LL +         impl_drop!(Bar: fn drop(&mut self) {});
+   |
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:50:39
+   |
+LL |         impl_drop!(Baz: fn drop(self: Pin<&mut Self>) {});
+   |                                       ^^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self::Baz`, found `Pin<&mut drop::pin_mut_self::Baz>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self::Baz)`
+              found signature `fn(Pin<&mut drop::pin_mut_self::Baz>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Baz: fn drop(self: Pin<&mut Self>) {});
+LL +         impl_drop!(Baz: fn drop(&mut self) {});
+   |
+
+error: could not impl `Drop::drop(&mut self)` for a type that implements `!Unpin`
+  --> $DIR/pinned-drop.rs:58:25
+   |
+LL |         impl_drop!(Foo: fn drop(&pin mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^ help: consider implement `Drop::pin_drop(&pin mut self)` instead
+   |
+   = help: `impl !Unpin` is intended for pinned projections, which requires the value pinned until it's deallocated
+note: `Unpin` implemented for `drop::pin_mut_self_sugar::Foo`
+  --> $DIR/pinned-drop.rs:8:9
+   |
+LL |         impl !Unpin for $name {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |         def!(Foo: !Unpin);
+   |         ----------------- in this macro invocation
+   = note: this error originates in the macro `def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:58:33
+   |
+LL |         impl_drop!(Foo: fn drop(&pin mut self) {});
+   |                                 ^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self_sugar::Foo`, found `Pin<&mut drop::pin_mut_self_sugar::Foo>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self_sugar::Foo)`
+              found signature `fn(Pin<&mut drop::pin_mut_self_sugar::Foo>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Foo: fn drop(&pin mut self) {});
+LL +         impl_drop!(Foo: fn drop(&mut self) {});
+   |
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:60:33
+   |
+LL |         impl_drop!(Bar: fn drop(&pin mut self) {});
+   |                                 ^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self_sugar::Bar`, found `Pin<&mut drop::pin_mut_self_sugar::Bar>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self_sugar::Bar)`
+              found signature `fn(Pin<&mut drop::pin_mut_self_sugar::Bar>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Bar: fn drop(&pin mut self) {});
+LL +         impl_drop!(Bar: fn drop(&mut self) {});
+   |
+
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:61:33
+   |
+LL |         impl_drop!(Baz: fn drop(&pin mut self) {});
+   |                                 ^^^^^^^^^^^^^ expected `&mut drop::pin_mut_self_sugar::Baz`, found `Pin<&mut drop::pin_mut_self_sugar::Baz>`
+   |
+   = note: expected signature `fn(&mut drop::pin_mut_self_sugar::Baz)`
+              found signature `fn(Pin<&mut drop::pin_mut_self_sugar::Baz>)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Baz: fn drop(&pin mut self) {});
+LL +         impl_drop!(Baz: fn drop(&mut self) {});
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:72:25
+   |
+LL |         impl_drop!(Bar: fn pin_drop(&mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Bar: fn pin_drop(&mut self) {});
+LL +         impl_drop!(Bar: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::mut_self::Bar` instead
+   |
+LL +         impl !Unpin for pin_drop::mut_self::Bar` 
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:74:25
+   |
+LL |         impl_drop!(Baz: fn pin_drop(&mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Baz: fn pin_drop(&mut self) {});
+LL +         impl_drop!(Baz: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::mut_self::Baz` instead
+   |
+LL +         impl !Unpin for pin_drop::mut_self::Baz` 
+   |
+
+error[E0053]: method `pin_drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:71:37
+   |
+LL |         impl_drop!(Foo: fn pin_drop(&mut self) {});
+   |                                     ^^^^^^^^^ expected `Pin<&mut pin_drop::mut_self::Foo>`, found `&mut pin_drop::mut_self::Foo`
+   |
+   = note: expected signature `fn(Pin<&mut pin_drop::mut_self::Foo>)`
+              found signature `fn(&mut pin_drop::mut_self::Foo)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Foo: fn pin_drop(&mut self) {});
+LL +         impl_drop!(Foo: fn pin_drop(self: Pin<&mut pin_drop::mut_self::Foo>) {});
+   |
+
+error[E0053]: method `pin_drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:72:37
+   |
+LL |         impl_drop!(Bar: fn pin_drop(&mut self) {});
+   |                                     ^^^^^^^^^ expected `Pin<&mut pin_drop::mut_self::Bar>`, found `&mut pin_drop::mut_self::Bar`
+   |
+   = note: expected signature `fn(Pin<&mut pin_drop::mut_self::Bar>)`
+              found signature `fn(&mut pin_drop::mut_self::Bar)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Bar: fn pin_drop(&mut self) {});
+LL +         impl_drop!(Bar: fn pin_drop(self: Pin<&mut pin_drop::mut_self::Bar>) {});
+   |
+
+error[E0053]: method `pin_drop` has an incompatible type for trait
+  --> $DIR/pinned-drop.rs:74:37
+   |
+LL |         impl_drop!(Baz: fn pin_drop(&mut self) {});
+   |                                     ^^^^^^^^^ expected `Pin<&mut pin_drop::mut_self::Baz>`, found `&mut pin_drop::mut_self::Baz`
+   |
+   = note: expected signature `fn(Pin<&mut pin_drop::mut_self::Baz>)`
+              found signature `fn(&mut pin_drop::mut_self::Baz)`
+help: change the self-receiver type to match the trait
+   |
+LL -         impl_drop!(Baz: fn pin_drop(&mut self) {});
+LL +         impl_drop!(Baz: fn pin_drop(self: Pin<&mut pin_drop::mut_self::Baz>) {});
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:86:25
+   |
+LL | ...   impl_drop!(Bar: fn pin_drop(self: Pin<&mut Self>) {});
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Bar: fn pin_drop(self: Pin<&mut Self>) {});
+LL +         impl_drop!(Bar: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::pin_mut_self::Bar` instead
+   |
+LL +         impl !Unpin for pin_drop::pin_mut_self::Bar` 
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:87:25
+   |
+LL | ...   impl_drop!(Baz: fn pin_drop(self: Pin<&mut Self>) {});
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Baz: fn pin_drop(self: Pin<&mut Self>) {});
+LL +         impl_drop!(Baz: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::pin_mut_self::Baz` instead
+   |
+LL +         impl !Unpin for pin_drop::pin_mut_self::Baz` 
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:96:25
+   |
+LL |         impl_drop!(Bar: fn pin_drop(&pin mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Bar: fn pin_drop(&pin mut self) {});
+LL +         impl_drop!(Bar: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::pin_mut_self_sugar::Bar` instead
+   |
+LL +         impl !Unpin for pin_drop::pin_mut_self_sugar::Bar` 
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:97:25
+   |
+LL |         impl_drop!(Baz: fn pin_drop(&pin mut self) {});
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -         impl_drop!(Baz: fn pin_drop(&pin mut self) {});
+LL +         impl_drop!(Baz: fn drop(&mut self) {});
+   |
+help: or impl `!Unpin` for `pin_drop::pin_mut_self_sugar::Baz` instead
+   |
+LL +         impl !Unpin for pin_drop::pin_mut_self_sugar::Baz` 
+   |
+
+error: conflict implementation of `Drop::drop` and `Drop::pin_drop`
+  --> $DIR/pinned-drop.rs:106:5
+   |
+LL |     impl Drop for Foo {
+   |     ^^^^^^^^^^^^^^^^^
+LL |
+LL |         fn drop(&mut self) {}
+   |         ---------------------
+   |         |
+   |         `drop(&mut self)` implemented here
+   |         help: remove this implementation
+LL |         fn pin_drop(&pin mut self) {}
+   |         -------------------------- `pin_drop(&pin mut self)` implemented here
+
+error: conflict implementation of `Drop::drop` and `Drop::pin_drop`
+  --> $DIR/pinned-drop.rs:111:5
+   |
+LL |     impl Drop for Bar {
+   |     ^^^^^^^^^^^^^^^^^
+LL |
+LL |         fn drop(&mut self) {}
+   |         ------------------ `drop(&mut self)` implemented here
+LL |         fn pin_drop(&pin mut self) {}
+   |         -----------------------------
+   |         |
+   |         `pin_drop(&pin mut self)` implemented here
+   |         help: remove this implementation
+
+error: conflict implementation of `Drop::drop` and `Drop::pin_drop`
+  --> $DIR/pinned-drop.rs:116:5
+   |
+LL |     impl Drop for Baz {
+   |     ^^^^^^^^^^^^^^^^^
+LL |
+LL |         fn drop(&mut self) {}
+   |         ------------------ `drop(&mut self)` implemented here
+LL |         fn pin_drop(&pin mut self) {}
+   |         -----------------------------
+   |         |
+   |         `pin_drop(&pin mut self)` implemented here
+   |         help: remove this implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:128:5
+   |
+LL |     impl Drop for Foo {}
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:129:5
+   |
+LL |     impl Drop for Bar {}
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:130:5
+   |
+LL |     impl Drop for Baz {}
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:138:5
+   |
+LL |     impl Drop for Foo {
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:144:5
+   |
+LL |     impl Drop for Bar {
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error[E0046]: not all trait items implemented, missing one of: `drop`, `pin_drop`
+  --> $DIR/pinned-drop.rs:150:5
+   |
+LL |     impl Drop for Baz {
+   |     ^^^^^^^^^^^^^^^^^ missing one of `drop`, `pin_drop` in implementation
+
+error: could not impl `Drop::drop(&mut self)` for a type that implements `!Unpin`
+  --> $DIR/pinned-drop.rs:163:21
+   |
+LL |     impl_drop!(Foo: fn drop(&mut self) { Drop::pin_drop(todo!()) });
+   |                     ^^^^^^^^^^^^^^^^^^ help: consider implement `Drop::pin_drop(&pin mut self)` instead
+   |
+   = help: `impl !Unpin` is intended for pinned projections, which requires the value pinned until it's deallocated
+note: `Unpin` implemented for `explicit_call_pin_drop::Foo`
+  --> $DIR/pinned-drop.rs:8:9
+   |
+LL |         impl !Unpin for $name {}
+   |         ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     def!(Foo: !Unpin);
+   |     ----------------- in this macro invocation
+   = note: this error originates in the macro `def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:175:21
+   |
+LL |     impl_drop!(Bar: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -     impl_drop!(Bar: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+LL +     impl_drop!(Bar: fn drop(&mut self) { Drop::drop(todo!()) });
+   |
+help: or impl `!Unpin` for `explicit_call_drop::Bar` instead
+   |
+LL +         impl !Unpin for explicit_call_drop::Bar` 
+   |
+
+error: implementing `Drop::pin_drop(&pin mut self)` requires `Self: !Unpin`
+  --> $DIR/pinned-drop.rs:177:21
+   |
+LL |     impl_drop!(Baz: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: impl `Drop::drop(&mut self)` instead
+   |
+LL -     impl_drop!(Baz: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+LL +     impl_drop!(Baz: fn drop(&mut self) { Drop::drop(todo!()) });
+   |
+help: or impl `!Unpin` for `explicit_call_drop::Baz` instead
+   |
+LL +         impl !Unpin for explicit_call_drop::Baz` 
+   |
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:163:42
+   |
+LL |     impl_drop!(Foo: fn drop(&mut self) { Drop::pin_drop(todo!()) });
+   |                                          ^^^^^^^^^^^^^^
+   |                                          |
+   |                                          explicit destructor calls not allowed
+   |                                          help: consider using `drop` function: `drop`
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:165:42
+   |
+LL |     impl_drop!(Bar: fn drop(&mut self) { Drop::pin_drop(todo!()) });
+   |                                          ^^^^^^^^^^^^^^
+   |                                          |
+   |                                          explicit destructor calls not allowed
+   |                                          help: consider using `drop` function: `drop`
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:166:42
+   |
+LL |     impl_drop!(Baz: fn drop(&mut self) { Drop::pin_drop(todo!()) });
+   |                                          ^^^^^^^^^^^^^^
+   |                                          |
+   |                                          explicit destructor calls not allowed
+   |                                          help: consider using `drop` function: `drop`
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:174:50
+   |
+LL |     impl_drop!(Foo: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+   |                                                  ^^^^^^^^^^
+   |                                                  |
+   |                                                  explicit destructor calls not allowed
+   |                                                  help: consider using `drop` function: `drop`
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:175:50
+   |
+LL |     impl_drop!(Bar: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+   |                                                  ^^^^^^^^^^
+   |                                                  |
+   |                                                  explicit destructor calls not allowed
+   |                                                  help: consider using `drop` function: `drop`
+
+error[E0040]: explicit use of destructor method
+  --> $DIR/pinned-drop.rs:177:50
+   |
+LL |     impl_drop!(Baz: fn pin_drop(&pin mut self) { Drop::drop(todo!()) });
+   |                                                  ^^^^^^^^^^
+   |                                                  |
+   |                                                  explicit destructor calls not allowed
+   |                                                  help: consider using `drop` function: `drop`
+
+error: aborting due to 45 previous errors
+
+Some errors have detailed explanations: E0040, E0046, E0053, E0407, E0437, E0438.
+For more information about an error, try `rustc --explain E0040`.

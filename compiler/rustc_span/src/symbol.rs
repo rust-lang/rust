@@ -1631,6 +1631,7 @@ symbols! {
         pic,
         pie,
         pin,
+        pin_drop,
         pin_ergonomics,
         pin_macro,
         platform_intrinsics,
