@@ -41,8 +41,6 @@ pub use iter::IntoIter;
 ///
 /// Creating multiple copies of a `String`:
 /// ```rust
-/// #![feature(array_repeat)]
-///
 /// use std::array;
 ///
 /// let string = "Hello there!".to_string();
@@ -50,7 +48,7 @@ pub use iter::IntoIter;
 /// assert_eq!(strings, ["Hello there!", "Hello there!"]);
 /// ```
 #[inline]
-#[unstable(feature = "array_repeat", issue = "126695")]
+#[stable(feature = "array_repeat", since = "CURRENT_RUSTC_VERSION")]
 pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
     from_trusted_iterator(repeat_n(val, N))
 }
