@@ -19,6 +19,7 @@ fn sleep_very_long() {
 }
 
 #[test]
+#[cfg_attr(target_env = "sgx", ignore = "Time within SGX enclave cannot be trusted")]
 fn sleep_until() {
     let now = Instant::now();
     let period = Duration::from_millis(100);
