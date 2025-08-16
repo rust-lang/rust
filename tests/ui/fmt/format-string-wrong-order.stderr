@@ -56,7 +56,7 @@ error: invalid format string: expected `<` (alignment specifier) after `:` in fo
 LL |     format!("Hello {<5:}!", "x");
    |                     ^ expected `<` to occur after `:` in format string
    |
-   = note: alignment must come after `:`, try `{:<5}`
+   = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
 
 error: invalid format string: expected `^` (alignment specifier) after `:` in format string
   --> $DIR/format-string-wrong-order.rs:17:21
@@ -64,7 +64,7 @@ error: invalid format string: expected `^` (alignment specifier) after `:` in fo
 LL |     format!("Hello {^5:}!", "x");
    |                     ^ expected `^` to occur after `:` in format string
    |
-   = note: alignment must come after `:`, try `{:^5}`
+   = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
 
 error: invalid format string: expected `>` (alignment specifier) after `:` in format string
   --> $DIR/format-string-wrong-order.rs:19:21
@@ -72,7 +72,7 @@ error: invalid format string: expected `>` (alignment specifier) after `:` in fo
 LL |     format!("Hello {>5:}!", "x");
    |                     ^ expected `>` to occur after `:` in format string
    |
-   = note: alignment must come after `:`, try `{:>5}`
+   = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
 
 error: aborting due to 9 previous errors
 
