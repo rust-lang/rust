@@ -264,7 +264,7 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct FrameNote {
     pub span: Span,
     pub times: i32,
