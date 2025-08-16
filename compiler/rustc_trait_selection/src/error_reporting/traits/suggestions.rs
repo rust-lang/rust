@@ -820,16 +820,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if matches!(obligation.cause.code(), ObligationCauseCode::FunctionArg { .. })
             && obligation.cause.span.can_be_used_for_suggestions()
         {
+            let (span, sugg) = if let Some(snippet) =
+                self.tcx.sess.source_map().span_to_snippet(obligation.cause.span).ok()
+                && snippet.starts_with("|")
+            {
+                (obligation.cause.span, format!("({snippet})({args})"))
+            } else {
+                (obligation.cause.span.shrink_to_hi(), format!("({args})"))
+            };
+
             // When the obligation error has been ensured to have been caused by
             // an argument, the `obligation.cause.span` points at the expression
             // of the argument, so we can provide a suggestion. Otherwise, we give
             // a more general note.
-            err.span_suggestion_verbose(
-                obligation.cause.span.shrink_to_hi(),
-                msg,
-                format!("({args})"),
-                Applicability::HasPlaceholders,
-            );
+            err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
         } else if let DefIdOrName::DefId(def_id) = def_id_or_name {
             let name = match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Expr(hir::Expr {
