@@ -1115,6 +1115,11 @@ rustc_queries! {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
+    /// Transmute-check this `LocalDefId`.
+    query check_transmutes(key: LocalDefId) {
+        desc { |tcx| "check transmute calls inside `{}`", tcx.def_path_str(key) }
+    }
+
     /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }

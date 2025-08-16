@@ -210,6 +210,11 @@ pub struct TypeckResults<'tcx> {
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
 
+    /// Stores the types involved in calls to `transmute` intrinsic. These are meant to be checked
+    /// outside of typeck and borrowck to avoid cycles with opaque types and coroutine layout
+    /// computation.
+    pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
+
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
 }
@@ -241,6 +246,7 @@ impl<'tcx> TypeckResults<'tcx> {
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
             closure_size_eval: Default::default(),
+            transmutes_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
     }
