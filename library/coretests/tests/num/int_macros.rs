@@ -228,6 +228,46 @@ macro_rules! int_module {
         }
 
         #[test]
+        fn test_highest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+            const MINUS_ONE: $T = -1;
+
+            assert_eq!(ZERO.highest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).highest_one(), Some(i));
+                if i != <$T>::BITS - 1 {
+                    // Set lowest bits.
+                    assert_eq!((<$T>::MAX >> i).highest_one(), Some(<$T>::BITS - i - 2));
+                }
+                // Set highest bits.
+                assert_eq!((MINUS_ONE << i).highest_one(), Some(<$T>::BITS - 1));
+            }
+        }
+
+        #[test]
+        fn test_lowest_one() {
+            const ZERO: $T = 0;
+            const ONE: $T = 1;
+            const MINUS_ONE: $T = -1;
+
+            assert_eq!(ZERO.lowest_one(), None);
+
+            for i in 0..<$T>::BITS {
+                // Set single bit.
+                assert_eq!((ONE << i).lowest_one(), Some(i));
+                if i != <$T>::BITS - 1 {
+                    // Set lowest bits.
+                    assert_eq!((<$T>::MAX >> i).lowest_one(), Some(0));
+                }
+                // Set highest bits.
+                assert_eq!((MINUS_ONE << i).lowest_one(), Some(i));
+            }
+        }
+
+        #[test]
         fn test_from_str() {
             fn from_str<T: std::str::FromStr>(t: &str) -> Option<T> {
                 std::str::FromStr::from_str(t).ok()

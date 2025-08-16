@@ -209,6 +209,48 @@ macro_rules! int_impl {
             self & self.wrapping_neg()
         }
 
+        /// Returns the index of the highest bit set to one in `self`, or `None`
+        /// if `self` is `0`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_lowest_highest_one)]
+        ///
+        #[doc = concat!("assert_eq!(0x0_", stringify!($SelfT), ".highest_one(), None);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".highest_one(), Some(0));")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".highest_one(), Some(4));")]
+        #[doc = concat!("assert_eq!(0x1f_", stringify!($SelfT), ".highest_one(), Some(4));")]
+        /// ```
+        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn highest_one(self) -> Option<u32> {
+            (self as $UnsignedT).highest_one()
+        }
+
+        /// Returns the index of the lowest bit set to one in `self`, or `None`
+        /// if `self` is `0`.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_lowest_highest_one)]
+        ///
+        #[doc = concat!("assert_eq!(0x0_", stringify!($SelfT), ".lowest_one(), None);")]
+        #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
+        #[doc = concat!("assert_eq!(0x10_", stringify!($SelfT), ".lowest_one(), Some(4));")]
+        #[doc = concat!("assert_eq!(0x1f_", stringify!($SelfT), ".lowest_one(), Some(0));")]
+        /// ```
+        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn lowest_one(self) -> Option<u32> {
+            (self as $UnsignedT).lowest_one()
+        }
+
         /// Returns the bit pattern of `self` reinterpreted as an unsigned integer of the same size.
         ///
         /// This produces the same result as an `as` cast, but ensures that the bit-width remains
