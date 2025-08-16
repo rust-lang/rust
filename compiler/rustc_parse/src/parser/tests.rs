@@ -2533,7 +2533,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let span = mac.args.tokens.iter().last().unwrap().span();
+        let span = mac.args.tokens.last().unwrap().span();
 
         match psess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),
