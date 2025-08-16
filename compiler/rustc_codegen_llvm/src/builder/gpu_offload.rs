@@ -227,7 +227,7 @@ fn gen_define_handling<'ll>(
     let o_types =
         add_priv_unnamed_arr(&cx, &format!(".offload_maptypes.{num}"), &vec![3; num_ptr_types]);
     // Next: For each function, generate these three entries. A weak constant,
-    // the llvm.rodata entry name, and  the omp_offloading_entries value
+    // the llvm.rodata entry name, and  the llvm_offload_entries value
 
     let name = format!(".kernel_{num}.region_id");
     let initializer = cx.get_const_i8(0);
@@ -262,7 +262,7 @@ fn gen_define_handling<'ll>(
     llvm::set_linkage(llglobal, WeakAnyLinkage);
     llvm::set_initializer(llglobal, initializer);
     llvm::set_alignment(llglobal, Align::ONE);
-    let c_section_name = CString::new(".omp_offloading_entries").unwrap();
+    let c_section_name = CString::new("llvm_offload_entries").unwrap();
     llvm::set_section(llglobal, &c_section_name);
     (o_types, region_id)
 }
