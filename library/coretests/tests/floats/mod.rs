@@ -8,6 +8,7 @@ trait TestableFloat {
     const APPROX: Self;
     const ZERO: Self;
     const ONE: Self;
+    const PI: Self;
     const MIN_POSITIVE_NORMAL: Self;
     const MAX_SUBNORMAL: Self;
     /// Smallest number
@@ -27,6 +28,7 @@ impl TestableFloat for f16 {
     const APPROX: Self = 1e-3;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f16::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -41,6 +43,7 @@ impl TestableFloat for f32 {
     const APPROX: Self = 1e-6;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f32::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -55,6 +58,7 @@ impl TestableFloat for f64 {
     const APPROX: Self = 1e-6;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f64::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -69,6 +73,7 @@ impl TestableFloat for f128 {
     const APPROX: Self = 1e-9;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
+    const PI: Self = std::f128::consts::PI;
     const MIN_POSITIVE_NORMAL: Self = Self::MIN_POSITIVE;
     const MAX_SUBNORMAL: Self = Self::MIN_POSITIVE.next_down();
     const TINY: Self = Self::from_bits(0x1);
@@ -1338,5 +1343,90 @@ float_test! {
         assert_eq!(Ordering::Less, Float::total_cmp(&-s_nan(), &Float::MAX));
         assert_eq!(Ordering::Less, Float::total_cmp(&-s_nan(), &Float::INFINITY));
         assert_eq!(Ordering::Less, Float::total_cmp(&-s_nan(), &s_nan()));
+    }
+}
+
+float_test! {
+    name: recip,
+    attrs: {
+        f16: #[cfg(any(miri, target_has_reliable_f16_math))],
+        f128: #[cfg(any(miri, target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((1.0 as Float).recip(), 1.0);
+        assert_biteq!((2.0 as Float).recip(), 0.5);
+        assert_biteq!((-0.4 as Float).recip(), -2.5);
+        assert_biteq!((0.0 as Float).recip(), inf);
+        assert!(nan.recip().is_nan());
+        assert_biteq!(inf.recip(), 0.0);
+        assert_biteq!(neg_inf.recip(), -0.0);
+    }
+}
+
+float_test! {
+    name: powi,
+    attrs: {
+        const: #[cfg(false)],
+        f16: #[cfg(all(not(miri), target_has_reliable_f16_math))],
+        f128: #[cfg(all(not(miri), target_has_reliable_f128_math))],
+    },
+    test<Float> {
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!(Float::ONE.powi(1), Float::ONE);
+        assert_approx_eq!((-3.1 as Float).powi(2), 9.61, 0.01); // f16 rounding tolerance
+        assert_approx_eq!((5.9 as Float).powi(-2), 0.028727,  0.0001); // f16 rounding tolerance
+        assert_biteq!((8.3 as Float).powi(0), Float::ONE);
+        assert!(nan.powi(2).is_nan());
+        assert_biteq!(inf.powi(3), inf);
+        assert_biteq!(neg_inf.powi(2), inf);
+    }
+}
+
+float_test! {
+    name: to_degrees,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).to_degrees(), 0.0);
+        assert_approx_eq!((-5.8 as Float).to_degrees(), -332.315521, 0.5);
+        assert_approx_eq!(pi.to_degrees(), 180.0, 0.5);
+        assert!(nan.to_degrees().is_nan());
+        assert_biteq!(inf.to_degrees(), inf);
+        assert_biteq!(neg_inf.to_degrees(), neg_inf);
+        assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703);
+    }
+}
+
+float_test! {
+    name: to_radians,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).to_radians(), 0.0);
+        // increased tolerance for more precise f128
+        assert_approx_eq!((154.6 as Float).to_radians(), 2.698279, 1e-5);
+        // increased tolerance for more precise f128
+        assert_approx_eq!((-332.31 as Float).to_radians(), -5.799903, 1e-5);
+        assert_approx_eq!((180.0 as Float).to_radians(), pi, 0.01); // f16 rounding tolerance
+        assert!(nan.to_radians().is_nan());
+        assert_biteq!(inf.to_radians(), inf);
+        assert_biteq!(neg_inf.to_radians(), neg_inf);
     }
 }
