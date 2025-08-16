@@ -7,7 +7,7 @@ use crate::diagnostics::{TidyCtx, TidyFlags};
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
     let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
     let mut check = tidy_ctx.start_check("alphabetical-test");
-    check_lines(&name, lines.lines().enumerate(), &mut check);
+    check_lines(Path::new(name), lines, &tidy_ctx, &mut check);
 
     assert_eq!(expected_bad, check.is_bad());
     let errors = check.get_errors();
@@ -95,7 +95,7 @@ fn test_rust_bad() {
         def
         // tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -107,7 +107,7 @@ fn test_toml_bad() {
         def
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn test_features_bad() {
         #![feature(def)]
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn test_indent_bad() {
             def
         $ tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -150,7 +150,7 @@ fn test_split_bad() {
         )
         && tidy-alphabetical-end
     ";
-    bad(lines, "bad:7: line not in alphabetical order");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -160,7 +160,7 @@ fn test_double_start() {
         abc
         tidy-alphabetical-start
     ";
-    bad(lines, "bad:3 found `tidy-alphabetical-start` expecting `tidy-alphabetical-end`");
+    bad(lines, "bad:0 `tidy-alphabetical-start` without a matching `tidy-alphabetical-end`");
 }
 
 #[test]
@@ -179,7 +179,7 @@ fn test_missing_end() {
         tidy-alphabetical-start
         abc
     ";
-    bad(lines, "bad: reached end of file expecting `tidy-alphabetical-end`");
+    bad(lines, "bad:0 `tidy-alphabetical-start` without a matching `tidy-alphabetical-end`");
 }
 
 #[test]
@@ -319,7 +319,7 @@ fn test_numeric_bad() {
         item2
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:4: line not in alphabetical order");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -327,7 +327,7 @@ fn test_numeric_bad() {
         zve64d
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -335,7 +335,7 @@ fn test_numeric_bad() {
         00
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -347,7 +347,7 @@ fn multiline() {
         (
           b,
           a
-        )
+        );
         tidy-alphabetical-end
     ";
     good(lines);
@@ -357,7 +357,7 @@ fn multiline() {
         (
           b,
           a
-        )
+        );
         (b,
          a);
         tidy-alphabetical-end
@@ -371,22 +371,22 @@ fn multiline() {
         (
           b,
           a
-        )
+        );
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:5: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         tidy-alphabetical-start
         (
           c,
           a
-        )
+        );
         (b,
          a);
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:6: line not in alphabetical order");
+    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],
