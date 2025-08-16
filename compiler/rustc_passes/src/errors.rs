@@ -358,14 +358,6 @@ pub(crate) struct BothFfiConstAndPure {
     pub attr_span: Span,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_must_use_no_effect)]
-pub(crate) struct MustUseNoEffect {
-    pub target: &'static str,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
-    pub attr_span: Span,
-}
-
 #[derive(Diagnostic)]
 #[diag(passes_must_not_suspend)]
 pub(crate) struct MustNotSuspend {
