@@ -822,10 +822,104 @@ impl LinkerFeatures {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
-pub enum PanicStrategy {
-    Unwind,
-    Abort,
+fn make_or_str(x: &[String]) -> String {
+    match x {
+        [] | [_] => unreachable!(),
+        [first @ .., last] => format!("{} or {last}", first.join(", ")),
+    }
+}
+
+macro_rules! make_parse_err_for_str_enum {
+    ($s:ident, $Name:ident = $name_str: literal, list_variants) => {
+        // this looks quite expensive because it is. We're making an error string so don't worry
+        // about performance.
+        format!(
+            concat!("'{}' is not a valid value for ", $name_str, ". Use {}."),
+            $s,
+            make_or_str(
+                &$Name::ALL
+                    .iter()
+                    .copied()
+                    .map($Name::as_str)
+                    .map(|s| format!("'{s}'"))
+                    .collect::<Vec<_>>()
+            )
+        )
+    };
+    ($s:ident, $Name:ident = $name_str: literal, $extra:literal) => {
+        // this looks quite expensive because it is. We're making an error string so don't worry
+        // about performance.
+        format!(concat!("'{}' is not a valid value for ", $name_str, ". ", $extra), $s)
+    };
+}
+
+macro_rules! str_enum {
+    (
+        $(#[$meta:meta])*
+        pub enum $Name:ident {
+            $( $(#[$variant_meta:meta])* $Variant:ident = $variant_str:literal,)*$(,)?
+        }
+
+        impl FromStr for $Name2:ident {
+            via match $s:ident {
+                err => $err_expr:expr,
+            }
+        }
+    ) => {
+        $(#[$meta])*
+        pub enum $Name {
+            $( $(#[$variant_meta])* $Variant,)*
+        }
+
+        impl $Name {
+            pub const ALL: &'static [$Name] = &[ $( $Name::$Variant, )* ];
+            pub const fn as_str(self) -> &'static str {
+                match self {
+                    $($Name::$Variant => $variant_str,)*
+                }
+            }
+        }
+
+        impl FromStr for $Name2 {
+            type Err = String;
+            fn from_str($s: &str) -> Result<$Name, String> {
+                match $s {
+                    $( $variant_str => Ok($Name::$Variant), )*
+                    _ => Err($err_expr),
+                }
+            }
+        }
+
+        crate::json::serde_deserialize_from_str!($Name);
+
+        impl ToJson for $Name {
+            fn to_json(&self) -> Json {
+                self.as_str().to_json()
+            }
+        }
+    };
+}
+
+str_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
+    pub enum PanicStrategy {
+        Unwind = "unwind",
+        Abort = "abort",
+    }
+    impl FromStr for PanicStrategy {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, PanicStrategy = "panic-strategy", list_variants),
+        }
+    }
+}
+
+impl PanicStrategy {
+    pub const fn desc_symbol(&self) -> Symbol {
+        match *self {
+            PanicStrategy::Unwind => sym::unwind,
+            PanicStrategy::Abort => sym::abort,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
@@ -836,146 +930,33 @@ pub enum OnBrokenPipe {
     Inherit,
 }
 
-impl PanicStrategy {
-    pub fn desc(&self) -> &str {
-        match *self {
-            PanicStrategy::Unwind => "unwind",
-            PanicStrategy::Abort => "abort",
-        }
+str_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum RelroLevel {
+        Full = "full",
+        Partial = "partial",
+        Off = "off",
+        None = "none",
     }
 
-    pub const fn desc_symbol(&self) -> Symbol {
-        match *self {
-            PanicStrategy::Unwind => sym::unwind,
-            PanicStrategy::Abort => sym::abort,
-        }
-    }
-
-    pub const fn all() -> [Symbol; 2] {
-        [Self::Abort.desc_symbol(), Self::Unwind.desc_symbol()]
-    }
-}
-
-impl FromStr for PanicStrategy {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "unwind" => PanicStrategy::Unwind,
-            "abort" => PanicStrategy::Abort,
-            _ => {
-                return Err(format!(
-                    "'{}' is not a valid value for \
-                    panic-strategy. Use 'unwind' or 'abort'.",
-                    s
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(PanicStrategy);
-
-impl ToJson for PanicStrategy {
-    fn to_json(&self) -> Json {
-        match *self {
-            PanicStrategy::Abort => "abort".to_json(),
-            PanicStrategy::Unwind => "unwind".to_json(),
+    impl FromStr for RelroLevel {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, RelroLevel = "relro-level", list_variants),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum RelroLevel {
-    Full,
-    Partial,
-    Off,
-    None,
-}
-
-impl RelroLevel {
-    pub fn desc(&self) -> &str {
-        match *self {
-            RelroLevel::Full => "full",
-            RelroLevel::Partial => "partial",
-            RelroLevel::Off => "off",
-            RelroLevel::None => "none",
-        }
+str_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum SymbolVisibility {
+        Hidden = "hidden",
+        Protected = "protected",
+        Interposable = "interposable",
     }
-}
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum SymbolVisibility {
-    Hidden,
-    Protected,
-    Interposable,
-}
-
-impl SymbolVisibility {
-    pub fn desc(&self) -> &str {
-        match *self {
-            SymbolVisibility::Hidden => "hidden",
-            SymbolVisibility::Protected => "protected",
-            SymbolVisibility::Interposable => "interposable",
-        }
-    }
-}
-
-impl FromStr for SymbolVisibility {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<SymbolVisibility, Self::Err> {
-        match s {
-            "hidden" => Ok(SymbolVisibility::Hidden),
-            "protected" => Ok(SymbolVisibility::Protected),
-            "interposable" => Ok(SymbolVisibility::Interposable),
-            _ => Err(format!(
-                "'{}' is not a valid value for \
-                    symbol-visibility. Use 'hidden', 'protected, or 'interposable'.",
-                s
-            )),
-        }
-    }
-}
-
-crate::json::serde_deserialize_from_str!(SymbolVisibility);
-
-impl ToJson for SymbolVisibility {
-    fn to_json(&self) -> Json {
-        match *self {
-            SymbolVisibility::Hidden => "hidden".to_json(),
-            SymbolVisibility::Protected => "protected".to_json(),
-            SymbolVisibility::Interposable => "interposable".to_json(),
-        }
-    }
-}
-
-impl FromStr for RelroLevel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<RelroLevel, Self::Err> {
-        match s {
-            "full" => Ok(RelroLevel::Full),
-            "partial" => Ok(RelroLevel::Partial),
-            "off" => Ok(RelroLevel::Off),
-            "none" => Ok(RelroLevel::None),
-            _ => Err(format!(
-                "'{}' is not a valid value for \
-                        relro-level. Use 'full', 'partial, 'off', or 'none'.",
-                s
-            )),
-        }
-    }
-}
-
-crate::json::serde_deserialize_from_str!(RelroLevel);
-
-impl ToJson for RelroLevel {
-    fn to_json(&self) -> Json {
-        match *self {
-            RelroLevel::Full => "full".to_json(),
-            RelroLevel::Partial => "partial".to_json(),
-            RelroLevel::Off => "off".to_json(),
-            RelroLevel::None => "None".to_json(),
+    impl FromStr for SymbolVisibility {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, SymbolVisibility = "symbol-visibility", list_variants),
         }
     }
 }
@@ -1019,76 +1000,43 @@ impl ToJson for SmallDataThresholdSupport {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum MergeFunctions {
-    Disabled,
-    Trampolines,
-    Aliases,
-}
+str_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum MergeFunctions {
+        Disabled = "disabled",
+        Trampolines = "trampolines",
+        Aliases = "aliases",
+    }
 
-impl MergeFunctions {
-    pub fn desc(&self) -> &str {
-        match *self {
-            MergeFunctions::Disabled => "disabled",
-            MergeFunctions::Trampolines => "trampolines",
-            MergeFunctions::Aliases => "aliases",
+    impl FromStr for MergeFunctions {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, MergeFunctions = "merge-functions", list_variants),
         }
     }
 }
 
-impl FromStr for MergeFunctions {
-    type Err = String;
+str_enum! {
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum RelocModel {
+        Static = "static",
+        Pic = "pic",
+        Pie = "pie",
+        DynamicNoPic = "dynamic-no-pic",
+        Ropi = "ropi",
+        Rwpi = "rwpi",
+        RopiRwpi = "ropi-rwpi",
+    }
 
-    fn from_str(s: &str) -> Result<MergeFunctions, Self::Err> {
-        match s {
-            "disabled" => Ok(MergeFunctions::Disabled),
-            "trampolines" => Ok(MergeFunctions::Trampolines),
-            "aliases" => Ok(MergeFunctions::Aliases),
-            _ => Err(format!(
-                "'{}' is not a valid value for \
-                    merge-functions. Use 'disabled', \
-                    'trampolines', or 'aliases'.",
-                s
-            )),
+    impl FromStr for RelocModel {
+        via match s {
+            // does not suggest running `rustc --print` since rustc_codegen_llvm/lib.rs prints
+            // an additional "default" option that isn't supported here
+            err => make_parse_err_for_str_enum!(s, RelocModel = "relocation-model", list_variants),
         }
     }
-}
-
-crate::json::serde_deserialize_from_str!(MergeFunctions);
-
-impl ToJson for MergeFunctions {
-    fn to_json(&self) -> Json {
-        match *self {
-            MergeFunctions::Disabled => "disabled".to_json(),
-            MergeFunctions::Trampolines => "trampolines".to_json(),
-            MergeFunctions::Aliases => "aliases".to_json(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum RelocModel {
-    Static,
-    Pic,
-    Pie,
-    DynamicNoPic,
-    Ropi,
-    Rwpi,
-    RopiRwpi,
 }
 
 impl RelocModel {
-    pub fn desc(&self) -> &str {
-        match *self {
-            RelocModel::Static => "static",
-            RelocModel::Pic => "pic",
-            RelocModel::Pie => "pie",
-            RelocModel::DynamicNoPic => "dynamic-no-pic",
-            RelocModel::Ropi => "ropi",
-            RelocModel::Rwpi => "rwpi",
-            RelocModel::RopiRwpi => "ropi-rwpi",
-        }
-    }
     pub const fn desc_symbol(&self) -> Symbol {
         match *self {
             RelocModel::Static => kw::Static,
@@ -1100,250 +1048,114 @@ impl RelocModel {
             RelocModel::RopiRwpi => sym::ropi_rwpi,
         }
     }
+}
 
-    pub const fn all() -> [Symbol; 7] {
-        [
-            RelocModel::Static.desc_symbol(),
-            RelocModel::Pic.desc_symbol(),
-            RelocModel::Pie.desc_symbol(),
-            RelocModel::DynamicNoPic.desc_symbol(),
-            RelocModel::Ropi.desc_symbol(),
-            RelocModel::Rwpi.desc_symbol(),
-            RelocModel::RopiRwpi.desc_symbol(),
-        ]
+str_enum! {
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum CodeModel {
+        Tiny = "tiny",
+        Small = "small",
+        Kernel = "kernel",
+        Medium = "medium",
+        Large = "large",
     }
-}
-
-impl FromStr for RelocModel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<RelocModel, Self::Err> {
-        Ok(match s {
-            "static" => RelocModel::Static,
-            "pic" => RelocModel::Pic,
-            "pie" => RelocModel::Pie,
-            "dynamic-no-pic" => RelocModel::DynamicNoPic,
-            "ropi" => RelocModel::Ropi,
-            "rwpi" => RelocModel::Rwpi,
-            "ropi-rwpi" => RelocModel::RopiRwpi,
-            _ => {
-                return Err(format!(
-                    "invalid relocation model '{s}'.
-                        Run `rustc --print relocation-models` to \
-                        see the list of supported values.'"
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(RelocModel);
-
-impl ToJson for RelocModel {
-    fn to_json(&self) -> Json {
-        self.desc().to_json()
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CodeModel {
-    Tiny,
-    Small,
-    Kernel,
-    Medium,
-    Large,
-}
-
-impl FromStr for CodeModel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<CodeModel, Self::Err> {
-        Ok(match s {
-            "tiny" => CodeModel::Tiny,
-            "small" => CodeModel::Small,
-            "kernel" => CodeModel::Kernel,
-            "medium" => CodeModel::Medium,
-            "large" => CodeModel::Large,
-            _ => {
-                return Err(format!(
-                    "'{s}' is not a valid code model. \
-                        Run `rustc --print code-models` to \
-                        see the list of supported values."
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(CodeModel);
-
-impl ToJson for CodeModel {
-    fn to_json(&self) -> Json {
-        match *self {
-            CodeModel::Tiny => "tiny",
-            CodeModel::Small => "small",
-            CodeModel::Kernel => "kernel",
-            CodeModel::Medium => "medium",
-            CodeModel::Large => "large",
+    impl FromStr for CodeModel {
+        via match s {
+            err => make_parse_err_for_str_enum!(
+                s,
+                CodeModel = "code-model",
+                "Run `rustc --print code-models` to \
+                    see the list of supported values."
+            ),
         }
-        .to_json()
     }
 }
 
-/// The float ABI setting to be configured in the LLVM target machine.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum FloatAbi {
-    Soft,
-    Hard,
-}
-
-impl FromStr for FloatAbi {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<FloatAbi, Self::Err> {
-        Ok(match s {
-            "soft" => FloatAbi::Soft,
-            "hard" => FloatAbi::Hard,
-            _ => {
-                return Err(format!(
-                    "'{}' is not a valid value for \
-                        llvm-floatabi. Use 'soft' or 'hard'.",
-                    s
-                ));
-            }
-        })
+str_enum! {
+    /// The float ABI setting to be configured in the LLVM target machine.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum FloatAbi {
+        Soft = "soft",
+        Hard = "hard",
     }
-}
-
-crate::json::serde_deserialize_from_str!(FloatAbi);
-
-impl ToJson for FloatAbi {
-    fn to_json(&self) -> Json {
-        match *self {
-            FloatAbi::Soft => "soft",
-            FloatAbi::Hard => "hard",
+    impl FromStr for FloatAbi {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, FloatAbi = "llvm-floatabi", list_variants),
         }
-        .to_json()
     }
 }
 
-/// The Rustc-specific variant of the ABI used for this target.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum RustcAbi {
-    /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
-    X86Sse2,
-    /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
-    X86Softfloat,
-}
-
-impl FromStr for RustcAbi {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<RustcAbi, Self::Err> {
-        Ok(match s {
-            "x86-sse2" => RustcAbi::X86Sse2,
-            "x86-softfloat" => RustcAbi::X86Softfloat,
-            _ => {
-                return Err(format!(
-                    "'{s}' is not a valid value for rustc-abi. \
-                        Use 'x86-softfloat' or leave the field unset."
-                ));
-            }
-        })
+str_enum! {
+    /// The Rustc-specific variant of the ABI used for this target.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum RustcAbi {
+        /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
+        X86Sse2 = "x86-sse2",
+        /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
+        X86Softfloat = "x86-softfloat",
     }
-}
-
-crate::json::serde_deserialize_from_str!(RustcAbi);
-
-impl ToJson for RustcAbi {
-    fn to_json(&self) -> Json {
-        match *self {
-            RustcAbi::X86Sse2 => "x86-sse2",
-            RustcAbi::X86Softfloat => "x86-softfloat",
+    impl FromStr for RustcAbi {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, RustcAbi = "rustc_abi", list_variants),
         }
-        .to_json()
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum TlsModel {
-    GeneralDynamic,
-    LocalDynamic,
-    InitialExec,
-    LocalExec,
-    Emulated,
-}
-
-impl FromStr for TlsModel {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<TlsModel, Self::Err> {
-        Ok(match s {
-            // Note the difference "general" vs "global" difference. The model name is "general",
-            // but the user-facing option name is "global" for consistency with other compilers.
-            "global-dynamic" => TlsModel::GeneralDynamic,
-            "local-dynamic" => TlsModel::LocalDynamic,
-            "initial-exec" => TlsModel::InitialExec,
-            "local-exec" => TlsModel::LocalExec,
-            "emulated" => TlsModel::Emulated,
-            _ => {
-                return Err(format!(
-                    "'{s}' is not a valid TLS model. \
-                        Run `rustc --print tls-models` to \
-                        see the list of supported values."
-                ));
-            }
-        })
+str_enum! {
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum TlsModel {
+        // Note the difference "general" vs "global" difference. The model name is "general",
+        // but the user-facing option name is "global" for consistency with other compilers.
+        GeneralDynamic = "global-dynamic",
+        LocalDynamic = "local-dynamic",
+        InitialExec = "initial-exec",
+        LocalExec = "local-exec",
+        Emulated = "emulated",
     }
-}
-
-crate::json::serde_deserialize_from_str!(TlsModel);
-
-impl ToJson for TlsModel {
-    fn to_json(&self) -> Json {
-        match *self {
-            TlsModel::GeneralDynamic => "global-dynamic",
-            TlsModel::LocalDynamic => "local-dynamic",
-            TlsModel::InitialExec => "initial-exec",
-            TlsModel::LocalExec => "local-exec",
-            TlsModel::Emulated => "emulated",
+    impl FromStr for TlsModel {
+        via match s {
+            err => format!(
+                "'{s}' is not a valid TLS model. \
+                    Run `rustc --print tls-models` to \
+                    see the list of supported values."
+            ),
         }
-        .to_json()
     }
 }
 
-/// Everything is flattened to a single enum to make the json encoding/decoding less annoying.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub enum LinkOutputKind {
-    /// Dynamically linked non position-independent executable.
-    DynamicNoPicExe,
-    /// Dynamically linked position-independent executable.
-    DynamicPicExe,
-    /// Statically linked non position-independent executable.
-    StaticNoPicExe,
-    /// Statically linked position-independent executable.
-    StaticPicExe,
-    /// Regular dynamic library ("dynamically linked").
-    DynamicDylib,
-    /// Dynamic library with bundled libc ("statically linked").
-    StaticDylib,
-    /// WASI module with a lifetime past the _initialize entry point
-    WasiReactorExe,
+str_enum! {
+    /// Everything is flattened to a single enum to make the json encoding/decoding less annoying.
+    // FIXME(fee1-dead) investigate crt_objects.rs to clean up the unnecessary ord impl
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    pub enum LinkOutputKind {
+        /// Dynamically linked non position-independent executable.
+        DynamicNoPicExe = "dynamic-nopic-exe",
+        /// Dynamically linked position-independent executable.
+        DynamicPicExe = "dynamic-pic-exe",
+        /// Statically linked non position-independent executable.
+        StaticNoPicExe = "static-nopic-exe",
+        /// Statically linked position-independent executable.
+        StaticPicExe = "static-pic-exe",
+        /// Regular dynamic library ("dynamically linked").
+        DynamicDylib = "dynamic-dylib",
+        /// Dynamic library with bundled libc ("statically linked").
+        StaticDylib = "static-dylib",
+        /// WASI module with a lifetime past the _initialize entry point
+        WasiReactorExe = "wasi-reactor-exe",
+    }
+
+    impl FromStr for LinkOutputKind {
+        via match s {
+            err => format!(
+                "invalid value '{s}' for CRT object kind. \
+                    Use '(dynamic,static)-(nopic,pic)-exe' or \
+                    '(dynamic,static)-dylib' or 'wasi-reactor-exe'"
+            ),
+        }
+    }
 }
 
 impl LinkOutputKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            LinkOutputKind::DynamicNoPicExe => "dynamic-nopic-exe",
-            LinkOutputKind::DynamicPicExe => "dynamic-pic-exe",
-            LinkOutputKind::StaticNoPicExe => "static-nopic-exe",
-            LinkOutputKind::StaticPicExe => "static-pic-exe",
-            LinkOutputKind::DynamicDylib => "dynamic-dylib",
-            LinkOutputKind::StaticDylib => "static-dylib",
-            LinkOutputKind::WasiReactorExe => "wasi-reactor-exe",
-        }
-    }
-
     pub fn can_link_dylib(self) -> bool {
         match self {
             LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => false,
@@ -1356,31 +1168,6 @@ impl LinkOutputKind {
     }
 }
 
-impl FromStr for LinkOutputKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<LinkOutputKind, Self::Err> {
-        Ok(match s {
-            "dynamic-nopic-exe" => LinkOutputKind::DynamicNoPicExe,
-            "dynamic-pic-exe" => LinkOutputKind::DynamicPicExe,
-            "static-nopic-exe" => LinkOutputKind::StaticNoPicExe,
-            "static-pic-exe" => LinkOutputKind::StaticPicExe,
-            "dynamic-dylib" => LinkOutputKind::DynamicDylib,
-            "static-dylib" => LinkOutputKind::StaticDylib,
-            "wasi-reactor-exe" => LinkOutputKind::WasiReactorExe,
-            _ => {
-                return Err(format!(
-                    "invalid value for CRT object kind. \
-                        Use '(dynamic,static)-(nopic,pic)-exe' or \
-                        '(dynamic,static)-dylib' or 'wasi-reactor-exe'"
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(LinkOutputKind);
-
 impl fmt::Display for LinkOutputKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
@@ -1390,54 +1177,26 @@ impl fmt::Display for LinkOutputKind {
 pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
 pub type LinkArgsCli = BTreeMap<LinkerFlavorCli, Vec<StaticCow<str>>>;
 
-/// Which kind of debuginfo does the target use?
-///
-/// Useful in determining whether a target supports Split DWARF (a target with
-/// `DebuginfoKind::Dwarf` and supporting `SplitDebuginfo::Unpacked` for example).
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub enum DebuginfoKind {
-    /// DWARF debuginfo (such as that used on `x86_64_unknown_linux_gnu`).
-    #[default]
-    Dwarf,
-    /// DWARF debuginfo in dSYM files (such as on Apple platforms).
-    DwarfDsym,
-    /// Program database files (such as on Windows).
-    Pdb,
-}
+str_enum! {
+    /// Which kind of debuginfo does the target use?
+    ///
+    /// Useful in determining whether a target supports Split DWARF (a target with
+    /// `DebuginfoKind::Dwarf` and supporting `SplitDebuginfo::Unpacked` for example).
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    pub enum DebuginfoKind {
+        /// DWARF debuginfo (such as that used on `x86_64_unknown_linux_gnu`).
+        #[default]
+        Dwarf = "dwarf",
+        /// DWARF debuginfo in dSYM files (such as on Apple platforms).
+        DwarfDsym = "dwarf-dsym",
+        /// Program database files (such as on Windows).
+        Pdb = "pdb",
+    }
 
-impl DebuginfoKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            DebuginfoKind::Dwarf => "dwarf",
-            DebuginfoKind::DwarfDsym => "dwarf-dsym",
-            DebuginfoKind::Pdb => "pdb",
+    impl FromStr for DebuginfoKind {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, DebuginfoKind = "debuginfo-kind", list_variants),
         }
-    }
-}
-
-impl FromStr for DebuginfoKind {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "dwarf" => DebuginfoKind::Dwarf,
-            "dwarf-dsym" => DebuginfoKind::DwarfDsym,
-            "pdb" => DebuginfoKind::Pdb,
-            _ => {
-                return Err(format!(
-                    "'{s}' is not a valid value for debuginfo-kind. Use 'dwarf', \
-                        'dwarf-dsym' or 'pdb'."
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(DebuginfoKind);
-
-impl ToJson for DebuginfoKind {
-    fn to_json(&self) -> Json {
-        self.as_str().to_json()
     }
 }
 
@@ -1447,68 +1206,40 @@ impl fmt::Display for DebuginfoKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
-pub enum SplitDebuginfo {
-    /// Split debug-information is disabled, meaning that on supported platforms
-    /// you can find all debug information in the executable itself. This is
-    /// only supported for ELF effectively.
-    ///
-    /// * Windows - not supported
-    /// * macOS - don't run `dsymutil`
-    /// * ELF - `.debug_*` sections
-    #[default]
-    Off,
+str_enum! {
+    #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+    pub enum SplitDebuginfo {
+        /// Split debug-information is disabled, meaning that on supported platforms
+        /// you can find all debug information in the executable itself. This is
+        /// only supported for ELF effectively.
+        ///
+        /// * Windows - not supported
+        /// * macOS - don't run `dsymutil`
+        /// * ELF - `.debug_*` sections
+        #[default]
+        Off = "off",
 
-    /// Split debug-information can be found in a "packed" location separate
-    /// from the final artifact. This is supported on all platforms.
-    ///
-    /// * Windows - `*.pdb`
-    /// * macOS - `*.dSYM` (run `dsymutil`)
-    /// * ELF - `*.dwp` (run `thorin`)
-    Packed,
+        /// Split debug-information can be found in a "packed" location separate
+        /// from the final artifact. This is supported on all platforms.
+        ///
+        /// * Windows - `*.pdb`
+        /// * macOS - `*.dSYM` (run `dsymutil`)
+        /// * ELF - `*.dwp` (run `thorin`)
+        Packed = "packed",
 
-    /// Split debug-information can be found in individual object files on the
-    /// filesystem. The main executable may point to the object files.
-    ///
-    /// * Windows - not supported
-    /// * macOS - supported, scattered object files
-    /// * ELF - supported, scattered `*.dwo` or `*.o` files (see `SplitDwarfKind`)
-    Unpacked,
-}
+        /// Split debug-information can be found in individual object files on the
+        /// filesystem. The main executable may point to the object files.
+        ///
+        /// * Windows - not supported
+        /// * macOS - supported, scattered object files
+        /// * ELF - supported, scattered `*.dwo` or `*.o` files (see `SplitDwarfKind`)
+        Unpacked = "unpacked",
+    }
 
-impl SplitDebuginfo {
-    fn as_str(&self) -> &'static str {
-        match self {
-            SplitDebuginfo::Off => "off",
-            SplitDebuginfo::Packed => "packed",
-            SplitDebuginfo::Unpacked => "unpacked",
+    impl FromStr for SplitDebuginfo {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, SplitDebuginfo = "split-debuginfo", list_variants),
         }
-    }
-}
-
-impl FromStr for SplitDebuginfo {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "off" => SplitDebuginfo::Off,
-            "unpacked" => SplitDebuginfo::Unpacked,
-            "packed" => SplitDebuginfo::Packed,
-            _ => {
-                return Err(format!(
-                    "'{s}' is not a valid value for \
-                        split-debuginfo. Use 'off', 'unpacked', or 'packed'.",
-                ));
-            }
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(SplitDebuginfo);
-
-impl ToJson for SplitDebuginfo {
-    fn to_json(&self) -> Json {
-        self.as_str().to_json()
     }
 }
 
@@ -1690,17 +1421,24 @@ impl ToJson for SanitizerSet {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum FramePointer {
-    /// Forces the machine code generator to always preserve the frame pointers.
-    Always,
-    /// Forces the machine code generator to preserve the frame pointers except for the leaf
-    /// functions (i.e. those that don't call other functions).
-    NonLeaf,
-    /// Allows the machine code generator to omit the frame pointers.
-    ///
-    /// This option does not guarantee that the frame pointers will be omitted.
-    MayOmit,
+str_enum! {
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum FramePointer {
+        /// Forces the machine code generator to always preserve the frame pointers.
+        Always = "always",
+        /// Forces the machine code generator to preserve the frame pointers except for the leaf
+        /// functions (i.e. those that don't call other functions).
+        NonLeaf = "non-leaf",
+        /// Allows the machine code generator to omit the frame pointers.
+        ///
+        /// This option does not guarantee that the frame pointers will be omitted.
+        MayOmit = "may-omit",
+    }
+    impl FromStr for FramePointer {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, FramePointer = "frame_pointer", list_variants),
+        }
+    }
 }
 
 impl FramePointer {
@@ -1714,31 +1452,6 @@ impl FramePointer {
             _ => FramePointer::MayOmit,
         };
         *self
-    }
-}
-
-impl FromStr for FramePointer {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "always" => Self::Always,
-            "non-leaf" => Self::NonLeaf,
-            "may-omit" => Self::MayOmit,
-            _ => return Err(format!("'{s}' is not a valid value for frame-pointer")),
-        })
-    }
-}
-
-crate::json::serde_deserialize_from_str!(FramePointer);
-
-impl ToJson for FramePointer {
-    fn to_json(&self) -> Json {
-        match *self {
-            Self::Always => "always",
-            Self::NonLeaf => "non-leaf",
-            Self::MayOmit => "may-omit",
-        }
-        .to_json()
     }
 }
 
@@ -1795,13 +1508,20 @@ impl fmt::Display for StackProtector {
     }
 }
 
-#[derive(PartialEq, Clone, Debug)]
-pub enum BinaryFormat {
-    Coff,
-    Elf,
-    MachO,
-    Wasm,
-    Xcoff,
+str_enum! {
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum BinaryFormat {
+        Coff = "coff",
+        Elf = "elf",
+        MachO = "mach-o",
+        Wasm = "wasm",
+        Xcoff = "xcoff",
+    }
+    impl FromStr for BinaryFormat {
+        via match s {
+            err => make_parse_err_for_str_enum!(s, BinaryFormat = "binary-format", list_variants),
+        }
+    }
 }
 
 impl BinaryFormat {
@@ -1814,38 +1534,6 @@ impl BinaryFormat {
             Self::Wasm => object::BinaryFormat::Wasm,
             Self::Xcoff => object::BinaryFormat::Xcoff,
         }
-    }
-}
-
-impl FromStr for BinaryFormat {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "coff" => Ok(Self::Coff),
-            "elf" => Ok(Self::Elf),
-            "mach-o" => Ok(Self::MachO),
-            "wasm" => Ok(Self::Wasm),
-            "xcoff" => Ok(Self::Xcoff),
-            _ => Err(format!(
-                "'{s}' is not a valid value for binary_format. \
-                    Use 'coff', 'elf', 'mach-o', 'wasm' or 'xcoff' "
-            )),
-        }
-    }
-}
-
-crate::json::serde_deserialize_from_str!(BinaryFormat);
-
-impl ToJson for BinaryFormat {
-    fn to_json(&self) -> Json {
-        match self {
-            Self::Coff => "coff",
-            Self::Elf => "elf",
-            Self::MachO => "mach-o",
-            Self::Wasm => "wasm",
-            Self::Xcoff => "xcoff",
-        }
-        .to_json()
     }
 }
 
