@@ -397,6 +397,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
+            Unstable,
+            Opt,
+            "",
+            "crate-list-heading",
+            "heading under which to list this crate in the sidebar crate list",
+            "TEXT",
+        ),
+        opt(
             Stable,
             Opt,
             "",
