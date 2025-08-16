@@ -8,7 +8,7 @@ use std::process::ExitStatus;
 use rustc_abi::TargetDataLayoutErrors;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
-use rustc_hir::RustcVersion;
+use rustc_hir::{AttrPath, RustcVersion};
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
@@ -95,6 +95,7 @@ into_diag_arg_using_display!(
     ExitStatus,
     ErrCode,
     rustc_abi::ExternAbi,
+    AttrPath,
 );
 
 impl IntoDiagArg for RustcVersion {
