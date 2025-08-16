@@ -57,7 +57,7 @@ const_eval_const_context = {$kind ->
 }
 
 const_eval_const_heap_ptr_in_final = encountered `const_allocate` pointer in final value that was not made global
-    .note = use `const_make_global` to make allocated pointers immutable before returning
+    .note = use `const_make_global` to turn allocated pointers into immutable globals before returning
 
 const_eval_const_make_global_ptr_already_made_global = attempting to call `const_make_global` twice on the same allocation {$alloc}
 
@@ -231,6 +231,9 @@ const_eval_mutable_borrow_escaping =
 
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
+const_eval_partial_pointer_in_final = encountered partial pointer in final value of {const_eval_intern_kind}
+    .note = while pointers can be broken apart into individual bytes during const-evaluation, only complete pointers (with all their bytes in the right order) are supported in the final value
+
 const_eval_nested_static_in_thread_local = #[thread_local] does not support implicit nested statics, please create explicit static items and refer to them instead
 
 const_eval_non_const_await =
@@ -299,10 +302,8 @@ const_eval_panic = evaluation panicked: {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
 
-const_eval_partial_pointer_copy =
-    unable to copy parts of a pointer from memory at {$ptr}
-const_eval_partial_pointer_overwrite =
-    unable to overwrite parts of a pointer in memory at {$ptr}
+const_eval_partial_pointer_read =
+    unable to read parts of a pointer from memory at {$ptr}
 const_eval_pointer_arithmetic_overflow =
     overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
 

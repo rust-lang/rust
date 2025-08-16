@@ -280,16 +280,16 @@ impl interpret::Provenance for Provenance {
         Ok(())
     }
 
-    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self> {
+    fn join(left: Self, right: Self) -> Option<Self> {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
             (
-                Some(Provenance::Concrete { alloc_id: left_alloc, tag: left_tag }),
-                Some(Provenance::Concrete { alloc_id: right_alloc, tag: right_tag }),
-            ) if left_alloc == right_alloc && left_tag == right_tag => left,
+                Provenance::Concrete { alloc_id: left_alloc, tag: left_tag },
+                Provenance::Concrete { alloc_id: right_alloc, tag: right_tag },
+            ) if left_alloc == right_alloc && left_tag == right_tag => Some(left),
             // If one side is a wildcard, the best possible outcome is that it is equal to the other
             // one, and we use that.
-            (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
+            (Provenance::Wildcard, o) | (o, Provenance::Wildcard) => Some(o),
             // Otherwise, fall back to `None`.
             _ => None,
         }

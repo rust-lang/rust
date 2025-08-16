@@ -1314,29 +1314,20 @@ impl<'a, 'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>
     }
 
     /// Mark the given sub-range (relative to this allocation reference) as uninitialized.
-    pub fn write_uninit(&mut self, range: AllocRange) -> InterpResult<'tcx> {
+    pub fn write_uninit(&mut self, range: AllocRange) {
         let range = self.range.subrange(range);
 
-        self.alloc
-            .write_uninit(&self.tcx, range)
-            .map_err(|e| e.to_interp_error(self.alloc_id))
-            .into()
+        self.alloc.write_uninit(&self.tcx, range);
     }
 
     /// Mark the entire referenced range as uninitialized
-    pub fn write_uninit_full(&mut self) -> InterpResult<'tcx> {
-        self.alloc
-            .write_uninit(&self.tcx, self.range)
-            .map_err(|e| e.to_interp_error(self.alloc_id))
-            .into()
+    pub fn write_uninit_full(&mut self) {
+        self.alloc.write_uninit(&self.tcx, self.range);
     }
 
     /// Remove all provenance in the reference range.
-    pub fn clear_provenance(&mut self) -> InterpResult<'tcx> {
-        self.alloc
-            .clear_provenance(&self.tcx, self.range)
-            .map_err(|e| e.to_interp_error(self.alloc_id))
-            .into()
+    pub fn clear_provenance(&mut self) {
+        self.alloc.clear_provenance(&self.tcx, self.range);
     }
 }
 
@@ -1427,11 +1418,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
         // (We are staying inside the bounds here and all bytes do get overwritten so all is good.)
-        let alloc_id = alloc_ref.alloc_id;
-        let bytes = alloc_ref
-            .alloc
-            .get_bytes_unchecked_for_overwrite(&alloc_ref.tcx, alloc_ref.range)
-            .map_err(move |e| e.to_interp_error(alloc_id))?;
+        let bytes =
+            alloc_ref.alloc.get_bytes_unchecked_for_overwrite(&alloc_ref.tcx, alloc_ref.range);
         // `zip` would stop when the first iterator ends; we want to definitely
         // cover all of `bytes`.
         for dest in bytes {
@@ -1513,10 +1501,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // `get_bytes_mut` will clear the provenance, which is correct,
         // since we don't want to keep any provenance at the target.
         // This will also error if copying partial provenance is not supported.
-        let provenance = src_alloc
-            .provenance()
-            .prepare_copy(src_range, dest_offset, num_copies, self)
-            .map_err(|e| e.to_interp_error(src_alloc_id))?;
+        let provenance =
+            src_alloc.provenance().prepare_copy(src_range, dest_offset, num_copies, self);
         // Prepare a copy of the initialization mask.
         let init = src_alloc.init_mask().prepare_copy(src_range);
 
@@ -1534,10 +1520,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             dest_range,
         )?;
         // Yes we do overwrite all bytes in `dest_bytes`.
-        let dest_bytes = dest_alloc
-            .get_bytes_unchecked_for_overwrite_ptr(&tcx, dest_range)
-            .map_err(|e| e.to_interp_error(dest_alloc_id))?
-            .as_mut_ptr();
+        let dest_bytes =
+            dest_alloc.get_bytes_unchecked_for_overwrite_ptr(&tcx, dest_range).as_mut_ptr();
 
         if init.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
@@ -1546,9 +1530,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
-            dest_alloc
-                .write_uninit(&tcx, dest_range)
-                .map_err(|e| e.to_interp_error(dest_alloc_id))?;
+            dest_alloc.write_uninit(&tcx, dest_range);
             // `write_uninit` also resets the provenance, so we are done.
             return interp_ok(());
         }

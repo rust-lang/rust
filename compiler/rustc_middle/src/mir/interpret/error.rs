@@ -582,9 +582,6 @@ pub enum UnsupportedOpInfo {
     //
     // The variants below are only reachable from CTFE/const prop, miri will never emit them.
     //
-    /// Overwriting parts of a pointer; without knowing absolute addresses, the resulting state
-    /// cannot be represented by the CTFE interpreter.
-    OverwritePartialPointer(Pointer<AllocId>),
     /// Attempting to read or copy parts of a pointer to somewhere else; without knowing absolute
     /// addresses, the resulting state cannot be represented by the CTFE interpreter.
     ReadPartialPointer(Pointer<AllocId>),

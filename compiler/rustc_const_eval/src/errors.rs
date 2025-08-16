@@ -52,6 +52,15 @@ pub(crate) struct ConstHeapPtrInFinal {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_partial_pointer_in_final)]
+#[note]
+pub(crate) struct PartialPtrInFinal {
+    #[primary_span]
+    pub span: Span,
+    pub kind: InternKind,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_in_stable_exposed)]
 pub(crate) struct UnstableInStableExposed {
     pub gate: String,
@@ -836,8 +845,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
             UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
             UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
-            UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
-            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
+            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_read,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
@@ -848,7 +856,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
 
         use crate::fluent_generated::*;
-        if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
+        if let ReadPointerAsInt(_) | ReadPartialPointer(_) = self {
             diag.help(const_eval_ptr_as_bytes_1);
             diag.help(const_eval_ptr_as_bytes_2);
         }
@@ -860,7 +868,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             | UnsupportedOpInfo::ExternTypeField
             | Unsupported(_)
             | ReadPointerAsInt(_) => {}
-            OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
+            ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ExternStatic(did) => rustc_middle::ty::tls::with(|tcx| {
