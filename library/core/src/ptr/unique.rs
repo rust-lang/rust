@@ -32,6 +32,7 @@ use crate::ptr::NonNull;
 )]
 #[doc(hidden)]
 #[repr(transparent)]
+#[debuginfo_transparent]
 pub struct Unique<T: PointeeSized> {
     pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary

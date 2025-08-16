@@ -10,12 +10,15 @@ FIRST_FIELD = "__1"
 
 
 def unwrap_unique_or_non_null(unique_or_nonnull):
-    # BACKCOMPAT: rust 1.32
-    # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
-    # BACKCOMPAT: rust 1.60
-    # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
-    ptr = unique_or_nonnull["pointer"]
-    return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
+    if unique_or_nonnull.type.code != gdb.TYPE_CODE_PTR:
+        # BACKCOMPAT: rust 1.32
+        # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
+        # BACKCOMPAT: rust 1.60
+        # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
+        # BACKCOMPAT: rust 1.89
+        ptr = unique_or_nonnull["pointer"]
+        return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
+    return unique_or_nonnull
 
 
 # GDB 14 has a tag class that indicates that extension methods are ok
@@ -255,12 +258,16 @@ class StdNonZeroNumberProvider(printer_base):
         field = list(fields)[0]
 
         inner_valobj = valobj[field.name]
+        if inner_valobj.type.code != gdb.TYPE_CODE_INT:
+            # BACKCOMPAT: rust 1.89
+            inner_fields = inner_valobj.type.fields()
+            assert len(inner_fields) == 1
+            inner_field = list(inner_fields)[0]
 
-        inner_fields = inner_valobj.type.fields()
-        assert len(inner_fields) == 1
-        inner_field = list(inner_fields)[0]
+            self._value = str(inner_valobj[inner_field.name])
+            return
 
-        self._value = str(inner_valobj[inner_field.name])
+        self._value = inner_valobj
 
     def to_string(self):
         return self._value
@@ -277,7 +284,9 @@ def children_of_btree_map(map):
             internal_type = gdb.lookup_type(internal_type_name)
             return node.cast(internal_type.pointer())
 
-        if node_ptr.type.name.startswith("alloc::collections::btree::node::BoxedNode<"):
+        if node_ptr.type.name is not None and node_ptr.type.name.startswith(
+            "alloc::collections::btree::node::BoxedNode<"
+        ):
             # BACKCOMPAT: rust 1.49
             node_ptr = node_ptr["ptr"]
         node_ptr = unwrap_unique_or_non_null(node_ptr)
@@ -427,7 +436,8 @@ class StdHashMapProvider(printer_base):
         table = self._table()
         table_inner = table["table"]
         capacity = int(table_inner["bucket_mask"]) + 1
-        ctrl = table_inner["ctrl"]["pointer"]
+        # BACKCOMPAT: rust 1.89
+        ctrl = unwrap_unique_or_non_null(table_inner["ctrl"])
 
         self._size = int(table_inner["items"])
         self._pair_type = table.type.template_argument(0).strip_typedefs()

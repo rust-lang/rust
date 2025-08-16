@@ -18,6 +18,7 @@ macro_rules! define_valid_range_type {
         #[repr(transparent)]
         #[rustc_layout_scalar_valid_range_start($low)]
         #[rustc_layout_scalar_valid_range_end($high)]
+        #[debuginfo_transparent]
         $(#[$m])*
         $vis struct $name($int);
 

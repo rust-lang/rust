@@ -108,6 +108,7 @@
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
+#![feature(debuginfo_attrs)]
 #![feature(disjoint_bitor)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]

@@ -324,6 +324,9 @@ pub enum AttributeKind {
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
 
+    /// Represents `#[debuginfo_transparent]`.
+    DebuginfoTransparent(Span),
+
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 
