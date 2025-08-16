@@ -1,10 +1,12 @@
 use std::array::IntoIter;
+use std::borrow::Cow;
 use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -586,6 +588,12 @@ pub enum Res<Id = hir::HirId> {
     Err,
 }
 
+impl<Id> IntoDiagArg for Res<Id> {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
 /// The result of resolving a path before lowering to HIR,
 /// with "module" segments resolved and associated item
 /// segments deferred to type checking.
@@ -670,6 +678,12 @@ impl Namespace {
             Self::ValueNS => "value",
             Self::MacroNS => "macro",
         }
+    }
+}
+
+impl IntoDiagArg for Namespace {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.descr()))
     }
 }
 

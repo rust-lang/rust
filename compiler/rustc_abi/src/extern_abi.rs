@@ -223,6 +223,9 @@ impl StableOrd for ExternAbi {
     const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
 }
 
+#[cfg(feature = "nightly")]
+rustc_error_messages::into_diag_arg_using_display!(ExternAbi);
+
 impl ExternAbi {
     /// An ABI "like Rust"
     ///

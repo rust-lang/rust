@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
@@ -6,11 +8,10 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagMessage, MultiSpan};
-use rustc_hir::def::Namespace;
-use rustc_hir::def_id::DefPathHash;
-use rustc_hir::{HashStableContext, HirId, ItemLocalId};
+use rustc_error_messages::{DiagArgValue, DiagMessage, IntoDiagArg, MultiSpan};
+use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
@@ -138,7 +139,7 @@ impl LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         match self {
@@ -156,7 +157,7 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
     }
 }
 
-impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+impl<HCX: HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
@@ -294,6 +295,12 @@ impl Level {
             Level::Allow | Level::Expect | Level::Warn | Level::ForceWarn => false,
             Level::Deny | Level::Forbid => true,
         }
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(self.to_cmd_flag()))
     }
 }
 
@@ -617,7 +624,7 @@ pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
     ProcMacroDeriveResolutionFallback {
         span: Span,
-        ns: Namespace,
+        ns_descr: &'static str,
         ident: Ident,
     },
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),

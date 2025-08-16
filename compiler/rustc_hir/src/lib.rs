@@ -3,14 +3,11 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
 #![feature(debug_closure_helpers)]
 #![feature(exhaustive_patterns)]
-#![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(rustc_attrs)]
 #![feature(variant_count)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
@@ -25,7 +22,7 @@ pub mod definitions;
 pub mod diagnostic_items;
 pub use rustc_span::def_id;
 mod hir;
-pub mod hir_id;
+pub use rustc_hir_id::{self as hir_id, *};
 pub mod intravisit;
 pub mod lang_items;
 pub mod lints;
@@ -41,7 +38,6 @@ mod tests;
 
 #[doc(no_inline)]
 pub use hir::*;
-pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};
 pub use stability::*;
 pub use stable_hash_impls::HashStableContext;

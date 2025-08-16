@@ -1,11 +1,13 @@
+#![allow(internal_features)]
+#![feature(negative_impls)]
+#![feature(rustc_attrs)]
+
 use std::fmt::{self, Debug};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::HashStableContext;
-use rustc_span::def_id::DefPathHash;
-
-use crate::def_id::{CRATE_DEF_ID, DefId, DefIndex, LocalDefId};
+pub use rustc_span::HashStableContext;
+use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct OwnerId {
@@ -171,3 +173,22 @@ pub const CRATE_HIR_ID: HirId =
     HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::ZERO };
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
+
+impl<CTX: rustc_span::HashStableContext> ToStableHashKey<CTX> for HirId {
+    type KeyType = (DefPathHash, ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> (DefPathHash, ItemLocalId) {
+        let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
+        (def_path_hash, self.local_id)
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for ItemLocalId {
+    type KeyType = ItemLocalId;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> ItemLocalId {
+        *self
+    }
+}
