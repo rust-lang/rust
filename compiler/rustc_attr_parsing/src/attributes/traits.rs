@@ -1,16 +1,14 @@
-use core::mem;
+use std::mem;
 
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
-
+use super::prelude::*;
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::Policy::{Allow, Warn};
+use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+
 pub(crate) struct SkipDuringMethodDispatchParser;
 impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
     const PATH: &[Symbol] = &[sym::rustc_skip_during_method_dispatch];

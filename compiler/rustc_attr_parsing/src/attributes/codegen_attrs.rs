@@ -1,16 +1,7 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
-use rustc_hir::{MethodKind, Target};
+use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, UsedBy};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, Symbol, sym};
 
-use super::{
-    AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
-    NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
 
 pub(crate) struct OptimizeParser;
