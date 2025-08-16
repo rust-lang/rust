@@ -95,6 +95,7 @@ will check for output files:
   [Normalization](#normalization)).
 - `dont-check-compiler-stderr` — Ignores stderr from the compiler.
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
+- `compare-output-by-lines` — Some tests have non-deterministic orders of output, so we need to compare by lines.
 
 UI tests run with `-Zdeduplicate-diagnostics=no` flag which disables rustc's
 built-in diagnostic deduplication mechanism. This means you may see some
