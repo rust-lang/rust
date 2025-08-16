@@ -57,7 +57,7 @@ LL |     baz(f);
    = note: requirement occurs because of a mutable pointer to `&u32`
    = note: mutable pointers are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/closure-arg-type-mismatch.rs:8:11
    |
 LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
