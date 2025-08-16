@@ -35,6 +35,7 @@ fn is_dangling(value_ptr: NonNull<()>) -> bool {
 
 /// Decrements weak reference count in a reference-counted allocation with a value object that is
 /// pointed to by `value_ptr`.
+#[inline]
 unsafe fn decrement_weak_ref_count<R>(value_ptr: NonNull<()>) -> bool
 where
     R: RcOps,
@@ -44,6 +45,7 @@ where
 
 /// Increments weak reference count in a reference-counted allocation with a value object that is
 /// pointed to by `value_ptr`.
+#[inline]
 unsafe fn increment_weak_ref_count<R>(value_ptr: NonNull<()>)
 where
     R: RcOps,

@@ -214,6 +214,7 @@ impl RefCounts {
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
 ///   reference-counted allocation.
+#[inline]
 unsafe fn ref_counts_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<RefCounts> {
     // SAFETY: Caller guarantees `value_ptr` point to the value inside some reference counted, our
     // implementation guarantees the `RefCounts` object has offset of `size_of::<RefCounts>()` to
@@ -228,6 +229,7 @@ unsafe fn ref_counts_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<RefCo
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
 ///   reference-counted allocation.
+#[inline]
 unsafe fn strong_count_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<UnsafeCell<usize>> {
     let ref_counts_ptr = unsafe { ref_counts_ptr_from_value_ptr(value_ptr) };
 
@@ -241,6 +243,7 @@ unsafe fn strong_count_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<Uns
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
 ///   reference-counted allocation.
+#[inline]
 unsafe fn weak_count_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<UnsafeCell<usize>> {
     let ref_counts_ptr = unsafe { ref_counts_ptr_from_value_ptr(value_ptr) };
 
@@ -415,6 +418,7 @@ where
 /// Allocates a reference-counted memory chunk for storing a value according to `rc_layout`, then
 /// initialize the value with `f`. If `f` panics, the allocated memory will be deallocated.
 #[cfg(not(no_global_oom_handling))]
+#[inline]
 fn allocate_with_in<A, F, const STRONG_COUNT: usize>(
     alloc: &A,
     rc_layout: RcLayout,
@@ -456,6 +460,7 @@ where
 /// described by `rc_layout`. `f` will be called with a pointer that points the value storage to
 /// initialize the allocated memory. If `f` panics, the allocated memory will be deallocated.
 #[cfg(not(no_global_oom_handling))]
+#[inline]
 fn allocate_with<A, F, const STRONG_COUNT: usize>(rc_layout: RcLayout, f: F) -> (NonNull<()>, A)
 where
     A: Allocator + Default,
@@ -475,6 +480,7 @@ where
 /// - Memory pointed to by `src_ptr` has enough data to read for filling the value in an allocation
 ///   that is described by `rc_layout`.
 #[cfg(not(no_global_oom_handling))]
+#[inline]
 unsafe fn allocate_with_bytes_in<A, const STRONG_COUNT: usize>(
     src_ptr: NonNull<()>,
     alloc: &A,
@@ -499,6 +505,7 @@ where
 
 /// Allocates a chunk of reference-counted memory with a value that is copied from `value`.
 #[cfg(not(no_global_oom_handling))]
+#[inline]
 fn allocate_with_value_in<T, A, const STRONG_COUNT: usize>(src: &T, alloc: &A) -> NonNull<T>
 where
     T: ?Sized,

@@ -32,6 +32,7 @@ use crate::vec::Vec;
 
 /// Decrements strong reference count in a reference-counted allocation with a value object that is
 /// pointed to by `value_ptr`.
+#[inline]
 unsafe fn decrement_strong_ref_count<R>(value_ptr: NonNull<()>) -> bool
 where
     R: RcOps,
@@ -41,6 +42,7 @@ where
 
 /// Increments strong reference count in a reference-counted allocation with a value object that is
 /// pointed to by `value_ptr`.
+#[inline]
 unsafe fn increment_strong_ref_count<R>(value_ptr: NonNull<()>)
 where
     R: RcOps,
@@ -48,6 +50,7 @@ where
     unsafe { R::increment_ref_count(super::strong_count_ptr_from_value_ptr(value_ptr).as_ref()) }
 }
 
+#[inline]
 unsafe fn is_unique<R>(value_ptr: NonNull<()>) -> bool
 where
     R: RcOps,
