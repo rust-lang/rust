@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use private::Sealed;
-use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
+use rustc_ast::{self as ast, AttrStyle, LitKind, MetaItemLit, NodeId};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -14,6 +14,7 @@ use rustc_hir::{
     AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, HirId, MethodKind, Target,
 };
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{
@@ -25,6 +26,7 @@ use crate::attributes::codegen_attrs::{
     TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::crate_level::CrateNameParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -65,6 +67,7 @@ use crate::attributes::traits::{
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
 use crate::context::MaybeWarn::{Allow, Error, Warn};
+use crate::lints::lint_name;
 use crate::parser::{ArgParser, MetaItemParser, PathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, InvalidTarget, UnknownMetaItem,
@@ -167,6 +170,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CoverageParser>,
+        Single<CrateNameParser>,
         Single<DeprecationParser>,
         Single<DummyParser>,
         Single<ExportNameParser>,
@@ -313,6 +317,9 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 
+    /// Whether it is an inner or outer attribute
+    pub(crate) attr_style: AttrStyle,
+
     /// The expected structure of the attribute.
     ///
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
@@ -394,6 +401,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                     i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
                 }),
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -404,6 +412,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIntegerLiteral,
+            attr_style: self.attr_style,
         })
     }
 
@@ -414,6 +423,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedList,
+            attr_style: self.attr_style,
         })
     }
 
@@ -424,6 +434,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNoArgs,
+            attr_style: self.attr_style,
         })
     }
 
@@ -435,6 +446,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIdentifier,
+            attr_style: self.attr_style,
         })
     }
 
@@ -447,6 +459,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNameValue(name),
+            attr_style: self.attr_style,
         })
     }
 
@@ -458,6 +471,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::DuplicateKey(key),
+            attr_style: self.attr_style,
         })
     }
 
@@ -470,6 +484,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::UnexpectedLiteral,
+            attr_style: self.attr_style,
         })
     }
 
@@ -480,6 +495,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedSingleArgument,
+            attr_style: self.attr_style,
         })
     }
 
@@ -490,6 +506,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedAtLeastOneArgument,
+            attr_style: self.attr_style,
         })
     }
 
@@ -508,6 +525,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: false,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -526,6 +544,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: true,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -544,6 +563,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: true,
                 list: false,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -746,12 +766,33 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
+        Self::parse_limited_should_emit(
+            sess,
+            attrs,
+            sym,
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        )
+    }
+
+    /// Usually you want `parse_limited`, which defaults to no errors.
+    pub fn parse_limited_should_emit(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: Symbol,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        should_emit: ShouldEmit,
+    ) -> Option<Attribute> {
         let mut p = Self {
             features,
             tools: Vec::new(),
             parse_only: Some(sym),
             sess,
-            stage: Early { emit_errors: ShouldEmit::Nothing },
+            stage: Early { emit_errors: should_emit },
         };
         let mut parsed = p.parse_attribute_list(
             attrs,
@@ -760,8 +801,13 @@ impl<'sess> AttributeParser<'sess, Early> {
             Target::Crate, // Does not matter, we're not going to emit errors anyways
             OmitDoc::Skip,
             std::convert::identity,
-            |_lint| {
-                panic!("can't emit lints here for now (nothing uses this atm)");
+            |AttributeLint { id, span, kind }| {
+                sess.psess.buffer_lint(
+                    lint_name(&kind),
+                    span,
+                    id,
+                    BuiltinLintDiag::AttributeLint(kind),
+                );
             },
         );
         assert!(parsed.len() <= 1);
@@ -802,6 +848,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 },
             },
             attr_span: attr.span,
+            attr_style: attr.style,
             template,
             attr_path: path.get_attribute_path(),
         };
@@ -912,6 +959,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                     emit_lint: &mut emit_lint,
                                 },
                                 attr_span: lower_span(attr.span),
+                                attr_style: attr.style,
                                 template: &accept.template,
                                 attr_path: path.get_attribute_path(),
                             };

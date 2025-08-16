@@ -30,7 +30,8 @@ use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
+    Applicability, AttributeLintDecorator, DeferedAttributeLintDecorator, Diag, DiagCtxtHandle,
+    ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -1417,15 +1418,24 @@ pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
-impl<'tcx> LintEmitter for TyCtxt<'tcx> {
-    fn emit_node_span_lint(
+pub struct Decorator<'tcx>(TyCtxt<'tcx>, &'static Lint, HirId, MultiSpan);
+impl AttributeLintDecorator for Decorator<'_> {
+    fn decorate(self, decorator: impl for<'a> LintDiagnostic<'a, ()>) {
+        self.0.emit_node_span_lint(self.1, self.2, self.3, decorator);
+    }
+}
+
+impl<'tcx> DeferedAttributeLintDecorator for TyCtxt<'tcx> {
+    type ID = HirId;
+    type Decorator = Decorator<'tcx>;
+
+    fn prepare(
         self,
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
-    ) {
-        self.emit_node_span_lint(lint, hir_id, span, decorator);
+    ) -> Self::Decorator {
+        Decorator(self, lint, hir_id, span.into())
     }
 }
 

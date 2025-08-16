@@ -9,6 +9,7 @@ use rustc_data_structures::stable_hasher::{
 use rustc_error_messages::{DiagMessage, MultiSpan};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefPathHash;
+use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
@@ -809,6 +810,7 @@ pub enum BuiltinLintDiag {
         cfg_name: Symbol,
         controlled_by: &'static str,
     },
+    AttributeLint(AttributeLintKind),
 }
 
 /// Lints that are buffered up early on in the `Session` before the

@@ -239,10 +239,10 @@ LL | #[windows_subsystem = "windows"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:709:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:709:16
    |
 LL | #[crate_name = "0900"]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:728:1
@@ -489,34 +489,34 @@ LL |     #[windows_subsystem = "windows"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:712:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:712:31
    |
 LL |     mod inner { #![crate_name="0900"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^
+   |                               ^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:715:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:715:20
    |
 LL |     #[crate_name = "0900"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:718:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:718:20
    |
 LL |     #[crate_name = "0900"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:721:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:721:20
    |
 LL |     #[crate_name = "0900"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:724:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:724:20
    |
 LL |     #[crate_name = "0900"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^
 
 warning: crate-level attribute should be in the root module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:731:17

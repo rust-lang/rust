@@ -60,7 +60,6 @@ pub use rustc_error_messages::{
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
 use rustc_hashes::Hash128;
-use rustc_hir::HirId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
@@ -105,17 +104,23 @@ rustc_data_structures::static_assert_size!(PResult<'_, ()>, 24);
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
 
+pub trait AttributeLintDecorator {
+    fn decorate(self, diag: impl for<'a> LintDiagnostic<'a, ()>);
+}
+
 /// Used to avoid depending on `rustc_middle` in `rustc_attr_parsing`.
 /// Always the `TyCtxt`.
-pub trait LintEmitter: Copy {
+pub trait DeferedAttributeLintDecorator: Copy {
+    type ID: Copy;
+    type Decorator: AttributeLintDecorator;
+
     #[track_caller]
-    fn emit_node_span_lint(
+    fn prepare(
         self,
         lint: &'static Lint,
-        hir_id: HirId,
+        id: Self::ID,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
-    );
+    ) -> Self::Decorator;
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
