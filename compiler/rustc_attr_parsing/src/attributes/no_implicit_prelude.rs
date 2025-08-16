@@ -1,11 +1,4 @@
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, sym};
-
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::Stage;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::Allow;
+use super::prelude::*;
 
 pub(crate) struct NoImplicitPreludeParser;
 

@@ -1,19 +1,9 @@
-use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
-use rustc_hir::attrs::{AttributeKind, Linkage};
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
+use rustc_hir::attrs::Linkage;
 
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
-use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
-use crate::target_checking::Policy::Allow;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
-
+use super::prelude::*;
 use super::util::parse_single_integer;
+use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
 
 pub(crate) struct LinkNameParser;
 

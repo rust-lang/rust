@@ -26,6 +26,9 @@ use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
 use crate::target_checking::AllowedTargets;
 
+/// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
+mod prelude;
+
 pub(crate) mod allow_unstable;
 pub(crate) mod body;
 pub(crate) mod cfg;
@@ -283,7 +286,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for Without
     }
 }
 
-type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
+pub(super) type ConvertFn<E> = fn(ThinVec<E>, Span) -> AttributeKind;
 
 /// Alternative to [`AttributeParser`] that automatically handles state management.
 /// If multiple attributes appear on an element, combines the values of each into a

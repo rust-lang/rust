@@ -1,17 +1,10 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::{AttributeKind, IntType, ReprAttr};
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_hir::attrs::{IntType, ReprAttr};
 
-use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
-use crate::session_diagnostics;
-use crate::session_diagnostics::IncorrectReprFormatGenericCause;
-use crate::target_checking::Policy::Allow;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use super::prelude::*;
+use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
+
 /// Parse #[repr(...)] forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see

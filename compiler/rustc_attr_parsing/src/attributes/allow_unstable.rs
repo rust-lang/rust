@@ -1,16 +1,7 @@
 use std::iter;
 
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
-
-use super::{CombineAttributeParser, ConvertFn};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
 use crate::session_diagnostics;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
 
 pub(crate) struct AllowInternalUnstableParser;
 impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {

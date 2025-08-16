@@ -1,16 +1,4 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
-
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Warn};
+use super::prelude::*;
 
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {

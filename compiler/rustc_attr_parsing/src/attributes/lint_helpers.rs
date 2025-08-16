@@ -1,11 +1,4 @@
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
-
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::Stage;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::{Allow, Error};
+use super::prelude::*;
 
 pub(crate) struct AsPtrParser;
 impl<S: Stage> NoArgsAttributeParser<S> for AsPtrParser {

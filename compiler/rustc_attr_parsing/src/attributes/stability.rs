@@ -1,22 +1,14 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_feature::template;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
     StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
 };
-use rustc_span::{Ident, Span, Symbol, sym};
 
+use super::prelude::*;
 use super::util::parse_version;
-use super::{AcceptMapping, AttributeParser, OnDuplicate};
-use crate::attributes::NoArgsAttributeParser;
-use crate::context::{AcceptContext, FinalizeContext, Stage};
-use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::Allow;
 
 macro_rules! reject_outside_std {
     ($cx: ident) => {
