@@ -249,7 +249,7 @@ resolve_macro_cannot_use_as_attr =
     `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
-     `{$ident}` exists, but a declarative macro cannot be used as a derive macro
+     `{$ident}` exists, but has no `derive` rules
 
 resolve_macro_defined_later =
     a macro with the same name exists, but it appears later
