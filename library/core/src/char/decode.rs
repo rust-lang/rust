@@ -126,9 +126,4 @@ impl fmt::Display for DecodeUtf16Error {
 }
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
-impl Error for DecodeUtf16Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "unpaired surrogate found"
-    }
-}
+impl Error for DecodeUtf16Error {}

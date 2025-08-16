@@ -927,7 +927,7 @@ impl Duration {
     pub fn from_secs_f64(secs: f64) -> Duration {
         match Duration::try_from_secs_f64(secs) {
             Ok(v) => v,
-            Err(e) => panic!("{}", e.description()),
+            Err(e) => panic!("{e}"),
         }
     }
 
@@ -964,7 +964,7 @@ impl Duration {
     pub fn from_secs_f32(secs: f32) -> Duration {
         match Duration::try_from_secs_f32(secs) {
             Ok(v) => v,
-            Err(e) => panic!("{}", e.description()),
+            Err(e) => panic!("{e}"),
         }
     }
 
@@ -1445,8 +1445,9 @@ pub struct TryFromFloatSecsError {
     kind: TryFromFloatSecsErrorKind,
 }
 
-impl TryFromFloatSecsError {
-    const fn description(&self) -> &'static str {
+#[stable(feature = "duration_checked_float", since = "1.66.0")]
+impl fmt::Display for TryFromFloatSecsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             TryFromFloatSecsErrorKind::Negative => {
                 "cannot convert float seconds to Duration: value is negative"
@@ -1455,13 +1456,7 @@ impl TryFromFloatSecsError {
                 "cannot convert float seconds to Duration: value is either too big or NaN"
             }
         }
-    }
-}
-
-#[stable(feature = "duration_checked_float", since = "1.66.0")]
-impl fmt::Display for TryFromFloatSecsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+        .fmt(f)
     }
 }
 

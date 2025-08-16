@@ -1042,11 +1042,6 @@ impl<'a> crate::iter::FusedIterator for Source<'a> {}
 
 #[stable(feature = "error_by_ref", since = "1.51.0")]
 impl<'a, T: Error + ?Sized> Error for &'a T {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        Error::description(&**self)
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
@@ -1062,36 +1057,16 @@ impl<'a, T: Error + ?Sized> Error for &'a T {
 }
 
 #[stable(feature = "fmt_error", since = "1.11.0")]
-impl Error for crate::fmt::Error {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "an error occurred when formatting an argument"
-    }
-}
+impl Error for crate::fmt::Error {}
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Error for crate::cell::BorrowError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "already mutably borrowed"
-    }
-}
+impl Error for crate::cell::BorrowError {}
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
-impl Error for crate::cell::BorrowMutError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "already borrowed"
-    }
-}
+impl Error for crate::cell::BorrowMutError {}
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl Error for crate::char::CharTryFromError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "converted integer out of range for `char`"
-    }
-}
+impl Error for crate::char::CharTryFromError {}
 
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
 impl Error for crate::time::TryFromFloatSecsError {}

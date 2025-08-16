@@ -717,12 +717,7 @@ impl SystemTimeError {
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
-impl Error for SystemTimeError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "other time was not earlier than self"
-    }
-}
+impl Error for SystemTimeError {}
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Display for SystemTimeError {

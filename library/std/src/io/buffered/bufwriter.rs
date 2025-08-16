@@ -492,23 +492,15 @@ impl WriterPanicked {
     pub fn into_inner(self) -> Vec<u8> {
         self.buf
     }
-
-    const DESCRIPTION: &'static str =
-        "BufWriter inner writer panicked, what data remains unwritten is not known";
 }
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
-impl error::Error for WriterPanicked {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        Self::DESCRIPTION
-    }
-}
+impl error::Error for WriterPanicked {}
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 impl fmt::Display for WriterPanicked {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", Self::DESCRIPTION)
+        "BufWriter inner writer panicked, what data remains unwritten is not known".fmt(f)
     }
 }
 

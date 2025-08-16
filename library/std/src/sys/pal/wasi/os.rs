@@ -1,6 +1,6 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::error::Error as StdError;
+use crate::error::Error;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::wasi::prelude::*;
@@ -105,12 +105,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported on wasm yet"
-    }
-}
+impl Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()

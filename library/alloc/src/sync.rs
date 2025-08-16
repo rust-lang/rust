@@ -4113,11 +4113,6 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueArcUninit<T, A> {
 
 #[stable(feature = "arc_error", since = "1.52.0")]
 impl<T: core::error::Error + ?Sized> core::error::Error for Arc<T> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        core::error::Error::description(&**self)
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn core::error::Error> {
         core::error::Error::cause(&**self)

@@ -1,5 +1,5 @@
 use super::unsupported;
-use crate::error::Error as StdError;
+use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::os::xous::ffi::Error as XousError;
@@ -110,12 +110,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported on this platform yet"
-    }
-}
+impl Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()

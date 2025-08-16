@@ -263,12 +263,7 @@ impl<T> fmt::Display for PoisonError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Error for PoisonError<T> {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "poisoned lock: another task failed inside"
-    }
-}
+impl<T> Error for PoisonError<T> {}
 
 impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
@@ -376,17 +371,6 @@ impl<T> fmt::Display for TryLockError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Error for TryLockError<T> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        match *self {
-            #[cfg(panic = "unwind")]
-            TryLockError::Poisoned(ref p) => p.description(),
-            #[cfg(not(panic = "unwind"))]
-            TryLockError::Poisoned(ref p) => match p._never {},
-            TryLockError::WouldBlock => "try_lock failed because the operation would block",
-        }
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         match *self {

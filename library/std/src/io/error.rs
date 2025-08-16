@@ -1049,15 +1049,6 @@ impl fmt::Display for Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        match self.repr.data() {
-            ErrorData::Os(..) | ErrorData::Simple(..) => self.kind().as_str(),
-            ErrorData::SimpleMessage(msg) => msg.message,
-            ErrorData::Custom(c) => c.error.description(),
-        }
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.repr.data() {
