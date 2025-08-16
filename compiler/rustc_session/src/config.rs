@@ -70,6 +70,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("target-libdir", PrintKind::TargetLibdir),
     ("target-list", PrintKind::TargetList),
     ("target-spec-json", PrintKind::TargetSpecJson),
+    ("target-spec-json-schema", PrintKind::TargetSpecJsonSchema),
     ("tls-models", PrintKind::TlsModels),
     // tidy-alphabetical-end
 ];
@@ -1043,6 +1044,7 @@ pub enum PrintKind {
     TargetLibdir,
     TargetList,
     TargetSpecJson,
+    TargetSpecJsonSchema,
     TlsModels,
     // tidy-alphabetical-end
 }
@@ -2323,7 +2325,8 @@ fn is_print_request_stable(print_kind: PrintKind) -> bool {
         | PrintKind::CheckCfg
         | PrintKind::CrateRootLintLevels
         | PrintKind::SupportedCrateTypes
-        | PrintKind::TargetSpecJson => false,
+        | PrintKind::TargetSpecJson
+        | PrintKind::TargetSpecJsonSchema => false,
         _ => true,
     }
 }
