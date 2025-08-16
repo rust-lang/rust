@@ -1169,6 +1169,14 @@ macro_rules! into_int_impl {
 
 into_int_impl!(u8 u16 u32 u64 u128 char);
 
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl AsRef<str> for AsciiChar {
+    #[inline(always)]
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
 impl [AsciiChar] {
     /// Views this slice of ASCII characters as a UTF-8 `str`.
     #[unstable(feature = "ascii_char", issue = "110998")]
