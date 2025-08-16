@@ -95,6 +95,9 @@ impl Error {
 
     pub(crate) const ZERO_TIMEOUT: Self =
         const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
+
+    pub(crate) const NO_ADDRESSES: Self =
+        const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses");
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

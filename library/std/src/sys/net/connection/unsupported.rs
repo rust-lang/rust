@@ -1,13 +1,13 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sys::unsupported;
 use crate::time::Duration;
 
 pub struct TcpStream(!);
 
 impl TcpStream {
-    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+    pub fn connect<A: ToSocketAddrs>(_: A) -> io::Result<TcpStream> {
         unsupported()
     }
 
@@ -121,7 +121,7 @@ impl fmt::Debug for TcpStream {
 pub struct TcpListener(!);
 
 impl TcpListener {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<TcpListener> {
         unsupported()
     }
 
@@ -171,7 +171,7 @@ impl fmt::Debug for TcpListener {
 pub struct UdpSocket(!);
 
 impl UdpSocket {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -291,7 +291,7 @@ impl UdpSocket {
         self.0
     }
 
-    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
+    pub fn connect<A: ToSocketAddrs>(&self, _: A) -> io::Result<()> {
         self.0
     }
 }

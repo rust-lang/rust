@@ -2,7 +2,7 @@
 
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
-use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::WasiFd;
 use crate::sys::{err2io, unsupported};
@@ -60,7 +60,7 @@ impl FromRawFd for Socket {
 }
 
 impl TcpStream {
-    pub fn connect(_: io::Result<&SocketAddr>) -> io::Result<TcpStream> {
+    pub fn connect<A: ToSocketAddrs>(_: A) -> io::Result<TcpStream> {
         unsupported()
     }
 
@@ -212,7 +212,7 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<TcpListener> {
         unsupported()
     }
 
@@ -316,7 +316,7 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_: A) -> io::Result<UdpSocket> {
         unsupported()
     }
 
@@ -436,7 +436,7 @@ impl UdpSocket {
         unsupported()
     }
 
-    pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
+    pub fn connect<A: ToSocketAddrs>(&self, _: A) -> io::Result<()> {
         unsupported()
     }
 
