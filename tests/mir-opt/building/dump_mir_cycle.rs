@@ -1,3 +1,5 @@
+//@ compile-flags: -Zmir-opt-level=0
+
 #[derive(Debug)]
 pub struct Thing {
     pub next: &'static Thing,
