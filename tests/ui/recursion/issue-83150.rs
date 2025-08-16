@@ -1,4 +1,4 @@
-//~ ERROR overflow evaluating the requirement `Map<&mut std::ops::Range<u8>, {closure@$DIR/issue-83150.rs:12:24: 12:27}>: Iterator`
+//~ ERROR overflow evaluating the requirement `Map<&mut std::ops::Range<u8>, {closure@$DIR/issue-83150.rs:12:24: 12:27}>: MetaSized`
 //@ build-fail
 //@ compile-flags: -Copt-level=0 -Zwrite-long-types-to-disk=yes
 
