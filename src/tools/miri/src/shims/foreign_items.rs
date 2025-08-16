@@ -146,7 +146,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(());
                     }
                     // Skip over items without an explicitly defined symbol name.
-                    if !(attrs.export_name.is_some()
+                    if !(attrs.symbol_name.is_some()
                         || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
                         || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
                     {

@@ -858,7 +858,7 @@ pub fn is_call_from_compiler_builtins_to_upstream_monomorphization<'tcx>(
     instance: Instance<'tcx>,
 ) -> bool {
     fn is_llvm_intrinsic(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-        if let Some(name) = tcx.codegen_fn_attrs(def_id).link_name {
+        if let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name {
             name.as_str().starts_with("llvm.")
         } else {
             false

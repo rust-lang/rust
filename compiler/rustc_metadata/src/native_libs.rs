@@ -701,7 +701,7 @@ impl<'tcx> Collector<'tcx> {
             .link_ordinal
             .map_or(import_name_type, |ord| Some(PeImportNameType::Ordinal(ord)));
 
-        let name = codegen_fn_attrs.link_name.unwrap_or_else(|| self.tcx.item_name(item));
+        let name = codegen_fn_attrs.symbol_name.unwrap_or_else(|| self.tcx.item_name(item));
 
         if self.tcx.sess.target.binary_format == BinaryFormat::Elf {
             let name = name.as_str();
