@@ -6,7 +6,7 @@ LL | #![inline = ""]
    |
    = help: `#[inline]` can only be applied to functions
 
-error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
+error: valid forms for the attribute are `#![inline(always)]`, `#![inline(never)]`, and `#![inline]`
   --> $DIR/lint_on_root.rs:3:1
    |
 LL | #![inline = ""]
@@ -19,7 +19,7 @@ LL | #![inline = ""]
 error: aborting due to 2 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
+error: valid forms for the attribute are `#![inline(always)]`, `#![inline(never)]`, and `#![inline]`
   --> $DIR/lint_on_root.rs:3:1
    |
 LL | #![inline = ""]

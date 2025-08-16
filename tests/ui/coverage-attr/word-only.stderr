@@ -19,12 +19,10 @@ LL |     #![coverage]
    |
 help: try changing it to one of the following valid forms of the attribute
    |
-LL -     #![coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #![coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #![coverage(off)]
+   |                +++++
+LL |     #![coverage(on)]
+   |                ++++
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/word-only.rs:21:1
