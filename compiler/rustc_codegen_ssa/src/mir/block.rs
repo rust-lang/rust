@@ -519,6 +519,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match self.locals[mir::Local::from_usize(1 + va_list_arg_idx)] {
                 LocalRef::Place(va_list) => {
                     bx.va_end(va_list.val.llval);
+
+                    // Explicitly end the lifetime of the `va_list`, this matters for LLVM.
+                    bx.lifetime_end(va_list.val.llval, va_list.layout.size);
                 }
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
