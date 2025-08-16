@@ -151,6 +151,10 @@ extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
   return wrap(ctx);
 }
 
+extern "C" LLVMValueRef LLVMDSOLocalEquivalent(LLVMValueRef GlobalVal) {
+  return wrap(DSOLocalEquivalent::get(unwrap<GlobalValue>(GlobalVal)));
+}
+
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
                                             const char *Target) {
 #if LLVM_VERSION_GE(21, 0)
@@ -618,6 +622,14 @@ LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMTypeRef Ty, LLVMValueRef Source,
   LoadInst *LI = unwrap(B)->CreateLoad(unwrap(Ty), Ptr, Name);
   LI->setAtomic(fromRust(Order));
   return wrap(LI);
+}
+
+extern "C" LLVMValueRef LLVMBuildLoadRelative(LLVMBuilderRef B, LLVMValueRef Ptr,
+                                              LLVMValueRef ByteOffset) {
+  Type *Int32Ty = Type::getInt32Ty(unwrap(B)->getContext());
+  Value *call = unwrap(B)->CreateIntrinsic(
+      Intrinsic::load_relative, {Int32Ty}, {unwrap(Ptr), unwrap(ByteOffset)});
+  return wrap(call);
 }
 
 extern "C" LLVMValueRef LLVMRustBuildAtomicStore(LLVMBuilderRef B,

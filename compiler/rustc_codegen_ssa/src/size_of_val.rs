@@ -33,11 +33,15 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
                 .get_usize(bx, vtable, t);
 
-            // Size is always <= isize::MAX.
-            let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
-            bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
-            // Alignment is always nonzero.
-            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+            // FIXME: The range metadatat can only be applied to load instructions, but it probably
+            // can also be changed to apply to the load_relative intrinsic.
+            if !bx.tcx().sess.opts.unstable_opts.experimental_relative_rust_abi_vtables {
+                // Size is always <= isize::MAX.
+                let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+                bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
+                // Alignment is always nonzero.
+                bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+            }
 
             (size, align)
         }
