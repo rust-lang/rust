@@ -1219,7 +1219,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingMode(ByRef::Yes(_), _),
+                binding_mode: BindingMode(ByRef::Yes(..), _),
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
