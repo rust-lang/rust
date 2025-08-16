@@ -43,13 +43,8 @@ pub use type_certainty::expr_type_is_certain;
 /// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     cx.maybe_typeck_results()
-        .and_then(|results| {
-            if results.hir_owner == hir_ty.hir_id.owner {
-                results.node_type_opt(hir_ty.hir_id)
-            } else {
-                None
-            }
-        })
+        .filter(|results| results.hir_owner == hir_ty.hir_id.owner)
+        .and_then(|results| results.node_type_opt(hir_ty.hir_id))
         .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
 }
 
@@ -475,6 +470,11 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     needs_ordered_drop_inner(cx, ty, &mut FxHashSet::default())
 }
 
+/// Returns `true` if `ty` denotes an `unsafe fn`.
+pub fn is_unsafe_fn<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_fn() && ty.fn_sig(cx.tcx).safety().is_unsafe()
+}
+
 /// Peels off all references on the type. Returns the underlying type, the number of references
 /// removed, and whether the pointer is ultimately mutable or not.
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
@@ -488,15 +488,10 @@ pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
     f(ty, 0, Mutability::Mut)
 }
 
-/// Returns `true` if the given type is an `unsafe` function.
-pub fn type_is_unsafe_function<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_fn() && ty.fn_sig(cx.tcx).safety().is_unsafe()
-}
-
 /// Returns the base type for HIR references and pointers.
 pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-    match ty.kind {
-        TyKind::Ptr(ref mut_ty) | TyKind::Ref(_, ref mut_ty) => walk_ptrs_hir_ty(mut_ty.ty),
+    match &ty.kind {
+        TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => walk_ptrs_hir_ty(mut_ty.ty),
         _ => ty,
     }
 }
