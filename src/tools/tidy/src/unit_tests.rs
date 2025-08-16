@@ -61,6 +61,7 @@ pub fn check(root_path: &Path, stdlib: bool, bad: &mut bool) {
                 || path.ends_with("library/alloc/src/collections/linked_list/tests.rs")
                 || path.ends_with("library/alloc/src/collections/vec_deque/tests.rs")
                 || path.ends_with("library/alloc/src/raw_vec/tests.rs")
+                || path.ends_with("library/alloc/src/wtf8/tests.rs")
         }
     };
 

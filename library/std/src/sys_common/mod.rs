@@ -21,7 +21,6 @@
 mod tests;
 
 pub mod wstr;
-pub mod wtf8;
 
 // common error constructors
 

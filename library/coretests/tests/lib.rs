@@ -194,6 +194,7 @@ mod time;
 mod tuple;
 mod unicode;
 mod waker;
+mod wtf8;
 
 /// Copied from `std::test_helpers::test_rng`, see that function for rationale.
 #[track_caller]

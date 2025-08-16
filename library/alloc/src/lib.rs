@@ -159,6 +159,7 @@
 #![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(unwrap_infallible)]
+#![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
 // Language features:
@@ -232,6 +233,8 @@ pub mod sync;
 #[cfg(all(not(no_global_oom_handling), not(no_rc), not(no_sync)))]
 pub mod task;
 pub mod vec;
+#[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
+pub mod wtf8;
 
 #[doc(hidden)]
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
