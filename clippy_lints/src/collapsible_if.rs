@@ -169,8 +169,7 @@ impl CollapsibleIf {
             && cx.tcx.hir_attrs(inner.hir_id).is_empty()
             && let ExprKind::If(check_inner, _, None) = &inner.kind
             && self.eligible_condition(cx, check_inner)
-            && let ctxt = expr.span.ctxt()
-            && inner.span.ctxt() == ctxt
+            && expr.span.eq_ctxt(inner.span)
             && !block_starts_with_significant_tokens(cx, then, inner, self.lint_commented_code)
         {
             span_lint_and_then(
