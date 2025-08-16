@@ -180,6 +180,7 @@ fn parse_rust_feature_flag<'a>(
             while let Some(new_feature) = new_features.pop() {
                 if features.insert(new_feature) {
                     if let Some(implied_features) = inverse_implied_features.get(&new_feature) {
+                        #[allow(rustc::potential_query_instability)]
                         new_features.extend(implied_features)
                     }
                 }

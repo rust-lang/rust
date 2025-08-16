@@ -14,6 +14,7 @@ pkgs.mkShell {
   packages = [
     pkgs.git
     pkgs.nix
+    pkgs.glibc.static
     x
     # Get the runtime deps of the x wrapper
   ] ++ lists.flatten (attrsets.attrValues env);

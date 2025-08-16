@@ -1862,7 +1862,6 @@ impl Build {
                     self.create_dir(&dst);
                     self.cp_link_filtered_recurse(&path, &dst, &relative, filter);
                 } else {
-                    let _ = fs::remove_file(&dst);
                     self.copy_link(&path, &dst, FileType::Regular);
                 }
             }

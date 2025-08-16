@@ -14,10 +14,10 @@ macro_rules! attr_incomplete_4 { attr() {} => }
 //~^ ERROR macro definition ended unexpectedly
 
 macro_rules! attr_noparens_1 { attr{} {} => {} }
-//~^ ERROR macro attribute argument matchers require parentheses
+//~^ ERROR `attr` rule argument matchers require parentheses
 
 macro_rules! attr_noparens_2 { attr[] {} => {} }
-//~^ ERROR macro attribute argument matchers require parentheses
+//~^ ERROR `attr` rule argument matchers require parentheses
 
 macro_rules! attr_noparens_3 { attr _ {} => {} }
 //~^ ERROR invalid macro matcher

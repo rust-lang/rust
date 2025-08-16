@@ -9,6 +9,7 @@ use rustc_abi::TargetDataLayoutErrors;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
 use rustc_hir::RustcVersion;
+use rustc_hir::attrs::{MirDialect, MirPhase};
 use rustc_macros::Subdiagnostic;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
@@ -309,6 +310,28 @@ impl IntoDiagArg for hir::def::Namespace {
 impl IntoDiagArg for ExprPrecedence {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Number(self as i32)
+    }
+}
+
+impl IntoDiagArg for MirDialect {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirDialect::Analysis => "analysis",
+            MirDialect::Built => "built",
+            MirDialect::Runtime => "runtime",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
+    }
+}
+
+impl IntoDiagArg for MirPhase {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirPhase::Initial => "initial",
+            MirPhase::PostCleanup => "post-cleanup",
+            MirPhase::Optimized => "optimized",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
     }
 }
 

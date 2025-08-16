@@ -916,6 +916,12 @@ fn copy_src_dirs(
     exclude_dirs: &[&str],
     dst_dir: &Path,
 ) {
+    // The src directories should be relative to `base`, we depend on them not being absolute
+    // paths below.
+    for src_dir in src_dirs {
+        assert!(Path::new(src_dir).is_relative());
+    }
+
     // Iterating, filtering and copying a large number of directories can be quite slow.
     // Avoid doing it in dry run (and thus also tests).
     if builder.config.dry_run() {
@@ -923,6 +929,7 @@ fn copy_src_dirs(
     }
 
     fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
+        // The paths are relative, e.g. `llvm-project/...`.
         let spath = match path.to_str() {
             Some(path) => path,
             None => return false,
@@ -930,65 +937,53 @@ fn copy_src_dirs(
         if spath.ends_with('~') || spath.ends_with(".pyc") {
             return false;
         }
+        // Normalize slashes
+        let spath = spath.replace("\\", "/");
 
-        const LLVM_PROJECTS: &[&str] = &[
+        static LLVM_PROJECTS: &[&str] = &[
             "llvm-project/clang",
-            "llvm-project\\clang",
             "llvm-project/libunwind",
-            "llvm-project\\libunwind",
             "llvm-project/lld",
-            "llvm-project\\lld",
             "llvm-project/lldb",
-            "llvm-project\\lldb",
             "llvm-project/llvm",
-            "llvm-project\\llvm",
             "llvm-project/compiler-rt",
-            "llvm-project\\compiler-rt",
             "llvm-project/cmake",
-            "llvm-project\\cmake",
             "llvm-project/runtimes",
-            "llvm-project\\runtimes",
             "llvm-project/third-party",
-            "llvm-project\\third-party",
         ];
-        if spath.contains("llvm-project")
-            && !spath.ends_with("llvm-project")
-            && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))
-        {
-            return false;
-        }
+        if spath.starts_with("llvm-project") && spath != "llvm-project" {
+            if !LLVM_PROJECTS.iter().any(|path| spath.starts_with(path)) {
+                return false;
+            }
 
-        // Keep only these third party libraries
-        const LLVM_THIRD_PARTY: &[&str] =
-            &["llvm-project/third-party/siphash", "llvm-project\\third-party\\siphash"];
-        if (spath.starts_with("llvm-project/third-party")
-            || spath.starts_with("llvm-project\\third-party"))
-            && !(spath.ends_with("llvm-project/third-party")
-                || spath.ends_with("llvm-project\\third-party"))
-            && !LLVM_THIRD_PARTY.iter().any(|path| spath.contains(path))
-        {
-            return false;
-        }
+            // Keep siphash third-party dependency
+            if spath.starts_with("llvm-project/third-party")
+                && spath != "llvm-project/third-party"
+                && !spath.starts_with("llvm-project/third-party/siphash")
+            {
+                return false;
+            }
 
-        const LLVM_TEST: &[&str] = &["llvm-project/llvm/test", "llvm-project\\llvm\\test"];
-        if LLVM_TEST.iter().any(|path| spath.contains(path))
-            && (spath.ends_with(".ll") || spath.ends_with(".td") || spath.ends_with(".s"))
-        {
-            return false;
+            if spath.starts_with("llvm-project/llvm/test")
+                && (spath.ends_with(".ll") || spath.ends_with(".td") || spath.ends_with(".s"))
+            {
+                return false;
+            }
         }
 
         // Cargo tests use some files like `.gitignore` that we would otherwise exclude.
-        const CARGO_TESTS: &[&str] = &["tools/cargo/tests", "tools\\cargo\\tests"];
-        if CARGO_TESTS.iter().any(|path| spath.contains(path)) {
+        if spath.starts_with("tools/cargo/tests") {
             return true;
         }
 
-        let full_path = Path::new(dir).join(path);
-        if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
-            return false;
+        if !exclude_dirs.is_empty() {
+            let full_path = Path::new(dir).join(path);
+            if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
+                return false;
+            }
         }
 
-        let excludes = [
+        static EXCLUDES: &[&str] = &[
             "CVS",
             "RCS",
             "SCCS",
@@ -1011,7 +1006,15 @@ fn copy_src_dirs(
             ".hgrags",
             "_darcs",
         ];
-        !path.iter().map(|s| s.to_str().unwrap()).any(|s| excludes.contains(&s))
+
+        // We want to check if any component of `path` doesn't contain the strings in `EXCLUDES`.
+        // However, since we traverse directories top-down in `Builder::cp_link_filtered`,
+        // it is enough to always check only the last component:
+        // - If the path is a file, we will iterate to it and then check it's filename
+        // - If the path is a dir, if it's dir name contains an excluded string, we will not even
+        //   recurse into it.
+        let last_component = path.iter().next_back().map(|s| s.to_str().unwrap()).unwrap();
+        !EXCLUDES.contains(&last_component)
     }
 
     // Copy the directories using our filter

@@ -70,7 +70,7 @@ expand_invalid_fragment_specifier =
     invalid fragment specifier `{$fragment}`
     .help = {$help}
 
-expand_macro_args_bad_delim = macro attribute argument matchers require parentheses
+expand_macro_args_bad_delim = `{$rule_kw}` rule argument matchers require parentheses
 expand_macro_args_bad_delim_sugg = the delimiters should be `(` and `)`
 
 expand_macro_body_stability =

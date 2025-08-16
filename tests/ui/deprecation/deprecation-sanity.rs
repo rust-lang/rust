@@ -42,4 +42,9 @@ impl Default for X {
     }
 }
 
+unsafe extern "C" {
+    #[deprecated]
+    static FOO: std::ffi::c_int;
+}
+
 fn main() { }
