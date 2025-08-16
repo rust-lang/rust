@@ -289,13 +289,91 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             }
             // Other ways of comparing integers and pointers can never be known for sure.
             (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
-            // FIXME: return a `1` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them (see e.g. #73722).
-            // FIXME: return `0` for at least some comparisons where we can reliably
-            // determine the result of runtime inequality tests at compile-time.
-            // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => 2,
+            (Scalar::Ptr(a, _), Scalar::Ptr(b, _)) => {
+                let (a_prov, a_offset) = a.prov_and_relative_offset();
+                let (b_prov, b_offset) = b.prov_and_relative_offset();
+                let a_allocid = a_prov.alloc_id();
+                let b_allocid = b_prov.alloc_id();
+                let a_info = self.get_alloc_info(a_allocid);
+                let b_info = self.get_alloc_info(b_allocid);
+
+                // Check if the pointers cannot be equal due to alignment
+                if a_info.align > Align::ONE && b_info.align > Align::ONE {
+                    let min_align = Ord::min(a_info.align.bytes(), b_info.align.bytes());
+                    let a_residue = a_offset.bytes() % min_align;
+                    let b_residue = b_offset.bytes() % min_align;
+                    if a_residue != b_residue {
+                        // If the two pointers have a different residue from their
+                        // common alignment, they cannot be equal.
+                        return interp_ok(0);
+                    }
+                    // The pointers have the same residue modulo their common alignment,
+                    // so they could be equal. Try the other checks.
+                }
+
+                if a_allocid == b_allocid {
+                    match self.tcx.try_get_global_alloc(a_allocid) {
+                        None => 2,
+                        // A static cannot be duplicated, so if two pointers are into the same
+                        // static, they are equal if and only if their offsets into the static
+                        // are equal
+                        Some(GlobalAlloc::Static(_)) => (a_offset == b_offset) as u8,
+                        // Functions and vtables can be duplicated (and deduplicated), so we
+                        // cannot be sure of runtime equality of pointers to the same one, (or the
+                        // runtime inequality of pointers to different ones) (see e.g. #73722).
+                        Some(GlobalAlloc::Function { .. } | GlobalAlloc::VTable(..)) => 2,
+                        // FIXME: Can these be duplicated (or deduplicated)?
+                        Some(GlobalAlloc::Memory(..) | GlobalAlloc::TypeId { .. }) => 2,
+                    }
+                } else {
+                    if let (Some(GlobalAlloc::Static(a_did)), Some(GlobalAlloc::Static(b_did))) = (
+                        self.tcx.try_get_global_alloc(a_allocid),
+                        self.tcx.try_get_global_alloc(b_allocid),
+                    ) {
+                        debug_assert_ne!(
+                            a_did, b_did,
+                            "same static item DefId had two different AllocIds? {a_allocid:?} != {b_allocid:?}, {a_did:?} == {b_did:?}"
+                        );
+
+                        if a_info.size == Size::ZERO || b_info.size == Size::ZERO {
+                            // One or both allocations is zero-sized, so we can't know if the
+                            // pointers are (in)equal.
+                            // FIXME: Can zero-sized static be "within" non-zero-sized statics?
+                            // Conservatively we say yes, since that doesn't cause them to
+                            // "overlap" any bytes, but if not, then we could delete this branch
+                            // and have the other branches handle ZST allocations.
+                            2
+                        } else if a_offset > a_info.size || b_offset > b_info.size {
+                            // One or both pointers are out of bounds of their allocation,
+                            // so conservatively say we don't know.
+                            // FIXME: we could reason about how far out of bounds the pointers are,
+                            // e.g. two pointers cannot be equal if them being equal would require
+                            // their statics to overlap.
+                            2
+                        } else if (a_offset == Size::ZERO && b_offset == b_info.size)
+                            || (a_offset == a_info.size && b_offset == Size::ZERO)
+                        {
+                            // The pointers are on opposite ends of different allocations, we
+                            // cannot know if they are equal, since the allocations may end up
+                            // adjacent at runtime.
+                            2
+                        } else {
+                            // The pointers are within (or one past the end of) different
+                            // non-zero-sized static allocations, and they are not at oppotiste
+                            // ends, so we know they are not equal because statics cannot
+                            // overlap or be deduplicated.
+                            0
+                        }
+                    } else {
+                        // Even if one of them is a static, as per https://doc.rust-lang.org/nightly/reference/items/static-items.html#r-items.static.storage-disjointness
+                        // immutable statics can overlap with other kinds of allocations somtimes.
+                        // FIXME: We could be more decisive for mutable statics, which cannot
+                        // overlap with other kinds of allocations.
+                        // FIXME: Can we determine any other cases?
+                        2
+                    }
+                }
+            }
         })
     }
 }
