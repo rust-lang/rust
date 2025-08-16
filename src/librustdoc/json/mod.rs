@@ -175,15 +175,8 @@ fn target(sess: &rustc_session::Session) -> types::Target {
     }
 }
 
-impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
-    fn descr() -> &'static str {
-        "json"
-    }
-
-    const RUN_ON_MODULE: bool = false;
-    type ModuleData = ();
-
-    fn init(
+impl<'tcx> JsonRenderer<'tcx> {
+    pub(crate) fn init(
         krate: clean::Crate,
         options: RenderOptions,
         cache: Cache,
@@ -205,6 +198,15 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             krate,
         ))
     }
+}
+
+impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
+    fn descr() -> &'static str {
+        "json"
+    }
+
+    const RUN_ON_MODULE: bool = false;
+    type ModuleData = ();
 
     fn save_module_data(&mut self) -> Self::ModuleData {
         unreachable!("RUN_ON_MODULE = false, should never call save_module_data")
