@@ -1020,11 +1020,19 @@ unsafe extern "C" {
         ModuleID: *const c_char,
         C: &Context,
     ) -> &Module;
-    pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) fn LLVMPrintModuleToFile(
+        M: &Module,
+        Name: *const c_char,
+        Error_message: *mut c_char,
+    );
+    pub(crate) fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) fn LLVMDisposeModule(M: &Module);
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
+
+    pub(crate) fn LLVMSetTarget(M: &Module, Name: *const c_char);
 
     /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
     pub(crate) fn LLVMAppendModuleInlineAsm(
@@ -1186,6 +1194,12 @@ unsafe extern "C" {
     // Operations on global variables
     pub(crate) safe fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub(crate) fn LLVMAddGlobal<'a>(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
+    pub(crate) fn LLVMAddGlobalInAddressSpace<'a>(
+        M: &'a Module,
+        Ty: &'a Type,
+        Name: *const c_char,
+        addrspace: c_uint,
+    ) -> &'a Value;
     pub(crate) fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub(crate) fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
@@ -1210,6 +1224,7 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
     pub(crate) fn LLVMLookupIntrinsicID(Name: *const c_char, NameLen: size_t) -> c_uint;
@@ -1239,6 +1254,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub(crate) fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
     pub(crate) fn LLVMGetOperand(Val: &Value, Index: c_uint) -> Option<&Value>;
+    pub(crate) fn LLVMGetNextInstruction(Val: &Value) -> Option<&Value>;
+    pub(crate) fn LLVMInstructionEraseFromParent(Val: &Value);
 
     // Operations on call sites
     pub(crate) fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
