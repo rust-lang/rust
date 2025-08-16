@@ -3,9 +3,11 @@
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx2] compile-flags: -C target-feature=+avx2
 //@ [x86-avx2] needs-llvm-components: x86
+//@ [x86-avx2] filecheck-flags: --check-prefixes=CHECK,x86-avx2
 //@ [x86-avx512] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
 //@ [x86-avx512] needs-llvm-components: x86
+//@ [x86-avx512] filecheck-flags: --check-prefixes=CHECK,x86-avx512
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 

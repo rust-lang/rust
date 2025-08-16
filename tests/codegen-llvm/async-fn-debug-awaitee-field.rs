@@ -5,7 +5,9 @@
 
 //@ revisions: MSVC NONMSVC
 //@[MSVC] only-msvc
+//@[MSVC] filecheck-flags: --check-prefixes=CHECK,MSVC
 //@[NONMSVC] ignore-msvc
+//@[NONMSVC] filecheck-flags: --check-prefixes=CHECK,NONMSVC
 
 //@ compile-flags: -C debuginfo=2 -Copt-level=0
 //@ edition: 2018

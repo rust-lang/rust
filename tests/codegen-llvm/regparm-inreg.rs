@@ -8,9 +8,13 @@
 
 //@ revisions:regparm0 regparm1 regparm2 regparm3
 //@[regparm0] compile-flags: -Zregparm=0
+//@[regparm0] filecheck-flags: --check-prefixes=CHECK,regparm0
 //@[regparm1] compile-flags: -Zregparm=1
+//@[regparm1] filecheck-flags: --check-prefixes=CHECK,regparm1
 //@[regparm2] compile-flags: -Zregparm=2
+//@[regparm2] filecheck-flags: --check-prefixes=CHECK,regparm2
 //@[regparm3] compile-flags: -Zregparm=3
+//@[regparm3] filecheck-flags: --check-prefixes=CHECK,regparm3
 
 #![crate_type = "lib"]
 #![no_core]

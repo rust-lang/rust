@@ -3,7 +3,9 @@
 //@ only-64bit
 //@ revisions: LLVM20 LLVM21
 //@ [LLVM21] min-llvm-version: 21
+//@ [LLVM21] filecheck-flags: --check-prefixes=CHECK,LLVM21
 //@ [LLVM20] max-llvm-major-version: 20
+//@ [LLVM20] filecheck-flags: --check-prefixes=CHECK,LLVM20
 
 // The `derive(PartialEq)` on enums with field-less variants compares discriminants,
 // so make sure we emit that in some reasonable way.

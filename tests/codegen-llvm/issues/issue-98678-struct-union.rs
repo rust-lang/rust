@@ -4,7 +4,9 @@
 
 //@ revisions: MSVC NONMSVC
 //@[MSVC] only-msvc
+//@[MSVC] filecheck-flags: --check-prefixes=CHECK,MSVC
 //@[NONMSVC] ignore-msvc
+//@[NONMSVC] filecheck-flags: --check-prefixes=CHECK,NONMSVC
 //@ compile-flags: --crate-type=lib -Copt-level=0 -Cdebuginfo=2 -Zdebug-info-type-line-numbers=true
 
 // NONMSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-struct-union.rs{{".*}})

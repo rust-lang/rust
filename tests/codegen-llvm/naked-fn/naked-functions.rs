@@ -2,14 +2,19 @@
 //@ revisions: linux win_x86 win_i686 macos thumb
 //
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[linux] filecheck-flags: --check-prefixes=CHECK,linux
 //@[linux] needs-llvm-components: x86
 //@[win_x86] compile-flags: --target x86_64-pc-windows-gnu
+//@[win_x86] filecheck-flags: --check-prefixes=CHECK,win_x86
 //@[win_x86] needs-llvm-components: x86
 //@[win_i686] compile-flags: --target i686-pc-windows-gnu
+//@[win_i686] filecheck-flags: --check-prefixes=CHECK,win_i686
 //@[win_i686] needs-llvm-components: x86
 //@[macos] compile-flags: --target aarch64-apple-darwin
+//@[macos] filecheck-flags: --check-prefixes=CHECK,macos
 //@[macos] needs-llvm-components: aarch64
 //@[thumb] compile-flags: --target thumbv7em-none-eabi
+//@[thumb] filecheck-flags: --check-prefixes=CHECK,thumb
 //@[thumb] needs-llvm-components: arm
 
 #![crate_type = "lib"]

@@ -7,6 +7,9 @@
 //@ [A64] needs-llvm-components: aarch64
 //@ [ppc64le] compile-flags: --target powerpc64le-unknown-linux-gnu -Crelocation-model=static
 //@ [ppc64le] needs-llvm-components: powerpc
+//@ [x64] filecheck-flags: --check-prefixes=CHECK,x64
+//@ [A64] filecheck-flags: --check-prefixes=CHECK,A64
+//@ [ppc64le] filecheck-flags: --check-prefixes=CHECK,ppc64le
 
 #![feature(no_core, lang_items)]
 #![no_core]

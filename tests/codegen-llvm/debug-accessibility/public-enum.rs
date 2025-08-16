@@ -3,7 +3,9 @@
 
 //@ revisions: MSVC NONMSVC
 //@[MSVC] only-msvc
+//@[MSVC] filecheck-flags: --check-prefixes=MSVC
 //@[NONMSVC] ignore-msvc
+//@[NONMSVC] filecheck-flags: --check-prefixes=NONMSVC
 
 //@ compile-flags: -C debuginfo=2
 

@@ -4,7 +4,9 @@
 
 //@ revisions: MSVC NONMSVC
 //@[MSVC] only-msvc
+//@[MSVC] filecheck-flags: --check-prefixes=CHECK,MSVC
 //@[NONMSVC] ignore-msvc
+//@[NONMSVC] filecheck-flags: --check-prefixes=CHECK,NONMSVC
 
 // Use the v0 symbol mangling scheme to codegen order independent of rustc version.
 // Unnamed items like shims are generated in lexicographical order of their symbol name and in the

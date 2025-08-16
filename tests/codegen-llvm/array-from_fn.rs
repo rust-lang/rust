@@ -1,6 +1,8 @@
 //@ revisions: NORMAL OPT
 //@ [NORMAL] compile-flags: -C opt-level=0 -C debuginfo=2
+//@ [NORMAL] filecheck-flags: --check-prefix=NORMAL
 //@ [OPT] compile-flags: -C opt-level=s -C debuginfo=0
+//@ [OPT] filecheck-flags: --check-prefix=OPT
 
 #![crate_type = "lib"]
 #![feature(array_from_fn)]

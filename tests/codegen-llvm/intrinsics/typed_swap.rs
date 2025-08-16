@@ -1,6 +1,8 @@
 //@ revisions: OPT0 OPT3
 //@ [OPT0] compile-flags: -Copt-level=0
+//@ [OPT0] filecheck-flags: --check-prefixes=CHECK,OPT0
 //@ [OPT3] compile-flags: -Copt-level=3
+//@ [OPT3] filecheck-flags: --check-prefixes=CHECK,OPT3
 //@ compile-flags: -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
 // ignore-tidy-linelength (the memcpy calls get long)

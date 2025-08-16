@@ -3,6 +3,8 @@
 //@[NORMAL] ignore-windows
 //@[WIN] only-windows
 //@[WIN] only-x86_64
+//@[NORMAL] filecheck-flags: --check-prefixes=NORMAL
+//@[WIN] filecheck-flags: --check-prefixes=WIN
 
 #![crate_type = "lib"]
 #![feature(rust_cold_cc)]

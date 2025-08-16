@@ -4,10 +4,15 @@
 //@ revisions: undefined none branch return full
 //@ needs-llvm-components: x86
 // [undefined] no extra compile-flags
+//@ [undefined] filecheck-flags: --check-prefix=undefined
 //@ [none] compile-flags: -Z cf-protection=none
+//@ [none] filecheck-flags: --check-prefix=none
 //@ [branch] compile-flags: -Z cf-protection=branch
+//@ [branch] filecheck-flags: --check-prefix=branch
 //@ [return] compile-flags: -Z cf-protection=return
+//@ [return] filecheck-flags: --check-prefix=return
 //@ [full] compile-flags: -Z cf-protection=full
+//@ [full] filecheck-flags: --check-prefix=full
 //@ compile-flags: --target x86_64-unknown-linux-gnu
 
 #![crate_type = "lib"]

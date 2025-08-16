@@ -10,6 +10,6 @@
 extern crate minicore;
 use minicore::*;
 
-// nvptx: define ptx_kernel void @fun(i32
+// CHECK: define ptx_kernel void @fun(i32
 #[no_mangle]
 pub extern "gpu-kernel" fn fun(_: i32) {}

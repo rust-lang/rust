@@ -1,7 +1,9 @@
 //@ compile-flags: -Coverflow-checks=no -Copt-level=3
 //@ revisions: YES NO
-//@ [YES]compile-flags: -Zfewer-names=yes
+//@ [YES] compile-flags: -Zfewer-names=yes
+//@ [YES] filecheck-flags: --check-prefixes=YES
 //@ [NO] compile-flags: -Zfewer-names=no
+//@ [NO] filecheck-flags: --check-prefixes=NO
 #![crate_type = "lib"]
 
 #[no_mangle]

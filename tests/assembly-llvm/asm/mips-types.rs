@@ -5,6 +5,8 @@
 //@[mips32] needs-llvm-components: mips
 //@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
 //@[mips64] needs-llvm-components: mips
+//@[mips32] filecheck-flags: --check-prefixes=CHECK,mips32
+//@[mips64] filecheck-flags: --check-prefixes=CHECK,mips64
 //@ compile-flags: -Zmerge-functions=disabled
 
 #![feature(no_core, asm_experimental_arch)]

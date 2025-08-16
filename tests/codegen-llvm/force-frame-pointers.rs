@@ -1,6 +1,8 @@
 //@ revisions: Always NonLeaf
 //@ [Always] compile-flags: -Cforce-frame-pointers=yes
+//@ [Always] filecheck-flags: --check-prefix=Always
 //@ [NonLeaf] compile-flags: -Cforce-frame-pointers=non-leaf
+//@ [NonLeaf] filecheck-flags: --check-prefix=NonLeaf
 //@ compile-flags: -Zunstable-options
 //@ compile-flags: -C no-prepopulate-passes -Copt-level=0
 //@ [NonLeaf] ignore-illumos

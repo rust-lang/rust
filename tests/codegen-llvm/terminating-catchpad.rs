@@ -2,6 +2,9 @@
 //@[emscripten] compile-flags: --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
 //@[wasi] compile-flags: --target wasm32-wasip1 -C panic=unwind
 //@[seh] compile-flags: --target x86_64-pc-windows-msvc
+//@[emscripten] filecheck-flags: --check-prefix=emscripten
+//@[wasi] filecheck-flags: --check-prefix=wasi
+//@[seh] filecheck-flags: --check-prefix=seh
 //@[emscripten] needs-llvm-components: webassembly
 //@[wasi] needs-llvm-components: webassembly
 //@[seh] needs-llvm-components: x86

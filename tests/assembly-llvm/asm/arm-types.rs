@@ -7,6 +7,8 @@
 //@[d32] compile-flags: -C target-feature=+d32
 //@[neon] compile-flags: -C target-feature=+neon --cfg d32
 //@[neon] filecheck-flags: --check-prefix d32
+//@[d32] filecheck-flags: --check-prefixes=CHECK,d32
+//@[neon] filecheck-flags: --check-prefixes=CHECK,neon
 //@ needs-llvm-components: arm
 
 #![feature(no_core, repr_simd, f16)]
