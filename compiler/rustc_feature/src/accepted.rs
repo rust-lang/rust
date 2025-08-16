@@ -203,6 +203,9 @@ declare_features! (
     (accepted, expr_fragment_specifier_2024, "1.83.0", Some(123742)),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
+    /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
+    /// for functions with varargs.
+    (accepted, extended_varargs_abi_support, "CURRENT_RUSTC_VERSION", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -212,6 +215,8 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409)),
     /// Allows access to crate names passed via `--extern` through prelude.
     (accepted, extern_prelude, "1.30.0", Some(44660)),
+    /// Allows using `system` as a calling convention with varargs.
+    (accepted, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
     /// Allows using F16C intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, f16c_target_feature, "1.68.0", Some(44839)),
     /// Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
