@@ -45,8 +45,7 @@ impl hash::Hash for ByteStr {
 #[unstable(feature = "bstr_internals", issue = "none")]
 macro_rules! impl_partial_eq {
     ($lhs:ty, $rhs:ty) => {
-        #[allow(unused_lifetimes)]
-        impl<'a> PartialEq<$rhs> for $lhs {
+        impl PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool {
                 let other: &[u8] = other.as_ref();
@@ -54,8 +53,7 @@ macro_rules! impl_partial_eq {
             }
         }
 
-        #[allow(unused_lifetimes)]
-        impl<'a> PartialEq<$lhs> for $rhs {
+        impl PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool {
                 let this: &[u8] = self.as_ref();
@@ -76,9 +74,8 @@ macro_rules! impl_partial_eq_ord {
     ($lhs:ty, $rhs:ty) => {
         $crate::bstr::impl_partial_eq!($lhs, $rhs);
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialOrd<$rhs> for $lhs {
+        impl PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<Ordering> {
                 let other: &[u8] = other.as_ref();
@@ -86,9 +83,8 @@ macro_rules! impl_partial_eq_ord {
             }
         }
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
-        impl<'a> PartialOrd<$lhs> for $rhs {
+        impl PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<Ordering> {
                 let this: &[u8] = self.as_ref();
@@ -107,7 +103,6 @@ pub use impl_partial_eq_ord;
 #[unstable(feature = "bstr_internals", issue = "none")]
 macro_rules! impl_partial_eq_n {
     ($lhs:ty, $rhs:ty) => {
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<const N: usize> PartialEq<$rhs> for $lhs {
             #[inline]
@@ -117,7 +112,6 @@ macro_rules! impl_partial_eq_n {
             }
         }
 
-        #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<const N: usize> PartialEq<$lhs> for $rhs {
             #[inline]
