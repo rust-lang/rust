@@ -5,9 +5,11 @@ use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use super::{AcceptMapping, AttributeParser};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AllowedTargets, FinalizeContext, Stage};
+use crate::context::{FinalizeContext, Stage};
 use crate::session_diagnostics;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::Allow;
+
 #[derive(Default)]
 pub(crate) struct ConfusablesParser {
     confusables: ThinVec<Symbol>,

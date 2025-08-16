@@ -5,10 +5,12 @@ use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Error};
+
 pub(crate) struct MustUseParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MustUseParser {

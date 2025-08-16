@@ -7,9 +7,11 @@ use thin_vec::ThinVec;
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Warn};
+
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];

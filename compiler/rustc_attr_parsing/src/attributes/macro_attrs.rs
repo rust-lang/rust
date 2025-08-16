@@ -6,10 +6,12 @@ use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::{Allow, Error, Warn};
-use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Error, Warn};
+
 pub(crate) struct MacroEscapeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];

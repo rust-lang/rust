@@ -2,7 +2,9 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::{ALL_TARGETS, AllowedTargets, Stage};
+use crate::context::Stage;
+use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+
 pub(crate) struct MayDangleParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MayDangleParser {
     const PATH: &[Symbol] = &[sym::may_dangle];

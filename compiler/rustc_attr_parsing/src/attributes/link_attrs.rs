@@ -7,10 +7,14 @@ use rustc_span::{Span, Symbol, sym};
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::MaybeWarn::Allow;
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage, parse_single_integer};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
+use crate::target_checking::Policy::Allow;
+use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+
+use super::util::parse_single_integer;
+
 pub(crate) struct LinkNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {

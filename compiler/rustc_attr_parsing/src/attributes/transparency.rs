@@ -5,9 +5,11 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::{Symbol, sym};
 
 use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::Allow;
+
 pub(crate) struct TransparencyParser;
 
 // FIXME(jdonszelmann): make these proper diagnostics

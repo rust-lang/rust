@@ -5,10 +5,12 @@ use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
 use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Error};
+
 pub(crate) struct DeprecationParser;
 
 fn get<S: Stage>(

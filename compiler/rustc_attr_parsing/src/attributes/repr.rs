@@ -6,11 +6,12 @@ use rustc_hir::{MethodKind, Target};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
 use crate::session_diagnostics;
 use crate::session_diagnostics::IncorrectReprFormatGenericCause;
+use crate::target_checking::Policy::Allow;
+use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 /// Parse #[repr(...)] forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see

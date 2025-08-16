@@ -10,9 +10,11 @@ use rustc_span::{Symbol, sym};
 
 use super::{AcceptContext, AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AllowedTargets, Stage};
+use crate::context::Stage;
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Warn};
+
 pub(crate) struct InlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for InlineParser {

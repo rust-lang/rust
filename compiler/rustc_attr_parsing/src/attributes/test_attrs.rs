@@ -5,9 +5,11 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_span::{Symbol, sym};
 
 use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Error};
+
 pub(crate) struct IgnoreParser;
 
 impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {

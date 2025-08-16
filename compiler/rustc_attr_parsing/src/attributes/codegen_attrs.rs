@@ -8,10 +8,11 @@ use super::{
     AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
     NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Warn};
 
 pub(crate) struct OptimizeParser;
 
