@@ -1,5 +1,3 @@
-//@ check-pass
-
 use crate::a::HeaderMap;
 
 mod b {
@@ -19,4 +17,5 @@ mod a {
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;
+    //~^ ERROR ambiguous
 }

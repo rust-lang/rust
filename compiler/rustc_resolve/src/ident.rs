@@ -725,12 +725,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             // Found another solution, if the first one was "weak", report an error.
                             let (res, innermost_res) = (binding.res(), innermost_binding.res());
 
-                            // don't report ambiguity errors when we have a glob resolution with a
-                            // non-glob innermost resolution.
-                            let ignore_innermost_result = flags.contains(Flags::GLOB_MODULE)
-                                && innermost_flags.contains(Flags::NON_GLOB_MODULE);
-
-                            if res != innermost_res && !ignore_innermost_result {
+                            if res != innermost_res {
                                 let is_builtin = |res| {
                                     matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Builtin(..)))
                                 };

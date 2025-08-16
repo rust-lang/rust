@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/issues/56593#issuecomment-1133174514
 
 use thing::*;
@@ -13,6 +12,7 @@ mod tests {
 
     fn test_thing() {
         let thing: crate::Thing = Thing::Foo;
+        //~^ ERROR ambiguous
     }
 }
 
