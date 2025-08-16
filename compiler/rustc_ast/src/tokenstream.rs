@@ -14,6 +14,7 @@
 //! ownership of the original.
 
 use std::borrow::Cow;
+use std::hash::Hash;
 use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
@@ -31,7 +32,7 @@ use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Clone, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token. Should never be `OpenDelim` or `CloseDelim`, because
     /// delimiters are implicitly represented by `Delimited`.
@@ -557,14 +558,14 @@ pub struct AttrsTarget {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
+#[derive(Clone, Debug, Default, Hash, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
 /// part of `proc_macro::Spacing`) comes in useful.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum Spacing {
     /// The token cannot join with the following token to form a compound
     /// token.
@@ -977,7 +978,7 @@ impl TokenCursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Encodable, Decodable, HashStable_Generic, Walkable)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,
@@ -1001,7 +1002,7 @@ impl DelimSpan {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub struct DelimSpacing {
     pub open: Spacing,
     pub close: Spacing,
