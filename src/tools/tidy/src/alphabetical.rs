@@ -214,20 +214,36 @@ fn check_lines<'a>(path: &Path, content: &'a str, tidy_ctx: &TidyCtx, check: &mu
 
                 // oh nyooo :(
                 if sorted != section {
-                    let base_line_number = content[..offset + start_nl_end].lines().count();
-                    let line_offset = sorted
-                        .lines()
-                        .zip(section.lines())
-                        .enumerate()
-                        .find(|(_, (a, b))| a != b)
-                        .unwrap()
-                        .0;
-                    let line_number = base_line_number + line_offset;
+                    if !tidy_ctx.is_bless_enabled() {
+                        let base_line_number = content[..offset + start_nl_end].lines().count();
+                        let line_offset = sorted
+                            .lines()
+                            .zip(section.lines())
+                            .enumerate()
+                            .find(|(_, (a, b))| a != b)
+                            .unwrap()
+                            .0;
+                        let line_number = base_line_number + line_offset;
 
-                    check.error(format!(
-                        "{path}:{line_number}: line not in alphabetical order (tip: use --bless to sort this list)",
-                        path = path.display(),
-                    ));
+                        check.error(format!(
+                            "{path}:{line_number}: line not in alphabetical order (tip: use --bless to sort this list)",
+                            path = path.display(),
+                        ));
+                    } else {
+                        // Use atomic rename as to not corrupt the file upon crashes/ctrl+c
+                        let mut tempfile =
+                            tempfile::Builder::new().tempfile_in(path.parent().unwrap()).unwrap();
+
+                        fs::copy(path, tempfile.path()).unwrap();
+
+                        tempfile
+                            .as_file_mut()
+                            .seek(std::io::SeekFrom::Start((offset + start_nl_end) as u64))
+                            .unwrap();
+                        tempfile.as_file_mut().write_all(sorted.as_bytes()).unwrap();
+
+                        tempfile.persist(path).unwrap();
+                    }
                 }
 
                 // Start the next search after the end section
