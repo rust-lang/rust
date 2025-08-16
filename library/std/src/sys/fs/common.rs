@@ -1,8 +1,10 @@
 #![allow(dead_code)] // not used on all platforms
 
-use crate::fs;
+use crate::fmt;
+use crate::fs::{self, create_dir, remove_dir, remove_file, rename};
 use crate::io::{self, Error, ErrorKind};
-use crate::path::Path;
+use crate::path::{Path, PathBuf};
+use crate::sys::fs::{File, OpenOptions, symlink};
 use crate::sys_common::ignore_notfound;
 
 pub(crate) const NOT_FILE_ERROR: Error = io::const_error!(
@@ -56,5 +58,72 @@ pub fn exists(path: &Path) -> io::Result<bool> {
         Ok(_) => Ok(true),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
         Err(error) => Err(error),
+    }
+}
+
+pub struct Dir {
+    path: PathBuf,
+}
+
+impl Dir {
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Ok(Self { path: path.as_ref().to_path_buf() })
+    }
+
+    pub fn new_with<P: AsRef<Path>>(path: P, _opts: &OpenOptions) -> io::Result<Self> {
+        Ok(Self { path: path.as_ref().to_path_buf() })
+    }
+
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Ok(Self { path: path.as_ref().to_path_buf() })
+    }
+
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path.join(path), &opts)
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path.join(path), opts)
+    }
+
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        create_dir(self.path.join(path))
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        Self::new(self.path.join(path))
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        Self::new_with(self.path.join(path), opts)
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        remove_file(self.path.join(path))
+    }
+
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        remove_dir(self.path.join(path))
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        rename(self.path.join(from), to_dir.path.join(to))
+    }
+
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        symlink(original.as_ref(), link.as_ref())
+    }
+}
+
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Dir").field("path", &self.path).finish()
     }
 }
