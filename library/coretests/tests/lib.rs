@@ -81,6 +81,7 @@
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(numfmt)]
 #![feature(pattern)]
+#![feature(peekable_next_if_map)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
