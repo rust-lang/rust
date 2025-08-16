@@ -1242,14 +1242,12 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
 
     let body =
         new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span);
-    dump_mir(
-        tcx,
-        false,
-        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" },
-        &0,
-        &body,
-        |_, _| Ok(()),
-    );
+
+    let pass_name =
+        if receiver_by_ref { "coroutine_closure_by_ref" } else { "coroutine_closure_by_move" };
+    if let Some(dumper) = MirDumper::new(tcx, pass_name, &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }
