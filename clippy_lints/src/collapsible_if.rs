@@ -141,10 +141,7 @@ impl CollapsibleIf {
 
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
-                    let requires_space = snippet(cx, up_to_else, "..")
-                        .chars()
-                        .last()
-                        .is_some_and(|c| !c.is_whitespace());
+                    let requires_space = snippet(cx, up_to_else, "..").ends_with(|c: char| !c.is_whitespace());
                     let mut applicability = Applicability::MachineApplicable;
                     diag.span_suggestion(
                         else_block.span,
