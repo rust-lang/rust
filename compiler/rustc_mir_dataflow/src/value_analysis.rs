@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::debug;
@@ -917,12 +917,7 @@ pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
 
     impl<'tcx> Visitor<'tcx> for Collector {
         fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-            if (context.is_borrow()
-                || context.is_address_of()
-                || context.is_drop()
-                || context == PlaceContext::MutatingUse(MutatingUseContext::AsmOutput))
-                && !place.is_indirect()
-            {
+            if context.may_observe_address() && !place.is_indirect() {
                 // A pointer to a place could be used to access other places with the same local,
                 // hence we have to exclude the local completely.
                 self.result.insert(place.local);
