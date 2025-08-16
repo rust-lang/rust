@@ -110,7 +110,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _4 = &raw const (*_1);
         StorageLive(_5);
         _5 = copy _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: move _5 };
+        _6 = NonNull::<T> { pointer: copy _5 };
         StorageDead(_5);
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
@@ -122,7 +122,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _7 = copy _4 as *mut T (PtrToPtr);
         _8 = Offset(copy _7, copy _3);
         StorageDead(_7);
-        _9 = move _8 as *const T (PtrToPtr);
+        _9 = copy _8 as *const T (PtrToPtr);
         StorageDead(_8);
         goto -> bb3;
     }
@@ -164,7 +164,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _16 = copy _13 as *mut T (Transmute);
         StorageLive(_17);
         _17 = copy _15 as *mut T (Transmute);
-        _18 = Eq(move _16, move _17);
+        _18 = Eq(copy _16, copy _17);
         StorageDead(_17);
         StorageDead(_16);
         switchInt(move _18) -> [0: bb6, otherwise: bb7];
@@ -176,9 +176,9 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_20);
         StorageLive(_19);
         _19 = copy _13 as *const T (Transmute);
-        _20 = Offset(move _19, const 1_usize);
+        _20 = Offset(copy _19, const 1_usize);
         StorageDead(_19);
-        _21 = NonNull::<T> { pointer: move _20 };
+        _21 = NonNull::<T> { pointer: copy _20 };
         StorageDead(_20);
         _11 = move _21;
         StorageDead(_21);
