@@ -4270,7 +4270,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         if path.len() == 2
                             && let [segment] = prefix_path
                         {
-                            // Delay to check whether methond name is an associated function or not
+                            // Delay to check whether method name is an associated function or not
                             // ```
                             // let foo = Foo {};
                             // foo::bar(); // possibly suggest to foo.bar();

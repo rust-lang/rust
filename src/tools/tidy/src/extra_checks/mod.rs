@@ -41,7 +41,6 @@ const RUFF_CONFIG_PATH: &[&str] = &["src", "tools", "tidy", "config", "ruff.toml
 const RUFF_CACHE_PATH: &[&str] = &["cache", "ruff_cache"];
 const PIP_REQ_PATH: &[&str] = &["src", "tools", "tidy", "config", "requirements.txt"];
 
-// this must be kept in sync with with .github/workflows/spellcheck.yml
 const SPELLCHECK_DIRS: &[&str] = &["compiler", "library", "src/bootstrap", "src/librustdoc"];
 
 pub fn check(
@@ -51,6 +50,7 @@ pub fn check(
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
+    cargo: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -63,6 +63,7 @@ pub fn check(
         librustdoc_path,
         tools_path,
         npm,
+        cargo,
         bless,
         extra_checks,
         pos_args,
@@ -78,6 +79,7 @@ fn check_impl(
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
+    cargo: &Path,
     bless: bool,
     extra_checks: Option<&str>,
     pos_args: &[String],
@@ -293,7 +295,7 @@ fn check_impl(
         } else {
             eprintln!("spellcheck files");
         }
-        spellcheck_runner(&args)?;
+        spellcheck_runner(root_path, &outdir, &cargo, &args)?;
     }
 
     if js_lint || js_typecheck {
@@ -576,34 +578,25 @@ fn shellcheck_runner(args: &[&OsStr]) -> Result<(), Error> {
     if status.success() { Ok(()) } else { Err(Error::FailedCheck("shellcheck")) }
 }
 
-/// Check that spellchecker is installed then run it at the given path
-fn spellcheck_runner(args: &[&str]) -> Result<(), Error> {
-    // sync version with .github/workflows/spellcheck.yml
-    let expected_version = "typos-cli 1.34.0";
-    match Command::new("typos").arg("--version").output() {
-        Ok(o) => {
-            let stdout = String::from_utf8_lossy(&o.stdout);
-            if stdout.trim() != expected_version {
-                return Err(Error::Version {
-                    program: "typos",
-                    required: expected_version,
-                    installed: stdout.trim().to_string(),
-                });
+/// Ensure that spellchecker is installed then run it at the given path
+fn spellcheck_runner(
+    src_root: &Path,
+    outdir: &Path,
+    cargo: &Path,
+    args: &[&str],
+) -> Result<(), Error> {
+    let bin_path =
+        crate::ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", "1.34.0")?;
+    match Command::new(bin_path).current_dir(src_root).args(args).status() {
+        Ok(status) => {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(Error::FailedCheck("typos"))
             }
         }
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {
-            return Err(Error::MissingReq(
-                "typos",
-                "spellcheck file checks",
-                // sync version with .github/workflows/spellcheck.yml
-                Some("install tool via `cargo install typos-cli@1.34.0`".to_owned()),
-            ));
-        }
-        Err(e) => return Err(e.into()),
+        Err(err) => Err(Error::Generic(format!("failed to run typos tool: {err:?}"))),
     }
-
-    let status = Command::new("typos").args(args).status()?;
-    if status.success() { Ok(()) } else { Err(Error::FailedCheck("typos")) }
 }
 
 /// Check git for tracked files matching an extension

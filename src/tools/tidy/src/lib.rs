@@ -4,7 +4,9 @@
 //! to be used by tools.
 
 use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::{env, io};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::{GitConfig, get_closest_upstream_commit};
@@ -178,6 +180,70 @@ pub fn files_modified(ci_info: &CiInfo, pred: impl Fn(&str) -> bool) -> bool {
     let mut v = vec![()];
     files_modified_batch_filter(ci_info, &mut v, |_, p| pred(p));
     !v.is_empty()
+}
+
+/// If the given executable is installed with the given version, use that,
+/// otherwise install via cargo.
+pub fn ensure_version_or_cargo_install(
+    build_dir: &Path,
+    cargo: &Path,
+    pkg_name: &str,
+    bin_name: &str,
+    version: &str,
+) -> io::Result<PathBuf> {
+    // ignore the process exit code here and instead just let the version number check fail.
+    // we also importantly don't return if the program wasn't installed,
+    // instead we want to continue to the fallback.
+    'ck: {
+        // FIXME: rewrite as if-let chain once this crate is 2024 edition.
+        let Ok(output) = Command::new(bin_name).arg("--version").output() else {
+            break 'ck;
+        };
+        let Ok(s) = str::from_utf8(&output.stdout) else {
+            break 'ck;
+        };
+        let Some(v) = s.trim().split_whitespace().last() else {
+            break 'ck;
+        };
+        if v == version {
+            return Ok(PathBuf::from(bin_name));
+        }
+    }
+
+    let tool_root_dir = build_dir.join("misc-tools");
+    let tool_bin_dir = tool_root_dir.join("bin");
+    eprintln!("building external tool {bin_name} from package {pkg_name}@{version}");
+    // use --force to ensure that if the required version is bumped, we update it.
+    // use --target-dir to ensure we have a build cache so repeated invocations aren't slow.
+    // modify PATH so that cargo doesn't print a warning telling the user to modify the path.
+    let cargo_exit_code = Command::new(cargo)
+        .args(["install", "--locked", "--force", "--quiet"])
+        .arg("--root")
+        .arg(&tool_root_dir)
+        .arg("--target-dir")
+        .arg(tool_root_dir.join("target"))
+        .arg(format!("{pkg_name}@{version}"))
+        .env(
+            "PATH",
+            env::join_paths(
+                env::split_paths(&env::var("PATH").unwrap())
+                    .chain(std::iter::once(tool_bin_dir.clone())),
+            )
+            .expect("build dir contains invalid char"),
+        )
+        .env("RUSTFLAGS", "-Copt-level=0")
+        .spawn()?
+        .wait()?;
+    if !cargo_exit_code.success() {
+        return Err(io::Error::other("cargo install failed"));
+    }
+    let bin_path = tool_bin_dir.join(bin_name);
+    assert!(
+        matches!(bin_path.try_exists(), Ok(true)),
+        "cargo install did not produce the expected binary"
+    );
+    eprintln!("finished building tool {bin_name}");
+    Ok(bin_path)
 }
 
 pub mod alphabetical;

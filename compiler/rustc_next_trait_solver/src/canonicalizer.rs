@@ -27,7 +27,7 @@ enum CanonicalizeInputKind {
     ParamEnv,
     /// When canonicalizing predicates, we don't keep `'static`. If we're
     /// currently outside of the trait solver and canonicalize the root goal
-    /// during HIR typeck, we replace each occurance of a region with a
+    /// during HIR typeck, we replace each occurrence of a region with a
     /// unique region variable. See the comment on `InferCtxt::in_hir_typeck`
     /// for more details.
     Predicate { is_hir_typeck_root_goal: bool },
