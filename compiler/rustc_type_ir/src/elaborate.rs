@@ -6,7 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::TraitSolverLangItem;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Upcast as _};
+use crate::{self as ty, Interner, Upcast as _, solve};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -20,6 +20,7 @@ pub struct Elaborator<I: Interner, O> {
     visited: HashSet<ty::Binder<I, ty::PredicateKind<I>>>,
     mode: Filter,
     elaborate_sized: ElaborateSized,
+    elaborate_host_effect_destruct: ElaborateHostEffectDestruct,
 }
 
 enum Filter {
@@ -29,6 +30,12 @@ enum Filter {
 
 #[derive(Eq, PartialEq)]
 enum ElaborateSized {
+    Yes,
+    No,
+}
+
+#[derive(Eq, PartialEq)]
+enum ElaborateHostEffectDestruct {
     Yes,
     No,
 }
@@ -91,6 +98,7 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
         visited: HashSet::default(),
         mode: Filter::All,
         elaborate_sized: ElaborateSized::No,
+        elaborate_host_effect_destruct: ElaborateHostEffectDestruct::No,
     };
     elaborator.extend_deduped(obligations);
     elaborator
@@ -121,6 +129,12 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
     /// compiler performance.
     pub fn elaborate_sized(mut self) -> Self {
         self.elaborate_sized = ElaborateSized::Yes;
+        self
+    }
+
+    /// Start elaborating `[const] Destruct`. Should only be used in narrowly scoped contexts.
+    pub fn elaborate_host_effect_destruct(mut self) -> Self {
+        self.elaborate_host_effect_destruct = ElaborateHostEffectDestruct::Yes;
         self
     }
 
@@ -179,16 +193,43 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     ),
                 };
             }
-            // `T: [const] Trait` implies `T: [const] Supertrait`.
-            ty::ClauseKind::HostEffect(data) => self.extend_deduped(
-                cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(|trait_ref| {
-                    elaboratable.child(
-                        trait_ref
-                            .to_host_effect_clause(cx, data.constness)
-                            .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
-                    )
-                }),
-            ),
+            ty::ClauseKind::HostEffect(data) => {
+                // `T: [const] Trait` implies `T: [const] Supertrait`.
+                self.extend_deduped(
+                    cx.explicit_implied_const_bounds(data.def_id()).iter_identity().map(
+                        |trait_ref| {
+                            elaboratable.child(
+                                trait_ref
+                                    .to_host_effect_clause(cx, data.constness)
+                                    .instantiate_supertrait(
+                                        cx,
+                                        bound_clause.rebind(data.trait_ref),
+                                    ),
+                            )
+                        },
+                    ),
+                );
+
+                // Elaborate structurally implied obligations:
+                // e.g., `ADT: [const] Destruct` implies that each public field also implements
+                // `[const] Destruct`.
+                if self.elaborate_host_effect_destruct == ElaborateHostEffectDestruct::Yes {
+                    let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
+                    if data.def_id() == destruct_def_id {
+                        match solve::const_conditions_for_destruct(cx, data.self_ty(), true) {
+                            solve::DestructConstCondition::Structural(trait_refs) => self
+                                .extend_deduped(trait_refs.into_iter().map(|trait_ref| {
+                                    elaboratable.child(
+                                        bound_clause
+                                            .rebind(trait_ref)
+                                            .to_host_effect_clause(cx, data.constness),
+                                    )
+                                })),
+                            _ => {}
+                        }
+                    }
+                }
+            }
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that

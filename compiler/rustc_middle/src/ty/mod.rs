@@ -59,7 +59,9 @@ pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 )]
 use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::solve::SizedTraitKind;
+pub use rustc_type_ir::solve::{
+    DestructConstCondition, SizedTraitKind, const_conditions_for_destruct,
+};
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};
@@ -1009,6 +1011,14 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    pub fn elaborate_host_effect_destruct(self, tcx: TyCtxt<'tcx>) -> Self {
+        let caller_bounds = tcx.mk_clauses_from_iter(
+            ty::elaborate::elaborate(tcx, self.caller_bounds.iter())
+                .elaborate_host_effect_destruct(),
+        );
+        ParamEnv { caller_bounds }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
@@ -1421,6 +1431,16 @@ impl<'tcx> FieldDef {
     /// Computes the `Ident` of this variant by looking up the `Span`
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
+    }
+}
+
+impl<'tcx> rustc_type_ir::inherent::FieldDef<TyCtxt<'tcx>> for &'tcx FieldDef {
+    fn def_id(self) -> DefId {
+        self.did
+    }
+
+    fn visibility(self) -> ty::Visibility<DefId> {
+        self.vis
     }
 }
 

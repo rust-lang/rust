@@ -203,6 +203,10 @@ pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn is_rust(self) -> bool;
 }
 
+pub trait Visibility<I: Interner<Visibility = Self>>: Copy + Debug + Hash + Eq {
+    fn is_public(self) -> bool;
+}
+
 pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn safe() -> Self;
 
@@ -606,8 +610,13 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_manually_drop(self) -> bool;
 
-    // FIXME: perhaps use `all_fields` and expose `FieldDef`.
-    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
+    fn all_fields(self) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::FieldDef>>;
+
+    fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>> {
+        self.all_fields().map_bound(move |fields| {
+            fields.into_iter().map(move |field| interner.type_of(field.def_id()).skip_binder())
+        })
+    }
 
     fn sizedness_constraint(
         self,
@@ -618,6 +627,12 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn is_fundamental(self) -> bool;
 
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
+}
+
+pub trait FieldDef<I: Interner>: Copy + Debug + Hash + Eq {
+    fn def_id(self) -> I::DefId;
+
+    fn visibility(self) -> I::Visibility;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
