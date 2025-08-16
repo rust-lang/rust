@@ -608,6 +608,8 @@ pub use core::fmt::{FromFn, from_fn};
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerHex, Pointer, UpperHex};
+#[unstable(feature = "int_format_into", issue = "138215")]
+pub use core::fmt::{NumBuffer, NumBufferTrait};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::string;

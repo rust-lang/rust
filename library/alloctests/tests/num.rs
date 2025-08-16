@@ -15,6 +15,10 @@ macro_rules! assert_nb {
 
         let mut buffer = NumBuffer::<$int>::new();
         assert_eq!(value.format_into(&mut buffer), s.as_str());
+
+        // We check that bigger buffers can be used in `format_into`.
+        let mut buffer = NumBuffer::<i128>::new();
+        assert_eq!(value.format_into(&mut buffer), s.as_str());
     };
 }
 
