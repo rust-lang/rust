@@ -4,9 +4,9 @@
 
 use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{cmp, iter};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -2185,32 +2185,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 ty::Binder::dummy(vec![ty])
             }
 
-            ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().coroutine_movability(coroutine_def_id) {
-                    hir::Movability::Static => {
-                        unreachable!("tried to assemble `Sized` for static coroutine")
-                    }
-                    hir::Movability::Movable => {
-                        if self.tcx().features().coroutine_clone() {
-                            ty::Binder::dummy(
-                                args.as_coroutine()
-                                    .upvar_tys()
-                                    .iter()
-                                    .chain([Ty::new_coroutine_witness(
-                                        self.tcx(),
-                                        coroutine_def_id,
-                                        self.tcx().mk_args(args.as_coroutine().parent_args()),
-                                    )])
-                                    .collect::<Vec<_>>(),
-                            )
-                        } else {
-                            unreachable!(
-                                "tried to assemble `Sized` for coroutine without enabled feature"
-                            )
-                        }
+            ty::Coroutine(def_id, args) => match self.tcx().coroutine_movability(def_id) {
+                hir::Movability::Static => {
+                    unreachable!("tried to assemble `Clone` for static coroutine")
+                }
+                hir::Movability::Movable => {
+                    if self.tcx().features().coroutine_clone() {
+                        ty::Binder::dummy(vec![
+                            args.as_coroutine().tupled_upvars_ty(),
+                            Ty::new_coroutine_witness_for_coroutine(self.tcx(), def_id, args),
+                        ])
+                    } else {
+                        unreachable!(
+                            "tried to assemble `Clone` for coroutine without enabled feature"
+                        )
                     }
                 }
-            }
+            },
 
             ty::CoroutineWitness(def_id, args) => self
                 .infcx
@@ -2334,25 +2325,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let tcx = self.tcx();
-                let witness = Ty::new_coroutine_witness(
-                    tcx,
-                    def_id,
-                    ty::GenericArgs::for_item(tcx, def_id, |def, _| match def.kind {
-                        // HACK: Coroutine witnesse types are lifetime erased, so they
-                        // never reference any lifetime args from the coroutine. We erase
-                        // the regions here since we may get into situations where a
-                        // coroutine is recursively contained within itself, leading to
-                        // witness types that differ by region args. This means that
-                        // cycle detection in fulfillment will not kick in, which leads
-                        // to unnecessary overflows in async code. See the issue:
-                        // <https://github.com/rust-lang/rust/issues/145151>.
-                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                        ty::GenericParamDefKind::Type { .. }
-                        | ty::GenericParamDefKind::Const { .. } => args[def.index as usize],
-                    }),
-                );
+                let witness = Ty::new_coroutine_witness_for_coroutine(tcx, def_id, args);
                 ty::Binder::dummy(AutoImplConstituents {
-                    types: [ty].into_iter().chain(iter::once(witness)).collect(),
+                    types: vec![ty, witness],
                     assumptions: vec![],
                 })
             }
