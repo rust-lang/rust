@@ -17,13 +17,7 @@ use crate::{fmt, io, iter, mem, ptr, slice, str};
 
 const TMPBUF_SZ: usize = 128;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "redox")] {
-        const PATH_SEPARATOR: u8 = b';';
-    } else {
-        const PATH_SEPARATOR: u8 = b':';
-    }
-}
+const PATH_SEPARATOR: u8 = if cfg!(target_os = "redox") { b';' } else { b':' };
 
 unsafe extern "C" {
     #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
@@ -193,33 +187,14 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
-pub struct SplitPaths<'a> {
-    iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>, fn(&'a [u8]) -> PathBuf>,
-}
+pub type SplitPaths<'a> = impl Iterator<Item = PathBuf>;
 
+#[define_opaque(SplitPaths)]
 pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
-    fn bytes_to_path(b: &[u8]) -> PathBuf {
-        PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
-    }
-    fn is_separator(b: &u8) -> bool {
-        *b == PATH_SEPARATOR
-    }
-    let unparsed = unparsed.as_bytes();
-    SplitPaths {
-        iter: unparsed
-            .split(is_separator as fn(&u8) -> bool)
-            .map(bytes_to_path as fn(&[u8]) -> PathBuf),
-    }
-}
-
-impl<'a> Iterator for SplitPaths<'a> {
-    type Item = PathBuf;
-    fn next(&mut self) -> Option<PathBuf> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    unparsed
+        .as_bytes()
+        .split(|&b| b == PATH_SEPARATOR)
+        .map(|part| PathBuf::from(OsStr::from_bytes(part)))
 }
 
 #[derive(Debug)]
