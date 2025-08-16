@@ -1128,141 +1128,189 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let decl_span = local_decl.source_info.span;
 
-        let amp_mut_sugg = 'sugg: {
-            match *local_decl.local_info() {
-                LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
-                    let (span, suggestion) = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                    let additional =
-                        local_trait.map(|span| suggest_ampmut_self(self.infcx.tcx, span));
-                    AmpMutSugg { has_sugg: true, span, suggestion, additional }
-                }
-
-                LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
-                    opt_ty_info,
-                    ..
-                })) => {
-                    // check if the RHS is from desugaring
-                    let first_assignment = find_assignments(&self.body, local).first().copied();
-                    let first_assignment_stmt = first_assignment
-                        .and_then(|loc| self.body[loc.block].statements.get(loc.statement_index));
-                    trace!(?first_assignment_stmt);
-                    let opt_assignment_rhs_span =
-                        first_assignment.map(|loc| self.body.source_info(loc).span);
-                    let mut source_span = opt_assignment_rhs_span;
-                    if let Some(mir::Statement {
-                        source_info: _,
-                        kind:
-                            mir::StatementKind::Assign(box (
-                                _,
-                                mir::Rvalue::Use(mir::Operand::Copy(place)),
-                            )),
-                        ..
-                    }) = first_assignment_stmt
-                    {
-                        let local_span = self.body.local_decls[place.local].source_info.span;
-                        // `&self` in async functions have a `desugaring_kind`, but the local we assign
-                        // it with does not, so use the local_span for our checks later.
-                        source_span = Some(local_span);
-                        if let Some(DesugaringKind::ForLoop) = local_span.desugaring_kind() {
-                            // on for loops, RHS points to the iterator part
-                            self.suggest_similar_mut_method_for_for_loop(err, local_span);
-                            err.span_label(
-                                local_span,
-                                format!("this iterator yields `{pointer_sigil}` {pointer_desc}s",),
-                            );
-                            return;
-                        }
-                    }
-
-                    // don't create labels for compiler-generated spans or spans not from users' code
-                    if source_span.is_some_and(|s| {
-                        s.desugaring_kind().is_some()
-                            || self.infcx.tcx.sess.source_map().is_imported(s)
-                    }) {
-                        return;
-                    }
-
-                    if name != kw::SelfLower || opt_ty_info.is_some() {
-                        match suggest_ampmut(
-                            self.infcx,
-                            self.body(),
-                            local_decl.ty,
-                            decl_span,
-                            first_assignment_stmt,
-                            opt_ty_info,
-                        ) {
-                            Some(Either::Left(sugg)) => break 'sugg sugg,
-                            Some(Either::Right(sugg))
-                                if !self.infcx.tcx.sess.source_map().is_imported(sugg.span) =>
-                            {
-                                err.multipart_suggestion_verbose(
-                                    "consider using `get_mut`",
-                                    vec![(sugg.span, sugg.suggestion)],
-                                    Applicability::MaybeIncorrect,
-                                );
-                                return;
-                            }
-                            Some(Either::Right(_)) => return,
-                            None => return,
-                        }
-                    }
-
-                    // explicit self (eg `self: &'a Self`)
-                    let (span, sugg) = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                    AmpMutSugg { has_sugg: true, span, suggestion: sugg, additional: None }
-                }
-
-                LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                    binding_mode: BindingMode(ByRef::Yes(_), _),
-                    ..
-                })) => {
-                    let pattern_span: Span = local_decl.source_info.span;
-                    let Some(span) = suggest_ref_mut(self.infcx.tcx, pattern_span) else {
-                        return;
-                    };
-                    AmpMutSugg {
-                        has_sugg: true,
-                        span,
-                        suggestion: "mut ".to_owned(),
-                        additional: None,
-                    }
-                }
-
-                _ => unreachable!(),
+        let (amp_mut_sugg, local_var_ty_info) = match *local_decl.local_info() {
+            LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
+                let (span, suggestion) = suggest_ampmut_self(self.infcx.tcx, decl_span);
+                let additional = local_trait.map(|span| suggest_ampmut_self(self.infcx.tcx, span));
+                (AmpMutSugg::Type { span, suggestion, additional }, None)
             }
+
+            LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
+                binding_mode: BindingMode(ByRef::No, _),
+                opt_ty_info,
+                ..
+            })) => {
+                // check if the RHS is from desugaring
+                let first_assignment = find_assignments(&self.body, local).first().copied();
+                let first_assignment_stmt = first_assignment
+                    .and_then(|loc| self.body[loc.block].statements.get(loc.statement_index));
+                trace!(?first_assignment_stmt);
+                let opt_assignment_rhs_span =
+                    first_assignment.map(|loc| self.body.source_info(loc).span);
+                let mut source_span = opt_assignment_rhs_span;
+                if let Some(mir::Statement {
+                    source_info: _,
+                    kind:
+                        mir::StatementKind::Assign(box (_, mir::Rvalue::Use(mir::Operand::Copy(place)))),
+                    ..
+                }) = first_assignment_stmt
+                {
+                    let local_span = self.body.local_decls[place.local].source_info.span;
+                    // `&self` in async functions have a `desugaring_kind`, but the local we assign
+                    // it with does not, so use the local_span for our checks later.
+                    source_span = Some(local_span);
+                    if let Some(DesugaringKind::ForLoop) = local_span.desugaring_kind() {
+                        // on for loops, RHS points to the iterator part
+                        self.suggest_similar_mut_method_for_for_loop(err, local_span);
+                        err.span_label(
+                            local_span,
+                            format!("this iterator yields `{pointer_sigil}` {pointer_desc}s",),
+                        );
+                        return;
+                    }
+                }
+
+                // don't create labels for compiler-generated spans or spans not from users' code
+                if source_span.is_some_and(|s| {
+                    s.desugaring_kind().is_some() || self.infcx.tcx.sess.source_map().is_imported(s)
+                }) {
+                    return;
+                }
+
+                // could be because we're in an `async fn`
+                if name == kw::SelfLower && opt_ty_info.is_none() {
+                    let (span, suggestion) = suggest_ampmut_self(self.infcx.tcx, decl_span);
+                    (AmpMutSugg::Type { span, suggestion, additional: None }, None)
+                } else if let Some(sugg) =
+                    suggest_ampmut(self.infcx, self.body(), first_assignment_stmt)
+                {
+                    (sugg, opt_ty_info)
+                } else {
+                    return;
+                }
+            }
+
+            LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
+                binding_mode: BindingMode(ByRef::Yes(_), _),
+                ..
+            })) => {
+                let pattern_span: Span = local_decl.source_info.span;
+                let Some(span) = suggest_ref_mut(self.infcx.tcx, pattern_span) else {
+                    return;
+                };
+                (AmpMutSugg::Type { span, suggestion: "mut ".to_owned(), additional: None }, None)
+            }
+
+            _ => unreachable!(),
         };
 
-        if amp_mut_sugg.has_sugg {
-            let mut sugg = vec![(amp_mut_sugg.span, amp_mut_sugg.suggestion)];
-            sugg.extend(amp_mut_sugg.additional);
-
-            if sugg.iter().any(|(span, _)| self.infcx.tcx.sess.source_map().is_imported(*span)) {
+        let mut suggest = |suggs: Vec<_>, applicability, extra| {
+            if suggs.iter().any(|(span, _)| self.infcx.tcx.sess.source_map().is_imported(*span)) {
                 return;
             }
 
             err.multipart_suggestion_verbose(
                 format!(
-                    "consider changing this to be a mutable {pointer_desc}{}",
+                    "consider changing this to be a mutable {pointer_desc}{}{extra}",
                     if is_trait_sig {
                         " in the `impl` method and the `trait` definition"
                     } else {
                         ""
                     }
                 ),
-                sugg,
-                Applicability::MachineApplicable,
+                suggs,
+                applicability,
             );
+        };
+
+        let (mut sugg, add_type_annotation_if_not_exists) = match amp_mut_sugg {
+            AmpMutSugg::Type { span, suggestion, additional } => {
+                let mut sugg = vec![(span, suggestion)];
+                sugg.extend(additional);
+                suggest(sugg, Applicability::MachineApplicable, "");
+                return;
+            }
+            AmpMutSugg::MapGetMut { span, suggestion } => {
+                if self.infcx.tcx.sess.source_map().is_imported(span) {
+                    return;
+                }
+                err.multipart_suggestion_verbose(
+                    "consider using `get_mut`",
+                    vec![(span, suggestion)],
+                    Applicability::MaybeIncorrect,
+                );
+                return;
+            }
+            AmpMutSugg::Expr { span, suggestion } => {
+                // `Expr` suggestions should change type annotations if they already exist (probably immut),
+                // but do not add new type annotations.
+                (vec![(span, suggestion)], false)
+            }
+            AmpMutSugg::ChangeBinding => (vec![], true),
+        };
+
+        // find a binding's type to make mutable.
+        let (binding_exists, span) = match local_var_ty_info {
+            // if this is a variable binding with an explicit type,
+            // then we will suggest changing it to be mutable.
+            // this is `Applicability::MachineApplicable`.
+            Some(ty_span) => (true, ty_span),
+
+            // otherwise, we'll suggest *adding* an annotated type, we'll suggest
+            // the RHS's type for that.
+            // this is `Applicability::HasPlaceholders`.
+            None => (false, decl_span),
+        };
+
+        if !binding_exists && !add_type_annotation_if_not_exists {
+            suggest(sugg, Applicability::MachineApplicable, "");
             return;
         }
 
-        // no suggestion for expression; find a binding's type to make mutable.
-        let message = amp_mut_sugg.suggestion;
+        // if the binding already exists and is a reference with an explicit
+        // lifetime, then we can suggest adding ` mut`. this is special-cased from
+        // the path without an explicit lifetime.
+        let (sugg_span, sugg_str, suggest_now) = if let Ok(src) = self.infcx.tcx.sess.source_map().span_to_snippet(span)
+            && src.starts_with("&'")
+            // note that `&' a T` is invalid so this is correct.
+            && let Some(ws_pos) = src.find(char::is_whitespace)
+        {
+            let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
+            (span, " mut".to_owned(), true)
+        // if there is already a binding, we modify it to be `mut`
+        } else if binding_exists {
+            // shrink the span to just after the `&` in `&variable`
+            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+            (span, "mut ".to_owned(), true)
+        } else {
+            // otherwise, suggest that the user annotates the binding; we provide the
+            // type of the local.
+            let ty = local_decl.ty.builtin_deref(true).unwrap();
+
+            (span, format!("{}mut {}", if local_decl.ty.is_ref() { "&" } else { "*" }, ty), false)
+        };
+
+        if suggest_now {
+            // suggest changing `&x` to `&mut x` and changing `&T` to `&mut T` at the same time
+            let has_change = !sugg.is_empty();
+            sugg.push((sugg_span, sugg_str));
+            suggest(
+                sugg,
+                Applicability::MachineApplicable,
+                // FIXME(fee1-dead) this somehow doesn't fire
+                if has_change { " and changing the binding's type" } else { "" },
+            );
+            return;
+        } else if !sugg.is_empty() {
+            suggest(sugg, Applicability::MachineApplicable, "");
+            return;
+        }
+
         let def_id = self.body.source.def_id();
         let hir_id = if let Some(local_def_id) = def_id.as_local()
             && let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id)
         {
-            BindingFinder { span: amp_mut_sugg.span }.visit_body(&body).break_value()
+            BindingFinder { span: sugg_span }.visit_body(&body).break_value()
         } else {
             None
         };
@@ -1270,8 +1318,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let Some(hir::Node::LetStmt(local)) = node else {
             err.span_label(
-                amp_mut_sugg.span,
-                format!("consider changing this binding's type to be: `{message}`"),
+                sugg_span,
+                format!("consider changing this binding's type to be: `{sugg_str}`"),
             );
             return;
         };
@@ -1370,8 +1418,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
         let (changing, span, sugg) = match local.ty {
-            Some(ty) => ("changing", ty.span, message),
-            None => ("specifying", local.pat.span.shrink_to_hi(), format!(": {message}")),
+            Some(ty) => ("changing", ty.span, sugg_str),
+            None => ("specifying", local.pat.span.shrink_to_hi(), format!(": {sugg_str}")),
         };
         err.span_suggestion_verbose(
             span,
@@ -1445,16 +1493,25 @@ fn suggest_ampmut_self(tcx: TyCtxt<'_>, span: Span) -> (Span, String) {
     }
 }
 
-struct AmpMutSugg {
-    has_sugg: bool,
-    span: Span,
-    suggestion: String,
-    additional: Option<(Span, String)>,
-}
-
-struct MapGetMutSugg {
-    span: Span,
-    suggestion: String,
+enum AmpMutSugg {
+    /// Type suggestion. Changes `&self` to `&mut self`, `x: &T` to `x: &mut T`,
+    /// `ref x` to `ref mut x`, etc.
+    Type {
+        span: Span,
+        suggestion: String,
+        additional: Option<(Span, String)>,
+    },
+    /// Suggestion for expressions, `&x` to `&mut x`, `&x[i]` to `&mut x[i]`, etc.
+    Expr {
+        span: Span,
+        suggestion: String,
+    },
+    /// Suggests `.get_mut` in the case of `&map[&key]` for Hash/BTreeMap.
+    MapGetMut {
+        span: Span,
+        suggestion: String,
+    },
+    ChangeBinding,
 }
 
 // When we want to suggest a user change a local variable to be a `&mut`, there
@@ -1475,11 +1532,8 @@ struct MapGetMutSugg {
 fn suggest_ampmut<'tcx>(
     infcx: &crate::BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    decl_ty: Ty<'tcx>,
-    decl_span: Span,
     opt_assignment_rhs_stmt: Option<&Statement<'tcx>>,
-    opt_ty_info: Option<Span>,
-) -> Option<Either<AmpMutSugg, MapGetMutSugg>> {
+) -> Option<AmpMutSugg> {
     let tcx = infcx.tcx;
     // if there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
@@ -1526,7 +1580,7 @@ fn suggest_ampmut<'tcx>(
                 && let Some(trait_) = tcx.trait_of_assoc(method_def_id)
                 && tcx.is_lang_item(trait_, hir::LangItem::Index)
             {
-                let trait_ref = ty::TraitRef::from_method(
+                let trait_ref = ty::TraitRef::from_assoc(
                     tcx,
                     tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
                     method_args,
@@ -1547,7 +1601,7 @@ fn suggest_ampmut<'tcx>(
                     {
                         let span = rhs_span;
                         let suggestion = format!("{map}.get_mut({key}).unwrap()");
-                        return Some(Either::Right(MapGetMutSugg { span, suggestion }));
+                        return Some(AmpMutSugg::MapGetMut { span, suggestion });
                     }
                     return None;
                 }
@@ -1576,58 +1630,11 @@ fn suggest_ampmut<'tcx>(
         };
 
         if let Some((span, suggestion)) = sugg {
-            // FIXME(Ezrashaw): returning is bad because we still might want to
-            // update the annotated type, see #106857.
-            return Some(Either::Left(AmpMutSugg {
-                has_sugg: true,
-                span,
-                suggestion,
-                additional: None,
-            }));
+            return Some(AmpMutSugg::Expr { span, suggestion });
         }
     }
 
-    let (binding_exists, span) = match opt_ty_info {
-        // if this is a variable binding with an explicit type,
-        // then we will suggest changing it to be mutable.
-        // this is `Applicability::MachineApplicable`.
-        Some(ty_span) => (true, ty_span),
-
-        // otherwise, we'll suggest *adding* an annotated type, we'll suggest
-        // the RHS's type for that.
-        // this is `Applicability::HasPlaceholders`.
-        None => (false, decl_span),
-    };
-
-    // if the binding already exists and is a reference with an explicit
-    // lifetime, then we can suggest adding ` mut`. this is special-cased from
-    // the path without an explicit lifetime.
-    let sugg = if let Ok(src) = tcx.sess.source_map().span_to_snippet(span)
-        && src.starts_with("&'")
-        // note that `&     'a T` is invalid so this is correct.
-        && let Some(ws_pos) = src.find(char::is_whitespace)
-    {
-        let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
-        AmpMutSugg { has_sugg: true, span, suggestion: " mut".to_owned(), additional: None }
-    // if there is already a binding, we modify it to be `mut`
-    } else if binding_exists {
-        // shrink the span to just after the `&` in `&variable`
-        let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
-        AmpMutSugg { has_sugg: true, span, suggestion: "mut ".to_owned(), additional: None }
-    } else {
-        // otherwise, suggest that the user annotates the binding; we provide the
-        // type of the local.
-        let ty = decl_ty.builtin_deref(true).unwrap();
-
-        AmpMutSugg {
-            has_sugg: false,
-            span,
-            suggestion: format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty),
-            additional: None,
-        }
-    };
-
-    Some(Either::Left(sugg))
+    Some(AmpMutSugg::ChangeBinding)
 }
 
 /// If the type is a `Coroutine`, `Closure`, or `CoroutineClosure`
