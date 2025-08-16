@@ -67,20 +67,6 @@ const fn slice_index_order_fail(index: usize, end: usize) -> ! {
     )
 }
 
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-const fn slice_start_index_overflow_fail() -> ! {
-    panic!("attempted to index slice from after maximum usize");
-}
-
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-const fn slice_end_index_overflow_fail() -> ! {
-    panic!("attempted to index slice up to maximum usize");
-}
-
 // The UbChecks are great for catching bugs in the unsafe methods, but including
 // them in safe indexing is unnecessary and hurts inlining and debug runtime perf.
 // Both the safe and unsafe public methods share these helpers,
@@ -658,7 +644,6 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeFull {
 }
 
 /// The methods `index` and `index_mut` panic if:
-/// - the end of the range is `usize::MAX` or
 /// - the start of the range is greater than the end of the range or
 /// - the end of the range is out of bounds.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -668,12 +653,14 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&[T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get(slice) }
+        // `self.into_slice_range()` cannot overflow, because `*self.end() <
+        // slice.len()` implies `*self.end() < usize::MAX`.
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get(slice) }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut [T]> {
-        if *self.end() == usize::MAX { None } else { self.into_slice_range().get_mut(slice) }
+        if *self.end() >= slice.len() { None } else { self.into_slice_range().get_mut(slice) }
     }
 
     #[inline]
@@ -690,16 +677,16 @@ unsafe impl<T> const SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        if *self.end() == usize::MAX {
-            slice_end_index_overflow_fail();
+        if *self.end() >= slice.len() {
+            slice_end_index_len_fail(*self.end(), slice.len());
         }
         self.into_slice_range().index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        if *self.end() == usize::MAX {
-            slice_end_index_overflow_fail();
+        if *self.end() >= slice.len() {
+            slice_end_index_len_fail(*self.end(), slice.len());
         }
         self.into_slice_range().index_mut(slice)
     }
@@ -852,28 +839,27 @@ where
 {
     let len = bounds.end;
 
-    let start = match range.start_bound() {
-        ops::Bound::Included(&start) => start,
-        ops::Bound::Excluded(start) => {
-            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-        }
-        ops::Bound::Unbounded => 0,
-    };
-
     let end = match range.end_bound() {
-        ops::Bound::Included(end) => {
-            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-        }
+        ops::Bound::Included(&end) if end >= len => slice_end_index_len_fail(end, len),
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(&end) => end + 1,
+
+        ops::Bound::Excluded(&end) if end > len => slice_end_index_len_fail(end, len),
         ops::Bound::Excluded(&end) => end,
+
         ops::Bound::Unbounded => len,
     };
 
-    if start > end {
-        slice_index_order_fail(start, end);
-    }
-    if end > len {
-        slice_end_index_len_fail(end, len);
-    }
+    let start = match range.start_bound() {
+        ops::Bound::Excluded(&start) if start >= end => slice_index_order_fail(start, end),
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(&start) => start + 1,
+
+        ops::Bound::Included(&start) if start > end => slice_index_order_fail(start, end),
+        ops::Bound::Included(&start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
 
     ops::Range { start, end }
 }
@@ -916,19 +902,29 @@ where
 {
     let len = bounds.end;
 
-    let start = match range.start_bound() {
-        ops::Bound::Included(&start) => start,
-        ops::Bound::Excluded(start) => start.checked_add(1)?,
-        ops::Bound::Unbounded => 0,
-    };
-
     let end = match range.end_bound() {
-        ops::Bound::Included(end) => end.checked_add(1)?,
+        ops::Bound::Included(&end) if end >= len => return None,
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(end) => end + 1,
+
+        ops::Bound::Excluded(&end) if end > len => return None,
         ops::Bound::Excluded(&end) => end,
+
         ops::Bound::Unbounded => len,
     };
 
-    if start > end || end > len { None } else { Some(ops::Range { start, end }) }
+    let start = match range.start_bound() {
+        ops::Bound::Excluded(&start) if start >= end => return None,
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(&start) => start + 1,
+
+        ops::Bound::Included(&start) if start > end => return None,
+        ops::Bound::Included(&start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
+
+    Some(ops::Range { start, end })
 }
 
 /// Converts a pair of `ops::Bound`s into `ops::Range` without performing any
@@ -957,21 +953,27 @@ pub(crate) fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(start) => start,
-        Bound::Excluded(start) => start.checked_add(1)?,
-        Bound::Unbounded => 0,
-    };
-
     let end = match end {
-        Bound::Included(end) => end.checked_add(1)?,
-        Bound::Excluded(end) => end,
-        Bound::Unbounded => len,
+        ops::Bound::Included(end) if end >= len => return None,
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(end) => end + 1,
+
+        ops::Bound::Excluded(end) if end > len => return None,
+        ops::Bound::Excluded(end) => end,
+
+        ops::Bound::Unbounded => len,
     };
 
-    // Don't bother with checking `start < end` and `end <= len`
-    // since these checks are handled by `Range` impls
+    let start = match start {
+        ops::Bound::Excluded(start) if start >= end => return None,
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(start) => start + 1,
+
+        ops::Bound::Included(start) if start > end => return None,
+        ops::Bound::Included(start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
 
     Some(start..end)
 }
@@ -982,25 +984,27 @@ pub(crate) fn into_slice_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
-    use ops::Bound;
-    let start = match start {
-        Bound::Included(start) => start,
-        Bound::Excluded(start) => {
-            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
-        }
-        Bound::Unbounded => 0,
-    };
-
     let end = match end {
-        Bound::Included(end) => {
-            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
-        }
-        Bound::Excluded(end) => end,
-        Bound::Unbounded => len,
+        ops::Bound::Included(end) if end >= len => slice_end_index_len_fail(end, len),
+        // Cannot overflow because `end < len` implies `end < usize::MAX`.
+        ops::Bound::Included(end) => end + 1,
+
+        ops::Bound::Excluded(end) if end > len => slice_end_index_len_fail(end, len),
+        ops::Bound::Excluded(end) => end,
+
+        ops::Bound::Unbounded => len,
     };
 
-    // Don't bother with checking `start < end` and `end <= len`
-    // since these checks are handled by `Range` impls
+    let start = match start {
+        ops::Bound::Excluded(start) if start >= end => slice_index_order_fail(start, end),
+        // Cannot overflow because `start < end` implies `start < usize::MAX`.
+        ops::Bound::Excluded(start) => start + 1,
+
+        ops::Bound::Included(start) if start > end => slice_index_order_fail(start, end),
+        ops::Bound::Included(start) => start,
+
+        ops::Bound::Unbounded => 0,
+    };
 
     start..end
 }
