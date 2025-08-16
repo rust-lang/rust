@@ -858,8 +858,14 @@ impl<'input> Parser<'input> {
             self.errors.insert(
                 0,
                 ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
-                    note: None,
+                    description: format!(
+                        "expected `{}` (alignment specifier) after `:` in format string",
+                        alignment
+                    ),
+                    note: Some(
+                        "alignment must be one of `<` (left), `^` (center), or `>` (right)"
+                            .to_string(),
+                    ),
                     label: format!("expected `{}` to occur after `:`", alignment),
                     span: range,
                     secondary_label: None,
