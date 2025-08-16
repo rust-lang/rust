@@ -58,6 +58,7 @@ using namespace llvm::object;
 // This opcode is an LLVM detail that could hypothetically change (?), so
 // verify that the hard-coded value in `dwarf_const.rs` still agrees with LLVM.
 static_assert(dwarf::DW_OP_LLVM_fragment == 0x1000);
+static_assert(dwarf::DW_OP_stack_value == 0x9f);
 
 // LLVMAtomicOrdering is already an enum - don't create another
 // one.
@@ -1242,6 +1243,18 @@ LLVMRustDIBuilderInsertDeclareAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
                                     unsigned AddrOpsCount, LLVMMetadataRef DL,
                                     LLVMBasicBlockRef InsertAtEnd) {
   unwrap(Builder)->insertDeclare(
+      unwrap(V), unwrap<DILocalVariable>(VarInfo),
+      unwrap(Builder)->createExpression(
+          llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
+      DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd));
+}
+
+extern "C" void
+LLVMRustDIBuilderInsertDbgValueAtEnd(LLVMDIBuilderRef Builder, LLVMValueRef V,
+                                     LLVMMetadataRef VarInfo, uint64_t *AddrOps,
+                                     unsigned AddrOpsCount, LLVMMetadataRef DL,
+                                     LLVMBasicBlockRef InsertAtEnd) {
+  unwrap(Builder)->insertDbgValueIntrinsic(
       unwrap(V), unwrap<DILocalVariable>(VarInfo),
       unwrap(Builder)->createExpression(
           llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),

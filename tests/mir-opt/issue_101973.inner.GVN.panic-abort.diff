@@ -30,7 +30,6 @@
           StorageLive(_4);
           StorageLive(_5);
           _5 = copy _1;
-          nop;
 -         StorageLive(_14);
 -         _14 = BitAnd(copy _5, const 255_u32);
 -         _4 = BitOr(const 0_u32, move _14);

@@ -741,6 +741,9 @@ where
     let mut current_location = Location { block, statement_index: 0 };
     for statement in &data.statements {
         extra_data(PassWhere::BeforeLocation(current_location), w)?;
+        for debuginfo in statement.debuginfos.iter() {
+            writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
+        }
         let indented_body = format!("{INDENT}{INDENT}{statement:?};");
         if options.include_extra_comments {
             writeln!(
@@ -775,6 +778,9 @@ where
 
     // Terminator at the bottom.
     extra_data(PassWhere::BeforeLocation(current_location), w)?;
+    for debuginfo in data.after_last_stmt_debuginfos.iter() {
+        writeln!(w, "{INDENT}{INDENT}// DBG: {debuginfo:?};")?;
+    }
     if data.terminator.is_some() {
         let indented_terminator = format!("{0}{0}{1:?};", INDENT, data.terminator().kind);
         if options.include_extra_comments {
@@ -849,6 +855,19 @@ impl Debug for Statement<'_> {
                 // For now, we don't record the reason because there is only one use case,
                 // which is to report breaking change in drop order by Edition 2024
                 write!(fmt, "BackwardIncompatibleDropHint({place:?})")
+            }
+        }
+    }
+}
+
+impl Debug for StmtDebugInfo<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            StmtDebugInfo::AssignRef(local, place) => {
+                write!(fmt, "{local:?} = &{place:?}")
+            }
+            StmtDebugInfo::InvalidAssign(local) => {
+                write!(fmt, "{local:?} = &?")
             }
         }
     }
