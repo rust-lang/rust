@@ -1637,7 +1637,8 @@ pub(crate) struct IntegerToPtrTransmutes<'tcx> {
 pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
     #[multipart_suggestion(
         lint_suggestion_with_exposed_provenance,
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     ToPtr {
         dst: Ty<'tcx>,
@@ -1647,7 +1648,8 @@ pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
     },
     #[multipart_suggestion(
         lint_suggestion_with_exposed_provenance,
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     ToRef {
         dst: Ty<'tcx>,
