@@ -204,7 +204,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {
-        unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
+        llvm::LLVMGetTypeKind(ty).to_rust().to_generic()
     }
 
     fn type_ptr(&self) -> &'ll Type {
