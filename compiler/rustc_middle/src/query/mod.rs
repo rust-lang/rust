@@ -1858,6 +1858,7 @@ rustc_queries! {
     }
 
     /// Returns whether the impl or associated function has the `default` keyword.
+    /// Note: This will ICE on inherent impl items. Consider using `AssocItem::defaultness`.
     query defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` has `default`", tcx.def_path_str(def_id) }
         separate_provide_extern

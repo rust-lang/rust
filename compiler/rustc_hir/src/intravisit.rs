@@ -1257,18 +1257,21 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
         owner_id: _,
         ident,
         ref generics,
+        ref impl_kind,
         ref kind,
-        ref defaultness,
         span: _,
-        vis_span: _,
         has_delayed_lints: _,
-        trait_item_def_id: _,
     } = *impl_item;
 
     try_visit!(visitor.visit_ident(ident));
     try_visit!(visitor.visit_generics(generics));
-    try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
+    match impl_kind {
+        ImplItemImplKind::Inherent { vis_span: _ } => {}
+        ImplItemImplKind::Trait { defaultness, trait_item_def_id: _ } => {
+            try_visit!(visitor.visit_defaultness(defaultness));
+        }
+    }
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
             try_visit!(visitor.visit_ty_unambig(ty));

@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingTraitMethods {
                 .tcx
                 .associated_items(item.owner_id)
                 .in_definition_order()
-                .filter_map(|assoc_item| assoc_item.trait_item_def_id)
+                .filter_map(|assoc_item| assoc_item.expect_trait_impl().ok())
                 .collect();
 
             for assoc in cx

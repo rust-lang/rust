@@ -245,7 +245,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
                         for &assoc in self.tcx.associated_items(parent).in_definition_order() {
                             trace!(?assoc);
-                            if assoc.trait_item_def_id != Some(alias_ty.def_id) {
+                            if assoc.expect_trait_impl() != Ok(alias_ty.def_id) {
                                 continue;
                             }
 

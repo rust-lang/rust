@@ -576,26 +576,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     codegen_fn_attrs
 }
 
-/// If the provided DefId is a method in a trait impl, return the DefId of the method prototype.
-fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    let impl_item = tcx.opt_associated_item(def_id)?;
-    match impl_item.container {
-        ty::AssocItemContainer::Impl => impl_item.trait_item_def_id,
-        _ => None,
-    }
-}
-
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let Some(trait_item) = opt_trait_item(tcx, def_id) else { return false };
-    tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+    tcx.trait_item_of(def_id).is_some_and(|id| {
+        tcx.codegen_fn_attrs(id).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER)
+    })
 }
 
 /// If the provided DefId is a method in a trait impl, return the value of the `#[align]`
 /// attribute on the method prototype (if any).
 fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
-    tcx.codegen_fn_attrs(opt_trait_item(tcx, def_id)?).alignment
+    tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
 }
 
 /// We now check the #\[rustc_autodiff\] attributes which we generated from the #[autodiff(...)]
