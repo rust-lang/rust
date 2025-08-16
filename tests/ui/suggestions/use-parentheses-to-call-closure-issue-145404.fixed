@@ -9,5 +9,5 @@ impl S {
 }
 
 fn main() {
-    S.call(|| "hello"()); //~ ERROR [E0277]
+    S.call((|| "hello")()); //~ ERROR [E0277]
 }
