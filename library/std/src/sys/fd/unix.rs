@@ -37,10 +37,10 @@ pub struct FileDesc(OwnedFd);
 //
 // On Apple targets however, apparently the 64-bit libc is either buggy or
 // intentionally showing odd behavior by rejecting any read with a size
-// larger than or equal to INT_MAX. To handle both of these the read
-// size is capped on both platforms.
+// larger than INT_MAX. To handle both of these the read size is capped on
+// both platforms.
 const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
-    libc::c_int::MAX as usize - 1
+    libc::c_int::MAX as usize
 } else {
     libc::ssize_t::MAX as usize
 };
