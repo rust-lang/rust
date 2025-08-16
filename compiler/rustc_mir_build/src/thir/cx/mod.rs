@@ -4,11 +4,11 @@
 
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::HirId;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, HirId, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::thir::*;
@@ -111,10 +111,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.to_def_id(),
-            apply_adjustments: tcx
-                .hir_attrs(hir_id)
-                .iter()
-                .all(|attr| !attr.has_name(rustc_span::sym::custom_mir)),
+            apply_adjustments:
+                !find_attr!(tcx.hir_attrs(hir_id), AttributeKind::CustomMir(..) => ()).is_some(),
         }
     }
 

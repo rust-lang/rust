@@ -31,6 +31,7 @@ impl AttributeKind {
             ConstTrait(..) => No,
             Coroutine(..) => No,
             Coverage(..) => No,
+            CustomMir(_, _, _) => Yes,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
