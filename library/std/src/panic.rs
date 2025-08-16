@@ -215,10 +215,10 @@ impl fmt::Display for PanicHookInfo<'_> {
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
     () => ({
-        $crate::rt::begin_panic("explicit panic")
+        $crate::rt::panic_with_payload("explicit panic")
     }),
     ($msg:expr $(,)?) => ({
-        $crate::rt::begin_panic($msg);
+        $crate::rt::panic_with_payload($msg);
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
@@ -257,7 +257,7 @@ pub use crate::panicking::{set_hook, take_hook};
 #[track_caller]
 #[cfg_attr(not(test), rustc_diagnostic_item = "panic_any")]
 pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
-    crate::panicking::begin_panic(msg);
+    crate::panicking::panic_with_payload(msg);
 }
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]

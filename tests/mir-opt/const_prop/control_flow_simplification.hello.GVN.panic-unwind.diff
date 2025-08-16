@@ -15,7 +15,7 @@
       }
   
       bb1: {
-          _2 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
+          _2 = panic_with_payload::<&str>(const "explicit panic") -> unwind continue;
       }
   
       bb2: {

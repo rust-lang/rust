@@ -6,7 +6,7 @@ use std::hash::{BuildHasher, BuildHasherDefault};
 use dashmap::{DashMap, SharedValue};
 use rustc_hash::FxHasher;
 
-use crate::{Symbol, symbol::TaggedArcPtr};
+use crate::{symbol::TaggedArcPtr, Symbol};
 
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
@@ -127,7 +127,7 @@ define_symbols! {
     asm,
     assert,
     attributes,
-    begin_panic,
+    panic_with_payload,
     bench,
     bitand_assign,
     bitand,

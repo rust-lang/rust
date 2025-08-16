@@ -5,24 +5,24 @@ use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
-    CrateRootModuleId,
     builtin_type::{BuiltinInt, BuiltinUint},
     resolver::HasResolver,
+    CrateRootModuleId,
 };
 use hir_expand::name::Name;
-use intern::{Symbol, sym};
+use intern::{sym, Symbol};
 use stdx::never;
 
 use crate::{
-    DropGlue,
     display::DisplayTarget,
     error_lifetime,
     mir::eval::{
-        Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
+        pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
         InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId,
         LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
-        Ty, TyBuilder, TyExt, pad16,
+        Ty, TyBuilder, TyExt,
     },
+    DropGlue,
 };
 
 mod simd;
@@ -295,7 +295,7 @@ impl Evaluator<'_> {
         let attrs = self.db.attrs(def.into());
 
         if attrs.by_key(sym::rustc_const_panic_str).exists() {
-            // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
+            // `#[rustc_const_panic_str]` is treated like `lang = "panic_with_payload"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }
 

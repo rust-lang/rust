@@ -3,16 +3,16 @@
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
-use intern::{Symbol, sym};
+use intern::{sym, Symbol};
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
     db::DefDatabase,
     expr_store::path::Path,
     nameres::{assoc::TraitItems, crate_def_map},
+    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -153,7 +153,11 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
         }
     }
 
-    if lang_items.items.is_empty() { None } else { Some(Box::new(lang_items)) }
+    if lang_items.items.is_empty() {
+        None
+    } else {
+        Some(Box::new(lang_items))
+    }
 }
 
 /// Salsa query. Look for a lang item, starting from the specified crate and recursively
@@ -226,7 +230,11 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
         }
     }
 
-    if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
+    if traits.is_empty() {
+        None
+    } else {
+        Some(traits.into_iter().collect())
+    }
 }
 
 pub enum GenericRequirement {
@@ -416,7 +424,7 @@ language_item_table! {
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicNullPointerDereference, sym::panic_null_pointer_dereference, panic_null_pointer_dereference, Target::Fn, GenericRequirement::None;
     /// libstd panic entry point. Necessary for const eval to be able to catch it
-    BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
+    BeginPanic,              sym::panic_with_payload,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
     // Lang items needed for `format_args!()`.
     FormatAlignment,         sym::format_alignment,    format_alignment,           Target::Enum,           GenericRequirement::None;

@@ -11,9 +11,9 @@
 
 // This is needed to avoid test output differences across std being built with v0 symbols vs legacy
 // symbols.
-//@ normalize-stderr: "begin_panic::<&str>" -> "begin_panic"
+//@ normalize-stderr: "panic_with_payload::<&str>" -> "panic_with_payload"
 // This variant occurs on macOS with `rust.debuginfo-level = "line-tables-only"` (#133997)
-//@ normalize-stderr: " begin_panic<&str>" -> " std::panicking::begin_panic"
+//@ normalize-stderr: " panic_with_payload<&str>" -> " std::panicking::panic_with_payload"
 // And this is for differences between std with and without debuginfo.
 //@ normalize-stderr: "\n +at [^\n]+" -> ""
 
