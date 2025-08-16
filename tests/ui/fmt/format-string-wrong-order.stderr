@@ -50,7 +50,7 @@ LL |     format!("{?:#?}", bar);
    |
    = note: `?` comes after `:`, try `:?` instead
 
-error: invalid format string: expected `<` (alignment specifier) after `:` in format string
+error: invalid format string: expected `<` (alignment specifier) after `:` in format string; example: `{:>#X5}`
   --> $DIR/format-string-wrong-order.rs:15:21
    |
 LL |     format!("Hello {<5:}!", "x");
@@ -58,7 +58,7 @@ LL |     format!("Hello {<5:}!", "x");
    |
    = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
 
-error: invalid format string: expected `^` (alignment specifier) after `:` in format string
+error: invalid format string: expected `^` (alignment specifier) after `:` in format string; example: `{:>#X5}`
   --> $DIR/format-string-wrong-order.rs:17:21
    |
 LL |     format!("Hello {^5:}!", "x");
@@ -66,7 +66,7 @@ LL |     format!("Hello {^5:}!", "x");
    |
    = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
 
-error: invalid format string: expected `>` (alignment specifier) after `:` in format string
+error: invalid format string: expected `>` (alignment specifier) after `:` in format string; example: `{:>#X5}`
   --> $DIR/format-string-wrong-order.rs:19:21
    |
 LL |     format!("Hello {>5:}!", "x");

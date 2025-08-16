@@ -1,4 +1,4 @@
-error: invalid format string: expected `>` (alignment specifier) after `:` in format string
+error: invalid format string: expected `>` (alignment specifier) after `:` in format string; example: `{:>#X5}`
   --> $DIR/format-alignment-hash.rs:3:20
    |
 LL |     println!("{0:#X>18}", 12345);
