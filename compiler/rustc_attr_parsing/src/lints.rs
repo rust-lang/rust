@@ -53,6 +53,7 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
                     target: target.plural_name(),
                     applied: applied.clone(),
                     only,
+                    attr_span: *span,
                 },
             ),
     }

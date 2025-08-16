@@ -489,6 +489,8 @@ pub(crate) struct InvalidTargetLint {
     pub target: &'static str,
     pub applied: String,
     pub only: &'static str,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -496,6 +498,7 @@ pub(crate) struct InvalidTargetLint {
 #[diag(attr_parsing_invalid_target)]
 pub(crate) struct InvalidTarget {
     #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub span: Span,
     pub name: Symbol,
     pub target: &'static str,
