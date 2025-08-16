@@ -1469,33 +1469,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         krate: &Crate,
         sugg_span: Option<Span>,
     ) {
-        // Bring imported but unused `derive` macros into `macro_map` so we ensure they can be used
-        // for suggestions.
-        self.cm().visit_scopes(
-            ScopeSet::Macro(MacroKind::Derive),
-            &parent_scope,
-            ident.span.ctxt(),
-            |this, scope, _use_prelude, _ctxt| {
-                let Scope::Module(m, _) = scope else {
-                    return None;
-                };
-                for (_, resolution) in this.resolutions(m).borrow().iter() {
-                    let Some(binding) = resolution.borrow().best_binding() else {
-                        continue;
-                    };
-                    let Res::Def(DefKind::Macro(kinds), def_id) = binding.res() else {
-                        continue;
-                    };
-                    if !kinds.intersects(MacroKinds::ATTR | MacroKinds::DERIVE) {
-                        continue;
-                    }
-                    // By doing this all *imported* macros get added to the `macro_map` even if they
-                    // are *unused*, which makes the later suggestions find them and work.
-                    let _ = this.get_macro_by_def_id(def_id);
-                }
-                None::<()>
-            },
-        );
+        // Bring all unused `derive` macros into `macro_map` so we ensure they can be used for
+        // suggestions.
+        self.register_macros_for_all_crates();
 
         let is_expected =
             &|res: Res| res.macro_kinds().is_some_and(|k| k.contains(macro_kind.into()));
