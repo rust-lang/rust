@@ -17,7 +17,7 @@ LL | #[macro_use]
    | ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, crates
+   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
 
 error: `#[path]` attribute cannot be used on macro defs
   --> $DIR/unused-attr-macro-rules.rs:9:1
