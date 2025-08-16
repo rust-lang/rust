@@ -6,7 +6,6 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::IndexVec;
-use rustc_macros::TryFromU32;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
@@ -27,11 +26,13 @@ mod unused;
 /// or at least the subset that we know and care about.
 ///
 /// Note that version `n` is encoded as `(n-1)`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, TryFromU32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum CovmapVersion {
     /// Used by LLVM 18 onwards.
     Version7 = 6,
 }
+
+crate::impl_try_from_u32!(CovmapVersion { Version7 });
 
 impl CovmapVersion {
     fn to_u32(self) -> u32 {

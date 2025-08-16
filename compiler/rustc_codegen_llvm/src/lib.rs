@@ -79,6 +79,27 @@ mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
+// FIXME(fee1-dead) use `macro_attr` feature once that is available in bootstrap beta
+macro_rules! impl_try_from_u32 {
+    ($Type:ident { $($Variant:ident),*$(,)? }) => {
+        impl ::core::convert::TryFrom<u32> for $Type {
+            type Error = u32;
+            #[allow(deprecated)] // Don't warn about deprecated variants.
+            fn try_from(value: u32) -> ::core::result::Result<$Type, Self::Error> {
+                fn _assert_all_variants_provided(x: $Type) {
+                    match x {
+                        $($Type::$Variant => (),)*
+                    }
+                }
+                $( if value == const { $Type::$Variant as u32 } { return Ok($Type::$Variant) } )*
+                Err(value)
+            }
+        }
+    }
+}
+
+pub(crate) use impl_try_from_u32;
+
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
