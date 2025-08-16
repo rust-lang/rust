@@ -31,10 +31,10 @@ pub(super) mod netc {
     pub use crate::sys::c::{
         ADDRESS_FAMILY as sa_family_t, ADDRINFOA as addrinfo, IP_ADD_MEMBERSHIP,
         IP_DROP_MEMBERSHIP, IP_MULTICAST_LOOP, IP_MULTICAST_TTL, IP_TTL, IPPROTO_IP, IPPROTO_IPV6,
-        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_LOOP, IPV6_V6ONLY, SO_BROADCAST,
-        SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM, SOCK_STREAM, SOCKADDR as sockaddr,
-        SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind, connect, freeaddrinfo, getpeername,
-        getsockname, getsockopt, listen, setsockopt,
+        IPV6_ADD_MEMBERSHIP, IPV6_DROP_MEMBERSHIP, IPV6_MULTICAST_HOPS, IPV6_MULTICAST_LOOP,
+        IPV6_UNICAST_HOPS, IPV6_V6ONLY, SO_BROADCAST, SO_RCVTIMEO, SO_SNDTIMEO, SOCK_DGRAM,
+        SOCK_STREAM, SOCKADDR as sockaddr, SOCKADDR_STORAGE as sockaddr_storage, SOL_SOCKET, bind,
+        connect, freeaddrinfo, getpeername, getsockname, getsockopt, listen, setsockopt,
     };
 
     #[allow(non_camel_case_types)]
