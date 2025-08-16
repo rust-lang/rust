@@ -1747,7 +1747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn should_log_capture_analysis(&self, closure_def_id: LocalDefId) -> bool {
-        self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
+        self.has_rustc_attrs && self.tcx.has_attr(closure_def_id, sym::rustc_capture_analysis)
     }
 
     fn log_capture_analysis_first_pass(
