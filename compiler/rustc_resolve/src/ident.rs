@@ -19,7 +19,7 @@ use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
     Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot,
     NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Shadowing, Used, Weak, errors,
+    Resolver, Scope, ScopeSet, Segment, Used, Weak, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -32,6 +32,12 @@ impl From<UsePrelude> for bool {
     fn from(up: UsePrelude) -> bool {
         matches!(up, UsePrelude::Yes)
     }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum Shadowing {
+    Restricted,
+    Unrestricted,
 }
 
 bitflags::bitflags! {
@@ -107,7 +113,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (ns, macro_kind) = match scope_set {
             ScopeSet::All(ns)
             | ScopeSet::ModuleAndExternPrelude(ns, _)
-            | ScopeSet::Module(_, ns, _)
+            | ScopeSet::Module(ns, ..)
             | ScopeSet::Late(ns, ..) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
@@ -116,7 +122,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // Start with the specified module.
             ScopeSet::Late(_, module, _)
             | ScopeSet::ModuleAndExternPrelude(_, module)
-            | ScopeSet::Module(module, ..) => module,
+            | ScopeSet::Module(_, module) => module,
             // Jump out of trait or enum modules, they do not act as scopes.
             _ => parent_scope.module.nearest_item_scope(),
         };
@@ -125,7 +131,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module_and_extern_prelude = matches!(scope_set, ScopeSet::ModuleAndExternPrelude(..));
         let extern_prelude = matches!(scope_set, ScopeSet::ExternPrelude);
         let mut scope = match ns {
-            _ if (module_and_extern_prelude || module_scope) => Scope::NonGlobModule(module, None),
+            _ if module_and_extern_prelude || module_scope => Scope::NonGlobModule(module, None),
             _ if extern_prelude => Scope::ExternPreludeItems,
             TypeNS | ValueNS => Scope::NonGlobModule(module, None),
             MacroNS => Scope::DeriveHelpers(parent_scope.expansion),
@@ -355,7 +361,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ident,
                     ns,
                     parent_scope,
-                    Shadowing::Unrestricted,
                     finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                     ignore_binding,
                     None,
@@ -418,7 +423,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (ns, macro_kind) = match scope_set {
             ScopeSet::All(ns)
             | ScopeSet::ModuleAndExternPrelude(ns, _)
-            | ScopeSet::Module(_, ns, _)
+            | ScopeSet::Module(ns, ..)
             | ScopeSet::Late(ns, ..) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
@@ -520,13 +525,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ns,
                             adjusted_parent_scope,
                             match scope_set {
-                                ScopeSet::Late(..) => Shadowing::Unrestricted,
-                                ScopeSet::Module(_, _, shadowing) => shadowing,
+                                ScopeSet::Late(..) | ScopeSet::Module(..) => {
+                                    Shadowing::Unrestricted
+                                }
                                 _ => Shadowing::Restricted,
                             },
                             adjusted_finalize,
                             ignore_binding,
-                            ignore_import,
                         );
 
                         match binding {
@@ -590,8 +595,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ns,
                             adjusted_parent_scope,
                             match scope_set {
-                                ScopeSet::Late(..) => Shadowing::Unrestricted,
-                                ScopeSet::Module(_, _, shadowing) => shadowing,
+                                ScopeSet::Late(..) | ScopeSet::Module(..) => {
+                                    Shadowing::Unrestricted
+                                }
                                 _ => Shadowing::Restricted,
                             },
                             finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
@@ -665,7 +671,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 ident,
                                 ns,
                                 parent_scope,
-                                Shadowing::Unrestricted,
                                 None,
                                 ignore_binding,
                                 ignore_import,
@@ -883,7 +888,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ident,
             ns,
             adjusted_parent_scope,
-            Shadowing::Unrestricted,
             finalize,
             ignore_binding,
             ignore_import,
@@ -898,7 +902,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'ra>,
-        shadowing: Shadowing,
         finalize: Option<Finalize>,
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
@@ -908,16 +911,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match module {
             ModuleOrUniformRoot::Module(module) => self.early_resolve_ident_in_lexical_scope(
                 ident,
-                ScopeSet::Module(module, ns, shadowing),
+                ScopeSet::Module(ns, module),
                 parent_scope,
                 finalize,
                 finalize.is_some(),
                 ignore_binding,
                 ignore_import,
             ),
-            ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
-                self.early_resolve_ident_in_lexical_scope(
+            ModuleOrUniformRoot::ModuleAndExternPrelude(module) => self
+                .early_resolve_ident_in_lexical_scope(
                     ident,
                     ScopeSet::ModuleAndExternPrelude(ns, module),
                     parent_scope,
@@ -925,10 +927,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                     ignore_binding,
                     ignore_import,
-                )
-            }
+                ),
             ModuleOrUniformRoot::ExternPrelude => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
                 return if ns != TypeNS {
                     Err(Determined)
                 } else {
@@ -944,7 +944,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
             }
             ModuleOrUniformRoot::CurrentScope => {
-                assert_eq!(shadowing, Shadowing::Unrestricted);
                 if ns == TypeNS {
                     if ident.name == kw::Crate || ident.name == kw::DollarCrate {
                         let module = self.resolve_crate_root(ident);
@@ -980,7 +979,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // This binding should be ignored during in-module resolution, so that we don't get
         // "self-confirming" import resolutions during import validation and checking.
         ignore_binding: Option<NameBinding<'ra>>,
-        _ignore_import: Option<Import<'ra>>, // not used, but kept for signature consistency
     ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
         let key = BindingKey::new(ident, ns);
         // `try_borrow_mut` is required to ensure exclusive access, even if the resulting binding
@@ -991,16 +989,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .try_borrow_mut()
             .map_err(|_| (Determined, Weak::No))?;
 
-        let check_usable = |this: CmResolver<'r, 'ra, 'tcx>, binding: NameBinding<'ra>| {
-            let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
-        };
-
         if let Some(binding) = resolution.non_glob_binding
             && ignore_binding.map_or(true, |b| binding != b)
         {
             if let Some(finalize) = finalize {
-                return self.get_mut().finalize_non_glob_module_binding(
+                return self.get_mut().finalize_module_binding(
                     ident,
                     binding,
                     resolution.glob_binding,
@@ -1009,7 +1002,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     shadowing,
                 );
             } else {
-                return check_usable(self, binding);
+                let usable = self.is_accessible_from(binding.vis, parent_scope.module);
+                if usable {
+                    return Ok(binding);
+                } else {
+                    return Err((Determined, Weak::No));
+                };
             }
         }
 
@@ -1035,18 +1033,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .try_borrow_mut()
             .map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        let check_usable = |this: CmResolver<'r, 'ra, 'tcx>, binding: NameBinding<'ra>| {
-            let usable = this.is_accessible_from(binding.vis, parent_scope.module);
-            if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
-        };
-
         if let Some(binding) = resolution.glob_binding
             && ignore_binding.map_or(true, |b| binding != b)
         {
             if let Some(finalize) = finalize {
-                return self.get_mut().finalize_glob_module_binding(
+                return self.get_mut().finalize_module_binding(
                     ident,
                     binding,
+                    None,
                     parent_scope,
                     finalize,
                     shadowing,
@@ -1079,7 +1073,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
             // shadowing is enabled, see `macro_expanded_macro_export_errors`).
             if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
-                return check_usable(self, binding);
+                let usable = self.is_accessible_from(binding.vis, parent_scope.module);
+                if usable {
+                    return Ok(binding);
+                } else {
+                    return Err((Determined, Weak::No));
+                };
             } else {
                 return Err((Undetermined, Weak::No));
             }
@@ -1163,7 +1162,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ident,
                 ns,
                 adjusted_parent_scope,
-                Shadowing::Unrestricted,
                 None,
                 ignore_binding,
                 ignore_import,
@@ -1184,7 +1182,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         (Determined, Weak::No)
     }
 
-    fn finalize_non_glob_module_binding(
+    fn finalize_module_binding(
         &mut self,
         ident: Ident,
         binding: NameBinding<'ra>,
@@ -1228,44 +1226,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
             });
-        }
-
-        if shadowing == Shadowing::Unrestricted
-            && binding.expansion != LocalExpnId::ROOT
-            && let NameBindingKind::Import { import, .. } = binding.kind
-            && matches!(import.kind, ImportKind::MacroExport)
-        {
-            self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-        }
-
-        self.record_use(ident, binding, used);
-        return Ok(binding);
-    }
-
-    fn finalize_glob_module_binding(
-        &mut self,
-        ident: Ident,
-        binding: NameBinding<'ra>,
-        parent_scope: &ParentScope<'ra>,
-        finalize: Finalize,
-        shadowing: Shadowing,
-    ) -> Result<NameBinding<'ra>, (Determinacy, Weak)> {
-        let Finalize { path_span, report_private, used, root_span, .. } = finalize;
-
-        if !self.is_accessible_from(binding.vis, parent_scope.module) {
-            if report_private {
-                self.privacy_errors.push(PrivacyError {
-                    ident,
-                    binding,
-                    dedup_span: path_span,
-                    outermost_res: None,
-                    source: None,
-                    parent_scope: *parent_scope,
-                    single_nested: path_span != root_span,
-                });
-            } else {
-                return Err((Determined, Weak::No));
-            }
         }
 
         if shadowing == Shadowing::Unrestricted
