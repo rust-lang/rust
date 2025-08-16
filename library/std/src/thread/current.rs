@@ -18,8 +18,8 @@ local_pointer! {
 pub(super) mod id {
     use super::*;
 
-    cfg_if::cfg_if! {
-        if #[cfg(target_thread_local)] {
+    cfg_select! {
+        target_thread_local => {
             use crate::cell::Cell;
 
             #[thread_local]
@@ -34,7 +34,8 @@ pub(super) mod id {
             pub(super) fn set(id: ThreadId) {
                 ID.set(Some(id))
             }
-        } else if #[cfg(target_pointer_width = "16")] {
+        }
+        target_pointer_width = "16" => {
             local_pointer! {
                 static ID0;
                 static ID16;
@@ -59,7 +60,8 @@ pub(super) mod id {
                 ID32.set(ptr::without_provenance_mut((val >> 32) as usize));
                 ID48.set(ptr::without_provenance_mut((val >> 48) as usize));
             }
-        } else if #[cfg(target_pointer_width = "32")] {
+        }
+        target_pointer_width = "32" => {
             local_pointer! {
                 static ID0;
                 static ID32;
@@ -78,7 +80,8 @@ pub(super) mod id {
                 ID0.set(ptr::without_provenance_mut(val as usize));
                 ID32.set(ptr::without_provenance_mut((val >> 32) as usize));
             }
-        } else {
+        }
+        _ => {
             local_pointer! {
                 static ID;
             }

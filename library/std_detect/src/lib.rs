@@ -15,7 +15,7 @@
 //! * `s390x`: [`is_s390x_feature_detected`]
 
 #![unstable(feature = "stdarch_internal", issue = "none")]
-#![feature(staged_api, doc_cfg, allow_internal_unstable)]
+#![feature(staged_api, cfg_select, doc_cfg, allow_internal_unstable)]
 #![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
 #![cfg_attr(test, allow(unused_imports))]

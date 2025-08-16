@@ -1,5 +1,6 @@
 // These tests are in a separate integration test as they modify the environment,
 // and would otherwise cause some other tests to fail.
+#![feature(cfg_select)]
 
 use std::env::*;
 use std::ffi::{OsStr, OsString};
@@ -110,8 +111,8 @@ fn env_home_dir() {
         }
     }
 
-    cfg_if::cfg_if! {
-        if #[cfg(unix)] {
+    cfg_select! {
+        unix => {
             let oldhome = var_to_os_string(var("HOME"));
 
             unsafe {
@@ -130,7 +131,8 @@ fn env_home_dir() {
             }
 
             if let Some(oldhome) = oldhome { unsafe { set_var("HOME", oldhome); } }
-        } else if #[cfg(windows)] {
+        }
+        windows => {
             let oldhome = var_to_os_string(var("HOME"));
             let olduserprofile = var_to_os_string(var("USERPROFILE"));
 
@@ -159,6 +161,7 @@ fn env_home_dir() {
                 if let Some(olduserprofile) = olduserprofile { set_var("USERPROFILE", olduserprofile); }
             }
         }
+        _ => {}
     }
 }
 

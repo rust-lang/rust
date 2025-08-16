@@ -9,29 +9,34 @@ use crate::sys_common::{AsInner, FromInner};
 use crate::time::Duration;
 use crate::{cmp, fmt, mem, ptr};
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "hermit")] {
+cfg_select! {
+    target_os = "hermit" => {
         mod hermit;
         pub use hermit::*;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "solid_asp3" => {
         mod solid;
         pub use solid::*;
-    } else if #[cfg(target_family = "unix")] {
+    }
+    target_family = "unix" => {
         mod unix;
         pub use unix::*;
-    } else if #[cfg(all(target_os = "wasi", target_env = "p2"))] {
+    }
+    all(target_os = "wasi", target_env = "p2") => {
         mod wasip2;
         pub use wasip2::*;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         pub use windows::*;
     }
+    _ => {}
 }
 
 use netc as c;
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "openbsd",
@@ -43,39 +48,44 @@ cfg_if::cfg_if! {
         target_os = "nto",
         target_os = "nuttx",
         target_vendor = "apple",
-    ))] {
+    ) => {
         use c::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
         use c::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
-    } else {
+    }
+    _ => {
         use c::IPV6_ADD_MEMBERSHIP;
         use c::IPV6_DROP_MEMBERSHIP;
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         target_os = "linux", target_os = "android",
         target_os = "hurd",
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos",
         target_os = "haiku", target_os = "nto",
-        target_os = "cygwin"))] {
+        target_os = "cygwin",
+    ) => {
         use libc::MSG_NOSIGNAL;
-    } else {
+    }
+    _ => {
         const MSG_NOSIGNAL: c_int = 0x0;
     }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos",
-        target_os = "nto"))] {
+        target_os = "nto",
+    ) => {
         use crate::ffi::c_uchar;
         type IpV4MultiCastType = c_uchar;
-    } else {
+    }
+    _ => {
         type IpV4MultiCastType = c_int;
     }
 }
@@ -523,17 +533,19 @@ impl TcpListener {
         let (addr, len) = socket_addr_to_c(addr);
         cvt(unsafe { c::bind(sock.as_raw(), addr.as_ptr(), len as _) })?;
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_os = "horizon")] {
+        cfg_select! {
+            target_os = "horizon" => {
                 // The 3DS doesn't support a big connection backlog. Sometimes
                 // it allows up to about 37, but other times it doesn't even
                 // accept 32. There may be a global limitation causing this.
                 let backlog = 20;
-            } else if #[cfg(target_os = "haiku")] {
+            }
+            target_os = "haiku" => {
                 // Haiku does not support a queue length > 32
                 // https://github.com/haiku/haiku/blob/979a0bc487864675517fb2fab28f87dc8bf43041/headers/posix/sys/socket.h#L81
                 let backlog = 32;
-            } else {
+            }
+            _ => {
                 // The default for all other platforms
                 let backlog = 128;
             }

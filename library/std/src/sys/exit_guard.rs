@@ -1,5 +1,5 @@
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "linux")] {
+cfg_select! {
+    target_os = "linux" => {
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// On glibc, `libc::exit` has been observed to not always be thread-safe.
@@ -56,7 +56,8 @@ cfg_if::cfg_if! {
                 }
             }
         }
-    } else {
+    }
+    _ => {
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// Mitigation is ***NOT*** implemented on this platform, either because this platform

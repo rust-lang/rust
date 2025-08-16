@@ -17,13 +17,10 @@ use crate::{fmt, io, iter, mem, ptr, slice, str};
 
 const TMPBUF_SZ: usize = 128;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "redox")] {
-        const PATH_SEPARATOR: u8 = b';';
-    } else {
-        const PATH_SEPARATOR: u8 = b':';
-    }
-}
+const PATH_SEPARATOR: u8 = cfg_select! {
+    target_os = "redox" => b';',
+    _ => b':',
+};
 
 unsafe extern "C" {
     #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
@@ -620,14 +617,10 @@ fn darwin_temp_dir() -> PathBuf {
 
 pub fn temp_dir() -> PathBuf {
     crate::env::var_os("TMPDIR").map(PathBuf::from).unwrap_or_else(|| {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_vendor = "apple", not(miri)))] {
-                darwin_temp_dir()
-            } else if #[cfg(target_os = "android")] {
-                PathBuf::from("/data/local/tmp")
-            } else {
-                PathBuf::from("/tmp")
-            }
+        cfg_select! {
+            all(target_vendor = "apple", not(miri)) => darwin_temp_dir(),
+            target_os = "android" => PathBuf::from("/data/local/tmp"),
+            _ => PathBuf::from("/tmp"),
         }
     })
 }

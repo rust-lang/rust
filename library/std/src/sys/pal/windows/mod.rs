@@ -22,10 +22,11 @@ pub mod os;
 pub mod pipe;
 pub mod thread;
 pub mod time;
-cfg_if::cfg_if! {
-    if #[cfg(not(target_vendor = "uwp"))] {
+cfg_select! {
+    not(target_vendor = "uwp") => {
         pub mod stack_overflow;
-    } else {
+    }
+    _ => {
         pub mod stack_overflow_uwp;
         pub use self::stack_overflow_uwp as stack_overflow;
     }
@@ -337,14 +338,17 @@ pub fn dur2timeout(dur: Duration) -> u32 {
 #[cfg(not(miri))] // inline assembly does not work in Miri
 pub fn abort_internal() -> ! {
     unsafe {
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+        cfg_select! {
+            any(target_arch = "x86", target_arch = "x86_64") => {
                 core::arch::asm!("int $$0x29", in("ecx") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-            } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
+            }
+            all(target_arch = "arm", target_feature = "thumb-mode") => {
                 core::arch::asm!(".inst 0xDEFB", in("r0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-            } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
+            }
+            any(target_arch = "aarch64", target_arch = "arm64ec") => {
                 core::arch::asm!("brk 0xF003", in("x0") c::FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-            } else {
+            }
+            _ => {
                 core::intrinsics::abort();
             }
         }

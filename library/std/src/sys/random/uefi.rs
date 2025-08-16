@@ -55,12 +55,13 @@ mod rng_protocol {
 /// Port from [getrandom](https://github.com/rust-random/getrandom/blob/master/src/backends/rdrand.rs)
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 mod rdrand {
-    cfg_if::cfg_if! {
-        if #[cfg(target_arch = "x86_64")] {
+    cfg_select! {
+        target_arch = "x86_64" => {
             use crate::arch::x86_64 as arch;
             use arch::_rdrand64_step as rdrand_step;
             type Word = u64;
-        } else if #[cfg(target_arch = "x86")] {
+        }
+        target_arch = "x86" => {
             use crate::arch::x86 as arch;
             use arch::_rdrand32_step as rdrand_step;
             type Word = u32;

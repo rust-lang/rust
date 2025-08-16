@@ -46,8 +46,8 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
         }
 
         let r = unsafe {
-            cfg_if::cfg_if! {
-                if #[cfg(target_os = "freebsd")] {
+            cfg_select! {
+                target_os = "freebsd" => {
                     // FreeBSD doesn't have futex(), but it has
                     // _umtx_op(UMTX_OP_WAIT_UINT_PRIVATE), which is nearly
                     // identical. It supports absolute timeouts through a flag
@@ -66,7 +66,8 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                         crate::ptr::without_provenance_mut(umtx_timeout_size),
                         umtx_timeout_ptr as *mut _,
                     )
-                } else if #[cfg(any(target_os = "linux", target_os = "android"))] {
+                }
+                any(target_os = "linux", target_os = "android") => {
                     // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
                     // absolute time rather than a relative time.
                     libc::syscall(
@@ -78,7 +79,8 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                         null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
                         !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
                     )
-                } else {
+                }
+                _ => {
                     compile_error!("unknown target_os");
                 }
             }

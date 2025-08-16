@@ -337,7 +337,6 @@ name = "std_detect"
 version = "0.1.5"
 dependencies = [
  "alloc",
- "cfg-if",
  "core",
  "libc",
 ]
@@ -376,7 +375,6 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "libc",
  "rustc-std-workspace-core",
  "unwinding",
