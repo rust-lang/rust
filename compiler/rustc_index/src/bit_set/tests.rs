@@ -120,8 +120,9 @@ fn chunked_bitset() {
     let mut b1 = ChunkedBitSet::<usize>::new_empty(1);
     assert_eq!(
         b1,
-        ChunkedBitSet { domain_size: 1, chunks: Box::new([Zeros(1)]), marker: PhantomData }
+        ChunkedBitSet { domain_size: 1, chunks: Box::new([Zeros]), marker: PhantomData }
     );
+    assert_eq!(b1.chunk_domain_size(0), 1);
 
     b1.assert_valid();
     assert!(!b1.contains(0));
@@ -129,12 +130,12 @@ fn chunked_bitset() {
     assert!(b1.insert(0));
     assert!(b1.contains(0));
     assert_eq!(b1.count(), 1);
-    assert_eq!(b1.chunks(), [Ones(1)]);
+    assert_eq!(b1.chunks(), [Ones]);
     assert!(!b1.insert(0));
     assert!(b1.remove(0));
     assert!(!b1.contains(0));
     assert_eq!(b1.count(), 0);
-    assert_eq!(b1.chunks(), [Zeros(1)]);
+    assert_eq!(b1.chunks(), [Zeros]);
     b1.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -142,8 +143,9 @@ fn chunked_bitset() {
     let mut b100 = ChunkedBitSet::<usize>::new_filled(100);
     assert_eq!(
         b100,
-        ChunkedBitSet { domain_size: 100, chunks: Box::new([Ones(100)]), marker: PhantomData }
+        ChunkedBitSet { domain_size: 100, chunks: Box::new([Ones]), marker: PhantomData }
     );
+    assert_eq!(b100.chunk_domain_size(0), 100);
 
     b100.assert_valid();
     for i in 0..100 {
@@ -152,7 +154,7 @@ fn chunked_bitset() {
     assert_eq!(b100.count(), 100);
     assert!(b100.remove(3));
     assert!(b100.insert(3));
-    assert_eq!(b100.chunks(), vec![Ones(100)]);
+    assert_eq!(b100.chunks(), vec![Ones]);
     assert!(
         b100.remove(20) && b100.remove(30) && b100.remove(40) && b100.remove(99) && b100.insert(30)
     );
@@ -161,7 +163,6 @@ fn chunked_bitset() {
     assert_eq!(
         b100.chunks(),
         vec![Mixed(
-            100,
             97,
             #[rustfmt::skip]
             Rc::new([
@@ -180,7 +181,7 @@ fn chunked_bitset() {
         }
     }
     assert_eq!(num_removed, 97);
-    assert_eq!(b100.chunks(), vec![Zeros(100)]);
+    assert_eq!(b100.chunks(), vec![Zeros]);
     b100.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -188,23 +189,21 @@ fn chunked_bitset() {
     let mut b2548 = ChunkedBitSet::<usize>::new_empty(2548);
     assert_eq!(
         b2548,
-        ChunkedBitSet {
-            domain_size: 2548,
-            chunks: Box::new([Zeros(2048), Zeros(500)]),
-            marker: PhantomData,
-        }
+        ChunkedBitSet { domain_size: 2548, chunks: Box::new([Zeros, Zeros]), marker: PhantomData }
     );
+    assert_eq!(b2548.chunk_domain_size(0), 2048);
+    assert_eq!(b2548.chunk_domain_size(1), 500);
 
     b2548.assert_valid();
     b2548.insert(14);
     b2548.remove(14);
-    assert_eq!(b2548.chunks(), vec![Zeros(2048), Zeros(500)]);
+    assert_eq!(b2548.chunks(), vec![Zeros, Zeros]);
     b2548.insert_all();
     for i in 0..2548 {
         assert!(b2548.contains(i));
     }
     assert_eq!(b2548.count(), 2548);
-    assert_eq!(b2548.chunks(), vec![Ones(2048), Ones(500)]);
+    assert_eq!(b2548.chunks(), vec![Ones, Ones]);
     b2548.assert_valid();
 
     //-----------------------------------------------------------------------
@@ -212,12 +211,10 @@ fn chunked_bitset() {
     let mut b4096 = ChunkedBitSet::<usize>::new_empty(4096);
     assert_eq!(
         b4096,
-        ChunkedBitSet {
-            domain_size: 4096,
-            chunks: Box::new([Zeros(2048), Zeros(2048)]),
-            marker: PhantomData,
-        }
+        ChunkedBitSet { domain_size: 4096, chunks: Box::new([Zeros, Zeros]), marker: PhantomData }
     );
+    assert_eq!(b4096.chunk_domain_size(0), 2048);
+    assert_eq!(b4096.chunk_domain_size(1), 2048);
 
     b4096.assert_valid();
     for i in 0..4096 {
@@ -231,11 +228,11 @@ fn chunked_bitset() {
         b4096.chunks(),
         #[rustfmt::skip]
         vec![
-            Mixed(2048, 1, Rc::new([
+            Mixed(1, Rc::new([
                 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
             ])),
-            Mixed(2048, 1, Rc::new([
+            Mixed(1, Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x8000_0000_0000_0000
             ])),
@@ -251,10 +248,15 @@ fn chunked_bitset() {
         b10000,
         ChunkedBitSet {
             domain_size: 10000,
-            chunks: Box::new([Zeros(2048), Zeros(2048), Zeros(2048), Zeros(2048), Zeros(1808),]),
+            chunks: Box::new([Zeros, Zeros, Zeros, Zeros, Zeros,]),
             marker: PhantomData,
         }
     );
+    assert_eq!(b10000.chunk_domain_size(0), 2048);
+    assert_eq!(b10000.chunk_domain_size(1), 2048);
+    assert_eq!(b10000.chunk_domain_size(2), 2048);
+    assert_eq!(b10000.chunk_domain_size(3), 2048);
+    assert_eq!(b10000.chunk_domain_size(4), 1808);
 
     b10000.assert_valid();
     assert!(b10000.insert(3000) && b10000.insert(5000));
@@ -262,17 +264,17 @@ fn chunked_bitset() {
         b10000.chunks(),
         #[rustfmt::skip]
         vec![
-            Zeros(2048),
-            Mixed(2048, 1, Rc::new([
+            Zeros,
+            Mixed(1, Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100_0000_0000_0000, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])),
-            Mixed(2048, 1, Rc::new([
+            Mixed(1, Rc::new([
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x0100, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             ])),
-            Zeros(2048),
-            Zeros(1808),
+            Zeros,
+            Zeros,
         ],
     );
     let mut b10000b = ChunkedBitSet::<usize>::new_empty(10000);
