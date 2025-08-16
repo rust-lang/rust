@@ -30,7 +30,7 @@ use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub,
+    ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
 };
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
@@ -184,6 +184,9 @@ pub(crate) struct ImportData<'ra> {
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: Visibility,
+
+    /// Span of the visibility.
+    pub vis_span: Span,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -1367,6 +1370,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         {
                             err.subdiagnostic( ConsiderAddingMacroExport {
                                 span: binding.span,
+                            });
+                            err.subdiagnostic( ConsiderMarkingAsPubCrate {
+                                vis_span: import.vis_span,
                             });
                         }
                         _ => {

@@ -93,6 +93,9 @@ resolve_consider_adding_a_derive =
 resolve_consider_adding_macro_export =
     consider adding a `#[macro_export]` to the macro in the imported module
 
+resolve_consider_marking_as_pub_crate =
+    in case you want to use the macro within this crate only, reduce the visibility to `pub(crate)`
+
 resolve_consider_declaring_with_pub =
     consider declaring type or module `{$ident}` with `pub`
 
