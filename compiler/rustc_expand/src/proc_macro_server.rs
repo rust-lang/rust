@@ -250,12 +250,14 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Question => op("?"),
                 SingleQuote => op("'"),
 
-                Ident(sym, is_raw) => {
-                    trees.push(TokenTree::Ident(Ident { sym, is_raw: is_raw.into(), span }))
-                }
+                Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident {
+                    sym,
+                    is_raw: matches!(is_raw, IdentIsRaw::Yes),
+                    span,
+                })),
                 NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
                     sym: ident.name,
-                    is_raw: is_raw.into(),
+                    is_raw: matches!(is_raw, IdentIsRaw::Yes),
                     span: ident.span,
                 })),
 
@@ -263,7 +265,11 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),
+                        TokenTree::Ident(Ident {
+                            sym: ident.name,
+                            is_raw: matches!(is_raw, IdentIsRaw::Yes),
+                            span,
+                        }),
                     ]);
                 }
                 NtLifetime(ident, is_raw) => {
