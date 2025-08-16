@@ -384,9 +384,12 @@ impl<'tcx> GlobalAlloc<'tcx> {
                         .type_of(def_id)
                         .no_bound_vars()
                         .expect("statics should not have generic parameters");
-                    let layout = tcx.layout_of(typing_env.as_query_input(ty)).unwrap();
-                    assert!(layout.is_sized());
-                    (layout.size, layout.align.abi)
+                    if let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) {
+                        assert!(layout.is_sized());
+                        (layout.size, layout.align.abi)
+                    } else {
+                        (Size::ZERO, Align::ONE)
+                    }
                 }
             }
             GlobalAlloc::Memory(alloc) => {
