@@ -549,12 +549,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     );
                                 }
 
-                                // Don't visit Scope::GlobModule after successful resolution in
-                                // Scope::NonGlobModule with ScopeSet::Module.
-                                if matches!(scope_set, ScopeSet::Module(..)) {
-                                    return Some(Ok(binding));
-                                }
-
                                 let misc_flags = this.create_module_misc_flags(module);
                                 Ok((binding, Flags::NON_GLOB_MODULE | misc_flags))
                             }

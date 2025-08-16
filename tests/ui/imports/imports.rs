@@ -1,4 +1,3 @@
-//@ run-pass
 #![allow(unused)]
 
 // Like other items, private imports can be imported and used non-lexically in paths.
@@ -22,6 +21,7 @@ fn g() {
     use crate::bar::*;
     fn f() -> bool { true }
     let _: bool = f();
+    //~^ ERROR `f` is ambiguous
 }
 
 fn h() {
@@ -29,6 +29,7 @@ fn h() {
     use crate::bar::*;
     use crate::f;
     let _: bool = f();
+    //~^ ERROR `f` is ambiguous
 }
 
 // Here, there appears to be shadowing but isn't because of namespaces.
