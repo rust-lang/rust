@@ -52,6 +52,7 @@
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(optimize_attribute)]
+#![feature(prelude_import)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(staged_api)]
@@ -61,11 +62,17 @@
 
 // Allow testing this library
 extern crate alloc as realalloc;
-#[macro_use]
+
+// This is needed to provide macros to the directly imported alloc modules below.
 extern crate std;
+#[prelude_import]
+#[allow(unused_imports)]
+use std::prelude::rust_2024::*;
+
 #[cfg(test)]
 extern crate test;
 mod testing;
+
 use realalloc::*;
 
 // We are directly including collections and raw_vec here as both use non-public
@@ -86,8 +93,7 @@ pub(crate) mod test_helpers {
         let mut hasher = std::hash::RandomState::new().build_hasher();
         std::panic::Location::caller().hash(&mut hasher);
         let hc64 = hasher.finish();
-        let seed_vec =
-            hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<crate::vec::Vec<u8>>();
+        let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<std::vec::Vec<u8>>();
         let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
         rand::SeedableRng::from_seed(seed)
     }
