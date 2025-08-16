@@ -911,12 +911,13 @@ impl SourceMap {
 
     /// Returns a new span representing just the last character of this span.
     pub fn end_point(&self, sp: Span) -> Span {
-        let pos = sp.hi().0;
+        let sp = sp.data();
+        let pos = sp.hi.0;
 
         let width = self.find_width_of_character_at_span(sp, false);
         let corrected_end_position = pos.checked_sub(width).unwrap_or(pos);
 
-        let end_point = BytePos(cmp::max(corrected_end_position, sp.lo().0));
+        let end_point = BytePos(cmp::max(corrected_end_position, sp.lo.0));
         sp.with_lo(end_point)
     }
 
@@ -930,8 +931,9 @@ impl SourceMap {
         if sp.is_dummy() {
             return sp;
         }
-        let start_of_next_point = sp.hi().0;
 
+        let sp = sp.data();
+        let start_of_next_point = sp.hi.0;
         let width = self.find_width_of_character_at_span(sp, true);
         // If the width is 1, then the next span should only contain the next char besides current ending.
         // However, in the case of a multibyte character, where the width != 1, the next span should
@@ -940,7 +942,7 @@ impl SourceMap {
             start_of_next_point.checked_add(width).unwrap_or(start_of_next_point);
 
         let end_of_next_point = BytePos(cmp::max(start_of_next_point + 1, end_of_next_point));
-        Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
+        Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt, None)
     }
 
     /// Check whether span is followed by some specified expected string in limit scope
@@ -963,9 +965,7 @@ impl SourceMap {
     /// Finds the width of the character, either before or after the end of provided span,
     /// depending on the `forwards` parameter.
     #[instrument(skip(self, sp))]
-    fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
-        let sp = sp.data();
-
+    fn find_width_of_character_at_span(&self, sp: SpanData, forwards: bool) -> u32 {
         if sp.lo == sp.hi && !forwards {
             debug!("early return empty span");
             return 1;
