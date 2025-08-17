@@ -1529,7 +1529,7 @@ function preLoadCss(cssUrl) {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-            // for the sake of brevity, we don't say "inherint impl blocks",
+            // for the sake of brevity, we don't say "inherit impl blocks",
             // although that would be more correct,
             // since trait impl blocks are collapsed by -
             ["_", "Collapse all sections, including impl blocks"],
