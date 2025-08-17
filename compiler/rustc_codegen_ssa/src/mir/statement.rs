@@ -109,7 +109,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub(crate) fn codegen_stmt_debuginfo(&mut self, bx: &mut Bx, debuginfo: &StmtDebugInfo<'tcx>) {
         match debuginfo {
             StmtDebugInfo::AssignRef(dest, place) => {
-                let place_ref = match self.locals[place.local] {
+                let local_ref = match self.locals[place.local] {
                     LocalRef::Place(place_ref) | LocalRef::UnsizedPlace(place_ref) => {
                         Some(place_ref)
                     }
@@ -130,18 +130,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // Only pointers can calculate addresses.
                         bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
                 });
-                let assign_ref = match (place_ref, place.is_indirect_first_projection()) {
-                    (Some(place_ref), false) => {
-                        Some((place_ref.val, place_ref.layout, place.projection.as_slice()))
+                let assign_ref = match (local_ref, place.is_indirect_first_projection()) {
+                    (Some(local_ref), false) => {
+                        Some((local_ref.val, local_ref.layout, place.projection.as_slice()))
                     }
-                    (Some(place_ref), true) => {
-                        let projected_ty = place_ref
+                    (Some(local_ref), true) => {
+                        let projected_ty = local_ref
                             .layout
                             .ty
                             .builtin_deref(true)
-                            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", place_ref));
+                            .unwrap_or_else(|| bug!("deref of non-pointer {:?}", local_ref));
                         let layout = bx.cx().layout_of(projected_ty);
-                        Some((place_ref.val, layout, &place.projection[1..]))
+                        Some((local_ref.val, layout, &place.projection[1..]))
                     }
                     _ => None,
                 };
