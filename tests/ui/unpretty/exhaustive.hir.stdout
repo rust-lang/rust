@@ -273,14 +273,14 @@ mod expressions {
     /// ExprKind::Range
     fn expr_range() {
         let (lo, hi);
-        #[lang = "RangeFull"] {  };
-        #[lang = "RangeTo"] { end: hi };
-        #[lang = "RangeFrom"] { start: lo };
-        #[lang = "Range"] { start: lo, end: hi };
-        #[lang = "Range"] { start: lo, end: hi };
-        #[lang = "RangeToInclusive"] { end: hi };
-        #[lang = "range_inclusive_new"](lo, hi);
-        #[lang = "range_inclusive_new"](-2, -1);
+        RangeFull {  };
+        RangeTo { end: hi };
+        RangeFrom { start: lo };
+        Range { start: lo, end: hi };
+        Range { start: lo, end: hi };
+        RangeToInclusive { end: hi };
+        range_inclusive_new(lo, hi);
+        range_inclusive_new(-2, -1);
     }
 
     /// ExprKind::Underscore

@@ -503,7 +503,7 @@ fn check_range_switch<'tcx>(
     msg: &'static str,
     operator: &str,
 ) {
-    if let Some(range) = higher::Range::hir(expr)
+    if let Some(range) = higher::Range::hir(cx, expr)
         && let higher::Range {
             start,
             end: Some(end),
@@ -571,7 +571,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         end: Some(end),
         limits,
         span,
-    }) = higher::Range::hir(expr)
+    }) = higher::Range::hir(cx, expr)
         && let ty = cx.typeck_results().expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
         && let ecx = ConstEvalCtxt::new(cx)

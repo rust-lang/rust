@@ -66,7 +66,7 @@ pub(super) fn check(
     method_name_span: Span,
 ) {
     let mut applicability = Applicability::MaybeIncorrect;
-    if let Some(range) = higher::Range::hir(receiver)
+    if let Some(range) = higher::Range::hir(cx, receiver)
         && let ExprKind::Closure(Closure { body, .. }) = arg.kind
         && let body_hir = cx.tcx.hir_body(*body)
         && let Body {

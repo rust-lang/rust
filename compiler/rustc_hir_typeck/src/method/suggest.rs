@@ -19,7 +19,9 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr};
+use rustc_hir::{
+    self as hir, ExprKind, HirId, Node, PathSegment, QPath, find_attr, is_range_literal,
+};
 use rustc_infer::infer::{BoundRegionConversionTime, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
@@ -2412,22 +2414,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let SelfSource::MethodCall(expr) = source {
             for (_, parent) in tcx.hir_parent_iter(expr.hir_id).take(5) {
                 if let Node::Expr(parent_expr) = parent {
+                    if !is_range_literal(parent_expr) {
+                        continue;
+                    }
                     let lang_item = match parent_expr.kind {
-                        ExprKind::Struct(qpath, _, _) => match *qpath {
-                            QPath::LangItem(LangItem::Range, ..) => Some(LangItem::Range),
-                            QPath::LangItem(LangItem::RangeCopy, ..) => Some(LangItem::RangeCopy),
-                            QPath::LangItem(LangItem::RangeInclusiveCopy, ..) => {
-                                Some(LangItem::RangeInclusiveCopy)
-                            }
-                            QPath::LangItem(LangItem::RangeTo, ..) => Some(LangItem::RangeTo),
-                            QPath::LangItem(LangItem::RangeToInclusive, ..) => {
-                                Some(LangItem::RangeToInclusive)
-                            }
+                        ExprKind::Struct(qpath, _, _) => match tcx.qpath_lang_item(*qpath) {
+                            Some(
+                                lang_item @ (LangItem::Range
+                                | LangItem::RangeCopy
+                                | LangItem::RangeInclusiveCopy
+                                | LangItem::RangeTo
+                                | LangItem::RangeToInclusive),
+                            ) => Some(lang_item),
                             _ => None,
                         },
                         ExprKind::Call(func, _) => match func.kind {
                             // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
-                            ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)) => {
+                            ExprKind::Path(qpath)
+                                if tcx.qpath_is_lang_item(qpath, LangItem::RangeInclusiveNew) =>
+                            {
                                 Some(LangItem::RangeInclusiveStruct)
                             }
                             _ => None,

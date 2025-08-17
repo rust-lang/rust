@@ -178,7 +178,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 Finite
             }
         },
-        ExprKind::Struct(..) => higher::Range::hir(expr).is_some_and(|r| r.end.is_none()).into(),
+        ExprKind::Struct(..) => higher::Range::hir(cx, expr).is_some_and(|r| r.end.is_none()).into(),
         _ => Finite,
     }
 }

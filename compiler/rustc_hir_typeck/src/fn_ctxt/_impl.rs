@@ -1032,8 +1032,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // inherent impl, we need to record the
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
-                            let self_ty = self_ty.expect("UFCS sugared assoc missing Self").raw;
-                            user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
+                            // Generated desugaring code may have a path without a self.
+                            user_self_ty = self_ty.map(|self_ty| UserSelfTy {
+                                impl_def_id: container_id,
+                                self_ty: self_ty.raw,
+                            });
                         }
                     }
                 }
