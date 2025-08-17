@@ -258,12 +258,33 @@ h1, h2, h3, h4 {
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
+.search-results-main-heading {
+	grid-template-areas:
+		"main-heading-breadcrumbs main-heading-placeholder"
+		"main-heading-breadcrumbs main-heading-toolbar    "
+		"main-heading-h1          main-heading-toolbar    ";
+}
+.search-results-main-heading nav.sub {
+	grid-area: main-heading-h1;
+	align-items: end;
+	margin: 4px 0 8px 0;
+}
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
 	line-height: 1.25;
 	padding-top: 5px;
 	position: relative;
 	z-index: 1;
+}
+.search-switcher {
+	grid-area: main-heading-breadcrumbs;
+	line-height: 1.5;
+	display: flex;
+	color: var(--main-color);
+	align-items: baseline;
+	white-space: nowrap;
+	padding-top: 8px;
+	min-height: 34px;
 }
 .rustdoc-breadcrumbs a {
 	padding: 5px 0 7px;
@@ -305,7 +326,7 @@ h4.code-header {
 #crate-search,
 h1, h2, h3, h4, h5, h6,
 .sidebar,
-.mobile-topbar,
+rustdoc-topbar,
 .search-input,
 .search-results .result-name,
 .item-table dt > a,
@@ -317,6 +338,7 @@ rustdoc-toolbar,
 summary.hideme,
 .scraped-example-list,
 .rustdoc-breadcrumbs,
+.search-switcher,
 /* This selector is for the items listed in the "all items" page. */
 ul.all-items {
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
@@ -329,7 +351,7 @@ a.anchor,
 .rust a,
 .sidebar h2 a,
 .sidebar h3 a,
-.mobile-topbar h2 a,
+rustdoc-topbar h2 a,
 h1 a,
 .search-results a,
 .search-results li,
@@ -616,7 +638,7 @@ img {
 	color: var(--sidebar-resizer-active);
 }
 
-.sidebar, .mobile-topbar, .sidebar-menu-toggle,
+.sidebar, rustdoc-topbar, .sidebar-menu-toggle,
 #src-sidebar {
 	background-color: var(--sidebar-background-color);
 }
@@ -857,7 +879,7 @@ ul.block, .block li, .block ul {
 	margin-bottom: 1rem;
 }
 
-.mobile-topbar {
+rustdoc-topbar {
 	display: none;
 }
 
@@ -1098,16 +1120,15 @@ div.where {
 nav.sub {
 	flex-grow: 1;
 	flex-flow: row nowrap;
-	margin: 4px 0 0 0;
 	display: flex;
-	align-items: center;
+	align-items: start;
+	margin-top: 4px;
 }
 .search-form {
 	position: relative;
 	display: flex;
 	height: 34px;
 	flex-grow: 1;
-	margin-bottom: 4px;
 }
 .src nav.sub {
 	margin: 0 0 -10px 0;
@@ -1208,27 +1229,14 @@ table,
 	margin-left: 0;
 }
 
-.search-results-title {
-	margin-top: 0;
-	white-space: nowrap;
-	/* flex layout allows shrinking the <select> appropriately if it becomes too large */
-	display: flex;
-	/* make things look like in a line, despite the fact that we're using a layout
-	with boxes (i.e. from the flex layout) */
-	align-items: baseline;
-}
-.search-results-title + .sub-heading {
-	color: var(--main-color);
-	display: flex;
-	align-items: baseline;
-	white-space: nowrap;
-}
 #crate-search-div {
 	/* ensures that 100% in properties of #crate-search-div:after
 	are relative to the size of this div */
 	position: relative;
 	/* allows this div (and with it the <select>-element "#crate-search") to be shrunk */
 	min-width: 0;
+	/* keep label text for switcher from moving down when this appears */
+	margin-top: -1px;
 }
 #crate-search {
 	padding: 0 23px 0 4px;
@@ -1294,6 +1302,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	flex-grow: 1;
 	background-color: var(--button-background-color);
 	color: var(--search-color);
+	max-width: 100%;
 }
 .search-input:focus {
 	border-color: var(--search-input-focused-border-color);
@@ -1459,14 +1468,14 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 #settings.popover {
-	--popover-arrow-offset: 202px;
+	--popover-arrow-offset: 196px;
 	top: calc(100% - 16px);
 }
 
 /* use larger max-width for help popover, but not for help.html */
 #help.popover {
 	max-width: 600px;
-	--popover-arrow-offset: 118px;
+	--popover-arrow-offset: 115px;
 	top: calc(100% - 16px);
 }
 
@@ -1929,10 +1938,12 @@ a.tooltip:hover::after {
 	color: inherit;
 }
 #search-tabs button:not(.selected) {
+	--search-tab-button-background: var(--search-tab-button-not-selected-background);
 	background-color: var(--search-tab-button-not-selected-background);
 	border-top-color: var(--search-tab-button-not-selected-border-top-color);
 }
 #search-tabs button:hover, #search-tabs button.selected {
+	--search-tab-button-background: var(--search-tab-button-selected-background);
 	background-color: var(--search-tab-button-selected-background);
 	border-top-color: var(--search-tab-button-selected-border-top-color);
 }
@@ -1941,6 +1952,73 @@ a.tooltip:hover::after {
 	font-size: 1rem;
 	font-variant-numeric: tabular-nums;
 	color: var(--search-tab-title-count-color);
+	position: relative;
+}
+
+#search-tabs .count.loading {
+	color: transparent;
+}
+
+.search-form.loading {
+	--search-tab-button-background: var(--button-background-color);
+}
+
+#search-tabs .count.loading::before,
+.search-form.loading::before
+{
+	width: 16px;
+	height: 16px;
+	border-radius: 16px;
+	background: radial-gradient(
+		var(--search-tab-button-background) 0 50%,
+		transparent 50% 100%
+	), conic-gradient(
+		var(--code-highlight-kw-color) 0deg 30deg,
+		var(--code-highlight-prelude-color) 30deg 60deg,
+		var(--code-highlight-number-color) 90deg 120deg,
+		var(--code-highlight-lifetime-color ) 120deg 150deg,
+		var(--code-highlight-comment-color) 150deg 180deg,
+		var(--code-highlight-self-color) 180deg 210deg,
+		var(--code-highlight-attribute-color) 210deg 240deg,
+		var(--code-highlight-literal-color) 210deg 240deg,
+		var(--code-highlight-macro-color) 240deg 270deg,
+		var(--code-highlight-question-mark-color) 270deg 300deg,
+		var(--code-highlight-prelude-val-color) 300deg 330deg,
+		var(--code-highlight-doc-comment-color) 330deg 360deg
+	);
+	content: "";
+	position: absolute;
+	left: 2px;
+	top: 2px;
+	animation: rotating 1.25s linear infinite;
+}
+#search-tabs .count.loading::after,
+.search-form.loading::after
+{
+	width: 18px;
+	height: 18px;
+	border-radius: 18px;
+	background: conic-gradient(
+		var(--search-tab-button-background) 0deg 180deg,
+		transparent 270deg 360deg
+	);
+	content: "";
+	position: absolute;
+	left: 1px;
+	top: 1px;
+	animation: rotating 0.66s linear infinite;
+}
+
+.search-form.loading::before {
+	left: auto;
+	right: 9px;
+	top: 8px;
+}
+
+.search-form.loading::after {
+	left: auto;
+	right: 8px;
+	top: 8px;
 }
 
 #search .error code {
@@ -1974,7 +2052,7 @@ a.tooltip:hover::after {
 	border-bottom: 1px solid var(--border-color);
 }
 
-#settings-menu, #help-button, button#toggle-all-docs {
+#search-button, .settings-menu, .help-menu, button#toggle-all-docs {
 	margin-left: var(--button-left-margin);
 	display: flex;
 	line-height: 1.25;
@@ -1989,69 +2067,100 @@ a.tooltip:hover::after {
 	display: flex;
 	margin-right: 4px;
 	position: fixed;
+	margin-top: 25px;
+	left: 6px;
 	height: 34px;
 	width: 34px;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 }
 .hide-sidebar #sidebar-button {
 	left: 6px;
 	background-color: var(--main-background-color);
-	z-index: 1;
 }
 .src #sidebar-button {
+	margin-top: 0;
+	top: 8px;
 	left: 8px;
-	z-index: calc(var(--desktop-sidebar-z-index) + 1);
+	border-color: var(--border-color);
 }
 .hide-sidebar .src #sidebar-button {
 	position: static;
 }
-#settings-menu > a, #help-button > a, #sidebar-button > a, button#toggle-all-docs {
+#search-button > a,
+.settings-menu > a,
+.help-menu > a,
+#sidebar-button > a,
+button#toggle-all-docs {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-direction: column;
 }
-#settings-menu > a, #help-button > a, button#toggle-all-docs {
+#search-button > a,
+.settings-menu > a,
+.help-menu > a,
+button#toggle-all-docs {
 	border: 1px solid transparent;
 	border-radius: var(--button-border-radius);
 	color: var(--main-color);
 }
-#settings-menu > a, #help-button > a, button#toggle-all-docs {
+#search-button > a, .settings-menu > a, .help-menu > a, button#toggle-all-docs {
 	width: 80px;
 	border-radius: var(--toolbar-button-border-radius);
 }
-#settings-menu > a, #help-button > a {
+#search-button > a, .settings-menu > a, .help-menu > a {
 	min-width: 0;
 }
 #sidebar-button > a {
-	background-color: var(--sidebar-background-color);
+	border: solid 1px transparent;
+	border-radius: var(--button-border-radius);
+	background-color: var(--button-background-color);
 	width: 33px;
 }
-#sidebar-button > a:hover, #sidebar-button > a:focus-visible {
-	background-color: var(--main-background-color);
+.src #sidebar-button > a {
+	background-color: var(--sidebar-background-color);
+	border-color: var(--border-color);
 }
 
-#settings-menu > a:hover, #settings-menu > a:focus-visible,
-#help-button > a:hover, #help-button > a:focus-visible,
+#search-button > a:hover, #search-button > a:focus-visible,
+.settings-menu > a:hover, .settings-menu > a:focus-visible,
+.help-menu > a:hover, #help-menu > a:focus-visible,
+#sidebar-button > a:hover, #sidebar-button > a:focus-visible,
+#copy-path:hover, #copy-path:focus-visible,
 button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
 	text-decoration: none;
 }
 
-#settings-menu > a::before {
+#search-button > a::before {
+	/* Magnifying glass */
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		width="18" height="18" viewBox="0 0 16 16">\
+	    <circle r="5" cy="7" cx="7" style="fill:none;stroke:black;stroke-width:3"/><path \
+	    d="M14.5,14.5 12,12" style="fill:none;stroke:black;stroke-width:3;stroke-linecap:round">\
+	    </path><desc>Search</desc>\
+	    </svg>');
+	width: 18px;
+	height: 18px;
+	filter: var(--settings-menu-filter);
+}
+
+.settings-menu > a::before {
 	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
-	<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
-	-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
-	-0.2639771-0.6494751-0.3701782L7.25,0h-2.5 c0,0-0.3214111,1.2857666-0.5393066,2.1572876\
-	C3.9830933,2.2634888,3.7647095,2.3842773,3.5612183,2.5274658L1.428833,1.9174805 \
-	l-1.25,2.1650391c0,0,0.9641113,0.9321899,1.6077881,1.5545654C1.7761841,5.758667,\
-	1.75,5.8756714,1.75,6  s0.0261841,0.241333,0.0366211,0.362915L0.178833,7.9174805l1.25,\
-	2.1650391l2.1323853-0.6099854  c0.2034912,0.1432495,0.421875,0.2639771,0.6494751,0.3701782\
-	L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.6494751\
-	-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
-	10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
-	,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
+	<path d="m4.75 0s-0.32117 1.286-0.53906 2.1576c-0.2276 0.1062-0.44625 \
+	0.2266-0.64974 0.36979l-2.1328-0.60938-1.25 2.1641s0.9644 0.93231 1.6081 1.5547c-0.010437 \
+	0.12158-0.036458 0.23895-0.036458 0.36328s0.026021 0.2417 0.036458 0.36328l-1.6081 \
+	1.5547 1.25 2.1641 2.1328-0.60937c0.20349 0.14325 0.42214 0.26359 0.64974 0.36979l0.53906 \
+	2.1576h2.5l0.53906-2.1576c0.2276-0.1062 0.44625-0.22654 0.64974-0.36979l2.1328 0.60937 \
+	1.25-2.1641-1.6081-1.5547c0.010437-0.12158 0.036458-0.23895 \
+	0.036458-0.36328s-0.02602-0.2417-0.03646-0.36328l1.6081-1.5547-1.25-2.1641s-1.2679 \
+	0.36194-2.1328 0.60938c-0.20349-0.14319-0.42214-0.26359-0.64974-0.36979l-0.53906-2.1576\
+	zm1.25 2.5495c1.9058-2.877e-4 3.4508 1.5447 3.4505 3.4505 2.877e-4 1.9058-1.5447 3.4508-3.4505 \
+	3.4505-1.9058 2.877e-4 -3.4508-1.5447-3.4505-3.4505-2.877e-4 -1.9058 1.5447-3.4508 \
+	3.4505-3.4505z" fill="black"/>\
+	<circle cx="6" cy="6" r="1.75" fill="none" stroke="black" stroke-width="1"/></svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
@@ -2067,36 +2176,51 @@ button#toggle-all-docs::before {
 	filter: var(--settings-menu-filter);
 }
 
-button#toggle-all-docs.will-expand::before {
-	/* Custom arrow icon */
-	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
-	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
-	<path d="M2,5l4,-4l4,4M2,7l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
-}
-
-#help-button > a::before {
-	/* Question mark with circle */
-	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
-	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
-	<circle r="5.25" cx="6" cy="6" stroke-width="1.25" stroke="black"/>\
-	<text x="6" y="7" style="font:8px sans-serif;font-weight:1000" text-anchor="middle" \
-		dominant-baseline="middle" fill="black">?</text></svg>');
+.help-menu > a::before {
+	/* Question mark with "circle" */
+	content: url('data:image/svg+xml,\
+		<svg width="18" height="18" enable-background="new 0 0 12 12" fill="none" \
+		version="1.1" viewBox="0 0 12 12" xmlns="http://www.w3.org/2000/svg"> \
+		<path d="m6.007 0.6931c2.515 0 5.074 1.908 5.074 5.335 0 3.55-2.567 5.278-5.088 \
+		5.278-2.477 0-5.001-1.742-5.001-5.3 0-3.38 2.527-5.314 5.014-5.314z" stroke="black" \
+		stroke-width="1.5"/>\
+		<path d="m5.999 7.932c0.3111 0 0.7062 0.2915 0.7062 0.7257 0 0.5458-0.3951 \
+		0.8099-0.7081 0.8099-0.2973 0-0.7023-0.266-0.7023-0.7668 0-0.4695 0.3834-0.7688 \
+		0.7042-0.7688z" fill="black"/>\
+		<path d="m4.281 3.946c0.0312-0.03057 0.06298-0.06029 0.09528-0.08916 0.4833-0.432 1.084-0.6722 \
+		1.634-0.6722 1.141 0 1.508 1.043 1.221 1.621-0.2753 0.5542-1.061 0.5065-1.273 \
+		1.595-0.05728 0.2939 0.0134 0.9812 0.0134 1.205" fill="none" stroke="black" \
+		stroke-width="1.25"/>\
+		</svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
 }
 
+/* design hack to cope with "Help" being far shorter than "Settings" etc */
+.help-menu > a {
+	width: 74px;
+}
+.help-menu > a > .label {
+	padding-right: 1px;
+}
+#toggle-all-docs:not(.will-expand) > .label {
+	padding-left: 1px;
+}
+
+#search-button > a::before,
 button#toggle-all-docs::before,
-#help-button > a::before,
-#settings-menu > a::before {
+.help-menu > a::before,
+.settings-menu > a::before {
 	filter: var(--settings-menu-filter);
 	margin: 8px;
 }
 
 @media not (pointer: coarse) {
+	#search-button > a:hover::before,
 	button#toggle-all-docs:hover::before,
-	#help-button > a:hover::before,
-	#settings-menu > a:hover::before {
+	.help-menu > a:hover::before,
+	.settings-menu > a:hover::before {
 		filter: var(--settings-menu-hover-filter);
 	}
 }
@@ -2122,9 +2246,9 @@ rustdoc-toolbar span.label {
 	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
-		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
-		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
-		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
+		<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
+		<circle cx="4.375" cy="5.375" r="1" stroke-width=".75"/>\
+		<path d="m7.6121 4v14 M5.375 8.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
 	width: 22px;
 	height: 22px;
 }
@@ -2137,7 +2261,8 @@ rustdoc-toolbar span.label {
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
-	border: 0;
+	border: solid 1px transparent;
+	border-radius: var(--button-border-radius);
 	font-size: 0;
 }
 #copy-path::before {
@@ -2159,7 +2284,7 @@ rustdoc-toolbar span.label {
 		transform: rotate(360deg);
 	}
 }
-#settings-menu.rotate > a img {
+.settings-menu.rotate > a img {
 	animation: rotating 2s linear infinite;
 }
 
@@ -2402,6 +2527,9 @@ However, it's not needed with smaller screen width because the doc/code block is
 	opacity: 0.75;
 	filter: var(--mobile-sidebar-menu-filter);
 }
+.src #sidebar-button > a:hover {
+	background: var(--main-background-color);
+}
 .sidebar-menu-toggle:hover::before,
 .sidebar-menu-toggle:active::before,
 .sidebar-menu-toggle:focus::before {
@@ -2410,8 +2538,8 @@ However, it's not needed with smaller screen width because the doc/code block is
 
 /* Media Queries */
 
-/* Make sure all the buttons line wrap at the same time */
 @media (max-width: 850px) {
+	/* Make sure all the buttons line wrap at the same time */
 	#search-tabs .count {
 		display: block;
 	}
@@ -2420,6 +2548,81 @@ However, it's not needed with smaller screen width because the doc/code block is
 	}
 	.side-by-side > div {
 		width: auto;
+	}
+
+	/* Text label takes up too much space at this size. */
+	.main-heading {
+		grid-template-areas:
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-h1 main-heading-toolbar"
+			"main-heading-sub-heading main-heading-toolbar";
+	}
+	.search-results-main-heading {
+		display: grid;
+		grid-template-areas:
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-breadcrumbs main-heading-toolbar"
+			"main-heading-h1 main-heading-toolbar";
+	}
+	rustdoc-toolbar {
+		margin-top: -10px;
+		display: grid;
+		grid-template-areas:
+			"x settings help"
+			"search summary summary";
+		grid-template-rows: 35px 1fr;
+	}
+	.search-results-main-heading rustdoc-toolbar {
+		display: grid;
+		grid-template-areas:
+			"settings help"
+			"search search";
+	}
+	.search-results-main-heading #toggle-all-docs {
+		display: none;
+	}
+	rustdoc-toolbar .settings-menu span.label,
+	rustdoc-toolbar .help-menu span.label
+	{
+		display: none;
+	}
+	rustdoc-toolbar .settings-menu {
+		grid-area: settings;
+	}
+	rustdoc-toolbar .help-menu {
+		grid-area: help;
+	}
+	rustdoc-toolbar .settings-menu {
+		grid-area: settings;
+	}
+	rustdoc-toolbar #search-button {
+		grid-area: search;
+	}
+	rustdoc-toolbar #toggle-all-docs {
+		grid-area: summary;
+	}
+	rustdoc-toolbar .settings-menu,
+	rustdoc-toolbar .help-menu {
+		height: 35px;
+	}
+	rustdoc-toolbar .settings-menu > a,
+	rustdoc-toolbar .help-menu > a {
+		border-radius: 2px;
+		text-align: center;
+		width: 34px;
+		padding: 5px 0;
+	}
+	rustdoc-toolbar .settings-menu > a:before,
+	rustdoc-toolbar .help-menu > a:before {
+		margin: 0 4px;
+	}
+	#settings.popover {
+		top: 16px;
+		--popover-arrow-offset: 58px;
+	}
+	#help.popover {
+		top: 16px;
+		--popover-arrow-offset: 16px;
 	}
 }
 
@@ -2435,7 +2638,7 @@ in src-script.js and main.js
 
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
-	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
+	   by the topbar. Anything with an `id` gets scroll-margin-top equal to rustdoc-topbar's size.
 	*/
 	*[id] {
 		scroll-margin-top: 45px;
@@ -2451,18 +2654,32 @@ in src-script.js and main.js
 		visibility: hidden;
 	}
 
-	/* Text label takes up too much space at this size. */
-	rustdoc-toolbar span.label {
+
+	/* Pull settings and help up into the top bar. */
+	rustdoc-topbar span.label,
+	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .settings-menu > a,
+	html:not(.hide-sidebar) .rustdoc:not(.src) rustdoc-toolbar .help-menu > a
+	{
 		display: none;
 	}
-	#settings-menu > a, #help-button > a, button#toggle-all-docs {
+	rustdoc-topbar .settings-menu > a,
+	rustdoc-topbar .help-menu > a {
 		width: 33px;
+		line-height: 0;
+	}
+	rustdoc-topbar .settings-menu > a:hover,
+	rustdoc-topbar .help-menu > a:hover {
+		border: none;
+		background: var(--main-background-color);
+		border-radius: 0;
 	}
 	#settings.popover {
-		--popover-arrow-offset: 86px;
+		top: 32px;
+		--popover-arrow-offset: 48px;
 	}
 	#help.popover {
-		--popover-arrow-offset: 48px;
+		top: 32px;
+		--popover-arrow-offset: 12px;
 	}
 
 	.rustdoc {
@@ -2471,13 +2688,13 @@ in src-script.js and main.js
 		display: block;
 	}
 
-	main {
+	html:not(.hide-sidebar) main {
 		padding-left: 15px;
 		padding-top: 0px;
 	}
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
-	   in the mobile-topbar instead. */
+	   in the rustdoc-topbar instead. */
 	.sidebar .logo-container,
 	.sidebar .location,
 	.sidebar-resizer {
@@ -2510,6 +2727,9 @@ in src-script.js and main.js
 		height: 100vh;
 		border: 0;
 	}
+	html .src main {
+		padding: 18px 0;
+	}
 	.src .search-form {
 		margin-left: 40px;
 	}
@@ -2529,9 +2749,9 @@ in src-script.js and main.js
 		left: 0;
 	}
 
-	.mobile-topbar h2 {
+	rustdoc-topbar > h2 {
 		padding-bottom: 0;
-		margin: auto 0.5em auto auto;
+		margin: auto;
 		overflow: hidden;
 		/* Rare exception to specifying font sizes in rem. Since the topbar
 		   height is specified in pixels, this also has to be specified in
@@ -2540,32 +2760,34 @@ in src-script.js and main.js
 		font-size: 24px;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+		text-align: center;
 	}
 
-	.mobile-topbar .logo-container > img {
+	rustdoc-topbar .logo-container > img {
 		max-width: 35px;
 		max-height: 35px;
 		margin: 5px 0 5px 20px;
 	}
 
-	.mobile-topbar {
+	rustdoc-topbar {
 		display: flex;
 		flex-direction: row;
 		position: sticky;
 		z-index: 10;
-		font-size: 2rem;
 		height: 45px;
 		width: 100%;
 		left: 0;
 		top: 0;
 	}
 
-	.hide-sidebar .mobile-topbar {
+	.hide-sidebar rustdoc-topbar {
 		display: none;
 	}
 
 	.sidebar-menu-toggle {
-		width: 45px;
+		/* prevent flexbox shrinking */
+		width: 41px;
+		min-width: 41px;
 		border: none;
 		line-height: 0;
 	}
@@ -2591,9 +2813,13 @@ in src-script.js and main.js
 	#sidebar-button > a::before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
-			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
-			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
+			<rect x="1" y="2" width="20" height="18" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
+			<g fill="black" stroke="none">\
+			<circle cx="4.375" cy="5.375" r="1" stroke-width=".75"/>\
+			<circle cx="17.375" cy="5.375" r="1" stroke-width=".75"/>\
+			<circle cx="14.375" cy="5.375" r="1" stroke-width=".75"/>\
+			</g>\
+			<path d="m3 8.375h16" stroke-width="1.25"/></svg>');
 		width: 22px;
 		height: 22px;
 	}
@@ -3283,7 +3509,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-:root[data-theme="ayu"] #settings-menu > a img,
+:root[data-theme="ayu"] .settings-menu > a img,
 :root[data-theme="ayu"] #sidebar-button > a::before {
 	filter: invert(100);
 }
