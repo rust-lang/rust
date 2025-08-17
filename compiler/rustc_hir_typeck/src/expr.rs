@@ -764,12 +764,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        if let Some((_, [_arg])) = call_expr_and_args
+        if let Some((_, [arg])) = call_expr_and_args
             && let QPath::Resolved(_, path) = qpath
             && let Res::Def(_, def_id) = path.res
             && let Some(lang_item) = tcx.lang_items().from_def_id(def_id)
         {
             let code = match lang_item {
+                LangItem::IntoFutureIntoFuture
+                    if expr.span.is_desugaring(DesugaringKind::Await) =>
+                {
+                    Some(ObligationCauseCode::AwaitableExpr(arg.hir_id))
+                }
                 LangItem::IntoIterIntoIter | LangItem::IteratorNext
                     if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
                 {

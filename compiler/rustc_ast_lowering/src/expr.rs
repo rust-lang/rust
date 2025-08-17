@@ -865,6 +865,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let features = match await_kind {
+            FutureKind::Future if is_async_gen => Some(Arc::clone(&self.allow_async_gen)),
             FutureKind::Future => None,
             FutureKind::AsyncIterator => Some(Arc::clone(&self.allow_for_await)),
         };
@@ -901,23 +902,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let task_context = self.expr_ident_mut(span, task_context_ident, task_context_hid);
 
-            let new_unchecked = self.expr_call_lang_item_qpath_fn_mut(
+            let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_awaitee],
             );
-            let get_context = self.expr_call_lang_item_qpath_fn_mut(
+            let get_context = self.expr_call_lang_item_fn_mut(
                 gen_future_span,
                 hir::LangItem::GetContext,
                 arena_vec![self; task_context],
             );
             let call = match await_kind {
-                FutureKind::Future => self.expr_call_lang_item_qpath_fn(
+                FutureKind::Future => self.expr_call_lang_item_fn(
                     span,
                     hir::LangItem::FuturePoll,
                     arena_vec![self; new_unchecked, get_context],
                 ),
-                FutureKind::AsyncIterator => self.expr_call_lang_item_qpath_fn(
+                FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
                     span,
                     hir::LangItem::AsyncIteratorPollNext,
                     arena_vec![self; new_unchecked, get_context],
@@ -965,7 +966,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // async gen - task_context = yield ASYNC_GEN_PENDING;
         let yield_stmt = {
             let yielded = if is_async_gen {
-                self.arena.alloc(self.expr_lang_item_qpath(span, hir::LangItem::AsyncGenPending))
+                self.arena.alloc(self.expr_lang_item_path(span, hir::LangItem::AsyncGenPending))
             } else {
                 self.expr_unit(span)
             };
@@ -1005,7 +1006,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_expr = match await_kind {
-            FutureKind::Future => self.expr_call_lang_item_qpath_fn(
+            FutureKind::Future => self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::IntoFutureIntoFuture,
                 arena_vec![self; *expr],
@@ -1720,8 +1721,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
             // This ensures that we store our resumed `ResumeContext` correctly, and also that
             // the apparent value of the `yield` expression is `()`.
-            let wrapped_yielded = self.expr_call_lang_item_qpath_fn(
-                span,
+            let wrapped_yielded = self.expr_call_lang_item_fn(
+                self.mark_span_with_reason(
+                    DesugaringKind::Async,
+                    span,
+                    Some(Arc::clone(&self.allow_async_gen)),
+                ),
                 hir::LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
             );

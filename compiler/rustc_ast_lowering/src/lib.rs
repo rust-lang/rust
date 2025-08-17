@@ -142,6 +142,7 @@ struct LoweringContext<'a, 'hir> {
     allow_try_trait: Arc<[Symbol]>,
     allow_gen_future: Arc<[Symbol]>,
     allow_pattern_type: Arc<[Symbol]>,
+    allow_async_gen: Arc<[Symbol]>,
     allow_async_iterator: Arc<[Symbol]>,
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
@@ -192,8 +193,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             } else {
                 [sym::gen_future].into()
             },
-            allow_for_await: [sym::async_iterator].into(),
+            allow_for_await: [sym::async_gen_internals, sym::async_iterator].into(),
             allow_async_fn_traits: [sym::async_fn_traits].into(),
+            allow_async_gen: [sym::async_gen_internals].into(),
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),

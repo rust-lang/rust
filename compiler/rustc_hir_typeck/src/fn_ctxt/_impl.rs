@@ -712,15 +712,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_resolution(hir_id, Ok((def_kind, def_id)));
 
         let code = match lang_item {
-            hir::LangItem::IntoFutureIntoFuture => {
-                if let hir::Node::Expr(into_future_call) = self.tcx.parent_hir_node(hir_id)
-                    && let hir::ExprKind::Call(_, [arg0]) = &into_future_call.kind
-                {
-                    Some(ObligationCauseCode::AwaitableExpr(arg0.hir_id))
-                } else {
-                    None
-                }
-            }
             hir::LangItem::TryTraitFromOutput
             | hir::LangItem::TryTraitFromResidual
             | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
