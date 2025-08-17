@@ -545,6 +545,10 @@ impl DefMap {
         self.data.no_std || self.data.no_core
     }
 
+    pub fn is_no_core(&self) -> bool {
+        self.data.no_core
+    }
+
     pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.data.fn_proc_macro_mapping.get(&id).copied()
     }
