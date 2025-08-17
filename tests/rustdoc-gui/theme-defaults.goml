@@ -1,6 +1,6 @@
 // Ensure that the theme picker always starts with the actual defaults.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#theme-system-preference"
 assert: "#theme-system-preference:checked"
 assert: "#preferred-light-theme-light:checked"
@@ -16,7 +16,7 @@ set-local-storage: {
     "rustdoc-theme": "ayu"
 }
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#theme-system-preference"
 assert: "#theme-system-preference:checked"
 assert: "#preferred-light-theme-light:checked"
