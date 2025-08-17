@@ -288,10 +288,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
             calculate_debuginfo_offset(bx, projection, layout);
-        bx.dbg_var_addr(
+        bx.dbg_var_value(
             dbg_var,
             dbg_loc,
-            false,
             base.llval,
             direct_offset,
             &indirect_offsets,
@@ -467,7 +466,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                true,
                 alloca.val.llval,
                 Size::ZERO,
                 &[Size::ZERO],
@@ -477,7 +475,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.dbg_var_addr(
                 dbg_var,
                 dbg_loc,
-                true,
                 base.val.llval,
                 direct_offset,
                 &indirect_offsets,
@@ -503,7 +500,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let base = FunctionCx::spill_operand_to_stack(operand, Some(name), bx);
                 bx.clear_dbg_loc();
 
-                bx.dbg_var_addr(dbg_var, dbg_loc, true, base.val.llval, Size::ZERO, &[], fragment);
+                bx.dbg_var_addr(dbg_var, dbg_loc, base.val.llval, Size::ZERO, &[], fragment);
             }
         }
     }

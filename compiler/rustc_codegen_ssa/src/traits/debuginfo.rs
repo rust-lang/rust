@@ -71,8 +71,19 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         &mut self,
         dbg_var: Self::DIVariable,
         dbg_loc: Self::DILocation,
-        is_declared: bool,
-        val: Self::Value,
+        variable_alloca: Self::Value,
+        direct_offset: Size,
+        // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
+        indirect_offsets: &[Size],
+        // Byte range in the `dbg_var` covered by this fragment,
+        // if this is a fragment of a composite `DIVariable`.
+        fragment: Option<Range<Size>>,
+    );
+    fn dbg_var_value(
+        &mut self,
+        dbg_var: Self::DIVariable,
+        dbg_loc: Self::DILocation,
+        value: Self::Value,
         direct_offset: Size,
         // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
         indirect_offsets: &[Size],

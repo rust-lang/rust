@@ -160,13 +160,12 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         &mut self,
         dbg_var: &'ll DIVariable,
         dbg_loc: &'ll DILocation,
-        is_declared: bool,
-        val: Self::Value,
+        variable_alloca: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
         fragment: Option<Range<Size>>,
     ) {
-        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
 
         // Convert the direct and indirect offsets and fragment byte range to address ops.
         let mut addr_ops = SmallVec::<[u64; 8]>::new();
@@ -174,9 +173,6 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         if direct_offset.bytes() > 0 {
             addr_ops.push(DW_OP_plus_uconst);
             addr_ops.push(direct_offset.bytes() as u64);
-            if !is_declared {
-                addr_ops.push(DW_OP_stack_value);
-            }
         }
         for &offset in indirect_offsets {
             addr_ops.push(DW_OP_deref);
@@ -193,30 +189,63 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
 
-        if is_declared {
-            unsafe {
-                llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
-                    DIB(self.cx()),
-                    val,
-                    dbg_var,
-                    addr_ops.as_ptr(),
-                    addr_ops.len() as c_uint,
-                    dbg_loc,
-                    self.llbb(),
-                );
+        unsafe {
+            llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+                DIB(self.cx()),
+                variable_alloca,
+                dbg_var,
+                addr_ops.as_ptr(),
+                addr_ops.len() as c_uint,
+                dbg_loc,
+                self.llbb(),
+            );
+        }
+    }
+
+    fn dbg_var_value(
+        &mut self,
+        dbg_var: &'ll DIVariable,
+        dbg_loc: &'ll DILocation,
+        value: Self::Value,
+        direct_offset: Size,
+        indirect_offsets: &[Size],
+        fragment: Option<Range<Size>>,
+    ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
+
+        // Convert the direct and indirect offsets and fragment byte range to address ops.
+        let mut addr_ops = SmallVec::<[u64; 8]>::new();
+
+        if direct_offset.bytes() > 0 {
+            addr_ops.push(DW_OP_plus_uconst);
+            addr_ops.push(direct_offset.bytes() as u64);
+            addr_ops.push(DW_OP_stack_value);
+        }
+        for &offset in indirect_offsets {
+            addr_ops.push(DW_OP_deref);
+            if offset.bytes() > 0 {
+                addr_ops.push(DW_OP_plus_uconst);
+                addr_ops.push(offset.bytes() as u64);
             }
-        } else {
-            unsafe {
-                llvm::LLVMRustDIBuilderInsertDbgValueAtEnd(
-                    DIB(self.cx()),
-                    val,
-                    dbg_var,
-                    addr_ops.as_ptr(),
-                    addr_ops.len() as c_uint,
-                    dbg_loc,
-                    self.llbb(),
-                );
-            }
+        }
+        if let Some(fragment) = fragment {
+            // `DW_OP_LLVM_fragment` takes as arguments the fragment's
+            // offset and size, both of them in bits.
+            addr_ops.push(DW_OP_LLVM_fragment);
+            addr_ops.push(fragment.start.bits() as u64);
+            addr_ops.push((fragment.end - fragment.start).bits() as u64);
+        }
+
+        unsafe {
+            llvm::LLVMRustDIBuilderInsertDbgValueAtEnd(
+                DIB(self.cx()),
+                value,
+                dbg_var,
+                addr_ops.as_ptr(),
+                addr_ops.len() as c_uint,
+                dbg_loc,
+                self.llbb(),
+            );
         }
     }
 
