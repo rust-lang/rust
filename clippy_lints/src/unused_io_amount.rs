@@ -194,7 +194,7 @@ fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option
     inner = unpack_match(inner);
     inner = unpack_try(inner);
     inner = unpack_call_chain(inner);
-    inner = unpack_await(inner);
+    inner = unpack_await(cx, inner);
     // we type-check it to get whether it's a read/write or their vectorized forms
     // and keep only the ones that are produce io amount
     check_io_mode(cx, inner)
@@ -277,13 +277,11 @@ fn unpack_match<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
 
 /// If `expr` is an (e).await, return the inner expression "e" that's being
 /// waited on.  Otherwise return None.
-fn unpack_await<'a>(expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+fn unpack_await<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     if let ExprKind::Match(expr, _, hir::MatchSource::AwaitDesugar) = expr.kind
         && let ExprKind::Call(func, [arg_0]) = expr.kind
-        && matches!(
-            func.kind,
-            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::IntoFutureIntoFuture, ..))
-        )
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::IntoFutureIntoFuture)
     {
         return arg_0;
     }
