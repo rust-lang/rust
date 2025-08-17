@@ -107,7 +107,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                     }
                 }
                 ArgParser::NameValue(_) => {
-                    let suggestions = MACRO_USE_TEMPLATE.suggestions(false, sym::macro_use);
+                    let suggestions = MACRO_USE_TEMPLATE.suggestions(cx.attr_style, sym::macro_use);
                     cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
                         num_suggestions: suggestions.len(),
                         suggestions: DiagArgValue::StrListSepByAnd(
