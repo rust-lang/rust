@@ -1177,6 +1177,18 @@ impl AsRef<str> for AsciiChar {
     }
 }
 
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl AsMut<str> for AsciiChar {
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut str {
+        let ascii_ptr: *mut [Self] = crate::slice::from_mut(self);
+        let str_ptr = ascii_ptr as *mut str;
+        // SAFETY: Each ASCII codepoint in UTF-8 is encoded as one single-byte
+        // code unit having the same value as the ASCII byte.
+        unsafe { &mut *str_ptr }
+    }
+}
+
 impl [AsciiChar] {
     /// Views this slice of ASCII characters as a UTF-8 `str`.
     #[unstable(feature = "ascii_char", issue = "110998")]
