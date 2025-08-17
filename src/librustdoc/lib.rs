@@ -11,6 +11,7 @@
 #![feature(file_buffered)]
 #![feature(format_args_nl)]
 #![feature(if_let_guard)]
+#![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
 #![feature(round_char_boundary)]
 #![feature(rustc_private)]

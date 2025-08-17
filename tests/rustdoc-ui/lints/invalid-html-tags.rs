@@ -43,7 +43,7 @@ pub fn b() {}
 ///   <h3>
 //~^ ERROR unclosed HTML tag `h3`
 /// <script
-//~^ ERROR unclosed HTML tag `script`
+//~^ ERROR incomplete HTML tag `script`
 pub fn c() {}
 
 // Unclosed tags shouldn't warn if they are nested inside a <script> elem.
@@ -72,6 +72,7 @@ pub fn e() {}
 /// <div></div >
 /// <div></div
 //~^ ERROR unclosed HTML tag `div`
+//~| ERROR incomplete HTML tag `div`
 pub fn f() {}
 
 /// <!---->
@@ -105,7 +106,7 @@ pub fn j() {}
 /// uiapp.run(&env::args().collect::<Vec<_>>());
 /// ```
 ///
-/// <Vec<_> shouldn't warn!
+// <Vec<_> shouldn't warn!
 /// ``````
 pub fn k() {}
 
@@ -141,14 +142,72 @@ pub fn no_error_2() {}
 /// </div>
 pub fn no_error_3() {}
 
+/// > <div
+/// > class="foo">
+/// > </div>
+pub fn no_error_4() {}
+
 /// unfinished ALLOWED_UNCLOSED
+///
+/// note: CommonMark doesn't allow an html block to start with a multiline tag,
+/// so we use `<br>` a bunch to force these to be parsed as html blocks.
 ///
 /// <br>
 /// <img
-//~^ ERROR unclosed HTML tag `img`
+//~^ ERROR incomplete HTML tag `img`
 pub fn q() {}
 
 /// nested unfinished ALLOWED_UNCLOSED
 /// <p><img</p>
-//~^ ERROR unclosed HTML tag `img`
+//~^ ERROR incomplete HTML tag `img`
 pub fn r() {}
+
+/// > <br>
+/// > <img
+//~^ ERROR incomplete HTML tag `img`
+/// > href="#broken"
+pub fn s() {}
+
+/// <br>
+/// <br<br>
+//~^ ERROR incomplete HTML tag `br`
+pub fn t() {}
+
+/// <br>
+/// <br
+//~^ ERROR incomplete HTML tag `br`
+pub fn u() {}
+
+/// <a href=">" alt="<">html5 allows this</a>
+pub fn no_error_5() {}
+
+/// <br>
+/// <img title="
+/// html5
+/// allows
+/// multiline
+/// attr
+/// values
+/// these are just text, not tags:
+/// </div>
+/// <p/>
+/// <div>
+/// ">
+pub fn no_error_6() {}
+
+/// <br>
+/// <a href="data:text/html,<!DOCTYPE>
+/// <html>
+/// <body><b>this is allowed for some reason</b></body>
+/// </html>
+/// ">what</a>
+pub fn no_error_7() {}
+
+/// Technically this is allowed per the html5 spec,
+/// but there's basically no legitemate reason to do it,
+/// so we don't allow it.
+///
+/// <p <!-->foobar</p>
+//~^ ERROR Unclosed HTML comment
+//~| ERROR incomplete HTML tag `p`
+pub fn v() {}
