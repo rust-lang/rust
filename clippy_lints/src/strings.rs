@@ -6,7 +6,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -266,7 +266,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             && expressions[0].1.is_empty()
 
             // Check for slicer
-            && let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind
+            && let ExprKind::Struct(&qpath, _, _) = right.kind
+            && cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
         {
             let mut applicability = Applicability::MachineApplicable;
             let string_expression = &expressions[0].0;

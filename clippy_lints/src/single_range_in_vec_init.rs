@@ -6,7 +6,7 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_no_std_crate, sym};
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
+use rustc_hir::{Expr, ExprKind, LangItem, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use std::fmt::{self, Display, Formatter};
@@ -86,12 +86,12 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], StructTailExpr::None) = inner_expr.kind
+        let ExprKind::Struct(&qpath, [start, end], StructTailExpr::None) = inner_expr.kind
         else {
             return;
         };
 
-        if matches!(lang_item, LangItem::Range)
+        if cx.tcx.qpath_is_lang_item(qpath, LangItem::Range)
             && let ty = cx.typeck_results().expr_ty(start.expr)
             && let Some(snippet) = span.get_source_text(cx)
             // `is_from_proc_macro` will skip any `vec![]`. Let's not!
