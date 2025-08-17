@@ -2388,3 +2388,54 @@ pub trait Destruct {}
 "#,
     );
 }
+
+#[test]
+fn no_duplicated_lang_item_metadata() {
+    check_types(
+        r#"
+//- minicore: pointee
+//- /main.rs crate:main deps:std,core
+use std::AtomicPtr;
+use std::null_mut;
+
+fn main() {
+    let x: AtomicPtr<()> = AtomicPtr::new(null_mut());
+      //^ AtomicPtr<()>
+}
+
+//- /lib.rs crate:r#std deps:core
+#![no_std]
+pub use core::*;
+
+//- /lib.rs crate:r#core
+#![no_core]
+
+#[lang = "pointee_trait"]
+pub trait Pointee {
+    #[lang = "metadata_type"]
+    type Metadata;
+}
+
+pub struct AtomicPtr<T>(T);
+
+impl<T> AtomicPtr<T> {
+    pub fn new(p: *mut T) -> AtomicPtr<T> {
+        loop {}
+    }
+}
+
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
+
+pub trait Thin = Pointee<Metadata = ()> + PointeeSized;
+
+pub fn null_mut<T: PointeeSized + Thin>() -> *mut T {
+    loop {}
+}
+"#,
+    );
+}
