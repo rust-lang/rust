@@ -14,6 +14,7 @@ use crate::{
     db::HirDatabase,
     semantics::{PathResolution, PathResolutionPerNs},
 };
+use base_db::salsa;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId,
@@ -1593,12 +1594,14 @@ fn resolve_hir_path_(
             Some(unresolved) => resolver
                 .generic_def()
                 .and_then(|def| {
-                    hir_ty::associated_type_shorthand_candidates(
-                        db,
-                        def,
-                        res.in_type_ns()?,
-                        |name, id| (name == unresolved.name).then_some(id),
-                    )
+                    salsa::attach(db, || {
+                        hir_ty::associated_type_shorthand_candidates(
+                            db,
+                            def,
+                            res.in_type_ns()?,
+                            |name, _| name == unresolved.name,
+                        )
+                    })
                 })
                 .map(TypeAlias::from)
                 .map(Into::into)
@@ -1746,7 +1749,7 @@ fn resolve_hir_path_qualifier(
                         db,
                         def,
                         res.in_type_ns()?,
-                        |name, id| (name == unresolved.name).then_some(id),
+                        |name, _| name == unresolved.name,
                     )
                 })
                 .map(TypeAlias::from)

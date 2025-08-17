@@ -408,11 +408,11 @@ fn test<T: Iterable>() {
     let x: <S as Iterable>::Item = 1;
                                 // ^ u32
     let y: <T as Iterable>::Item = u;
-                                // ^ Iterable::Item<T>
+                                // ^ <T as Iterable>::Item
     let z: T::Item = u;
-                  // ^ Iterable::Item<T>
+                  // ^ <T as Iterable>::Item
     let a: <T>::Item = u;
-                    // ^ Iterable::Item<T>
+                    // ^ <T as Iterable>::Item
 }"#,
     );
 }
@@ -454,7 +454,7 @@ impl<T> S<T> {
 fn test<T: Iterable>() {
     let s: S<T>;
     s.foo();
- // ^^^^^^^ Iterable::Item<T>
+ // ^^^^^^^ <T as Iterable>::Item
 }"#,
     );
 }
@@ -470,7 +470,7 @@ trait Foo {
     type A;
     fn test(a: Self::A, _: impl Bar) {
         a;
-      //^ Foo::A<Self>
+      //^ <Self as Foo>::A
     }
 }"#,
     );
@@ -969,7 +969,7 @@ impl<T> ApplyL for RefMutL<T> {
 fn test<T: ApplyL>() {
     let y: <RefMutL<T> as ApplyL>::Out = no_matter;
     y;
-} //^ ApplyL::Out<T>
+} //^ <T as ApplyL>::Out
 "#,
     );
 }
@@ -986,7 +986,7 @@ fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
 fn test<T: ApplyL>(t: T) {
     let y = foo(t);
     y;
-} //^ ApplyL::Out<T>
+} //^ <T as ApplyL>::Out
 "#,
     );
 }
@@ -1695,7 +1695,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 }"#,
         expect![[r#"
             49..50 't': T
-            77..79 '{}': Trait::Type<T>
+            77..79 '{}': <T as Trait>::Type
             111..112 't': T
             122..124 '{}': U
             154..155 't': T
@@ -2293,7 +2293,7 @@ impl Trait for S2 {
 }"#,
         expect![[r#"
             40..44 'self': &'? Self
-            46..47 'x': Trait::Item<Self>
+            46..47 'x': <Self as Trait>::Item
             126..130 'self': &'? S
             132..133 'x': u32
             147..161 '{ let y = x; }': ()
@@ -2410,7 +2410,7 @@ trait Trait2<T> {}
 
 fn test<T: Trait>() where T: Trait2<T::Item> {
     let x: T::Item = no_matter;
-}                  //^^^^^^^^^ Trait::Item<T>
+}                  //^^^^^^^^^ <T as Trait>::Item
 "#,
     );
 }
@@ -2445,7 +2445,7 @@ trait Trait {
 
 fn test<T>() where T: Trait<OtherItem = T::Item> {
     let x: T::Item = no_matter;
-}                  //^^^^^^^^^ Trait::Item<T>
+}                  //^^^^^^^^^ <T as Trait>::Item
 "#,
     );
 }
@@ -2475,7 +2475,7 @@ fn test<T>(t: T) where T: UnificationStoreMut {
     t.push(x);
     let y: Key<T>;
     (x, y);
-} //^^^^^^ (UnificationStoreBase::Key<T>, UnificationStoreBase::Key<T>)
+} //^^^^^^ (<T as UnificationStoreBase>::Key, <T as UnificationStoreBase>::Key)
 "#,
     );
 }
@@ -3488,7 +3488,7 @@ fn foo() {
     let x = <F as Bar>::boo();
 }"#,
         expect![[r#"
-            132..163 '{     ...     }': Bar::Output<Self>
+            132..163 '{     ...     }': <Self as Bar>::Output
             146..153 'loop {}': !
             151..153 '{}': ()
             306..358 '{     ...o(); }': ()
@@ -4213,7 +4213,7 @@ fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
     let a = v.get::<T>();
       //^ &'a T
     let a = v.get::<()>();
-      //^ Trait::Assoc<impl Trait<Assoc<T> = &'a T>, ()>
+      //^ <impl Trait<Assoc<T> = &'a T> as Trait>::Assoc<()>
 }
 fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
@@ -4280,7 +4280,7 @@ where
     let a = t.get::<isize>();
       //^ usize
     let a = t.get::<()>();
-      //^ Trait::Assoc<T, ()>
+      //^ <T as Trait>::Assoc<()>
 }
 
     "#,
@@ -4857,29 +4857,29 @@ async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
             37..38 'a': T
             43..83 '{     ...ait; }': ()
             43..83 '{     ...ait; }': impl Future<Output = ()>
-            53..57 'fut1': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            53..57 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             60..61 'a': T
-            60..64 'a(0)': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            60..64 'a(0)': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             62..63 '0': u32
-            70..74 'fut1': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            70..74 'fut1': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             70..80 'fut1.await': i32
             124..129 'mut b': T
             134..174 '{     ...ait; }': ()
             134..174 '{     ...ait; }': impl Future<Output = ()>
-            144..148 'fut2': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            144..148 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             151..152 'b': T
-            151..155 'b(0)': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            151..155 'b(0)': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             153..154 '0': u32
-            161..165 'fut2': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            161..165 'fut2': <T as AsyncFnMut<(u32,)>>::CallRefFuture<'?>
             161..171 'fut2.await': i32
             216..217 'c': T
             222..262 '{     ...ait; }': ()
             222..262 '{     ...ait; }': impl Future<Output = ()>
-            232..236 'fut3': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            232..236 'fut3': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
             239..240 'c': T
-            239..243 'c(0)': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            239..243 'c(0)': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
             241..242 '0': u32
-            249..253 'fut3': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            249..253 'fut3': <T as AsyncFnOnce<(u32,)>>::CallOnceFuture
             249..259 'fut3.await': i32
         "#]],
     );
@@ -4947,7 +4947,7 @@ where
 "#,
         expect![[r#"
             84..86 'de': D
-            135..138 '{ }': Deserializer::Error<'de, D>
+            135..138 '{ }': <D as Deserializer<'de>>::Error
         "#]],
     );
 }
@@ -5020,7 +5020,7 @@ fn main() {
             294..298 'iter': Box<dyn Iterator<Item = &'? [u8]> + 'static>
             294..310 'iter.i...iter()': Box<dyn Iterator<Item = &'? [u8]> + 'static>
             152..156 'self': &'? mut Box<I>
-            177..208 '{     ...     }': Option<Iterator::Item<I>>
+            177..208 '{     ...     }': Option<<I as Iterator>::Item>
             191..198 'loop {}': !
             196..198 '{}': ()
         "#]],

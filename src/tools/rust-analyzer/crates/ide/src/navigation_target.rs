@@ -10,6 +10,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
+    base_db::salsa,
     defs::Definition,
     documentation::{Documentation, HasDocs},
 };
@@ -377,8 +378,9 @@ where
             )
             .map(|mut res| {
                 res.docs = self.docs(db);
-                res.description =
-                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string());
+                res.description = salsa::attach(db, || {
+                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string())
+                });
                 res.container_name = self.container_name(db);
                 res
             }),
@@ -485,8 +487,9 @@ impl TryToNav for hir::Field {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
                         res.docs = self.docs(db);
-                        res.description =
-                            Some(self.display(db, krate.to_display_target(db)).to_string());
+                        res.description = salsa::attach(db, || {
+                            Some(self.display(db, krate.to_display_target(db)).to_string())
+                        });
                         res
                     },
                 )

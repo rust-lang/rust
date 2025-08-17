@@ -1,8 +1,6 @@
 //! The home of `HirDatabase`, which is the Salsa database containing all the
 //! type inference-related queries.
 
-use std::sync;
-
 use base_db::Crate;
 use hir_def::{
     AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
@@ -94,16 +92,20 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::layout::layout_of_adt_query)]
     #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_cycle_result)]
-    fn layout_of_adt(
-        &self,
+    fn layout_of_adt<'db>(
+        &'db self,
         def: AdtId,
-        subst: Substitution,
-        env: Arc<TraitEnvironment>,
+        args: crate::next_solver::GenericArgs<'db>,
+        trait_env: Arc<TraitEnvironment>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
     #[salsa::cycle(cycle_result = crate::layout::layout_of_ty_cycle_result)]
-    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
+    fn layout_of_ty<'db>(
+        &'db self,
+        ty: crate::next_solver::Ty<'db>,
+        env: Arc<TraitEnvironment>,
+    ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: Crate) -> Result<Arc<TargetDataLayout>, Arc<str>>;
@@ -179,16 +181,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
-    #[salsa::invoke(crate::lower::generic_predicates_without_parent_with_diagnostics_query)]
-    fn generic_predicates_without_parent_with_diagnostics(
-        &self,
-        def: GenericDefId,
-    ) -> (GenericPredicates, Diagnostics);
-
-    #[salsa::invoke(crate::lower::generic_predicates_without_parent_query)]
-    #[salsa::transparent]
-    fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
-
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
     fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<TraitEnvironment>;
@@ -246,26 +238,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::interned]
     fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
-    #[salsa::invoke(chalk_db::associated_ty_data_query)]
-    fn associated_ty_data(&self, id: TypeAliasId) -> sync::Arc<chalk_db::AssociatedTyDatum>;
-
-    #[salsa::invoke(chalk_db::trait_datum_query)]
-    fn trait_datum(
-        &self,
-        krate: Crate,
-        trait_id: chalk_db::TraitId,
-    ) -> sync::Arc<chalk_db::TraitDatum>;
-
-    #[salsa::invoke(chalk_db::adt_datum_query)]
-    fn adt_datum(&self, krate: Crate, struct_id: chalk_db::AdtId) -> sync::Arc<chalk_db::AdtDatum>;
-
-    #[salsa::invoke(chalk_db::impl_datum_query)]
-    fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
-    -> sync::Arc<chalk_db::ImplDatum>;
-
-    #[salsa::invoke(chalk_db::fn_def_datum_query)]
-    fn fn_def_datum(&self, fn_def_id: CallableDefId) -> sync::Arc<chalk_db::FnDefDatum>;
-
     #[salsa::invoke(chalk_db::fn_def_variance_query)]
     fn fn_def_variance(&self, fn_def_id: CallableDefId) -> chalk_db::Variances;
 
@@ -279,13 +251,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         cycle_result = crate::variance::variances_of_cycle_initial,
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
-
-    #[salsa::invoke(chalk_db::associated_ty_value_query)]
-    fn associated_ty_value(
-        &self,
-        krate: Crate,
-        id: chalk_db::AssociatedTyValueId,
-    ) -> sync::Arc<chalk_db::AssociatedTyValue>;
 
     #[salsa::invoke(crate::traits::normalize_projection_query)]
     #[salsa::transparent]
@@ -309,23 +274,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue;
 
     // next trait solver
-
-    #[salsa::invoke(crate::layout::layout_of_adt_ns_query)]
-    #[salsa::cycle(cycle_result = crate::layout::layout_of_adt_ns_cycle_result)]
-    fn layout_of_adt_ns<'db>(
-        &'db self,
-        def: AdtId,
-        args: crate::next_solver::GenericArgs<'db>,
-        trait_env: Arc<TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
-
-    #[salsa::invoke(crate::layout::layout_of_ty_ns_query)]
-    #[salsa::cycle(cycle_result = crate::layout::layout_of_ty_ns_cycle_result)]
-    fn layout_of_ty_ns<'db>(
-        &'db self,
-        ty: crate::next_solver::Ty<'db>,
-        env: Arc<TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::lower_nextsolver::ty_query)]
     #[salsa::transparent]

@@ -1,12 +1,12 @@
 //! Type cast logic. Basically coercion + additional casts.
 
 use chalk_ir::{Mutability, Scalar, TyVariableKind, UintTy};
-use hir_def::{AdtId, hir::ExprId};
+use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
 use stdx::never;
 
 use crate::{
     Adjustment, Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex,
-    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
+    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause, from_chalk_trait_id,
     infer::{coerce::CoerceNever, unify::InferenceTable},
 };
 
@@ -290,10 +290,12 @@ impl CastCheck {
                             return Ok(());
                         }
                         let src_principal =
-                            table.db.trait_datum(table.trait_env.krate, src_principal);
+                            table.db.trait_signature(from_chalk_trait_id(src_principal));
                         let dst_principal =
-                            table.db.trait_datum(table.trait_env.krate, dst_principal);
-                        if src_principal.is_auto_trait() && dst_principal.is_auto_trait() {
+                            table.db.trait_signature(from_chalk_trait_id(dst_principal));
+                        if src_principal.flags.contains(TraitFlags::AUTO)
+                            && dst_principal.flags.contains(TraitFlags::AUTO)
+                        {
                             Ok(())
                         } else {
                             Err(CastError::DifferingKinds)

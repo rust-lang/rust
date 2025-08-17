@@ -11,15 +11,24 @@ use rustc_type_ir::{
 
 use crate::next_solver::{
     Binder, Const, ConstKind, DbInterner, Goal, ParamEnv, Predicate, PredicateKind, Span, Term, Ty,
-    TyKind,
+    TyKind, TypingMode,
     fulfill::{FulfillmentCtxt, NextSolverError},
     infer::{
-        InferCtxt,
+        DbInternerInferExt, InferCtxt,
         at::At,
         traits::{Obligation, ObligationCause},
     },
     util::PlaceholderReplacer,
 };
+
+pub fn normalize<'db, T>(interner: DbInterner<'db>, param_env: ParamEnv<'db>, value: T) -> T
+where
+    T: TypeFoldable<DbInterner<'db>>,
+{
+    let infer_ctxt = interner.infer_ctxt().build(TypingMode::non_body_analysis());
+    let cause = ObligationCause::dummy();
+    deeply_normalize(infer_ctxt.at(&cause, param_env), value.clone()).unwrap_or(value)
+}
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.

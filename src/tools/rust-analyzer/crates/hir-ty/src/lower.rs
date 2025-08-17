@@ -804,15 +804,6 @@ pub(crate) fn callable_item_signature_query(db: &dyn HirDatabase, def: CallableD
     }
 }
 
-pub fn associated_type_shorthand_candidates<R>(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-    res: TypeNs,
-    mut cb: impl FnMut(&Name, TypeAliasId) -> Option<R>,
-) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, def, res, None, |name, _, id| cb(name, id))
-}
-
 fn named_associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
     // If the type parameter is defined in an impl and we're in a method, there
@@ -1177,22 +1168,6 @@ pub(crate) fn generic_predicates_query(
     def: GenericDefId,
 ) -> GenericPredicates {
     generic_predicates_filtered_by(db, def, |_, _| true).0
-}
-
-pub(crate) fn generic_predicates_without_parent_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> GenericPredicates {
-    db.generic_predicates_without_parent_with_diagnostics(def).0
-}
-
-/// Resolve the where clause(s) of an item with generics,
-/// except the ones inherited from the parent
-pub(crate) fn generic_predicates_without_parent_with_diagnostics_query(
-    db: &dyn HirDatabase,
-    def: GenericDefId,
-) -> (GenericPredicates, Diagnostics) {
-    generic_predicates_filtered_by(db, def, |_, d| d == def)
 }
 
 /// Resolve the where clause(s) of an item with generics,

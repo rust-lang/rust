@@ -31,11 +31,8 @@ use crate::{
     },
 };
 
-pub(crate) use self::adt::{layout_of_adt_cycle_result, layout_of_adt_ns_cycle_result};
-pub use self::{
-    adt::{layout_of_adt_ns_query, layout_of_adt_query},
-    target::target_data_layout_query,
-};
+pub(crate) use self::adt::layout_of_adt_cycle_result;
+pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 pub(crate) mod adt;
 pub(crate) mod target;
@@ -153,24 +150,14 @@ fn layout_of_simd_ty<'db>(
         return Err(LayoutError::InvalidSimdType);
     };
 
-    let e_len = try_const_usize(db, &e_len).ok_or(LayoutError::HasErrorConst)? as u64;
-    let e_ly = db.layout_of_ty_ns(e_ty, env)?;
+    let e_len = try_const_usize(db, e_len).ok_or(LayoutError::HasErrorConst)? as u64;
+    let e_ly = db.layout_of_ty(e_ty, env)?;
 
     let cx = LayoutCx::new(dl);
     Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed)?))
 }
 
-pub fn layout_of_ty_query(
-    db: &dyn HirDatabase,
-    ty: crate::Ty,
-    trait_env: Arc<TraitEnvironment>,
-) -> Result<Arc<Layout>, LayoutError> {
-    let krate = trait_env.krate;
-    let interner = DbInterner::new_with(db, Some(krate), trait_env.block);
-    db.layout_of_ty_ns(ty.to_nextsolver(interner), trait_env)
-}
-
-pub fn layout_of_ty_ns_query<'db>(
+pub fn layout_of_ty_query<'db>(
     db: &'db dyn HirDatabase,
     ty: Ty<'db>,
     trait_env: Arc<TraitEnvironment>,
@@ -197,7 +184,7 @@ pub fn layout_of_ty_ns_query<'db>(
                 }
                 _ => {}
             }
-            return db.layout_of_adt_ns(def.inner().id, args, trait_env);
+            return db.layout_of_adt(def.inner().id, args, trait_env);
         }
         TyKind::Bool => Layout::scalar(
             dl,
@@ -265,19 +252,19 @@ pub fn layout_of_ty_ns_query<'db>(
 
             let fields = tys
                 .iter()
-                .map(|k| db.layout_of_ty_ns(k, trait_env.clone()))
+                .map(|k| db.layout_of_ty(k, trait_env.clone()))
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
             let fields = fields.iter().collect::<IndexVec<_, _>>();
             cx.calc.univariant(&fields, &ReprOptions::default(), kind)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::HasErrorConst)? as u64;
-            let element = db.layout_of_ty_ns(element, trait_env)?;
+            let count = try_const_usize(db, count).ok_or(LayoutError::HasErrorConst)? as u64;
+            let element = db.layout_of_ty(element, trait_env)?;
             cx.calc.array_like::<_, _, ()>(&element, Some(count))?
         }
         TyKind::Slice(element) => {
-            let element = db.layout_of_ty_ns(element, trait_env)?;
+            let element = db.layout_of_ty(element, trait_env)?;
             cx.calc.array_like::<_, _, ()>(&element, None)?
         }
         TyKind::Str => {
@@ -349,7 +336,7 @@ pub fn layout_of_ty_ns_query<'db>(
                     let ty =
                         convert_binder_to_early_binder(interner, it.ty.to_nextsolver(interner))
                             .instantiate(interner, args);
-                    db.layout_of_ty_ns(ty, trait_env.clone())
+                    db.layout_of_ty(ty, trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
@@ -379,15 +366,7 @@ pub fn layout_of_ty_ns_query<'db>(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_ty_cycle_result(
-    _: &dyn HirDatabase,
-    _: crate::Ty,
-    _: Arc<TraitEnvironment>,
-) -> Result<Arc<Layout>, LayoutError> {
-    Err(LayoutError::RecursiveTypeWithoutIndirection)
-}
-
-pub(crate) fn layout_of_ty_ns_cycle_result<'db>(
+pub(crate) fn layout_of_ty_cycle_result<'db>(
     _: &dyn HirDatabase,
     _: Ty<'db>,
     _: Arc<TraitEnvironment>,

@@ -71,7 +71,7 @@ fn test() {
     let x = S3.baz();
       //^ Binary<impl Foo + ?Sized, Unary<impl Bar + ?Sized>>
     let y = x.1.0.bar();
-      //^ Unary<Bar::Item<impl Bar + ?Sized>>
+      //^ Unary<<impl Bar + ?Sized as Bar>::Item>
 }
         "#,
     );

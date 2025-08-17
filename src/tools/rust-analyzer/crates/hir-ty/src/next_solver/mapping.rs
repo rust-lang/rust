@@ -18,13 +18,14 @@ use rustc_type_ir::{
     shift_vars,
     solve::Goal,
 };
-use salsa::plumbing::AsId;
+use salsa::plumbing::FromId;
+use salsa::{Id, plumbing::AsId};
 
 use crate::{
-    ConcreteConst, ConstScalar, ImplTraitId, Interner,
+    ConcreteConst, ConstScalar, ImplTraitId, Interner, MemoryMap,
     db::{
-        HirDatabase, InternedClosureId, InternedCoroutineId, InternedOpaqueTyId,
-        InternedTypeOrConstParamId,
+        HirDatabase, InternedClosureId, InternedCoroutineId, InternedLifetimeParamId,
+        InternedOpaqueTyId, InternedTypeOrConstParamId,
     },
     from_assoc_type_id, from_chalk_trait_id,
     mapping::ToChalk,
@@ -53,6 +54,24 @@ pub fn to_placeholder_idx<T: Clone + std::fmt::Debug>(
         universe: UniverseIndex::ZERO,
         bound: map(BoundVar::from_usize(interned_id.as_id().index() as usize)),
     }
+}
+
+pub fn bound_var_to_type_or_const_param_idx(
+    db: &dyn HirDatabase,
+    var: rustc_type_ir::BoundVar,
+) -> TypeOrConstParamId {
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = InternedTypeOrConstParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
+    interned_id.loc(db)
+}
+
+pub fn bound_var_to_lifetime_idx(
+    db: &dyn HirDatabase,
+    var: rustc_type_ir::BoundVar,
+) -> LifetimeParamId {
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = InternedLifetimeParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
+    interned_id.loc(db)
 }
 
 pub fn convert_binder_to_early_binder<'db, T: rustc_type_ir::TypeFoldable<DbInterner<'db>>>(
@@ -1290,7 +1309,10 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
     .intern(Interner)
 }
 
-fn convert_const_for_result<'db>(interner: DbInterner<'db>, const_: Const<'db>) -> crate::Const {
+pub fn convert_const_for_result<'db>(
+    interner: DbInterner<'db>,
+    const_: Const<'db>,
+) -> crate::Const {
     let value: chalk_ir::ConstValue<Interner> = match const_.kind() {
         rustc_type_ir::ConstKind::Param(_) => unimplemented!(),
         rustc_type_ir::ConstKind::Infer(rustc_type_ir::InferConst::Var(var)) => {
@@ -1325,7 +1347,10 @@ fn convert_const_for_result<'db>(interner: DbInterner<'db>, const_: Const<'db>) 
         rustc_type_ir::ConstKind::Value(value_const) => {
             let bytes = value_const.value.inner();
             let value = chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
-                interned: ConstScalar::Bytes(bytes.0.clone(), bytes.1.clone()),
+                // SAFETY: we will never actually use this without a database
+                interned: ConstScalar::Bytes(bytes.0.clone(), unsafe {
+                    std::mem::transmute::<MemoryMap<'db>, MemoryMap<'static>>(bytes.1.clone())
+                }),
             });
             return chalk_ir::ConstData {
                 ty: convert_ty_for_result(interner, value_const.ty),
@@ -1343,7 +1368,7 @@ fn convert_const_for_result<'db>(interner: DbInterner<'db>, const_: Const<'db>) 
     chalk_ir::ConstData { ty: crate::TyKind::Error.intern(Interner), value }.intern(Interner)
 }
 
-fn convert_region_for_result<'db>(region: Region<'db>) -> crate::Lifetime {
+pub fn convert_region_for_result<'db>(region: Region<'db>) -> crate::Lifetime {
     match region.kind() {
         rustc_type_ir::RegionKind::ReEarlyParam(early) => unimplemented!(),
         rustc_type_ir::RegionKind::ReBound(db, bound) => chalk_ir::Lifetime::new(

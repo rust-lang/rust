@@ -107,7 +107,7 @@ pub enum OperandKind {
 }
 
 impl Operand {
-    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
+    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'static>, ty: Ty) -> Self {
         Operand {
             kind: OperandKind::Constant(intern_const_scalar(
                 ConstScalar::Bytes(data, memory_map),

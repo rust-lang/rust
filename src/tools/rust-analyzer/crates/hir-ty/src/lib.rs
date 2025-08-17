@@ -90,6 +90,7 @@ use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use rustc_type_ir::inherent::SliceLike;
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -100,6 +101,7 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
     infer::unify::InferenceTable,
+    next_solver::{DbInterner, mapping::convert_ty_for_result},
 };
 
 pub use autoderef::autoderef;
@@ -116,8 +118,9 @@ pub use infer::{
 pub use interner::Interner;
 pub use lower::{
     ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
-    ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
+    ValueTyDefId, diagnostics::*,
 };
+pub use lower_nextsolver::associated_type_shorthand_candidates;
 pub use mapping::{
     ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
@@ -210,20 +213,20 @@ pub(crate) type ProgramClause = chalk_ir::ProgramClause<Interner>;
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum MemoryMap {
+pub enum MemoryMap<'db> {
     #[default]
     Empty,
     Simple(Box<[u8]>),
-    Complex(Box<ComplexMemoryMap>),
+    Complex(Box<ComplexMemoryMap<'db>>),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ComplexMemoryMap {
+pub struct ComplexMemoryMap<'db> {
     memory: IndexMap<usize, Box<[u8]>, FxBuildHasher>,
-    vtable: VTableMap,
+    vtable: VTableMap<'db>,
 }
 
-impl ComplexMemoryMap {
+impl ComplexMemoryMap<'_> {
     fn insert(&mut self, addr: usize, val: Box<[u8]>) {
         match self.memory.entry(addr) {
             Entry::Occupied(mut e) => {
@@ -238,8 +241,8 @@ impl ComplexMemoryMap {
     }
 }
 
-impl MemoryMap {
-    pub fn vtable_ty(&self, id: usize) -> Result<&Ty, MirEvalError> {
+impl<'db> MemoryMap<'db> {
+    pub fn vtable_ty(&self, id: usize) -> Result<crate::next_solver::Ty<'db>, MirEvalError> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -289,10 +292,11 @@ impl MemoryMap {
     }
 }
 
+// FIXME(next-solver): add a lifetime to this
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
-    Bytes(Box<[u8]>, MemoryMap),
+    Bytes(Box<[u8]>, MemoryMap<'static>),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
     UnevaluatedConst(GeneralConstId, Substitution),
@@ -308,6 +312,30 @@ impl Hash for ConstScalar {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         core::mem::discriminant(self).hash(state);
         if let ConstScalar::Bytes(b, _) = self {
+            b.hash(state)
+        }
+    }
+}
+
+/// A concrete constant value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstScalarNs<'db> {
+    Bytes(Box<[u8]>, MemoryMap<'db>),
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    UnevaluatedConst(GeneralConstId, Substitution),
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-lang/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl Hash for ConstScalarNs<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
+        if let ConstScalarNs::Bytes(b, _) = self {
             b.hash(state)
         }
     }
@@ -558,6 +586,27 @@ impl CallableSig {
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,
             abi: fn_ptr.sig.abi,
+        }
+    }
+    pub fn from_fn_sig_and_header<'db>(
+        interner: DbInterner<'db>,
+        sig: crate::next_solver::Binder<'db, rustc_type_ir::FnSigTys<DbInterner<'db>>>,
+        header: rustc_type_ir::FnHeader<DbInterner<'db>>,
+    ) -> CallableSig {
+        CallableSig {
+            // FIXME: what to do about lifetime params? -> return PolyFnSig
+            params_and_return: Arc::from_iter(
+                sig.skip_binder()
+                    .inputs_and_output
+                    .iter()
+                    .map(|t| convert_ty_for_result(interner, t)),
+            ),
+            is_varargs: header.c_variadic,
+            safety: match header.safety {
+                next_solver::abi::Safety::Safe => chalk_ir::Safety::Safe,
+                next_solver::abi::Safety::Unsafe => chalk_ir::Safety::Unsafe,
+            },
+            abi: header.abi,
         }
     }
 

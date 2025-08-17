@@ -11,6 +11,7 @@ use crate::{
     Interner, Substitution,
     db::HirDatabase,
     layout::{Layout, LayoutError},
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
     setup_tracing,
     test_db::TestDB,
 };
@@ -85,13 +86,16 @@ fn eval_goal(
             db.ty(ty_id.into()).substitute(Interner, &Substitution::empty(Interner))
         }
     };
-    db.layout_of_ty(
-        goal_ty,
-        db.trait_environment(match adt_or_type_alias_id {
-            Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
-            Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
-        }),
-    )
+    salsa::attach(&db, || {
+        let interner = DbInterner::new_with(&db, None, None);
+        db.layout_of_ty(
+            goal_ty.to_nextsolver(interner),
+            db.trait_environment(match adt_or_type_alias_id {
+                Either::Left(adt) => hir_def::GenericDefId::AdtId(adt),
+                Either::Right(ty) => hir_def::GenericDefId::TypeAliasId(ty),
+            }),
+        )
+    })
 }
 
 /// A version of `eval_goal` for types that can not be expressed in ADTs, like closures and `impl Trait`
@@ -128,7 +132,10 @@ fn eval_expr(
         .0;
     let infer = db.infer(function_id.into());
     let goal_ty = infer.type_of_binding[b].clone();
-    db.layout_of_ty(goal_ty, db.trait_environment(function_id.into()))
+    salsa::attach(&db, || {
+        let interner = DbInterner::new_with(&db, None, None);
+        db.layout_of_ty(goal_ty.to_nextsolver(interner), db.trait_environment(function_id.into()))
+    })
 }
 
 #[track_caller]

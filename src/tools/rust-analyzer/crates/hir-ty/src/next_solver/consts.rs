@@ -103,7 +103,7 @@ pub struct ValueConst<'db> {
 }
 
 impl<'db> ValueConst<'db> {
-    pub fn new(ty: Ty<'db>, bytes: ConstBytes) -> Self {
+    pub fn new(ty: Ty<'db>, bytes: ConstBytes<'db>) -> Self {
         let value = Valtree::new(bytes);
         ValueConst { ty, value }
     }
@@ -141,9 +141,9 @@ impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for ValueConst<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConstBytes(pub Box<[u8]>, pub MemoryMap);
+pub struct ConstBytes<'db>(pub Box<[u8]>, pub MemoryMap<'db>);
 
-impl Hash for ConstBytes {
+impl Hash for ConstBytes<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state)
     }
@@ -152,11 +152,11 @@ impl Hash for ConstBytes {
 #[salsa::interned(constructor = new_, debug)]
 pub struct Valtree<'db> {
     #[returns(ref)]
-    bytes_: ConstBytes,
+    bytes_: ConstBytes<'db>,
 }
 
 impl<'db> Valtree<'db> {
-    pub fn new(bytes: ConstBytes) -> Self {
+    pub fn new(bytes: ConstBytes<'db>) -> Self {
         salsa::with_attached_database(|db| unsafe {
             // SAFETY: ¯\_(ツ)_/¯
             std::mem::transmute(Valtree::new_(db, bytes))
@@ -164,7 +164,7 @@ impl<'db> Valtree<'db> {
         .unwrap()
     }
 
-    pub fn inner(&self) -> &ConstBytes {
+    pub fn inner(&self) -> &ConstBytes<'db> {
         salsa::with_attached_database(|db| {
             let inner = self.bytes_(db);
             // SAFETY: The caller already has access to a `Valtree<'db>`, so borrowchecking will

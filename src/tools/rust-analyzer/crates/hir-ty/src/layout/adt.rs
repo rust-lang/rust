@@ -13,23 +13,13 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    Substitution, TraitEnvironment,
+    TraitEnvironment,
     db::HirDatabase,
     layout::{Layout, LayoutCx, LayoutError, field_ty},
-    next_solver::{DbInterner, GenericArgs, mapping::ChalkToNextSolver},
+    next_solver::GenericArgs,
 };
 
-pub fn layout_of_adt_query(
-    db: &dyn HirDatabase,
-    def: AdtId,
-    subst: Substitution,
-    trait_env: Arc<TraitEnvironment>,
-) -> Result<Arc<Layout>, LayoutError> {
-    let interner = DbInterner::new_with(db, Some(trait_env.krate), trait_env.block);
-    db.layout_of_adt_ns(def, subst.to_nextsolver(interner), trait_env)
-}
-
-pub fn layout_of_adt_ns_query<'db>(
+pub fn layout_of_adt_query<'db>(
     db: &'db dyn HirDatabase,
     def: AdtId,
     args: GenericArgs<'db>,
@@ -44,7 +34,7 @@ pub fn layout_of_adt_ns_query<'db>(
     let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
-            .map(|(fd, _)| db.layout_of_ty_ns(field_ty(db, def, fd, &args), trait_env.clone()))
+            .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &args), trait_env.clone()))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, repr, is_special_no_niche) = match def {
@@ -105,16 +95,7 @@ pub fn layout_of_adt_ns_query<'db>(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_adt_cycle_result(
-    _: &dyn HirDatabase,
-    _: AdtId,
-    _: Substitution,
-    _: Arc<TraitEnvironment>,
-) -> Result<Arc<Layout>, LayoutError> {
-    Err(LayoutError::RecursiveTypeWithoutIndirection)
-}
-
-pub(crate) fn layout_of_adt_ns_cycle_result<'db>(
+pub(crate) fn layout_of_adt_cycle_result<'db>(
     _: &'db dyn HirDatabase,
     _def: AdtId,
     _args: GenericArgs<'db>,

@@ -15,8 +15,14 @@ use triomphe::Arc;
 
 use crate::{
     Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, db::HirDatabase, display::DisplayTarget, generics::Generics,
-    infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
+    TraitEnvironment, Ty, TyBuilder,
+    db::HirDatabase,
+    display::DisplayTarget,
+    generics::Generics,
+    infer::InferenceContext,
+    lower::ParamLoweringMode,
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+    to_placeholder_idx,
 };
 
 use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
@@ -157,7 +163,8 @@ pub fn intern_const_ref(
     ty: Ty,
     krate: Crate,
 ) -> Const {
-    let layout = || db.layout_of_ty(ty.clone(), TraitEnvironment::empty(krate));
+    let interner = DbInterner::new_with(db, Some(krate), None);
+    let layout = || db.layout_of_ty(ty.to_nextsolver(interner), TraitEnvironment::empty(krate));
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.

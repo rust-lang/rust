@@ -66,7 +66,7 @@ use hir_def::{
     },
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
-    signatures::{ImplFlags, StaticFlags, TraitFlags, VariantFields},
+    signatures::{ImplFlags, StaticFlags, StructFlags, TraitFlags, VariantFields},
     src::HasSource as _,
     visibility::visibility_from_ast,
 };
@@ -85,7 +85,10 @@ use hir_ty::{
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
-    next_solver::{DbInterner, GenericArgs, SolverDefId, infer::InferCtxt},
+    next_solver::{
+        ClauseKind, DbInterner, GenericArgs, SolverDefId, infer::InferCtxt,
+        mapping::ChalkToNextSolver,
+    },
     primitive::UintTy,
     traits::FnTrait,
 };
@@ -112,6 +115,7 @@ pub use crate::{
         VisibleTraits,
     },
 };
+use rustc_type_ir::inherent::{IntoKind, SliceLike};
 
 // Be careful with these re-exports.
 //
@@ -1385,8 +1389,9 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        let interner = DbInterner::new_with(db, None, None);
         db.layout_of_ty(
-            self.ty(db).ty,
+            self.ty(db).ty.to_nextsolver(interner),
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => {
                     GenericDefId::AdtId(id.lookup(db).parent.into())
@@ -1814,12 +1819,15 @@ impl Adt {
     }
 
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
+        let env = db.trait_environment(self.into());
+        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
         db.layout_of_adt(
             self.into(),
             TyBuilder::adt(db, self.into())
                 .fill_with_defaults(db, || TyKind::Error.intern(Interner))
-                .build_into_subst(),
-            db.trait_environment(self.into()),
+                .build_into_subst()
+                .to_nextsolver(interner),
+            env,
         )
         .map(|layout| Layout(layout, db.target_data_layout(self.krate(db).id).unwrap()))
     }
@@ -3750,7 +3758,7 @@ impl GenericDef {
         push_ty_diagnostics(
             db,
             acc,
-            db.generic_predicates_without_parent_with_diagnostics(def).1,
+            db.generic_predicates_without_parent_with_diagnostics_ns(def).1,
             &source_map,
         );
         for (param_id, param) in generics.iter_type_or_consts() {
@@ -4240,11 +4248,15 @@ impl TypeParam {
     /// parameter, not additional bounds that might be added e.g. by a method if
     /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id.parent(), self.id.into(), None)
+        db.generic_predicates_for_param_ns(self.id.parent(), self.id.into(), None)
             .iter()
-            .filter_map(|pred| match &pred.skip_binders().skip_binders() {
-                hir_ty::WhereClause::Implemented(trait_ref) => {
-                    Some(Trait::from(trait_ref.hir_trait_id()))
+            .filter_map(|pred| match &pred.kind().skip_binder() {
+                ClauseKind::Trait(trait_ref) => {
+                    let trait_ = match trait_ref.def_id() {
+                        SolverDefId::TraitId(t) => t,
+                        _ => unreachable!(),
+                    };
+                    Some(Trait::from(trait_))
                 }
                 _ => None,
             })
@@ -4501,14 +4513,17 @@ impl Impl {
     }
 
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
-        let trait_ref = db.impl_trait(self.id)?;
-        let id = trait_ref.skip_binders().hir_trait_id();
+        let trait_ref = db.impl_trait_ns(self.id)?;
+        let id = trait_ref.skip_binder().def_id;
+        let id = match id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
         Some(Trait { id })
     }
 
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef<'_>> {
-        let substs = TyBuilder::placeholder_subst(db, self.id);
-        let trait_ref = db.impl_trait(self.id)?.substitute(Interner, &substs);
+        let trait_ref = db.impl_trait_ns(self.id)?.instantiate_identity();
         let resolver = self.id.resolver(db);
         Some(TraitRef::new_with_resolver(db, &resolver, trait_ref))
     }
@@ -4577,7 +4592,7 @@ impl Impl {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef<'db> {
     env: Arc<TraitEnvironment>,
-    trait_ref: hir_ty::TraitRef,
+    trait_ref: hir_ty::next_solver::TraitRef<'db>,
     _pd: PhantomCovariantLifetime<'db>,
 }
 
@@ -4585,7 +4600,7 @@ impl<'db> TraitRef<'db> {
     pub(crate) fn new_with_resolver(
         db: &'db dyn HirDatabase,
         resolver: &Resolver<'_>,
-        trait_ref: hir_ty::TraitRef,
+        trait_ref: hir_ty::next_solver::TraitRef<'db>,
     ) -> Self {
         let env = resolver
             .generic_def()
@@ -4594,25 +4609,26 @@ impl<'db> TraitRef<'db> {
     }
 
     pub fn trait_(&self) -> Trait {
-        let id = self.trait_ref.hir_trait_id();
+        let id = match self.trait_ref.def_id {
+            SolverDefId::TraitId(id) => id,
+            _ => unreachable!(),
+        };
         Trait { id }
     }
 
-    pub fn self_ty(&self) -> Type<'_> {
-        let ty = self.trait_ref.self_type_parameter(Interner);
-        Type { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() }
+    pub fn self_ty(&self) -> TypeNs<'_> {
+        let ty = self.trait_ref.self_ty();
+        TypeNs { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() }
     }
 
     /// Returns `idx`-th argument of this trait reference if it is a type argument. Note that the
     /// first argument is the `Self` type.
-    pub fn get_type_argument(&self, idx: usize) -> Option<Type<'db>> {
-        self.trait_ref
-            .substitution
-            .as_slice(Interner)
-            .get(idx)
-            .and_then(|arg| arg.ty(Interner))
-            .cloned()
-            .map(|ty| Type { env: self.env.clone(), ty, _pd: PhantomCovariantLifetime::new() })
+    pub fn get_type_argument(&self, idx: usize) -> Option<TypeNs<'db>> {
+        self.trait_ref.args.as_slice().get(idx).and_then(|arg| arg.ty()).map(|ty| TypeNs {
+            env: self.env.clone(),
+            ty,
+            _pd: PhantomCovariantLifetime::new(),
+        })
     }
 }
 
@@ -4929,42 +4945,79 @@ impl<'db> Type<'db> {
     }
 
     pub fn contains_reference(&self, db: &'db dyn HirDatabase) -> bool {
-        return go(db, self.env.krate, &self.ty);
+        return go(db, &self.ty);
 
-        fn go(db: &dyn HirDatabase, krate: base_db::Crate, ty: &Ty) -> bool {
+        fn is_phantom_data(db: &dyn HirDatabase, adt_id: AdtId) -> bool {
+            match adt_id {
+                hir_def::AdtId::StructId(s) => {
+                    let flags = db.struct_signature(s).flags;
+                    flags.contains(StructFlags::IS_PHANTOM_DATA)
+                }
+                hir_def::AdtId::UnionId(_) => false,
+                hir_def::AdtId::EnumId(_) => false,
+            }
+        }
+
+        fn go(db: &dyn HirDatabase, ty: &Ty) -> bool {
             match ty.kind(Interner) {
                 // Reference itself
                 TyKind::Ref(_, _, _) => true,
 
                 // For non-phantom_data adts we check variants/fields as well as generic parameters
-                TyKind::Adt(adt_id, substitution)
-                    if !db.adt_datum(krate, *adt_id).flags.phantom_data =>
-                {
-                    let adt_datum = &db.adt_datum(krate, *adt_id);
-                    let adt_datum_bound =
-                        adt_datum.binders.clone().substitute(Interner, substitution);
-                    adt_datum_bound
-                        .variants
+                TyKind::Adt(adt_id, substitution) if !is_phantom_data(db, adt_id.0) => {
+                    let _variant_id_to_fields = |id: VariantId| {
+                        let variant_data = &id.fields(db);
+                        if variant_data.fields().is_empty() {
+                            vec![]
+                        } else {
+                            let field_types = db.field_types(id);
+                            variant_data
+                                .fields()
+                                .iter()
+                                .map(|(idx, _)| {
+                                    field_types[idx].clone().substitute(Interner, substitution)
+                                })
+                                .filter(|it| !it.contains_unknown())
+                                .collect()
+                        }
+                    };
+                    let variant_id_to_fields = |_: VariantId| vec![];
+
+                    let variants = match adt_id.0 {
+                        hir_def::AdtId::StructId(id) => {
+                            vec![variant_id_to_fields(id.into())]
+                        }
+                        hir_def::AdtId::EnumId(id) => id
+                            .enum_variants(db)
+                            .variants
+                            .iter()
+                            .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
+                            .collect(),
+                        hir_def::AdtId::UnionId(id) => {
+                            vec![variant_id_to_fields(id.into())]
+                        }
+                    };
+
+                    variants
                         .into_iter()
-                        .flat_map(|variant| variant.fields.into_iter())
-                        .any(|ty| go(db, krate, &ty))
+                        .flat_map(|variant| variant.into_iter())
+                        .any(|ty| go(db, &ty))
                         || substitution
                             .iter(Interner)
                             .filter_map(|x| x.ty(Interner))
-                            .any(|ty| go(db, krate, ty))
+                            .any(|ty| go(db, ty))
                 }
                 // And for `PhantomData<T>`, we check `T`.
                 TyKind::Adt(_, substitution)
                 | TyKind::Tuple(_, substitution)
                 | TyKind::OpaqueType(_, substitution)
                 | TyKind::AssociatedType(_, substitution)
-                | TyKind::FnDef(_, substitution) => substitution
-                    .iter(Interner)
-                    .filter_map(|x| x.ty(Interner))
-                    .any(|ty| go(db, krate, ty)),
+                | TyKind::FnDef(_, substitution) => {
+                    substitution.iter(Interner).filter_map(|x| x.ty(Interner)).any(|ty| go(db, ty))
+                }
 
                 // For `[T]` or `*T` we check `T`
-                TyKind::Array(ty, _) | TyKind::Slice(ty) | TyKind::Raw(_, ty) => go(db, krate, ty),
+                TyKind::Array(ty, _) | TyKind::Slice(ty) | TyKind::Raw(_, ty) => go(db, ty),
 
                 // Consider everything else as not reference
                 _ => false,
@@ -5895,7 +5948,8 @@ impl<'db> Type<'db> {
     }
 
     pub fn layout(&self, db: &'db dyn HirDatabase) -> Result<Layout, LayoutError> {
-        db.layout_of_ty(self.ty.clone(), self.env.clone())
+        let interner = DbInterner::new_with(db, None, None);
+        db.layout_of_ty(self.ty.to_nextsolver(interner), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
     }
 
