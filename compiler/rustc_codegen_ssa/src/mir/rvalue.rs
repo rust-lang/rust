@@ -667,6 +667,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         fn_attrs.as_deref(),
                         Some(fn_abi),
                         fn_ptr,
+                        None, /*The TLS shim does not return indirectly*/
                         &[],
                         None,
                         Some(instance),

@@ -600,6 +600,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         _fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        indirect_return_pointer: Option<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
@@ -610,7 +611,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call = self.call(typ, fn_attrs, None, func, args, None, instance); // TODO(antoyo): use funclet here?
+        let call =
+            self.call(typ, fn_attrs, None, func, indirect_return_pointer, args, None, instance); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value =
@@ -638,13 +640,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        indirect_return_pointer: Option<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let call_site = self.call(typ, fn_attrs, None, func, args, None, instance);
+        let call_site =
+            self.call(typ, fn_attrs, None, func, indirect_return_pointer, args, None, instance);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1744,17 +1748,28 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
+        indirect_return_pointer: Option<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
+        // FIXME: change this in the `rustc_codegen_gcc` repo after the sync, to use the `libgccjit` indirect return suppport.
+        let args = match indirect_return_pointer {
+            None => args.to_vec(),
+            Some(sret_ptr) => {
+                let mut args = args.to_vec();
+                // Preappend the indirect return pointer
+                args.insert(0, sret_ptr);
+                args
+            }
+        };
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute::<RValue<'gcc>, Function<'gcc>>(func) };
         let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
-            self.function_call(func, args, funclet)
+            self.function_call(func, &args, funclet)
         } else {
             // If it's a not function that was defined, it's a function pointer.
-            self.function_ptr_call(typ, func, args, funclet)
+            self.function_ptr_call(typ, func, &args, funclet)
         };
         if let Some(_fn_abi) = fn_abi {
             // TODO(bjorn3): Apply function attributes

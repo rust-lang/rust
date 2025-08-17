@@ -558,7 +558,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             )
         };
 
-        let result = bx.call(start_ty, None, None, start_fn, &args, None, instance);
+        let result = bx.call(
+            start_ty, None, None, start_fn, None, /*The entry fn does not return indirectly.*/
+            &args, None, instance,
+        );
         if cx.sess().target.os.contains("uefi") {
             bx.ret(result);
         } else {
