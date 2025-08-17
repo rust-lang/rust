@@ -7,7 +7,7 @@ LL | |         let _x = x;
 LL | |     };
    | |_____^
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/collectivity-regression.rs:11:16
    |
 LL |     for<'a> T: Get<Value<'a> = ()>,
