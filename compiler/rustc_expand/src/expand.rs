@@ -16,6 +16,7 @@ use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::PResult;
 use rustc_feature::Features;
+use rustc_hir::def::MacroKinds;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
     token_descr,
@@ -565,6 +566,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 .map(|DeriveResolution { path, item, exts: _, is_const }| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
+                                    // Note that this can result in duplicate diagnostics.
                                     let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
@@ -921,6 +923,35 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         );
                     }
                     fragment
+                }
+                SyntaxExtensionKind::MacroRules(expander)
+                    if expander.kinds().contains(MacroKinds::DERIVE) =>
+                {
+                    if is_const {
+                        let guar = self
+                            .cx
+                            .dcx()
+                            .span_err(span, "macro `derive` does not support const derives");
+                        return ExpandResult::Ready(fragment_kind.dummy(span, guar));
+                    }
+                    let body = item.to_tokens();
+                    match expander.expand_derive(self.cx, span, &body) {
+                        Ok(tok_result) => {
+                            let fragment =
+                                self.parse_ast_fragment(tok_result, fragment_kind, &path, span);
+                            if macro_stats {
+                                update_derive_macro_stats(
+                                    self.cx,
+                                    fragment_kind,
+                                    span,
+                                    &path,
+                                    &fragment,
+                                );
+                            }
+                            fragment
+                        }
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
                 }
                 _ => unreachable!(),
             },

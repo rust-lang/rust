@@ -1329,6 +1329,7 @@ symbols! {
         macro_attr,
         macro_attributes_in_derive_output,
         macro_concat,
+        macro_derive,
         macro_escape,
         macro_export,
         macro_lifetime_matcher,

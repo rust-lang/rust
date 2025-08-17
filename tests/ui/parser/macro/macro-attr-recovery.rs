@@ -3,7 +3,7 @@
 
 macro_rules! attr {
     attr[$($args:tt)*] { $($body:tt)* } => {
-        //~^ ERROR: macro attribute argument matchers require parentheses
+        //~^ ERROR: `attr` rule argument matchers require parentheses
         //~v ERROR: attr:
         compile_error!(concat!(
             "attr: args=\"",
