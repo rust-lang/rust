@@ -42,8 +42,8 @@ fn auxv_dump() {
 }
 
 #[cfg(feature = "std_detect_file_io")]
-cfg_if::cfg_if! {
-    if #[cfg(target_arch = "arm")] {
+cfg_select! {
+    target_arch = "arm" => {
         // The tests below can be executed under qemu, where we do not have access to the test
         // files on disk, so we need to embed them with `include_bytes!`.
         #[test]
@@ -62,7 +62,8 @@ cfg_if::cfg_if! {
             assert_eq!(v.hwcap, 126614527);
             assert_eq!(v.hwcap2, 0);
         }
-    } else if #[cfg(target_arch = "aarch64")] {
+    }
+    target_arch = "aarch64" => {
         #[cfg(target_endian = "little")]
         #[test]
         fn linux_artificial_aarch64() {
@@ -81,6 +82,7 @@ cfg_if::cfg_if! {
             assert_eq!(v.hwcap2, 0);
         }
     }
+    _ => {}
 }
 
 #[test]

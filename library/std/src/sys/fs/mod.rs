@@ -5,8 +5,8 @@ use crate::path::{Path, PathBuf};
 
 pub mod common;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_family = "unix")] {
+cfg_select! {
+    target_family = "unix" => {
         mod unix;
         use unix as imp;
         pub use unix::{chown, fchown, lchown, mkfifo};
@@ -16,24 +16,30 @@ cfg_if::cfg_if! {
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(crate) use unix::CachedFileMetadata;
         use crate::sys::common::small_c_string::run_path_with_cstr as with_native_path;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         use windows as imp;
         pub use windows::{symlink_inner, junction_point};
         use crate::sys::path::with_native_path;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         mod hermit;
         use hermit as imp;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
-    } else if #[cfg(target_os = "wasi")] {
+    }
+    target_os = "wasi" => {
         mod wasi;
         use wasi as imp;
-    } else {
+    }
+    _ => {
         mod unsupported;
         use unsupported as imp;
     }
