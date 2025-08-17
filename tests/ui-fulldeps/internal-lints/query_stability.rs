@@ -1,4 +1,5 @@
 //@ compile-flags: -Z unstable-options
+//@ ignore-stage1
 
 #![feature(rustc_private)]
 #![deny(rustc::potential_query_instability)]
