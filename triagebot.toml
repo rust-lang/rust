@@ -1591,6 +1591,8 @@ days-threshold = 28
 # Prevents mentions in commits to avoid users being spammed
 # Documentation at: https://forge.rust-lang.org/triagebot/no-mentions.html
 [no-mentions]
+# Subtree update authors can't fix it, no point in warning.
+exclude-titles = ["subtree update"]
 
 # Allow members to formally register concerns (`@rustbot concern my concern`)
 # Documentation at: https://forge.rust-lang.org/triagebot/concern.html
