@@ -100,5 +100,17 @@ error: unclosed HTML tag `a`
 LL | /// backslashed \<<a href="">
    |                   ^^
 
-error: aborting due to 16 previous errors
+error: unclosed HTML tag `img`
+  --> $DIR/invalid-html-tags.rs:147:5
+   |
+LL | /// <img
+   |     ^^^
+
+error: unclosed HTML tag `img`
+  --> $DIR/invalid-html-tags.rs:152:8
+   |
+LL | /// <p><img</p>
+   |        ^^^^
+
+error: aborting due to 18 previous errors
 

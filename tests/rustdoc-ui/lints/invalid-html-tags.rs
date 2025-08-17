@@ -121,3 +121,34 @@ pub fn no_error_1() {}
 /// backslashed \<<a href="">
 //~^ ERROR unclosed HTML tag `a`
 pub fn p() {}
+
+/// <svg width="512" height="512" viewBox="0 0 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+///     <rect
+///        width="256"
+///        height="256"
+///        fill="#5064C8"
+///        stroke="black"
+///     />
+/// </svg>
+pub fn no_error_2() {}
+
+/// <div>
+///     <img
+///         src="https://example.com/ferris.png"
+///         width="512"
+///         height="512"
+///     />
+/// </div>
+pub fn no_error_3() {}
+
+/// unfinished ALLOWED_UNCLOSED
+///
+/// <br>
+/// <img
+//~^ ERROR unclosed HTML tag `img`
+pub fn q() {}
+
+/// nested unfinished ALLOWED_UNCLOSED
+/// <p><img</p>
+//~^ ERROR unclosed HTML tag `img`
+pub fn r() {}
