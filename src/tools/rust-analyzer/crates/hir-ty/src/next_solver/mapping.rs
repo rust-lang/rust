@@ -1266,7 +1266,7 @@ pub fn convert_args_for_result<'db>(
     Substitution::from_iter(Interner, substs)
 }
 
-pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>) -> crate::Ty {
+pub fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>) -> crate::Ty {
     use crate::{Scalar, TyKind};
     use chalk_ir::{FloatTy, IntTy, UintTy};
     match ty.kind() {

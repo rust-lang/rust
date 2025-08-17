@@ -86,7 +86,9 @@ use hir_ty::{
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        ClauseKind, DbInterner, GenericArgs, infer::InferCtxt, mapping::ChalkToNextSolver,
+        ClauseKind, DbInterner, GenericArgs,
+        infer::InferCtxt,
+        mapping::{ChalkToNextSolver, convert_ty_for_result},
     },
     primitive::UintTy,
     traits::FnTrait,
@@ -1346,19 +1348,12 @@ impl Field {
         u32::from(self.id.into_raw()) as usize
     }
 
-    /// Returns the type as in the signature of the struct (i.e., with
-    /// placeholder types for type parameters). Only use this in the context of
-    /// the field definition.
-    pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
+    /// Returns the type as in the signature of the struct. Only use this in the
+    /// context of the field definition.
+    pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> TypeNs<'db> {
         let var_id = self.parent.into();
-        let generic_def_id: GenericDefId = match self.parent {
-            VariantDef::Struct(it) => it.id.into(),
-            VariantDef::Union(it) => it.id.into(),
-            VariantDef::Variant(it) => it.id.lookup(db).parent.into(),
-        };
-        let substs = TyBuilder::placeholder_subst(db, generic_def_id);
-        let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
-        Type::new(db, var_id, ty)
+        let ty = db.field_types_ns(var_id)[self.id].skip_binder();
+        TypeNs::new(db, var_id, ty)
     }
 
     // FIXME: Find better API to also handle const generics
@@ -1388,9 +1383,8 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        let interner = DbInterner::new_with(db, None, None);
         db.layout_of_ty(
-            self.ty(db).ty.to_nextsolver(interner),
+            self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => {
                     GenericDefId::AdtId(id.lookup(db).parent.into())
@@ -5969,6 +5963,11 @@ impl<'db> TypeNs<'db> {
         TypeNs { env: environment, ty, _pd: PhantomCovariantLifetime::new() }
     }
 
+    pub fn to_type(&self, db: &'db dyn HirDatabase) -> Type<'db> {
+        let interner = DbInterner::new_with(db, Some(self.env.krate), self.env.block);
+        Type { env: self.env.clone(), ty: convert_ty_for_result(interner, self.ty), _pd: self._pd }
+    }
+
     // FIXME: Find better API that also handles const generics
     pub fn impls_trait(&self, infcx: InferCtxt<'db>, trait_: Trait, args: &[TypeNs<'db>]) -> bool {
         let args = GenericArgs::new_from_iter(
@@ -5991,6 +5990,10 @@ impl<'db> TypeNs<'db> {
         );
         let res = hir_ty::traits::next_trait_solve_in_ctxt(&infcx, goal);
         res.map_or(false, |res| matches!(res.1, rustc_type_ir::solve::Certainty::Yes))
+    }
+
+    pub fn is_bool(&self) -> bool {
+        matches!(self.ty.kind(), rustc_type_ir::TyKind::Bool)
     }
 }
 

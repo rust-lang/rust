@@ -521,7 +521,7 @@ fn build_pat(
                 hir::StructKind::Tuple => {
                     let mut name_generator = suggest_name::NameGenerator::default();
                     let pats = fields.into_iter().map(|f| {
-                        let name = name_generator.for_type(&f.ty(db), db, edition);
+                        let name = name_generator.for_type(&f.ty(db).to_type(db), db, edition);
                         match name {
                             Some(name) => make::ext::simple_ident_pat(make.name(&name)).into(),
                             None => make.wildcard_pat().into(),

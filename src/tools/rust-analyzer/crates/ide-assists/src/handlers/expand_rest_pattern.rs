@@ -145,8 +145,11 @@ fn expand_tuple_struct_rest_pattern(
                         make.ident_pat(
                             false,
                             false,
-                            match name_gen.for_type(&f.ty(ctx.sema.db), ctx.sema.db, ctx.edition())
-                            {
+                            match name_gen.for_type(
+                                &f.ty(ctx.sema.db).to_type(ctx.sema.db),
+                                ctx.sema.db,
+                                ctx.edition(),
+                            ) {
                                 Some(name) => make.name(&name),
                                 None => make.name(&format!("_{}", f.index())),
                             },
