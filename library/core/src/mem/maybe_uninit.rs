@@ -1456,8 +1456,7 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
 impl<T, const N: usize> From<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline(always)]
     fn from(arr: [MaybeUninit<T>; N]) -> Self {
-        // SAFETY: T and MaybeUninit<T> have the same layout
-        unsafe { intrinsics::transmute_unchecked(arr) }
+        arr.transpose()
     }
 }
 
@@ -1499,8 +1498,7 @@ impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
 impl<T, const N: usize> From<MaybeUninit<[T; N]>> for [MaybeUninit<T>; N] {
     #[inline(always)]
     fn from(arr: MaybeUninit<[T; N]>) -> Self {
-        // SAFETY: T and MaybeUninit<T> have the same layout
-        unsafe { intrinsics::transmute_unchecked(arr) }
+        arr.transpose()
     }
 }
 
