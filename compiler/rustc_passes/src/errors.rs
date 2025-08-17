@@ -113,6 +113,15 @@ pub(crate) struct AttrShouldBeAppliedToStatic {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_debuginfo_transparent)]
+pub(crate) struct DebuginfoTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_doc_expect_str)]
 pub(crate) struct DocExpectStr<'a> {
     #[primary_span]

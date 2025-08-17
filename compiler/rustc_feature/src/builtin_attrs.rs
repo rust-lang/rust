@@ -880,6 +880,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, loop_match, experimental!(loop_match)
     ),
 
+    gated!(
+        debuginfo_transparent, Normal, template!(Word), WarnFollowing,
+        EncodeCrossCrate::Yes, debuginfo_attrs, experimental!(debuginfo_transparent)
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

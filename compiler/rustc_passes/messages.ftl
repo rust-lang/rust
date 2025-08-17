@@ -83,6 +83,10 @@ passes_dead_codes =
        }
     } never {$participle}
 
+passes_debuginfo_transparent =
+    attribute should be applied to `#[repr(transparent)]` types
+    .label = not a `#[repr(transparent)]` type
+
 passes_debug_visualizer_invalid =
     invalid argument
     .note_1 = expected: `natvis_file = "..."`
