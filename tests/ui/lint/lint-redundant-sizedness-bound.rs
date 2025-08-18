@@ -1,36 +1,36 @@
-#![deny(needless_maybe_sized)]
+#![deny(redundant_sizedness_bound)]
 
 fn directly<T: Sized + ?Sized>(t: &T) {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 trait A: Sized {}
 trait B: A {}
 
 fn depth_1<T: A + ?Sized>(t: &T) {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 fn depth_2<T: B + ?Sized>(t: &T) {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 // We only need to show one
 fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 fn in_where<T>(t: &T)
 where
     T: Sized + ?Sized,
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 {
 }
 
 fn mixed_1<T: Sized>(t: &T)
 where
     T: ?Sized,
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 {
 }
 
 fn mixed_2<T: ?Sized>(t: &T)
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 where
     T: Sized,
 {
@@ -40,50 +40,50 @@ fn mixed_3<T>(t: &T)
 where
     T: Sized,
     T: ?Sized,
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 {
 }
 
 struct Struct<T: Sized + ?Sized>(T);
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 impl<T: Sized + ?Sized> Struct<T> {
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
     fn method<U: Sized + ?Sized>(&self) {}
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 }
 
 enum Enum<T: Sized + ?Sized + 'static> {
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
     Variant(&'static T),
 }
 
 union Union<'a, T: Sized + ?Sized> {
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
     a: &'a T,
 }
 
 trait Trait<T: Sized + ?Sized> {
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
     fn trait_method<U: Sized + ?Sized>() {}
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 
     type GAT<U: Sized + ?Sized>;
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 
     type Assoc: Sized + ?Sized; // False negative
 }
 
 trait SecondInTrait: Send + Sized {}
 fn second_in_trait<T: ?Sized + SecondInTrait>() {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 fn impl_trait(_: &(impl Sized + ?Sized)) {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 trait GenericTrait<T>: Sized {}
 fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
-//~^ ERROR needless_maybe_sized
+//~^ ERROR redundant_sizedness_bound
 
 mod larger_graph {
     // C1  C2  Sized
@@ -99,7 +99,7 @@ mod larger_graph {
     trait A1: B1 + B2 {}
 
     fn larger_graph<T: A1 + ?Sized>() {}
-    //~^ ERROR needless_maybe_sized
+    //~^ ERROR redundant_sizedness_bound
 }
 
 // Should not lint

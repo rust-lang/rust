@@ -10,7 +10,7 @@ use rustc_span::symbol::Ident;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `needless_maybe_sized` lint detects `?Sized` bounds applied to type parameters that cannot be unsized.
+    /// The `redundant_sizedness_bound` lint detects `?Sized` bounds applied to type parameters that cannot be unsized.
     ///
     /// ### Example
     ///
@@ -25,11 +25,11 @@ declare_lint! {
     ///
     /// The `?Sized` bound is misleading because it cannot be satisfied by an
     /// unsized type. This lint notifies the user of said redundant bound.
-    pub NEEDLESS_MAYBE_SIZED,
+    pub REDUNDANT_SIZEDNESS_BOUND,
     Warn,
     "a `?Sized` bound that is unusable due to a `Sized` requirement"
 }
-declare_lint_pass!(NeedlessMaybeSized => [NEEDLESS_MAYBE_SIZED]);
+declare_lint_pass!(RedundantSizednessBound => [REDUNDANT_SIZEDNESS_BOUND]);
 
 struct Bound<'tcx> {
     /// The [`DefId`] of the type parameter the bound refers to
@@ -104,7 +104,7 @@ fn path_to_sized_bound(cx: &LateContext<'_>, trait_bound: &PolyTraitRef<'_>) -> 
     search(cx, &mut path).then_some(path)
 }
 
-impl LateLintPass<'_> for NeedlessMaybeSized {
+impl LateLintPass<'_> for RedundantSizednessBound {
     fn check_generics(&mut self, cx: &LateContext<'_>, generics: &Generics<'_>) {
         let Some(sized_trait) = cx.tcx.lang_items().sized_trait() else {
             return;
@@ -123,7 +123,7 @@ impl LateLintPass<'_> for NeedlessMaybeSized {
                 && let Some(sized_bound) = maybe_sized_params.get(&bound.param)
                 && let Some(path) = path_to_sized_bound(cx, bound.trait_bound)
             {
-                cx.span_lint(NEEDLESS_MAYBE_SIZED, sized_bound.trait_bound.span, |diag| {
+                cx.span_lint(REDUNDANT_SIZEDNESS_BOUND, sized_bound.trait_bound.span, |diag| {
                     diag.primary_message(
                         "`?Sized` bound is ignored because of a `Sized` requirement",
                     );

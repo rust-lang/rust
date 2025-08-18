@@ -60,7 +60,6 @@ mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
 mod multiple_supertrait_upcastable;
-mod needless_maybe_sized;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod non_local_def;
@@ -72,6 +71,7 @@ mod passes;
 mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
+mod redundant_sizedness_bound;
 mod reference_casting;
 mod shadowed_into_iter;
 mod static_mut_refs;
@@ -102,7 +102,6 @@ use lifetime_syntax::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
 use multiple_supertrait_upcastable::*;
-use needless_maybe_sized::NeedlessMaybeSized;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use non_local_def::*;
@@ -113,6 +112,7 @@ use pass_by_value::*;
 use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
+use redundant_sizedness_bound::RedundantSizednessBound;
 use reference_casting::*;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
@@ -248,7 +248,7 @@ late_lint_methods!(
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
-            NeedlessMaybeSized: NeedlessMaybeSized,
+            RedundantSizednessBound: RedundantSizednessBound,
         ]
     ]
 );
