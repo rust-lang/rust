@@ -2966,6 +2966,8 @@ macro_rules! to_string_str {
 
 #[cfg(not(no_global_oom_handling))]
 to_string_str! {
+    Cow<'_, str>,
+    String,
     // Generic/generated code can sometimes have multiple, nested references
     // for strings, including `&&&str`s that would never be written
     // by hand.
@@ -2982,22 +2984,6 @@ to_string_str! {
     &&str,
     &str,
     str,
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl SpecToString for Cow<'_, str> {
-    #[inline]
-    fn spec_to_string(&self) -> String {
-        self[..].to_owned()
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-impl SpecToString for String {
-    #[inline]
-    fn spec_to_string(&self) -> String {
-        self.to_owned()
-    }
 }
 
 #[cfg(not(no_global_oom_handling))]
