@@ -191,9 +191,10 @@ impl RmetaSysroot {
     /// Configure the given cargo invocation so that the compiled crate will be able to use
     /// rustc .rmeta artifacts that were previously generated.
     fn configure_cargo(&self, cargo: &mut Cargo) {
-        cargo.env(
+        cargo.append_to_env(
             "RUSTC_ADDITIONAL_SYSROOT_PATHS",
             format!("{},{}", self.host_dir.display(), self.target_dir.display()),
+            ",",
         );
     }
 }

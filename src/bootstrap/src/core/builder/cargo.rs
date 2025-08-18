@@ -186,6 +186,32 @@ impl Cargo {
         self
     }
 
+    /// Append a value to an env var of the cargo command instance.
+    /// If the variable was unset previously, this is equivalent to [`Cargo::env`].
+    /// If the variable was already set, this will append `delimiter` and then `value` to it.
+    ///
+    /// Note that this only considers the existence of the env. var. configured on this `Cargo`
+    /// instance. It does not look at the environment of this process.
+    pub fn append_to_env(
+        &mut self,
+        key: impl AsRef<OsStr>,
+        value: impl AsRef<OsStr>,
+        delimiter: impl AsRef<OsStr>,
+    ) -> &mut Cargo {
+        assert_ne!(key.as_ref(), "RUSTFLAGS");
+        assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
+
+        let key = key.as_ref();
+        if let Some((_, Some(previous_value))) = self.command.get_envs().find(|(k, _)| *k == key) {
+            let mut combined: OsString = previous_value.to_os_string();
+            combined.push(delimiter.as_ref());
+            combined.push(value.as_ref());
+            self.env(key, combined)
+        } else {
+            self.env(key, value)
+        }
+    }
+
     pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
         builder.add_rustc_lib_path(self.compiler, &mut self.command);
     }
