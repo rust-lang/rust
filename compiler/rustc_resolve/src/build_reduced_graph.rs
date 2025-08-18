@@ -493,9 +493,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     });
                 }
             }
-            // We don't add prelude imports to the globs since they only affect lexical scopes,
-            // which are not relevant to import resolution.
-            ImportKind::Glob { is_prelude: true, .. } => {}
             ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
             _ => unreachable!(),
         }
@@ -658,13 +655,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Glob => {
-                let kind = ImportKind::Glob {
-                    is_prelude: ast::attr::contains_name(&item.attrs, sym::prelude_import),
-                    max_vis: Cell::new(None),
-                    id,
-                };
-
-                self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
+                if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
+                    let kind = ImportKind::Glob { max_vis: Cell::new(None), id };
+                    self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
+                } else {
+                    // Resolve the prelude import early.
+                    let path_res =
+                        self.r.cm().maybe_resolve_path(&prefix, None, &self.parent_scope, None);
+                    if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
+                        self.r.prelude = Some(module);
+                    } else {
+                        self.r.dcx().span_err(use_tree.span, "cannot resolve a prelude import");
+                    }
+                }
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 // Ensure there is at most one `self` in the list

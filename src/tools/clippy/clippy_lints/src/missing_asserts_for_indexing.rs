@@ -11,7 +11,7 @@ use rustc_ast::{BinOpKind, LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{Block, Body, Expr, ExprKind, UnOp};
+use rustc_hir::{Body, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -135,12 +135,12 @@ fn assert_len_expr<'hir>(
     cx: &LateContext<'_>,
     expr: &'hir Expr<'hir>,
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
-    let (cmp, asserted_len, slice_len) = if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
-        && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
-        && let ExprKind::Binary(bin_op, left, right) = &condition.kind
+    let (cmp, asserted_len, slice_len) = if let Some(
+        higher::IfLetOrMatch::Match(cond, [_, then], _)
+    ) = higher::IfLetOrMatch::parse(cx, expr)
+        && let ExprKind::Binary(bin_op, left, right) = &cond.kind
         // check if `then` block has a never type expression
-        && let ExprKind::Block(Block { expr: Some(then_expr), .. }, _) = then.kind
-        && cx.typeck_results().expr_ty(then_expr).is_never()
+        && cx.typeck_results().expr_ty(then.body).is_never()
     {
         len_comparison(bin_op.node, left, right)?
     } else if let Some((macro_call, bin_op)) = first_node_macro_backtrace(cx, expr).find_map(|macro_call| {

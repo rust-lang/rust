@@ -283,7 +283,6 @@ trigger_files = [
     "src/tools/enzyme",
     "src/doc/unstable-book/src/compiler-flags/autodiff.md",
     "compiler/rustc_ast/src/expand/autodiff_attrs.rs",
-    "compiler/rustc_monomorphize/src/partitioning/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/builder/autodiff.rs",
     "compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs",
 ]
@@ -626,6 +625,16 @@ trigger_files = [
 trigger_files = [
     ".github/workflows",
     "src/ci",
+]
+
+[autolabel."T-rust-analyzer"]
+trigger_files = [
+    "src/tools/rust-analyzer",
+]
+
+[autolabel."T-rustfmt"]
+trigger_files = [
+    "src/tools/rustfmt",
 ]
 
 # ------------------------------------------------------------------------------
@@ -1285,8 +1294,6 @@ cc = ["@ZuseZ4"]
 cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_builtin_macros/src/autodiff.rs"]
 cc = ["@ZuseZ4"]
-[mentions."compiler/rustc_monomorphize/src/partitioning/autodiff.rs"]
-cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/builder/autodiff.rs"]
 cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
@@ -1589,3 +1596,8 @@ days-threshold = 28
 # Documentation at: https://forge.rust-lang.org/triagebot/concern.html
 [concern]
 labels = ["S-waiting-on-concerns"]
+
+# Enable comments linking to triagebot range-diff when a PR is rebased
+# onto a different base commit
+# Documentation at: https://forge.rust-lang.org/triagebot/range-diff.html
+[range-diff]

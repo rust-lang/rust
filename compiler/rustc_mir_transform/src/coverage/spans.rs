@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
-use rustc_middle::mir::coverage::START_BCB;
+use rustc_middle::mir::coverage::{Mapping, MappingKind, START_BCB};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DesugaringKind, ExpnKind, MacroKind, Span};
@@ -9,7 +9,7 @@ use tracing::instrument;
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::hir_info::ExtractedHirInfo;
 use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir, SpanFromMir};
-use crate::coverage::{mappings, unexpand};
+use crate::coverage::unexpand;
 
 mod from_mir;
 
@@ -18,7 +18,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
     mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
-    code_mappings: &mut Vec<mappings::CodeMapping>,
+    mappings: &mut Vec<Mapping>,
 ) {
     if hir_info.is_async_fn {
         // An async function desugars into a function that returns a future,
@@ -26,7 +26,7 @@ pub(super) fn extract_refined_covspans<'tcx>(
         // outer function will be unhelpful, so just keep the signature span
         // and ignore all of the spans in the MIR body.
         if let Some(span) = hir_info.fn_sig_span {
-            code_mappings.push(mappings::CodeMapping { span, bcb: START_BCB });
+            mappings.push(Mapping { span, kind: MappingKind::Code { bcb: START_BCB } })
         }
         return;
     }
@@ -111,9 +111,9 @@ pub(super) fn extract_refined_covspans<'tcx>(
     // Merge covspans that can be merged.
     covspans.dedup_by(|b, a| a.merge_if_eligible(b));
 
-    code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
+    mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
         // Each span produced by the refiner represents an ordinary code region.
-        mappings::CodeMapping { span, bcb }
+        Mapping { span, kind: MappingKind::Code { bcb } }
     }));
 }
 

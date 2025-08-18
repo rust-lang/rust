@@ -2624,8 +2624,6 @@ pub struct TargetOptions {
     /// If we give emcc .o files that are actually .bc files it
     /// will 'just work'.
     pub obj_is_bitcode: bool,
-    /// Content of the LLVM cmdline section associated with embedded bitcode.
-    pub bitcode_llvm_cmdline: StaticCow<str>,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -2989,7 +2987,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
-            bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,

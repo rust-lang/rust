@@ -428,11 +428,15 @@
 //
 #![default_lib_allocator]
 
+// The Rust prelude
+// The compiler expects the prelude definition to be defined before it's use statement.
+pub mod prelude;
+
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]
 #[allow(unused)]
-use prelude::rust_2021::*;
+use prelude::rust_2024::*;
 
 // Access to Bencher, etc.
 #[cfg(test)]
@@ -482,9 +486,6 @@ mod macros;
 // compiler
 #[macro_use]
 pub mod rt;
-
-// The Rust prelude
-pub mod prelude;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;

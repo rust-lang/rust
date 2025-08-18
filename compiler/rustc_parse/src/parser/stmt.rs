@@ -19,8 +19,8 @@ use super::diagnostics::AttemptLocalParseRecovery;
 use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::{
-    AttrWrapper, BlockMode, FnParseMode, ForceCollect, Parser, Restrictions, SemiColonMode,
-    Trailing, UsePreAttrPos,
+    AttrWrapper, BlockMode, FnContext, FnParseMode, ForceCollect, Parser, Restrictions,
+    SemiColonMode, Trailing, UsePreAttrPos,
 };
 use crate::errors::{self, MalformedLoopLabel};
 use crate::exp;
@@ -153,7 +153,7 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_| true, req_body: true },
+            FnParseMode { req_name: |_| true, context: FnContext::Free, req_body: true },
             force_collect,
         )? {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(Box::new(item)))

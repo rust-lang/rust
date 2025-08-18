@@ -3654,6 +3654,19 @@ impl<T> Default for Arc<[T]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "pin_default_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> Default for Pin<Arc<T>>
+where
+    T: ?Sized,
+    Arc<T>: Default,
+{
+    #[inline]
+    fn default() -> Self {
+        unsafe { Pin::new_unchecked(Arc::<T>::default()) }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash, A: Allocator> Hash for Arc<T, A> {
     fn hash<H: Hasher>(&self, state: &mut H) {

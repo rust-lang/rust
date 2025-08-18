@@ -7,7 +7,6 @@ use std::{fs, io, mem, str, thread};
 
 use rustc_abi::Size;
 use rustc_ast::attr;
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
@@ -38,7 +37,7 @@ use tracing::debug;
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use crate::back::lto::check_lto_allowed;
-use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
+use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
@@ -76,11 +75,8 @@ pub struct ModuleConfig {
     /// Names of additional optimization passes to run.
     pub passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
-    /// absolutely no optimizations (used for the metadata module).
+    /// absolutely no optimizations (used for the allocator module).
     pub opt_level: Option<config::OptLevel>,
-
-    /// Some(level) to optimize binary size, or None to not affect program size.
-    pub opt_size: Option<config::OptLevel>,
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
@@ -102,7 +98,6 @@ pub struct ModuleConfig {
     pub emit_obj: EmitObj,
     pub emit_thin_lto: bool,
     pub emit_thin_lto_summary: bool,
-    pub bc_cmdline: String,
 
     // Miscellaneous flags. These are mostly copied from command-line
     // options.
@@ -110,7 +105,6 @@ pub struct ModuleConfig {
     pub lint_llvm_ir: bool,
     pub no_prepopulate_passes: bool,
     pub no_builtins: bool,
-    pub time_module: bool,
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
@@ -171,7 +165,6 @@ impl ModuleConfig {
             passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
 
             opt_level: opt_level_and_size,
-            opt_size: opt_level_and_size,
 
             pgo_gen: if_regular!(
                 sess.opts.cg.profile_generate.clone(),
@@ -221,16 +214,11 @@ impl ModuleConfig {
                 sess.opts.output_types.contains_key(&OutputType::ThinLinkBitcode),
                 false
             ),
-            bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             lint_llvm_ir: sess.opts.unstable_opts.lint_llvm_ir,
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
             no_builtins: no_builtins || sess.target.no_builtins,
-
-            // Exclude metadata and allocator modules from time_passes output,
-            // since they throw off the "LLVM passes" measurement.
-            time_module: if_regular!(true, false),
 
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
@@ -454,7 +442,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     target_cpu: String,
-    autodiff_items: &[AutoDiffItem],
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
 
@@ -473,7 +460,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
         backend.clone(),
         tcx,
         &crate_info,
-        autodiff_items,
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
@@ -728,7 +714,6 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
         each_linked_rlib_for_lto: Vec<PathBuf>,
         needs_fat_lto: Vec<FatLtoInput<B>>,
         import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-        autodiff: Vec<AutoDiffItem>,
     },
     /// Performs thin-LTO on the given module.
     ThinLto(lto::ThinModule<B>),
@@ -1001,7 +986,6 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     each_linked_rlib_for_lto: &[PathBuf],
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
-    autodiff: Vec<AutoDiffItem>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     for (module, wp) in import_only_modules {
@@ -1013,7 +997,6 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_fat_lto,
-        autodiff,
     )?;
     let module = B::codegen(cgcx, module, module_config)?;
     Ok(WorkItemResult::Finished(module))
@@ -1105,7 +1088,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
     crate_info: &CrateInfo,
-    autodiff_items: &[AutoDiffItem],
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Message<B>>,
@@ -1115,7 +1097,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
-    let autodiff_items = autodiff_items.to_vec();
 
     let mut each_linked_rlib_for_lto = Vec::new();
     let mut each_linked_rlib_file_for_lto = Vec::new();
@@ -1448,7 +1429,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                 each_linked_rlib_for_lto: each_linked_rlib_file_for_lto,
                                 needs_fat_lto,
                                 import_only_modules,
-                                autodiff: autodiff_items.clone(),
                             },
                             0,
                         ));
@@ -1456,11 +1436,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                             helper.request_token();
                         }
                     } else {
-                        if !autodiff_items.is_empty() {
-                            let dcx = cgcx.create_dcx();
-                            dcx.handle().emit_fatal(AutodiffWithoutLto {});
-                        }
-
                         for (work, cost) in generate_thin_lto_work(
                             &cgcx,
                             &exported_symbols_for_lto,
@@ -1740,7 +1715,7 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: WorkItem<B>,
 ) {
-    if cgcx.config(work.module_kind()).time_module && llvm_start_time.is_none() {
+    if llvm_start_time.is_none() {
         *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
     }
 
@@ -1795,7 +1770,6 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                     each_linked_rlib_for_lto,
                     needs_fat_lto,
                     import_only_modules,
-                    autodiff,
                 } => {
                     let _timer = cgcx
                         .prof
@@ -1806,7 +1780,6 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                         &each_linked_rlib_for_lto,
                         needs_fat_lto,
                         import_only_modules,
-                        autodiff,
                         module_config,
                     )
                 }

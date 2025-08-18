@@ -37,7 +37,6 @@ use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
 use super::suggestions::get_explanation_based_on_obligation;
 use super::{
     ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
-    UnsatisfiedConst,
 };
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
@@ -374,13 +373,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }
 
-                        let UnsatisfiedConst(unsatisfied_const) = self
-                            .maybe_add_note_for_unsatisfied_const(
-                                leaf_trait_predicate,
-                                &mut err,
-                                span,
-                            );
-
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, msg);
                         }
@@ -506,7 +498,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             is_fn_trait,
                             suggested,
-                            unsatisfied_const,
                         );
 
                         // Changing mutability doesn't make a difference to whether we have
@@ -2716,7 +2707,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         is_fn_trait: bool,
         suggested: bool,
-        unsatisfied_const: bool,
     ) {
         let body_def_id = obligation.cause.body_id;
         let span = if let ObligationCauseCode::BinOp { rhs_span: Some(rhs_span), .. } =
@@ -2763,10 +2753,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.tcx.def_span(trait_def_id),
                 crate::fluent_generated::trait_selection_trait_has_no_impls,
             );
-        } else if !suggested
-            && !unsatisfied_const
-            && trait_predicate.polarity() == ty::PredicatePolarity::Positive
-        {
+        } else if !suggested && trait_predicate.polarity() == ty::PredicatePolarity::Positive {
             // Can't show anything else useful, try to find similar impls.
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
@@ -2876,17 +2863,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 given_args,
             );
         }
-    }
-
-    fn maybe_add_note_for_unsatisfied_const(
-        &self,
-        _trait_predicate: ty::PolyTraitPredicate<'tcx>,
-        _err: &mut Diag<'_>,
-        _span: Span,
-    ) -> UnsatisfiedConst {
-        let unsatisfied_const = UnsatisfiedConst(false);
-        // FIXME(const_trait_impl)
-        unsatisfied_const
     }
 
     fn report_closure_error(
