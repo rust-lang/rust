@@ -1418,7 +1418,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(
             M,
             "validate_operand",
-            "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
+            recursive,
+            reset_provenance_and_padding,
+            ?val,
         );
 
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
