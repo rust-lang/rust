@@ -38,7 +38,6 @@ cmake = "=0.1.54"
 build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 clap_complete = "4.4"
-fd-lock = "4.0"
 home = "0.5"
 ignore = "0.4"
 libc = "0.2"
@@ -51,7 +50,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 sha2 = "0.10"
-tar = "0.4"
+tar = { version = "0.4.44", default-features = false }
 termcolor = "1.4"
 toml = "0.5"
 walkdir = "2.4"

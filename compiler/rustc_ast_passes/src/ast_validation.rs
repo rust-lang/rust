@@ -293,6 +293,21 @@ impl<'a> AstValidator<'a> {
         });
     }
 
+    fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrTraitImpl) {
+        let Some(const_keyword) = parent.constness() else { return };
+
+        let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
+        else {
+            return;
+        };
+
+        self.dcx().emit_err(errors::AsyncFnInConstTraitOrTraitImpl {
+            async_keyword,
+            in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
+            const_keyword,
+        });
+    }
+
     fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         self.check_decl_num_args(fn_decl);
         self.check_decl_cvariadic_pos(fn_decl);
@@ -390,7 +405,13 @@ impl<'a> AstValidator<'a> {
                         if let InterruptKind::X86 = interrupt_kind {
                             // "x86-interrupt" is special because it does have arguments.
                             // FIXME(workingjubilee): properly lint on acceptable input types.
-                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+                                && match &ret_ty.kind {
+                                    TyKind::Never => false,
+                                    TyKind::Tup(tup) if tup.is_empty() => false,
+                                    _ => true,
+                                }
+                            {
                                 self.dcx().emit_err(errors::AbiMustNotHaveReturnType {
                                     span: ret_ty.span,
                                     abi,
@@ -449,7 +470,13 @@ impl<'a> AstValidator<'a> {
 
     fn reject_params_or_return(&self, abi: ExternAbi, ident: &Ident, sig: &FnSig) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
-        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+            && match &ret_ty.kind {
+                TyKind::Never => false,
+                TyKind::Tup(tup) if tup.is_empty() => false,
+                _ => true,
+            }
+        {
             spans.push(ret_ty.span);
         }
 
@@ -1566,6 +1593,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
             if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness, parent);
+                self.check_async_fn_in_const_trait_or_impl(sig, parent);
             }
         }
 

@@ -38,6 +38,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferle
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentThread() -> HANDLE);
+windows_targets::link!("kernel32.dll" "system" fn GetCurrentThreadId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentStringsW() -> PWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentVariableW(lpname : PCWSTR, lpbuffer : PWSTR, nsize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetExitCodeProcess(hprocess : HANDLE, lpexitcode : *mut u32) -> BOOL);
@@ -61,7 +62,6 @@ windows_targets::link!("kernel32.dll" "system" fn GetSystemInfo(lpsysteminfo : *
 windows_targets::link!("kernel32.dll" "system" fn GetSystemTimeAsFileTime(lpsystemtimeasfiletime : *mut FILETIME));
 windows_targets::link!("kernel32.dll" "system" fn GetSystemTimePreciseAsFileTime(lpsystemtimeasfiletime : *mut FILETIME));
 windows_targets::link!("kernel32.dll" "system" fn GetTempPathW(nbufferlength : u32, lpbuffer : PWSTR) -> u32);
-windows_targets::link!("kernel32.dll" "system" fn GetThreadId(thread : HANDLE) -> u32);
 windows_targets::link!("userenv.dll" "system" fn GetUserProfileDirectoryW(htoken : HANDLE, lpprofiledir : PWSTR, lpcchsize : *mut u32) -> BOOL);
 windows_targets::link!("kernel32.dll" "system" fn GetWindowsDirectoryW(lpbuffer : PWSTR, usize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonce : *mut INIT_ONCE, dwflags : u32, fpending : *mut BOOL, lpcontext : *mut *mut core::ffi::c_void) -> BOOL);

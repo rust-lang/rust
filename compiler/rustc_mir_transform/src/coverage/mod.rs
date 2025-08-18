@@ -1,4 +1,4 @@
-use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo, Mapping, MappingKind};
+use rustc_middle::mir::coverage::{CoverageKind, FunctionCoverageInfo};
 use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, debug_span, trace};
@@ -71,10 +71,8 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let extracted_mappings =
-        mappings::extract_all_mapping_info_from_mir(tcx, mir_body, &hir_info, &graph);
-
-    let mappings = create_mappings(&extracted_mappings);
+    let ExtractedMappings { mappings } =
+        mappings::extract_mappings_from_mir(tcx, mir_body, &hir_info, &graph);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
@@ -98,34 +96,6 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
         mappings,
     }));
-}
-
-/// For each coverage span extracted from MIR, create a corresponding mapping.
-///
-/// FIXME(Zalathar): This used to be where BCBs in the extracted mappings were
-/// resolved to a `CovTerm`. But that is now handled elsewhere, so this
-/// function can potentially be simplified even further.
-fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
-    // Fully destructure the mappings struct to make sure we don't miss any kinds.
-    let ExtractedMappings { code_mappings, branch_pairs } = extracted_mappings;
-    let mut mappings = Vec::new();
-
-    mappings.extend(code_mappings.iter().map(
-        // Ordinary code mappings are the simplest kind.
-        |&mappings::CodeMapping { span, bcb }| {
-            let kind = MappingKind::Code { bcb };
-            Mapping { kind, span }
-        },
-    ));
-
-    mappings.extend(branch_pairs.iter().map(
-        |&mappings::BranchPair { span, true_bcb, false_bcb }| {
-            let kind = MappingKind::Branch { true_bcb, false_bcb };
-            Mapping { kind, span }
-        },
-    ));
-
-    mappings
 }
 
 /// Inject any necessary coverage statements into MIR, so that they influence codegen.

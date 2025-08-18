@@ -222,6 +222,15 @@ builtin_macros_format_unused_args = multiple unused formatting arguments
 
 builtin_macros_format_use_positional = consider using a positional formatting argument instead
 
+builtin_macros_derive_from_wrong_target = `#[derive(From)]` used on {$kind}
+
+builtin_macros_derive_from_wrong_field_count = `#[derive(From)]` used on a struct with {$multiple_fields ->
+    [true] multiple fields
+    *[false] no fields
+}
+
+builtin_macros_derive_from_usage_note = `#[derive(From)]` can only be used on structs with exactly one field
+
 builtin_macros_multiple_default_attrs = multiple `#[default]` attributes
     .note = only one `#[default]` attribute is needed
     .label = `#[default]` used here

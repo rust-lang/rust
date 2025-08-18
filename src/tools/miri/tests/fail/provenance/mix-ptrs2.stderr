@@ -1,0 +1,16 @@
+error: Undefined Behavior: pointer not dereferenceable: pointer must be dereferenceable for 4 bytes, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+  --> tests/fail/provenance/mix-ptrs2.rs:LL:CC
+   |
+LL |         assert_eq!(*ptr, 42);
+   |         ^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at RUSTLIB/core/src/macros/mod.rs:LL:CC
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
