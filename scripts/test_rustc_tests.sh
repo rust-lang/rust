@@ -149,6 +149,7 @@ rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annot
 rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
 rm tests/ui/async-await/async-drop/async-drop-initial.rs # same (rust-lang/rust#140493)
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
+rm -r tests/run-make/rustdoc-scrape-examples-paths # FIXME(rust-lang/rust#145580) incr comp bug
 
 rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # really slow with unoptimized libstd
 rm tests/ui/process/process-panic-after-fork.rs # same
