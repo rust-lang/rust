@@ -930,7 +930,7 @@ fn maybe_from_hir_attr(
         ),
         AK::ExportName { name, span: _ } => Attribute::ExportName(name.to_string()),
         AK::LinkSection { name, span: _ } => Attribute::LinkSection(name.to_string()),
-        AK::TargetFeature(features, _span) => Attribute::TargetFeature {
+        AK::TargetFeature { features, .. } => Attribute::TargetFeature {
             enable: features.iter().map(|(feat, _span)| feat.to_string()).collect(),
         },
 
