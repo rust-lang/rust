@@ -1061,7 +1061,7 @@ cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
-cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@vakaras"]
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
@@ -1397,7 +1397,6 @@ arena = [
     "@spastorino",
 ]
 mir = [
-    "@davidtwco",
     "@oli-obk",
     "@matthewjasper",
     "@saethlin",
