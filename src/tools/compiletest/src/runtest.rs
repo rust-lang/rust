@@ -1559,8 +1559,8 @@ impl<'test> TestCx<'test> {
         }
 
         // If the provided codegen backend is not LLVM, we need to pass it.
-        if !matches!(self.config.codegen_backend, crate::CodegenBackend::Llvm) {
-            rustc.arg(format!("-Zcodegen-backend={}", self.config.codegen_backend.as_str()));
+        if let Some(ref backend) = self.config.override_codegen_backend {
+            rustc.arg(format!("-Zcodegen-backend={}", backend));
         }
 
         // Optionally prevent default --target if specified in test compile-flags.

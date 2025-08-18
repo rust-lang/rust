@@ -1849,14 +1849,17 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 );
                 crate::exit!(1);
             }
+            // Tells compiletest that we want to use this codegen in particular and to override
+            // the default one.
+            cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
             // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
-            cmd.arg("--codegen-backend").arg(codegen_backend.name());
-        } else if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host)
-        {
+            cmd.arg("--default-codegen-backend").arg(codegen_backend.name());
+        } else {
             // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
-            cmd.arg("--codegen-backend").arg(codegen_backend.name());
+            cmd.arg("--default-codegen-backend")
+                .arg(builder.config.default_codegen_backend(compiler.host).unwrap().name());
         }
 
         if builder.build.config.llvm_enzyme {
