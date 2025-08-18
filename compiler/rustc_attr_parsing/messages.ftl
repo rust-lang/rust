@@ -10,6 +10,12 @@ attr_parsing_empty_attribute =
     unused attribute
     .suggestion = remove this attribute
 
+attr_parsing_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+attr_parsing_invalid_target_lint = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-attr_parsing_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =
@@ -132,6 +138,7 @@ attr_parsing_unknown_version_literal =
 attr_parsing_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+    .note = for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change

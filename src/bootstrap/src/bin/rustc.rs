@@ -258,7 +258,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
-    maybe_dump(format!("stage{stage}-rustc"), &cmd);
+    maybe_dump(format!("stage{}-rustc", stage + 1), &cmd);
 
     let start = Instant::now();
     let (child, status) = {

@@ -48,6 +48,20 @@ fn literal_test3() {
     //~^ ip_constant
 }
 
+fn wrapped_in_parens() {
+    let _ = (std::net::Ipv4Addr::new(127, 0, 0, 1));
+    //~^ ip_constant
+    let _ = (std::net::Ipv4Addr::new(255, 255, 255, 255));
+    //~^ ip_constant
+    let _ = (std::net::Ipv4Addr::new(0, 0, 0, 0));
+    //~^ ip_constant
+
+    let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    //~^ ip_constant
+    let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+    //~^ ip_constant
+}
+
 const CONST_U8_0: u8 = 0;
 const CONST_U8_1: u8 = 1;
 const CONST_U8_127: u8 = 127;

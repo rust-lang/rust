@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_hir::attrs::{AttributeKind};
-use rustc_hir::find_attr;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, Attribute};
+use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocItemContainer;
 use rustc_session::declare_lint_pass;
@@ -191,5 +190,5 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 /// and a rustc warning would be triggered, see #15301
 fn fn_is_externally_exported(cx: &LateContext<'_>, def_id: DefId) -> bool {
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
-    attrs.contains_extern_indicator()
+    attrs.contains_extern_indicator(cx.tcx, def_id)
 }

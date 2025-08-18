@@ -11,7 +11,8 @@ mod int_traits;
 
 #[allow(unused_imports)]
 pub use big::{i256, u256};
-#[allow(unused_imports)]
+// Clippy seems to have a false positive
+#[allow(unused_imports, clippy::single_component_path_imports)]
 pub(crate) use cfg_if;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]

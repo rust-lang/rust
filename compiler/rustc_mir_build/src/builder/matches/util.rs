@@ -138,7 +138,9 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 
     fn visit_candidate(&mut self, candidate: &Candidate<'tcx>) {
         for binding in &candidate.extra_data.bindings {
-            self.visit_binding(binding);
+            if let super::SubpatternBindings::One(binding) = binding {
+                self.visit_binding(binding);
+            }
         }
         for match_pair in &candidate.match_pairs {
             self.visit_match_pair(match_pair);
@@ -147,7 +149,9 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
 
     fn visit_flat_pat(&mut self, flat_pat: &FlatPat<'tcx>) {
         for binding in &flat_pat.extra_data.bindings {
-            self.visit_binding(binding);
+            if let super::SubpatternBindings::One(binding) = binding {
+                self.visit_binding(binding);
+            }
         }
         for match_pair in &flat_pat.match_pairs {
             self.visit_match_pair(match_pair);

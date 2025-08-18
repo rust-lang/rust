@@ -10,6 +10,11 @@ LL |
 LL |         let _foo: String = val;
    |                            ^^^ move occurs because `val` has type `String`, which does not implement the `Copy` trait
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/issue-87456-point-to-closure.rs:3:24
+   |
+LL | fn take_mut(_val: impl FnMut()) {}
+   |                        ^^^^^^^
 help: consider borrowing here
    |
 LL |         let _foo: String = &val;

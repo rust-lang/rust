@@ -1,8 +1,8 @@
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
-use crate::HirId;
+use crate::{HirId, Target};
 
 #[derive(Debug)]
 pub struct DelayedLints {
@@ -34,4 +34,5 @@ pub enum AttributeLintKind {
     UnusedDuplicate { this: Span, other: Span, warning: bool },
     IllFormedAttributeInput { suggestions: Vec<String> },
     EmptyAttribute { first_span: Span },
+    InvalidTarget { name: Symbol, target: Target, applied: String, only: &'static str },
 }

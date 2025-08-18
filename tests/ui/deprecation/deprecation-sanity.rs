@@ -1,3 +1,5 @@
+#![deny(unused_attributes)]
+
 // Various checks that deprecation attributes are used correctly
 
 mod bogus_attribute_types_1 {
@@ -32,7 +34,8 @@ fn f1() { }
 
 struct X;
 
-#[deprecated = "hello"] //~ ERROR this `#[deprecated]` annotation has no effect
+#[deprecated = "hello"] //~ ERROR attribute cannot be used on
+//~| WARN previously accepted
 impl Default for X {
     fn default() -> Self {
         X

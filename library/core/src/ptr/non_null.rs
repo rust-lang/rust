@@ -109,10 +109,10 @@ impl<T: Sized> NonNull<T> {
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
     ///
-    /// Note that the pointer value may potentially represent a valid pointer to
-    /// a `T`, which means this must not be used as a "not yet initialized"
-    /// sentinel value. Types that lazily allocate must track initialization by
-    /// some other means.
+    /// Note that the address of the returned pointer may potentially
+    /// be that of a valid pointer, which means this must not be used
+    /// as a "not yet initialized" sentinel value.
+    /// Types that lazily allocate must track initialization by some other means.
     ///
     /// # Examples
     ///
@@ -192,6 +192,13 @@ impl<T: Sized> NonNull<T> {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
         unsafe { &mut *self.cast().as_ptr() }
+    }
+
+    /// Casts from a pointer-to-`T` to a pointer-to-`[T; N]`.
+    #[inline]
+    #[unstable(feature = "ptr_cast_array", issue = "144514")]
+    pub const fn cast_array<const N: usize>(self) -> NonNull<[T; N]> {
+        self.cast()
     }
 }
 
@@ -1357,6 +1364,28 @@ impl<T: PointeeSized> NonNull<T> {
     }
 }
 
+impl<T> NonNull<T> {
+    /// Casts from a type to its maybe-uninitialized version.
+    #[must_use]
+    #[inline(always)]
+    #[unstable(feature = "cast_maybe_uninit", issue = "145036")]
+    pub const fn cast_uninit(self) -> NonNull<MaybeUninit<T>> {
+        self.cast()
+    }
+}
+impl<T> NonNull<MaybeUninit<T>> {
+    /// Casts from a maybe-uninitialized type to its initialized version.
+    ///
+    /// This is always safe, since UB can only occur if the pointer is read
+    /// before being initialized.
+    #[must_use]
+    #[inline(always)]
+    #[unstable(feature = "cast_maybe_uninit", issue = "145036")]
+    pub const fn cast_init(self) -> NonNull<T> {
+        self.cast()
+    }
+}
+
 impl<T> NonNull<[T]> {
     /// Creates a non-null raw slice from a thin pointer and a length.
     ///
@@ -1601,7 +1630,7 @@ impl<T> NonNull<[T]> {
     #[inline]
     pub const unsafe fn get_unchecked_mut<I>(self, index: I) -> NonNull<I::Output>
     where
-        I: ~const SliceIndex<[T]>,
+        I: [const] SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         // As a consequence, the resulting pointer cannot be null.

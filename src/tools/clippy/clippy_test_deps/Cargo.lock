@@ -70,7 +70,6 @@ name = "clippy_test_deps"
 version = "0.1.0"
 dependencies = [
  "futures",
- "if_chain",
  "itertools",
  "libc",
  "parking_lot",
@@ -181,12 +180,6 @@ name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
-
-[[package]]
-name = "if_chain"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb56e1aa765b4b4f3aadfab769793b7087bb03a4ea4920644a6d238e2df5b9ed"
 
 [[package]]
 name = "io-uring"

@@ -4,11 +4,13 @@
 use std::assert_matches::assert_matches;
 use std::iter;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
+use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
+use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
@@ -75,7 +77,7 @@ pub(crate) fn expand_test_case(
     }
 
     let ret = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(item.span, item)))
     } else {
         Annotatable::Item(item)
     };
@@ -128,7 +130,7 @@ pub(crate) fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -152,7 +154,7 @@ pub(crate) fn expand_test_or_bench(
     };
     if check_result.is_err() {
         return if is_stmt {
-            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -198,7 +200,7 @@ pub(crate) fn expand_test_or_bench(
     // `-Cinstrument-coverage` builds.
     // This requires `#[allow_internal_unstable(coverage_attribute)]` on the
     // corresponding macro declaration in `core::macros`.
-    let coverage_off = |mut expr: P<ast::Expr>| {
+    let coverage_off = |mut expr: Box<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
         expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
         expr
@@ -385,11 +387,11 @@ pub(crate) fn expand_test_or_bench(
     if is_stmt {
         vec![
             // Access to libtest under a hygienic name
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_extern))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_extern))),
             // The generated test case
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_const))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_const))),
             // The original item
-            Annotatable::Stmt(P(cx.stmt_item(sp, item))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, item))),
         ]
     } else {
         vec![
@@ -473,39 +475,19 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
-    match attr::find_by_name(&i.attrs, sym::should_panic) {
-        Some(attr) => {
-            match attr.meta_item_list() {
-                // Handle #[should_panic(expected = "foo")]
-                Some(list) => {
-                    let msg = list
-                        .iter()
-                        .find(|mi| mi.has_name(sym::expected))
-                        .and_then(|mi| mi.meta_item())
-                        .and_then(|mi| mi.value_str());
-                    if list.len() != 1 || msg.is_none() {
-                        cx.dcx()
-                            .struct_span_warn(
-                                attr.span,
-                                "argument must be of the form: \
-                             `expected = \"error message\"`",
-                            )
-                            .with_note(
-                                "errors in this attribute were erroneously \
-                                allowed and will become a hard error in a \
-                                future release",
-                            )
-                            .emit();
-                        ShouldPanic::Yes(None)
-                    } else {
-                        ShouldPanic::Yes(msg)
-                    }
-                }
-                // Handle #[should_panic] and #[should_panic = "expected"]
-                None => ShouldPanic::Yes(attr.value_str()),
-            }
-        }
-        None => ShouldPanic::No,
+    if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
+        AttributeParser::parse_limited(
+            cx.sess,
+            &i.attrs,
+            sym::should_panic,
+            i.span,
+            i.node_id(),
+            None,
+        )
+    {
+        ShouldPanic::Yes(reason)
+    } else {
+        ShouldPanic::No
     }
 }
 

@@ -1,4 +1,5 @@
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -6,13 +7,15 @@ use thin_vec::ThinVec;
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::{AcceptContext, Stage};
+use crate::context::MaybeWarn::{Allow, Warn};
+use crate::context::{AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
-
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
 }
 
@@ -20,6 +23,8 @@ pub(crate) struct ProcMacroAttributeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
 }
 
@@ -28,8 +33,12 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate =
-        template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
+        "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let (trait_name, helper_attrs) = parse_derive_like(cx, args, true)?;
@@ -46,8 +55,9 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
-        template!(List: "TraitName, /*opt*/ attributes(name1, name2, ...)");
+        template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let (builtin_name, helper_attrs) = parse_derive_like(cx, args, false)?;

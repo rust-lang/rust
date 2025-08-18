@@ -1656,11 +1656,9 @@ fn display_c_like_variant(
         } else if should_show_enum_discriminant {
             let adt_def = cx.tcx().adt_def(enum_def_id);
             let discr = adt_def.discriminant_for_variant(cx.tcx(), index);
-            if discr.ty.is_signed() {
-                write!(w, "{} = {}", name.as_str(), discr.val as i128)?;
-            } else {
-                write!(w, "{} = {}", name.as_str(), discr.val)?;
-            }
+            // Use `discr`'s `Display` impl to render the value with the correct
+            // signedness, including proper sign-extension for signed types.
+            write!(w, "{} = {}", name.as_str(), discr)?;
         } else {
             write!(w, "{name}")?;
         }

@@ -187,7 +187,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
 
             // N.B. This check is only for inherent associated types, so that we don't lint against
             // trait impls where we should have warned for the trait definition already.
-            ast::ItemKind::Impl(box ast::Impl { of_trait: None, items, .. }) => {
+            ast::ItemKind::Impl(ast::Impl { of_trait: None, items, .. }) => {
                 for it in items {
                     // FIXME: this doesn't respect `#[allow(..)]` on the item itself.
                     if let ast::AssocItemKind::Type(alias) = &it.kind {

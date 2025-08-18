@@ -1,5 +1,5 @@
 error: overly complex generic constant
-  --> $DIR/issue-90318.rs:15:8
+  --> $DIR/issue-90318.rs:14:8
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    = note: this operation may be supported in the future
 
 error: overly complex generic constant
-  --> $DIR/issue-90318.rs:22:8
+  --> $DIR/issue-90318.rs:21:8
    |
 LL |     If<{ TypeId::of::<T>() != TypeId::of::<()>() }>: True,
    |        ^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^

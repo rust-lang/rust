@@ -7,18 +7,12 @@
 //! * [`TomlTarget`]: This struct directly mirrors the `[target.<triple>]` sections in your
 //!   `bootstrap.toml`. It's used for deserializing raw TOML data for a specific target.
 //! * [`Target`]: This struct represents the processed and validated configuration for a
-//!   build target, which is is stored in the main [`Config`] structure.
-//! * [`Config::apply_target_config`]: This method processes the `TomlTarget` data and
-//!   applies it to the global [`Config`], ensuring proper path resolution, validation,
-//!   and integration with other build settings.
-
-use std::collections::HashMap;
+//!   build target, which is is stored in the main `Config` structure.
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::config::toml::rust::parse_codegen_backends;
 use crate::core::config::{LlvmLibunwind, Merge, ReplaceOpt, SplitDebuginfo, StringOrBool};
-use crate::{CodegenBackendKind, Config, HashSet, PathBuf, TargetSelection, define_config, exit};
+use crate::{CodegenBackendKind, HashSet, PathBuf, define_config, exit};
 
 define_config! {
     /// TOML representation of how each build target is configured.
@@ -91,70 +85,5 @@ impl Target {
             target.runner = Some("node".into());
         }
         target
-    }
-}
-
-impl Config {
-    pub fn apply_target_config(&mut self, toml_target: Option<HashMap<String, TomlTarget>>) {
-        if let Some(t) = toml_target {
-            for (triple, cfg) in t {
-                let mut target = Target::from_triple(&triple);
-
-                if let Some(ref s) = cfg.llvm_config {
-                    if self.download_rustc_commit.is_some() && triple == *self.host_target.triple {
-                        panic!(
-                            "setting llvm_config for the host is incompatible with download-rustc"
-                        );
-                    }
-                    target.llvm_config = Some(self.src.join(s));
-                }
-                if let Some(patches) = cfg.llvm_has_rust_patches {
-                    assert!(
-                        self.submodules == Some(false) || cfg.llvm_config.is_some(),
-                        "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
-                    );
-                    target.llvm_has_rust_patches = Some(patches);
-                }
-                if let Some(ref s) = cfg.llvm_filecheck {
-                    target.llvm_filecheck = Some(self.src.join(s));
-                }
-                target.llvm_libunwind = cfg.llvm_libunwind.as_ref().map(|v| {
-                    v.parse().unwrap_or_else(|_| {
-                        panic!("failed to parse target.{triple}.llvm-libunwind")
-                    })
-                });
-                if let Some(s) = cfg.no_std {
-                    target.no_std = s;
-                }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
-                target.ar = cfg.ar.map(PathBuf::from);
-                target.ranlib = cfg.ranlib.map(PathBuf::from);
-                target.linker = cfg.linker.map(PathBuf::from);
-                target.crt_static = cfg.crt_static;
-                target.musl_root = cfg.musl_root.map(PathBuf::from);
-                target.musl_libdir = cfg.musl_libdir.map(PathBuf::from);
-                target.wasi_root = cfg.wasi_root.map(PathBuf::from);
-                target.qemu_rootfs = cfg.qemu_rootfs.map(PathBuf::from);
-                target.runner = cfg.runner;
-                target.sanitizers = cfg.sanitizers;
-                target.profiler = cfg.profiler;
-                target.rpath = cfg.rpath;
-                target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
-                target.jemalloc = cfg.jemalloc;
-                if let Some(backends) = cfg.codegen_backends {
-                    target.codegen_backends =
-                        Some(parse_codegen_backends(backends, &format!("target.{triple}")))
-                }
-
-                target.split_debuginfo = cfg.split_debuginfo.as_ref().map(|v| {
-                    v.parse().unwrap_or_else(|_| {
-                        panic!("invalid value for target.{triple}.split-debuginfo")
-                    })
-                });
-
-                self.target_config.insert(TargetSelection::from_user(&triple), target);
-            }
-        }
     }
 }

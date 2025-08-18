@@ -1805,11 +1805,18 @@ pub(crate) fn exported_symbols(
             .collect();
     }
 
-    if let CrateType::ProcMacro = crate_type {
+    let mut symbols = if let CrateType::ProcMacro = crate_type {
         exported_symbols_for_proc_macro_crate(tcx)
     } else {
         exported_symbols_for_non_proc_macro(tcx, crate_type)
+    };
+
+    if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
+        let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
+        symbols.push((metadata_symbol_name, SymbolExportKind::Data));
     }
+
+    symbols
 }
 
 fn exported_symbols_for_non_proc_macro(
@@ -1842,12 +1849,8 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<(String, Symbol
 
     let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
     let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
-    let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
 
-    vec![
-        (proc_macro_decls_name, SymbolExportKind::Data),
-        (metadata_symbol_name, SymbolExportKind::Data),
-    ]
+    vec![(proc_macro_decls_name, SymbolExportKind::Data)]
 }
 
 pub(crate) fn linked_symbols(

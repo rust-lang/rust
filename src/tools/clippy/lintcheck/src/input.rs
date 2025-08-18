@@ -117,7 +117,7 @@ pub fn read_crates(toml_path: &Path) -> (Vec<CrateWithSource>, RecursiveOptions)
             crate_sources.push(CrateWithSource {
                 name: tk.name.clone(),
                 source: CrateSource::CratesIo {
-                    version: version.to_string(),
+                    version: version.clone(),
                 },
                 file_link: tk.file_link(DEFAULT_DOCS_LINK),
                 options: tk.options.clone(),

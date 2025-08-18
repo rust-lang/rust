@@ -2158,6 +2158,7 @@ GetCurrentDirectoryW
 GetCurrentProcess
 GetCurrentProcessId
 GetCurrentThread
+GetCurrentThreadId
 GetEnvironmentStringsW
 GetEnvironmentVariableW
 GetExitCodeProcess

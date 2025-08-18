@@ -1695,6 +1695,10 @@ impl<'test> TestCx<'test> {
             }
             TestMode::Assembly | TestMode::Codegen => {
                 rustc.arg("-Cdebug-assertions=no");
+                // For assembly and codegen tests, we want to use the same order
+                // of the items of a codegen unit as the source order, so that
+                // we can compare the output with the source code through filecheck.
+                rustc.arg("-Zcodegen-source-order");
             }
             TestMode::Crashes => {
                 set_mir_dump_dir(&mut rustc);
@@ -1766,7 +1770,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius"]);
+                rustc.args(&["-Zpolonius=next"]);
             }
             Some(CompareMode::NextSolver) => {
                 rustc.args(&["-Znext-solver"]);
@@ -2566,6 +2570,11 @@ impl<'test> TestCx<'test> {
                     )
                 })
                 .into_owned();
+
+        // Normalize thread IDs in panic messages
+        normalized = static_regex!(r"thread '(?P<name>.*?)' \((rtid )?\d+\) panicked")
+            .replace_all(&normalized, "thread '$name' ($$TID) panicked")
+            .into_owned();
 
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
 

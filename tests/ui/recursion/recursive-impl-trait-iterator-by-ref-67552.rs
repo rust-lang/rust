@@ -1,5 +1,5 @@
 //@ build-fail
-//@ compile-flags: -Copt-level=0
+//@ compile-flags: -Copt-level=0 --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 
 fn main() {
     rec(Empty);

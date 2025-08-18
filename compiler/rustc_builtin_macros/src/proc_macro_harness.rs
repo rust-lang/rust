@@ -1,6 +1,5 @@
 use std::{mem, slice};
 
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, HasNodeId, NodeId, attr};
 use rustc_ast_pretty::pprust;
@@ -232,12 +231,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         let fn_ident = if let ast::ItemKind::Fn(fn_) = &item.kind {
             fn_.ident
         } else {
-            self.dcx
-                .create_err(errors::AttributeOnlyBeUsedOnBareFunctions {
-                    span: attr.span,
-                    path: &pprust::path_to_string(&attr.get_normal_item().path),
-                })
-                .emit();
+            // Error handled by general target checking logic
             return;
         };
 
@@ -286,7 +280,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //              // ...
 //          ];
 //      }
-fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
+fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
     let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,

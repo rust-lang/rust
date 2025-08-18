@@ -85,11 +85,11 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # let my_debug_var = String::new();
 /// // logs a span named "hello" with a field named "arg" of value 42 (works only because
 /// // 42 implements the tracing::Value trait, otherwise use one of the options below)
-/// let _span = enter_trace_span!(M, "hello", arg = 42);
+/// let _trace = enter_trace_span!(M, "hello", arg = 42);
 /// // logs a field called "my_display_var" using the Display implementation
-/// let _span = enter_trace_span!(M, "hello", %my_display_var);
+/// let _trace = enter_trace_span!(M, "hello", %my_display_var);
 /// // logs a field called "my_debug_var" using the Debug implementation
-/// let _span = enter_trace_span!(M, "hello", ?my_debug_var);
+/// let _trace = enter_trace_span!(M, "hello", ?my_debug_var);
 ///  ```
 ///
 /// ### `NAME::SUBNAME` syntax
@@ -107,8 +107,8 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # use rustc_const_eval::enter_trace_span;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
 /// // for example, the first will expand to the second
-/// let _span = enter_trace_span!(M, borrow_tracker::on_stack_pop, /* ... */);
-/// let _span = enter_trace_span!(M, "borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */);
+/// let _trace = enter_trace_span!(M, borrow_tracker::on_stack_pop, /* ... */);
+/// let _trace = enter_trace_span!(M, "borrow_tracker", borrow_tracker = "on_stack_pop", /* ... */);
 /// ```
 ///
 /// ### `tracing_separate_thread` parameter
@@ -124,7 +124,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// ```rust
 /// # use rustc_const_eval::enter_trace_span;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
-/// let _span = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
+/// let _trace = enter_trace_span!(M, step::eval_statement, tracing_separate_thread = tracing::field::Empty);
 /// ```
 ///
 /// ### Executing something else when tracing is disabled
@@ -136,7 +136,7 @@ impl EnteredTraceSpan for tracing::span::EnteredSpan {
 /// # use rustc_const_eval::enter_trace_span;
 /// # use rustc_const_eval::interpret::EnteredTraceSpan;
 /// # type M = rustc_const_eval::const_eval::CompileTimeMachine<'static>;
-/// let _span = enter_trace_span!(M, step::eval_statement)
+/// let _trace = enter_trace_span!(M, step::eval_statement)
 ///     .or_if_tracing_disabled(|| tracing::info!("eval_statement"));
 /// ```
 #[macro_export]

@@ -1,4 +1,4 @@
-use rustc_ast::{ast, ptr};
+use rustc_ast::ast;
 use rustc_span::Span;
 use thin_vec::thin_vec;
 use tracing::debug;
@@ -165,7 +165,7 @@ fn rewrite_closure_with_block(
     let block = ast::Block {
         stmts: thin_vec![ast::Stmt {
             id: ast::NodeId::root(),
-            kind: ast::StmtKind::Expr(ptr::P(body.clone())),
+            kind: ast::StmtKind::Expr(Box::new(body.clone())),
             span: body.span,
         }],
         id: ast::NodeId::root(),

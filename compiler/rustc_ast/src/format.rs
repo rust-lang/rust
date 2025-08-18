@@ -3,7 +3,6 @@ use rustc_macros::{Decodable, Encodable, Walkable};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::Expr;
-use crate::ptr::P;
 use crate::token::LitKind;
 
 // Definitions:
@@ -147,7 +146,7 @@ impl FormatArguments {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct FormatArgument {
     pub kind: FormatArgumentKind,
-    pub expr: P<Expr>,
+    pub expr: Box<Expr>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

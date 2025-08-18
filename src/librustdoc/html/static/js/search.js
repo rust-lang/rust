@@ -3340,6 +3340,13 @@ class DocSearch {
                     return a - b;
                 }
 
+                // sort doc alias items later
+                a = Number(aaa.item.is_alias === true);
+                b = Number(bbb.item.is_alias === true);
+                if (a !== b) {
+                    return a - b;
+                }
+
                 // sort by item name (lexicographically larger goes later)
                 let aw = aaa.word;
                 let bw = bbb.word;

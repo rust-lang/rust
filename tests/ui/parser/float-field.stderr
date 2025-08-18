@@ -305,6 +305,8 @@ error[E0609]: no field `1e1` on type `(u8, u8)`
    |
 LL |     { s.1.1e1; }
    |           ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
 
 error[E0609]: no field `0x1e1` on type `S`
   --> $DIR/float-field.rs:34:9
@@ -343,12 +345,16 @@ error[E0609]: no field `f32` on type `(u8, u8)`
    |
 LL |     { s.1.f32; }
    |           ^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
 
 error[E0609]: no field `1e1` on type `(u8, u8)`
   --> $DIR/float-field.rs:71:9
    |
 LL |     { s.1.1e1f32; }
    |         ^^^^^^^^ unknown field
+   |
+   = note: available fields are: `0`, `1`
 
 error: aborting due to 57 previous errors
 

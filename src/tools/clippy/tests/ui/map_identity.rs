@@ -1,5 +1,5 @@
 #![warn(clippy::map_identity)]
-#![allow(clippy::needless_return)]
+#![allow(clippy::needless_return, clippy::disallowed_names)]
 
 fn main() {
     let x: [u16; 3] = [1, 2, 3];
@@ -104,4 +104,66 @@ fn issue15198() {
     // no match ergonomics for `[i32, i32]`
     let _ = x.iter().copied().map(|[x, y]| [x, y]);
     //~^ map_identity
+}
+
+mod foo {
+    #[derive(Clone, Copy)]
+    pub struct Foo {
+        pub foo: u8,
+        pub bar: u8,
+    }
+
+    #[derive(Clone, Copy)]
+    pub struct Foo2(pub u8, pub u8);
+}
+use foo::{Foo, Foo2};
+
+struct Bar {
+    foo: u8,
+    bar: u8,
+}
+
+struct Bar2(u8, u8);
+
+fn structs() {
+    let x = [Foo { foo: 0, bar: 0 }];
+
+    let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo, bar });
+    //~^ map_identity
+
+    // still lint when different paths are used for the same struct
+    let _ = x.into_iter().map(|Foo { foo, bar }| foo::Foo { foo, bar });
+    //~^ map_identity
+
+    // don't lint: same fields but different structs
+    let _ = x.into_iter().map(|Foo { foo, bar }| Bar { foo, bar });
+
+    // still lint with redundant field names
+    #[allow(clippy::redundant_field_names)]
+    let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo: foo, bar: bar });
+    //~^ map_identity
+
+    // still lint with field order change
+    let _ = x.into_iter().map(|Foo { foo, bar }| Foo { bar, foo });
+    //~^ map_identity
+
+    // don't lint: switched field assignment
+    let _ = x.into_iter().map(|Foo { foo, bar }| Foo { foo: bar, bar: foo });
+}
+
+fn tuple_structs() {
+    let x = [Foo2(0, 0)];
+
+    let _ = x.into_iter().map(|Foo2(foo, bar)| Foo2(foo, bar));
+    //~^ map_identity
+
+    // still lint when different paths are used for the same struct
+    let _ = x.into_iter().map(|Foo2(foo, bar)| foo::Foo2(foo, bar));
+    //~^ map_identity
+
+    // don't lint: same fields but different structs
+    let _ = x.into_iter().map(|Foo2(foo, bar)| Bar2(foo, bar));
+
+    // don't lint: switched field assignment
+    let _ = x.into_iter().map(|Foo2(foo, bar)| Foo2(bar, foo));
 }

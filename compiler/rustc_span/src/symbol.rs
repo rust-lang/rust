@@ -3,6 +3,7 @@
 //! type, and vice versa.
 
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::{fmt, str};
 
 use rustc_arena::DroplessArena;
@@ -279,6 +280,7 @@ symbols! {
         IterPeekable,
         Iterator,
         IteratorItem,
+        IteratorMap,
         Layout,
         Left,
         LinkedList,
@@ -390,6 +392,7 @@ symbols! {
         __D,
         __H,
         __S,
+        __T,
         __awaitee,
         __try_var,
         _t,
@@ -540,9 +543,11 @@ symbols! {
         audit_that,
         augmented_assignments,
         auto_traits,
+        autodiff,
         autodiff_forward,
         autodiff_reverse,
         automatically_derived,
+        available_externally,
         avx,
         avx10_target_feature,
         avx512_target_feature,
@@ -674,6 +679,7 @@ symbols! {
         cold_path,
         collapse_debuginfo,
         column,
+        common,
         compare_bytes,
         compare_exchange,
         compare_exchange_weak,
@@ -741,6 +747,7 @@ symbols! {
         contracts_ensures,
         contracts_internals,
         contracts_requires,
+        convert,
         convert_identity,
         copy,
         copy_closures,
@@ -842,6 +849,7 @@ symbols! {
         derive_const,
         derive_const_issue: "118304",
         derive_default_enum,
+        derive_from,
         derive_smart_pointer,
         destruct,
         destructuring_assignment,
@@ -954,6 +962,7 @@ symbols! {
         extern_prelude,
         extern_system_varargs,
         extern_types,
+        extern_weak,
         external,
         external_doc,
         f,
@@ -1211,6 +1220,7 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        internal,
         internal_features,
         into_async_iter_into_iter,
         into_future,
@@ -1285,6 +1295,8 @@ symbols! {
         linkage,
         linker,
         linker_messages,
+        linkonce,
+        linkonce_odr,
         lint_reasons,
         literal,
         load,
@@ -1310,6 +1322,7 @@ symbols! {
         lt,
         m68k_target_feature,
         macro_at_most_once_rep,
+        macro_attr,
         macro_attributes_in_derive_output,
         macro_concat,
         macro_escape,
@@ -1512,6 +1525,7 @@ symbols! {
         not,
         notable_trait,
         note,
+        nvptx_target_feature,
         object_safe_for_dispatch,
         of,
         off,
@@ -1579,6 +1593,7 @@ symbols! {
         panic_const_shl_overflow,
         panic_const_shr_overflow,
         panic_const_sub_overflow,
+        panic_display,
         panic_fmt,
         panic_handler,
         panic_impl,
@@ -1824,7 +1839,6 @@ symbols! {
         rustc_coherence_is_core,
         rustc_coinductive,
         rustc_confusables,
-        rustc_const_panic_str,
         rustc_const_stable,
         rustc_const_stable_indirect,
         rustc_const_unstable,
@@ -2320,6 +2334,7 @@ symbols! {
         va_start,
         val,
         validity,
+        value,
         values,
         var,
         variant_count,
@@ -2356,6 +2371,8 @@ symbols! {
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
+        weak,
+        weak_odr,
         where_clause_attrs,
         while_let,
         width,
@@ -2562,16 +2579,17 @@ impl fmt::Display for IdentPrinter {
 }
 
 /// An newtype around `Ident` that calls [Ident::normalize_to_macro_rules] on
-/// construction.
-// FIXME(matthewj, petrochenkov) Use this more often, add a similar
-// `ModernIdent` struct and use that as well.
+/// construction for "local variable hygiene" comparisons.
+///
+/// Use this type when you need to compare identifiers according to macro_rules hygiene.
+/// This ensures compile-time safety and avoids manual normalization calls.
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct MacroRulesNormalizedIdent(Ident);
 
 impl MacroRulesNormalizedIdent {
     #[inline]
     pub fn new(ident: Ident) -> Self {
-        Self(ident.normalize_to_macro_rules())
+        MacroRulesNormalizedIdent(ident.normalize_to_macro_rules())
     }
 }
 
@@ -2584,6 +2602,48 @@ impl fmt::Debug for MacroRulesNormalizedIdent {
 impl fmt::Display for MacroRulesNormalizedIdent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
+    }
+}
+
+/// An newtype around `Ident` that calls [Ident::normalize_to_macros_2_0] on
+/// construction for "item hygiene" comparisons.
+///
+/// Identifiers with same string value become same if they came from the same macro 2.0 macro
+/// (e.g., `macro` item, but not `macro_rules` item) and stay different if they came from
+/// different macro 2.0 macros.
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+pub struct Macros20NormalizedIdent(pub Ident);
+
+impl Macros20NormalizedIdent {
+    #[inline]
+    pub fn new(ident: Ident) -> Self {
+        Macros20NormalizedIdent(ident.normalize_to_macros_2_0())
+    }
+
+    // dummy_span does not need to be normalized, so we can use `Ident` directly
+    pub fn with_dummy_span(name: Symbol) -> Self {
+        Macros20NormalizedIdent(Ident::with_dummy_span(name))
+    }
+}
+
+impl fmt::Debug for Macros20NormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for Macros20NormalizedIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+/// By impl Deref, we can access the wrapped Ident as if it were a normal Ident
+/// such as `norm_ident.name` instead of `norm_ident.0.name`.
+impl Deref for Macros20NormalizedIdent {
+    type Target = Ident;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

@@ -5,6 +5,7 @@ use rustc_ast::*;
 use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
+use rustc_hir::Target;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
@@ -138,6 +139,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     i.id,
+                    Target::MacroDef,
                     OmitDoc::Skip,
                     std::convert::identity,
                     |_l| {
@@ -149,9 +151,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 let macro_data =
                     self.resolver.compile_macro(def, *ident, &attrs, i.span, i.id, edition);
-                let macro_kind = macro_data.ext.macro_kind();
+                let macro_kinds = macro_data.ext.macro_kinds();
                 opt_macro_data = Some(macro_data);
-                DefKind::Macro(macro_kind)
+                DefKind::Macro(macro_kinds)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(use_tree) => {

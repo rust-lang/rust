@@ -26,7 +26,7 @@ fn main() {
         }
         // Our approach can report duplicate witnesses sometimes.
         match (x, true) {
-            //~^ ERROR non-exhaustive patterns: `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: false }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
+            //~^ ERROR non-exhaustive patterns: `(U8AsBool { n: 0_u8 }, false)`, `(U8AsBool { b: true }, false)`, `(U8AsBool { n: 0_u8 }, false)` and 1 more not covered
             (U8AsBool { b: true }, true) => {}
             (U8AsBool { b: false }, true) => {}
             (U8AsBool { n: 1.. }, true) => {}

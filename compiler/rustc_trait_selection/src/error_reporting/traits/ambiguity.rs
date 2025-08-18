@@ -169,7 +169,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let predicate = self.resolve_vars_if_possible(obligation.predicate);
         let span = obligation.cause.span;
-        let mut file = None;
+        let mut long_ty_path = None;
 
         debug!(?predicate, obligation.cause.code = ?obligation.cause.code());
 
@@ -211,19 +211,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.as_lang_item(trait_pred.def_id()),
                     Some(LangItem::Sized | LangItem::MetaSized)
                 ) {
-                    match self.tainted_by_errors() {
-                        None => {
-                            let err = self.emit_inference_failure_err(
+                    return match self.tainted_by_errors() {
+                        None => self
+                            .emit_inference_failure_err(
                                 obligation.cause.body_id,
                                 span,
                                 trait_pred.self_ty().skip_binder().into(),
                                 TypeAnnotationNeeded::E0282,
                                 false,
-                            );
-                            return err.emit();
-                        }
-                        Some(e) => return e,
-                    }
+                            )
+                            .emit(),
+                        Some(e) => e,
+                    };
                 }
 
                 // Typically, this ambiguity should only happen if
@@ -260,8 +259,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         span,
                         E0283,
                         "type annotations needed: cannot satisfy `{}`",
-                        self.tcx.short_string(predicate, &mut file),
+                        self.tcx.short_string(predicate, &mut long_ty_path),
                     )
+                    .with_long_ty_path(long_ty_path)
                 };
 
                 let mut ambiguities = compute_applicable_impls_for_diagnostics(
@@ -307,7 +307,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         err.cancel();
                         return e;
                     }
-                    let pred = self.tcx.short_string(predicate, &mut file);
+                    let pred = self.tcx.short_string(predicate, &mut err.long_ty_path());
                     err.note(format!("cannot satisfy `{pred}`"));
                     let impl_candidates =
                         self.find_similar_impl_candidates(predicate.as_trait_clause().unwrap());
@@ -512,6 +512,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     true,
                 )
             }
+
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                 if let Err(e) = predicate.error_reported() {
                     return e;
@@ -536,7 +537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .filter_map(ty::GenericArg::as_term)
                     .chain([data.term])
                     .find(|g| g.has_non_region_infer());
-                let predicate = self.tcx.short_string(predicate, &mut file);
+                let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                 if let Some(term) = term {
                     self.emit_inference_failure_err(
                         obligation.cause.body_id,
@@ -546,6 +547,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         true,
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
+                    .with_long_ty_path(long_ty_path)
                 } else {
                     // If we can't find a generic parameter, just print a generic error
                     struct_span_code_err!(
@@ -555,6 +557,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "type annotations needed: cannot satisfy `{predicate}`",
                     )
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
+                    .with_long_ty_path(long_ty_path)
                 }
             }
 
@@ -568,17 +571,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let term =
                     data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer());
                 if let Some(term) = term {
-                    let err = self.emit_inference_failure_err(
+                    self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
                         term,
                         TypeAnnotationNeeded::E0284,
                         true,
-                    );
-                    err
+                    )
                 } else {
                     // If we can't find a generic parameter, just print a generic error
-                    let predicate = self.tcx.short_string(predicate, &mut file);
+                    let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                     struct_span_code_err!(
                         self.dcx(),
                         span,
@@ -586,6 +588,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "type annotations needed: cannot satisfy `{predicate}`",
                     )
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
+                    .with_long_ty_path(long_ty_path)
                 }
             }
 
@@ -597,13 +600,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     TypeAnnotationNeeded::E0284,
                     true,
                 ),
+
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
                 if term.is_infer() =>
             {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let alias = self.tcx.short_string(alias, &mut file);
+                let alias = self.tcx.short_string(alias, &mut long_ty_path);
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -611,37 +615,34 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "type annotations needed: cannot normalize `{alias}`",
                 )
                 .with_span_label(span, format!("cannot normalize `{alias}`"))
+                .with_long_ty_path(long_ty_path)
             }
+
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(sym)) => {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
 
-                let mut err;
-
                 if self.tcx.features().staged_api() {
-                    err = self.dcx().struct_span_err(
+                    self.dcx().struct_span_err(
                         span,
                         format!("unstable feature `{sym}` is used without being enabled."),
-                    );
-
-                    err.help(format!("The feature can be enabled by marking the current item with `#[unstable_feature_bound({sym})]`"));
+                    ).with_help(format!("The feature can be enabled by marking the current item with `#[unstable_feature_bound({sym})]`"))
                 } else {
-                    err = feature_err_unstable_feature_bound(
+                    feature_err_unstable_feature_bound(
                         &self.tcx.sess,
                         sym,
                         span,
                         format!("use of unstable library feature `{sym}`"),
-                    );
+                    )
                 }
-                err
             }
 
             _ => {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let predicate = self.tcx.short_string(predicate, &mut file);
+                let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                 struct_span_code_err!(
                     self.dcx(),
                     span,
@@ -649,9 +650,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "type annotations needed: cannot satisfy `{predicate}`",
                 )
                 .with_span_label(span, format!("cannot satisfy `{predicate}`"))
+                .with_long_ty_path(long_ty_path)
             }
         };
-        *err.long_ty_path() = file;
         self.note_obligation_cause(&mut err, obligation);
         err.emit()
     }

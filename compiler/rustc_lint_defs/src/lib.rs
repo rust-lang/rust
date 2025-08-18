@@ -647,6 +647,7 @@ pub enum BuiltinLintDiag {
         attr_name: Symbol,
         macro_name: String,
         invoc_span: Span,
+        attr_span: Span,
     },
     PatternsInFnsWithoutBody {
         span: Span,
@@ -793,6 +794,7 @@ pub enum BuiltinLintDiag {
     },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
+        docs: Option<&'static str>,
     },
     InnerAttributeUnstable {
         is_macro: bool,

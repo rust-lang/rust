@@ -9,11 +9,10 @@ use std::alloc::{Layout, alloc, dealloc};
 use std::mem::{self, MaybeUninit};
 use std::slice::from_raw_parts;
 
-fn byte_with_provenance<T>(val: u8, prov: *const T) -> MaybeUninit<u8> {
-    let ptr = prov.with_addr(val as usize);
+fn byte_with_provenance<T>(val: u8, prov: *const T, frag_idx: usize) -> MaybeUninit<u8> {
+    let ptr = prov.with_addr(usize::from_ne_bytes([val; _]));
     let bytes: [MaybeUninit<u8>; mem::size_of::<*const ()>()] = unsafe { mem::transmute(ptr) };
-    let lsb = if cfg!(target_endian = "little") { 0 } else { bytes.len() - 1 };
-    bytes[lsb]
+    bytes[frag_idx]
 }
 
 fn main() {
@@ -21,10 +20,10 @@ fn main() {
     unsafe {
         let ptr = alloc(layout);
         let ptr_raw = ptr.cast::<MaybeUninit<u8>>();
-        *ptr_raw.add(0) = byte_with_provenance(0x42, &42u8);
+        *ptr_raw.add(0) = byte_with_provenance(0x42, &42u8, 0);
         *ptr.add(1) = 0x12;
         *ptr.add(2) = 0x13;
-        *ptr_raw.add(3) = byte_with_provenance(0x43, &0u8);
+        *ptr_raw.add(3) = byte_with_provenance(0x43, &0u8, 1);
         let slice1 = from_raw_parts(ptr, 8);
         let slice2 = from_raw_parts(ptr.add(8), 8);
         drop(slice1.cmp(slice2));

@@ -341,7 +341,7 @@ impl Canonicalized {
         for &w in unique_words {
             unique_mapping.entry(w).or_insert_with(|| {
                 canonical_words.push(w);
-                UniqueMapping::Canonical(canonical_words.len())
+                UniqueMapping::Canonical(canonical_words.len() - 1)
             });
         }
         assert_eq!(canonicalized_words.len() + canonical_words.len(), unique_words.len());

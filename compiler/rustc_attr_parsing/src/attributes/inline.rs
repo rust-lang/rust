@@ -5,20 +5,39 @@
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
 use rustc_hir::lints::AttributeLintKind;
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Symbol, sym};
 
 use super::{AcceptContext, AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
-use crate::context::Stage;
+use crate::context::MaybeWarn::{Allow, Warn};
+use crate::context::{AllowedTargets, Stage};
 use crate::parser::ArgParser;
-
 pub(crate) struct InlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for InlineParser {
     const PATH: &'static [Symbol] = &[sym::inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "always|never");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Closure),
+        Allow(Target::Delegation { mac: false }),
+        Warn(Target::Method(MethodKind::Trait { body: false })),
+        Warn(Target::ForeignFn),
+        Warn(Target::Field),
+        Warn(Target::MacroDef),
+        Warn(Target::Arm),
+        Warn(Target::AssocConst),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(
+        Word,
+        List: &["always", "never"],
+        "https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         match args {
@@ -59,7 +78,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &'static [Symbol] = &[sym::rustc_force_inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "reason", NameValueStr: "reason");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let reason = match args {

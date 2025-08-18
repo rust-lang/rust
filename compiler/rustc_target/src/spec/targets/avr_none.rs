@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
             host_tools: None,
             std: None,
         },
-        data_layout: "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8-a:8".into(),
+        data_layout: "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8:16-a:8".into(),
         llvm_target: "avr-unknown-unknown".into(),
         pointer_width: 16,
         options: TargetOptions {

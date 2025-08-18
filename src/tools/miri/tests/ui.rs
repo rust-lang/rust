@@ -248,7 +248,8 @@ regexes! {
     // erase alloc ids
     "alloc[0-9]+"                    => "ALLOC",
     // erase thread ids
-    r"unnamed-[0-9]+"               => "unnamed-ID",
+    r"unnamed-[0-9]+"                => "unnamed-ID",
+    r"thread '(?P<name>.*?)' \(\d+\) panicked" => "thread '$name' ($$TID) panicked",
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",

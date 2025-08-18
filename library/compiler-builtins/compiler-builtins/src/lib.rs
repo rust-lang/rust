@@ -60,7 +60,7 @@ pub mod arm;
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 pub mod aarch64;
 
-#[cfg(all(target_arch = "aarch64", target_os = "linux", not(feature = "no-asm"),))]
+#[cfg(all(target_arch = "aarch64", target_os = "linux"))]
 pub mod aarch64_linux;
 
 #[cfg(all(

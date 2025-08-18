@@ -373,7 +373,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constructors_lite)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_hours(6);
@@ -381,7 +380,8 @@ impl Duration {
     /// assert_eq!(6 * 60 * 60, duration.as_secs());
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_constructors_lite", issue = "140881")]
+    #[stable(feature = "duration_constructors_lite", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "duration_constructors_lite", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_hours(hours: u64) -> Duration {
@@ -401,7 +401,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constructors_lite)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_mins(10);
@@ -409,7 +408,8 @@ impl Duration {
     /// assert_eq!(10 * 60, duration.as_secs());
     /// assert_eq!(0, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_constructors_lite", issue = "140881")]
+    #[stable(feature = "duration_constructors_lite", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "duration_constructors_lite", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_mins(mins: u64) -> Duration {
@@ -1100,7 +1100,8 @@ impl Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-impl Add for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Add for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1110,7 +1111,8 @@ impl Add for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl AddAssign for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const AddAssign for Duration {
     #[inline]
     fn add_assign(&mut self, rhs: Duration) {
         *self = *self + rhs;
@@ -1118,7 +1120,8 @@ impl AddAssign for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-impl Sub for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Sub for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1128,7 +1131,8 @@ impl Sub for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl SubAssign for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const SubAssign for Duration {
     #[inline]
     fn sub_assign(&mut self, rhs: Duration) {
         *self = *self - rhs;
@@ -1136,7 +1140,8 @@ impl SubAssign for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-impl Mul<u32> for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Mul<u32> for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1146,7 +1151,8 @@ impl Mul<u32> for Duration {
 }
 
 #[stable(feature = "symmetric_u32_duration_mul", since = "1.31.0")]
-impl Mul<Duration> for u32 {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Mul<Duration> for u32 {
     type Output = Duration;
 
     #[inline]
@@ -1156,7 +1162,8 @@ impl Mul<Duration> for u32 {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl MulAssign<u32> for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const MulAssign<u32> for Duration {
     #[inline]
     fn mul_assign(&mut self, rhs: u32) {
         *self = *self * rhs;
@@ -1164,7 +1171,8 @@ impl MulAssign<u32> for Duration {
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
-impl Div<u32> for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Div<u32> for Duration {
     type Output = Duration;
 
     #[inline]
@@ -1175,7 +1183,8 @@ impl Div<u32> for Duration {
 }
 
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
-impl DivAssign<u32> for Duration {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const DivAssign<u32> for Duration {
     #[inline]
     #[track_caller]
     fn div_assign(&mut self, rhs: u32) {

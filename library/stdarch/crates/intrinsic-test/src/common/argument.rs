@@ -20,6 +20,15 @@ impl<T> Argument<T>
 where
     T: IntrinsicTypeDefinition,
 {
+    pub fn new(pos: usize, name: String, ty: T, constraint: Option<Constraint>) -> Self {
+        Argument {
+            pos,
+            name,
+            ty,
+            constraint,
+        }
+    }
+
     pub fn to_c_type(&self) -> String {
         self.ty.c_type()
     }
@@ -34,14 +43,6 @@ where
 
     pub fn has_constraint(&self) -> bool {
         self.constraint.is_some()
-    }
-
-    pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
-        let split_index = arg
-            .rfind([' ', '*'])
-            .expect("Couldn't split type and argname");
-
-        (arg[..split_index + 1].trim_end(), &arg[split_index + 1..])
     }
 
     /// The binding keyword (e.g. "const" or "let") for the array of possible test inputs.
@@ -59,25 +60,6 @@ where
             format!("{}_VALS", self.name.to_uppercase())
         } else {
             format!("{}_vals", self.name.to_lowercase())
-        }
-    }
-
-    pub fn from_c(
-        pos: usize,
-        arg: &str,
-        target: &str,
-        constraint: Option<Constraint>,
-    ) -> Argument<T> {
-        let (ty, var_name) = Self::type_and_name_from_c(arg);
-
-        let ty =
-            T::from_c(ty, target).unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
-
-        Argument {
-            pos,
-            name: String::from(var_name),
-            ty: ty,
-            constraint,
         }
     }
 
@@ -114,14 +96,6 @@ where
             .join(", ")
     }
 
-    pub fn as_constraint_parameters_rust(&self) -> String {
-        self.iter()
-            .filter(|a| a.has_constraint())
-            .map(|arg| arg.name.clone())
-            .collect::<Vec<String>>()
-            .join(", ")
-    }
-
     /// Creates a line for each argument that initializes an array for C from which `loads` argument
     /// values can be loaded  as a sliding window.
     /// e.g `const int32x2_t a_vals = {0x3effffff, 0x3effffff, 0x3f7fffff}`, if loads=2.
@@ -146,21 +120,25 @@ where
 
     /// Creates a line for each argument that initializes an array for Rust from which `loads` argument
     /// values can be loaded as a sliding window, e.g `const A_VALS: [u32; 20]  = [...];`
-    pub fn gen_arglists_rust(&self, indentation: Indentation, loads: u32) -> String {
-        self.iter()
-            .filter(|&arg| !arg.has_constraint())
-            .map(|arg| {
-                format!(
-                    "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
-                    bind = arg.rust_vals_array_binding(),
-                    name = arg.rust_vals_array_name(),
-                    ty = arg.ty.rust_scalar_type(),
-                    load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
-                    values = arg.ty.populate_random(indentation, loads, &Language::Rust)
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
+    pub fn gen_arglists_rust(
+        &self,
+        w: &mut impl std::io::Write,
+        indentation: Indentation,
+        loads: u32,
+    ) -> std::io::Result<()> {
+        for arg in self.iter().filter(|&arg| !arg.has_constraint()) {
+            writeln!(
+                w,
+                "{indentation}{bind} {name}: [{ty}; {load_size}] = {values};",
+                bind = arg.rust_vals_array_binding(),
+                name = arg.rust_vals_array_name(),
+                ty = arg.ty.rust_scalar_type(),
+                load_size = arg.ty.num_lanes() * arg.ty.num_vectors() + loads - 1,
+                values = arg.ty.populate_random(indentation, loads, &Language::Rust)
+            )?
+        }
+
+        Ok(())
     }
 
     /// Creates a line for each argument that initializes the argument from an array `[arg]_vals` at

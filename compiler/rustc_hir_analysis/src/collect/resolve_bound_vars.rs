@@ -604,13 +604,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        match &item.kind {
-            hir::ItemKind::Impl(hir::Impl { of_trait, .. }) => {
-                if let Some(of_trait) = of_trait {
-                    self.record_late_bound_vars(of_trait.hir_ref_id, Vec::default());
-                }
-            }
-            _ => {}
+        if let hir::ItemKind::Impl(impl_) = item.kind
+            && let Some(of_trait) = impl_.of_trait
+        {
+            self.record_late_bound_vars(of_trait.trait_ref.hir_ref_id, Vec::default());
         }
         match item.kind {
             hir::ItemKind::Fn { generics, .. } => {
@@ -636,7 +633,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Union(_, generics, _)
             | hir::ItemKind::Trait(_, _, _, _, generics, ..)
             | hir::ItemKind::TraitAlias(_, generics, ..)
-            | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
+            | hir::ItemKind::Impl(hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
             }
@@ -2106,7 +2103,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // If we have a self type alias (in an impl), try to resolve an
                     // associated item from one of the supertraits of the impl's trait.
                     Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. } => {
-                        let hir::ItemKind::Impl(hir::Impl { of_trait: Some(trait_ref), .. }) = self
+                        let hir::ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) = self
                             .tcx
                             .hir_node_by_def_id(impl_def_id.expect_local())
                             .expect_item()
@@ -2114,7 +2111,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         else {
                             return;
                         };
-                        let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                        let Some(trait_def_id) = of_trait.trait_ref.trait_def_id() else {
                             return;
                         };
                         let Some((bound_vars, assoc_item)) = BoundVarContext::supertrait_hrtb_vars(

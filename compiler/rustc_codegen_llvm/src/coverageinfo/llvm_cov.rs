@@ -63,13 +63,7 @@ pub(crate) fn write_function_mappings_to_buffer(
     expressions: &[ffi::CounterExpression],
     regions: &ffi::Regions,
 ) -> Vec<u8> {
-    let ffi::Regions {
-        code_regions,
-        expansion_regions,
-        branch_regions,
-        mcdc_branch_regions,
-        mcdc_decision_regions,
-    } = regions;
+    let ffi::Regions { code_regions, expansion_regions, branch_regions } = regions;
 
     // SAFETY:
     // - All types are FFI-compatible and have matching representations in Rust/C++.
@@ -87,10 +81,6 @@ pub(crate) fn write_function_mappings_to_buffer(
             expansion_regions.len(),
             branch_regions.as_ptr(),
             branch_regions.len(),
-            mcdc_branch_regions.as_ptr(),
-            mcdc_branch_regions.len(),
-            mcdc_decision_regions.as_ptr(),
-            mcdc_decision_regions.len(),
             buffer,
         )
     })

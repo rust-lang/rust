@@ -647,7 +647,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, &[]);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -665,8 +665,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let MonoItemPartitions { codegen_units, autodiff_items, .. } =
-        tcx.collect_and_partition_mono_items(());
+    let MonoItemPartitions { codegen_units, .. } = tcx.collect_and_partition_mono_items(());
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -679,34 +678,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, autodiff_items);
-
-    // Codegen an allocator shim, if necessary.
-    if let Some(kind) = allocator_kind_for_codegen(tcx) {
-        let llmod_id =
-            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let module_llvm = tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(
-                tcx,
-                &llmod_id,
-                kind,
-                // If allocator_kind is Some then alloc_error_handler_kind must
-                // also be Some.
-                tcx.alloc_error_handler_kind(()).unwrap(),
-            )
-        });
-
-        ongoing_codegen.wait_for_signal_to_codegen_item();
-        ongoing_codegen.check_for_errors(tcx.sess);
-
-        // These modules are generally cheap and won't throw off scheduling.
-        let cost = 0;
-        submit_codegened_module_to_llvm(
-            &ongoing_codegen.coordinator,
-            ModuleCodegen::new_allocator(llmod_id, module_llvm),
-            cost,
-        );
-    }
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu);
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -821,6 +793,35 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 );
             }
         }
+    }
+
+    // Codegen an allocator shim, if necessary.
+    // Do this last to ensure the LLVM_passes timer doesn't start while no CGUs have been codegened
+    // yet for the backend to optimize.
+    if let Some(kind) = allocator_kind_for_codegen(tcx) {
+        let llmod_id =
+            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
+        let module_llvm = tcx.sess.time("write_allocator_module", || {
+            backend.codegen_allocator(
+                tcx,
+                &llmod_id,
+                kind,
+                // If allocator_kind is Some then alloc_error_handler_kind must
+                // also be Some.
+                tcx.alloc_error_handler_kind(()).unwrap(),
+            )
+        });
+
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
+
+        // These modules are generally cheap and won't throw off scheduling.
+        let cost = 0;
+        submit_codegened_module_to_llvm(
+            &ongoing_codegen.coordinator,
+            ModuleCodegen::new_allocator(llmod_id, module_llvm),
+            cost,
+        );
     }
 
     ongoing_codegen.codegen_finished(tcx);

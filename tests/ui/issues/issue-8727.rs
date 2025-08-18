@@ -2,6 +2,7 @@
 // recursions.
 
 //@ build-fail
+//@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 
 fn generic<T>() { //~ WARN function cannot return without recursing
     generic::<Option<T>>();

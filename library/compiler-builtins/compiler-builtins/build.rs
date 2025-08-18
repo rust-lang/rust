@@ -106,13 +106,6 @@ fn configure_libm(target: &Target) {
         println!("cargo:rustc-cfg=optimizations_enabled");
     }
 
-    // Config shorthands
-    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
-    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
-        // Shorthand to detect i586 targets
-        println!("cargo:rustc-cfg=x86_no_sse");
-    }
-
     println!(
         "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",
         target.cargo_features

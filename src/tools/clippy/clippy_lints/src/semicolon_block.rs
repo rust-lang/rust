@@ -102,7 +102,7 @@ impl SemicolonBlock {
     }
 
     fn semicolon_outside_block(&self, cx: &LateContext<'_>, block: &Block<'_>, tail_stmt_expr: &Expr<'_>) {
-        let insert_span = block.span.with_lo(block.span.hi());
+        let insert_span = block.span.shrink_to_hi();
 
         // For macro call semicolon statements (`mac!();`), the statement's span does not actually
         // include the semicolon itself, so use `mac_call_stmt_semi_span`, which finds the semicolon
@@ -144,28 +144,20 @@ impl LateLintPass<'_> for SemicolonBlock {
                 kind: ExprKind::Block(block, _),
                 ..
             }) if !block.span.from_expansion() && stmt.span.contains(block.span) => {
-                let Block {
-                    expr: None,
-                    stmts: [.., stmt],
-                    ..
-                } = block
-                else {
-                    return;
-                };
-                let &Stmt {
-                    kind: StmtKind::Semi(expr),
-                    ..
-                } = stmt
-                else {
-                    return;
-                };
-                self.semicolon_outside_block(cx, block, expr);
+                if block.expr.is_none()
+                    && let [.., stmt] = block.stmts
+                    && let StmtKind::Semi(expr) = stmt.kind
+                {
+                    self.semicolon_outside_block(cx, block, expr);
+                }
             },
             StmtKind::Semi(Expr {
-                kind: ExprKind::Block(block @ Block { expr: Some(tail), .. }, _),
+                kind: ExprKind::Block(block, _),
                 ..
             }) if !block.span.from_expansion() => {
-                self.semicolon_inside_block(cx, block, tail, stmt.span);
+                if let Some(tail) = block.expr {
+                    self.semicolon_inside_block(cx, block, tail, stmt.span);
+                }
             },
             _ => (),
         }
@@ -173,9 +165,5 @@ impl LateLintPass<'_> for SemicolonBlock {
 }
 
 fn get_line(cx: &LateContext<'_>, span: Span) -> Option<usize> {
-    if let Ok(line) = cx.sess().source_map().lookup_line(span.lo()) {
-        return Some(line.line);
-    }
-
-    None
+    cx.sess().source_map().lookup_line(span.lo()).ok().map(|line| line.line)
 }

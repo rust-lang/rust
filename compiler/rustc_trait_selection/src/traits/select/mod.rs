@@ -2333,10 +2333,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Coroutine(def_id, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                let tcx = self.tcx();
                 let witness = Ty::new_coroutine_witness(
-                    self.tcx(),
+                    tcx,
                     def_id,
-                    self.tcx().mk_args(args.as_coroutine().parent_args()),
+                    ty::GenericArgs::for_item(tcx, def_id, |def, _| match def.kind {
+                        // HACK: Coroutine witnesse types are lifetime erased, so they
+                        // never reference any lifetime args from the coroutine. We erase
+                        // the regions here since we may get into situations where a
+                        // coroutine is recursively contained within itself, leading to
+                        // witness types that differ by region args. This means that
+                        // cycle detection in fulfillment will not kick in, which leads
+                        // to unnecessary overflows in async code. See the issue:
+                        // <https://github.com/rust-lang/rust/issues/145151>.
+                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                        ty::GenericParamDefKind::Type { .. }
+                        | ty::GenericParamDefKind::Const { .. } => args[def.index as usize],
+                    }),
                 );
                 ty::Binder::dummy(AutoImplConstituents {
                     types: [ty].into_iter().chain(iter::once(witness)).collect(),

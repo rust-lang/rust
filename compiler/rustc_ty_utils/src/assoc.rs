@@ -174,10 +174,10 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
             })
             .collect(),
         ItemKind::Impl(impl_) => {
-            let Some(trait_ref) = impl_.of_trait else {
+            let Some(of_trait) = impl_.of_trait else {
                 return Default::default();
             };
-            let Some(trait_def_id) = trait_ref.trait_def_id() else {
+            let Some(trait_def_id) = of_trait.trait_ref.trait_def_id() else {
                 return Default::default();
             };
             let in_trait_def = tcx.associated_types_for_impl_traits_in_trait_or_impl(trait_def_id);

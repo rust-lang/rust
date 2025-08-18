@@ -81,7 +81,7 @@ impl LateLintPass<'_> for IfNotElse {
                         e.span,
                         msg,
                         "try",
-                        make_sugg(cx, &cond.kind, cond_inner.span, els.span, "..", Some(e.span)).to_string(),
+                        make_sugg(cx, &cond.kind, cond_inner.span, els.span, "..", Some(e.span)),
                         Applicability::MachineApplicable,
                     ),
                     _ => span_lint_and_help(cx, IF_NOT_ELSE, e.span, msg, None, help),

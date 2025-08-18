@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// let data_ref = &data;
     /// take_slice(slice::from_ref(data_ref));
     /// ```
-    #[clippy::version = "1.87.0"]
+    #[clippy::version = "1.89.0"]
     pub CLONED_REF_TO_SLICE_REFS,
     perf,
     "cloning a reference for slice references"

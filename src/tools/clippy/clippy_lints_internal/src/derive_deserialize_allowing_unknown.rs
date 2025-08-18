@@ -2,12 +2,11 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::paths;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{AttrStyle, DelimArgs};
-use rustc_hir::attrs::{AttributeKind};
-use rustc_hir::find_attr;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{
-    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitRef, Ty, TyKind,
+    AttrArgs, AttrItem, AttrPath, Attribute, HirId, Impl, Item, ItemKind, Path, QPath, TraitRef, Ty, TyKind, find_attr,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_lint_defs::declare_tool_lint;

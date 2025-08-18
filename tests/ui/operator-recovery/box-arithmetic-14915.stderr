@@ -1,0 +1,17 @@
+error[E0369]: cannot add `{integer}` to `Box<isize>`
+  --> $DIR/box-arithmetic-14915.rs:6:22
+   |
+LL |     println!("{}", x + 1);
+   |                    - ^ - {integer}
+   |                    |
+   |                    Box<isize>
+   |
+note: the foreign item type `Box<isize>` doesn't implement `Add<{integer}>`
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+  ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: not implement `Add<{integer}>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

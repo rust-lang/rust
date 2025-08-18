@@ -1,4 +1,4 @@
-error[E0599]: no method named `kind` found for struct `InferOk` in the current scope
+error[E0599]: no method named `kind` found for struct `InferOk<T>` in the current scope
   --> $DIR/field-has-method.rs:19:15
    |
 LL | struct InferOk<T> {

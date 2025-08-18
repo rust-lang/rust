@@ -244,6 +244,21 @@ fn make_owned_test(test: &&TestDescAndFn) -> TestDescAndFn {
     }
 }
 
+/// Public API used by rustdoc to display the `total` and `compilation` times in the expected
+/// format.
+pub fn print_merged_doctests_times(args: &[String], total_time: f64, compilation_time: f64) {
+    let opts = match cli::parse_opts(args) {
+        Some(Ok(o)) => o,
+        Some(Err(msg)) => {
+            eprintln!("error: {msg}");
+            process::exit(ERROR_EXIT_CODE);
+        }
+        None => return,
+    };
+    let mut formatter = console::get_formatter(&opts, 0);
+    formatter.write_merged_doctests_times(total_time, compilation_time).unwrap();
+}
+
 /// Invoked when unit tests terminate. Returns `Result::Err` if the test is
 /// considered a failure. By default, invokes `report()` and checks for a `0`
 /// result.

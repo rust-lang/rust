@@ -111,11 +111,6 @@ fn coverage_ids_info<'tcx>(
                 bcb_needs_counter.insert(true_bcb);
                 bcb_needs_counter.insert(false_bcb);
             }
-            MappingKind::MCDCBranch { true_bcb, false_bcb, mcdc_params: _ } => {
-                bcb_needs_counter.insert(true_bcb);
-                bcb_needs_counter.insert(false_bcb);
-            }
-            MappingKind::MCDCDecision(_) => {}
         }
     }
 

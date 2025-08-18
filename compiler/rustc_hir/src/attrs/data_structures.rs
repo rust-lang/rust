@@ -187,6 +187,24 @@ pub enum CfgEntry {
     Version(Option<RustcVersion>, Span),
 }
 
+/// Possible values for the `#[linkage]` attribute, allowing to specify the
+/// linkage type for a `MonoItem`.
+///
+/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
+#[derive(Encodable, Decodable, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum Linkage {
+    AvailableExternally,
+    Common,
+    ExternalWeak,
+    External,
+    Internal,
+    LinkOnceAny,
+    LinkOnceODR,
+    WeakAny,
+    WeakODR,
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -248,6 +266,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_allow_incoherent_impl]`.
     AllowIncoherentImpl(Span),
+
+    /// Represents `#[allow_internal_unsafe]`.
+    AllowInternalUnsafe(Span),
 
     /// Represents `#[allow_internal_unstable]`.
     AllowInternalUnstable(ThinVec<(Symbol, Span)>, Span),
@@ -357,6 +378,9 @@ pub enum AttributeKind {
     /// Represents [`#[link_section]`](https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute)
     LinkSection { name: Symbol, span: Span },
 
+    /// Represents `#[linkage]`.
+    Linkage(Linkage, Span),
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -435,6 +459,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
+
+    /// Represents `#[should_panic]`
+    ShouldPanic { reason: Option<Symbol>, span: Span },
 
     /// Represents `#[rustc_skip_during_method_dispatch]`.
     SkipDuringMethodDispatch { array: bool, boxed_slice: bool, span: Span },

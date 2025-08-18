@@ -880,6 +880,14 @@ fn link_natively(
                             windows_registry::find_tool(&sess.target.arch, "link.exe").is_some();
 
                         sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+
+                        // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
+                        // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
+                        const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
+                        if code == STATUS_STACK_BUFFER_OVERRUN {
+                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
+                        }
+
                         if is_vs_installed && has_linker {
                             // the linker is broken
                             sess.dcx().emit_note(errors::RepairVSBuildTools);
@@ -3026,7 +3034,7 @@ pub(crate) fn are_upstream_rust_objects_already_included(sess: &Session) -> bool
 /// We need to communicate five things to the linker on Apple/Darwin targets:
 /// - The architecture.
 /// - The operating system (and that it's an Apple platform).
-/// - The environment / ABI.
+/// - The environment.
 /// - The deployment target.
 /// - The SDK version.
 fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
@@ -3040,7 +3048,7 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     // `sess.target.arch` (`target_arch`) is not detailed enough.
     let llvm_arch = sess.target.llvm_target.split_once('-').expect("LLVM target must have arch").0;
     let target_os = &*sess.target.os;
-    let target_abi = &*sess.target.abi;
+    let target_env = &*sess.target.env;
 
     // The architecture name to forward to the linker.
     //
@@ -3091,14 +3099,14 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
         // > - visionos-simulator
         // > - xros-simulator
         // > - driverkit
-        let platform_name = match (target_os, target_abi) {
+        let platform_name = match (target_os, target_env) {
             (os, "") => os,
             ("ios", "macabi") => "mac-catalyst",
             ("ios", "sim") => "ios-simulator",
             ("tvos", "sim") => "tvos-simulator",
             ("watchos", "sim") => "watchos-simulator",
             ("visionos", "sim") => "visionos-simulator",
-            _ => bug!("invalid OS/ABI combination for Apple target: {target_os}, {target_abi}"),
+            _ => bug!("invalid OS/env combination for Apple target: {target_os}, {target_env}"),
         };
 
         let min_version = sess.apple_deployment_target().fmt_full().to_string();
@@ -3186,39 +3194,60 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
 }
 
 fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
-    let os = &sess.target.os;
-    if sess.target.vendor != "apple"
-        || !matches!(os.as_ref(), "ios" | "tvos" | "watchos" | "visionos" | "macos")
-        || !matches!(flavor, LinkerFlavor::Darwin(..))
-    {
+    if !sess.target.is_like_darwin {
         return None;
     }
-
-    if os == "macos" && !matches!(flavor, LinkerFlavor::Darwin(Cc::No, _)) {
+    let LinkerFlavor::Darwin(cc, _) = flavor else {
         return None;
+    };
+
+    // The default compiler driver on macOS is at `/usr/bin/cc`. This is a trampoline binary that
+    // effectively invokes `xcrun cc` internally to look up both the compiler binary and the SDK
+    // root from the current Xcode installation. When cross-compiling, when `rustc` is invoked
+    // inside Xcode, or when invoking the linker directly, this default logic is unsuitable, so
+    // instead we invoke `xcrun` manually.
+    //
+    // (Note that this doesn't mean we get a duplicate lookup here - passing `SDKROOT` below will
+    // cause the trampoline binary to skip looking up the SDK itself).
+    let sdkroot = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
+
+    if cc == Cc::Yes {
+        // There are a few options to pass the SDK root when linking with a C/C++ compiler:
+        // - The `--sysroot` flag.
+        // - The `-isysroot` flag.
+        // - The `SDKROOT` environment variable.
+        //
+        // `--sysroot` isn't actually enough to get Clang to treat it as a platform SDK, you need
+        // to specify `-isysroot`. This is admittedly a bit strange, as on most targets `-isysroot`
+        // only applies to include header files, but on Apple targets it also applies to libraries
+        // and frameworks.
+        //
+        // This leaves the choice between `-isysroot` and `SDKROOT`. Both are supported by Clang and
+        // GCC, though they may not be supported by all compiler drivers. We choose `SDKROOT`,
+        // primarily because that is the same interface that is used when invoking the tool under
+        // `xcrun -sdk macosx $tool`.
+        //
+        // In that sense, if a given compiler driver does not support `SDKROOT`, the blame is fairly
+        // clearly in the tool in question, since they also don't support being run under `xcrun`.
+        //
+        // Additionally, `SDKROOT` is an environment variable and thus optional. It also has lower
+        // precedence than `-isysroot`, so a custom compiler driver that does not support it and
+        // instead figures out the SDK on their own can easily do so by using `-isysroot`.
+        //
+        // (This in particular affects Clang built with the `DEFAULT_SYSROOT` CMake flag, such as
+        // the one provided by some versions of Homebrew's `llvm` package. Those will end up
+        // ignoring the value we set here, and instead use their built-in sysroot).
+        cmd.cmd().env("SDKROOT", &sdkroot);
+    } else {
+        // When invoking the linker directly, we use the `-syslibroot` parameter. `SDKROOT` is not
+        // read by the linker, so it's really the only option.
+        //
+        // This is also what Clang does.
+        cmd.link_arg("-syslibroot");
+        cmd.link_arg(&sdkroot);
     }
 
-    let sdk_root = sess.time("get_apple_sdk_root", || get_apple_sdk_root(sess))?;
-
-    match flavor {
-        LinkerFlavor::Darwin(Cc::Yes, _) => {
-            // Use `-isysroot` instead of `--sysroot`, as only the former
-            // makes Clang treat it as a platform SDK.
-            //
-            // This is admittedly a bit strange, as on most targets
-            // `-isysroot` only applies to include header files, but on Apple
-            // targets this also applies to libraries and frameworks.
-            cmd.cc_arg("-isysroot");
-            cmd.cc_arg(&sdk_root);
-        }
-        LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_arg("-syslibroot");
-            cmd.link_arg(&sdk_root);
-        }
-        _ => unreachable!(),
-    }
-
-    Some(sdk_root)
+    Some(sdkroot)
 }
 
 fn get_apple_sdk_root(sess: &Session) -> Option<PathBuf> {
@@ -3247,7 +3276,13 @@ fn get_apple_sdk_root(sess: &Session) -> Option<PathBuf> {
             }
             "macosx"
                 if sdkroot.contains("iPhoneOS.platform")
-                    || sdkroot.contains("iPhoneSimulator.platform") => {}
+                    || sdkroot.contains("iPhoneSimulator.platform")
+                    || sdkroot.contains("AppleTVOS.platform")
+                    || sdkroot.contains("AppleTVSimulator.platform")
+                    || sdkroot.contains("WatchOS.platform")
+                    || sdkroot.contains("WatchSimulator.platform")
+                    || sdkroot.contains("XROS.platform")
+                    || sdkroot.contains("XRSimulator.platform") => {}
             "watchos"
                 if sdkroot.contains("WatchSimulator.platform")
                     || sdkroot.contains("MacOSX.platform") => {}

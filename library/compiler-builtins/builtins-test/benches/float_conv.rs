@@ -365,7 +365,6 @@ float_bench! {
 
 /* float -> unsigned int */
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_u32,
     sig: (a: f32) -> u32,
@@ -387,7 +386,6 @@ float_bench! {
     ],
 }
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_u64,
     sig: (a: f32) -> u64,
@@ -409,7 +407,6 @@ float_bench! {
     ],
 }
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_u128,
     sig: (a: f32) -> u128,
@@ -505,7 +502,6 @@ float_bench! {
 
 /* float -> signed int */
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_i32,
     sig: (a: f32) -> i32,
@@ -527,7 +523,6 @@ float_bench! {
     ],
 }
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_i64,
     sig: (a: f32) -> i64,
@@ -549,7 +544,6 @@ float_bench! {
     ],
 }
 
-#[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
 float_bench! {
     name: conv_f32_i128,
     sig: (a: f32) -> i128,
@@ -666,9 +660,6 @@ pub fn float_conv() {
     conv_f64_i128(&mut criterion);
 
     #[cfg(f128_enabled)]
-    // FIXME: ppc64le has a sporadic overflow panic in the crate functions
-    // <https://github.com/rust-lang/compiler-builtins/issues/617#issuecomment-2125914639>
-    #[cfg(not(all(target_arch = "powerpc64", target_endian = "little")))]
     {
         conv_u32_f128(&mut criterion);
         conv_u64_f128(&mut criterion);

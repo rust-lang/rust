@@ -281,9 +281,11 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
 #![feature(char_max_len)]
+#![feature(const_trait_impl)]
 #![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
+#![feature(derive_const)]
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(doc_masked)]
@@ -321,15 +323,19 @@
 #![feature(try_blocks)]
 #![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
-#![feature(unsigned_signed_diff)]
 // tidy-alphabetical-end
 //
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(cast_maybe_uninit)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
+#![feature(const_cmp)]
+#![feature(const_ops)]
+#![feature(const_option_ops)]
+#![feature(const_try)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]
 #![feature(drop_guard)]
@@ -422,11 +428,15 @@
 //
 #![default_lib_allocator]
 
+// The Rust prelude
+// The compiler expects the prelude definition to be defined before it's use statement.
+pub mod prelude;
+
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
 #[prelude_import]
 #[allow(unused)]
-use prelude::rust_2021::*;
+use prelude::rust_2024::*;
 
 // Access to Bencher, etc.
 #[cfg(test)]
@@ -476,9 +486,6 @@ mod macros;
 // compiler
 #[macro_use]
 pub mod rt;
-
-// The Rust prelude
-pub mod prelude;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;

@@ -3,6 +3,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_middle::span_bug;
 use rustc_middle::thir::visit::{self, Visitor};
 use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
@@ -136,7 +137,15 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
 
         if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
             if caller_sig.inputs() != callee_sig.inputs() {
-                self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
+                self.report_arguments_mismatch(
+                    expr.span,
+                    self.tcx.liberate_late_bound_regions(
+                        CRATE_DEF_ID.to_def_id(),
+                        self.caller_ty.fn_sig(self.tcx),
+                    ),
+                    self.tcx
+                        .liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+                );
             }
 
             // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.

@@ -1,5 +1,6 @@
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
+use rustc_hir::{MethodKind, Target};
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 
@@ -7,7 +8,8 @@ use super::{
     AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
     NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::{AcceptContext, FinalizeContext, Stage};
+use crate::context::MaybeWarn::{Allow, Warn};
+use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
 
@@ -17,7 +19,14 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
@@ -49,6 +58,15 @@ pub(crate) struct ColdParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::ForeignFn),
+        Allow(Target::Closure),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
 
@@ -58,6 +76,17 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Mod),
+        Allow(Target::Crate),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -97,6 +126,16 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Static),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+        Warn(Target::MacroDef),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -138,6 +177,12 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
                 this.span = Some(cx.attr_span);
             }
         })];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
 
     fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // FIXME(jdonszelmann): upgrade this list to *parsed* attributes
@@ -230,6 +275,18 @@ pub(crate) struct TrackCallerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::ForeignFn),
+        Allow(Target::Closure),
+        Warn(Target::MacroDef),
+        Warn(Target::Arm),
+        Warn(Target::Field),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 }
 
@@ -237,6 +294,12 @@ pub(crate) struct NoMangleParser;
 impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Static),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
 
@@ -253,7 +316,7 @@ pub(crate) struct UsedParser {
 impl<S: Stage> AttributeParser<S> for UsedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::used],
-        template!(Word, List: "compiler|linker"),
+        template!(Word, List: &["compiler", "linker"]),
         |group: &mut Self, cx, args| {
             let used_by = match args {
                 ArgParser::NoArgs => UsedBy::Linker,
@@ -310,6 +373,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
             }
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
@@ -327,7 +391,7 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature(items, span);
-    const TEMPLATE: AttributeTemplate = template!(List: "enable = \"feat1, feat2\"");
+    const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -373,4 +437,15 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         }
         features
     }
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Statement),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+        Warn(Target::MacroDef),
+    ]);
 }

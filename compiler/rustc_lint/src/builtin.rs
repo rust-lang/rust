@@ -21,6 +21,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::expr_to_string;
+use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, LintDiagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
@@ -248,12 +249,6 @@ impl UnsafeCode {
 }
 
 impl EarlyLintPass for UnsafeCode {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if attr.has_name(sym::allow_internal_unsafe) {
-            self.report_unsafe(cx, attr.span, BuiltinUnsafe::AllowInternalUnsafe);
-        }
-    }
-
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
@@ -270,7 +265,10 @@ impl EarlyLintPass for UnsafeCode {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeTrait);
             }
 
-            ast::ItemKind::Impl(box ast::Impl { safety: ast::Safety::Unsafe(_), .. }) => {
+            ast::ItemKind::Impl(ast::Impl {
+                of_trait: Some(box ast::TraitImplHeader { safety: ast::Safety::Unsafe(_), .. }),
+                ..
+            }) => {
                 self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeImpl);
             }
 
@@ -309,6 +307,19 @@ impl EarlyLintPass for UnsafeCode {
             ast::ItemKind::ForeignMod(ForeignMod { safety, .. }) => {
                 if let Safety::Unsafe(_) = safety {
                     self.report_unsafe(cx, it.span, BuiltinUnsafe::UnsafeExternBlock);
+                }
+            }
+
+            ast::ItemKind::MacroDef(..) => {
+                if let Some(attr) = AttributeParser::parse_limited(
+                    cx.builder.sess(),
+                    &it.attrs,
+                    sym::allow_internal_unsafe,
+                    it.span,
+                    DUMMY_NODE_ID,
+                    Some(cx.builder.features()),
+                ) {
+                    self.report_unsafe(cx, attr.span(), BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 

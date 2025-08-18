@@ -920,7 +920,11 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_alphanumeric(self) -> bool {
-        self.is_alphabetic() || self.is_numeric()
+        if self.is_ascii() {
+            self.is_ascii_alphanumeric()
+        } else {
+            unicode::Alphabetic(self) || unicode::N(self)
+        }
     }
 
     /// Returns `true` if this `char` has the general category for control codes.

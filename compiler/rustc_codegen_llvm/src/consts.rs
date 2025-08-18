@@ -4,14 +4,15 @@ use rustc_abi::{Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::LangItem;
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
     Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
     read_target_uint,
 };
-use rustc_middle::mir::mono::{Linkage, MonoItem};
+use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
@@ -191,8 +192,8 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         // linkage and there are no definitions), then
         // `extern_with_linkage_foo` will instead be initialized to
         // zero.
-        let mut real_name = "_rust_extern_with_linkage_".to_string();
-        real_name.push_str(sym);
+        let real_name =
+            format!("_rust_extern_with_linkage_{:016x}_{sym}", cx.tcx.stable_crate_id(LOCAL_CRATE));
         let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
             cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
                 span: cx.tcx.def_span(def_id),

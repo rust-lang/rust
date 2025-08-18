@@ -68,5 +68,19 @@ LL ~         returns_result(()).unwrap();
 LL ~         returns_result(()).unwrap();
    |
 
-error: aborting due to 4 previous errors
+error: this let-binding has unit value
+  --> tests/ui/let_unit.rs:206:5
+   |
+LL |     let res = return_unit();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: replace variable usages with `()`
+   |
+LL ~     let res = ();
+LL ~     return_unit();
+LL |
+LL ~     do_something(());
+   |
+
+error: aborting due to 5 previous errors
 

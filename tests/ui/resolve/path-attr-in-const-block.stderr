@@ -12,6 +12,8 @@ LL |         #![path = foo!()]
    |         |         |
    |         |         expected a string literal here
    |         help: must be of the form: `#[path = "file"]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/modules.html#the-path-attribute>
 
 error: aborting due to 2 previous errors
 

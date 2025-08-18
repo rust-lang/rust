@@ -260,7 +260,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const Fn<A> for &F
     where
-        F: ~const Fn<A>,
+        F: [const] Fn<A>,
     {
         extern "rust-call" fn call(&self, args: A) -> F::Output {
             (**self).call(args)
@@ -271,7 +271,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnMut<A> for &F
     where
-        F: ~const Fn<A>,
+        F: [const] Fn<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (**self).call(args)
@@ -282,7 +282,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnOnce<A> for &F
     where
-        F: ~const Fn<A>,
+        F: [const] Fn<A>,
     {
         type Output = F::Output;
 
@@ -295,7 +295,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnMut<A> for &mut F
     where
-        F: ~const FnMut<A>,
+        F: [const] FnMut<A>,
     {
         extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
             (*self).call_mut(args)
@@ -306,7 +306,7 @@ mod impls {
     #[rustc_const_unstable(feature = "const_trait_impl", issue = "143874")]
     impl<A: Tuple, F: ?Sized> const FnOnce<A> for &mut F
     where
-        F: ~const FnMut<A>,
+        F: [const] FnMut<A>,
     {
         type Output = F::Output;
         extern "rust-call" fn call_once(self, args: A) -> F::Output {

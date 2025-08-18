@@ -1,13 +1,14 @@
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
 use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
+use crate::context::MaybeWarn::{Allow, Error};
+use crate::context::{AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
-
 pub(crate) struct DeprecationParser;
 
 fn get<S: Stage>(
@@ -38,9 +39,33 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const PATH: &[Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Mod),
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::Const),
+        Allow(Target::Static),
+        Allow(Target::MacroDef),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::TyAlias),
+        Allow(Target::Use),
+        Allow(Target::ForeignFn),
+        Allow(Target::Field),
+        Allow(Target::Trait),
+        Allow(Target::AssocTy),
+        Allow(Target::AssocConst),
+        Allow(Target::Variant),
+        Allow(Target::Impl { of_trait: false }), //FIXME This does not make sense
+        Allow(Target::Crate),
+        Error(Target::WherePredicate),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word,
-        List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
+        List: &[r#"since = "version""#, r#"note = "reason""#, r#"since = "version", note = "reason""#],
         NameValueStr: "reason"
     );
 

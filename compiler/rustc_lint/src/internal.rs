@@ -411,11 +411,11 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Impl(box ast::Impl { of_trait: Some(lint_pass), .. }) = &item.kind
-            && let Some(last) = lint_pass.path.segments.last()
+        if let ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) = &item.kind
+            && let Some(last) = of_trait.trait_ref.path.segments.last()
             && last.ident.name == sym::LintPass
         {
-            let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
+            let expn_data = of_trait.trait_ref.path.span.ctxt().outer_expn_data();
             let call_site = expn_data.call_site;
             if expn_data.kind != ExpnKind::Macro(MacroKind::Bang, sym::impl_lint_pass)
                 && call_site.ctxt().outer_expn_data().kind
@@ -423,7 +423,7 @@ impl EarlyLintPass for LintPassImpl {
             {
                 cx.emit_span_lint(
                     LINT_PASS_IMPL_WITHOUT_MACRO,
-                    lint_pass.path.span,
+                    of_trait.trait_ref.path.span,
                     LintPassByHand,
                 );
             }
@@ -582,8 +582,8 @@ impl Diagnostics {
         for (_hir_id, parent) in cx.tcx.hir_parent_iter(current_id) {
             debug!(?parent);
             if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) = parent
-                && let hir::Impl { of_trait: Some(of_trait), .. } = impl_
-                && let Some(def_id) = of_trait.trait_def_id()
+                && let Some(of_trait) = impl_.of_trait
+                && let Some(def_id) = of_trait.trait_ref.trait_def_id()
                 && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 && matches!(name, sym::Diagnostic | sym::Subdiagnostic | sym::LintDiagnostic)
             {

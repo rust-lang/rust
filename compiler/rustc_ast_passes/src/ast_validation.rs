@@ -22,7 +22,6 @@ use std::str::FromStr;
 
 use itertools::{Either, Itertools};
 use rustc_abi::{CanonAbi, ExternAbi, InterruptKind};
-use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
@@ -294,6 +293,21 @@ impl<'a> AstValidator<'a> {
         });
     }
 
+    fn check_async_fn_in_const_trait_or_impl(&self, sig: &FnSig, parent: &TraitOrTraitImpl) {
+        let Some(const_keyword) = parent.constness() else { return };
+
+        let Some(CoroutineKind::Async { span: async_keyword, .. }) = sig.header.coroutine_kind
+        else {
+            return;
+        };
+
+        self.dcx().emit_err(errors::AsyncFnInConstTraitOrTraitImpl {
+            async_keyword,
+            in_impl: matches!(parent, TraitOrTraitImpl::TraitImpl { .. }),
+            const_keyword,
+        });
+    }
+
     fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         self.check_decl_num_args(fn_decl);
         self.check_decl_cvariadic_pos(fn_decl);
@@ -391,7 +405,13 @@ impl<'a> AstValidator<'a> {
                         if let InterruptKind::X86 = interrupt_kind {
                             // "x86-interrupt" is special because it does have arguments.
                             // FIXME(workingjubilee): properly lint on acceptable input types.
-                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+                            if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+                                && match &ret_ty.kind {
+                                    TyKind::Never => false,
+                                    TyKind::Tup(tup) if tup.is_empty() => false,
+                                    _ => true,
+                                }
+                            {
                                 self.dcx().emit_err(errors::AbiMustNotHaveReturnType {
                                     span: ret_ty.span,
                                     abi,
@@ -450,7 +470,13 @@ impl<'a> AstValidator<'a> {
 
     fn reject_params_or_return(&self, abi: ExternAbi, ident: &Ident, sig: &FnSig) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
-        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
+            && match &ret_ty.kind {
+                TyKind::Never => false,
+                TyKind::Tup(tup) if tup.is_empty() => false,
+                _ => true,
+            }
+        {
             spans.push(ret_ty.span);
         }
 
@@ -699,23 +725,27 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
+    fn deny_super_traits(&self, bounds: &GenericBounds, ident: Span) {
         if let [.., last] = &bounds[..] {
-            let span = ident_span.shrink_to_hi().to(last.span());
-            self.dcx().emit_err(errors::AutoTraitBounds { span, ident: ident_span });
+            let span = bounds.iter().map(|b| b.span()).collect();
+            let removal = ident.shrink_to_hi().to(last.span());
+            self.dcx().emit_err(errors::AutoTraitBounds { span, removal, ident });
         }
     }
 
-    fn deny_where_clause(&self, where_clause: &WhereClause, ident_span: Span) {
+    fn deny_where_clause(&self, where_clause: &WhereClause, ident: Span) {
         if !where_clause.predicates.is_empty() {
             // FIXME: The current diagnostic is misleading since it only talks about
             // super trait and lifetime bounds while we should just say “bounds”.
-            self.dcx()
-                .emit_err(errors::AutoTraitBounds { span: where_clause.span, ident: ident_span });
+            self.dcx().emit_err(errors::AutoTraitBounds {
+                span: vec![where_clause.span],
+                removal: where_clause.span,
+                ident,
+            });
         }
     }
 
-    fn deny_items(&self, trait_items: &[P<AssocItem>], ident_span: Span) {
+    fn deny_items(&self, trait_items: &[Box<AssocItem>], ident_span: Span) {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.kind.ident().unwrap().span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
@@ -951,13 +981,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match &item.kind {
-            ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness: _,
-                constness,
+            ItemKind::Impl(Impl {
                 generics,
-                of_trait: Some(t),
+                of_trait:
+                    Some(box TraitImplHeader {
+                        safety,
+                        polarity,
+                        defaultness: _,
+                        constness,
+                        trait_ref: t,
+                    }),
                 self_ty,
                 items,
             }) => {
@@ -989,46 +1022,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Impl { of_trait: true });
                 });
             }
-            ItemKind::Impl(box Impl {
-                safety,
-                polarity,
-                defaultness,
-                constness,
-                generics,
-                of_trait: None,
-                self_ty,
-                items,
-            }) => {
-                let error = |annotation_span, annotation, only_trait| errors::InherentImplCannot {
-                    span: self_ty.span,
-                    annotation_span,
-                    annotation,
-                    self_ty: self_ty.span,
-                    only_trait,
-                };
-
+            ItemKind::Impl(Impl { generics, of_trait: None, self_ty, items }) => {
                 self.visit_attrs_vis(&item.attrs, &item.vis);
                 self.visibility_not_permitted(
                     &item.vis,
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
-                if let &Safety::Unsafe(span) = safety {
-                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
-                        span: self_ty.span,
-                        annotation_span: span,
-                        annotation: "unsafe",
-                        self_ty: self_ty.span,
-                    });
-                }
-                if let &ImplPolarity::Negative(span) = polarity {
-                    self.dcx().emit_err(error(span, "negative", false));
-                }
-                if let &Defaultness::Default(def_span) = defaultness {
-                    self.dcx().emit_err(error(def_span, "`default`", true));
-                }
-                if let &Const::Yes(span) = constness {
-                    self.dcx().emit_err(error(span, "`const`", true));
-                }
 
                 self.with_tilde_const(Some(TildeConstReason::Impl { span: item.span }), |this| {
                     this.visit_generics(generics)
@@ -1594,6 +1593,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
             if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                 self.check_trait_fn_not_const(sig.header.constness, parent);
+                self.check_async_fn_in_const_trait_or_impl(sig, parent);
             }
         }
 
@@ -1769,7 +1769,7 @@ fn deny_equality_constraints(
                         .map(|segment| segment.ident.name)
                         .zip(poly.trait_ref.path.segments.iter().map(|segment| segment.ident.name))
                         .all(|(a, b)| a == b)
-                        && let Some(potential_assoc) = full_path.segments.iter().last()
+                        && let Some(potential_assoc) = full_path.segments.last()
                     {
                         suggest(poly, potential_assoc, predicate);
                     }

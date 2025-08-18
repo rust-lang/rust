@@ -33,9 +33,6 @@ extern crate std;
 #[prelude_import]
 use std::prelude::rust_2024::*;
 
-#[prelude_import]
-use self::prelude::*;
-
 mod prelude {
     use std::prelude::rust_2024::*;
 
@@ -47,6 +44,9 @@ mod prelude {
         ();
     }
 }
+
+#[prelude_import]
+use self::prelude::*;
 
 /// inner single-line doc comment
 /**
@@ -509,7 +509,7 @@ mod items {
         impl () { }
         impl <T> () { }
         impl Default for () { }
-        impl const <T> Default for () { }
+        impl <T> const Default for () { }
     }
     /// ItemKind::MacCall
     mod item_mac_call { }

@@ -25,6 +25,12 @@ pub(super) fn check(
         return;
     }
 
+    // If the `as` is from a macro and the casting type is from macro input, whether it is lossless is
+    // dependent on the input
+    if expr.span.from_expansion() && !cast_to_hir.span.eq_ctxt(expr.span) {
+        return;
+    }
+
     span_lint_and_then(
         cx,
         CAST_LOSSLESS,

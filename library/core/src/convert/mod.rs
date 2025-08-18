@@ -717,7 +717,7 @@ pub trait TryFrom<T>: Sized {
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T: PointeeSized, U: PointeeSized> const AsRef<U> for &T
 where
-    T: ~const AsRef<U>,
+    T: [const] AsRef<U>,
 {
     #[inline]
     fn as_ref(&self) -> &U {
@@ -730,7 +730,7 @@ where
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T: PointeeSized, U: PointeeSized> const AsRef<U> for &mut T
 where
-    T: ~const AsRef<U>,
+    T: [const] AsRef<U>,
 {
     #[inline]
     fn as_ref(&self) -> &U {
@@ -751,7 +751,7 @@ where
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T: PointeeSized, U: PointeeSized> const AsMut<U> for &mut T
 where
-    T: ~const AsMut<U>,
+    T: [const] AsMut<U>,
 {
     #[inline]
     fn as_mut(&mut self) -> &mut U {
@@ -772,7 +772,7 @@ where
 #[rustc_const_unstable(feature = "const_from", issue = "143773")]
 impl<T, U> const Into<U> for T
 where
-    U: ~const From<T>,
+    U: [const] From<T>,
 {
     /// Calls `U::from(self)`.
     ///
@@ -816,7 +816,7 @@ impl<T> const From<!> for T {
 #[rustc_const_unstable(feature = "const_from", issue = "143773")]
 impl<T, U> const TryInto<U> for T
 where
-    U: ~const TryFrom<T>,
+    U: [const] TryFrom<T>,
 {
     type Error = U::Error;
 
@@ -832,7 +832,7 @@ where
 #[rustc_const_unstable(feature = "const_from", issue = "143773")]
 impl<T, U> const TryFrom<U> for T
 where
-    U: ~const Into<T>,
+    U: [const] Into<T>,
 {
     type Error = Infallible;
 

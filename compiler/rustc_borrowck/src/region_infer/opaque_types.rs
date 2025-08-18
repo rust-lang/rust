@@ -6,13 +6,20 @@ use rustc_middle::ty::{
     TypeVisitableExt, fold_regions,
 };
 use rustc_span::Span;
-use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
+use rustc_trait_selection::opaque_types::{
+    InvalidOpaqueTypeArgs, check_opaque_type_parameter_valid,
+};
 use tracing::{debug, instrument};
 
 use super::RegionInferenceContext;
 use crate::BorrowCheckRootCtxt;
 use crate::session_diagnostics::LifetimeMismatchOpaqueParam;
 use crate::universal_regions::RegionClassification;
+
+pub(crate) enum DeferredOpaqueTypeError<'tcx> {
+    InvalidOpaqueTypeArgs(InvalidOpaqueTypeArgs<'tcx>),
+    LifetimeMismatchOpaqueParam(LifetimeMismatchOpaqueParam<'tcx>),
+}
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Resolve any opaque types that were encountered while borrow checking
@@ -58,13 +65,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// [rustc-dev-guide chapter]:
     /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
-    #[instrument(level = "debug", skip(self, root_cx, infcx), ret)]
+    #[instrument(level = "debug", skip(self, root_cx, infcx))]
     pub(crate) fn infer_opaque_types(
         &self,
         root_cx: &mut BorrowCheckRootCtxt<'tcx>,
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-    ) {
+    ) -> Vec<DeferredOpaqueTypeError<'tcx>> {
+        let mut errors = Vec::new();
         let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
             FxIndexMap::default();
 
@@ -124,8 +132,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             });
             debug!(?concrete_type);
 
-            let ty =
-                infcx.infer_opaque_definition_from_instantiation(opaque_type_key, concrete_type);
+            let ty = match infcx
+                .infer_opaque_definition_from_instantiation(opaque_type_key, concrete_type)
+            {
+                Ok(ty) => ty,
+                Err(err) => {
+                    errors.push(DeferredOpaqueTypeError::InvalidOpaqueTypeArgs(err));
+                    continue;
+                }
+            };
 
             // Sometimes, when the hidden type is an inference variable, it can happen that
             // the hidden type becomes the opaque type itself. In this case, this was an opaque
@@ -149,25 +164,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // non-region parameters. This is necessary because within the new solver we perform
             // various query operations modulo regions, and thus could unsoundly select some impls
             // that don't hold.
-            if !ty.references_error()
-                && let Some((prev_decl_key, prev_span)) = decls_modulo_regions.insert(
-                    infcx.tcx.erase_regions(opaque_type_key),
-                    (opaque_type_key, concrete_type.span),
-                )
-                && let Some((arg1, arg2)) = std::iter::zip(
-                    prev_decl_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),
-                    opaque_type_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),
-                )
-                .find(|(arg1, arg2)| arg1 != arg2)
+            if let Some((prev_decl_key, prev_span)) = decls_modulo_regions.insert(
+                infcx.tcx.erase_regions(opaque_type_key),
+                (opaque_type_key, concrete_type.span),
+            ) && let Some((arg1, arg2)) = std::iter::zip(
+                prev_decl_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),
+                opaque_type_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),
+            )
+            .find(|(arg1, arg2)| arg1 != arg2)
             {
-                infcx.dcx().emit_err(LifetimeMismatchOpaqueParam {
-                    arg: arg1,
-                    prev: arg2,
-                    span: prev_span,
-                    prev_span: concrete_type.span,
-                });
+                errors.push(DeferredOpaqueTypeError::LifetimeMismatchOpaqueParam(
+                    LifetimeMismatchOpaqueParam {
+                        arg: arg1,
+                        prev: arg2,
+                        span: prev_span,
+                        prev_span: concrete_type.span,
+                    },
+                ));
             }
         }
+
+        errors
     }
 
     /// Map the regions in the type to named regions. This is similar to what
@@ -260,19 +277,13 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
-    ) -> Ty<'tcx> {
-        if let Some(e) = self.tainted_by_errors() {
-            return Ty::new_error(self.tcx, e);
-        }
-
-        if let Err(err) = check_opaque_type_parameter_valid(
+    ) -> Result<Ty<'tcx>, InvalidOpaqueTypeArgs<'tcx>> {
+        check_opaque_type_parameter_valid(
             self,
             opaque_type_key,
             instantiated_ty.span,
             DefiningScopeKind::MirBorrowck,
-        ) {
-            return Ty::new_error(self.tcx, err.report(self));
-        }
+        )?;
 
         let definition_ty = instantiated_ty
             .remap_generic_params_to_declaration_params(
@@ -282,10 +293,7 @@ impl<'tcx> InferCtxt<'tcx> {
             )
             .ty;
 
-        if let Err(e) = definition_ty.error_reported() {
-            return Ty::new_error(self.tcx, e);
-        }
-
-        definition_ty
+        definition_ty.error_reported()?;
+        Ok(definition_ty)
     }
 }

@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/14382
+
 //@ run-pass
 #[derive(Debug)]
 struct Matrix4<S>(#[allow(dead_code)] S);
@@ -13,5 +15,3 @@ fn main() {
     let m : Matrix4<f32> = translate(x);
     println!("m: {:?}", m);
 }
-
-// https://github.com/rust-lang/rust/issues/14382

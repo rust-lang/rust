@@ -1,15 +1,23 @@
-use crate::{is_win7, is_windows, is_windows_msvc, uname};
+use crate::{is_arm64ec, is_win7, is_windows, is_windows_msvc, uname};
+
+fn get_windows_msvc_libs() -> Vec<&'static str> {
+    let mut libs =
+        vec!["ws2_32.lib", "userenv.lib", "bcrypt.lib", "ntdll.lib", "synchronization.lib"];
+    if is_win7() {
+        libs.push("advapi32.lib");
+    }
+    libs
+}
 
 /// `EXTRACFLAGS`
 pub fn extra_c_flags() -> Vec<&'static str> {
     if is_windows() {
         if is_windows_msvc() {
-            let mut libs =
-                vec!["ws2_32.lib", "userenv.lib", "bcrypt.lib", "ntdll.lib", "synchronization.lib"];
-            if is_win7() {
-                libs.push("advapi32.lib");
+            let mut args = get_windows_msvc_libs();
+            if is_arm64ec() {
+                args.push("/arm64EC");
             }
-            libs
+            args
         } else {
             vec!["-lws2_32", "-luserenv", "-lbcrypt", "-lntdll", "-lsynchronization"]
         }
@@ -23,6 +31,18 @@ pub fn extra_c_flags() -> Vec<&'static str> {
             n if n.contains("OpenBSD") => vec!["-lm", "-lpthread", "-lc++abi"],
             _ => vec!["-lm", "-lrt", "-ldl", "-lpthread"],
         }
+    }
+}
+
+pub fn extra_linker_flags() -> Vec<&'static str> {
+    if is_windows_msvc() {
+        let mut args = get_windows_msvc_libs();
+        if is_arm64ec() {
+            args.push("/MACHINE:ARM64EC");
+        }
+        args
+    } else {
+        vec![]
     }
 }
 

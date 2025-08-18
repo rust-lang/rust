@@ -1,3 +1,5 @@
+//@ run-rustfix
+
 #![allow(dead_code, path_statements)]
 #![deny(unused_attributes, unused_must_use)]
 #![feature(asm_experimental_arch, stmt_expr_attributes, trait_alias)]
@@ -133,4 +135,5 @@ fn main() {
     }
     let s = PatternField { #[must_use]  foo: 123 }; //~ ERROR `#[must_use]` has no effect
     let PatternField { #[must_use] foo } = s; //~ ERROR `#[must_use]` has no effect
+    let _ = foo;
 }

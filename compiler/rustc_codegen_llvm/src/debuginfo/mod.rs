@@ -30,7 +30,7 @@ use tracing::debug;
 
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
-use self::utils::{DIB, create_DIArray, debug_context, is_node_local_to_unit};
+use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
@@ -131,28 +131,20 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 /// Creates any deferred debug metadata nodes
-pub(crate) fn finalize(cx: &mut CodegenCx<'_, '_>) {
-    if cx.dbg_cx.is_none() {
-        return;
+pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
+    if let Some(dbg_cx) = &cx.dbg_cx {
+        debug!("finalize");
+
+        if gdb::needs_gdb_debug_scripts_section(cx) {
+            // Add a .debug_gdb_scripts section to this compile-unit. This will
+            // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
+            // which activates the Rust pretty printers for binary this section is
+            // contained in.
+            gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
+        }
+
+        dbg_cx.finalize(cx.sess());
     }
-
-    debug!("finalize");
-
-    if gdb::needs_gdb_debug_scripts_section(cx) {
-        // Add a .debug_gdb_scripts section to this compile-unit. This will
-        // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
-        // which activates the Rust pretty printers for binary this section is
-        // contained in.
-        let section_var = gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
-
-        // Make sure that the linker doesn't optimize the global away. Adding
-        // it to `llvm.used` has the advantage that it works even in no_std
-        // binaries, where we don't have a main shim and thus don't emit a
-        // volatile load to preserve the global.
-        cx.add_used_global(section_var);
-    }
-
-    debug_context(cx).finalize(cx.sess());
 }
 
 impl<'ll> Builder<'_, 'll, '_> {
@@ -541,31 +533,26 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             // First, let's see if this is a method within an inherent impl. Because
             // if yes, we want to make the result subroutine DIE a child of the
             // subroutine's self-type.
-            if let Some(impl_def_id) = cx.tcx.impl_of_assoc(instance.def_id()) {
-                // If the method does *not* belong to a trait, proceed
-                if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                    let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
-                        instance.args,
-                        cx.typing_env(),
-                        cx.tcx.type_of(impl_def_id),
-                    );
+            // For trait method impls we still use the "parallel namespace"
+            // strategy
+            if let Some(imp_def_id) = cx.tcx.inherent_impl_of_assoc(instance.def_id()) {
+                let impl_self_ty = cx.tcx.instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    cx.typing_env(),
+                    cx.tcx.type_of(imp_def_id),
+                );
 
-                    // Only "class" methods are generally understood by LLVM,
-                    // so avoid methods on other types (e.g., `<*mut T>::null`).
-                    if let ty::Adt(def, ..) = impl_self_ty.kind()
-                        && !def.is_box()
-                    {
-                        // Again, only create type information if full debuginfo is enabled
-                        if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param()
-                        {
-                            return (type_di_node(cx, impl_self_ty), true);
-                        } else {
-                            return (namespace::item_namespace(cx, def.did()), false);
-                        }
+                // Only "class" methods are generally understood by LLVM,
+                // so avoid methods on other types (e.g., `<*mut T>::null`).
+                if let ty::Adt(def, ..) = impl_self_ty.kind()
+                    && !def.is_box()
+                {
+                    // Again, only create type information if full debuginfo is enabled
+                    if cx.sess().opts.debuginfo == DebugInfo::Full && !impl_self_ty.has_param() {
+                        return (type_di_node(cx, impl_self_ty), true);
+                    } else {
+                        return (namespace::item_namespace(cx, def.did()), false);
                     }
-                } else {
-                    // For trait method impls we still use the "parallel namespace"
-                    // strategy
                 }
             }
 
@@ -622,7 +609,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         metadata::extend_scope_to_file(self, scope_metadata, file)
     }
 
-    fn debuginfo_finalize(&mut self) {
+    fn debuginfo_finalize(&self) {
         finalize(self)
     }
 

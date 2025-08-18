@@ -19,13 +19,12 @@ use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
+use rustc_middle::ty::AssocItemContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
-use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel, TargetModifier};
@@ -1982,7 +1981,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind));
+                self.tables.def_kind.set_some(def_id.index, DefKind::Macro(macro_kind.into()));
                 self.tables.proc_macro.set_some(def_id.index, macro_kind);
                 self.encode_attrs(id);
                 record!(self.tables.def_keys[def_id] <- def_key);
@@ -2207,19 +2206,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportInfo)],
     ) -> LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)> {
         empty_proc_macro!(self);
-        // The metadata symbol name is special. It should not show up in
-        // downstream crates.
-        let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
-        self.lazy_array(
-            exported_symbols
-                .iter()
-                .filter(|&(exported_symbol, _)| match *exported_symbol {
-                    ExportedSymbol::NoDefId(symbol_name) => symbol_name != metadata_symbol_name,
-                    _ => true,
-                })
-                .cloned(),
-        )
+        self.lazy_array(exported_symbols.iter().cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {

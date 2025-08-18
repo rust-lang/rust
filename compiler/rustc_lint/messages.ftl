@@ -349,6 +349,7 @@ lint_ill_formed_attribute_input = {$num_suggestions ->
         [1] attribute must be of the form {$suggestions}
         *[other] valid forms for the attribute are {$suggestions}
     }
+    .note = for more information, visit <{$docs}>
 
 lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than possibly intended in edition 2024
     .note = specifically, {$num_captured ->
@@ -982,6 +983,7 @@ lint_unused_allocation_mut = unnecessary allocation, use `&mut` instead
 
 lint_unused_builtin_attribute = unused attribute `{$attr_name}`
     .note = the built-in attribute `{$attr_name}` will be ignored, since it's applied to the macro invocation `{$macro_name}`
+    .suggestion = remove the attribute
 
 lint_unused_closure =
     unused {$pre}{$count ->

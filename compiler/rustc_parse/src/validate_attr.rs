@@ -298,35 +298,42 @@ fn emit_malformed_attribute(
         suggestions.push(format!("#{inner}[{name}]"));
     }
     if let Some(descr) = template.list {
-        suggestions.push(format!("#{inner}[{name}({descr})]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
     }
     suggestions.extend(template.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
     if let Some(descr) = template.name_value_str {
-        suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        for descr in descr {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
     }
     if should_warn(name) {
         psess.buffer_lint(
             ILL_FORMED_ATTRIBUTE_INPUT,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::IllFormedAttributeInput { suggestions: suggestions.clone() },
+            BuiltinLintDiag::IllFormedAttributeInput {
+                suggestions: suggestions.clone(),
+                docs: template.docs,
+            },
         );
     } else {
         suggestions.sort();
-        psess
-            .dcx()
-            .struct_span_err(span, error_msg)
-            .with_span_suggestions(
-                span,
-                if suggestions.len() == 1 {
-                    "must be of the form"
-                } else {
-                    "the following are the possible correct uses"
-                },
-                suggestions,
-                Applicability::HasPlaceholders,
-            )
-            .emit();
+        let mut err = psess.dcx().struct_span_err(span, error_msg).with_span_suggestions(
+            span,
+            if suggestions.len() == 1 {
+                "must be of the form"
+            } else {
+                "the following are the possible correct uses"
+            },
+            suggestions,
+            Applicability::HasPlaceholders,
+        );
+        if let Some(link) = template.docs {
+            err.note(format!("for more information, visit <{link}>"));
+        }
+        err.emit();
     }
 }
 

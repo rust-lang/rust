@@ -249,6 +249,7 @@ pub(crate) enum AttributeKind {
     FnRetThunkExtern = 41,
     Writable = 42,
     DeadOnUnwind = 43,
+    DeadOnReturn = 44,
 }
 
 /// LLVMIntPredicate
@@ -2056,10 +2057,6 @@ unsafe extern "C" {
         NumExpansionRegions: size_t,
         BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
         NumBranchRegions: size_t,
-        MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
-        NumMCDCBranchRegions: size_t,
-        MCDCDecisionRegions: *const crate::coverageinfo::ffi::MCDCDecisionRegion,
-        NumMCDCDecisionRegions: size_t,
         BufferOut: &RustString,
     );
 

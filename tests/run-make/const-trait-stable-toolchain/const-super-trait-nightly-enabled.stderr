@@ -1,20 +1,20 @@
 error: `[const]` is not allowed here
   --> const-super-trait.rs:7:12
    |
-LL | trait Bar: ~const Foo {}
-   |            ^^^^^^
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^
    |
 note: this trait is not `const`, so it cannot have `[const]` trait bounds
   --> const-super-trait.rs:7:1
    |
-LL | trait Bar: ~const Foo {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | trait Bar: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` can only be applied to `const` traits
   --> const-super-trait.rs:7:12
    |
-LL | trait Bar: ~const Foo {}
-   |            ^^^^^^ can't be applied to `Foo`
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^ can't be applied to `Foo`
    |
 help: mark `Foo` as `const` to allow it to have `const` implementations
    |
@@ -24,12 +24,12 @@ LL | #[const_trait] trait Foo {
 error: `[const]` can only be applied to `const` traits
   --> const-super-trait.rs:9:17
    |
-LL | const fn foo<T: ~const Bar>(x: &T) {
-   |                 ^^^^^^ can't be applied to `Bar`
+LL | const fn foo<T: [const] Bar>(x: &T) {
+   |                 ^^^^^^^ can't be applied to `Bar`
    |
 help: mark `Bar` as `const` to allow it to have `const` implementations
    |
-LL | #[const_trait] trait Bar: ~const Foo {}
+LL | #[const_trait] trait Bar: [const] Foo {}
    | ++++++++++++++
 
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions

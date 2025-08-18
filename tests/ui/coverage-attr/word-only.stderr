@@ -39,8 +39,16 @@ LL | #[coverage(off)]
 LL | #[coverage(on)]
    |           ++++
 
+error: `#[coverage]` attribute cannot be used on structs
+  --> $DIR/word-only.rs:21:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:25:1
+  --> $DIR/word-only.rs:26:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -53,7 +61,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:28:5
+  --> $DIR/word-only.rs:29:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -65,8 +73,79 @@ LL |     #[coverage(off)]
 LL |     #[coverage(on)]
    |               ++++
 
+error: `#[coverage]` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:29:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:33:1
+  --> $DIR/word-only.rs:35:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: `#[coverage]` attribute cannot be used on traits
+  --> $DIR/word-only.rs:35:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:39:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: `#[coverage]` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:39:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:44:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
+
+error: `#[coverage]` attribute cannot be used on associated types
+  --> $DIR/word-only.rs:44:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
+error[E0539]: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:50:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -79,7 +158,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:36:5
+  --> $DIR/word-only.rs:53:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -91,8 +170,16 @@ LL |     #[coverage(off)]
 LL |     #[coverage(on)]
    |               ++++
 
+error: `#[coverage]` attribute cannot be used on associated consts
+  --> $DIR/word-only.rs:53:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:40:5
+  --> $DIR/word-only.rs:58:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -104,8 +191,16 @@ LL |     #[coverage(off)]
 LL |     #[coverage(on)]
    |               ++++
 
+error: `#[coverage]` attribute cannot be used on associated types
+  --> $DIR/word-only.rs:58:5
+   |
+LL |     #[coverage]
+   |     ^^^^^^^^^^^
+   |
+   = help: `#[coverage]` can be applied to functions, impl blocks, modules, crates
+
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:45:1
+  --> $DIR/word-only.rs:64:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
@@ -117,45 +212,6 @@ LL | #[coverage(off)]
 LL | #[coverage(on)]
    |           ++++
 
-error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:48:5
-   |
-LL |     #[coverage]
-   |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[coverage(off)]
-   |               +++++
-LL |     #[coverage(on)]
-   |               ++++
-
-error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:52:5
-   |
-LL |     #[coverage]
-   |     ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL |     #[coverage(off)]
-   |               +++++
-LL |     #[coverage(on)]
-   |               ++++
-
-error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:57:1
-   |
-LL | #[coverage]
-   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
-   |
-help: try changing it to one of the following valid forms of the attribute
-   |
-LL | #[coverage(off)]
-   |           +++++
-LL | #[coverage(on)]
-   |           ++++
-
-error: aborting due to 12 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

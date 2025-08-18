@@ -482,3 +482,21 @@ mod metavar_exprs {
         pub key: MacroRulesNormalizedIdent,
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(expand_macro_args_bad_delim)]
+pub(crate) struct MacroArgsBadDelim {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: MacroArgsBadDelimSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(expand_macro_args_bad_delim_sugg, applicability = "machine-applicable")]
+pub(crate) struct MacroArgsBadDelimSugg {
+    #[suggestion_part(code = "(")]
+    pub open: Span,
+    #[suggestion_part(code = ")")]
+    pub close: Span,
+}

@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::{ForceCollect, Parser};
@@ -161,7 +160,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {
-                        items.push(Annotatable::Stmt(P(ecx.stmt_item(span, item))));
+                        items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
                     } else {
                         items.push(Annotatable::Item(item));
                     }

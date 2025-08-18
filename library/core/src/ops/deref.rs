@@ -269,7 +269,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-pub trait DerefMut: ~const Deref + PointeeSized {
+pub trait DerefMut: [const] Deref + PointeeSized {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_mut_method"]

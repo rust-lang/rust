@@ -122,8 +122,6 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
-middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
+middle_type_length_limit = reached the type-length limit while instantiating `{$instance}`
 
 middle_unsupported_union = we don't support unions yet: '{$ty_name}'
-
-middle_written_to_path = the full type name has been written to '{$path}'

@@ -273,6 +273,7 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
+[`aarch64_be-unknown-none-softfloat`](platform-support/aarch64_be-unknown-none-softfloat.md) | * |  | Bare big-endian ARM64, softfloat
 [`amdgcn-amd-amdhsa`](platform-support/amdgcn-amd-amdhsa.md) | * |  | `-Ctarget-cpu=gfx...` to specify [the AMD GPU] to compile for
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Arm Apple WatchOS 64-bit with 32-bit pointers
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
@@ -297,6 +298,7 @@ target | std | host | notes
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
 [`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare Armv7-A, hardfloat
+[`armv7a-vex-v5`](platform-support/armv7a-vex-v5.md) | ? |  | Armv7-A Cortex-A9 VEX V5 Brain, VEXos
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
 [`armv7s-apple-ios`](platform-support/apple-ios.md) | ✓ |  | Armv7-A Apple-A6 Apple iOS
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat

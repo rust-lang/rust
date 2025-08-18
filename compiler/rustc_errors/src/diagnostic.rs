@@ -847,17 +847,18 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
+    with_fn! { with_span_help,
     /// Prints the span with some help above it.
     /// This is like [`Diag::help()`], but it gets its own span.
     #[rustc_lint_diagnostics]
-    pub fn span_help<S: Into<MultiSpan>>(
+    pub fn span_help(
         &mut self,
-        sp: S,
+        sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Help, msg, sp.into());
         self
-    }
+    } }
 
     /// Disallow attaching suggestions to this diagnostic.
     /// Any suggestions attached e.g. with the `span_suggestion_*` methods
@@ -1112,7 +1113,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             .map(|snippet| {
                 debug_assert!(
                     !(sp.is_empty() && snippet.is_empty()),
-                    "Span must not be empty and have no suggestion"
+                    "Span `{sp:?}` must not be empty and have no suggestion"
                 );
                 Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] }
             })
@@ -1380,6 +1381,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// scope, `diag.long_ty_path()` should be called once somewhere close by.
     pub fn long_ty_path(&mut self) -> &mut Option<PathBuf> {
         &mut self.long_ty_path
+    }
+
+    pub fn with_long_ty_path(mut self, long_ty_path: Option<PathBuf>) -> Self {
+        self.long_ty_path = long_ty_path;
+        self
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.

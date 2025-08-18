@@ -1,12 +1,13 @@
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::Target;
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Symbol, sym};
 
 use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
+use crate::context::MaybeWarn::Allow;
+use crate::context::{AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
-
 pub(crate) struct TransparencyParser;
 
 // FIXME(jdonszelmann): make these proper diagnostics
@@ -18,8 +19,9 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Custom(|cx, used, unused| {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
-        template!(NameValueStr: "transparent|semitransparent|opaque");
+        template!(NameValueStr: ["transparent", "semitransparent", "opaque"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {

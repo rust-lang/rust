@@ -329,7 +329,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
                     match &self.parent_item.unwrap().kind {
                         ast::ItemKind::Impl(i) => {
                             if i.of_trait.is_some() {
-                                Target::Method(MethodKind::Trait { body })
+                                Target::Method(MethodKind::TraitImpl)
                             } else {
                                 Target::Method(MethodKind::Inherent)
                             }

@@ -236,6 +236,12 @@ where
     }
 }
 
+#[derive(Debug)]
+enum MergeCandidateInfo {
+    AlwaysApplicable(usize),
+    EqualResponse,
+}
+
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -248,23 +254,25 @@ where
     fn try_merge_candidates(
         &mut self,
         candidates: &[Candidate<I>],
-    ) -> Option<CanonicalResponse<I>> {
+    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
         if candidates.is_empty() {
             return None;
         }
 
-        let one: CanonicalResponse<I> = candidates[0].result;
-        if candidates[1..].iter().all(|candidate| candidate.result == one) {
-            return Some(one);
+        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
+            candidate.result.value.certainty == Certainty::Yes
+                && has_no_inference_or_external_constraints(candidate.result)
+        });
+        if let Some((i, c)) = always_applicable {
+            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
-        candidates
-            .iter()
-            .find(|candidate| {
-                candidate.result.value.certainty == Certainty::Yes
-                    && has_no_inference_or_external_constraints(candidate.result)
-            })
-            .map(|candidate| candidate.result)
+        let one: CanonicalResponse<I> = candidates[0].result;
+        if candidates[1..].iter().all(|candidate| candidate.result == one) {
+            return Some((one, MergeCandidateInfo::EqualResponse));
+        }
+
+        None
     }
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {

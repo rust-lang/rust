@@ -176,6 +176,9 @@ fn test_witnesses() {
         ),
         vec!["Enum::Variant1(_)", "Enum::Variant2(_)", "_"],
     );
+
+    // Assert we put `true` before `false`.
+    assert_witnesses(AllOfThem, Ty::Bool, Vec::new(), vec!["true", "false"]);
 }
 
 #[test]

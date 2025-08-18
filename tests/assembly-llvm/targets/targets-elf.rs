@@ -10,6 +10,9 @@
 //@ revisions: aarch64_be_unknown_netbsd
 //@ [aarch64_be_unknown_netbsd] compile-flags: --target aarch64_be-unknown-netbsd
 //@ [aarch64_be_unknown_netbsd] needs-llvm-components: aarch64
+//@ revisions: aarch64_be_unknown_none_softfloat
+//@ [aarch64_be_unknown_none_softfloat] compile-flags: --target aarch64_be-unknown-none-softfloat
+//@ [aarch64_be_unknown_none_softfloat] needs-llvm-components: aarch64
 //@ revisions: aarch64_kmc_solid_asp3
 //@ [aarch64_kmc_solid_asp3] compile-flags: --target aarch64-kmc-solid_asp3
 //@ [aarch64_kmc_solid_asp3] needs-llvm-components: aarch64
@@ -193,6 +196,9 @@
 //@ revisions: armv7a_nuttx_eabihf
 //@ [armv7a_nuttx_eabihf] compile-flags: --target armv7a-nuttx-eabihf
 //@ [armv7a_nuttx_eabihf] needs-llvm-components: arm
+//@ revisions: armv7a_vex_v5
+//@ [armv7a_vex_v5] compile-flags: --target armv7a-vex-v5
+//@ [armv7a_vex_v5] needs-llvm-components: arm
 //@ revisions: armv7r_none_eabi
 //@ [armv7r_none_eabi] compile-flags: --target armv7r-none-eabi
 //@ [armv7r_none_eabi] needs-llvm-components: arm

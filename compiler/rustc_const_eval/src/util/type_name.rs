@@ -5,20 +5,23 @@ use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
-use rustc_middle::ty::{self, GenericArg, GenericArgKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 
-struct AbsolutePathPrinter<'tcx> {
+struct TypeNamePrinter<'tcx> {
     tcx: TyCtxt<'tcx>,
     path: String,
 }
 
-impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-        unreachable!(); // because `<Self As PrettyPrinter>::should_print_region` returns false
+        // FIXME: most regions have been erased by the time this code runs.
+        // Just printing `'_` is a bit hacky but gives mostly good results, and
+        // doing better is difficult. See `should_print_optional_region`.
+        write!(self, "'_")
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
@@ -73,26 +76,26 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self.pretty_print_dyn_existential(predicates)
     }
 
-    fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+    fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.path.push_str(self.tcx.crate_name(cnum).as_str());
         Ok(())
     }
 
-    fn path_qualified(
+    fn print_path_with_qualified(
         &mut self,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_qualified(self_ty, trait_ref)
+        self.pretty_print_path_with_qualified(self_ty, trait_ref)
     }
 
-    fn path_append_impl(
+    fn print_path_with_impl(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        self.pretty_path_append_impl(
+        self.pretty_print_path_with_impl(
             |cx| {
                 print_prefix(cx)?;
 
@@ -105,7 +108,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         )
     }
 
-    fn path_append(
+    fn print_path_with_simple(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         disambiguated_data: &DisambiguatedDefPathData,
@@ -117,25 +120,30 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         Ok(())
     }
 
-    fn path_generic_args(
+    fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
         args: &[GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
-        let args =
-            args.iter().cloned().filter(|arg| !matches!(arg.kind(), GenericArgKind::Lifetime(_)));
-        if args.clone().next().is_some() {
-            self.generic_delimiters(|cx| cx.comma_sep(args))
+        if !args.is_empty() {
+            self.generic_delimiters(|cx| cx.comma_sep(args.iter().copied()))
         } else {
             Ok(())
         }
     }
 }
 
-impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
-    fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
-        false
+impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
+    fn should_print_optional_region(&self, _region: ty::Region<'_>) -> bool {
+        // Bound regions are always printed (as `'_`), which gives some idea that they are special,
+        // even though the `for` is omitted by the pretty printer.
+        // E.g. `for<'a, 'b> fn(&'a u32, &'b u32)` is printed as "fn(&'_ u32, &'_ u32)".
+        match _region.kind() {
+            ty::ReErased => false,
+            ty::ReBound(..) => true,
+            _ => unreachable!(),
+        }
     }
 
     fn generic_delimiters(
@@ -157,7 +165,7 @@ impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     }
 }
 
-impl Write for AbsolutePathPrinter<'_> {
+impl Write for TypeNamePrinter<'_> {
     fn write_str(&mut self, s: &str) -> std::fmt::Result {
         self.path.push_str(s);
         Ok(())
@@ -165,7 +173,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let mut p = AbsolutePathPrinter { tcx, path: String::new() };
+    let mut p = TypeNamePrinter { tcx, path: String::new() };
     p.print_type(ty).unwrap();
     p.path
 }

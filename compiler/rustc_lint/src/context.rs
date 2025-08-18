@@ -745,41 +745,41 @@ impl<'tcx> LateContext<'tcx> {
     /// }
     /// ```
     pub fn get_def_path(&self, def_id: DefId) -> Vec<Symbol> {
-        struct AbsolutePathPrinter<'tcx> {
+        struct LintPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             path: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for LintPathPrinter<'tcx> {
             fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.path = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 self_ty: Ty<'tcx>,
                 trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -800,7 +800,7 @@ impl<'tcx> LateContext<'tcx> {
                 })
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 self_ty: Ty<'tcx>,
@@ -825,7 +825,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -844,7 +844,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
@@ -853,7 +853,7 @@ impl<'tcx> LateContext<'tcx> {
             }
         }
 
-        let mut p = AbsolutePathPrinter { tcx: self.tcx, path: vec![] };
+        let mut p = LintPathPrinter { tcx: self.tcx, path: vec![] };
         p.print_def_path(def_id, &[]).unwrap();
         p.path
     }

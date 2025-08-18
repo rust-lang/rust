@@ -4,11 +4,7 @@ error[E0609]: no field `00` on type `Verdict`
 LL |     let _condemned = justice.00;
    |                              ^^ unknown field
    |
-help: a field with a similar name exists
-   |
-LL -     let _condemned = justice.00;
-LL +     let _condemned = justice.0;
-   |
+   = note: available fields are: `0`, `1`
 
 error[E0609]: no field `001` on type `Verdict`
   --> $DIR/tuple-struct-field-naming-47073.rs:11:31

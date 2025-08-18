@@ -77,7 +77,18 @@ impl Thread {
                     let page_size = os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                    assert_eq!(libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size), 0);
+
+                    // Some libc implementations, e.g. musl, place an upper bound
+                    // on the stack size, in which case we can only gracefully return
+                    // an error here.
+                    if libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) != 0 {
+                        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
+                        drop(Box::from_raw(data));
+                        return Err(io::const_error!(
+                            io::ErrorKind::InvalidInput,
+                            "invalid stack size"
+                        ));
+                    }
                 }
             };
         }
@@ -395,6 +406,62 @@ impl Drop for Thread {
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
+    }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    // Most Unix platforms have a way to query an integer ID of the current thread, all with
+    // slightly different spellings.
+    //
+    // The OS thread ID is used rather than `pthread_self` so as to match what will be displayed
+    // for process inspection (debuggers, trace, `top`, etc.).
+    cfg_if::cfg_if! {
+        // Most platforms have a function returning a `pid_t` or int, which is an `i32`.
+        if #[cfg(any(target_os = "android", target_os = "linux"))] {
+            use crate::sys::weak::syscall;
+
+            // `libc::gettid` is only available on glibc 2.30+, but the syscall is available
+            // since Linux 2.4.11.
+            syscall!(fn gettid() -> libc::pid_t;);
+
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { gettid() };
+            Some(id as u64)
+        } else if #[cfg(target_os = "nto")] {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { libc::gettid() };
+            Some(id as u64)
+        } else if #[cfg(target_os = "openbsd")] {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { libc::getthrid() };
+            Some(id as u64)
+        } else if #[cfg(target_os = "freebsd")] {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::c_int = unsafe { libc::pthread_getthreadid_np() };
+            Some(id as u64)
+        } else if #[cfg(target_os = "netbsd")] {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::lwpid_t = unsafe { libc::_lwp_self() };
+            Some(id as u64)
+        } else if #[cfg(any(target_os = "illumos", target_os = "solaris"))] {
+            // On Illumos and Solaris, the `pthread_t` is the same as the OS thread ID.
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pthread_t = unsafe { libc::pthread_self() };
+            Some(id as u64)
+        } else if #[cfg(target_vendor = "apple")] {
+            // Apple allows querying arbitrary thread IDs, `thread=NULL` queries the current thread.
+            let mut id = 0u64;
+            // SAFETY: `thread_id` is a valid pointer, no other preconditions.
+            let status: libc::c_int = unsafe { libc::pthread_threadid_np(0, &mut id) };
+            if status == 0 {
+                Some(id)
+            } else {
+                None
+            }
+        } else {
+            // Other platforms don't have an OS thread ID or don't have a way to access it.
+            None
+        }
     }
 }
 

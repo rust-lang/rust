@@ -1,4 +1,3 @@
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, AsmMacro};
 use rustc_span::{Span, Symbol, kw};
 
@@ -14,7 +13,7 @@ pub struct AsmArg {
 }
 
 pub enum AsmArgKind {
-    Template(P<ast::Expr>),
+    Template(Box<ast::Expr>),
     Operand(Option<Symbol>, ast::InlineAsmOperand),
     Options(Vec<AsmOption>),
     ClobberAbi(Vec<(Symbol, Span)>),

@@ -127,7 +127,8 @@ fn try_get_option_occurrence<'tcx>(
     if_else: &'tcx Expr<'_>,
 ) -> Option<OptionOccurrence> {
     let cond_expr = match expr.kind {
-        ExprKind::Unary(UnOp::Deref, inner_expr) | ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::AddrOf(_, _, inner_expr) => inner_expr,
+        ExprKind::Unary(UnOp::Deref, inner_expr) if !cx.typeck_results().expr_ty(inner_expr).is_raw_ptr() => inner_expr,
         _ => expr,
     };
     let (inner_pat, is_result) = try_get_inner_pat_and_is_result(cx, pat)?;
@@ -223,8 +224,8 @@ fn try_get_option_occurrence<'tcx>(
 
         let mut app = Applicability::Unspecified;
 
-        let (none_body, is_argless_call) = match none_body.kind {
-            ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() => (call_expr, true),
+        let (none_body, can_omit_arg) = match none_body.kind {
+            ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() && !is_result => (call_expr, true),
             _ => (none_body, false),
         };
 
@@ -241,7 +242,7 @@ fn try_get_option_occurrence<'tcx>(
             ),
             none_expr: format!(
                 "{}{}",
-                if method_sugg == "map_or" || is_argless_call {
+                if method_sugg == "map_or" || can_omit_arg {
                     ""
                 } else if is_result {
                     "|_| "

@@ -60,5 +60,53 @@ LL -     let x : _ = 1;
 LL +     let x = 1;
    |
 
-error: aborting due to 5 previous errors
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:50:5
+   |
+LL |     let (a): _ = 0;
+   |     ^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let (a): _ = 0;
+LL +     let (a) = 0;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:52:5
+   |
+LL |     let ((a)): _ = 0;
+   |     ^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let ((a)): _ = 0;
+LL +     let ((a)) = 0;
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:54:5
+   |
+LL |     let ((a,)): _ = (0,);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let ((a,)): _ = (0,);
+LL +     let ((a,)) = (0,);
+   |
+
+error: variable declared with type underscore
+  --> tests/ui/let_with_type_underscore.rs:57:5
+   |
+LL |     let (   (a   )   ):  _ = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the explicit type `_` declaration
+   |
+LL -     let (   (a   )   ):  _ = 0;
+LL +     let (   (a   )   ) = 0;
+   |
+
+error: aborting due to 9 previous errors
 

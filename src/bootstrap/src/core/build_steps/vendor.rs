@@ -53,7 +53,7 @@ pub(crate) struct Vendor {
 impl Step for Vendor {
     type Output = VendorOutput;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("placeholder").default_condition(true)

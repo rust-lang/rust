@@ -130,7 +130,7 @@ use crate::ops::ControlFlow;
 #[lang = "Try"]
 #[const_trait]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
-pub trait Try: ~const FromResidual {
+pub trait Try: [const] FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
     type Output;
