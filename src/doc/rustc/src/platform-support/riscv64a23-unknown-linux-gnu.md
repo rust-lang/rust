@@ -12,10 +12,9 @@ This target will enable all mandary features of rva23u64 and rva23s64 by default
 
 ## Requirements
 
-This target requires:
+This target can be sucessfully build on the following platform: ubuntu 24.04 (Linux Kernel version 6.8.0, glibc 2.39).
 
-* Linux Kernel version 4.20 or later
-* glibc 2.17 or later
+Other platforms may work, but are not tested. Please contanct if you encounter any issues.
 
 ## Building the target
 
