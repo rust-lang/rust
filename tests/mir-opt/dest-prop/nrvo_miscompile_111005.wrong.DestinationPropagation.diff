@@ -9,9 +9,9 @@
 -         _2 = copy _1;
 -         _0 = copy _2;
 -         _2 = const 'b';
-+         _0 = copy _1;
 +         nop;
-+         _0 = const 'b';
++         _0 = copy _1;
++         _1 = const 'b';
           return;
       }
   }
