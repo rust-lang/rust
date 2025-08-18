@@ -6,7 +6,7 @@ use tracing::debug;
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
 /// struct).
-pub fn is_disaligned<'tcx, L>(
+pub fn is_potentially_disaligned<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,
     typing_env: ty::TypingEnv<'tcx>,
@@ -73,21 +73,10 @@ where
 /// Try to determine the alignment of an array element type
 fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align> {
     match ty.kind() {
-        ty::Array(element_ty, _) => {
-            // For arrays, the alignment is the same as the element type
+        ty::Array(element_ty, _) | ty::Slice(element_ty) => {
+            // For arrays and slices, the alignment is the same as the element type
             let param_env = ty::ParamEnv::empty();
-            let typing_env =
-                ty::TypingEnv { typing_mode: ty::TypingMode::non_body_analysis(), param_env };
-            match tcx.layout_of(typing_env.as_query_input(*element_ty)) {
-                Ok(layout) => Some(layout.align.abi),
-                Err(_) => None,
-            }
-        }
-        ty::Slice(element_ty) => {
-            // For slices, the alignment is the same as the element type
-            let param_env = ty::ParamEnv::empty();
-            let typing_env =
-                ty::TypingEnv { typing_mode: ty::TypingMode::non_body_analysis(), param_env };
+            let typing_env = ty::TypingEnv { typing_mode: ty::TypingMode::non_body_analysis(), param_env };
             match tcx.layout_of(typing_env.as_query_input(*element_ty)) {
                 Ok(layout) => Some(layout.align.abi),
                 Err(_) => None,
@@ -96,6 +85,7 @@ fn get_element_alignment<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align>
         _ => None,
     }
 }
+
 pub fn is_within_packed<'tcx, L>(
     tcx: TyCtxt<'tcx>,
     local_decls: &L,

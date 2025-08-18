@@ -8,7 +8,7 @@ struct PascalString<const CAP: usize> {
 }
 
 fn bar<const CAP: usize>(s: &PascalString<CAP>) -> &str {
-    // 目标：这行不应触发 E0793
+    // Goal: this line should not trigger E0793
     std::str::from_utf8(&s.buf[0..s.len as usize]).unwrap()
 }
 
