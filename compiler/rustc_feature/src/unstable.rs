@@ -556,6 +556,8 @@ declare_features! (
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Allow `macro_rules!` attribute rules
     (unstable, macro_attr, "CURRENT_RUSTC_VERSION", Some(83527)),
+    /// Allow `macro_rules!` derive rules
+    (unstable, macro_derive, "CURRENT_RUSTC_VERSION", Some(143549)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.

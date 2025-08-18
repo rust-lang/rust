@@ -54,6 +54,8 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         Allow(Target::TyAlias),
         Allow(Target::Use),
         Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
         Allow(Target::Field),
         Allow(Target::Trait),
         Allow(Target::AssocTy),

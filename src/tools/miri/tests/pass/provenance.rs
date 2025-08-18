@@ -6,7 +6,6 @@ const PTR_SIZE: usize = mem::size_of::<&i32>();
 
 fn main() {
     basic();
-    partial_overwrite_then_restore();
     bytewise_ptr_methods();
     bytewise_custom_memcpy();
     bytewise_custom_memcpy_chunked();
@@ -27,40 +26,6 @@ fn basic() {
     let addr_mu: mem::MaybeUninit<usize> = unsafe { mem::transmute(ptr) };
     let ptr_back: *const i32 = unsafe { mem::transmute(addr_mu) };
     assert_eq!(unsafe { *ptr_back }, 42);
-}
-
-/// Overwrite one byte of a pointer, then restore it.
-fn partial_overwrite_then_restore() {
-    unsafe fn ptr_bytes<'x>(ptr: &'x mut *const i32) -> &'x mut [mem::MaybeUninit<u8>; PTR_SIZE] {
-        mem::transmute(ptr)
-    }
-
-    // Returns a value with the same provenance as `x` but 0 for the integer value.
-    // `x` must be initialized.
-    unsafe fn zero_with_provenance(x: mem::MaybeUninit<u8>) -> mem::MaybeUninit<u8> {
-        let ptr = [x; PTR_SIZE];
-        let ptr: *const i32 = mem::transmute(ptr);
-        let mut ptr = ptr.with_addr(0);
-        ptr_bytes(&mut ptr)[0]
-    }
-
-    unsafe {
-        let ptr = &42;
-        let mut ptr = ptr as *const i32;
-        // Get a bytewise view of the pointer.
-        let ptr_bytes = ptr_bytes(&mut ptr);
-
-        // The highest bytes must be 0 for this to work.
-        let hi = if cfg!(target_endian = "little") { ptr_bytes.len() - 1 } else { 0 };
-        assert_eq!(*ptr_bytes[hi].as_ptr().cast::<u8>(), 0);
-        // Overwrite provenance on the last byte.
-        ptr_bytes[hi] = mem::MaybeUninit::new(0);
-        // Restore it from the another byte.
-        ptr_bytes[hi] = zero_with_provenance(ptr_bytes[1]);
-
-        // Now ptr should be good again.
-        assert_eq!(*ptr, 42);
-    }
 }
 
 fn bytewise_ptr_methods() {
