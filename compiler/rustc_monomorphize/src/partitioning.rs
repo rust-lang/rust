@@ -92,8 +92,6 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
-mod autodiff;
-
 use std::cmp;
 use std::collections::hash_map::Entry;
 use std::fs::{self, File};
@@ -104,7 +102,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::LangItem;
-use rustc_hir::attrs::InlineAttr;
+use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
@@ -112,7 +110,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{
-    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
+    CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, MonoItem, MonoItemData,
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
@@ -251,17 +249,7 @@ where
             always_export_generics,
         );
 
-        // We can't differentiate a function that got inlined.
-        let autodiff_active = cfg!(llvm_enzyme)
-            && matches!(mono_item, MonoItem::Fn(_))
-            && cx
-                .tcx
-                .codegen_fn_attrs(mono_item.def_id())
-                .autodiff_item
-                .as_ref()
-                .is_some_and(|ad| ad.is_active());
-
-        if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
+        if visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
         }
         let size_estimate = mono_item.size_estimate(cx.tcx);
@@ -650,17 +638,18 @@ fn characteristic_def_id_of_mono_item<'tcx>(
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_assoc(def_id).is_some() {
+            let assoc_parent = tcx.assoc_parent(def_id);
+
+            if let Some((_, DefKind::Trait)) = assoc_parent {
                 let self_ty = instance.args.type_at(0);
                 // This is a default implementation of a trait method.
                 return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_assoc(def_id) {
-                if tcx.sess.opts.incremental.is_some()
-                    && tcx
-                        .trait_id_of_impl(impl_def_id)
-                        .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Drop))
+            if let Some((impl_def_id, DefKind::Impl { of_trait })) = assoc_parent {
+                if of_trait
+                    && tcx.sess.opts.incremental.is_some()
+                    && tcx.is_lang_item(tcx.trait_id_of_impl(impl_def_id).unwrap(), LangItem::Drop)
                 {
                     // Put `Drop::drop` into the same cgu as `drop_in_place`
                     // since `drop_in_place` is the only thing that can
@@ -1156,26 +1145,14 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
-    #[cfg(not(llvm_enzyme))]
-    let autodiff_mono_items: Vec<_> = vec![];
-    #[cfg(llvm_enzyme)]
-    let mut autodiff_mono_items: Vec<_> = vec![];
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {
-            MonoItem::Fn(ref instance) => {
-                #[cfg(llvm_enzyme)]
-                autodiff_mono_items.push((mono_item, instance));
-                Some(instance.def_id())
-            }
+            MonoItem::Fn(ref instance) => Some(instance.def_id()),
             MonoItem::Static(def_id) => Some(def_id),
             _ => None,
         })
         .collect();
-
-    let autodiff_items =
-        autodiff::find_autodiff_source_functions(tcx, &usage_map, autodiff_mono_items);
-    let autodiff_items = tcx.arena.alloc_from_iter(autodiff_items);
 
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats
@@ -1234,11 +1211,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> MonoItemPartitio
         }
     }
 
-    MonoItemPartitions {
-        all_mono_items: tcx.arena.alloc(mono_items),
-        codegen_units,
-        autodiff_items,
-    }
+    MonoItemPartitions { all_mono_items: tcx.arena.alloc(mono_items), codegen_units }
 }
 
 /// Outputs stats about instantiation counts and estimated size, per `MonoItem`'s

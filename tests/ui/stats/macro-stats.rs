@@ -49,10 +49,32 @@ fn opt(x: Option<u32>) {
     }
 }
 
-macro_rules! long_name_that_fits_on_a_single_line {
-    () => {}
-}
-long_name_that_fits_on_a_single_line!();
+macro_rules! long_name_that_fits_on_one_line { () => {} }
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+long_name_that_fits_on_one_line!();
+
+macro_rules! long_name_that_fits_on_one_line_ { () => {} }
+long_name_that_fits_on_one_line_!();
+
+macro_rules! long_name_that_fits_on_one_line__ { () => {} }
+long_name_that_fits_on_one_line__!();
+
+macro_rules! long_name_that_fits_on_one_line___ { () => {} }
+long_name_that_fits_on_one_line___!();
+
+macro_rules! long_name_that_fits_on_one_line____ { () => {} }
+long_name_that_fits_on_one_line____!();
+
+macro_rules! long_name_that_fits_on_one_line_____ { () => {} }
+long_name_that_fits_on_one_line_____!();
 
 macro_rules! long_name_that_doesnt_fit_on_one_line {
     ($t:ty) => {

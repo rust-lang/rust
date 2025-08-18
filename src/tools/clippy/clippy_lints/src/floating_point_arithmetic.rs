@@ -148,7 +148,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
         .into();
 
         suggestion = match suggestion {
-            Sugg::MaybeParen(_) => Sugg::MaybeParen(op),
+            Sugg::MaybeParen(_) | Sugg::UnOp(UnOp::Neg, _) => Sugg::MaybeParen(op),
             _ => Sugg::NonParen(op),
         };
     }

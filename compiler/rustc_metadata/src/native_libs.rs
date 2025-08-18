@@ -83,7 +83,7 @@ pub fn walk_native_lib_search_dirs<R>(
     // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
     // we must have the support library stubs in the library search path (#121430).
     if let Some(sdk_root) = apple_sdk_root
-        && sess.target.llvm_target.contains("macabi")
+        && sess.target.env == "macabi"
     {
         f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
         f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;

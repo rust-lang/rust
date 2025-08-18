@@ -44,8 +44,6 @@
 #![cfg(not(feature = "mangled-names"))]
 // Windows and Cygwin already has builtins to do this.
 #![cfg(not(any(windows, target_os = "cygwin")))]
-// All these builtins require assembly
-#![cfg(not(feature = "no-asm"))]
 // We only define stack probing for these architectures today.
 #![cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 

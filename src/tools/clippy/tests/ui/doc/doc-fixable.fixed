@@ -83,7 +83,7 @@ fn test_units() {
 /// WebGL WebGL2 WebGPU WebRTC WebSocket WebTransport
 /// TensorFlow
 /// TrueType
-/// iOS macOS FreeBSD NetBSD OpenBSD
+/// iOS macOS FreeBSD NetBSD OpenBSD NixOS
 /// TeX LaTeX BibTeX BibLaTeX
 /// MinGW
 /// CamelCase (see also #2395)

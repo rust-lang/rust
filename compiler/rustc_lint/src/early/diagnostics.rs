@@ -205,8 +205,14 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedBuiltinAttribute { attr_name, macro_name, invoc_span } => {
-            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name }.decorate_lint(diag);
+        BuiltinLintDiag::UnusedBuiltinAttribute {
+            attr_name,
+            macro_name,
+            invoc_span,
+            attr_span,
+        } => {
+            lints::UnusedBuiltinAttribute { invoc_span, attr_name, macro_name, attr_span }
+                .decorate_lint(diag);
         }
         BuiltinLintDiag::TrailingMacro(is_trailing, name) => {
             lints::TrailingMacro { is_trailing, name }.decorate_lint(diag);
@@ -447,12 +453,14 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)
         }
-        BuiltinLintDiag::IllFormedAttributeInput { suggestions } => {
+        BuiltinLintDiag::IllFormedAttributeInput { suggestions, docs } => {
             lints::IllFormedAttributeInput {
                 num_suggestions: suggestions.len(),
                 suggestions: DiagArgValue::StrListSepByAnd(
                     suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
                 ),
+                has_docs: docs.is_some(),
+                docs: docs.unwrap_or(""),
             }
             .decorate_lint(diag)
         }

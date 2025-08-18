@@ -35,6 +35,7 @@
 //~^ ERROR `allow_internal_unstable` expects a list of feature names
 #[rustc_confusables]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[deprecated = 5]
 //~^ ERROR malformed
 #[doc]
@@ -42,9 +43,10 @@
 //~| WARN this was previously accepted by the compiler
 #[rustc_macro_transparency]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[repr]
 //~^ ERROR malformed
-//~| ERROR is not supported on function items
+//~| ERROR is not supported on functions
 #[rustc_as_ptr = 5]
 //~^ ERROR malformed
 #[inline = 5]
@@ -68,6 +70,7 @@
 //~^ ERROR malformed
 #[used()]
 //~^ ERROR malformed
+//~| ERROR attribute cannot be used on
 #[crate_name]
 //~^ ERROR malformed
 #[doc]
@@ -78,7 +81,7 @@
 #[export_stable = 1]
 //~^ ERROR malformed
 #[link]
-//~^ ERROR attribute must be of the form
+//~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
 #[link_name]
 //~^ ERROR malformed

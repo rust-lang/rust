@@ -1272,7 +1272,7 @@ pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
 }
 
 /// Conditionally store 8-bit integer elements from `a` into memory using
-/// `mask`.
+/// `mask` flagged as non-temporal (unlikely to be used again soon).
 ///
 /// Elements are not stored when the highest bit is not set in the
 /// corresponding element.
@@ -1281,6 +1281,15 @@ pub unsafe fn _mm_loadu_si128(mem_addr: *const __m128i) -> __m128i {
 /// to be aligned on any particular boundary.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maskmoveu_si128)
+///
+/// # Safety of non-temporal stores
+///
+/// After using this intrinsic, but before any other access to the memory that this intrinsic
+/// mutates, a call to [`_mm_sfence`] must be performed by the thread that used the intrinsic. In
+/// particular, functions that call this intrinsic should generally call `_mm_sfence` before they
+/// return.
+///
+/// See [`_mm_sfence`] for details.
 #[inline]
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(maskmovdqu))]

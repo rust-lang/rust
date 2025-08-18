@@ -1589,25 +1589,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // e.g. `reuse HasSelf::method;` should suggest `reuse HasSelf::method($args);`.
                 full_call_span.shrink_to_hi()
             };
+
+            // Controls how the arguments should be listed in the suggestion.
+            enum ArgumentsFormatting {
+                SingleLine,
+                Multiline { fallback_indent: String, brace_indent: String },
+            }
+            let arguments_formatting = {
+                let mut provided_inputs = matched_inputs.iter().filter_map(|a| *a);
+                if let Some(brace_indent) = source_map.indentation_before(suggestion_span)
+                    && let Some(first_idx) = provided_inputs.by_ref().next()
+                    && let Some(last_idx) = provided_inputs.by_ref().next()
+                    && let (_, first_span) = provided_arg_tys[first_idx]
+                    && let (_, last_span) = provided_arg_tys[last_idx]
+                    && source_map.is_multiline(first_span.to(last_span))
+                    && let Some(fallback_indent) = source_map.indentation_before(first_span)
+                {
+                    ArgumentsFormatting::Multiline { fallback_indent, brace_indent }
+                } else {
+                    ArgumentsFormatting::SingleLine
+                }
+            };
+
             let mut suggestion = "(".to_owned();
             let mut needs_comma = false;
             for (expected_idx, provided_idx) in matched_inputs.iter_enumerated() {
                 if needs_comma {
-                    suggestion += ", ";
-                } else {
-                    needs_comma = true;
+                    suggestion += ",";
                 }
-                let suggestion_text = if let Some(provided_idx) = provided_idx
+                match &arguments_formatting {
+                    ArgumentsFormatting::SingleLine if needs_comma => suggestion += " ",
+                    ArgumentsFormatting::SingleLine => {}
+                    ArgumentsFormatting::Multiline { .. } => suggestion += "\n",
+                }
+                needs_comma = true;
+                let (suggestion_span, suggestion_text) = if let Some(provided_idx) = provided_idx
                     && let (_, provided_span) = provided_arg_tys[*provided_idx]
                     && let Ok(arg_text) = source_map.span_to_snippet(provided_span)
                 {
-                    arg_text
+                    (Some(provided_span), arg_text)
                 } else {
                     // Propose a placeholder of the correct type
                     let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
-                    ty_to_snippet(expected_ty, expected_idx)
+                    (None, ty_to_snippet(expected_ty, expected_idx))
                 };
+                if let ArgumentsFormatting::Multiline { fallback_indent, .. } =
+                    &arguments_formatting
+                {
+                    let indent = suggestion_span
+                        .and_then(|span| source_map.indentation_before(span))
+                        .unwrap_or_else(|| fallback_indent.clone());
+                    suggestion += &indent;
+                }
                 suggestion += &suggestion_text;
+            }
+            if let ArgumentsFormatting::Multiline { brace_indent, .. } = arguments_formatting {
+                suggestion += ",\n";
+                suggestion += &brace_indent;
             }
             suggestion += ")";
             err.span_suggestion_verbose(

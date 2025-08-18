@@ -7,28 +7,22 @@ LL | #[non_exhaustive(anything)]
    | |               didn't expect any arguments here
    | help: must be of the form: `#[non_exhaustive]`
 
-error[E0701]: attribute should be applied to a struct or enum
+error: `#[non_exhaustive]` attribute cannot be used on traits
   --> $DIR/invalid-attribute.rs:5:1
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
-LL |
-LL | trait Bar { }
-   | ------------- not a struct or enum
+   |
+   = help: `#[non_exhaustive]` can be applied to data types, enum variants
 
-error[E0701]: attribute should be applied to a struct or enum
+error: `#[non_exhaustive]` attribute cannot be used on unions
   --> $DIR/invalid-attribute.rs:9:1
    |
-LL |   #[non_exhaustive]
-   |   ^^^^^^^^^^^^^^^^^
-LL |
-LL | / union Baz {
-LL | |     f1: u16,
-LL | |     f2: u16
-LL | | }
-   | |_- not a struct or enum
+LL | #[non_exhaustive]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[non_exhaustive]` can be applied to data types, enum variants
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0565, E0701.
-For more information about an error, try `rustc --explain E0565`.
+For more information about this error, try `rustc --explain E0565`.

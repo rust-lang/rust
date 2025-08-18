@@ -527,21 +527,28 @@ impl<'tcx> GenericArgs<'tcx> {
     #[inline]
     #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
-        self[i].as_type().unwrap_or_else(|| bug!("expected type for param #{} in {:?}", i, self))
+        self[i].as_type().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected type for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]
     #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
-        self[i]
-            .as_region()
-            .unwrap_or_else(|| bug!("expected region for param #{} in {:?}", i, self))
+        self[i].as_region().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected region for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]
     #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
-        self[i].as_const().unwrap_or_else(|| bug!("expected const for param #{} in {:?}", i, self))
+        self[i].as_const().unwrap_or_else(
+            #[track_caller]
+            || bug!("expected const for param #{} in {:?}", i, self),
+        )
     }
 
     #[inline]
@@ -578,6 +585,9 @@ impl<'tcx> GenericArgs<'tcx> {
         tcx.mk_args_from_iter(target_args.iter().chain(self.iter().skip(defs.count())))
     }
 
+    /// Truncates this list of generic args to have at most the number of args in `generics`.
+    ///
+    /// You might be looking for [`TraitRef::from_assoc`](super::TraitRef::from_assoc).
     pub fn truncate_to(&self, tcx: TyCtxt<'tcx>, generics: &ty::Generics) -> GenericArgsRef<'tcx> {
         tcx.mk_args(&self[..generics.count()])
     }

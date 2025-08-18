@@ -172,7 +172,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if self
             .typeck_results()
@@ -189,7 +188,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    #[allow(dead_code)] // FIXME(81658): should be used + lint reinstated after #83171 relands.
     fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
@@ -373,7 +371,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// will be ignored for the purposes of dead code analysis (see PR #85200
     /// for discussion).
     fn should_ignore_item(&mut self, def_id: DefId) -> bool {
-        if let Some(impl_of) = self.tcx.impl_of_assoc(def_id) {
+        if let Some(impl_of) = self.tcx.trait_impl_of_assoc(def_id) {
             if !self.tcx.is_automatically_derived(impl_of) {
                 return false;
             }
@@ -576,6 +574,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             hir::ExprKind::OffsetOf(..) => {
                 self.handle_offset_of(expr);
             }
+            hir::ExprKind::Assign(ref lhs, ..) => {
+                self.handle_assign(lhs);
+                self.check_for_self_assign(expr);
+            }
             _ => (),
         }
 
@@ -701,7 +703,7 @@ fn has_allow_dead_code_or_lang_attr(
 
             // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
             // forcefully, e.g., for placing it in a specific section.
-            cg_attrs.contains_extern_indicator()
+            cg_attrs.contains_extern_indicator(tcx, def_id.into())
                 || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         }

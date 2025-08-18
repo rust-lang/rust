@@ -153,6 +153,7 @@ impl Target {
         forward!(is_like_msvc);
         forward!(is_like_wasm);
         forward!(is_like_android);
+        forward!(is_like_vexos);
         forward!(binary_format);
         forward!(default_dwarf_version);
         forward!(allows_weak_linkage);
@@ -167,7 +168,6 @@ impl Target {
         forward!(main_needs_argc_argv);
         forward!(has_thread_local);
         forward!(obj_is_bitcode);
-        forward!(bitcode_llvm_cmdline);
         forward_opt!(max_atomic_width);
         forward_opt!(min_atomic_width);
         forward!(atomic_cas);
@@ -345,6 +345,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(is_like_android);
+        target_option_val!(is_like_vexos);
         target_option_val!(binary_format);
         target_option_val!(default_dwarf_version);
         target_option_val!(allows_weak_linkage);
@@ -359,7 +360,6 @@ impl ToJson for Target {
         target_option_val!(main_needs_argc_argv);
         target_option_val!(has_thread_local);
         target_option_val!(obj_is_bitcode);
-        target_option_val!(bitcode_llvm_cmdline);
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
         target_option_val!(atomic_cas);
@@ -538,6 +538,7 @@ struct TargetSpecJson {
     is_like_msvc: Option<bool>,
     is_like_wasm: Option<bool>,
     is_like_android: Option<bool>,
+    is_like_vexos: Option<bool>,
     binary_format: Option<BinaryFormat>,
     default_dwarf_version: Option<u32>,
     allows_weak_linkage: Option<bool>,
@@ -552,7 +553,6 @@ struct TargetSpecJson {
     main_needs_argc_argv: Option<bool>,
     has_thread_local: Option<bool>,
     obj_is_bitcode: Option<bool>,
-    bitcode_llvm_cmdline: Option<StaticCow<str>>,
     max_atomic_width: Option<u64>,
     min_atomic_width: Option<u64>,
     atomic_cas: Option<bool>,

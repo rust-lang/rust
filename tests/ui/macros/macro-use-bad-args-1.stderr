@@ -6,6 +6,7 @@ LL | #[macro_use(foo(bar))]
    |                |
    |                didn't expect any arguments here
    |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(foo(bar))]

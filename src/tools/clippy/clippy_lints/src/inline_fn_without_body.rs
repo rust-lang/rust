@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg::DiagExt;
-use rustc_hir::attrs::{AttributeKind};
-use rustc_hir::find_attr;
 use rustc_errors::Applicability;
-use rustc_hir::{TraitFn, TraitItem, TraitItemKind};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{TraitFn, TraitItem, TraitItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 

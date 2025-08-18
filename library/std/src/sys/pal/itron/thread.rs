@@ -361,6 +361,10 @@ unsafe fn terminate_and_delete_current_task() -> ! {
     unsafe { crate::hint::unreachable_unchecked() };
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     super::unsupported()
 }

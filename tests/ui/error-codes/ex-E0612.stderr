@@ -4,11 +4,7 @@ error[E0609]: no field `1` on type `Foo`
 LL |    y.1;
    |      ^ unknown field
    |
-help: a field with a similar name exists
-   |
-LL -    y.1;
-LL +    y.0;
-   |
+   = note: available field is: `0`
 
 error: aborting due to 1 previous error
 

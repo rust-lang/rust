@@ -1,4 +1,4 @@
-error[E0599]: no method named `method` found for struct `LocalKey` in the current scope
+error[E0599]: no method named `method` found for struct `LocalKey<T>` in the current scope
   --> $DIR/inner_type2.rs:18:12
    |
 LL |     STRUCT.method();
@@ -11,7 +11,7 @@ note: the method `method` exists on the type `Struct<u32>`
 LL |     pub fn method(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error[E0599]: no method named `method` found for union `MaybeUninit` in the current scope
+error[E0599]: no method named `method` found for union `MaybeUninit<T>` in the current scope
   --> $DIR/inner_type2.rs:23:10
    |
 LL |     item.method();

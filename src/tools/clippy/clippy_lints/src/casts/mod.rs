@@ -807,7 +807,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let _ = u16::MAX as usize;
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.89.0"]
     pub CONFUSING_METHOD_TO_NUMERIC_CAST,
     suspicious,
     "casting a primitive method pointer to any integer type"

@@ -1,5 +1,5 @@
 name: Documentation problem
-description: Create a report for a documentation problem.
+description: Report an issue with documentation content.
 labels: ["A-docs"]
 body:
   - type: markdown
@@ -19,20 +19,20 @@ body:
         - [The Rustonomicon](https://github.com/rust-lang/nomicon/issues)
         - [The Embedded Book](https://github.com/rust-embedded/book/issues)
 
-        All other documentation issues should be filed here.
+        Or, if you find an issue related to rustdoc (e.g. doctest, rustdoc UI), please use the rustdoc issue template instead.
 
-        Or, if you find an issue related to rustdoc (e.g. doctest, rustdoc UI), please use the bug report or blank issue template instead.
+        All other documentation issues should be filed here.
 
   - type: textarea
     id: location
     attributes:
-      label: Location
+      label: Location (URL)
     validations:
-      required: true 
+      required: true
 
   - type: textarea
     id: summary
     attributes:
       label: Summary
     validations:
-      required: true 
+      required: true

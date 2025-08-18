@@ -17,7 +17,7 @@ ast_passes_abi_must_not_have_parameters_or_return_type=
 
 ast_passes_abi_must_not_have_return_type=
     invalid signature for `extern {$abi}` function
-    .note = functions with the "custom" ABI cannot have a return type
+    .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
 
 ast_passes_assoc_const_without_body =
@@ -32,6 +32,13 @@ ast_passes_assoc_type_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
 
+ast_passes_async_fn_in_const_trait_or_trait_impl =
+    async functions are not allowed in `const` {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    }
+    .label = associated functions of `const` cannot be declared `async`
+
 ast_passes_at_least_one_trait = at least one trait must be specified
 
 ast_passes_auto_generic = auto traits cannot have generic parameters
@@ -40,7 +47,7 @@ ast_passes_auto_generic = auto traits cannot have generic parameters
 
 ast_passes_auto_items = auto traits cannot have associated items
     .label = {ast_passes_auto_items}
-    .suggestion = remove these associated items
+    .suggestion = remove the associated items
 
 ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetime bounds
     .label = {ast_passes_auto_super_lifetime}
@@ -174,11 +181,6 @@ ast_passes_generic_default_trailing = generic parameters with a default must be 
 
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
-
-ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
-    .because = {$annotation} because of this
-    .type = inherent impl for this type
-    .only_trait = only trait implementations may be annotated with {$annotation}
 
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item

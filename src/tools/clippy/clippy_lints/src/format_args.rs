@@ -17,12 +17,11 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
-use rustc_hir::attrs::{AttributeKind};
-use rustc_hir::{find_attr,RustcVersion};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Expr, ExprKind, LangItem, RustcVersion, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Upcast};
@@ -223,7 +222,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// [pointer format]: https://doc.rust-lang.org/std/fmt/index.html#formatting-traits
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub POINTER_FORMAT,
     restriction,
     "formatting a pointer"

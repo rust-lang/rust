@@ -179,7 +179,7 @@ error: inequality checks against true can be replaced by a negation
   --> tests/ui/nonminimal_bool.rs:186:8
    |
 LL |     if !b != true {}
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!!b`
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `b`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:189:8
@@ -209,7 +209,7 @@ error: inequality checks against true can be replaced by a negation
   --> tests/ui/nonminimal_bool.rs:193:8
    |
 LL |     if true != !b {}
-   |        ^^^^^^^^^^ help: try simplifying it as shown: `!!b`
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `b`
 
 error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:196:8
@@ -235,5 +235,17 @@ error: this boolean expression can be simplified
 LL |         if !(matches!(ty, TyKind::Ref(_, _, _)) && !is_mutable(&expr)) {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!matches!(ty, TyKind::Ref(_, _, _)) || is_mutable(&expr)`
 
-error: aborting due to 31 previous errors
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:253:8
+   |
+LL |     if !S != true {}
+   |        ^^^^^^^^^^ help: try: `S == true`
+
+error: inequality checks against true can be replaced by a negation
+  --> tests/ui/nonminimal_bool.rs:253:8
+   |
+LL |     if !S != true {}
+   |        ^^^^^^^^^^ help: try simplifying it as shown: `!!S`
+
+error: aborting due to 33 previous errors
 

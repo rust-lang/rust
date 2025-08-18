@@ -1,11 +1,11 @@
 error[E0541]: unknown meta item 'reason'
-  --> $DIR/deprecation-sanity.rs:4:43
+  --> $DIR/deprecation-sanity.rs:6:43
    |
 LL |     #[deprecated(since = "a", note = "a", reason)]
    |                                           ^^^^^^ expected one of `since`, `note`
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:7:5
+  --> $DIR/deprecation-sanity.rs:9:5
    |
 LL |     #[deprecated(since = "a", note)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^----^^
@@ -18,14 +18,18 @@ LL -     #[deprecated(since = "a", note)]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since = "a", note)]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since = "a", note)]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:10:5
+  --> $DIR/deprecation-sanity.rs:12:5
    |
 LL |     #[deprecated(since, note = "a")]
    |     ^^^^^^^^^^^^^-----^^^^^^^^^^^^^^
@@ -38,14 +42,18 @@ LL -     #[deprecated(since, note = "a")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since, note = "a")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since, note = "a")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:13:5
+  --> $DIR/deprecation-sanity.rs:15:5
    |
 LL |     #[deprecated(since = "a", note(b))]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
@@ -58,14 +66,18 @@ LL -     #[deprecated(since = "a", note(b))]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since = "a", note(b))]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since = "a", note(b))]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:16:5
+  --> $DIR/deprecation-sanity.rs:18:5
    |
 LL |     #[deprecated(since(b), note = "a")]
    |     ^^^^^^^^^^^^^--------^^^^^^^^^^^^^^
@@ -78,14 +90,18 @@ LL -     #[deprecated(since(b), note = "a")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated(since(b), note = "a")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated(since(b), note = "a")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error[E0539]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:19:5
+  --> $DIR/deprecation-sanity.rs:21:5
    |
 LL |     #[deprecated(note = b"test")]
    |     ^^^^^^^^^^^^^^^^^^^^-^^^^^^^^
@@ -95,7 +111,7 @@ LL |     #[deprecated(note = b"test")]
    = note: expected a normal string literal, not a byte string literal
 
 error[E0565]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:22:5
+  --> $DIR/deprecation-sanity.rs:24:5
    |
 LL |     #[deprecated("test")]
    |     ^^^^^^^^^^^^^------^^
@@ -108,26 +124,30 @@ LL -     #[deprecated("test")]
 LL +     #[deprecated = "reason"]
    |
 LL -     #[deprecated("test")]
-LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL +     #[deprecated(note = "reason")]
    |
 LL -     #[deprecated("test")]
-LL +     #[deprecated]
+LL +     #[deprecated(since = "version")]
    |
+LL -     #[deprecated("test")]
+LL +     #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
 error: multiple `deprecated` attributes
-  --> $DIR/deprecation-sanity.rs:27:1
+  --> $DIR/deprecation-sanity.rs:29:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/deprecation-sanity.rs:26:1
+  --> $DIR/deprecation-sanity.rs:28:1
    |
 LL | #[deprecated(since = "a", note = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0538]: malformed `deprecated` attribute input
-  --> $DIR/deprecation-sanity.rs:30:1
+  --> $DIR/deprecation-sanity.rs:32:1
    |
 LL | #[deprecated(since = "a", since = "b", note = "c")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^
@@ -140,18 +160,24 @@ LL - #[deprecated(since = "a", since = "b", note = "c")]
 LL + #[deprecated = "reason"]
    |
 LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+LL + #[deprecated(note = "reason")]
    |
 LL - #[deprecated(since = "a", since = "b", note = "c")]
-LL + #[deprecated]
+LL + #[deprecated(since = "version")]
    |
+LL - #[deprecated(since = "a", since = "b", note = "c")]
+LL + #[deprecated(since = "version", note = "reason")]
+   |
+   = and 1 other candidate
 
-error: this `#[deprecated]` annotation has no effect
-  --> $DIR/deprecation-sanity.rs:35:1
+error: `#[deprecated]` attribute cannot be used on trait impl blocks
+  --> $DIR/deprecation-sanity.rs:37:1
    |
 LL | #[deprecated = "hello"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove the unnecessary deprecation attribute
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[deprecated]` can be applied to functions, data types, modules, unions, constants, statics, macro defs, type aliases, use statements, struct fields, traits, associated types, associated consts, enum variants, inherent impl blocks, crates
    = note: `#[deny(useless_deprecated)]` on by default
 
 error: aborting due to 10 previous errors

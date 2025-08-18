@@ -2,10 +2,12 @@ use std::iter;
 
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use super::{CombineAttributeParser, ConvertFn};
-use crate::context::{AcceptContext, Stage};
+use crate::context::MaybeWarn::{Allow, Warn};
+use crate::context::{AcceptContext, AllowedTargets, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
 
@@ -15,7 +17,13 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "feat1, feat2, ...");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::MacroDef),
+        Allow(Target::Fn),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -32,7 +40,12 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
     const PATH: &'static [rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "feat1, feat2, ...");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Trait),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -53,7 +66,14 @@ impl<S: Stage> CombineAttributeParser<S> for AllowConstFnUnstableParser {
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::AllowConstFnUnstable(items, first_span);
-    const TEMPLATE: AttributeTemplate = template!(Word, List: "feat1, feat2, ...");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &["feat1, feat2, ..."]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,

@@ -201,10 +201,11 @@ declare_lint_pass!(Derive => [
 impl<'tcx> LateLintPass<'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(trait_ref),
+            of_trait: Some(of_trait),
             ..
         }) = item.kind
         {
+            let trait_ref = &of_trait.trait_ref;
             let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
             let is_automatically_derived = cx.tcx.is_automatically_derived(item.owner_id.to_def_id());
 

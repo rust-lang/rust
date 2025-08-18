@@ -260,7 +260,7 @@ impl GlobalStateInner {
         kind: MemoryKind,
         machine: &MiriMachine<'_>,
     ) -> AllocState {
-        let _span = enter_trace_span!(borrow_tracker::new_allocation, ?id, ?alloc_size, ?kind);
+        let _trace = enter_trace_span!(borrow_tracker::new_allocation, ?id, ?alloc_size, ?kind);
         match self.borrow_tracker_method {
             BorrowTrackerMethod::StackedBorrows =>
                 AllocState::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
@@ -281,7 +281,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         kind: RetagKind,
         val: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
-        let _span = enter_trace_span!(borrow_tracker::retag_ptr_value, ?kind, ?val.layout);
+        let _trace = enter_trace_span!(borrow_tracker::retag_ptr_value, ?kind, ?val.layout);
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
@@ -295,7 +295,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         kind: RetagKind,
         place: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(borrow_tracker::retag_place_contents, ?kind, ?place);
+        let _trace = enter_trace_span!(borrow_tracker::retag_place_contents, ?kind, ?place);
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
@@ -305,7 +305,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn protect_place(&mut self, place: &MPlaceTy<'tcx>) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let _span = enter_trace_span!(borrow_tracker::protect_place, ?place);
+        let _trace = enter_trace_span!(borrow_tracker::protect_place, ?place);
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
@@ -315,7 +315,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let _span =
+        let _trace =
             enter_trace_span!(borrow_tracker::expose_tag, alloc_id = alloc_id.0, tag = tag.0);
         let this = self.eval_context_ref();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
@@ -360,7 +360,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &self,
         frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(borrow_tracker::on_stack_pop);
+        let _trace = enter_trace_span!(borrow_tracker::on_stack_pop);
         let this = self.eval_context_ref();
         let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap();
         // The body of this loop needs `borrow_tracker` immutably
@@ -438,7 +438,7 @@ impl AllocState {
         range: AllocRange,
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(borrow_tracker::before_memory_read, alloc_id = alloc_id.0);
+        let _trace = enter_trace_span!(borrow_tracker::before_memory_read, alloc_id = alloc_id.0);
         match self {
             AllocState::StackedBorrows(sb) =>
                 sb.borrow_mut().before_memory_read(alloc_id, prov_extra, range, machine),
@@ -460,7 +460,7 @@ impl AllocState {
         range: AllocRange,
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(borrow_tracker::before_memory_write, alloc_id = alloc_id.0);
+        let _trace = enter_trace_span!(borrow_tracker::before_memory_write, alloc_id = alloc_id.0);
         match self {
             AllocState::StackedBorrows(sb) =>
                 sb.get_mut().before_memory_write(alloc_id, prov_extra, range, machine),
@@ -482,7 +482,7 @@ impl AllocState {
         size: Size,
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
-        let _span =
+        let _trace =
             enter_trace_span!(borrow_tracker::before_memory_deallocation, alloc_id = alloc_id.0);
         match self {
             AllocState::StackedBorrows(sb) =>
@@ -493,7 +493,7 @@ impl AllocState {
     }
 
     pub fn remove_unreachable_tags(&self, tags: &FxHashSet<BorTag>) {
-        let _span = enter_trace_span!(borrow_tracker::remove_unreachable_tags);
+        let _trace = enter_trace_span!(borrow_tracker::remove_unreachable_tags);
         match self {
             AllocState::StackedBorrows(sb) => sb.borrow_mut().remove_unreachable_tags(tags),
             AllocState::TreeBorrows(tb) => tb.borrow_mut().remove_unreachable_tags(tags),
@@ -508,7 +508,7 @@ impl AllocState {
         tag: BorTag,
         alloc_id: AllocId, // diagnostics
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             borrow_tracker::release_protector,
             alloc_id = alloc_id.0,
             tag = tag.0
@@ -523,7 +523,7 @@ impl AllocState {
 
 impl VisitProvenance for AllocState {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let _span = enter_trace_span!(borrow_tracker::visit_provenance);
+        let _trace = enter_trace_span!(borrow_tracker::visit_provenance);
         match self {
             AllocState::StackedBorrows(sb) => sb.visit_provenance(visit),
             AllocState::TreeBorrows(tb) => tb.visit_provenance(visit),

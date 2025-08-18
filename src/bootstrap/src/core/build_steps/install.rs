@@ -12,7 +12,7 @@ use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
-use crate::{CodegenBackendKind, Compiler, Kind};
+use crate::{Compiler, Kind};
 
 #[cfg(target_os = "illumos")]
 const SHELL: &str = "bash";
@@ -68,7 +68,13 @@ fn install_sh(
     host: Option<TargetSelection>,
     tarball: &GeneratedTarball,
 ) {
-    let _guard = builder.msg(Kind::Install, stage, package, host, host);
+    let _guard = builder.msg(
+        Kind::Install,
+        package,
+        None,
+        (host.unwrap_or(builder.host_target), stage),
+        host,
+    );
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
@@ -157,7 +163,7 @@ macro_rules! install {
        $($name:ident,
        $condition_name: ident = $path_or_alias: literal,
        $default_cond:expr,
-       only_hosts: $only_hosts:expr,
+       IS_HOST: $IS_HOST:expr,
        $run_item:block $(, $c:ident)*;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -177,7 +183,7 @@ macro_rules! install {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = true;
-            const ONLY_HOSTS: bool = $only_hosts;
+            const IS_HOST: bool = $IS_HOST;
             $(const $c: bool = true;)*
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -200,11 +206,11 @@ macro_rules! install {
 }
 
 install!((self, builder, _config),
-    Docs, path = "src/doc", _config.docs, only_hosts: false, {
+    Docs, path = "src/doc", _config.docs, IS_HOST: false, {
         let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
         install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
     };
-    Std, path = "library/std", true, only_hosts: false, {
+    Std, path = "library/std", true, IS_HOST: false, {
         // `expect` should be safe, only None when host != build, but this
         // only runs when host == build
         let tarball = builder.ensure(dist::Std {
@@ -213,13 +219,13 @@ install!((self, builder, _config),
         }).expect("missing std");
         install_sh(builder, "std", self.compiler.stage, Some(self.target), &tarball);
     };
-    Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
+    Cargo, alias = "cargo", Self::should_build(_config), IS_HOST: true, {
         let tarball = builder
             .ensure(dist::Cargo { build_compiler: self.compiler, target: self.target })
             .expect("missing cargo");
         install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
     };
-    RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), only_hosts: true, {
+    RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) =
             builder.ensure(dist::RustAnalyzer { build_compiler: self.compiler, target: self.target })
         {
@@ -230,13 +236,13 @@ install!((self, builder, _config),
             );
         }
     };
-    Clippy, alias = "clippy", Self::should_build(_config), only_hosts: true, {
+    Clippy, alias = "clippy", Self::should_build(_config), IS_HOST: true, {
         let tarball = builder
             .ensure(dist::Clippy { build_compiler: self.compiler, target: self.target })
             .expect("missing clippy");
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
-    Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
+    Miri, alias = "miri", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::Miri { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -246,7 +252,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.host_target), only_hosts: true, {
+    LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.host_target), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmTools { target: self.target }) {
             install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -255,7 +261,7 @@ install!((self, builder, _config),
             );
         }
     };
-    Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
+    Rustfmt, alias = "rustfmt", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
             build_compiler: self.compiler,
             target: self.target
@@ -267,16 +273,16 @@ install!((self, builder, _config),
             );
         }
     };
-    Rustc, path = "compiler/rustc", true, only_hosts: true, {
+    Rustc, path = "compiler/rustc", true, IS_HOST: true, {
         let tarball = builder.ensure(dist::Rustc {
             compiler: builder.compiler(builder.top_stage, self.target),
         });
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
     };
-    RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
-        if let Some(tarball) = builder.ensure(dist::CodegenBackend {
-            compiler: self.compiler,
-            backend: CodegenBackendKind::Cranelift,
+    RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), IS_HOST: true, {
+        if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
+            build_compiler: self.compiler,
+            target: self.target
         }) {
             install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -286,7 +292,7 @@ install!((self, builder, _config),
             );
         }
     };
-    LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), only_hosts: true, {
+    LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.compiler, target: self.target }) {
             install_sh(builder, "llvm-bitcode-linker", self.compiler.stage, Some(self.target), &tarball);
         } else {
@@ -305,7 +311,7 @@ pub struct Src {
 impl Step for Src {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let config = &run.builder.config;

@@ -1052,6 +1052,26 @@ fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool 
     }
 }
 
+/// Verify that we do not references to non-existing locals when dereferencing projections.
+fn dereference_indexing(array: [u8; 2], index: usize) {
+    // CHECK-LABEL: fn dereference_indexing(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug i => [[i:_.*]];
+
+    let a = {
+        // CHECK: [[i]] = Add(copy _2, const 1_usize);
+        let i = index + 1;
+        // CHECK: [[a]] = &_1[[[i]]];
+        &array[i]
+    };
+
+    // CHECK-NOT: [{{.*}}]
+    // CHECK: [[tmp:_.*]] = copy (*[[a]]);
+    // CHECK: opaque::<u8>(move [[tmp]])
+    opaque(*a);
+}
+
+// CHECK-LABEL: fn main(
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -1079,6 +1099,7 @@ fn main() {
     slice_const_length(&[1]);
     meta_of_ref_to_slice(&42);
     slice_from_raw_parts_as_ptr(&123, 456);
+    dereference_indexing([129, 14], 5);
 }
 
 #[inline(never)]
@@ -1138,3 +1159,4 @@ enum Never {}
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
 // EMIT_MIR gvn.transmute_then_cast_pointer.GVN.diff
 // EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff
+// EMIT_MIR gvn.dereference_indexing.GVN.diff

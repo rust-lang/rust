@@ -44,6 +44,7 @@ LL |
 LL |         foo(f);
    |             ^ move occurs because `f` has type `{closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 52:58}`, which does not implement the `Copy` trait
    |
+   = help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |         foo(f.clone());

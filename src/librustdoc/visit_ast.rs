@@ -5,7 +5,7 @@ use std::mem;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdSet};
 use rustc_hir::intravisit::{Visitor, walk_body, walk_item};
 use rustc_hir::{CRATE_HIR_ID, Node};
@@ -13,7 +13,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
 use tracing::debug;
 
@@ -325,7 +324,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let is_bang_macro = matches!(
             item,
-            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, _, MacroKind::Bang), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, _, kinds), .. }) if kinds.contains(MacroKinds::BANG)
         );
 
         if !self.view_item_stack.insert(res_did) && !is_bang_macro {
@@ -406,7 +405,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // attribute can still be visible.
             || match item.kind {
                 hir::ItemKind::Impl(..) => true,
-                hir::ItemKind::Macro(_, _, MacroKind::Bang) => {
+                hir::ItemKind::Macro(_, _, _) => {
                     self.cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export)
                 }
                 _ => false,

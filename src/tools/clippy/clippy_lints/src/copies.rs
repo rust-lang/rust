@@ -235,9 +235,9 @@ fn lint_branches_sharing_code<'tcx>(
         let cond_snippet = reindent_multiline(&snippet(cx, cond_span, "_"), false, None);
         let cond_indent = indent_of(cx, cond_span);
         let moved_snippet = reindent_multiline(&snippet(cx, span, "_"), true, None);
-        let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
+        let suggestion = moved_snippet + "\n" + &cond_snippet + "{";
         let suggestion = reindent_multiline(&suggestion, true, cond_indent);
-        (replace_span, suggestion.to_string())
+        (replace_span, suggestion)
     });
     let end_suggestion = res.end_span(last_block, sm).map(|span| {
         let moved_snipped = reindent_multiline(&snippet(cx, span, "_"), true, None);
@@ -253,7 +253,7 @@ fn lint_branches_sharing_code<'tcx>(
                     .then_some(range.start - 4..range.end)
             })
             .map_or(span, |range| range.with_ctxt(span.ctxt()));
-        (span, suggestion.to_string())
+        (span, suggestion.clone())
     });
 
     let (span, msg, end_span) = match (&start_suggestion, &end_suggestion) {

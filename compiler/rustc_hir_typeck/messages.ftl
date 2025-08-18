@@ -159,7 +159,7 @@ hir_typeck_lossy_provenance_ptr2int =
     .suggestion = use `.addr()` to obtain the address of a pointer
     .help = if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead
 
-hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty_str}`
+hir_typeck_missing_parentheses_in_range = can't call method `{$method_name}` on type `{$ty}`
 
 hir_typeck_naked_asm_outside_naked_fn =
     the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
@@ -184,7 +184,7 @@ hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback af
 hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
     .help = specify the type explicitly
 
-hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
+hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope
 }

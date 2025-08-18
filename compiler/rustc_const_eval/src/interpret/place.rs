@@ -526,7 +526,7 @@ where
         &self,
         mir_place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
-        let _span =
+        let _trace =
             enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
 
         let mut place = self.local_to_place(mir_place.local)?;
@@ -705,7 +705,7 @@ where
 
         match value {
             Immediate::Scalar(scalar) => {
-                alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)
+                alloc.write_scalar(alloc_range(Size::ZERO, scalar.size()), scalar)?;
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 let BackendRepr::ScalarPair(a, b) = layout.backend_repr else {
@@ -725,10 +725,10 @@ where
                 alloc.write_scalar(alloc_range(Size::ZERO, a_val.size()), a_val)?;
                 alloc.write_scalar(alloc_range(b_offset, b_val.size()), b_val)?;
                 // We don't have to reset padding here, `write_immediate` will anyway do a validation run.
-                interp_ok(())
             }
             Immediate::Uninit => alloc.write_uninit_full(),
         }
+        interp_ok(())
     }
 
     pub fn write_uninit(
@@ -748,7 +748,7 @@ where
                     // Zero-sized access
                     return interp_ok(());
                 };
-                alloc.write_uninit_full()?;
+                alloc.write_uninit_full();
             }
         }
         interp_ok(())
@@ -772,7 +772,7 @@ where
                     // Zero-sized access
                     return interp_ok(());
                 };
-                alloc.clear_provenance()?;
+                alloc.clear_provenance();
             }
         }
         interp_ok(())

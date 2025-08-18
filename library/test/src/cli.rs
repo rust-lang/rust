@@ -162,18 +162,17 @@ tests whose names contain the filter are run. Multiple filter strings may
 be passed, which will run all tests matching any of the filters.
 
 By default, all tests are run in parallel. This can be altered with the
---test-threads flag or the RUST_TEST_THREADS environment variable when running
-tests (set it to 1).
+--test-threads flag when running tests (set it to 1).
 
-By default, the tests are run in alphabetical order. Use --shuffle or set
-RUST_TEST_SHUFFLE to run the tests in random order. Pass the generated
-"shuffle seed" to --shuffle-seed (or set RUST_TEST_SHUFFLE_SEED) to run the
-tests in the same order again. Note that --shuffle and --shuffle-seed do not
-affect whether the tests are run in parallel.
+By default, the tests are run in alphabetical order. Use --shuffle to run
+the tests in random order. Pass the generated "shuffle seed" to
+--shuffle-seed to run the tests in the same order again. Note that
+--shuffle and --shuffle-seed do not affect whether the tests are run in
+parallel.
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --no-capture flag or setting RUST_TEST_NOCAPTURE
-environment variable to a value other than "0". Logging is not captured by default.
+This can be overridden with the --no-capture flag to a value other than "0".
+Logging is not captured by default.
 
 Test Attributes:
 

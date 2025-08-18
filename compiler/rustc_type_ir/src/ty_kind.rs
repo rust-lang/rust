@@ -69,7 +69,7 @@ impl AliasTyKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -268,6 +268,8 @@ pub enum TyKind<I: Interner> {
     Error(I::ErrorGuaranteed),
 }
 
+impl<I: Interner> Eq for TyKind<I> {}
+
 impl<I: Interner> TyKind<I> {
     pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self {
@@ -404,7 +406,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
 /// * For an inherent projection, this would be `Ty::N<...>`.
 /// * For an opaque type, there is no explicit syntax.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -439,6 +441,8 @@ pub struct AliasTy<I: Interner> {
     #[derive_where(skip(Debug))]
     pub(crate) _use_alias_ty_new_instead: (),
 }
+
+impl<I: Interner> Eq for AliasTy<I> {}
 
 impl<I: Interner> AliasTy<I> {
     pub fn new_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> AliasTy<I> {
@@ -720,7 +724,7 @@ impl fmt::Debug for InferTy {
     }
 }
 
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -731,7 +735,9 @@ pub struct TypeAndMut<I: Interner> {
     pub mutbl: Mutability,
 }
 
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+impl<I: Interner> Eq for TypeAndMut<I> {}
+
+#[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -747,6 +753,8 @@ pub struct FnSig<I: Interner> {
     #[type_foldable(identity)]
     pub abi: I::Abi,
 }
+
+impl<I: Interner> Eq for FnSig<I> {}
 
 impl<I: Interner> FnSig<I> {
     pub fn inputs(self) -> I::FnInputTys {
@@ -845,10 +853,12 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
 
 // FIXME: this is a distinct type because we need to define `Encode`/`Decode`
 // impls in this crate for `Binder<I, I::Ty>`.
-#[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct UnsafeBinderInner<I: Interner>(ty::Binder<I, I::Ty>);
+
+impl<I: Interner> Eq for UnsafeBinderInner<I> {}
 
 impl<I: Interner> From<ty::Binder<I, I::Ty>> for UnsafeBinderInner<I> {
     fn from(value: ty::Binder<I, I::Ty>) -> Self {
@@ -906,7 +916,7 @@ where
 }
 
 // This is just a `FnSig` without the `FnHeader` fields.
-#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -915,6 +925,8 @@ where
 pub struct FnSigTys<I: Interner> {
     pub inputs_and_output: I::Tys,
 }
+
+impl<I: Interner> Eq for FnSigTys<I> {}
 
 impl<I: Interner> FnSigTys<I> {
     pub fn inputs(self) -> I::FnInputTys {
@@ -958,7 +970,7 @@ impl<I: Interner> ty::Binder<I, FnSigTys<I>> {
     }
 }
 
-#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+#[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -970,7 +982,9 @@ pub struct FnHeader<I: Interner> {
     pub abi: I::Abi,
 }
 
-#[derive_where(Clone, Copy, Debug, PartialEq, Eq, Hash; I: Interner)]
+impl<I: Interner> Eq for FnHeader<I> {}
+
+#[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -980,3 +994,5 @@ pub struct CoroutineWitnessTypes<I: Interner> {
     pub types: I::Tys,
     pub assumptions: I::RegionAssumptions,
 }
+
+impl<I: Interner> Eq for CoroutineWitnessTypes<I> {}

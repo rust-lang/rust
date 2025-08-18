@@ -289,5 +289,11 @@ error: called `is_some()` after searching an `Iterator` with `find`
 LL |         let _ = v.iter().find(|x: &&u32| (*arg_no_deref_dyn)(x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| (*arg_no_deref_dyn)(&x))`
 
-error: aborting due to 46 previous errors
+error: called `is_some()` after searching an `Iterator` with `find`
+  --> tests/ui/search_is_some_fixable_some.rs:303:34
+   |
+LL |     let has_even = values.iter().find(|v| matches!(v, Some(x) if x % 2 == 0)).is_some();
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|v| matches!(&v, Some(x) if x % 2 == 0))`
+
+error: aborting due to 47 previous errors
 

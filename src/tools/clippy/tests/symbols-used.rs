@@ -75,7 +75,7 @@ fn all_symbols_are_used() -> Result<()> {
         for sym in extra {
             eprintln!("  - {sym}");
         }
-        Err(format!("extra symbols found — remove them {SYM_FILE}"))?;
+        Err(format!("extra symbols found — remove them from {SYM_FILE}"))?;
     }
     Ok(())
 }

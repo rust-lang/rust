@@ -2,14 +2,15 @@ use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, IntType, ReprAttr};
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, FinalizeContext};
-use crate::context::{AcceptContext, Stage};
+use crate::context::MaybeWarn::Allow;
+use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemParser};
 use crate::session_diagnostics;
 use crate::session_diagnostics::IncorrectReprFormatGenericCause;
-
 /// Parse #[repr(...)] forms.
 ///
 /// Valid repr contents: any of the primitive integral type names (see
@@ -26,8 +27,10 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::Repr { reprs: items, first_span };
     // FIXME(jdonszelmann): never used
-    const TEMPLATE: AttributeTemplate =
-        template!(List: "C | Rust | align(...) | packed(...) | <integer type> | transparent");
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["C", "Rust", "transparent", "align(...)", "packed(...)", "<integer type>"],
+        "https://doc.rust-lang.org/reference/type-layout.html#representations"
+    );
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
@@ -58,6 +61,10 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
 
         reprs
     }
+
+    //FIXME Still checked fully in `check_attr.rs`
+    //This one is slightly more complicated because the allowed targets depend on the arguments
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 }
 
 macro_rules! int_pat {
@@ -275,7 +282,7 @@ pub(crate) struct AlignParser(Option<(Align, Span)>);
 
 impl AlignParser {
     const PATH: &'static [Symbol] = &[sym::rustc_align];
-    const TEMPLATE: AttributeTemplate = template!(List: "<alignment in bytes>");
+    const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse<'c, S: Stage>(
         &mut self,
@@ -316,6 +323,14 @@ impl AlignParser {
 
 impl<S: Stage> AttributeParser<S> for AlignParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::ForeignFn),
+    ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (align, span) = self.0?;

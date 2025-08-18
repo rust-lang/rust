@@ -43,7 +43,7 @@ help: consider introducing lifetime `'a` here
 LL | impl<'a> Trait for Z {
    |     ++++
 
-error[E0599]: no function or associated item named `new` found for struct `InvariantRef` in the current scope
+error[E0599]: no function or associated item named `new` found for struct `InvariantRef<'a, T>` in the current scope
   --> $DIR/correct_body_owner_parent_found_in_diagnostics.rs:9:41
    |
 LL | pub struct InvariantRef<'a, T: ?Sized>(&'a T, PhantomData<&'a mut &'a T>);

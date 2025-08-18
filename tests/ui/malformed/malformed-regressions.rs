@@ -4,9 +4,9 @@
 //~^ WARN this was previously accepted
 #[inline = ""] //~ ERROR valid forms for the attribute are
 //~^ WARN this was previously accepted
-#[link] //~ ERROR attribute must be of the form
+#[link] //~ ERROR valid forms for the attribute are
 //~^ WARN this was previously accepted
-#[link = ""] //~ ERROR attribute must be of the form
+#[link = ""] //~ ERROR valid forms for the attribute are
 //~^ WARN this was previously accepted
 
 fn main() {}

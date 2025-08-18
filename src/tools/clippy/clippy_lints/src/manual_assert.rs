@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call};
-use clippy_utils::{is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
+use clippy_utils::{higher, is_else_clause, is_parent_stmt, peel_blocks_with_stmt, span_extract_comment, sugg};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, UnOp};
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
 
@@ -35,7 +35,7 @@ declare_lint_pass!(ManualAssert => [MANUAL_ASSERT]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualAssert {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if let ExprKind::If(cond, then, None) = expr.kind
+        if let Some(higher::If { cond, then, r#else: None }) = higher::If::hir(expr)
             && !matches!(cond.kind, ExprKind::Let(_))
             && !expr.span.from_expansion()
             && let then = peel_blocks_with_stmt(then)
@@ -51,19 +51,13 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             && !is_else_clause(cx.tcx, expr)
         {
             let mut applicability = Applicability::MachineApplicable;
-            let cond = cond.peel_drop_temps();
             let mut comments = span_extract_comment(cx.sess().source_map(), expr.span);
             if !comments.is_empty() {
                 comments += "\n";
             }
-            let (cond, not) = match cond.kind {
-                ExprKind::Unary(UnOp::Not, e) => (e, ""),
-                _ => (cond, "!"),
-            };
-            let cond_sugg =
-                sugg::Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "..", &mut applicability).maybe_paren();
+            let cond_sugg = !sugg::Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "..", &mut applicability);
             let semicolon = if is_parent_stmt(cx, expr.hir_id) { ";" } else { "" };
-            let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip}){semicolon}");
+            let sugg = format!("assert!({cond_sugg}, {format_args_snip}){semicolon}");
             // we show to the user the suggestion without the comments, but when applying the fix, include the
             // comments in the block
             span_lint_and_then(

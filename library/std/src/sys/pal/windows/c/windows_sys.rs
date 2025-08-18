@@ -38,6 +38,7 @@ windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferle
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentThread() -> HANDLE);
+windows_targets::link!("kernel32.dll" "system" fn GetCurrentThreadId() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentStringsW() -> PWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetEnvironmentVariableW(lpname : PCWSTR, lpbuffer : PWSTR, nsize : u32) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetExitCodeProcess(hprocess : HANDLE, lpexitcode : *mut u32) -> BOOL);

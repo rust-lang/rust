@@ -63,6 +63,16 @@ pub(crate) struct TraitFnConst {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_async_fn_in_const_trait_or_trait_impl)]
+pub(crate) struct AsyncFnInConstTraitOrTraitImpl {
+    #[primary_span]
+    pub async_keyword: Span,
+    pub in_impl: bool,
+    #[label]
+    pub const_keyword: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_forbidden_bound)]
 pub(crate) struct ForbiddenBound {
     #[primary_span]
@@ -344,7 +354,7 @@ pub(crate) struct ModuleNonAscii {
 #[diag(ast_passes_auto_generic, code = E0567)]
 pub(crate) struct AutoTraitGeneric {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub span: Span,
     #[label]
     pub ident: Span,
@@ -354,8 +364,9 @@ pub(crate) struct AutoTraitGeneric {
 #[diag(ast_passes_auto_super_lifetime, code = E0568)]
 pub(crate) struct AutoTraitBounds {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
-    pub span: Span,
+    pub span: Vec<Span>,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
+    pub removal: Span,
     #[label]
     pub ident: Span,
 }
@@ -365,7 +376,7 @@ pub(crate) struct AutoTraitBounds {
 pub(crate) struct AutoTraitItems {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub total: Span,
     #[label]
     pub ident: Span,
@@ -461,32 +472,6 @@ pub(crate) struct UnsafeNegativeImpl {
     pub negative: Span,
     #[label(ast_passes_unsafe)]
     pub r#unsafe: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_inherent_cannot_be)]
-pub(crate) struct InherentImplCannot<'a> {
-    #[primary_span]
-    pub span: Span,
-    #[label(ast_passes_because)]
-    pub annotation_span: Span,
-    pub annotation: &'a str,
-    #[label(ast_passes_type)]
-    pub self_ty: Span,
-    #[note(ast_passes_only_trait)]
-    pub only_trait: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_inherent_cannot_be, code = E0197)]
-pub(crate) struct InherentImplCannotUnsafe<'a> {
-    #[primary_span]
-    pub span: Span,
-    #[label(ast_passes_because)]
-    pub annotation_span: Span,
-    pub annotation: &'a str,
-    #[label(ast_passes_type)]
-    pub self_ty: Span,
 }
 
 #[derive(Diagnostic)]

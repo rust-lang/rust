@@ -697,6 +697,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(rv)
     }
 
+    /// Convenience wrapper that executes `f` either within the current scope or a new scope.
+    /// Used for pattern matching, which introduces an additional scope for patterns with guards.
+    pub(crate) fn opt_in_scope<R>(
+        &mut self,
+        opt_region_scope: Option<(region::Scope, SourceInfo)>,
+        f: impl FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
+    ) -> BlockAnd<R> {
+        if let Some(region_scope) = opt_region_scope {
+            self.in_scope(region_scope, LintLevel::Inherited, f)
+        } else {
+            f(self)
+        }
+    }
+
     /// Push a scope onto the stack. You can then build code in this
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
@@ -1750,17 +1764,24 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         success_block
     }
 
-    /// Unschedules any drops in the top scope.
+    /// Unschedules any drops in the top two scopes.
     ///
-    /// This is only needed for `match` arm scopes, because they have one
-    /// entrance per pattern, but only one exit.
-    pub(crate) fn clear_top_scope(&mut self, region_scope: region::Scope) {
-        let top_scope = self.scopes.scopes.last_mut().unwrap();
+    /// This is only needed for pattern-matches combining guards and or-patterns: or-patterns lead
+    /// to guards being lowered multiple times before lowering the arm body, so we unschedle drops
+    /// for guards' temporaries and bindings between lowering each instance of an match arm's guard.
+    pub(crate) fn clear_match_arm_and_guard_scopes(&mut self, region_scope: region::Scope) {
+        let [.., arm_scope, guard_scope] = &mut *self.scopes.scopes else {
+            bug!("matches with guards should introduce separate scopes for the pattern and guard");
+        };
 
-        assert_eq!(top_scope.region_scope, region_scope);
+        assert_eq!(arm_scope.region_scope, region_scope);
+        assert_eq!(guard_scope.region_scope.data, region::ScopeData::MatchGuard);
+        assert_eq!(guard_scope.region_scope.local_id, region_scope.local_id);
 
-        top_scope.drops.clear();
-        top_scope.invalidate_cache();
+        arm_scope.drops.clear();
+        arm_scope.invalidate_cache();
+        guard_scope.drops.clear();
+        guard_scope.invalidate_cache();
     }
 }
 

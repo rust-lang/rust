@@ -15,7 +15,6 @@ use std::hash::Hash;
 use std::io::{BufWriter, Write};
 use std::panic::Location;
 use std::path::Path;
-use std::process;
 use std::process::{
     Child, ChildStderr, ChildStdout, Command, CommandArgs, CommandEnvs, ExitStatus, Output, Stdio,
 };
@@ -26,10 +25,8 @@ use build_helper::ci::CiEnv;
 use build_helper::drop_bomb::DropBomb;
 use build_helper::exit;
 
-use crate::PathBuf;
 use crate::core::config::DryRun;
-#[cfg(feature = "tracing")]
-use crate::trace_cmd;
+use crate::{PathBuf, t};
 
 /// What should be done when the command fails.
 #[derive(Debug, Copy, Clone)]
@@ -77,14 +74,32 @@ pub struct CommandFingerprint {
 }
 
 impl CommandFingerprint {
+    #[cfg(feature = "tracing")]
+    pub(crate) fn program_name(&self) -> String {
+        Path::new(&self.program)
+            .file_name()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "<unknown command>".to_string())
+    }
+
     /// Helper method to format both Command and BootstrapCommand as a short execution line,
     /// without all the other details (e.g. environment variables).
-    pub fn format_short_cmd(&self) -> String {
-        let program = Path::new(&self.program);
-        let mut line = vec![program.file_name().unwrap().to_str().unwrap().to_owned()];
-        line.extend(self.args.iter().map(|arg| arg.to_string_lossy().into_owned()));
-        line.extend(self.cwd.iter().map(|p| p.to_string_lossy().into_owned()));
-        line.join(" ")
+    pub(crate) fn format_short_cmd(&self) -> String {
+        use std::fmt::Write;
+
+        let mut cmd = self.program.to_string_lossy().to_string();
+        for arg in &self.args {
+            let arg = arg.to_string_lossy();
+            if arg.contains(' ') {
+                write!(cmd, " '{arg}'").unwrap();
+            } else {
+                write!(cmd, " {arg}").unwrap();
+            }
+        }
+        if let Some(cwd) = &self.cwd {
+            write!(cmd, " [workdir={}]", cwd.to_string_lossy()).unwrap();
+        }
+        cmd
     }
 }
 
@@ -111,17 +126,9 @@ impl CommandProfiler {
         entry.traces.push(ExecutionTrace::CacheHit);
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        let pid = process::id();
-        let filename = format!("bootstrap-profile-{pid}.txt");
-
-        let file = match File::create(&filename) {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("Failed to create profiler output file: {e}");
-                return;
-            }
-        };
+    /// Report summary of executed commands file at the specified `path`.
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        let file = t!(File::create(path));
 
         let mut writer = BufWriter::new(file);
         let stats = self.stats.lock().unwrap();
@@ -211,8 +218,6 @@ impl CommandProfiler {
         writeln!(writer, "Total cache hits: {total_cache_hits}").unwrap();
         writeln!(writer, "Estimated time saved due to cache hits: {total_saved_duration:.2?}")
             .unwrap();
-
-        println!("Command profiler report saved to {filename}");
     }
 }
 
@@ -434,8 +439,8 @@ impl From<Command> for BootstrapCommand {
 enum CommandStatus {
     /// The command has started and finished with some status.
     Finished(ExitStatus),
-    /// It was not even possible to start the command.
-    DidNotStart,
+    /// It was not even possible to start the command or wait for it to finish.
+    DidNotStartOrFinish,
 }
 
 /// Create a new BootstrapCommand. This is a helper function to make command creation
@@ -456,9 +461,9 @@ pub struct CommandOutput {
 
 impl CommandOutput {
     #[must_use]
-    pub fn did_not_start(stdout: OutputMode, stderr: OutputMode) -> Self {
+    pub fn not_finished(stdout: OutputMode, stderr: OutputMode) -> Self {
         Self {
-            status: CommandStatus::DidNotStart,
+            status: CommandStatus::DidNotStartOrFinish,
             stdout: match stdout {
                 OutputMode::Print => None,
                 OutputMode::Capture => Some(vec![]),
@@ -489,7 +494,7 @@ impl CommandOutput {
     pub fn is_success(&self) -> bool {
         match self.status {
             CommandStatus::Finished(status) => status.success(),
-            CommandStatus::DidNotStart => false,
+            CommandStatus::DidNotStartOrFinish => false,
         }
     }
 
@@ -501,7 +506,7 @@ impl CommandOutput {
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
-            CommandStatus::DidNotStart => None,
+            CommandStatus::DidNotStartOrFinish => None,
         }
     }
 
@@ -550,7 +555,7 @@ impl Default for CommandOutput {
 #[derive(Clone, Default)]
 pub struct ExecutionContext {
     dry_run: DryRun,
-    verbose: u8,
+    pub verbosity: u8,
     pub fail_fast: bool,
     delayed_failures: Arc<Mutex<Vec<String>>>,
     command_cache: Arc<CommandCache>,
@@ -603,8 +608,8 @@ impl CommandCache {
 }
 
 impl ExecutionContext {
-    pub fn new() -> Self {
-        ExecutionContext::default()
+    pub fn new(verbosity: u8, fail_fast: bool) -> Self {
+        Self { verbosity, fail_fast, ..Default::default() }
     }
 
     pub fn dry_run(&self) -> bool {
@@ -629,7 +634,7 @@ impl ExecutionContext {
     }
 
     pub fn is_verbose(&self) -> bool {
-        self.verbose > 0
+        self.verbosity > 0
     }
 
     pub fn fail_fast(&self) -> bool {
@@ -640,8 +645,8 @@ impl ExecutionContext {
         self.dry_run = value;
     }
 
-    pub fn set_verbose(&mut self, value: u8) {
-        self.verbose = value;
+    pub fn set_verbosity(&mut self, value: u8) {
+        self.verbosity = value;
     }
 
     pub fn set_fail_fast(&mut self, value: bool) {
@@ -676,15 +681,15 @@ impl ExecutionContext {
     ) -> DeferredCommand<'a> {
         let fingerprint = command.fingerprint();
 
-        #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
-
         if let Some(cached_output) = self.command_cache.get(&fingerprint) {
             command.mark_as_executed();
             self.verbose(|| println!("Cache hit: {command:?}"));
             self.profiler.record_cache_hit(fingerprint);
             return DeferredCommand { state: CommandState::Cached(cached_output) };
         }
+
+        #[cfg(feature = "tracing")]
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
@@ -745,25 +750,11 @@ impl ExecutionContext {
         self.start(command, stdout, stderr).wait_for_output(self)
     }
 
-    fn fail(&self, message: &str, output: CommandOutput) -> ! {
-        if self.is_verbose() {
-            println!("{message}");
-        } else {
-            let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
-            // If the command captures output, the user would not see any indication that
-            // it has failed. In this case, print a more verbose error, since to provide more
-            // context.
-            if stdout.is_some() || stderr.is_some() {
-                if let Some(stdout) = output.stdout_if_present().take_if(|s| !s.trim().is_empty()) {
-                    println!("STDOUT:\n{stdout}\n");
-                }
-                if let Some(stderr) = output.stderr_if_present().take_if(|s| !s.trim().is_empty()) {
-                    println!("STDERR:\n{stderr}\n");
-                }
-                println!("Command has failed. Rerun with -v to see more details.");
-            } else {
-                println!("Command has failed. Rerun with -v to see more details.");
-            }
+    fn fail(&self, message: &str) -> ! {
+        println!("{message}");
+
+        if !self.is_verbose() {
+            println!("Command has failed. Rerun with -v to see more details.");
         }
         exit!(1);
     }
@@ -783,7 +774,7 @@ impl ExecutionContext {
         }
 
         #[cfg(feature = "tracing")]
-        let span_guard = trace_cmd!(command);
+        let span_guard = crate::utils::tracing::trace_cmd(command);
 
         let start_time = Instant::now();
         let fingerprint = command.fingerprint();
@@ -856,7 +847,7 @@ impl<'a> DeferredCommand<'a> {
                     && command.should_cache
                 {
                     exec_ctx.command_cache.insert(fingerprint.clone(), output.clone());
-                    exec_ctx.profiler.record_execution(fingerprint.clone(), start_time);
+                    exec_ctx.profiler.record_execution(fingerprint, start_time);
                 }
 
                 output
@@ -872,6 +863,8 @@ impl<'a> DeferredCommand<'a> {
         executed_at: &'a std::panic::Location<'a>,
         exec_ctx: &ExecutionContext,
     ) -> CommandOutput {
+        use std::fmt::Write;
+
         command.mark_as_executed();
 
         let process = match process.take() {
@@ -881,79 +874,82 @@ impl<'a> DeferredCommand<'a> {
 
         let created_at = command.get_created_location();
 
-        let mut message = String::new();
+        #[allow(clippy::enum_variant_names)]
+        enum FailureReason {
+            FailedAtRuntime(ExitStatus),
+            FailedToFinish(std::io::Error),
+            FailedToStart(std::io::Error),
+        }
 
-        let output = match process {
+        let (output, fail_reason) = match process {
             Ok(child) => match child.wait_with_output() {
-                Ok(result) if result.status.success() => {
+                Ok(output) if output.status.success() => {
                     // Successful execution
-                    CommandOutput::from_output(result, stdout, stderr)
+                    (CommandOutput::from_output(output, stdout, stderr), None)
                 }
-                Ok(result) => {
-                    // Command ran but failed
-                    use std::fmt::Write;
-
-                    writeln!(
-                        message,
-                        r#"
-Command {command:?} did not execute successfully.
-Expected success, got {}
-Created at: {created_at}
-Executed at: {executed_at}"#,
-                        result.status,
+                Ok(output) => {
+                    // Command started, but then it failed
+                    let status = output.status;
+                    (
+                        CommandOutput::from_output(output, stdout, stderr),
+                        Some(FailureReason::FailedAtRuntime(status)),
                     )
-                    .unwrap();
-
-                    let output = CommandOutput::from_output(result, stdout, stderr);
-
-                    if stdout.captures() {
-                        writeln!(message, "\nSTDOUT ----\n{}", output.stdout().trim()).unwrap();
-                    }
-                    if stderr.captures() {
-                        writeln!(message, "\nSTDERR ----\n{}", output.stderr().trim()).unwrap();
-                    }
-
-                    output
                 }
                 Err(e) => {
                     // Failed to wait for output
-                    use std::fmt::Write;
-
-                    writeln!(
-                        message,
-                        "\n\nCommand {command:?} did not execute successfully.\
-                        \nIt was not possible to execute the command: {e:?}"
+                    (
+                        CommandOutput::not_finished(stdout, stderr),
+                        Some(FailureReason::FailedToFinish(e)),
                     )
-                    .unwrap();
-
-                    CommandOutput::did_not_start(stdout, stderr)
                 }
             },
             Err(e) => {
                 // Failed to spawn the command
-                use std::fmt::Write;
-
-                writeln!(
-                    message,
-                    "\n\nCommand {command:?} did not execute successfully.\
-                    \nIt was not possible to execute the command: {e:?}"
-                )
-                .unwrap();
-
-                CommandOutput::did_not_start(stdout, stderr)
+                (CommandOutput::not_finished(stdout, stderr), Some(FailureReason::FailedToStart(e)))
             }
         };
 
-        if !output.is_success() {
+        if let Some(fail_reason) = fail_reason {
+            let mut error_message = String::new();
+            let command_str = if exec_ctx.is_verbose() {
+                format!("{command:?}")
+            } else {
+                command.fingerprint().format_short_cmd()
+            };
+            let action = match fail_reason {
+                FailureReason::FailedAtRuntime(e) => {
+                    format!("failed with exit code {}", e.code().unwrap_or(1))
+                }
+                FailureReason::FailedToFinish(e) => {
+                    format!("failed to finish: {e:?}")
+                }
+                FailureReason::FailedToStart(e) => {
+                    format!("failed to start: {e:?}")
+                }
+            };
+            writeln!(
+                error_message,
+                r#"Command `{command_str}` {action}
+Created at: {created_at}
+Executed at: {executed_at}"#,
+            )
+            .unwrap();
+            if stdout.captures() {
+                writeln!(error_message, "\n--- STDOUT vvv\n{}", output.stdout().trim()).unwrap();
+            }
+            if stderr.captures() {
+                writeln!(error_message, "\n--- STDERR vvv\n{}", output.stderr().trim()).unwrap();
+            }
+
             match command.failure_behavior {
                 BehaviorOnFailure::DelayFail => {
                     if exec_ctx.fail_fast {
-                        exec_ctx.fail(&message, output);
+                        exec_ctx.fail(&error_message);
                     }
-                    exec_ctx.add_to_delay_failure(message);
+                    exec_ctx.add_to_delay_failure(error_message);
                 }
                 BehaviorOnFailure::Exit => {
-                    exec_ctx.fail(&message, output);
+                    exec_ctx.fail(&error_message);
                 }
                 BehaviorOnFailure::Ignore => {
                     // If failures are allowed, either the error has been printed already

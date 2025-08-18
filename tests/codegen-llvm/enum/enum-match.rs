@@ -138,18 +138,18 @@ pub fn match3(e: Option<&u8>) -> i16 {
 
 #[derive(PartialEq)]
 pub enum MiddleNiche {
-    A,
-    B,
-    C(bool),
-    D,
-    E,
+    A,       // tag 2
+    B,       // tag 3
+    C(bool), // untagged
+    D,       // tag 5
+    E,       // tag 6
 }
 
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 -?[0-9]+, -?[0-9]+\))?}} i8 @match4(i8{{.+}}%0)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %[[REL_VAR]], 2
+// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %0, 4
 // CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
+// CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[NOT_NICHE:.+]] = icmp{{( samesign)?}} ult i8 %0, 2
 // CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[NOT_NICHE]], i8 2, i8 %[[REL_VAR]]
 // CHECK-NEXT: switch i8 %[[DISCR]]
@@ -443,19 +443,19 @@ pub enum HugeVariantIndex {
     V255(Never),
     V256(Never),
 
-    Possible257,
-    Bool258(bool),
-    Possible259,
+    Possible257,   // tag 2
+    Bool258(bool), // untagged
+    Possible259,   // tag 4
 }
 
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match5(i8{{.+}}%0)
 // CHECK-NEXT: start:
+// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i8 %0, 3
+// CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
 // CHECK-NEXT: %[[REL_VAR:.+]] = add{{( nsw)?}} i8 %0, -2
 // CHECK-NEXT: %[[REL_VAR_WIDE:.+]] = zext i8 %[[REL_VAR]] to i64
 // CHECK-NEXT: %[[IS_NICHE:.+]] = icmp{{( samesign)?}} ugt i8 %0, 1
 // CHECK-NEXT: %[[NICHE_DISCR:.+]] = add nuw nsw i64 %[[REL_VAR_WIDE]], 257
-// CHECK-NEXT: %[[NOT_IMPOSSIBLE:.+]] = icmp ne i64 %[[NICHE_DISCR]], 258
-// CHECK-NEXT: call void @llvm.assume(i1 %[[NOT_IMPOSSIBLE]])
 // CHECK-NEXT: %[[DISCR:.+]] = select i1 %[[IS_NICHE]], i64 %[[NICHE_DISCR]], i64 258
 // CHECK-NEXT: switch i64 %[[DISCR]],
 // CHECK-NEXT:   i64 257,

@@ -17,7 +17,7 @@ struct InferOk<T> {
 
 fn foo(i: InferOk<Ty>) {
     let k = i.kind();
-    //~^ ERROR no method named `kind` found for struct `InferOk` in the current scope
+    //~^ ERROR no method named `kind` found for struct `InferOk<T>` in the current scope
 }
 
 fn main() {}

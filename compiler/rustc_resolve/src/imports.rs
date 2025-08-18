@@ -33,9 +33,10 @@ use crate::errors::{
     ConsiderAddingMacroExport, ConsiderMarkingAsPub,
 };
 use crate::{
-    AmbiguityError, AmbiguityKind, BindingKey, Determinacy, Finalize, ImportSuggestion, Module,
-    ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope, PathResult,
-    PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
+    AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
+    Module, ModuleOrUniformRoot, NameBinding, NameBindingData, NameBindingKind, ParentScope,
+    PathResult, PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
+    names_to_string,
 };
 
 type Res = def::Res<NodeId>;
@@ -86,7 +87,6 @@ pub(crate) enum ImportKind<'ra> {
         id: NodeId,
     },
     Glob {
-        is_prelude: bool,
         // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
         max_vis: Cell<Option<Visibility>>,
@@ -124,12 +124,9 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 .field("nested", nested)
                 .field("id", id)
                 .finish(),
-            Glob { is_prelude, max_vis, id } => f
-                .debug_struct("Glob")
-                .field("is_prelude", is_prelude)
-                .field("max_vis", max_vis)
-                .field("id", id)
-                .finish(),
+            Glob { max_vis, id } => {
+                f.debug_struct("Glob").field("max_vis", max_vis).field("id", id).finish()
+            }
             ExternCrate { source, target, id } => f
                 .debug_struct("ExternCrate")
                 .field("source", source)
@@ -489,7 +486,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Define or update `binding` in `module`s glob importers.
         for import in glob_importers.iter() {
             let mut ident = key.ident;
-            let scope = match ident.span.reverse_glob_adjust(module.expansion, import.span) {
+            let scope = match ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
@@ -498,7 +495,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let imported_binding = self.import(binding, *import);
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    ident,
+                    ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -551,13 +548,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Resolves all imports for the crate. This method performs the fixed-
     /// point iteration.
     pub(crate) fn resolve_imports(&mut self) {
+        self.assert_speculative = true;
         let mut prev_indeterminate_count = usize::MAX;
         let mut indeterminate_count = self.indeterminate_imports.len() * 3;
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
             for import in mem::take(&mut self.indeterminate_imports) {
-                let import_indeterminate_count = self.resolve_import(import);
+                let import_indeterminate_count = self.cm().resolve_import(import);
                 indeterminate_count += import_indeterminate_count;
                 match import_indeterminate_count {
                     0 => self.determined_imports.push(import),
@@ -565,6 +563,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
         }
+        self.assert_speculative = false;
     }
 
     pub(crate) fn finalize_imports(&mut self) {
@@ -837,7 +836,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Meanwhile, if resolve successful, the resolved bindings are written
     /// into the module.
-    fn resolve_import(&mut self, import: Import<'ra>) -> usize {
+    fn resolve_import<'r>(mut self: CmResolver<'r, 'ra, 'tcx>, import: Import<'ra>) -> usize {
         debug!(
             "(resolving import for module) resolving import `{}::...` in `{}`",
             Segment::names_to_string(&import.module_path),
@@ -846,7 +845,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let module = if let Some(module) = import.imported_module.get() {
             module
         } else {
-            let path_res = self.maybe_resolve_path(
+            let path_res = self.reborrow().maybe_resolve_path(
                 &import.module_path,
                 None,
                 &import.parent_scope,
@@ -866,19 +865,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (source, target, bindings, type_ns_only)
             }
             ImportKind::Glob { .. } => {
-                self.resolve_glob_import(import);
+                // FIXME: Use mutable resolver directly as a hack, this should be an output of
+                // specualtive resolution.
+                self.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
             }
             _ => unreachable!(),
         };
 
         let mut indeterminate_count = 0;
-        self.per_ns(|this, ns| {
+        self.per_ns_cm(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
                     return;
                 };
-                let binding_result = this.maybe_resolve_ident_in_module(
+                let binding_result = this.reborrow().maybe_resolve_ident_in_module(
                     module,
                     source,
                     ns,
@@ -901,16 +902,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
-                        this.define_binding_local(parent, target, ns, imported_binding);
+                        // FIXME: Use mutable resolver directly as a hack, this should be an output of
+                        // specualtive resolution.
+                        this.get_mut_unchecked().define_binding_local(
+                            parent,
+                            target,
+                            ns,
+                            imported_binding,
+                        );
                         PendingBinding::Ready(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => {
                         // Don't remove underscores from `single_imports`, they were never added.
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
-                            this.update_local_resolution(parent, key, false, |_, resolution| {
-                                resolution.single_imports.swap_remove(&import);
-                            });
+                            // FIXME: Use mutable resolver directly as a hack, this should be an output of
+                            // specualtive resolution.
+                            this.get_mut_unchecked().update_local_resolution(
+                                parent,
+                                key,
+                                false,
+                                |_, resolution| {
+                                    resolution.single_imports.swap_remove(&import);
+                                },
+                            );
                         }
                         PendingBinding::Ready(None)
                     }
@@ -943,7 +958,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // We'll provide more context to the privacy errors later, up to `len`.
         let privacy_errors_len = self.privacy_errors.len();
 
-        let path_res = self.resolve_path(
+        let path_res = self.cm().resolve_path(
             &import.module_path,
             None,
             &import.parent_scope,
@@ -1054,13 +1069,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Single { source, target, ref bindings, type_ns_only, id, .. } => {
                 (source, target, bindings, type_ns_only, id)
             }
-            ImportKind::Glob { is_prelude, ref max_vis, id } => {
+            ImportKind::Glob { ref max_vis, id } => {
                 if import.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = import.module_path.clone();
                     full_path.push(Segment::from_ident(Ident::dummy()));
-                    self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
+                    self.lint_if_path_starts_with_module(finalize, &full_path, None);
                 }
 
                 if let ModuleOrUniformRoot::Module(module) = module
@@ -1077,8 +1092,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module: None,
                     });
                 }
-                if !is_prelude
-                    && let Some(max_vis) = max_vis.get()
+                if let Some(max_vis) = max_vis.get()
                     && !max_vis.is_at_least(import.vis, self.tcx)
                 {
                     let def_id = self.local_def_id(id);
@@ -1103,7 +1117,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // importing it if available.
             let mut path = import.module_path.clone();
             path.push(Segment::from_ident(ident));
-            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.cm().resolve_path(
                 &path,
                 None,
                 &import.parent_scope,
@@ -1121,7 +1135,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut all_ns_err = true;
         self.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
-                let binding = this.resolve_ident_in_module(
+                let binding = this.cm().resolve_ident_in_module(
                     module,
                     ident,
                     ns,
@@ -1184,7 +1198,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| {
                 if !type_ns_only || ns == TypeNS {
-                    let binding = this.resolve_ident_in_module(
+                    let binding = this.cm().resolve_ident_in_module(
                         module,
                         ident,
                         ns,
@@ -1373,7 +1387,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             full_path.push(Segment::from_ident(ident));
             self.per_ns(|this, ns| {
                 if let Some(binding) = bindings[ns].get().binding().map(|b| b.import_source()) {
-                    this.lint_if_path_starts_with_module(Some(finalize), &full_path, Some(binding));
+                    this.lint_if_path_starts_with_module(finalize, &full_path, Some(binding));
                 }
             });
         }
@@ -1426,7 +1440,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return;
                 }
 
-                match this.early_resolve_ident_in_lexical_scope(
+                match this.cm().early_resolve_ident_in_lexical_scope(
                     target,
                     ScopeSet::All(ns),
                     &import.parent_scope,
@@ -1466,7 +1480,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolve_glob_import(&mut self, import: Import<'ra>) {
         // This function is only called for glob imports.
-        let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
+        let ImportKind::Glob { id, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
             self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
@@ -1485,9 +1499,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if module == import.parent_scope.module {
             return;
-        } else if is_prelude {
-            self.prelude = Some(module);
-            return;
         }
 
         // Add to module's glob_importers
@@ -1504,7 +1515,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             })
             .collect::<Vec<_>>();
         for (mut key, binding) in bindings {
-            let scope = match key.ident.span.reverse_glob_adjust(module.expansion, import.span) {
+            let scope = match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
                 Some(Some(def)) => self.expn_def_scope(def),
                 Some(None) => import.parent_scope.module,
                 None => continue,
@@ -1517,7 +1528,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .is_some_and(|binding| binding.warn_ambiguity_recursive());
                 let _ = self.try_define_local(
                     import.parent_scope.module,
-                    key.ident,
+                    key.ident.0,
                     key.ns,
                     imported_binding,
                     warn_ambiguity,
@@ -1550,7 +1561,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     next_binding = binding;
                 }
 
-                children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                children.push(ModChild { ident: ident.0, res, vis: binding.vis, reexport_chain });
             }
         });
 

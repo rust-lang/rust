@@ -342,7 +342,7 @@ pub(crate) fn transform_instance<'tcx>(
         let upcast_ty = match tcx.trait_of_assoc(def_id) {
             Some(trait_id) => trait_object_ty(
                 tcx,
-                ty::Binder::dummy(ty::TraitRef::from_method(tcx, trait_id, instance.args)),
+                ty::Binder::dummy(ty::TraitRef::from_assoc(tcx, trait_id, instance.args)),
             ),
             // drop_in_place won't have a defining trait, skip the upcast
             None => instance.args.type_at(0),
@@ -481,7 +481,7 @@ fn implemented_method<'tcx>(
         trait_method = trait_method_bound;
         method_id = instance.def_id();
         trait_id = tcx.trait_of_assoc(method_id)?;
-        trait_ref = ty::EarlyBinder::bind(TraitRef::from_method(tcx, trait_id, instance.args));
+        trait_ref = ty::EarlyBinder::bind(TraitRef::from_assoc(tcx, trait_id, instance.args));
         trait_id
     } else {
         return None;

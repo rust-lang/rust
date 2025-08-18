@@ -30,10 +30,6 @@ pub struct Std {
 
 impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
-
-    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
-        Self { build_compiler, target, crates: vec![] }
-    }
 }
 
 impl Step for Std {
@@ -72,7 +68,6 @@ impl Step for Std {
 
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
-        let stage = build_compiler.stage;
         let target = self.target;
 
         let mut cargo = builder::Cargo::new(
@@ -94,10 +89,12 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg(
+            Kind::Check,
             format_args!("library artifacts{}", crate_description(&self.crates)),
+            Mode::Std,
+            self.build_compiler,
             target,
-            Some(stage),
         );
 
         let stamp = build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check");
@@ -136,7 +133,13 @@ impl Step for Std {
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
-        let _guard = builder.msg_check("library test/bench/example targets", target, Some(stage));
+        let _guard = builder.msg(
+            Kind::Check,
+            "library test/bench/example targets",
+            Mode::Std,
+            self.build_compiler,
+            target,
+        );
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
@@ -161,19 +164,15 @@ pub struct Rustc {
 }
 
 impl Rustc {
-    pub fn new(builder: &Builder<'_>, build_compiler: Compiler, target: TargetSelection) -> Self {
-        let crates = builder
-            .in_tree_crates("rustc-main", Some(target))
-            .into_iter()
-            .map(|krate| krate.name.to_string())
-            .collect();
+    pub fn new(builder: &Builder<'_>, target: TargetSelection, crates: Vec<String>) -> Self {
+        let build_compiler = prepare_compiler_for_check(builder, target, Mode::Rustc);
         Self { build_compiler, target, crates }
     }
 }
 
 impl Step for Rustc {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -182,11 +181,7 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc {
-            target: run.target,
-            build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Rustc),
-            crates,
-        });
+        run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
     /// Check the compiler.
@@ -199,15 +194,6 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let target = self.target;
-
-        // Build host std for compiling build scripts
-        builder.std(build_compiler, build_compiler.host);
-
-        // Build target std so that the checked rustc can link to it during the check
-        // FIXME: maybe we can a way to only do a check of std here?
-        // But for that we would have to copy the stdlib rmetas to the sysroot of the build
-        // compiler, which conflicts with std rlibs, if we also build std.
-        builder.std(build_compiler, target);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -227,10 +213,12 @@ impl Step for Rustc {
             cargo.arg("-p").arg(krate);
         }
 
-        let _guard = builder.msg_check(
+        let _guard = builder.msg(
+            Kind::Check,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
+            Mode::Rustc,
+            self.build_compiler,
             target,
-            None,
         );
 
         let stamp =
@@ -244,12 +232,18 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::check("rustc", self.target).built_by(self.build_compiler))
+        let metadata = StepMetadata::check("rustc", self.target).built_by(self.build_compiler);
+        let metadata = if self.crates.is_empty() {
+            metadata
+        } else {
+            metadata.with_metadata(format!("({} crates)", self.crates.len()))
+        };
+        Some(metadata)
     }
 }
 
 /// Prepares a compiler that will check something with the given `mode`.
-fn prepare_compiler_for_check(
+pub fn prepare_compiler_for_check(
     builder: &Builder<'_>,
     target: TargetSelection,
     mode: Mode,
@@ -280,11 +274,13 @@ fn prepare_compiler_for_check(
             build_compiler
         }
         Mode::ToolRustc | Mode::Codegen => {
-            // FIXME: this is a hack, see description of Mode::Rustc below
-            let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
-            // When checking tool stage N, we check it with compiler stage N-1
-            let build_compiler = builder.compiler(stage, host);
-            builder.ensure(Rustc::new(builder, build_compiler, target));
+            // Check Rustc to produce the required rmeta artifacts for rustc_private, and then
+            // return the build compiler that was used to check rustc.
+            // We do not need to check examples/tests/etc. of Rustc for rustc_private, so we pass
+            // an empty set of crates, which will avoid using `cargo -p`.
+            let check = Rustc::new(builder, target, vec![]);
+            let build_compiler = check.build_compiler;
+            builder.ensure(check);
             build_compiler
         }
         Mode::Rustc => {
@@ -296,7 +292,18 @@ fn prepare_compiler_for_check(
             // FIXME: remove this and either fix cross-compilation check on stage 2 (which has a
             // myriad of other problems) or disable cross-checking on stage 1.
             let stage = if host == target { builder.top_stage - 1 } else { builder.top_stage };
-            builder.compiler(stage, host)
+            let build_compiler = builder.compiler(stage, host);
+
+            // Build host std for compiling build scripts
+            builder.std(build_compiler, build_compiler.host);
+
+            // Build target std so that the checked rustc can link to it during the check
+            // FIXME: maybe we can a way to only do a check of std here?
+            // But for that we would have to copy the stdlib rmetas to the sysroot of the build
+            // compiler, which conflicts with std rlibs, if we also build std.
+            builder.std(build_compiler, target);
+
+            build_compiler
         }
         Mode::Std => {
             // When checking std stage N, we want to do it with the stage N compiler
@@ -307,41 +314,31 @@ fn prepare_compiler_for_check(
     }
 }
 
-/// Checks a single codegen backend.
+/// Check the Cranelift codegen backend.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CodegenBackend {
-    pub build_compiler: Compiler,
-    pub target: TargetSelection,
-    pub backend: CodegenBackendKind,
+pub struct CraneliftCodegenBackend {
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
-impl Step for CodegenBackend {
+impl Step for CraneliftCodegenBackend {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
+        run.alias("rustc_codegen_cranelift").alias("cg_clif")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // FIXME: only check the backend(s) that were actually selected in run.paths
         let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
-        for backend in [CodegenBackendKind::Cranelift, CodegenBackendKind::Gcc] {
-            run.builder.ensure(CodegenBackend { build_compiler, target: run.target, backend });
-        }
+        run.builder.ensure(CraneliftCodegenBackend { build_compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
-        if builder.build.config.vendor && self.backend.is_gcc() {
-            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
-            return;
-        }
-
         let build_compiler = self.build_compiler;
         let target = self.target;
-        let backend = self.backend;
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -354,22 +351,101 @@ impl Step for CodegenBackend {
 
         cargo
             .arg("--manifest-path")
-            .arg(builder.src.join(format!("compiler/{}/Cargo.toml", backend.crate_name())));
+            .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
 
-        let _guard = builder.msg_check(backend.crate_name(), target, None);
+        let _guard = builder.msg(
+            Kind::Check,
+            "rustc_codegen_cranelift",
+            Mode::Codegen,
+            self.build_compiler,
+            target,
+        );
 
-        let stamp = build_stamp::codegen_backend_stamp(builder, build_compiler, target, &backend)
-            .with_prefix("check");
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Cranelift,
+        )
+        .with_prefix("check");
 
         run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
-            StepMetadata::check(&self.backend.crate_name(), self.target)
+            StepMetadata::check("rustc_codegen_cranelift", self.target)
                 .built_by(self.build_compiler),
         )
+    }
+}
+
+/// Check the GCC codegen backend.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GccCodegenBackend {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for GccCodegenBackend {
+    type Output = ();
+
+    const IS_HOST: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("rustc_codegen_gcc").alias("cg_gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let build_compiler = prepare_compiler_for_check(run.builder, run.target, Mode::Codegen);
+        run.builder.ensure(GccCodegenBackend { build_compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        // FIXME: remove once https://github.com/rust-lang/rust/issues/112393 is resolved
+        if builder.build.config.vendor {
+            println!("Skipping checking of `rustc_codegen_gcc` with vendoring enabled.");
+            return;
+        }
+
+        let build_compiler = self.build_compiler;
+        let target = self.target;
+
+        let mut cargo = builder::Cargo::new(
+            builder,
+            build_compiler,
+            Mode::Codegen,
+            SourceType::InTree,
+            target,
+            builder.kind,
+        );
+
+        cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
+        rustc_cargo_env(builder, &mut cargo, target);
+
+        let _guard = builder.msg(
+            Kind::Check,
+            "rustc_codegen_gcc",
+            Mode::Codegen,
+            self.build_compiler,
+            target,
+        );
+
+        let stamp = build_stamp::codegen_backend_stamp(
+            builder,
+            build_compiler,
+            target,
+            &CodegenBackendKind::Gcc,
+        )
+        .with_prefix("check");
+
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::check("rustc_codegen_gcc", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -397,7 +473,7 @@ macro_rules! tool_check_step {
 
         impl Step for $name {
             type Output = ();
-            const ONLY_HOSTS: bool = true;
+            const IS_HOST: bool = true;
             /// Most of the tool-checks using this macro are run by default.
             const DEFAULT: bool = true $( && $default )?;
 
@@ -482,14 +558,7 @@ fn run_tool_check_step(
     let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, mode, target))
         .with_prefix(&format!("{display_name}-check"));
 
-    let stage = match mode {
-        // Mode::ToolRustc is included here because of how msg_sysroot_tool prints stages
-        Mode::Std | Mode::ToolRustc => build_compiler.stage,
-        _ => build_compiler.stage + 1,
-    };
-
-    let _guard =
-        builder.msg_tool(builder.kind, mode, display_name, stage, &build_compiler.host, &target);
+    let _guard = builder.msg(builder.kind, display_name, mode, build_compiler, target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 

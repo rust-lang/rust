@@ -548,12 +548,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         failure_order: AtomicOrdering,
         weak: bool,
     ) -> (Self::Value, Self::Value);
+    /// `ret_ptr` indicates whether the return type (which is also the type `dst` points to)
+    /// is a pointer or the same type as `src`.
     fn atomic_rmw(
         &mut self,
         op: AtomicRmwBinOp,
         dst: Self::Value,
         src: Self::Value,
         order: AtomicOrdering,
+        ret_ptr: bool,
     ) -> Self::Value;
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn set_invariant_load(&mut self, load: Self::Value);

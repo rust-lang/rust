@@ -62,8 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         // Look for manual implementations of `Default`.
         let Some(default_def_id) = cx.tcx.get_diagnostic_item(sym::Default) else { return };
         let hir::ImplItemKind::Fn(_sig, body_id) = impl_item.kind else { return };
-        let assoc = cx.tcx.associated_item(impl_item.owner_id);
-        let parent = assoc.container_id(cx.tcx);
+        let parent = cx.tcx.parent(impl_item.owner_id.to_def_id());
         if find_attr!(cx.tcx.get_all_attrs(parent), AttributeKind::AutomaticallyDerived(..)) {
             // We don't care about what `#[derive(Default)]` produces in this lint.
             return;

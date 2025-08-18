@@ -14,10 +14,10 @@ error: file is loaded as a module multiple times: `src/b.rs`
 error: file is loaded as a module multiple times: `src/c.rs`
   --> src/main.rs:7:1
    |
-7  |   mod c;
+ 7 |   mod c;
    |   ^^^^^^ first loaded here
-8  | / #[path = "c.rs"]
-9  | | mod c2;
+ 8 | / #[path = "c.rs"]
+ 9 | | mod c2;
    | |_______^ loaded again here
 10 | / #[path = "c.rs"]
 11 | | mod c3;
@@ -44,8 +44,8 @@ error: file is loaded as a module multiple times: `src/from_other_module.rs`
    |
   ::: src/other_module/mod.rs:1:1
    |
-1  | / #[path = "../from_other_module.rs"]
-2  | | mod m;
+ 1 | / #[path = "../from_other_module.rs"]
+ 2 | | mod m;
    | |______^ loaded again here
    |
    = help: replace all but one `mod` item with `use` items

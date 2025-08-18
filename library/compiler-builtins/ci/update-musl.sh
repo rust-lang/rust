@@ -3,7 +3,7 @@
 
 set -eux
 
-url=git://git.musl-libc.org/musl
+url=https://github.com/kraj/musl.git
 ref=c47ad25ea3b484e10326f933e927c0bc8cded3da
 dst=crates/musl-math-sys/musl
 

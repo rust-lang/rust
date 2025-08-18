@@ -20,7 +20,8 @@ unsafe extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POIN
         if code == c::EXCEPTION_STACK_OVERFLOW {
             thread::with_current_name(|name| {
                 let name = name.unwrap_or("<unknown>");
-                rtprintpanic!("\nthread '{name}' has overflowed its stack\n");
+                let tid = thread::current_os_id();
+                rtprintpanic!("\nthread '{name}' ({tid}) has overflowed its stack\n");
             });
         }
         c::EXCEPTION_CONTINUE_SEARCH

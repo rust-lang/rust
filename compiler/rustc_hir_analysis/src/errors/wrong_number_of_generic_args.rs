@@ -147,7 +147,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let hir::Node::Item(hir::Item {
                 kind:
                     hir::ItemKind::Impl(hir::Impl {
-                        of_trait: Some(hir::TraitRef { hir_ref_id: id_in_of_trait, .. }),
+                        of_trait:
+                            Some(hir::TraitImplHeader {
+                                trait_ref: hir::TraitRef { hir_ref_id: id_in_of_trait, .. },
+                                ..
+                            }),
                         ..
                     }),
                 ..

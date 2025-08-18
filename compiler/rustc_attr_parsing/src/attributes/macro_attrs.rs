@@ -1,18 +1,20 @@
 use rustc_errors::DiagArgValue;
 use rustc_feature::{AttributeTemplate, template};
+use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, NoArgsAttributeParser, OnDuplicate};
-use crate::context::{AcceptContext, FinalizeContext, Stage};
+use crate::context::MaybeWarn::{Allow, Error, Warn};
+use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics;
-
 pub(crate) struct MacroEscapeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::MacroEscape;
 }
 
@@ -31,7 +33,16 @@ pub(crate) struct MacroUseParser {
     first_span: Option<Span>,
 }
 
-const MACRO_USE_TEMPLATE: AttributeTemplate = template!(Word, List: "name1, name2, ...");
+const MACRO_USE_TEMPLATE: AttributeTemplate = template!(
+    Word, List: &["name1, name2, ..."],
+    "https://doc.rust-lang.org/reference/macros-by-example.html#the-macro_use-attribute"
+);
+const MACRO_USE_ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+    Allow(Target::Mod),
+    Allow(Target::ExternCrate),
+    Allow(Target::Crate),
+    Error(Target::WherePredicate),
+]);
 
 impl<S: Stage> AttributeParser<S> for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
@@ -108,8 +119,23 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
             }
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(AttributeKind::MacroUse { span: self.first_span?, arguments: self.state })
     }
+}
+
+pub(crate) struct AllowInternalUnsafeParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for AllowInternalUnsafeParser {
+    const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::MacroDef),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
 }

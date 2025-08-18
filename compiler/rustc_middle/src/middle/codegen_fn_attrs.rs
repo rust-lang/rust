@@ -1,13 +1,12 @@
 use std::borrow::Cow;
 
 use rustc_abi::Align;
-use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
 
-use crate::mir::mono::Linkage;
 use crate::ty::{InstanceKind, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -75,8 +74,6 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
-    /// For the `#[autodiff]` macros.
-    pub autodiff_item: Option<AutoDiffAttrs>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -182,7 +179,6 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
-            autodiff_item: None,
         }
     }
 
@@ -193,7 +189,11 @@ impl CodegenFnAttrs {
     /// * `#[linkage]` is present
     ///
     /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
-    pub fn contains_extern_indicator(&self) -> bool {
+    pub fn contains_extern_indicator(&self, tcx: TyCtxt<'_>, did: DefId) -> bool {
+        if tcx.is_foreign_item(did) {
+            return false;
+        }
+
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
             || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             || self.export_name.is_some()

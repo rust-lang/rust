@@ -254,8 +254,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // TODO(antoyo): implement.
     }
 
-    fn debuginfo_finalize(&mut self) {
-        // TODO: emit section `.debug_gdb_scripts`.
+    fn debuginfo_finalize(&self) {
         self.context.set_debug_info(true)
     }
 

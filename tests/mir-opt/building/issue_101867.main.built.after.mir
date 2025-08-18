@@ -24,7 +24,6 @@ fn main() -> () {
         _1 = Option::<u8>::Some(const 1_u8);
         FakeRead(ForLet(None), _1);
         AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
-        StorageLive(_5);
         PlaceMention(_1);
         _6 = discriminant(_1);
         switchInt(move _6) -> [1: bb4, otherwise: bb3];
@@ -55,6 +54,7 @@ fn main() -> () {
     }
 
     bb6: {
+        StorageLive(_5);
         _5 = copy ((_1 as Some).0: u8);
         _0 = const ();
         StorageDead(_5);
@@ -63,7 +63,6 @@ fn main() -> () {
     }
 
     bb7: {
-        StorageDead(_5);
         goto -> bb1;
     }
 

@@ -9,5 +9,5 @@ impl S {
 fn main() {
     Pin::new(S).x();
     //~^ ERROR the trait bound `S: Deref` is not satisfied
-    //~| ERROR no method named `x` found for struct `Pin` in the current scope
+    //~| ERROR no method named `x` found for struct `Pin<Ptr>` in the current scope
 }

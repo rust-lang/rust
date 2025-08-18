@@ -4,15 +4,16 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_feature::template;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
-    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
-    UnstableReason, VERSION_PLACEHOLDER,
+    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
+    StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;
 use super::{AcceptMapping, AttributeParser, OnDuplicate};
 use crate::attributes::NoArgsAttributeParser;
-use crate::context::{AcceptContext, FinalizeContext, Stage};
+use crate::context::MaybeWarn::Allow;
+use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
 
@@ -25,6 +26,35 @@ macro_rules! reject_outside_std {
         }
     };
 }
+
+const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    Allow(Target::Fn),
+    Allow(Target::Struct),
+    Allow(Target::Enum),
+    Allow(Target::Union),
+    Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: false })),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
+    Allow(Target::Method(MethodKind::TraitImpl)),
+    Allow(Target::Impl { of_trait: false }),
+    Allow(Target::Impl { of_trait: true }),
+    Allow(Target::MacroDef),
+    Allow(Target::Crate),
+    Allow(Target::Mod),
+    Allow(Target::Use), // FIXME I don't think this does anything?
+    Allow(Target::Const),
+    Allow(Target::AssocConst),
+    Allow(Target::AssocTy),
+    Allow(Target::Trait),
+    Allow(Target::TraitAlias),
+    Allow(Target::TyAlias),
+    Allow(Target::Variant),
+    Allow(Target::Field),
+    Allow(Target::Param),
+    Allow(Target::Static),
+    Allow(Target::ForeignFn),
+    Allow(Target::ForeignStatic),
+]);
 
 #[derive(Default)]
 pub(crate) struct StabilityParser {
@@ -48,7 +78,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
         (
             &[sym::stable],
-            template!(List: r#"feature = "name", since = "version""#),
+            template!(List: &[r#"feature = "name", since = "version""#]),
             |this, cx, args| {
                 reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
@@ -60,7 +90,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
         ),
         (
             &[sym::unstable],
-            template!(List: r#"feature = "name", reason = "...", issue = "N""#),
+            template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
             |this, cx, args| {
                 reject_outside_std!(cx);
                 if !this.check_duplicate(cx)
@@ -87,6 +117,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
             },
         ),
     ];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
     fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
@@ -131,7 +162,7 @@ pub(crate) struct BodyStabilityParser {
 impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::rustc_default_body_unstable],
-        template!(List: r#"feature = "name", reason = "...", issue = "N""#),
+        template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
         |this, cx, args| {
             reject_outside_std!(cx);
             if this.stability.is_some() {
@@ -142,6 +173,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
             }
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
@@ -154,6 +186,10 @@ pub(crate) struct ConstStabilityIndirectParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
     const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ConstStabilityIndirect;
 }
 
@@ -177,34 +213,43 @@ impl ConstStabilityParser {
 
 impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[
-        (&[sym::rustc_const_stable], template!(List: r#"feature = "name""#), |this, cx, args| {
-            reject_outside_std!(cx);
+        (
+            &[sym::rustc_const_stable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
 
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_stability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
-        (&[sym::rustc_const_unstable], template!(List: r#"feature = "name""#), |this, cx, args| {
-            reject_outside_std!(cx);
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_unstability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_stability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
+        (
+            &[sym::rustc_const_unstable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_unstability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
         (&[sym::rustc_promotable], template!(Word), |this, cx, _| {
             reject_outside_std!(cx);
             this.promotable = true;
         }),
     ];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
     fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.promotable {

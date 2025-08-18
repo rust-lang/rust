@@ -119,9 +119,18 @@ error[E0565]: malformed `proc_macro_derive` attribute input
    |
 LL | #[proc_macro_derive(unsafe(Foo))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^
-   | |                         |
-   | |                         didn't expect any arguments here
-   | help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
+   |                           |
+   |                           didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(unsafe(Foo))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(unsafe(Foo))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:27:16

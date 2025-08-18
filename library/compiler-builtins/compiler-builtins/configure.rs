@@ -1,6 +1,5 @@
 // Configuration that is shared between `compiler_builtins` and `builtins_test`.
 
-use std::process::{Command, Stdio};
 use std::{env, str};
 
 #[derive(Debug)]
@@ -35,26 +34,6 @@ impl Target {
             .map(|s| s.to_lowercase().replace("_", "-"))
             .collect();
 
-        // Query rustc for options that Cargo does not provide env for. The bootstrap hack is used
-        // to get consistent output regardless of channel (`f16`/`f128` config options are hidden
-        // on stable otherwise).
-        let mut cmd = Command::new(env::var("RUSTC").unwrap());
-        cmd.args(["--print=cfg", "--target", &triple])
-            .env("RUSTC_BOOTSTRAP", "1")
-            .stderr(Stdio::inherit());
-        let out = cmd
-            .output()
-            .unwrap_or_else(|e| panic!("failed to run `{cmd:?}`: {e}"));
-        let rustc_cfg = str::from_utf8(&out.stdout).unwrap();
-
-        // If we couldn't query `rustc` (e.g. a custom JSON target was used), make the safe
-        // choice and leave `f16` and `f128` disabled.
-        let rustc_output_ok = out.status.success();
-        let reliable_f128 =
-            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f128");
-        let reliable_f16 =
-            rustc_output_ok && rustc_cfg.lines().any(|l| l == "target_has_reliable_f16");
-
         Self {
             triple,
             triple_split,
@@ -74,8 +53,10 @@ impl Target {
                 .split(",")
                 .map(ToOwned::to_owned)
                 .collect(),
-            reliable_f128,
-            reliable_f16,
+            // Note that these are unstable options, so only show up with the nightly compiler or
+            // with `RUSTC_BOOTSTRAP=1` (which is required to use the types anyway).
+            reliable_f128: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F128").is_some(),
+            reliable_f16: env::var_os("CARGO_CFG_TARGET_HAS_RELIABLE_F16").is_some(),
         }
     }
 
@@ -98,6 +79,13 @@ pub fn configure_aliases(target: &Target) {
     println!("cargo::rustc-check-cfg=cfg(thumb_1)");
     if target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base" {
         println!("cargo:rustc-cfg=thumb_1")
+    }
+
+    // Config shorthands
+    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
+    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
+        // Shorthand to detect i586 targets
+        println!("cargo:rustc-cfg=x86_no_sse");
     }
 
     /* Not all backends support `f16` and `f128` to the same level on all architectures, so we

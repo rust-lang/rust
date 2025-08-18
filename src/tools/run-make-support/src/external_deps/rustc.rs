@@ -405,6 +405,12 @@ impl Rustc {
         };
         self
     }
+
+    /// Make that the generated LLVM IR is in source order.
+    pub fn codegen_source_order(&mut self) -> &mut Self {
+        self.cmd.arg("-Zcodegen-source-order");
+        self
+    }
 }
 
 /// Query the sysroot path corresponding `rustc --print=sysroot`.

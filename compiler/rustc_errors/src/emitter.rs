@@ -409,7 +409,7 @@ pub trait Emitter {
                 if !redundant_span || always_backtrace {
                     let msg: Cow<'static, _> = match trace.kind {
                         ExpnKind::Macro(MacroKind::Attr, _) => {
-                            "this procedural macro expansion".into()
+                            "this attribute macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Derive, _) => {
                             "this derive macro expansion".into()
@@ -3546,7 +3546,7 @@ pub fn detect_confusion_type(sm: &SourceMap, suggested: &str, sp: Span) -> Confu
 
         for (f, s) in iter::zip(found.chars(), suggested.chars()) {
             if f != s {
-                if f.to_lowercase().to_string() == s.to_lowercase().to_string() {
+                if f.eq_ignore_ascii_case(&s) {
                     // Check for case differences (any character that differs only in case)
                     if ascii_confusables.contains(&f) || ascii_confusables.contains(&s) {
                         has_case_diff = true;

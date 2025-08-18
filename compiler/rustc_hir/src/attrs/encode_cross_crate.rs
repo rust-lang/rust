@@ -16,6 +16,7 @@ impl AttributeKind {
             Align { .. } => No,
             AllowConstFnUnstable(..) => No,
             AllowIncoherentImpl(..) => No,
+            AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
             AsPtr(..) => Yes,
             AutomaticallyDerived(..) => Yes,
@@ -45,6 +46,7 @@ impl AttributeKind {
             LinkName { .. } => Yes, // Needed for rustdoc
             LinkOrdinal { .. } => No,
             LinkSection { .. } => Yes, // Needed for rustdoc
+            Linkage(..) => No,
             LoopMatch(..) => No,
             MacroEscape(..) => No,
             MacroTransparency(..) => Yes,
@@ -70,6 +72,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
+            ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,
             SpecializationTrait(..) => No,
             Stability { .. } => Yes,

@@ -4,6 +4,54 @@ error[E0433]: failed to resolve: use of unresolved module or unlinked crate `a`
 LL | #[::a]
    |     ^ use of unresolved module or unlinked crate `a`
 
+error: `#[naked]` attribute cannot be used on crates
+  --> $DIR/naked-invalid-attr.rs:4:1
+   |
+LL | #![unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on foreign functions
+  --> $DIR/naked-invalid-attr.rs:9:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to methods, functions
+
+error: `#[naked]` attribute cannot be used on structs
+  --> $DIR/naked-invalid-attr.rs:13:1
+   |
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on struct fields
+  --> $DIR/naked-invalid-attr.rs:16:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can only be applied to functions
+
+error: `#[naked]` attribute cannot be used on required trait methods
+  --> $DIR/naked-invalid-attr.rs:22:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to functions, inherent methods, provided trait methods, trait methods in impl blocks
+
+error: `#[naked]` attribute cannot be used on closures
+  --> $DIR/naked-invalid-attr.rs:51:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[naked]` can be applied to methods, functions
+
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
   --> $DIR/naked-invalid-attr.rs:56:3
    |
@@ -12,57 +60,6 @@ LL | #[::a]
 ...
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:13:1
-   |
-LL |   #[unsafe(naked)]
-   |   ^^^^^^^^^^^^^^^^
-LL |   #[repr(C)]
-LL | / struct S {
-LL | |     #[unsafe(naked)]
-LL | |     a: u32,
-LL | |     b: u32,
-LL | | }
-   | |_- not a function definition
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:16:5
-   |
-LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
-LL |     a: u32,
-   |     ------ not a function definition
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:51:5
-   |
-LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
-LL |     || {};
-   |     ----- not a function definition
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:22:5
-   |
-LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
-LL |     extern "C" fn invoke(&self);
-   |     ---------------------------- not a function definition
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:9:5
-   |
-LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
-LL |     fn f();
-   |     ------- not a function definition
-
-error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:4:1
-   |
-LL | #![unsafe(naked)]
-   | ^^^^^^^^^^^^^^^^^ cannot be applied to crates
 
 error: aborting due to 8 previous errors
 

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::qualify_min_const_fn::is_stable_const_fn;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -21,7 +20,7 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     assignee: &'tcx hir::Expr<'_>,
     e: &'tcx hir::Expr<'_>,
-    msrv: Msrv,
+    _msrv: Msrv,
 ) {
     if let hir::ExprKind::Binary(op, l, r) = &e.kind {
         let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
@@ -45,10 +44,8 @@ pub(super) fn check<'tcx>(
                 }
 
                 // Skip if the trait is not stable in const contexts
-                if is_in_const_context(cx)
-                    && let Some(binop_id) = cx.tcx.associated_item_def_ids(trait_id).first()
-                    && !is_stable_const_fn(cx, *binop_id, msrv)
-                {
+                // FIXME: reintroduce a better check after this is merged back into Clippy
+                if is_in_const_context(cx) {
                     return;
                 }
 

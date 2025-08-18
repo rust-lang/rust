@@ -322,8 +322,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
-        let (numer, denom) = (1, 1);
-        this.write_int_fields(&[numer.into(), denom.into()], &info)?;
+        let (numerator, denom) = (1, 1);
+        this.write_int_fields(&[numerator.into(), denom.into()], &info)?;
 
         interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }

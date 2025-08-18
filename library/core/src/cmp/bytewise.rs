@@ -19,7 +19,7 @@ use crate::num::NonZero;
 #[rustc_specialization_trait]
 #[const_trait]
 pub(crate) unsafe trait BytewiseEq<Rhs = Self>:
-    ~const PartialEq<Rhs> + Sized
+    [const] PartialEq<Rhs> + Sized
 {
 }
 

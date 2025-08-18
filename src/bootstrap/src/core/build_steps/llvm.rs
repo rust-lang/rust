@@ -15,8 +15,6 @@ use std::sync::OnceLock;
 use std::{env, fs};
 
 use build_helper::git::PathFreshness;
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
@@ -196,7 +194,10 @@ pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshn
 ///
 /// This checks the build triple platform to confirm we're usable at all, and if LLVM
 /// with/without assertions is available.
-pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
+pub(crate) fn is_ci_llvm_available_for_target(
+    host_target: &TargetSelection,
+    asserts: bool,
+) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -235,8 +236,8 @@ pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) ->
         ("x86_64-unknown-netbsd", false),
     ];
 
-    if !supported_platforms.contains(&(&*config.host_target.triple, asserts))
-        && (asserts || !supported_platforms.contains(&(&*config.host_target.triple, true)))
+    if !supported_platforms.contains(&(&*host_target.triple, asserts))
+        && (asserts || !supported_platforms.contains(&(&*host_target.triple, true)))
     {
         return false;
     }
@@ -252,7 +253,7 @@ pub struct Llvm {
 impl Step for Llvm {
     type Output = LlvmResult;
 
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project").path("src/llvm-project/llvm")
@@ -263,15 +264,6 @@ impl Step for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Llvm::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> LlvmResult {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
@@ -419,6 +411,13 @@ impl Step for Llvm {
             // LLVM wants 64-bit atomics, while mipsel is 32-bit only, so needs -latomic
             ldflags.exe.push(" -latomic");
             ldflags.shared.push(" -latomic");
+        }
+
+        if target.starts_with("arm64ec") {
+            // MSVC linker requires the -machine:arm64ec flag to be passed to
+            // know it's linking as Arm64EC (vs Arm64X).
+            ldflags.exe.push(" -machine:arm64ec");
+            ldflags.shared.push(" -machine:arm64ec");
         }
 
         if target.is_msvc() {
@@ -898,7 +897,7 @@ pub struct Enzyme {
 
 impl Step for Enzyme {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/enzyme/enzyme")
@@ -909,15 +908,6 @@ impl Step for Enzyme {
     }
 
     /// Compile Enzyme for `target`.
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(
-            level = "debug",
-            name = "Enzyme::run",
-            skip_all,
-            fields(target = ?self.target),
-        ),
-    )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.require_submodule(
             "src/tools/enzyme",
@@ -986,6 +976,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            .define("ENZYME_BC_LOADER", "OFF")
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();
@@ -1002,7 +993,7 @@ pub struct Lld {
 
 impl Step for Lld {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/llvm-project/lld")
@@ -1528,8 +1519,12 @@ impl Step for Libunwind {
 
         // FIXME: https://github.com/alexcrichton/cc-rs/issues/545#issuecomment-679242845
         let mut count = 0;
-        for entry in fs::read_dir(&out_dir).unwrap() {
-            let file = entry.unwrap().path().canonicalize().unwrap();
+        let mut files = fs::read_dir(&out_dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().path().canonicalize().unwrap())
+            .collect::<Vec<_>>();
+        files.sort();
+        for file in files {
             if file.is_file() && file.extension() == Some(OsStr::new("o")) {
                 // Object file name without the hash prefix is "Unwind-EHABI", "Unwind-seh" or "libunwind".
                 let base_name = unhashed_basename(&file);

@@ -1099,7 +1099,7 @@ impl From<&CStr> for CString {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CStr> for CString {
     #[inline]
     fn eq(&self, other: &CStr) -> bool {
@@ -1112,7 +1112,7 @@ impl PartialEq<CStr> for CString {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<&CStr> for CString {
     #[inline]
     fn eq(&self, other: &&CStr) -> bool {
@@ -1126,7 +1126,7 @@ impl PartialEq<&CStr> for CString {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<Cow<'_, CStr>> for CString {
     #[inline]
     fn eq(&self, other: &Cow<'_, CStr>) -> bool {
@@ -1221,7 +1221,7 @@ impl CStr {
     }
 }
 
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CString> for CStr {
     #[inline]
     fn eq(&self, other: &CString) -> bool {
@@ -1235,7 +1235,7 @@ impl PartialEq<CString> for CStr {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<Cow<'_, Self>> for CStr {
     #[inline]
     fn eq(&self, other: &Cow<'_, Self>) -> bool {
@@ -1249,7 +1249,7 @@ impl PartialEq<Cow<'_, Self>> for CStr {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CStr> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &CStr) -> bool {
@@ -1263,7 +1263,7 @@ impl PartialEq<CStr> for Cow<'_, CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<&CStr> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &&CStr) -> bool {
@@ -1277,7 +1277,7 @@ impl PartialEq<&CStr> for Cow<'_, CStr> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "c_string_eq_c_str", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_string_eq_c_str", since = "1.90.0")]
 impl PartialEq<CString> for Cow<'_, CStr> {
     #[inline]
     fn eq(&self, other: &CString) -> bool {

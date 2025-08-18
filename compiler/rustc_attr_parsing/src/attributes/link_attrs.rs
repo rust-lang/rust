@@ -1,22 +1,30 @@
 use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
+use rustc_hir::attrs::{AttributeKind, Linkage};
+use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{
     AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
-use crate::context::{AcceptContext, Stage, parse_single_integer};
+use crate::context::MaybeWarn::Allow;
+use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage, parse_single_integer};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
-
 pub(crate) struct LinkNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
     const PATH: &[Symbol] = &[sym::link_name];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
@@ -38,7 +46,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Static), Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(
+        NameValueStr: "name",
+        "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
@@ -64,6 +77,7 @@ pub(crate) struct ExportStableParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
 
@@ -71,6 +85,7 @@ pub(crate) struct FfiConstParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
 }
 
@@ -78,6 +93,7 @@ pub(crate) struct FfiPureParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const PATH: &[Symbol] = &[sym::ffi_pure];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
 
@@ -85,6 +101,12 @@ pub(crate) struct StdInternalSymbolParser;
 impl<S: Stage> NoArgsAttributeParser<S> for StdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::ForeignFn),
+        Allow(Target::Static),
+        Allow(Target::ForeignStatic),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::StdInternalSymbol;
 }
 
@@ -94,7 +116,12 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(List: "ordinal");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn), Allow(Target::ForeignStatic)]);
+    const TEMPLATE: AttributeTemplate = template!(
+        List: &["ordinal"],
+        "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let ordinal = parse_single_integer(cx, args)?;
@@ -118,5 +145,89 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
         };
 
         Some(LinkOrdinal { ordinal, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct LinkageParser;
+
+impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
+    const PATH: &[Symbol] = &[sym::linkage];
+
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Static),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignFn),
+    ]);
+
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
+        "available_externally",
+        "common",
+        "extern_weak",
+        "external",
+        "internal",
+        "linkonce",
+        "linkonce_odr",
+        "weak",
+        "weak_odr",
+    ]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(name_value) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, Some(sym::linkage));
+            return None;
+        };
+
+        let Some(value) = name_value.value_as_str() else {
+            cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+            return None;
+        };
+
+        // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+        // applicable to variable declarations and may not really make sense for
+        // Rust code in the first place but allow them anyway and trust that the
+        // user knows what they're doing. Who knows, unanticipated use cases may pop
+        // up in the future.
+        //
+        // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
+        // and don't have to be, LLVM treats them as no-ops.
+        let linkage = match value {
+            sym::available_externally => Linkage::AvailableExternally,
+            sym::common => Linkage::Common,
+            sym::extern_weak => Linkage::ExternalWeak,
+            sym::external => Linkage::External,
+            sym::internal => Linkage::Internal,
+            sym::linkonce => Linkage::LinkOnceAny,
+            sym::linkonce_odr => Linkage::LinkOnceODR,
+            sym::weak => Linkage::WeakAny,
+            sym::weak_odr => Linkage::WeakODR,
+
+            _ => {
+                cx.expected_specific_argument(
+                    name_value.value_span,
+                    vec![
+                        "available_externally",
+                        "common",
+                        "extern_weak",
+                        "external",
+                        "internal",
+                        "linkonce",
+                        "linkonce_odr",
+                        "weak",
+                        "weak_odr",
+                    ],
+                );
+                return None;
+            }
+        };
+
+        Some(AttributeKind::Linkage(linkage, cx.attr_span))
     }
 }

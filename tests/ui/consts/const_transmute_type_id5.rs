@@ -1,7 +1,7 @@
 //! Test that we require an equal TypeId to have an integer part that properly
 //! reflects the type id hash.
 
-#![feature(const_type_id, const_trait_impl, const_cmp)]
+#![feature(const_trait_impl, const_cmp)]
 
 use std::any::TypeId;
 

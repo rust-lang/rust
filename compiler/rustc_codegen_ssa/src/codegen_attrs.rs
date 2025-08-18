@@ -11,7 +11,6 @@ use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
-use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self as ty, TyCtxt};
@@ -25,31 +24,6 @@ use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
-
-fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
-    use rustc_middle::mir::mono::Linkage::*;
-
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
-    // applicable to variable declarations and may not really make sense for
-    // Rust code in the first place but allow them anyway and trust that the
-    // user knows what they're doing. Who knows, unanticipated use cases may pop
-    // up in the future.
-    //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
-    match name {
-        "available_externally" => AvailableExternally,
-        "common" => Common,
-        "extern_weak" => ExternalWeak,
-        "external" => External,
-        "internal" => Internal,
-        "linkonce" => LinkOnceAny,
-        "linkonce_odr" => LinkOnceODR,
-        "weak" => WeakAny,
-        "weak_odr" => WeakODR,
-        _ => tcx.dcx().span_fatal(tcx.def_span(def_id), "invalid linkage specified"),
-    }
-}
 
 /// In some cases, attributes are only valid on functions, but it's the `check_attr`
 /// pass that checks that they aren't used anywhere else, rather than this module.
@@ -101,13 +75,6 @@ fn parse_instruction_set_attr(tcx: TyCtxt<'_>, attr: &Attribute) -> Option<Instr
             None
         }
     }
-}
-
-// FIXME(jdonszelmann): remove when linkage becomes a parsed attr
-fn parse_linkage_attr(tcx: TyCtxt<'_>, did: LocalDefId, attr: &Attribute) -> Option<Linkage> {
-    let val = attr.value_str()?;
-    let linkage = linkage_by_name(tcx, did, val.as_str());
-    Some(linkage)
 }
 
 // FIXME(jdonszelmann): remove when no_sanitize becomes a parsed attr
@@ -209,14 +176,6 @@ fn process_builtin_attrs(
 ) -> InterestingAttributeDiagnosticSpans {
     let mut interesting_spans = InterestingAttributeDiagnosticSpans::default();
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
-
-    // If our rustc version supports autodiff/enzyme, then we call our handler
-    // to check for any `#[rustc_autodiff(...)]` attributes.
-    // FIXME(jdonszelmann): merge with loop below
-    if cfg!(llvm_enzyme) {
-        let ad = autodiff_attrs(tcx, did.into());
-        codegen_fn_attrs.autodiff_item = ad;
-    }
 
     for attr in attrs.iter() {
         if let hir::Attribute::Parsed(p) = attr {
@@ -332,6 +291,28 @@ fn process_builtin_attrs(
                 AttributeKind::StdInternalSymbol(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
                 }
+                AttributeKind::Linkage(linkage, _) => {
+                    let linkage = Some(*linkage);
+
+                    if tcx.is_foreign_item(did) {
+                        codegen_fn_attrs.import_linkage = linkage;
+
+                        if tcx.is_mutable_static(did.into()) {
+                            let mut diag = tcx.dcx().struct_span_err(
+                                attr.span(),
+                                "extern mutable statics are not allowed with `#[linkage]`",
+                            );
+                            diag.note(
+                                "marking the extern static mutable would allow changing which \
+                                symbol the static references rather than make the target of the \
+                                symbol mutable",
+                            );
+                            diag.emit();
+                        }
+                    } else {
+                        codegen_fn_attrs.linkage = linkage;
+                    }
+                }
                 _ => {}
             }
         }
@@ -349,28 +330,6 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::linkage => {
-                let linkage = parse_linkage_attr(tcx, did, attr);
-
-                if tcx.is_foreign_item(did) {
-                    codegen_fn_attrs.import_linkage = linkage;
-
-                    if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
-                            attr.span(),
-                            "extern mutable statics are not allowed with `#[linkage]`",
-                        );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
-                    }
-                } else {
-                    codegen_fn_attrs.linkage = linkage;
-                }
-            }
             sym::no_sanitize => {
                 interesting_spans.no_sanitize = Some(attr.span());
                 codegen_fn_attrs.no_sanitize |=
@@ -442,6 +401,27 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
     // inherit track-caller properly
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // Foreign items by default use no mangling for their symbol name.
+    if tcx.is_foreign_item(did) {
+        // There's a few exceptions to this rule though:
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+            // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
+            //   both for exports and imports through foreign items. This is handled further,
+            //   during symbol mangling logic.
+        } else if codegen_fn_attrs.link_name.is_some() {
+            // * This can be overridden with the `#[link_name]` attribute
+        } else {
+            // NOTE: there's one more exception that we cannot apply here. On wasm,
+            // some items cannot be `no_mangle`.
+            // However, we don't have enough information here to determine that.
+            // As such, no_mangle foreign items on wasm that have the same defid as some
+            // import will *still* be mangled despite this.
+            //
+            // if none of the exceptions apply; apply no_mangle
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
     }
 }
 
@@ -624,7 +604,7 @@ fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
 /// placeholder functions. We wrote the rustc_autodiff attributes ourself, so this should never
 /// panic, unless we introduced a bug when parsing the autodiff macro.
 //FIXME(jdonszelmann): put in the main loop. No need to have two..... :/ Let's do that when we make autodiff parsed.
-fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
+pub fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
     let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();

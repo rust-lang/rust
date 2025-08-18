@@ -5,10 +5,10 @@
 
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_hir::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{RustcVersion, StableSince};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;

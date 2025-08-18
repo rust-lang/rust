@@ -138,7 +138,7 @@ fn issue_12928() {
     let y = if let Some(Y(a, ..)) = x { a } else { 0 };
 }
 
-// For symetry with `manual_unwrap_or` test
+// For symmetry with `manual_unwrap_or` test
 fn allowed_manual_unwrap_or_zero() -> u32 {
     if let Some(x) = Some(42) {
         //~^ manual_unwrap_or_default

@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::{fmt, io};
 
 use rustc_errors::codes::*;
@@ -6,7 +6,7 @@ use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-use crate::ty::Ty;
+use crate::ty::{Instance, Ty};
 
 #[derive(Diagnostic)]
 #[diag(middle_drop_check_overflow, code = E0320)]
@@ -161,13 +161,10 @@ pub(crate) struct ErroneousConstant {
 #[derive(Diagnostic)]
 #[diag(middle_type_length_limit)]
 #[help(middle_consider_type_length_limit)]
-pub(crate) struct TypeLengthLimit {
+pub(crate) struct TypeLengthLimit<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub shrunk: String,
-    #[note(middle_written_to_path)]
-    pub was_written: bool,
-    pub path: PathBuf,
+    pub instance: Instance<'tcx>,
     pub type_length: usize,
 }
 

@@ -563,11 +563,7 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     assert!(bs >= -EVAL_INF && bs <= EVAL_INF);
 
     //best move at the root node, best score elsewhere
-    if _ply == 0 {
-        bm
-    } else {
-        bs
-    }
+    if _ply == 0 { bm } else { bs }
 }
 
 /// Evaluation function: give different scores to different patterns after a fixed depth.

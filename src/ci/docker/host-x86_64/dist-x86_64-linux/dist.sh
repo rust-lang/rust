@@ -4,7 +4,7 @@ set -eux
 
 python3 ../x.py build --set rust.debug=true opt-dist
 
-./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
+./build/$HOSTS/stage1-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
     build-manifest bootstrap

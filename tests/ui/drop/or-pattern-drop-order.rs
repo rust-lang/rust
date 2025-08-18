@@ -1,6 +1,7 @@
 //@ run-pass
 //! Test drop order for different ways of declaring pattern bindings involving or-patterns.
-//! Currently, it's inconsistent between language constructs (#142163).
+//! In particular, are ordered based on the order in which the first occurrence of each binding
+//! appears (i.e. the "primary" bindings). Regression test for #142163.
 
 use std::cell::RefCell;
 use std::ops::Drop;
@@ -43,11 +44,10 @@ fn main() {
         y = LogDrop(o, 1);
     });
 
-    // When bindings are declared with `let pat = expr;`, bindings within or-patterns are seen last,
-    // thus they're dropped first.
+    // `let pat = expr;` should have the same drop order.
     assert_drop_order(1..=3, |o| {
-        // Drops are right-to-left, treating `y` as rightmost: `y`, `z`, `x`.
-        let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2));
+        // Drops are right-to-left: `z`, `y`, `x`.
+        let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1));
     });
     assert_drop_order(1..=2, |o| {
         // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
@@ -58,30 +58,29 @@ fn main() {
         let ((true, x, y) | (false, y, x)) = (false, LogDrop(o, 1), LogDrop(o, 2));
     });
 
-    // `match` treats or-patterns as last like `let pat = expr;`, but also determines drop order
-    // using the order of the bindings in the *last* or-pattern alternative.
+    // `match` should have the same drop order.
     assert_drop_order(1..=3, |o| {
-        // Drops are right-to-left, treating `y` as rightmost: `y`, `z`, `x`.
-        match (LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2)) { (x, Ok(y) | Err(y), z) => {} }
+        // Drops are right-to-left: `z`, `y` `x`.
+        match (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)) { (x, Ok(y) | Err(y), z) => {} }
     });
     assert_drop_order(1..=2, |o| {
-        // The last or-pattern alternative determines the bindings' drop order: `x`, `y`.
-        match (true, LogDrop(o, 1), LogDrop(o, 2)) { (true, x, y) | (false, y, x) => {} }
+        // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
+        match (true, LogDrop(o, 2), LogDrop(o, 1)) { (true, x, y) | (false, y, x) => {} }
     });
     assert_drop_order(1..=2, |o| {
-        // That drop order is used regardless of which or-pattern alternative matches: `x`, `y`.
-        match (false, LogDrop(o, 2), LogDrop(o, 1)) { (true, x, y) | (false, y, x) => {} }
+        // That drop order is used regardless of which or-pattern alternative matches: `y`, `x`.
+        match (false, LogDrop(o, 1), LogDrop(o, 2)) { (true, x, y) | (false, y, x) => {} }
     });
 
     // Function params are visited one-by-one, and the order of bindings within a param's pattern is
-    // the same as `let pat = expr`;
+    // the same as `let pat = expr;`
     assert_drop_order(1..=3, |o| {
         // Among separate params, the drop order is right-to-left: `z`, `y`, `x`.
         (|x, (Ok(y) | Err(y)), z| {})(LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1));
     });
     assert_drop_order(1..=3, |o| {
-        // Within a param's pattern, or-patterns are treated as rightmost: `y`, `z`, `x`.
-        (|(x, Ok(y) | Err(y), z)| {})((LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2)));
+        // Within a param's pattern, likewise: `z`, `y`, `x`.
+        (|(x, Ok(y) | Err(y), z)| {})((LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)));
     });
     assert_drop_order(1..=2, |o| {
         // The first or-pattern alternative determines the bindings' drop order: `y`, `x`.
@@ -89,12 +88,11 @@ fn main() {
     });
 
     // `if let` and `let`-`else` see bindings in the same order as `let pat = expr;`.
-    // Vars in or-patterns are seen last (dropped first), and the first alternative's order is used.
     assert_drop_order(1..=3, |o| {
-        if let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2)) {}
+        if let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)) {}
     });
     assert_drop_order(1..=3, |o| {
-        let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 1)), LogDrop(o, 2)) else {
+        let (x, Ok(y) | Err(y), z) = (LogDrop(o, 3), Ok(LogDrop(o, 2)), LogDrop(o, 1)) else {
             unreachable!();
         };
     });
@@ -105,5 +103,22 @@ fn main() {
         let ((true, x, y) | (false, y, x)) = (true, LogDrop(o, 2), LogDrop(o, 1)) else {
             unreachable!();
         };
+    });
+
+    // Test nested and adjacent or-patterns, including or-patterns without bindings under a guard.
+    assert_drop_order(1..=6, |o| {
+        // The `LogDrop`s that aren't moved into bindings are dropped last.
+        match [
+            [LogDrop(o, 6), LogDrop(o, 4)],
+            [LogDrop(o, 3), LogDrop(o, 2)],
+            [LogDrop(o, 1), LogDrop(o, 5)],
+        ] {
+            [
+                [_ | _, w | w] | [w | w, _ | _],
+                [x | x, y | y] | [y | y, x | x],
+                [z | z, _ | _] | [_ | _, z | z],
+            ] if true => {}
+            _ => unreachable!(),
+        }
     });
 }

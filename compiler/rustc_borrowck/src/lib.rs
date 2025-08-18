@@ -19,6 +19,7 @@ use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
+use std::rc::Rc;
 
 use borrow_set::LocalsStateAtExit;
 use root_cx::BorrowCheckRootCtxt;
@@ -44,6 +45,7 @@ use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces}
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
@@ -60,11 +62,14 @@ use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
 use crate::polonius::PoloniusDiagnosticsContext;
-use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
+use crate::polonius::legacy::{
+    PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
+};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::VarNeedNotMut;
+use crate::type_check::MirTypeckResults;
 
 mod borrow_set;
 mod borrowck_errors;
@@ -321,7 +326,34 @@ fn do_mir_borrowck<'tcx>(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
-    // Compute non-lexical lifetimes.
+    let location_map = Rc::new(DenseLocationMap::new(body));
+
+    let polonius_input = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_input())
+        || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
+    let mut polonius_facts =
+        (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
+
+    // Run the MIR type-checker.
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        opaque_type_values,
+        polonius_context,
+    } = type_check::type_check(
+        root_cx,
+        &infcx,
+        body,
+        &promoted,
+        universal_regions,
+        &location_table,
+        &borrow_set,
+        &mut polonius_facts,
+        &move_data,
+        Rc::clone(&location_map),
+    );
+
+    // Compute non-lexical lifetimes using the constraints computed
+    // by typechecking the MIR body.
     let nll::NllOutput {
         regioncx,
         polonius_input,
@@ -332,13 +364,18 @@ fn do_mir_borrowck<'tcx>(
     } = nll::compute_regions(
         root_cx,
         &infcx,
-        universal_regions,
         body,
-        &promoted,
         &location_table,
         &move_data,
         &borrow_set,
+        location_map,
+        universal_region_relations,
+        constraints,
+        polonius_facts,
+        polonius_context,
     );
+
+    let opaque_type_errors = regioncx.infer_opaque_types(root_cx, &infcx, opaque_type_values);
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -434,7 +471,11 @@ fn do_mir_borrowck<'tcx>(
     };
 
     // Compute and report region errors, if any.
-    mbcx.report_region_errors(nll_errors);
+    if nll_errors.is_empty() {
+        mbcx.report_opaque_type_errors(opaque_type_errors);
+    } else {
+        mbcx.report_region_errors(nll_errors);
+    }
 
     let (mut flow_analysis, flow_entry_states) =
         get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);

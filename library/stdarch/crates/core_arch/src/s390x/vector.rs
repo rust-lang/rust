@@ -5831,24 +5831,30 @@ mod tests {
     use crate::core_arch::simd::*;
     use stdarch_test::simd_test;
 
+    impl<const N: usize> ShuffleMask<N> {
+        fn as_array(&self) -> &[u32; N] {
+            unsafe { std::mem::transmute(self) }
+        }
+    }
+
     #[test]
     fn reverse_mask() {
-        assert_eq!(ShuffleMask::<4>::reverse().0, [3, 2, 1, 0]);
+        assert_eq!(ShuffleMask::<4>::reverse().as_array(), &[3, 2, 1, 0]);
     }
 
     #[test]
     fn mergel_mask() {
-        assert_eq!(ShuffleMask::<4>::merge_low().0, [2, 6, 3, 7]);
+        assert_eq!(ShuffleMask::<4>::merge_low().as_array(), &[2, 6, 3, 7]);
     }
 
     #[test]
     fn mergeh_mask() {
-        assert_eq!(ShuffleMask::<4>::merge_high().0, [0, 4, 1, 5]);
+        assert_eq!(ShuffleMask::<4>::merge_high().as_array(), &[0, 4, 1, 5]);
     }
 
     #[test]
     fn pack_mask() {
-        assert_eq!(ShuffleMask::<4>::pack().0, [1, 3, 5, 7]);
+        assert_eq!(ShuffleMask::<4>::pack().as_array(), &[1, 3, 5, 7]);
     }
 
     #[test]

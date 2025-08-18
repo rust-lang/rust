@@ -11,11 +11,7 @@ use crate::data_structures::HashMap;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 
-#[derive_where(Clone; I: Interner, V: Clone)]
-#[derive_where(Hash; I: Interner, V: Hash)]
-#[derive_where(PartialEq; I: Interner, V: PartialEq)]
-#[derive_where(Eq; I: Interner, V: Eq)]
-#[derive_where(Debug; I: Interner, V: fmt::Debug)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
@@ -26,14 +22,12 @@ pub struct CanonicalQueryInput<I: Interner, V> {
     pub typing_mode: TypingMode<I>,
 }
 
+impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}
+
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
-#[derive_where(Clone; I: Interner, V: Clone)]
-#[derive_where(Hash; I: Interner, V: Hash)]
-#[derive_where(PartialEq; I: Interner, V: PartialEq)]
-#[derive_where(Eq; I: Interner, V: Eq)]
-#[derive_where(Debug; I: Interner, V: fmt::Debug)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[cfg_attr(
     feature = "nightly",
@@ -44,6 +38,8 @@ pub struct Canonical<I: Interner, V> {
     pub max_universe: UniverseIndex,
     pub variables: I::CanonicalVarKinds,
 }
+
+impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
 
 impl<I: Interner, V> Canonical<I, V> {
     /// Allows you to map the `value` of a canonical while keeping the
@@ -89,7 +85,7 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -115,6 +111,8 @@ pub enum CanonicalVarKind<I: Interner> {
     /// A "placeholder" that represents "any const".
     PlaceholderConst(I::PlaceholderConst),
 }
+
+impl<I: Interner> Eq for CanonicalVarKind<I> {}
 
 impl<I: Interner> CanonicalVarKind<I> {
     pub fn universe(self) -> UniverseIndex {
@@ -199,7 +197,6 @@ impl<I: Interner> CanonicalVarKind<I> {
 /// usize or f32). In order to faithfully reproduce a type, we need to
 /// know what set of types a given type variable can be unified with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
@@ -224,7 +221,7 @@ pub enum CanonicalTyVarKind {
 /// vectors with the original values that were replaced by canonical
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -233,6 +230,8 @@ pub enum CanonicalTyVarKind {
 pub struct CanonicalVarValues<I: Interner> {
     pub var_values: I::GenericArgs,
 }
+
+impl<I: Interner> Eq for CanonicalVarValues<I> {}
 
 impl<I: Interner> CanonicalVarValues<I> {
     pub fn is_identity(&self) -> bool {

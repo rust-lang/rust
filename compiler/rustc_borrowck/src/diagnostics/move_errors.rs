@@ -9,7 +9,8 @@ use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
-use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
+use rustc_span::def_id::DefId;
+use rustc_span::{BytePos, DUMMY_SP, ExpnKind, MacroKind, Span};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
@@ -507,11 +508,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 );
 
                 let closure_span = tcx.def_span(def_id);
+
                 self.cannot_move_out_of(span, &place_description)
                     .with_span_label(upvar_span, "captured outer variable")
                     .with_span_label(
                         closure_span,
                         format!("captured by this `{closure_kind}` closure"),
+                    )
+                    .with_span_help(
+                        self.get_closure_bound_clause_span(*def_id),
+                        "`Fn` and `FnMut` closures require captured values to be able to be \
+                         consumed multiple times, but `FnOnce` closures may consume them only once",
                     )
             }
             _ => {
@@ -559,6 +566,47 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt);
         }
         err
+    }
+
+    fn get_closure_bound_clause_span(&self, def_id: DefId) -> Span {
+        let tcx = self.infcx.tcx;
+        let typeck_result = tcx.typeck(self.mir_def_id());
+        // Check whether the closure is an argument to a call, if so,
+        // get the instantiated where-bounds of that call.
+        let closure_hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
+        let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return DUMMY_SP };
+
+        let predicates = match parent.kind {
+            hir::ExprKind::Call(callee, _) => {
+                let Some(ty) = typeck_result.node_type_opt(callee.hir_id) else { return DUMMY_SP };
+                let ty::FnDef(fn_def_id, args) = ty.kind() else { return DUMMY_SP };
+                tcx.predicates_of(fn_def_id).instantiate(tcx, args)
+            }
+            hir::ExprKind::MethodCall(..) => {
+                let Some((_, method)) = typeck_result.type_dependent_def(parent.hir_id) else {
+                    return DUMMY_SP;
+                };
+                let args = typeck_result.node_args(parent.hir_id);
+                tcx.predicates_of(method).instantiate(tcx, args)
+            }
+            _ => return DUMMY_SP,
+        };
+
+        // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`.
+        for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
+            if let Some(clause) = pred.as_trait_clause()
+                && let ty::Closure(clause_closure_def_id, _) = clause.self_ty().skip_binder().kind()
+                && *clause_closure_def_id == def_id
+                && (tcx.lang_items().fn_mut_trait() == Some(clause.def_id())
+                    || tcx.lang_items().fn_trait() == Some(clause.def_id()))
+            {
+                // Found `<TyOfCapturingClosure as FnMut>`
+                // We point at the `Fn()` or `FnMut()` bound that coerced the closure, which
+                // could be changed to `FnOnce()` to avoid the move error.
+                return *span;
+            }
+        }
+        DUMMY_SP
     }
 
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {

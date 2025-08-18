@@ -491,4 +491,19 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Added `build.compiletest-allow-stage0` flag instead of `COMPILETEST_FORCE_STAGE0` env var, and reject running `compiletest` self tests against stage 0 rustc unless explicitly allowed.",
     },
+    ChangeInfo {
+        change_id: 145011,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x doc` with stage 0. All doc commands have to be on stage 1+.",
+    },
+    ChangeInfo {
+        change_id: 145295,
+        severity: ChangeSeverity::Warning,
+        summary: "The names of stageN directories in the build directory have been consolidated with the new (post-stage-0-redesign) staging scheme. Some tools and binaries might be located in a different build directory than before.",
+    },
+    ChangeInfo {
+        change_id: 145131,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x clippy` with stage 0. All clippy commands have to be on stage 1+.",
+    },
 ];

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::Mutability;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdSet, LocalDefId, LocalModDefId};
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -137,13 +137,16 @@ pub(crate) fn try_inline(
                 clean::ConstantItem(Box::new(ct))
             })
         }
-        Res::Def(DefKind::Macro(kind), did) => {
-            let mac = build_macro(cx, did, name, kind);
+        Res::Def(DefKind::Macro(kinds), did) => {
+            let mac = build_macro(cx, did, name, kinds);
 
-            let type_kind = match kind {
-                MacroKind::Bang => ItemType::Macro,
-                MacroKind::Attr => ItemType::ProcAttribute,
-                MacroKind::Derive => ItemType::ProcDerive,
+            // FIXME: handle attributes and derives that aren't proc macros, and macros with
+            // multiple kinds
+            let type_kind = match kinds {
+                MacroKinds::BANG => ItemType::Macro,
+                MacroKinds::ATTR => ItemType::ProcAttribute,
+                MacroKinds::DERIVE => ItemType::ProcDerive,
+                _ => todo!("Handle macros with multiple kinds"),
             };
             record_extern_fqn(cx, did, type_kind);
             mac
@@ -749,22 +752,36 @@ fn build_macro(
     cx: &mut DocContext<'_>,
     def_id: DefId,
     name: Symbol,
-    macro_kind: MacroKind,
+    macro_kinds: MacroKinds,
 ) -> clean::ItemKind {
     match CStore::from_tcx(cx.tcx).load_macro_untracked(def_id, cx.tcx) {
-        LoadedMacro::MacroDef { def, .. } => match macro_kind {
-            MacroKind::Bang => clean::MacroItem(clean::Macro {
+        // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
+        // kinds
+        LoadedMacro::MacroDef { def, .. } => match macro_kinds {
+            MacroKinds::BANG => clean::MacroItem(clean::Macro {
                 source: utils::display_macro_source(cx, name, &def),
                 macro_rules: def.macro_rules,
             }),
-            MacroKind::Derive | MacroKind::Attr => {
-                clean::ProcMacroItem(clean::ProcMacro { kind: macro_kind, helpers: Vec::new() })
-            }
+            MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
+                kind: MacroKind::Derive,
+                helpers: Vec::new(),
+            }),
+            MacroKinds::ATTR => clean::ProcMacroItem(clean::ProcMacro {
+                kind: MacroKind::Attr,
+                helpers: Vec::new(),
+            }),
+            _ => todo!("Handle macros with multiple kinds"),
         },
-        LoadedMacro::ProcMacro(ext) => clean::ProcMacroItem(clean::ProcMacro {
-            kind: ext.macro_kind(),
-            helpers: ext.helper_attrs,
-        }),
+        LoadedMacro::ProcMacro(ext) => {
+            // Proc macros can only have a single kind
+            let kind = match ext.macro_kinds() {
+                MacroKinds::BANG => MacroKind::Bang,
+                MacroKinds::ATTR => MacroKind::Attr,
+                MacroKinds::DERIVE => MacroKind::Derive,
+                _ => unreachable!(),
+            };
+            clean::ProcMacroItem(clean::ProcMacro { kind, helpers: ext.helper_attrs })
+        }
     }
 }
 

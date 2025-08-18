@@ -182,6 +182,16 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 
         Ok(state.failed == 0)
     }
+
+    fn write_merged_doctests_times(
+        &mut self,
+        total_time: f64,
+        compilation_time: f64,
+    ) -> io::Result<()> {
+        self.write_message(&format!(
+            "<report total_time=\"{total_time}\" compilation_time=\"{compilation_time}\"></report>\n",
+        ))
+    }
 }
 
 fn parse_class_name(desc: &TestDesc) -> (String, String) {

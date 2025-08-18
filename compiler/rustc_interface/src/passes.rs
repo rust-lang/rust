@@ -108,7 +108,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
         attrs: &[ast::Attribute],
-        items: &[rustc_ast::ptr::P<ast::Item>],
+        items: &[Box<ast::Item>],
         name: Symbol,
     ) {
         pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
@@ -371,7 +371,7 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
             // The name won't abut or overlap with the uses value, but it does
             // overlap with the empty part of the uses column. Shrink the width
             // of the uses column to account for the excess name length.
-            uses_w = uses_with_underscores.len() + 1
+            uses_w -= name.len() - name_w;
         };
 
         _ = writeln!(

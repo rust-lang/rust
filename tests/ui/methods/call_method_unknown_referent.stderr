@@ -10,7 +10,7 @@ error[E0282]: type annotations needed
 LL |     let _b = (rc as std::rc::Rc<_>).read();
    |                                     ^^^^ cannot infer type
 
-error[E0599]: no method named `read` found for struct `SmartPtr` in the current scope
+error[E0599]: no method named `read` found for struct `SmartPtr<T>` in the current scope
   --> $DIR/call_method_unknown_referent.rs:46:35
    |
 LL | struct SmartPtr<T>(T);

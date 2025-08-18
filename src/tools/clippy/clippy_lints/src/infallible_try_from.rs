@@ -13,7 +13,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// Infalliable conversions should be implemented via `From` with the blanket conversion.
+    /// Infallible conversions should be implemented via `From` with the blanket conversion.
     ///
     /// ### Example
     /// ```no_run
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.88.0"]
+    #[clippy::version = "1.89.0"]
     pub INFALLIBLE_TRY_FROM,
     suspicious,
     "TryFrom with infallible Error type"
@@ -45,8 +45,8 @@ declare_lint_pass!(InfallibleTryFrom => [INFALLIBLE_TRY_FROM]);
 impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let ItemKind::Impl(imp) = item.kind else { return };
-        let Some(r#trait) = imp.of_trait else { return };
-        let Some(trait_def_id) = r#trait.trait_def_id() else {
+        let Some(of_trait) = imp.of_trait else { return };
+        let Some(trait_def_id) = of_trait.trait_ref.trait_def_id() else {
             return;
         };
         if !cx.tcx.is_diagnostic_item(sym::TryFrom, trait_def_id) {
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for InfallibleTryFrom {
                     cx,
                     INFALLIBLE_TRY_FROM,
                     span,
-                    "infallible TryFrom impl; consider implementing From, instead",
+                    "infallible TryFrom impl; consider implementing From instead",
                 );
             }
         }

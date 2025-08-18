@@ -1,6 +1,6 @@
 use std::cmp::max;
 
-use rustc_ast::{ast, ptr};
+use rustc_ast::ast;
 use rustc_span::{Span, source_map};
 
 use crate::macros::MacroArg;
@@ -12,7 +12,7 @@ pub(crate) trait Spanned {
     fn span(&self) -> Span;
 }
 
-impl<T: Spanned> Spanned for ptr::P<T> {
+impl<T: Spanned> Spanned for Box<T> {
     fn span(&self) -> Span {
         (**self).span()
     }

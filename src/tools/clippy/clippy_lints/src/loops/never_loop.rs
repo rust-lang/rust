@@ -202,7 +202,7 @@ fn all_spans_after_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Vec<Span> {
                 .iter()
                 .skip_while(|inner| inner.hir_id != stmt.hir_id)
                 .map(stmt_source_span)
-                .chain(if let Some(e) = block.expr { vec![e.span] } else { vec![] })
+                .chain(block.expr.map(|e| e.span))
                 .collect();
         }
 

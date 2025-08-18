@@ -1756,7 +1756,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let missing_parentheses = match (expected.kind(), fields, had_err) {
             // #67037: only do this if we could successfully type-check the expected type against
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
-            // `let P() = U;` where `P != U` with `struct P<T>(T);`.
+            // `let P() = U;` where `P != U` with `struct Box<T>(T);`.
             (ty::Adt(_, args), [field], Ok(())) => {
                 let field_ty = self.field_ty(pat_span, field, args);
                 match field_ty.kind() {

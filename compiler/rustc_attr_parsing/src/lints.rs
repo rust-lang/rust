@@ -1,6 +1,7 @@
 use rustc_errors::{DiagArgValue, LintEmitter};
-use rustc_hir::HirId;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
+use rustc_hir::{HirId, Target};
+use rustc_span::sym;
 
 use crate::session_diagnostics;
 
@@ -34,5 +35,25 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
             *first_span,
             session_diagnostics::EmptyAttributeList { attr_span: *first_span },
         ),
+        &AttributeLintKind::InvalidTarget { name, target, ref applied, only } => lint_emitter
+            .emit_node_span_lint(
+                // This check is here because `deprecated` had its own lint group and removing this would be a breaking change
+                if name == sym::deprecated
+                    && ![Target::Closure, Target::Expression, Target::Statement, Target::Arm]
+                        .contains(&target)
+                {
+                    rustc_session::lint::builtin::USELESS_DEPRECATED
+                } else {
+                    rustc_session::lint::builtin::UNUSED_ATTRIBUTES
+                },
+                *id,
+                *span,
+                session_diagnostics::InvalidTargetLint {
+                    name,
+                    target: target.plural_name(),
+                    applied: applied.clone(),
+                    only,
+                },
+            ),
     }
 }

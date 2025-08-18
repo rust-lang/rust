@@ -33,14 +33,14 @@ pub fn main() {
         assert_eq!(rusti::atomic_xchg::<_, { Release }>(&mut *x, 0), 1);
         assert_eq!(*x, 0);
 
-        assert_eq!(rusti::atomic_xadd::<_, { SeqCst }>(&mut *x, 1), 0);
-        assert_eq!(rusti::atomic_xadd::<_, { Acquire }>(&mut *x, 1), 1);
-        assert_eq!(rusti::atomic_xadd::<_, { Release }>(&mut *x, 1), 2);
+        assert_eq!(rusti::atomic_xadd::<_, _, { SeqCst }>(&mut *x, 1), 0);
+        assert_eq!(rusti::atomic_xadd::<_, _, { Acquire }>(&mut *x, 1), 1);
+        assert_eq!(rusti::atomic_xadd::<_, _, { Release }>(&mut *x, 1), 2);
         assert_eq!(*x, 3);
 
-        assert_eq!(rusti::atomic_xsub::<_, { SeqCst }>(&mut *x, 1), 3);
-        assert_eq!(rusti::atomic_xsub::<_, { Acquire }>(&mut *x, 1), 2);
-        assert_eq!(rusti::atomic_xsub::<_, { Release }>(&mut *x, 1), 1);
+        assert_eq!(rusti::atomic_xsub::<_, _, { SeqCst }>(&mut *x, 1), 3);
+        assert_eq!(rusti::atomic_xsub::<_, _, { Acquire }>(&mut *x, 1), 2);
+        assert_eq!(rusti::atomic_xsub::<_, _, { Release }>(&mut *x, 1), 1);
         assert_eq!(*x, 0);
 
         loop {

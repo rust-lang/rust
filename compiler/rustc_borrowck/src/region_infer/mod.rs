@@ -44,7 +44,7 @@ use crate::{
 
 mod dump_mir;
 mod graphviz;
-mod opaque_types;
+pub(crate) mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
@@ -713,7 +713,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.max_nameable_universe(scc).is_root() {
+        if !self.max_placeholder_universe_reached(scc).is_root() {
             return;
         }
 
@@ -1376,6 +1376,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_annotations[scc].max_nameable_universe()
     }
 
+    pub(crate) fn max_placeholder_universe_reached(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> UniverseIndex {
+        self.scc_annotations[scc].max_placeholder_universe_reached()
+    }
+
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
     /// wound up in `fr`'s final value; for each `end(X)` where `X !=
@@ -1939,10 +1946,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // and here we prefer to blame the source (the y = x statement).
         let blame_source = match from_region_origin {
-            NllRegionVariableOrigin::FreeRegion
-            | NllRegionVariableOrigin::Existential { from_forall: false } => true,
-            NllRegionVariableOrigin::Placeholder(_)
-            | NllRegionVariableOrigin::Existential { from_forall: true } => false,
+            NllRegionVariableOrigin::FreeRegion => true,
+            NllRegionVariableOrigin::Placeholder(_) => false,
+            // `'existential: 'whatever` never results in a region error by itself.
+            // We may always infer it to `'static` afterall. This means while an error
+            // path may go through an existential, these existentials are never the
+            // `from_region`.
+            NllRegionVariableOrigin::Existential { name: _ } => {
+                unreachable!("existentials can outlive everything")
+            }
         };
 
         // To pick a constraint to blame, we organize constraints by how interesting we expect them

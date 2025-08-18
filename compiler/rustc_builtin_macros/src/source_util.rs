@@ -3,7 +3,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{join_path_idents, token};
 use rustc_ast_pretty::pprust;
@@ -144,7 +143,7 @@ pub(crate) fn expand_include<'cx>(
         node_id: ast::NodeId,
     }
     impl<'a> MacResult for ExpandInclude<'a> {
-        fn make_expr(mut self: Box<ExpandInclude<'a>>) -> Option<P<ast::Expr>> {
+        fn make_expr(mut self: Box<ExpandInclude<'a>>) -> Option<Box<ast::Expr>> {
             let expr = parse_expr(&mut self.p).ok()?;
             if self.p.token != token::Eof {
                 self.p.psess.buffer_lint(
@@ -157,7 +156,7 @@ pub(crate) fn expand_include<'cx>(
             Some(expr)
         }
 
-        fn make_items(mut self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+        fn make_items(mut self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
             let mut ret = SmallVec::new();
             loop {
                 match self.p.parse_item(ForceCollect::No) {

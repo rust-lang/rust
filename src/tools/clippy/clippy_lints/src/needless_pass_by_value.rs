@@ -311,9 +311,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
 /// Functions marked with these attributes must have the exact signature.
 pub(crate) fn requires_exact_signature(attrs: &[Attribute]) -> bool {
-    attrs.iter().any(|attr| {
-        attr.is_proc_macro_attr()
-    })
+    attrs.iter().any(Attribute::is_proc_macro_attr)
 }
 
 #[derive(Default)]

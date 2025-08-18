@@ -103,6 +103,10 @@ impl RegionTracker {
         self.max_nameable_universe
     }
 
+    pub(crate) fn max_placeholder_universe_reached(self) -> UniverseIndex {
+        self.max_placeholder_universe_reached
+    }
+
     fn merge_min_max_seen(&mut self, other: &Self) {
         self.max_placeholder_universe_reached = std::cmp::max(
             self.max_placeholder_universe_reached,
@@ -157,7 +161,7 @@ fn region_definitions<'tcx>(
     for info in var_infos.iter() {
         let origin = match info.origin {
             RegionVariableOrigin::Nll(origin) => origin,
-            _ => NllRegionVariableOrigin::Existential { from_forall: false },
+            _ => NllRegionVariableOrigin::Existential { name: None },
         };
 
         let definition = RegionDefinition { origin, universe: info.universe, external_name: None };
@@ -216,21 +220,10 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         placeholder_index_to_region: _,
         liveness_constraints,
         mut outlives_constraints,
-        mut member_constraints,
+        member_constraints,
         universe_causes,
         type_tests,
     } = constraints;
-
-    if let Some(guar) = universal_regions.tainted_by_errors() {
-        debug!("Universal regions tainted by errors; removing constraints!");
-        // Suppress unhelpful extra errors in `infer_opaque_types` by clearing out all
-        // outlives bounds that we may end up checking.
-        outlives_constraints = Default::default();
-        member_constraints = Default::default();
-
-        // Also taint the entire scope.
-        infcx.set_tainted_by_errors(guar);
-    }
 
     let fr_static = universal_regions.fr_static;
     let compute_sccs =

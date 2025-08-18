@@ -44,7 +44,7 @@ impl MultiItemModifier for Expander {
         item: Annotatable,
         _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
-        let template = AttributeTemplate { list: Some("path"), ..Default::default() };
+        let template = AttributeTemplate { list: Some(&["path"]), ..Default::default() };
         validate_attr::check_builtin_meta_item(
             &ecx.sess.psess,
             meta_item,

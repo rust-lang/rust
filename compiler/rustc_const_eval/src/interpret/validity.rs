@@ -949,7 +949,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 let padding_size = offset - padding_cleared_until;
                 let range = alloc_range(padding_start, padding_size);
                 trace!("reset_padding on {}: resetting padding range {range:?}", mplace.layout.ty);
-                alloc.write_uninit(range)?;
+                alloc.write_uninit(range);
             }
             padding_cleared_until = offset + size;
         }
@@ -1239,7 +1239,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 if self.reset_provenance_and_padding {
                     // We can't share this with above as above, we might be looking at read-only memory.
                     let mut alloc = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)?.expect("we already excluded size 0");
-                    alloc.clear_provenance()?;
+                    alloc.clear_provenance();
                     // Also, mark this as containing data, not padding.
                     self.add_data_range(mplace.ptr(), size);
                 }
@@ -1415,7 +1415,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             "validate_operand",
             "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"

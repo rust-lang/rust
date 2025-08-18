@@ -853,7 +853,7 @@ pub trait RangeBounds<T: ?Sized> {
     /// assert!( RangeBounds::is_empty(&(f32::NAN..5.0)));
     /// ```
     ///
-    /// But never empty is either side is unbounded:
+    /// But never empty if either side is unbounded:
     ///
     /// ```
     /// #![feature(range_bounds_is_empty)]

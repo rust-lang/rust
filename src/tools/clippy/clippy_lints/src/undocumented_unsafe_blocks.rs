@@ -8,7 +8,7 @@ use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
 use rustc_hir as hir;
-use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
+use rustc_hir::{Block, BlockCheckMode, Impl, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -204,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
         let item_has_safety_comment = item_has_safety_comment(cx, item);
         match (&item.kind, item_has_safety_comment) {
             // lint unsafe impl without safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::No) if impl_.safety.is_unsafe() => {
+            (ItemKind::Impl(Impl { of_trait: Some(of_trait), .. }), HasSafetyComment::No) if of_trait.safety.is_unsafe() => {
                 if !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, item.hir_id())
                     && !is_unsafe_from_proc_macro(cx, item.span)
                 {
@@ -228,7 +228,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
                 }
             },
             // lint safe impl with unnecessary safety comment
-            (ItemKind::Impl(impl_), HasSafetyComment::Yes(pos)) if impl_.safety.is_safe() => {
+            (ItemKind::Impl(Impl { of_trait: Some(of_trait), .. }), HasSafetyComment::Yes(pos)) if of_trait.safety.is_safe() => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, item.hir_id()) {
                     let (span, help_span) = mk_spans(pos);
 

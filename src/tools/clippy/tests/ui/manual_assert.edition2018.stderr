@@ -167,7 +167,7 @@ LL -         comment */
 LL -         /// Doc comment
 LL -         panic!("panic with comment") // comment after `panic!`
 LL -     }
-LL +     assert!(!(a > 2), "panic with comment");
+LL +     assert!(a <= 2, "panic with comment");
    |
 
 error: only a `panic!` in `if`-then statement
@@ -186,7 +186,7 @@ LL -         const BAR: () = if N == 0 {
 LL -
 LL -             panic!()
 LL -         };
-LL +         const BAR: () = assert!(!(N == 0), );
+LL +         const BAR: () = assert!(N != 0, );
    |
 
 error: only a `panic!` in `if`-then statement
