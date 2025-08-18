@@ -102,7 +102,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    // FIXME: remove the unsizedconstparamty item
+    // FIXME: core panics if remove unsizedconstparamty, figure out why
     assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
     let mut need_unstable_feature_bound = false;
 
@@ -123,7 +123,6 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             need_unstable_feature_bound = true;
             vec![Ty::new_slice(tcx, tcx.types.u8)]
         }
-
         ty::Array(inner_ty, _) => vec![inner_ty],
 
         // `str` morally acts like a newtype around `[u8]`
