@@ -29,8 +29,6 @@ struct S4 {
 enum E1 {}
 
 #[derive(From)]
-//~^ ERROR the size for values of type `T` cannot be known at compilation time [E0277]
-//~| ERROR the size for values of type `T` cannot be known at compilation time [E0277]
 struct SUnsizedField<T: ?Sized> {
     last: T,
     //~^ ERROR the size for values of type `T` cannot be known at compilation time [E0277]
