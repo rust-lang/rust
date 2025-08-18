@@ -46,6 +46,7 @@ use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::proc_macro_attrs::{
     ProcMacroAttributeParser, ProcMacroDeriveParser, ProcMacroParser, RustcBuiltinMacroParser,
 };
+use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
@@ -167,6 +168,7 @@ attribute_parsers!(
 
         // tidy-alphabetical-start
         Single<CoverageParser>,
+        Single<CustomMirParser>,
         Single<DeprecationParser>,
         Single<DummyParser>,
         Single<ExportNameParser>,
@@ -1059,6 +1061,9 @@ pub(crate) fn allowed_targets_applied(
         }
         if !features.stmt_expr_attributes() {
             allowed_targets.retain(|t| !matches!(t, Target::Expression | Target::Statement));
+        }
+        if !features.extern_types() {
+            allowed_targets.retain(|t| !matches!(t, Target::ForeignTy));
         }
     }
 
