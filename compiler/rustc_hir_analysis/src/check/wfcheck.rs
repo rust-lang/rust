@@ -819,17 +819,9 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
 
-            if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
-                    wfcx.register_bound(
-                        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
-                        wfcx.param_env,
-                        ty,
-                        tcx.require_lang_item(LangItem::UnsizedConstParamTy, span),
-                    );
-                    Ok(())
-                })
-            } else if tcx.features().adt_const_params() {
+            if tcx.features().adt_const_params() || tcx.features().unsized_const_params() {
+                // TODO: should we get rid of the check for LangItem::ConstParamTy? If yes, how should we check
+                // if the trait is implemented.
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
