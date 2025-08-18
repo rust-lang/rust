@@ -27,21 +27,39 @@ pub(crate) fn expand_deriving_from(
         cx.dcx().bug("derive(From) used on something else than an item");
     };
 
-    // #[derive(From)] is currently usable only on structs with exactly one field.
-    let field = if let ItemKind::Struct(_, _, data) = &item.kind
-        && let [field] = data.fields()
-    {
-        Some(field.clone())
-    } else {
-        None
+    let err_span = || {
+        let item_span = item.kind.ident().map(|ident| ident.span).unwrap_or(item.span);
+        MultiSpan::from_spans(vec![span, item_span])
     };
 
-    let from_type = match &field {
-        Some(field) => Ty::AstTy(field.ty.clone()),
-        // We don't have a type to put into From<...> if we don't have a single field, so just put
-        // unit there.
-        None => Ty::Unit,
+    // `#[derive(From)]` is currently usable only on structs with exactly one field.
+    let field = match &item.kind {
+        ItemKind::Struct(_, _, data) => {
+            if let [field] = data.fields() {
+                Ok(field.clone())
+            } else {
+                let guar = cx.dcx().emit_err(errors::DeriveFromWrongFieldCount {
+                    span: err_span(),
+                    multiple_fields: data.fields().len() > 1,
+                });
+                Err(guar)
+            }
+        }
+        ItemKind::Enum(_, _, _) | ItemKind::Union(_, _, _) => {
+            let guar = cx.dcx().emit_err(errors::DeriveFromWrongTarget {
+                span: err_span(),
+                kind: &format!("{} {}", item.kind.article(), item.kind.descr()),
+            });
+            Err(guar)
+        }
+        _ => cx.dcx().bug("Invalid derive(From) ADT input"),
     };
+
+    let from_type = Ty::AstTy(match field {
+        Ok(ref field) => field.ty.clone(),
+        Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
+    });
+
     let path =
         Path::new_(pathvec_std!(convert::From), vec![Box::new(from_type.clone())], PathKind::Std);
 
@@ -71,34 +89,17 @@ pub(crate) fn expand_deriving_from(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|cx, span, substructure| {
-                let Some(field) = &field else {
-                    let item_span = item.kind.ident().map(|ident| ident.span).unwrap_or(item.span);
-                    let err_span = MultiSpan::from_spans(vec![span, item_span]);
-                    let error = match &item.kind {
-                        ItemKind::Struct(_, _, data) => {
-                            cx.dcx().emit_err(errors::DeriveFromWrongFieldCount {
-                                span: err_span,
-                                multiple_fields: data.fields().len() > 1,
-                            })
-                        }
-                        ItemKind::Enum(_, _, _) | ItemKind::Union(_, _, _) => {
-                            cx.dcx().emit_err(errors::DeriveFromWrongTarget {
-                                span: err_span,
-                                kind: &format!("{} {}", item.kind.article(), item.kind.descr()),
-                            })
-                        }
-                        _ => cx.dcx().bug("Invalid derive(From) ADT input"),
-                    };
-
-                    return BlockOrExpr::new_expr(DummyResult::raw_expr(span, Some(error)));
+                let field = match field {
+                    Ok(ref field) => field,
+                    Err(guar) => {
+                        return BlockOrExpr::new_expr(DummyResult::raw_expr(span, Some(guar)));
+                    }
                 };
 
                 let self_kw = Ident::new(kw::SelfUpper, span);
                 let expr: Box<ast::Expr> = match substructure.fields {
                     SubstructureFields::StaticStruct(variant, _) => match variant {
-                        // Self {
-                        //     field: value
-                        // }
+                        // Self { field: value }
                         VariantData::Struct { .. } => cx.expr_struct_ident(
                             span,
                             self_kw,
