@@ -30,7 +30,6 @@ use context::SimpleCx;
 use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -173,14 +172,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-        diff_fncs: Vec<AutoDiffItem>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         let mut module =
             back::lto::run_fat(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, modules)?;
-
-        if !diff_fncs.is_empty() {
-            builder::autodiff::differentiate(&module, cgcx, diff_fncs)?;
-        }
 
         let dcx = cgcx.create_dcx();
         let dcx = dcx.handle();

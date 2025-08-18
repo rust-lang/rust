@@ -192,6 +192,13 @@ pub(crate) enum RibKind<'ra> {
     /// No restriction needs to be applied.
     Normal,
 
+    /// We passed through an `ast::Block`.
+    /// Behaves like `Normal`, but also partially like `Module` if the block contains items.
+    /// `Block(None)` must be always processed in the same way as `Block(Some(module))`
+    /// with empty `module`. The module can be `None` only because creation of some definitely
+    /// empty modules is skipped as an optimization.
+    Block(Option<Module<'ra>>),
+
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
     /// binds. Disallow any other upvars (including other ty params that are
@@ -210,7 +217,7 @@ pub(crate) enum RibKind<'ra> {
     /// All other constants aren't allowed to use generic params at all.
     ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
-    /// We passed through a module.
+    /// We passed through a module item.
     Module(Module<'ra>),
 
     /// We passed through a `macro_rules!` statement
@@ -242,6 +249,7 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
+            | RibKind::Block(..)
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
@@ -258,15 +266,8 @@ impl RibKind<'_> {
     fn is_label_barrier(self) -> bool {
         match self {
             RibKind::Normal | RibKind::MacroDefinition(..) => false,
-
-            RibKind::AssocItem
-            | RibKind::FnOrCoroutine
-            | RibKind::Item(..)
-            | RibKind::ConstantItem(..)
-            | RibKind::Module(..)
-            | RibKind::ForwardGenericParamBan(_)
-            | RibKind::ConstParamTy
-            | RibKind::InlineAsmSym => true,
+            RibKind::FnOrCoroutine | RibKind::ConstantItem(..) => true,
+            kind => bug!("unexpected rib kind: {kind:?}"),
         }
     }
 }
@@ -1527,19 +1528,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ret
     }
 
-    fn with_mod_rib<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        let module = self.r.expect_module(self.r.local_def_id(id).to_def_id());
-        // Move down in the graph.
-        let orig_module = replace(&mut self.parent_scope.module, module);
-        self.with_rib(ValueNS, RibKind::Module(module), |this| {
-            this.with_rib(TypeNS, RibKind::Module(module), |this| {
-                let ret = f(this);
-                this.parent_scope.module = orig_module;
-                ret
-            })
-        })
-    }
-
     fn visit_generic_params(&mut self, params: &'ast [GenericParam], add_self_upper: bool) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the GenericArgs can only
@@ -2677,20 +2665,25 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ItemKind::Mod(..) => {
-                self.with_mod_rib(item.id, |this| {
-                    if mod_inner_docs {
-                        this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
-                    }
-                    let old_macro_rules = this.parent_scope.macro_rules;
-                    visit::walk_item(this, item);
-                    // Maintain macro_rules scopes in the same way as during early resolution
-                    // for diagnostics and doc links.
-                    if item.attrs.iter().all(|attr| {
-                        !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
-                    }) {
-                        this.parent_scope.macro_rules = old_macro_rules;
-                    }
+                let module = self.r.expect_module(self.r.local_def_id(item.id).to_def_id());
+                let orig_module = replace(&mut self.parent_scope.module, module);
+                self.with_rib(ValueNS, RibKind::Module(module), |this| {
+                    this.with_rib(TypeNS, RibKind::Module(module), |this| {
+                        if mod_inner_docs {
+                            this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+                        }
+                        let old_macro_rules = this.parent_scope.macro_rules;
+                        visit::walk_item(this, item);
+                        // Maintain macro_rules scopes in the same way as during early resolution
+                        // for diagnostics and doc links.
+                        if item.attrs.iter().all(|attr| {
+                            !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
+                        }) {
+                            this.parent_scope.macro_rules = old_macro_rules;
+                        }
+                    })
                 });
+                self.parent_scope.module = orig_module;
             }
 
             ItemKind::Static(box ast::StaticItem {
@@ -2821,9 +2814,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // We also can't shadow bindings from associated parent items.
             for ns in [ValueNS, TypeNS] {
                 for parent_rib in self.ribs[ns].iter().rev() {
-                    // Break at mod level, to account for nested items which are
+                    // Break at module or block level, to account for nested items which are
                     // allowed to shadow generic param names.
-                    if matches!(parent_rib.kind, RibKind::Module(..)) {
+                    if matches!(parent_rib.kind, RibKind::Module(..) | RibKind::Block(..)) {
                         break;
                     }
 
@@ -4652,16 +4645,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         debug!("(resolving block) entering block");
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.parent_scope.module;
-        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
+        let anonymous_module = self.r.block_map.get(&block.id).copied();
 
         let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(RibKind::Module(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(RibKind::Module(anonymous_module)));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
+            self.ribs[TypeNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(RibKind::Normal));
+            self.ribs[ValueNS].push(Rib::new(RibKind::Block(None)));
         }
 
         // Descend into the block.

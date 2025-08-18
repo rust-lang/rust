@@ -246,7 +246,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         let p_map = alloc.provenance();
                         for idx in overlap {
                             // If a provenance was read by the foreign code, expose it.
-                            if let Some(prov) = p_map.get(Size::from_bytes(idx), this) {
+                            if let Some((prov, _idx)) = p_map.get_byte(Size::from_bytes(idx), this)
+                            {
                                 this.expose_provenance(prov)?;
                             }
                         }

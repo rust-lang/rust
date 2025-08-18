@@ -10,6 +10,7 @@ use super::{
     TestCx, TestOutput, Truncated, UI_FIXED, WillExecute,
 };
 use crate::json;
+use crate::runtest::ProcRes;
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
@@ -127,6 +128,9 @@ impl TestCx<'_> {
             );
         }
 
+        // If the test is executed, capture its ProcRes separately so that
+        // pattern/forbid checks can report the *runtime* stdout/stderr when they fail.
+        let mut run_proc_res: Option<ProcRes> = None;
         let output_to_check = if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
@@ -189,7 +193,10 @@ impl TestCx<'_> {
                 unreachable!("run_ui_test() must not be called if the test should not run");
             }
 
-            self.get_output(&proc_res)
+            let output = self.get_output(&proc_res);
+            // Move the proc_res into our option after we've extracted output.
+            run_proc_res = Some(proc_res);
+            output
         } else {
             self.get_output(&proc_res)
         };
@@ -200,9 +207,14 @@ impl TestCx<'_> {
             explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
         );
 
+        // Compiler diagnostics (expected errors) are always tied to the compile-time ProcRes.
         self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
-        self.check_forbid_output(&output_to_check, &proc_res);
+
+        // For runtime pattern/forbid checks prefer the executed program's ProcRes if available
+        // so that missing pattern failures include the program's stdout/stderr.
+        let pattern_proc_res = run_proc_res.as_ref().unwrap_or(&proc_res);
+        self.check_all_error_patterns(&output_to_check, pattern_proc_res);
+        self.check_forbid_output(&output_to_check, pattern_proc_res);
 
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
             // And finally, compile the fixed code and make sure it both

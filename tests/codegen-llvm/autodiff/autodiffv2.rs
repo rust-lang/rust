@@ -26,12 +26,13 @@
 
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_forward;
 
+// CHECK: ;
 #[no_mangle]
 //#[autodiff(d_square1, Forward, Dual, Dual)]
-#[autodiff(d_square2, Forward, 4, Dualv, Dualv)]
-#[autodiff(d_square3, Forward, 4, Dual, Dual)]
+#[autodiff_forward(d_square2, 4, Dualv, Dualv)]
+#[autodiff_forward(d_square3, 4, Dual, Dual)]
 fn square(x: &[f32], y: &mut [f32]) {
     assert!(x.len() >= 4);
     assert!(y.len() >= 5);

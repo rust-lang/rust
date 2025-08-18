@@ -17,7 +17,7 @@ ast_passes_abi_must_not_have_parameters_or_return_type=
 
 ast_passes_abi_must_not_have_return_type=
     invalid signature for `extern {$abi}` function
-    .note = functions with the "custom" ABI cannot have a return type
+    .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
 
 ast_passes_assoc_const_without_body =
@@ -31,6 +31,13 @@ ast_passes_assoc_fn_without_body =
 ast_passes_assoc_type_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
+
+ast_passes_async_fn_in_const_trait_or_trait_impl =
+    async functions are not allowed in `const` {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    }
+    .label = associated functions of `const` cannot be declared `async`
 
 ast_passes_at_least_one_trait = at least one trait must be specified
 

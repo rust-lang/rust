@@ -3,7 +3,9 @@ use std::ops::Index;
 use derive_where::derive_where;
 use rustc_index::IndexVec;
 
-use crate::search_graph::{AvailableDepth, Cx, CycleHeads, NestedGoals, PathKind, UsageKind};
+use crate::search_graph::{
+    AvailableDepth, CandidateHeadUsages, Cx, CycleHeads, HeadUsages, NestedGoals, PathKind,
+};
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -26,12 +28,12 @@ pub(super) struct StackEntry<X: Cx> {
     /// The available depth of a given goal, immutable.
     pub available_depth: AvailableDepth,
 
+    /// The maximum depth required while evaluating this goal.
+    pub required_depth: usize,
+
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     pub provisional_result: Option<X::Result>,
-
-    /// The maximum depth required while evaluating this goal.
-    pub required_depth: usize,
 
     /// All cycle heads this goal depends on. Lazily updated and only
     /// up-to date for the top of the stack.
@@ -40,9 +42,16 @@ pub(super) struct StackEntry<X: Cx> {
     /// Whether evaluating this goal encountered overflow. Lazily updated.
     pub encountered_overflow: bool,
 
-    /// Whether this goal has been used as the root of a cycle. This gets
-    /// eagerly updated when encountering a cycle.
-    pub has_been_used: Option<UsageKind>,
+    /// Whether and how this goal has been used as the root of a cycle. Lazily updated.
+    pub usages: Option<HeadUsages>,
+
+    /// We want to be able to ignore head usages if they happen inside of candidates
+    /// which don't impact the result of a goal. This enables us to avoid rerunning goals
+    /// and is also used when rebasing provisional cache entries.
+    ///
+    /// To implement this, we track all usages while evaluating a candidate. If this candidate
+    /// then ends up ignored, we manually remove its usages from `usages` and `heads`.
+    pub candidate_usages: Option<CandidateHeadUsages>,
 
     /// The nested goals of this goal, see the doc comment of the type.
     pub nested_goals: NestedGoals<X>,

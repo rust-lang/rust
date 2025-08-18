@@ -6,18 +6,10 @@
 use std::autodiff::autodiff_reverse;
 
 #[autodiff_reverse(d_square, Duplicated, Active)]
+#[inline(never)]
 fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
     *x * *x
 }
-
-// Ensure that `d_square::<f64>` code is generated even if `square::<f64>` was never called
-//
-// CHECK: ; generic::square
-// CHECK-NEXT: ; Function Attrs:
-// CHECK-NEXT: define internal {{.*}} double
-// CHECK-NEXT: start:
-// CHECK-NOT: ret
-// CHECK: fmul double
 
 // Ensure that `d_square::<f32>` code is generated
 //
@@ -27,6 +19,15 @@ fn square<T: std::ops::Mul<Output = T> + Copy>(x: &T) -> T {
 // CHECK-NEXT: start:
 // CHECK-NOT: ret
 // CHECK: fmul float
+
+// Ensure that `d_square::<f64>` code is generated even if `square::<f64>` was never called
+//
+// CHECK: ; generic::square
+// CHECK-NEXT: ; Function Attrs:
+// CHECK-NEXT: define internal {{.*}} double
+// CHECK-NEXT: start:
+// CHECK-NOT: ret
+// CHECK: fmul double
 
 fn main() {
     let xf32: f32 = std::hint::black_box(3.0);
