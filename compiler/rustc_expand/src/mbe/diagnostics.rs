@@ -14,14 +14,22 @@ use super::macro_rules::{MacroRule, NoopTracker, parser_from_cx};
 use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
-use crate::mbe::macro_rules::{Tracker, try_match_macro, try_match_macro_attr};
+use crate::mbe::macro_rules::{
+    Tracker, try_match_macro, try_match_macro_attr, try_match_macro_derive,
+};
+
+pub(super) enum FailedMacro<'a> {
+    Func,
+    Attr(&'a TokenStream),
+    Derive,
+}
 
 pub(super) fn failed_to_match_macro(
     psess: &ParseSess,
     sp: Span,
     def_span: Span,
     name: Ident,
-    attr_args: Option<&TokenStream>,
+    args: FailedMacro<'_>,
     body: &TokenStream,
     rules: &[MacroRule],
 ) -> (Span, ErrorGuaranteed) {
@@ -36,10 +44,12 @@ pub(super) fn failed_to_match_macro(
     // diagnostics.
     let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
 
-    let try_success_result = if let Some(attr_args) = attr_args {
-        try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
-    } else {
-        try_match_macro(psess, name, body, rules, &mut tracker)
+    let try_success_result = match args {
+        FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
+        FailedMacro::Attr(attr_args) => {
+            try_match_macro_attr(psess, name, attr_args, body, rules, &mut tracker)
+        }
+        FailedMacro::Derive => try_match_macro_derive(psess, name, body, rules, &mut tracker),
     };
 
     if try_success_result.is_ok() {
@@ -90,7 +100,7 @@ pub(super) fn failed_to_match_macro(
     }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
-    if attr_args.is_none()
+    if let FailedMacro::Func = args
         && let Some((body, comma_span)) = body.add_comma()
     {
         for rule in rules {
