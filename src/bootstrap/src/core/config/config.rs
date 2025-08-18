@@ -937,7 +937,7 @@ impl Config {
             && hosts == [host_target]
         {
             let no_llvm_config =
-                target_config.get(&host_target).map_or(true, |config| config.llvm_config.is_none());
+                target_config.get(&host_target).is_none_or(|config| config.llvm_config.is_none());
             rust_lld_enabled.unwrap_or(llvm_from_ci || no_llvm_config)
         } else {
             rust_lld_enabled.unwrap_or(false)
