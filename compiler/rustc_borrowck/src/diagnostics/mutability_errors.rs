@@ -413,7 +413,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
 
-            // Also suggest adding mut for upvars
+            // Also suggest adding mut for upvars.
             PlaceRef {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
@@ -467,9 +467,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
 
-            // complete hack to approximate old AST-borrowck
-            // diagnostic: if the span starts with a mutable borrow of
-            // a local variable, then just suggest the user remove it.
+            // Complete hack to approximate old AST-borrowck diagnostic: if the span starts
+            // with a mutable borrow of a local variable, then just suggest the user remove it.
             PlaceRef { local: _, projection: [] }
                 if self
                     .infcx
@@ -798,7 +797,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         );
     }
 
-    // point to span of upvar making closure call require mutable borrow
+    // Point to span of upvar making closure call that requires a mutable borrow
     fn show_mutating_upvar(
         &self,
         tcx: TyCtxt<'_>,
@@ -854,7 +853,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             } else {
                 bug!("not an upvar")
             };
-            // sometimes we deliberately don't store the name of a place when coming from a macro in
+            // Sometimes we deliberately don't store the name of a place when coming from a macro in
             // another crate. We generally want to limit those diagnostics a little, to hide
             // implementation details (such as those from pin!() or format!()). In that case show a
             // slightly different error message, or none at all if something else happened. In other
@@ -965,8 +964,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let def_id = tcx.hir_enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
 
-        // If the HIR node is a function or method call gets the def ID
-        // of the called function or method and the span and args of the call expr
+        // If the HIR node is a function or method call, get the DefId
+        // of the callee function or method, the span, and args of the call expr
         let get_call_details = || {
             let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
                 return None;
@@ -1080,7 +1079,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let mut cur_expr = expr;
             while let ExprKind::MethodCall(path_segment, recv, _, _) = cur_expr.kind {
                 if path_segment.ident.name == sym::iter {
-                    // check `_ty` has `iter_mut` method
+                    // Check that the type has an `iter_mut` method.
                     let res = self
                         .infcx
                         .tcx
@@ -1119,7 +1118,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let (is_trait_sig, is_local, local_trait) = self.is_error_in_trait(local);
 
         if is_trait_sig && !is_local {
-            // Do not suggest to change the signature when the trait comes from another crate.
+            // Do not suggest changing the signature when the trait comes from another crate.
             err.span_label(
                 local_decl.source_info.span,
                 format!("this is an immutable {pointer_desc}"),
@@ -1140,7 +1139,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 opt_ty_info,
                 ..
             })) => {
-                // check if the RHS is from desugaring
+                // Check if the RHS is from desugaring.
                 let first_assignment = find_assignments(&self.body, local).first().copied();
                 let first_assignment_stmt = first_assignment
                     .and_then(|loc| self.body[loc.block].statements.get(loc.statement_index));
@@ -1160,7 +1159,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // it with does not, so use the local_span for our checks later.
                     source_span = Some(local_span);
                     if let Some(DesugaringKind::ForLoop) = local_span.desugaring_kind() {
-                        // on for loops, RHS points to the iterator part
+                        // On for loops, RHS points to the iterator part.
                         self.suggest_similar_mut_method_for_for_loop(err, local_span);
                         err.span_label(
                             local_span,
@@ -1170,14 +1169,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
 
-                // don't create labels for compiler-generated spans or spans not from users' code
+                // Don't create labels for compiler-generated spans or spans not from users' code.
                 if source_span.is_some_and(|s| {
                     s.desugaring_kind().is_some() || self.infcx.tcx.sess.source_map().is_imported(s)
                 }) {
                     return;
                 }
 
-                // could be because we're in an `async fn`
+                // This could be because we're in an `async fn`.
                 if name == kw::SelfLower && opt_ty_info.is_none() {
                     let (span, suggestion) = suggest_ampmut_self(self.infcx.tcx, decl_span);
                     (AmpMutSugg::Type { span, suggestion, additional: None }, None)
@@ -1249,16 +1248,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             AmpMutSugg::ChangeBinding => (vec![], true),
         };
 
-        // find a binding's type to make mutable.
+        // Find a binding's type to make mutable.
         let (binding_exists, span) = match local_var_ty_info {
-            // if this is a variable binding with an explicit type,
+            // If this is a variable binding with an explicit type,
             // then we will suggest changing it to be mutable.
-            // this is `Applicability::MachineApplicable`.
+            // This is `Applicability::MachineApplicable`.
             Some(ty_span) => (true, ty_span),
 
-            // otherwise, we'll suggest *adding* an annotated type, we'll suggest
+            // Otherwise, we'll suggest *adding* an annotated type, we'll suggest
             // the RHS's type for that.
-            // this is `Applicability::HasPlaceholders`.
+            // This is `Applicability::HasPlaceholders`.
             None => (false, decl_span),
         };
 
@@ -1267,23 +1266,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return;
         }
 
-        // if the binding already exists and is a reference with an explicit
-        // lifetime, then we can suggest adding ` mut`. this is special-cased from
+        // If the binding already exists and is a reference with an explicit
+        // lifetime, then we can suggest adding ` mut`. This is special-cased from
         // the path without an explicit lifetime.
         let (sugg_span, sugg_str, suggest_now) = if let Ok(src) = self.infcx.tcx.sess.source_map().span_to_snippet(span)
             && src.starts_with("&'")
-            // note that `&' a T` is invalid so this is correct.
+            // Note that `&' a T` is invalid so this is correct.
             && let Some(ws_pos) = src.find(char::is_whitespace)
         {
             let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
             (span, " mut".to_owned(), true)
-        // if there is already a binding, we modify it to be `mut`
+        // If there is already a binding, we modify it to be `mut`.
         } else if binding_exists {
-            // shrink the span to just after the `&` in `&variable`
+            // Shrink the span to just after the `&` in `&variable`.
             let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
             (span, "mut ".to_owned(), true)
         } else {
-            // otherwise, suggest that the user annotates the binding; we provide the
+            // Otherwise, suggest that the user annotates the binding; We provide the
             // type of the local.
             let ty = local_decl.ty.builtin_deref(true).unwrap();
 
@@ -1291,7 +1290,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
 
         if suggest_now {
-            // suggest changing `&x` to `&mut x` and changing `&T` to `&mut T` at the same time
+            // Suggest changing `&x` to `&mut x` and changing `&T` to `&mut T` at the same time.
             let has_change = !sugg.is_empty();
             sugg.push((sugg_span, sugg_str));
             suggest(
@@ -1535,9 +1534,9 @@ fn suggest_ampmut<'tcx>(
     opt_assignment_rhs_stmt: Option<&Statement<'tcx>>,
 ) -> Option<AmpMutSugg> {
     let tcx = infcx.tcx;
-    // if there is a RHS and it starts with a `&` from it, then check if it is
+    // If there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
-    // we don't have to worry about lifetime annotations here because they are
+    // We don't have to worry about lifetime annotations here because they are
     // not valid when taking a reference. For example, the following is not valid Rust:
     //
     // let x: &i32 = &'a 5;
@@ -1550,15 +1549,15 @@ fn suggest_ampmut<'tcx>(
     {
         let mut rvalue = rvalue;
 
-        // take some special care when handling `let _x = &*_y`:
-        // we want to know if this is part of an overloaded index, so `let x = &a[0]`,
-        // or whether this is a usertype ascription (`let _x: &T = y`)
+        // Take some special care when handling `let _x = &*_y`:
+        // We want to know if this is part of an overloaded index, so `let x = &a[0]`,
+        // or whether this is a usertype ascription (`let _x: &T = y`).
         if let Rvalue::Ref(_, BorrowKind::Shared, place) = rvalue
             && place.projection.len() == 1
             && place.projection[0] == ProjectionElem::Deref
             && let Some(assign) = find_assignments(&body, place.local).first()
         {
-            // if this is a usertype ascription (`let _x: &T = _y`) then pierce through it as either we want
+            // If this is a usertype ascription (`let _x: &T = _y`) then pierce through it as either we want
             // to suggest `&mut` on the expression (handled here) or we return `None` and let the caller
             // suggest `&mut` on the type if the expression seems fine (e.g. `let _x: &T = &mut _y`).
             if let Some(user_ty_projs) = body.local_decls[lhs.local].user_ty.as_ref()
@@ -1585,12 +1584,12 @@ fn suggest_ampmut<'tcx>(
                     tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
                     method_args,
                 );
-                // the type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.
+                // The type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.
                 if !infcx
                     .type_implements_trait(trait_ref.def_id, trait_ref.args, infcx.param_env)
                     .must_apply_considering_regions()
                 {
-                    // suggest `get_mut` if type is a `BTreeMap` or `HashMap`.
+                    // Suggest `get_mut` if type is a `BTreeMap` or `HashMap`.
                     if let ty::Adt(def, _) = trait_ref.self_ty().kind()
                         && [sym::BTreeMap, sym::HashMap]
                             .into_iter()
@@ -1610,7 +1609,7 @@ fn suggest_ampmut<'tcx>(
 
         let sugg = match rvalue {
             Rvalue::Ref(_, BorrowKind::Shared, _) if let Some(ref_idx) = rhs_str.find('&') => {
-                // shrink the span to just after the `&` in `&variable`
+                // Shrink the span to just after the `&` in `&variable`.
                 Some((
                     rhs_span.with_lo(rhs_span.lo() + BytePos(ref_idx as u32 + 1)).shrink_to_lo(),
                     "mut ".to_owned(),
