@@ -735,23 +735,23 @@ impl Config {
             );
         }
 
-        let mut dwn_ctx = DownloadContext::new(
-            path_modification_cache.clone(),
-            &src,
-            rust_info.clone(),
-            &submodules,
-            download_rustc_commit.clone(),
+        let mut dwn_ctx = DownloadContext {
+            path_modification_cache: path_modification_cache.clone(),
+            src: &src,
+            rust_info: rust_info.clone(),
+            submodules: &submodules,
+            download_rustc_commit: download_rustc_commit.clone(),
             host_target,
             llvm_from_ci,
-            target_config.clone(),
-            out.clone(),
+            target_config: target_config.clone(),
+            out: out.clone(),
             patch_binaries_for_nix,
-            &exec_ctx,
-            &stage0_metadata,
+            exec_ctx: &exec_ctx,
+            stage0_metadata: &stage0_metadata,
             llvm_assertions,
-            &bootstrap_cache_path,
+            bootstrap_cache_path: &bootstrap_cache_path,
             is_running_on_ci,
-        );
+        };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
             download_beta_toolchain(&dwn_ctx);

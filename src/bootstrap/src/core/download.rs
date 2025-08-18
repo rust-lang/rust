@@ -418,45 +418,6 @@ pub(crate) struct DownloadContext<'a> {
     pub is_running_on_ci: bool,
 }
 
-impl<'a> DownloadContext<'a> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
-        src: &'a Path,
-        rust_info: channel::GitInfo,
-        submodules: &'a Option<bool>,
-        download_rustc_commit: Option<String>,
-        host_target: TargetSelection,
-        llvm_from_ci: bool,
-        target_config: HashMap<TargetSelection, Target>,
-        out: PathBuf,
-        patch_binaries_for_nix: Option<bool>,
-        exec_ctx: &'a ExecutionContext,
-        stage0_metadata: &'a build_helper::stage0_parser::Stage0,
-        llvm_assertions: bool,
-        bootstrap_cache_path: &'a Option<PathBuf>,
-        is_running_on_ci: bool,
-    ) -> Self {
-        Self {
-            path_modification_cache,
-            src,
-            rust_info,
-            submodules,
-            download_rustc_commit,
-            host_target,
-            llvm_from_ci,
-            target_config,
-            out,
-            patch_binaries_for_nix,
-            exec_ctx,
-            stage0_metadata,
-            llvm_assertions,
-            bootstrap_cache_path,
-            is_running_on_ci,
-        }
-    }
-}
-
 impl<'a> AsRef<DownloadContext<'a>> for DownloadContext<'a> {
     fn as_ref(&self) -> &DownloadContext<'a> {
         self
