@@ -193,7 +193,7 @@ impl RmetaSysroot {
     fn configure_cargo(&self, cargo: &mut Cargo) {
         cargo.append_to_env(
             "RUSTC_ADDITIONAL_SYSROOT_PATHS",
-            format!("{},{}", self.host_dir.display(), self.target_dir.display()),
+            format!("{},{}", self.host_dir.to_str().unwrap(), self.target_dir.to_str().unwrap()),
             ",",
         );
     }
