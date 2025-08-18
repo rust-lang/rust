@@ -101,6 +101,7 @@ pub struct Cargo {
 impl Cargo {
     /// Calls [`Builder::cargo`] and [`Cargo::configure_linker`] to prepare an invocation of `cargo`
     /// to be run.
+    #[track_caller]
     pub fn new(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -139,6 +140,7 @@ impl Cargo {
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
     /// [`Cargo::configure_linker`].
+    #[track_caller]
     pub fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -396,6 +398,7 @@ impl From<Cargo> for BootstrapCommand {
 
 impl Builder<'_> {
     /// Like [`Builder::cargo`], but only passes flags that are valid for all commands.
+    #[track_caller]
     pub fn bare_cargo(
         &self,
         compiler: Compiler,
@@ -480,6 +483,7 @@ impl Builder<'_> {
     /// scoped by `mode`'s output directory, it will pass the `--target` flag for the specified
     /// `target`, and will be executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for
     /// commands to be run with Miri.
+    #[track_caller]
     fn cargo(
         &self,
         compiler: Compiler,
