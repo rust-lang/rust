@@ -175,6 +175,16 @@ impl<Prov: Provenance> Immediate<Prov> {
         }
         interp_ok(())
     }
+
+    pub fn has_provenance(&self) -> bool {
+        match self {
+            Immediate::Scalar(scalar) => matches!(scalar, Scalar::Ptr { .. }),
+            Immediate::ScalarPair(s1, s2) => {
+                matches!(s1, Scalar::Ptr { .. }) || matches!(s2, Scalar::Ptr { .. })
+            }
+            Immediate::Uninit => false,
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together

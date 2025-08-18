@@ -759,6 +759,13 @@ where
         &mut self,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
+        // If this is an efficiently represented local variable without provenance, skip the
+        // `as_mplace_or_mutable_local` that would otherwise force this local into memory.
+        if let Right(imm) = dest.to_op(self)?.as_mplace_or_imm() {
+            if !imm.has_provenance() {
+                return interp_ok(());
+            }
+        }
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
             Right((local_val, _local_layout, local)) => {
                 local_val.clear_provenance()?;
