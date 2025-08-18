@@ -279,7 +279,7 @@ pub enum DependencyType {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
@@ -357,7 +357,7 @@ pub enum RemapScheme {
     NonCompiler,
 }
 
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum CLang {
     C,
     Cxx,
