@@ -46,9 +46,12 @@ where
             }
         }
         Err(_) => {
-            // Soundness-critical: this may return false positives (reporting potential misalignment),
-            // but must not return false negatives. When layout is unavailable, we stay conservative
-            // except for arrays of u8/i8 whose ABI alignment is provably 1.
+            // Soundness: For any `T`, the ABI alignment requirement of `[T]` equals that of `T`.
+            // Proof sketch:
+            //  (1) From `&[T]` we can obtain `&T`, hence align([T]) >= align(T).
+            //  (2) Using `std::array::from_ref(&T)` we can obtain `&[T; 1]` (and thus `&[T]`),
+            //      hence align(T) >= align([T]).
+            // Therefore align([T]) == align(T). Length does not affect alignment.
 
             // Try to determine alignment from the type structure
             if let Some(element_align) = get_element_alignment(tcx, ty) {
