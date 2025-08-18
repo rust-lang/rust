@@ -11,8 +11,8 @@ LL |     unsafe { ptr.read() };
 note: inside `main`
   --> tests/fail/function_calls/return_pointer_aliasing_read.rs:LL:CC
    |
-LL |             Call(*ptr = myfun(ptr), ReturnTo(after_call), UnwindContinue())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Uninitialized memory occurred at ALLOC[0x0..0x4], in this allocation:
 ALLOC (stack variable, size: 4, align: 4) {

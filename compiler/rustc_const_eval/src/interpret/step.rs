@@ -415,6 +415,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // caller directly access this local!
                         // This is also crucial for tail calls, where we want the `FnArg` to
                         // stay valid when the old stack frame gets popped.
+                        // FIXME: How can this be right for aliasing arguments?
                         FnArg::Copy(op)
                     }
                 }
