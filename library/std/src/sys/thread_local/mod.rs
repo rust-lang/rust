@@ -23,21 +23,23 @@
     issue = "none"
 )]
 
-cfg_if::cfg_if! {
-    if #[cfg(any(
+cfg_select! {
+    any(
         all(target_family = "wasm", not(target_feature = "atomics")),
         target_os = "uefi",
         target_os = "zkvm",
         target_os = "trusty",
-    ))] {
+    ) => {
         mod no_threads;
         pub use no_threads::{EagerStorage, LazyStorage, thread_local_inner};
         pub(crate) use no_threads::{LocalPointer, local_pointer};
-    } else if #[cfg(target_thread_local)] {
+    }
+    target_thread_local => {
         mod native;
         pub use native::{EagerStorage, LazyStorage, thread_local_inner};
         pub(crate) use native::{LocalPointer, local_pointer};
-    } else {
+    }
+    _ => {
         mod os;
         pub use os::{Storage, thread_local_inner};
         pub(crate) use os::{LocalPointer, local_pointer};
@@ -53,8 +55,8 @@ cfg_if::cfg_if! {
 /// single callback that runs all of the destructors in the list.
 #[cfg(all(target_thread_local, not(all(target_family = "wasm", not(target_feature = "atomics")))))]
 pub(crate) mod destructors {
-    cfg_if::cfg_if! {
-        if #[cfg(any(
+    cfg_select! {
+        any(
             target_os = "linux",
             target_os = "android",
             target_os = "fuchsia",
@@ -62,12 +64,13 @@ pub(crate) mod destructors {
             target_os = "hurd",
             target_os = "netbsd",
             target_os = "dragonfly"
-        ))] {
+        ) => {
             mod linux_like;
             mod list;
             pub(super) use linux_like::register;
             pub(super) use list::run;
-        } else {
+        }
+        _ => {
             mod list;
             pub(super) use list::register;
             pub(crate) use list::run;
@@ -79,21 +82,23 @@ pub(crate) mod destructors {
 /// and the [runtime cleanup](crate::rt::thread_cleanup) function. Calling `enable`
 /// should ensure that these functions are called at the right times.
 pub(crate) mod guard {
-    cfg_if::cfg_if! {
-        if #[cfg(all(target_thread_local, target_vendor = "apple"))] {
+    cfg_select! {
+        all(target_thread_local, target_vendor = "apple") => {
             mod apple;
             pub(crate) use apple::enable;
-        } else if #[cfg(target_os = "windows")] {
+        }
+        target_os = "windows" => {
             mod windows;
             pub(crate) use windows::enable;
-        } else if #[cfg(any(
+        }
+        any(
             all(target_family = "wasm", not(
                 all(target_os = "wasi", target_env = "p1", target_feature = "atomics")
             )),
             target_os = "uefi",
             target_os = "zkvm",
             target_os = "trusty",
-        ))] {
+        ) => {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on
                 // wasm, but this is likely going to show up at some point in
@@ -107,17 +112,20 @@ pub(crate) mod guard {
                 #[allow(unused)]
                 use crate::rt::thread_cleanup;
             }
-        } else if #[cfg(any(
+        }
+        any(
             target_os = "hermit",
             target_os = "xous",
-        ))] {
+        ) => {
             // `std` is the only runtime, so it just calls the destructor functions
             // itself when the time comes.
             pub(crate) fn enable() {}
-        } else if #[cfg(target_os = "solid_asp3")] {
+        }
+        target_os = "solid_asp3" => {
             mod solid;
             pub(crate) use solid::enable;
-        } else {
+        }
+        _ => {
             mod key;
             pub(crate) use key::enable;
         }
@@ -131,8 +139,8 @@ pub(crate) mod guard {
 /// reference an entry in a thread-local table. This then associates each key
 /// with a pointer which we can get and set to store our data.
 pub(crate) mod key {
-    cfg_if::cfg_if! {
-        if #[cfg(any(
+    cfg_select! {
+        any(
             all(
                 not(target_vendor = "apple"),
                 not(target_family = "wasm"),
@@ -141,7 +149,7 @@ pub(crate) mod key {
             all(not(target_thread_local), target_vendor = "apple"),
             target_os = "teeos",
             all(target_os = "wasi", target_env = "p1", target_feature = "atomics"),
-        ))] {
+        ) => {
             mod racy;
             mod unix;
             #[cfg(test)]
@@ -151,12 +159,14 @@ pub(crate) mod key {
             #[cfg(any(not(target_thread_local), test))]
             pub(super) use unix::get;
             use unix::{create, destroy};
-        } else if #[cfg(all(not(target_thread_local), target_os = "windows"))] {
+        }
+        all(not(target_thread_local), target_os = "windows") => {
             #[cfg(test)]
             mod tests;
             mod windows;
             pub(super) use windows::{Key, LazyKey, get, run_dtors, set};
-        } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+        }
+        all(target_vendor = "fortanix", target_env = "sgx") => {
             mod racy;
             mod sgx;
             #[cfg(test)]
@@ -164,7 +174,8 @@ pub(crate) mod key {
             pub(super) use racy::LazyKey;
             pub(super) use sgx::{Key, get, set};
             use sgx::{create, destroy};
-        } else if #[cfg(target_os = "xous")] {
+        }
+        target_os = "xous" => {
             mod racy;
             #[cfg(test)]
             mod tests;
@@ -174,6 +185,7 @@ pub(crate) mod key {
             pub(super) use xous::{Key, get, set};
             use xous::{create, destroy};
         }
+        _ => {}
     }
 }
 
