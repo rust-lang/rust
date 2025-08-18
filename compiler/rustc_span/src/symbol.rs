@@ -207,7 +207,6 @@ symbols! {
         CoerceUnsized,
         Command,
         ConstParamTy,
-        ConstParamTy_,
         Context,
         Continue,
         ControlFlow,
