@@ -41,7 +41,7 @@
     clippy::undocumented_unsafe_blocks
 )]
 #![doc(test(attr(deny(warnings))))]
-#![allow(internal_features)]
+#![allow(internal_features, clippy::repr_packed_without_abi)]
 #![unstable(feature = "portable_simd", issue = "86656")]
 //! Portable SIMD module.
 
