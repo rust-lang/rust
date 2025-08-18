@@ -35,7 +35,7 @@ LL |     partial_init();
 
 Uninitialized memory occurred at ALLOC[0x2..0x3], in this allocation:
 ALLOC (stack variable, size: 3, align: 1) {
-    ╾00[wildcard] (1 ptr byte)╼ ╾00[wildcard] (1 ptr byte)╼ __                                        │ ━━░
+    ╾00[wildcard] (ptr fragment 0)╼ ╾00[wildcard] (ptr fragment 0)╼ __                                        │ ━━░
 }
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

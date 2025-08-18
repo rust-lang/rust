@@ -5105,3 +5105,36 @@ declare_lint! {
         report_in_deps: true,
     };
 }
+
+declare_lint! {
+    /// The `tail_call_track_caller` lint detects usage of `become` attempting to tail call
+    /// a function marked with `#[track_caller]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(explicit_tail_calls)]
+    /// #![expect(incomplete_features)]
+    ///
+    /// #[track_caller]
+    /// fn f() {}
+    ///
+    /// fn g() {
+    ///     become f();
+    /// }
+    ///
+    /// g();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Due to implementation details of tail calls and `#[track_caller]` attribute, calls to
+    /// functions marked with `#[track_caller]` cannot become tail calls. As such using `become`
+    /// is no different than a normal call (except for changes in drop order).
+    pub TAIL_CALL_TRACK_CALLER,
+    Warn,
+    "detects tail calls of functions marked with `#[track_caller]`",
+    @feature_gate = explicit_tail_calls;
+}

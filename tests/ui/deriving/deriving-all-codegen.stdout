@@ -17,6 +17,7 @@
 #![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(deprecated)]
+#![feature(derive_from)]
 #[macro_use]
 extern crate std;
 #[prelude_import]
@@ -246,6 +247,148 @@ impl ::core::cmp::Ord for PackedPoint {
                 ::core::cmp::Ord::cmp(&{ self.y }, &{ other.y }),
             cmp => cmp,
         }
+    }
+}
+
+struct TupleSingleField(u32);
+#[automatically_derived]
+impl ::core::clone::Clone for TupleSingleField {
+    #[inline]
+    fn clone(&self) -> TupleSingleField {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for TupleSingleField { }
+#[automatically_derived]
+impl ::core::fmt::Debug for TupleSingleField {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f,
+            "TupleSingleField", &&self.0)
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for TupleSingleField {
+    #[inline]
+    fn default() -> TupleSingleField {
+        TupleSingleField(::core::default::Default::default())
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<u32> for TupleSingleField {
+    #[inline]
+    fn from(value: u32) -> TupleSingleField { Self(value) }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for TupleSingleField {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for TupleSingleField { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for TupleSingleField {
+    #[inline]
+    fn eq(&self, other: &TupleSingleField) -> bool { self.0 == other.0 }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for TupleSingleField {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for TupleSingleField {
+    #[inline]
+    fn partial_cmp(&self, other: &TupleSingleField)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for TupleSingleField {
+    #[inline]
+    fn cmp(&self, other: &TupleSingleField) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
+    }
+}
+
+struct SingleField {
+    foo: bool,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for SingleField {
+    #[inline]
+    fn clone(&self) -> SingleField {
+        let _: ::core::clone::AssertParamIsClone<bool>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for SingleField { }
+#[automatically_derived]
+impl ::core::fmt::Debug for SingleField {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field1_finish(f, "SingleField",
+            "foo", &&self.foo)
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for SingleField {
+    #[inline]
+    fn default() -> SingleField {
+        SingleField { foo: ::core::default::Default::default() }
+    }
+}
+#[automatically_derived]
+impl ::core::convert::From<bool> for SingleField {
+    #[inline]
+    fn from(value: bool) -> SingleField { Self { foo: value } }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for SingleField {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.foo, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for SingleField { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for SingleField {
+    #[inline]
+    fn eq(&self, other: &SingleField) -> bool { self.foo == other.foo }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for SingleField {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<bool>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for SingleField {
+    #[inline]
+    fn partial_cmp(&self, other: &SingleField)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.foo, &other.foo)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for SingleField {
+    #[inline]
+    fn cmp(&self, other: &SingleField) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.foo, &other.foo)
     }
 }
 
@@ -570,6 +713,11 @@ impl ::core::fmt::Debug for Unsized {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
             &&self.0)
     }
+}
+#[automatically_derived]
+impl ::core::convert::From<[u32]> for Unsized {
+    #[inline]
+    fn from(value: [u32]) -> Unsized { Self(value) }
 }
 #[automatically_derived]
 impl ::core::hash::Hash for Unsized {

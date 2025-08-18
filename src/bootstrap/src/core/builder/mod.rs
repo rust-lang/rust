@@ -1042,7 +1042,8 @@ impl<'a> Builder<'a> {
             Kind::Check | Kind::Fix => describe!(
                 check::Rustc,
                 check::Rustdoc,
-                check::CodegenBackend,
+                check::CraneliftCodegenBackend,
+                check::GccCodegenBackend,
                 check::Clippy,
                 check::Miri,
                 check::CargoMiri,
@@ -1839,9 +1840,14 @@ pub fn pretty_step_name<S: Step>() -> String {
 /// Renders `step` using its `Debug` implementation and extract the field arguments out of it.
 fn step_debug_args<S: Step>(step: &S) -> String {
     let step_dbg_repr = format!("{step:?}");
-    let brace_start = step_dbg_repr.find('{').unwrap_or(0);
-    let brace_end = step_dbg_repr.rfind('}').unwrap_or(step_dbg_repr.len());
-    step_dbg_repr[brace_start + 1..brace_end - 1].trim().to_string()
+
+    // Some steps do not have any arguments, so they do not have the braces
+    match (step_dbg_repr.find('{'), step_dbg_repr.rfind('}')) {
+        (Some(brace_start), Some(brace_end)) => {
+            step_dbg_repr[brace_start + 1..brace_end - 1].trim().to_string()
+        }
+        _ => String::new(),
+    }
 }
 
 fn pretty_print_step<S: Step>(step: &S) -> String {

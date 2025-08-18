@@ -77,7 +77,18 @@ impl Thread {
                     let page_size = os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                    assert_eq!(libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size), 0);
+
+                    // Some libc implementations, e.g. musl, place an upper bound
+                    // on the stack size, in which case we can only gracefully return
+                    // an error here.
+                    if libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) != 0 {
+                        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
+                        drop(Box::from_raw(data));
+                        return Err(io::const_error!(
+                            io::ErrorKind::InvalidInput,
+                            "invalid stack size"
+                        ));
+                    }
                 }
             };
         }

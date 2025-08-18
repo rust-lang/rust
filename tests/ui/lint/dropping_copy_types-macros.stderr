@@ -17,5 +17,19 @@ LL -     drop(writeln!(&mut msg, "test"));
 LL +     let _ = writeln!(&mut msg, "test");
    |
 
-error: aborting due to 1 previous error
+error: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/dropping_copy_types-macros.rs:13:5
+   |
+LL |     drop(format_args!("a"));
+   |     ^^^^^-----------------^
+   |          |
+   |          argument has type `Arguments<'_>`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(format_args!("a"));
+LL +     let _ = format_args!("a");
+   |
+
+error: aborting due to 2 previous errors
 

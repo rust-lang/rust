@@ -1159,10 +1159,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, "`#[rustc_do_not_const_check]` skips const-check for this function's body",
     ),
     rustc_attr!(
-        rustc_const_panic_str, Normal, template!(Word), WarnFollowing,
-        EncodeCrossCrate::Yes, "`#[rustc_const_panic_str]` ensures the argument to this function is &&str during const-check",
-    ),
-    rustc_attr!(
         rustc_const_stable_indirect, Normal,
         template!(Word),
         WarnFollowing,
