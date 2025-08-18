@@ -776,6 +776,17 @@ pub(crate) struct ConsiderAddingMacroExport {
 }
 
 #[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_consider_marking_as_pub_crate,
+    code = "pub(crate)",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ConsiderMarkingAsPubCrate {
+    #[primary_span]
+    pub(crate) vis_span: Span,
+}
+
+#[derive(Subdiagnostic)]
 #[note(resolve_consider_marking_as_pub)]
 pub(crate) struct ConsiderMarkingAsPub {
     #[primary_span]
