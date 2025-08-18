@@ -12,7 +12,6 @@ use hir::{
 };
 use ide_db::{
     FileRange, FxIndexSet, Ranker, RootDatabase,
-    base_db::salsa,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
@@ -137,20 +136,18 @@ pub(crate) fn hover(
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = sema.first_crate(file_id)?.to_display_target(db);
-    let mut res = salsa::attach(sema.db, || {
-        if range.is_empty() {
-            hover_offset(
-                sema,
-                FilePosition { file_id, offset: range.start() },
-                file,
-                config,
-                edition,
-                display_target,
-            )
-        } else {
-            hover_ranged(sema, frange, file, config, edition, display_target)
-        }
-    })?;
+    let mut res = if range.is_empty() {
+        hover_offset(
+            sema,
+            FilePosition { file_id, offset: range.start() },
+            file,
+            config,
+            edition,
+            display_target,
+        )
+    } else {
+        hover_ranged(sema, frange, file, config, edition, display_target)
+    }?;
 
     if let HoverDocFormat::PlainText = config.format {
         res.info.markup = remove_markdown(res.info.markup.as_str()).into();
@@ -293,7 +290,7 @@ fn hover_offset(
                 .into_iter()
                 .unique_by(|&((def, _), _, _, _)| def)
                 .map(|((def, subst), macro_arm, hovered_definition, node)| {
-                    salsa::attach(sema.db, || hover_for_definition(
+                    hover_for_definition(
                         sema,
                         file_id,
                         def,
@@ -304,7 +301,7 @@ fn hover_offset(
                         config,
                         edition,
                         display_target,
-                    ))
+                    )
                 })
                 .collect::<Vec<_>>(),
             )
@@ -583,13 +580,11 @@ fn goto_type_action_for_def(
         });
     }
 
-    salsa::attach(db, || {
-        if let Ok(generic_def) = GenericDef::try_from(def) {
-            generic_def.type_or_const_params(db).into_iter().for_each(|it| {
-                walk_and_push_ty(db, &it.ty(db), &mut push_new_def);
-            });
-        }
-    });
+    if let Ok(generic_def) = GenericDef::try_from(def) {
+        generic_def.type_or_const_params(db).into_iter().for_each(|it| {
+            walk_and_push_ty(db, &it.ty(db), &mut push_new_def);
+        });
+    }
 
     let ty = match def {
         Definition::Local(it) => Some(it.ty(db)),

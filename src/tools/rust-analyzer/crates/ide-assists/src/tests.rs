@@ -1,7 +1,7 @@
 mod generated;
 
 use expect_test::expect;
-use hir::{Semantics, setup_tracing};
+use hir::{Semantics, db::HirDatabase, setup_tracing};
 use ide_db::{
     EditionedFileId, FileRange, RootDatabase, SnippetCap,
     assists::ExprFillDefaultMode,
@@ -16,7 +16,7 @@ use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{
     Assist, AssistConfig, AssistContext, AssistKind, AssistResolveStrategy, Assists, SingleResolve,
-    assists, handlers::Handler,
+    handlers::Handler,
 };
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
@@ -102,6 +102,18 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
 };
+
+fn assists(
+    db: &RootDatabase,
+    config: &AssistConfig,
+    resolve: AssistResolveStrategy,
+    range: ide_db::FileRange,
+) -> Vec<Assist> {
+    salsa::attach(db, || {
+        HirDatabase::zalsa_register_downcaster(db);
+        crate::assists(db, config, resolve, range)
+    })
+}
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
     RootDatabase::with_single_file(text)
@@ -320,6 +332,7 @@ fn check_with_config(
     };
     let mut acc = Assists::new(&ctx, resolve);
     salsa::attach(&db, || {
+        HirDatabase::zalsa_register_downcaster(&db);
         handler(&mut acc, &ctx);
     });
     let mut res = acc.finish();

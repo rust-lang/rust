@@ -289,8 +289,7 @@ impl<'a> Converter<'a> {
 
                     let error_msg = if has_unterminated {
                         format!(
-                            "unknown literal prefix `{}` (note: check for unterminated string literal)",
-                            token_text
+                            "unknown literal prefix `{token_text}` (note: check for unterminated string literal)"
                         )
                     } else {
                         "unknown literal prefix".to_owned()

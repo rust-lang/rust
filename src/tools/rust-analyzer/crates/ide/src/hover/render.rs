@@ -10,7 +10,6 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
-    base_db::salsa,
     defs::Definition,
     documentation::{DocsRangeMap, HasDocs},
     famous_defs::FamousDefs,
@@ -45,7 +44,7 @@ pub(super) fn type_info_of(
         Either::Left(expr) => sema.type_of_expr(expr)?,
         Either::Right(pat) => sema.type_of_pat(pat)?,
     };
-    salsa::attach(sema.db, || type_info(sema, _config, ty_info, edition, display_target))
+    type_info(sema, _config, ty_info, edition, display_target)
 }
 
 pub(super) fn closure_expr(
@@ -912,7 +911,7 @@ pub(super) fn literal(
     };
     let ty = ty.display(sema.db, display_target);
 
-    let mut s = salsa::attach(sema.db, || format!("```rust\n{ty}\n```\n___\n\n"));
+    let mut s = format!("```rust\n{ty}\n```\n___\n\n");
     match value {
         Ok(value) => {
             let backtick_len = value.chars().filter(|c| *c == '`').count();
