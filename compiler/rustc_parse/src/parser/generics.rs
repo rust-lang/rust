@@ -172,8 +172,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a (possibly empty) list of lifetime and type parameters, possibly including
-    /// a trailing comma and erroneous trailing attributes.
+    /// Parse a (possibly empty) list of generic (lifetime, type, const) parameters.
+    ///
+    /// ```ebnf
+    /// GenericParams = (GenericParam ("," GenericParam)* ","?)?
+    /// ```
     pub(super) fn parse_generic_params(&mut self) -> PResult<'a, ThinVec<ast::GenericParam>> {
         let mut params = ThinVec::new();
         let mut done = false;
@@ -520,7 +523,7 @@ impl<'a> Parser<'a> {
         // * `for<'a> Trait1<'a>: Trait2<'a /* ok */>`
         // * `(for<'a> Trait1<'a>): Trait2<'a /* not ok */>`
         // * `for<'a> for<'b> Trait1<'a, 'b>: Trait2<'a /* ok */, 'b /* not ok */>`
-        let (lifetime_defs, _) = self.parse_late_bound_lifetime_defs()?;
+        let (bound_vars, _) = self.parse_higher_ranked_binder()?;
 
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
@@ -528,7 +531,7 @@ impl<'a> Parser<'a> {
         if self.eat(exp!(Colon)) {
             let bounds = self.parse_generic_bounds()?;
             Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
-                bound_generic_params: lifetime_defs,
+                bound_generic_params: bound_vars,
                 bounded_ty: ty,
                 bounds,
             }))
