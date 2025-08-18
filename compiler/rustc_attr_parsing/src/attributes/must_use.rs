@@ -35,8 +35,8 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
                     Some(value_str)
                 }
                 ArgParser::List(_) => {
-                    let suggestions =
-                        <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "must_use");
+                    let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
+                        .suggestions(cx.attr_style, "must_use");
                     cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
                         num_suggestions: suggestions.len(),
                         suggestions: DiagArgValue::StrListSepByAnd(
