@@ -37,7 +37,8 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        if context.is_borrow() && util::is_potentially_disaligned(self.tcx, self.body, self.typing_env, *place)
+        if context.is_borrow() 
+            && util::is_potentially_disaligned(self.tcx, self.body, self.typing_env, *place)
         {
             let def_id = self.body.source.instance.def_id();
             if let Some(impl_def_id) = self.tcx.impl_of_assoc(def_id)
