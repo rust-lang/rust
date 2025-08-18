@@ -244,10 +244,5 @@ jobs:
       PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@v4
-      - name: Download and install nightly
-        run: |
-          rustup toolchain install nightly --component miri,rust-src
-          rustup override set nightly
-          cargo miri setup
       - name: Test (Miri)
-        run: MIRIFLAGS="-Zmiri-no-extra-rounding-error" cargo miri test
+        run: cargo miri test
