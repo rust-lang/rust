@@ -1,19 +1,19 @@
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:3:24
+  --> $DIR/lint-redundant-sizedness-bound.rs:3:24
    |
 LL | fn directly<T: Sized + ?Sized>(t: &T) {}
    |                        ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:3:16
+  --> $DIR/lint-redundant-sizedness-bound.rs:3:16
    |
 LL | fn directly<T: Sized + ?Sized>(t: &T) {}
    |                ^^^^^
 note: the lint level is defined here
-  --> $DIR/lint-needless-maybe-sized.rs:1:9
+  --> $DIR/lint-redundant-sizedness-bound.rs:1:9
    |
-LL | #![deny(needless_maybe_sized)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(redundant_sizedness_bound)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: change the bounds that require `Sized`, or remove the `?Sized` bound
    |
 LL - fn directly<T: Sized + ?Sized>(t: &T) {}
@@ -21,13 +21,13 @@ LL + fn directly<T: Sized>(t: &T) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:9:19
+  --> $DIR/lint-redundant-sizedness-bound.rs:9:19
    |
 LL | fn depth_1<T: A + ?Sized>(t: &T) {}
    |                   ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:9:15
+  --> $DIR/lint-redundant-sizedness-bound.rs:9:15
    |
 LL | fn depth_1<T: A + ?Sized>(t: &T) {}
    |               ^
@@ -39,13 +39,13 @@ LL + fn depth_1<T: A>(t: &T) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:11:19
+  --> $DIR/lint-redundant-sizedness-bound.rs:11:19
    |
 LL | fn depth_2<T: B + ?Sized>(t: &T) {}
    |                   ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:11:15
+  --> $DIR/lint-redundant-sizedness-bound.rs:11:15
    |
 LL | fn depth_2<T: B + ?Sized>(t: &T) {}
    |               ^
@@ -58,13 +58,13 @@ LL + fn depth_2<T: B>(t: &T) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:15:30
+  --> $DIR/lint-redundant-sizedness-bound.rs:15:30
    |
 LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
    |                              ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:15:22
+  --> $DIR/lint-redundant-sizedness-bound.rs:15:22
    |
 LL | fn multiple_paths<T: A + B + ?Sized>(t: &T) {}
    |                      ^
@@ -76,13 +76,13 @@ LL + fn multiple_paths<T: A + B>(t: &T) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:20:16
+  --> $DIR/lint-redundant-sizedness-bound.rs:20:16
    |
 LL |     T: Sized + ?Sized,
    |                ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:20:8
+  --> $DIR/lint-redundant-sizedness-bound.rs:20:8
    |
 LL |     T: Sized + ?Sized,
    |        ^^^^^
@@ -93,13 +93,13 @@ LL +     T: Sized,
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:27:8
+  --> $DIR/lint-redundant-sizedness-bound.rs:27:8
    |
 LL |     T: ?Sized,
    |        ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:25:15
+  --> $DIR/lint-redundant-sizedness-bound.rs:25:15
    |
 LL | fn mixed_1<T: Sized>(t: &T)
    |               ^^^^^
@@ -110,13 +110,13 @@ LL -     T: ?Sized,
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:32:15
+  --> $DIR/lint-redundant-sizedness-bound.rs:32:15
    |
 LL | fn mixed_2<T: ?Sized>(t: &T)
    |               ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:35:8
+  --> $DIR/lint-redundant-sizedness-bound.rs:35:8
    |
 LL |     T: Sized,
    |        ^^^^^
@@ -127,13 +127,13 @@ LL + fn mixed_2<T>(t: &T)
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:42:8
+  --> $DIR/lint-redundant-sizedness-bound.rs:42:8
    |
 LL |     T: ?Sized,
    |        ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:41:8
+  --> $DIR/lint-redundant-sizedness-bound.rs:41:8
    |
 LL |     T: Sized,
    |        ^^^^^
@@ -145,13 +145,13 @@ LL +     T: Sized,
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:47:26
+  --> $DIR/lint-redundant-sizedness-bound.rs:47:26
    |
 LL | struct Struct<T: Sized + ?Sized>(T);
    |                          ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:47:18
+  --> $DIR/lint-redundant-sizedness-bound.rs:47:18
    |
 LL | struct Struct<T: Sized + ?Sized>(T);
    |                  ^^^^^
@@ -162,13 +162,13 @@ LL + struct Struct<T: Sized>(T);
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:50:17
+  --> $DIR/lint-redundant-sizedness-bound.rs:50:17
    |
 LL | impl<T: Sized + ?Sized> Struct<T> {
    |                 ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:50:9
+  --> $DIR/lint-redundant-sizedness-bound.rs:50:9
    |
 LL | impl<T: Sized + ?Sized> Struct<T> {
    |         ^^^^^
@@ -179,13 +179,13 @@ LL + impl<T: Sized> Struct<T> {
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:52:26
+  --> $DIR/lint-redundant-sizedness-bound.rs:52:26
    |
 LL |     fn method<U: Sized + ?Sized>(&self) {}
    |                          ^^^^^^
    |
 note: `U` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:52:18
+  --> $DIR/lint-redundant-sizedness-bound.rs:52:18
    |
 LL |     fn method<U: Sized + ?Sized>(&self) {}
    |                  ^^^^^
@@ -196,13 +196,13 @@ LL +     fn method<U: Sized>(&self) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:56:22
+  --> $DIR/lint-redundant-sizedness-bound.rs:56:22
    |
 LL | enum Enum<T: Sized + ?Sized + 'static> {
    |                      ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:56:14
+  --> $DIR/lint-redundant-sizedness-bound.rs:56:14
    |
 LL | enum Enum<T: Sized + ?Sized + 'static> {
    |              ^^^^^
@@ -213,13 +213,13 @@ LL + enum Enum<T: Sized + 'static> {
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:61:28
+  --> $DIR/lint-redundant-sizedness-bound.rs:61:28
    |
 LL | union Union<'a, T: Sized + ?Sized> {
    |                            ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:61:20
+  --> $DIR/lint-redundant-sizedness-bound.rs:61:20
    |
 LL | union Union<'a, T: Sized + ?Sized> {
    |                    ^^^^^
@@ -230,13 +230,13 @@ LL + union Union<'a, T: Sized> {
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:66:24
+  --> $DIR/lint-redundant-sizedness-bound.rs:66:24
    |
 LL | trait Trait<T: Sized + ?Sized> {
    |                        ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:66:16
+  --> $DIR/lint-redundant-sizedness-bound.rs:66:16
    |
 LL | trait Trait<T: Sized + ?Sized> {
    |                ^^^^^
@@ -247,13 +247,13 @@ LL + trait Trait<T: Sized> {
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:68:32
+  --> $DIR/lint-redundant-sizedness-bound.rs:68:32
    |
 LL |     fn trait_method<U: Sized + ?Sized>() {}
    |                                ^^^^^^
    |
 note: `U` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:68:24
+  --> $DIR/lint-redundant-sizedness-bound.rs:68:24
    |
 LL |     fn trait_method<U: Sized + ?Sized>() {}
    |                        ^^^^^
@@ -264,13 +264,13 @@ LL +     fn trait_method<U: Sized>() {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:71:25
+  --> $DIR/lint-redundant-sizedness-bound.rs:71:25
    |
 LL |     type GAT<U: Sized + ?Sized>;
    |                         ^^^^^^
    |
 note: `U` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:71:17
+  --> $DIR/lint-redundant-sizedness-bound.rs:71:17
    |
 LL |     type GAT<U: Sized + ?Sized>;
    |                 ^^^^^
@@ -281,13 +281,13 @@ LL +     type GAT<U: Sized>;
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:78:23
+  --> $DIR/lint-redundant-sizedness-bound.rs:78:23
    |
 LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
    |                       ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:78:32
+  --> $DIR/lint-redundant-sizedness-bound.rs:78:32
    |
 LL | fn second_in_trait<T: ?Sized + SecondInTrait>() {}
    |                                ^^^^^^^^^^^^^
@@ -299,13 +299,13 @@ LL + fn second_in_trait<T: SecondInTrait>() {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:81:33
+  --> $DIR/lint-redundant-sizedness-bound.rs:81:33
    |
 LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
    |                                 ^^^^^^
    |
 note: `impl Sized + ?Sized` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:81:25
+  --> $DIR/lint-redundant-sizedness-bound.rs:81:25
    |
 LL | fn impl_trait(_: &(impl Sized + ?Sized)) {}
    |                         ^^^^^
@@ -316,13 +316,13 @@ LL + fn impl_trait(_: &(impl Sized)) {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:85:42
+  --> $DIR/lint-redundant-sizedness-bound.rs:85:42
    |
 LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
    |                                          ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:85:24
+  --> $DIR/lint-redundant-sizedness-bound.rs:85:24
    |
 LL | fn in_generic_trait<T: GenericTrait<U> + ?Sized, U>() {}
    |                        ^^^^^^^^^^^^^^^
@@ -334,13 +334,13 @@ LL + fn in_generic_trait<T: GenericTrait<U>, U>() {}
    |
 
 error: `?Sized` bound is ignored because of a `Sized` requirement
-  --> $DIR/lint-needless-maybe-sized.rs:101:29
+  --> $DIR/lint-redundant-sizedness-bound.rs:101:29
    |
 LL |     fn larger_graph<T: A1 + ?Sized>() {}
    |                             ^^^^^^
    |
 note: `T` cannot be unsized because of the bound
-  --> $DIR/lint-needless-maybe-sized.rs:101:24
+  --> $DIR/lint-redundant-sizedness-bound.rs:101:24
    |
 LL |     fn larger_graph<T: A1 + ?Sized>() {}
    |                        ^^
