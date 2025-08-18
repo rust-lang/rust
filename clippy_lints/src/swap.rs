@@ -380,7 +380,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
         }
     }
 
-    fn is_used_other_than_swapping(&mut self, idx_ident: Ident) -> bool {
+    fn is_used_other_than_swapping(&self, idx_ident: Ident) -> bool {
         if Self::is_used_slice_indexed(self.swap1_idx, idx_ident)
             || Self::is_used_slice_indexed(self.swap2_idx, idx_ident)
         {
@@ -389,7 +389,7 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
         self.is_used_after_swap(idx_ident)
     }
 
-    fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
+    fn is_used_after_swap(&self, idx_ident: Ident) -> bool {
         let mut v = IndexBindingVisitor {
             idx: idx_ident,
             suggest_span: self.suggest_span,
