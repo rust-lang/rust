@@ -21,8 +21,8 @@ use crate::attributes::allow_unstable::{
 };
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
-    ColdParser, CoverageParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser,
-    TargetFeatureParser, TrackCallerParser, UsedParser,
+    ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
+    NoMangleParser, OptimizeParser, TargetFeatureParser, TrackCallerParser, UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -161,6 +161,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
+        Combine<ForceTargetFeatureParser>,
         Combine<ReprParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
