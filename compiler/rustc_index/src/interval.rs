@@ -146,8 +146,11 @@ impl<I: Idx> IntervalSet<I> {
         let point = point.index() as u32;
 
         if let Some((first_start, _)) = self.map.first_mut() {
-            assert!(point < *first_start);
-            if point + 1 == *first_start {
+            assert!(point <= *first_start);
+            if point == *first_start {
+                // The point is already present in the set.
+            } else if point + 1 == *first_start {
+                // Just extend the first range.
                 *first_start = point;
             } else {
                 self.map.insert(0, (point, point));

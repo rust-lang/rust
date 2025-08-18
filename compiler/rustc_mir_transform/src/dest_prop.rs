@@ -140,13 +140,13 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
-use rustc_index::{IndexSlice, IndexVec, newtype_index};
+use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::DefUse;
+use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
-use rustc_mir_dataflow::{Analysis, Backward, Results};
+use rustc_mir_dataflow::{Analysis, Results};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
@@ -177,12 +177,11 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
             return;
         }
 
-        let live =
-            MaybeTwoStepLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
+        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
 
         let points = DenseLocationMap::new(body);
         let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
-        let mut live = save_as_intervals(&points, body, &relevant.original, live.results);
+        let mut live = save_as_intervals(&points, body, &relevant, live.results);
 
         dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
 
@@ -527,8 +526,6 @@ fn dest_prop_mir_dump<'tcx>(
     }
 }
 
-struct MaybeTwoStepLiveLocals;
-
 #[derive(Copy, Clone, Debug)]
 enum Effect {
     Before,
@@ -579,137 +576,29 @@ where
     }
 }
 
-impl<'tcx> Analysis<'tcx> for MaybeTwoStepLiveLocals {
-    type Domain = DenseBitSet<Local>;
-    type Direction = Backward;
-
-    const NAME: &'static str = "transitive liveness";
-
-    fn bottom_value(&self, body: &Body<'tcx>) -> DenseBitSet<Local> {
-        // bottom = not live
-        DenseBitSet::new_empty(body.local_decls.len())
-    }
-
-    fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut DenseBitSet<Local>) {
-        // No variables are live until we observe a use
-    }
-
-    // This happens between the previous statement and this one.
-    #[tracing::instrument(level = "trace", skip(self, statement))]
-    fn apply_primary_statement_effect(
-        &mut self,
-        state: &mut DenseBitSet<Local>,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
-        VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def => {
-                state.remove(place.local);
-            }
-            DefUse::Use => {
-                state.insert(place.local);
-            }
-            DefUse::PartialWrite | DefUse::NonUse => {}
-        })
-        .visit_statement(statement, location);
-    }
-
-    // This happens between this statement and the next one.
-    #[tracing::instrument(level = "trace", skip(self, statement))]
-    fn apply_early_statement_effect(
-        &mut self,
-        state: &mut DenseBitSet<Local>,
-        statement: &Statement<'tcx>,
-        location: Location,
-    ) {
-        // We need to ensure we have a non-zero live range even for dead stores. This is done by
-        // marking all the writes locals as live in the second half of the statement.
-        VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def | DefUse::PartialWrite => {
-                state.insert(place.local);
-            }
-            // We already perform the reads in the first part of the statement. As statements are
-            // not splittable, we do not need to re-read the same values.
-            DefUse::Use | DefUse::NonUse => {}
-        })
-        .visit_statement(statement, location);
-    }
-
-    // We model terminator as a special case in this two-step analysis. Consider the terminator
-    // `destination = func(arg0...)`.
-    //
-    // -- state at (location, Effect::Before)
-    // read(arg0)...
-    // write(destination)
-    // -- state at (location, Effect::After)
-    // read(arg0)...
-
-    // This happens between the last statement and the terminator.
-    #[tracing::instrument(level = "trace", skip(self, terminator))]
-    fn apply_primary_terminator_effect<'mir>(
-        &mut self,
-        state: &mut DenseBitSet<Local>,
-        terminator: &'mir Terminator<'tcx>,
-        location: Location,
-    ) -> TerminatorEdges<'mir, 'tcx> {
-        // Consider that all writes in this terminator happen at the start of the execution of the
-        // terminator. For instance if we pass a return-pointer to a `Call` terminator.
-        VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def => {
-                state.remove(place.local);
-            }
-            DefUse::Use => {
-                state.insert(place.local);
-            }
-            DefUse::PartialWrite | DefUse::NonUse => {}
-        })
-        .visit_terminator(terminator, location);
-        terminator.edges()
-    }
-
-    // This happens between the terminator and the end of the block.
-    #[tracing::instrument(level = "trace", skip(self, terminator))]
-    fn apply_early_terminator_effect<'mir>(
-        &mut self,
-        state: &mut DenseBitSet<Local>,
-        terminator: &'mir Terminator<'tcx>,
-        location: Location,
-    ) {
-        // Consider that all reads in this terminator happen at the end of the execution of the
-        // terminator, even after it may have written to the destination local. For instance if we
-        // pass arguments as pointers to a `Call` terminator.
-        VisitPlacesWith(|place: Place<'tcx>, ctxt| match DefUse::for_place(place, ctxt) {
-            DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
-                state.insert(place.local);
-            }
-            DefUse::NonUse => {}
-        })
-        .visit_terminator(terminator, location);
-    }
-}
-
 /// Add points depending on the result of the given dataflow analysis.
 fn save_as_intervals<'tcx>(
     elements: &DenseLocationMap,
     body: &Body<'tcx>,
-    relevant: &IndexSlice<RelevantLocal, Local>,
+    relevant: &RelevantLocals,
     results: Results<DenseBitSet<Local>>,
 ) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
     let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
-    let mut state = MaybeTwoStepLiveLocals.bottom_value(body);
+    let mut state = MaybeLiveLocals.bottom_value(body);
     let reachable_blocks = traversal::reachable_as_bitset(body);
 
     let two_step_loc = |location, effect| {
         let point = elements.point_from_location(location);
         TwoStepIndex::new(point, effect)
     };
-    let mut prepend_at = |state: &mut DenseBitSet<Local>, twostep| {
-        for (relevant, &original) in relevant.iter_enumerated() {
-            if state.contains(original) {
-                values.prepend(relevant, twostep);
+    let prepend_at =
+        |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, twostep| {
+            for (relevant, &original) in relevant.original.iter_enumerated() {
+                if state.contains(original) {
+                    values.prepend(relevant, twostep);
+                }
             }
-        }
-    };
+        };
 
     // Iterate blocks in decreasing order, to visit locations in decreasing order. This
     // allows to use the more efficient `prepend` method to interval sets.
@@ -725,25 +614,51 @@ fn save_as_intervals<'tcx>(
 
         let term = block_data.terminator();
         let mut twostep = two_step_loc(loc, Effect::After);
-        MaybeTwoStepLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
-        prepend_at(&mut state, twostep);
+        prepend_at(&mut values, &state, twostep);
+        // Ensure we have a non-zero live range even for dead stores. This is done by marking all
+        // the written-to locals as live in the second half of the statement.
+        // We also ensure that operands read by terminators conflict with writes by that terminator.
+        // For instance a function call may read args after having written to the destination.
+        VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
+            DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
+                if let Some(relevant) = relevant.shrink[place.local] {
+                    values.insert(relevant, twostep);
+                }
+            }
+            DefUse::NonUse => {}
+        })
+        .visit_terminator(term, loc);
 
         twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
         debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-        MaybeTwoStepLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
-        prepend_at(&mut state, twostep);
+        MaybeLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
+        MaybeLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
+        prepend_at(&mut values, &state, twostep);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
             twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
-            MaybeTwoStepLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
-            prepend_at(&mut state, twostep);
+            prepend_at(&mut values, &state, twostep);
+            // Ensure we have a non-zero live range even for dead stores. This is done by marking
+            // all the written-to locals as live in the second half of the statement.
+            VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
+                DefUse::Def | DefUse::PartialWrite => {
+                    if let Some(relevant) = relevant.shrink[place.local] {
+                        values.insert(relevant, twostep);
+                    }
+                }
+                DefUse::Use | DefUse::NonUse => {}
+            })
+            .visit_statement(stmt, loc);
 
             twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-            MaybeTwoStepLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
-            prepend_at(&mut state, twostep);
+            MaybeLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
+            MaybeLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
+            // ... but reads from operands are marked as live here so they do not conflict with
+            // the all the writes we manually marked as live in the second half of the statement.
+            prepend_at(&mut values, &state, twostep);
         }
     }
 
