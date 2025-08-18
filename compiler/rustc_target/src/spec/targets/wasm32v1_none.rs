@@ -29,10 +29,11 @@ pub(crate) fn target() -> Target {
             // For now this target just never has an entry symbol no matter the output
             // type, so unconditionally pass this.
             "--no-entry",
-            // It is also necessary to explicitly set CPU since some changes
+            // It is also necessary to explicitly set CPU and features since some changes
             // were made to WebAssembly starting with LLVM 20.1.0:
             // https://releases.llvm.org/20.1.0/docs/ReleaseNotes.html#changes-to-the-webassembly-backend
             "--mllvm=-mcpu=mvp",
+            "--mllvm=-mattr=+mutable-globals",
         ],
     );
     options.add_pre_link_args(
@@ -41,7 +42,7 @@ pub(crate) fn target() -> Target {
             // Make sure clang uses LLD as its linker and is configured appropriately
             // otherwise
             "--target=wasm32-unknown-unknown",
-            "-Wl,--no-entry,--mllvm=-mcpu=mvp",
+            "-Wl,--no-entry,--mllvm=-mcpu=mvp,--mllvm=-mattr=+mutable-globals",
         ],
     );
 
