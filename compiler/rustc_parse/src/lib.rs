@@ -20,6 +20,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItemInner, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
+use rustc_lexer::FrontmatterAllowed;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, SourceFile, Span};
@@ -146,7 +147,7 @@ fn new_parser_from_source_file(
     source_file: Arc<SourceFile>,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
-    let stream = source_file_to_stream(psess, source_file, None)?;
+    let stream = source_file_to_stream(psess, source_file, None, FrontmatterAllowed::Yes)?;
     let mut parser = Parser::new(psess, stream, None);
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
@@ -161,7 +162,9 @@ pub fn source_str_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    source_file_to_stream(psess, source_file, override_span)
+    // used mainly for `proc_macro` and the likes, not for our parsing purposes, so don't parse
+    // frontmatters as frontmatters.
+    source_file_to_stream(psess, source_file, override_span, FrontmatterAllowed::No)
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
@@ -170,6 +173,7 @@ fn source_file_to_stream<'psess>(
     psess: &'psess ParseSess,
     source_file: Arc<SourceFile>,
     override_span: Option<Span>,
+    frontmatter_allowed: FrontmatterAllowed,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         psess.dcx().bug(format!(
@@ -178,7 +182,13 @@ fn source_file_to_stream<'psess>(
         ));
     });
 
-    lexer::lex_token_trees(psess, src.as_str(), source_file.start_pos, override_span)
+    lexer::lex_token_trees(
+        psess,
+        src.as_str(),
+        source_file.start_pos,
+        override_span,
+        frontmatter_allowed,
+    )
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
