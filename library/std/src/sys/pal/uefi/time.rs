@@ -296,12 +296,9 @@ pub(crate) mod instant_internal {
     }
 
     pub fn platform_specific() -> Option<Instant> {
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_arch = "x86_64", target_arch = "x86"))] {
-                timestamp_rdtsc().map(Instant)
-            } else {
-                None
-            }
+        cfg_select! {
+            any(target_arch = "x86_64", target_arch = "x86") => timestamp_rdtsc().map(Instant),
+            _ => None,
         }
     }
 

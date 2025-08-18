@@ -151,12 +151,13 @@ impl Thread {
     ))]
     pub fn set_name(name: &CStr) {
         unsafe {
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "linux", target_os = "cygwin"))] {
+            cfg_select! {
+                any(target_os = "linux", target_os = "cygwin") => {
                     // Linux and Cygwin limits the allowed length of the name.
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
-                } else {
+                }
+                _ => {
                     // FreeBSD, DragonFly BSD and NuttX do not enforce length limits.
                 }
             };
@@ -415,9 +416,9 @@ pub(crate) fn current_os_id() -> Option<u64> {
     //
     // The OS thread ID is used rather than `pthread_self` so as to match what will be displayed
     // for process inspection (debuggers, trace, `top`, etc.).
-    cfg_if::cfg_if! {
+    cfg_select! {
         // Most platforms have a function returning a `pid_t` or int, which is an `i32`.
-        if #[cfg(any(target_os = "android", target_os = "linux"))] {
+        any(target_os = "android", target_os = "linux") => {
             use crate::sys::weak::syscall;
 
             // `libc::gettid` is only available on glibc 2.30+, but the syscall is available
@@ -427,28 +428,34 @@ pub(crate) fn current_os_id() -> Option<u64> {
             // SAFETY: FFI call with no preconditions.
             let id: libc::pid_t = unsafe { gettid() };
             Some(id as u64)
-        } else if #[cfg(target_os = "nto")] {
+        }
+        target_os = "nto" => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::pid_t = unsafe { libc::gettid() };
             Some(id as u64)
-        } else if #[cfg(target_os = "openbsd")] {
+        }
+        target_os = "openbsd" => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::pid_t = unsafe { libc::getthrid() };
             Some(id as u64)
-        } else if #[cfg(target_os = "freebsd")] {
+        }
+        target_os = "freebsd" => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::c_int = unsafe { libc::pthread_getthreadid_np() };
             Some(id as u64)
-        } else if #[cfg(target_os = "netbsd")] {
+        }
+        target_os = "netbsd" => {
             // SAFETY: FFI call with no preconditions.
             let id: libc::lwpid_t = unsafe { libc::_lwp_self() };
             Some(id as u64)
-        } else if #[cfg(any(target_os = "illumos", target_os = "solaris"))] {
+        }
+        any(target_os = "illumos", target_os = "solaris") => {
             // On Illumos and Solaris, the `pthread_t` is the same as the OS thread ID.
             // SAFETY: FFI call with no preconditions.
             let id: libc::pthread_t = unsafe { libc::pthread_self() };
             Some(id as u64)
-        } else if #[cfg(target_vendor = "apple")] {
+        }
+        target_vendor = "apple" => {
             // Apple allows querying arbitrary thread IDs, `thread=NULL` queries the current thread.
             let mut id = 0u64;
             // SAFETY: `thread_id` is a valid pointer, no other preconditions.
@@ -458,10 +465,9 @@ pub(crate) fn current_os_id() -> Option<u64> {
             } else {
                 None
             }
-        } else {
-            // Other platforms don't have an OS thread ID or don't have a way to access it.
-            None
         }
+        // Other platforms don't have an OS thread ID or don't have a way to access it.
+        _ => None,
     }
 }
 
@@ -483,8 +489,8 @@ fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_W
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    cfg_if::cfg_if! {
-        if #[cfg(any(
+    cfg_select! {
+        any(
             target_os = "android",
             target_os = "emscripten",
             target_os = "fuchsia",
@@ -493,7 +499,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
-        ))] {
+        ) => {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
             let mut quota = usize::MAX;
@@ -527,12 +533,13 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                     Ok(unsafe { NonZero::new_unchecked(count) })
                 }
             }
-        } else if #[cfg(any(
-                   target_os = "freebsd",
-                   target_os = "dragonfly",
-                   target_os = "openbsd",
-                   target_os = "netbsd",
-               ))] {
+        }
+        any(
+           target_os = "freebsd",
+           target_os = "dragonfly",
+           target_os = "openbsd",
+           target_os = "netbsd",
+        ) => {
             use crate::ptr;
 
             #[cfg(target_os = "freebsd")]
@@ -607,7 +614,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
 
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
-        } else if #[cfg(target_os = "nto")] {
+        }
+        target_os = "nto" => {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
@@ -618,13 +626,15 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         .ok_or(io::Error::UNKNOWN_THREAD_COUNT)
                 }
             }
-        } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+        }
+        any(target_os = "solaris", target_os = "illumos") => {
             let mut cpus = 0u32;
             if unsafe { libc::pset_info(libc::PS_MYID, core::ptr::null_mut(), &mut cpus, core::ptr::null_mut()) } != 0 {
                 return Err(io::Error::UNKNOWN_THREAD_COUNT);
             }
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
-        } else if #[cfg(target_os = "haiku")] {
+        }
+        target_os = "haiku" => {
             // system_info cpu_count field gets the static data set at boot time with `smp_set_num_cpus`
             // `get_system_info` calls then `smp_get_num_cpus`
             unsafe {
@@ -637,7 +647,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
-        } else if #[cfg(target_os = "vxworks")] {
+        }
+        target_os = "vxworks" => {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
             unsafe extern "C" {
@@ -649,7 +660,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 let set = vxCpuEnabledGet();
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
-        } else {
+        }
+        _ => {
             // FIXME: implement on Redox, l4re
             Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }
