@@ -1,3 +1,5 @@
+//! Library containing Id types from `rustc_hir`, split out so crates can use it without depending
+//! on all of `rustc_hir` (which is large and depends on other large things like `rustc_target`).
 #![allow(internal_features)]
 #![feature(negative_impls)]
 #![feature(rustc_attrs)]
