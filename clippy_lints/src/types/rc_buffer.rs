@@ -11,7 +11,8 @@ use super::RC_BUFFER;
 
 pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_>, def_id: DefId) -> bool {
     let app = Applicability::Unspecified;
-    if cx.tcx.is_diagnostic_item(sym::Rc, def_id) {
+    let name = cx.tcx.get_diagnostic_name(def_id);
+    if name == Some(sym::Rc) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(
@@ -56,7 +57,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             );
             return true;
         }
-    } else if cx.tcx.is_diagnostic_item(sym::Arc, def_id) {
+    } else if name == Some(sym::Arc) {
         if let Some(alternate) = match_buffer_type(cx, qpath) {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(
