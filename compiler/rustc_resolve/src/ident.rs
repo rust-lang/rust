@@ -107,7 +107,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let module = match scope_set {
             // Start with the specified module.
-            ScopeSet::Late(_, module, _) | ScopeSet::ModuleAndExternPrelude(_, module) => module,
+            ScopeSet::ModuleAndExternPrelude(_, module) => module,
             // Jump out of trait or enum modules, they do not act as scopes.
             _ => parent_scope.module.nearest_item_scope(),
         };
@@ -349,11 +349,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return Some(LexicalScopeBinding::Item(binding));
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
+                let parent_scope = &ParentScope { module, ..*parent_scope };
                 return self
                     .cm()
                     .resolve_ident_in_scope_set(
                         orig_ident,
-                        ScopeSet::Late(ns, module, finalize.map(|finalize| finalize.node_id)),
+                        ScopeSet::Late(ns, finalize.map(|finalize| finalize.node_id)),
                         parent_scope,
                         finalize,
                         finalize.is_some(),

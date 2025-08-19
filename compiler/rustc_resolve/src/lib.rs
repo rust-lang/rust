@@ -160,7 +160,7 @@ enum ScopeSet<'ra> {
     Macro(MacroKind),
     /// All scopes with the given namespace, used for partially performing late resolution.
     /// The node id enables lints and is used for reporting them.
-    Late(Namespace, Module<'ra>, Option<NodeId>),
+    Late(Namespace, Option<NodeId>),
 }
 
 /// Everything you need to know about a name's location to resolve it.

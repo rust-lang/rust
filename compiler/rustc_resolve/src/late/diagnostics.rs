@@ -38,8 +38,8 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Module, ModuleKind, ModuleOrUniformRoot, PathResult, PathSource, Resolver, ScopeSet, Segment,
-    errors, path_names_to_string,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Resolver,
+    ScopeSet, Segment, errors, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -2460,10 +2460,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
                 } else if let RibKind::Module(module) = rib.kind {
                     // Encountered a module item, abandon ribs and look into that module and preludes.
+                    let parent_scope = &ParentScope { module, ..self.parent_scope };
                     self.r.add_scope_set_candidates(
                         &mut names,
-                        ScopeSet::Late(ns, module, None),
-                        &self.parent_scope,
+                        ScopeSet::Late(ns, None),
+                        parent_scope,
                         ctxt,
                         filter_fn,
                     );
