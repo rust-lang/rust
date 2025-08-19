@@ -282,7 +282,8 @@ pub fn report_error<'tcx>(
             },
             TreeBorrowsUb { title: _, details, history } => {
                 let mut helps = vec![
-                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental")
+                    note!("this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental"),
+                    note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information"),
                 ];
                 for m in details {
                     helps.push(note!("{m}"));
