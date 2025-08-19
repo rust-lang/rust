@@ -11,6 +11,7 @@ mod foo {
 fn f() {
     use foo::*;
     bar::m! { //~ ERROR ambiguous
+    //~^ ERROR ambiguous
         mod bar { pub use two_macros::m; }
     }
 }

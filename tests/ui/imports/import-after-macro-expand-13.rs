@@ -1,4 +1,3 @@
-//@ check-pass
 // similar as `import-after-macro-expand-6.rs`
 
 use crate::a::HeaderMap;
@@ -19,4 +18,5 @@ mod a {
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;
+    //~^ ERROR ambiguous
 }

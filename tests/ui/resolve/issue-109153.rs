@@ -10,5 +10,6 @@ mod foo {
 
 use bar::bar; //~ ERROR `bar` is ambiguous
 use bar::*;
+//~^ ERROR `bar` is ambiguous
 
 fn main() { }

@@ -1,0 +1,43 @@
+error[E0659]: `f` is ambiguous
+  --> $DIR/imports.rs:23:19
+   |
+LL |     let _: bool = f();
+   |                   ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function imported here
+  --> $DIR/imports.rs:20:9
+   |
+LL |     use crate::foo::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `f` to disambiguate
+note: `f` could also refer to the function imported here
+  --> $DIR/imports.rs:21:9
+   |
+LL |     use crate::bar::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `f` to disambiguate
+
+error[E0659]: `f` is ambiguous
+  --> $DIR/imports.rs:31:19
+   |
+LL |     let _: bool = f();
+   |                   ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function imported here
+  --> $DIR/imports.rs:28:9
+   |
+LL |     use crate::foo::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `f` to disambiguate
+note: `f` could also refer to the function imported here
+  --> $DIR/imports.rs:29:9
+   |
+LL |     use crate::bar::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `f` to disambiguate
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

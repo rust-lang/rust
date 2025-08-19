@@ -1,0 +1,23 @@
+error[E0659]: `HeaderMap` is ambiguous
+  --> $DIR/import-after-macro-expand-6.rs:20:22
+   |
+LL |     let h: crate::b::HeaderMap = HeaderMap;
+   |                      ^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution
+note: `HeaderMap` could refer to the struct defined here
+  --> $DIR/import-after-macro-expand-6.rs:14:5
+   |
+LL |     pub struct HeaderMap;
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   = help: use `self::HeaderMap` to refer to this struct unambiguously
+note: `HeaderMap` could also refer to the struct imported here
+  --> $DIR/import-after-macro-expand-6.rs:12:13
+   |
+LL |     pub use self::http::*;
+   |             ^^^^^^^^^^^^^
+   = help: use `self::HeaderMap` to refer to this struct unambiguously
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

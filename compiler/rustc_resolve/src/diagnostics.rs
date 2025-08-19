@@ -1052,8 +1052,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
                 }
-                Scope::Module(module, _) => {
+                Scope::NonGlobModule(module, _) => {
                     this.add_module_candidates(module, suggestions, filter_fn, None);
+                }
+                Scope::GlobModule(..) => {
+                    // already inserted in `Scope::NonGlobModule` arm
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
@@ -1476,9 +1479,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             &parent_scope,
             ident.span.ctxt(),
             |this, scope, _use_prelude, _ctxt| {
-                let Scope::Module(m, _) = scope else {
+                let (Scope::NonGlobModule(m, _) | Scope::GlobModule(m, _)) = scope else {
                     return None;
                 };
+
                 for (_, resolution) in this.resolutions(m).borrow().iter() {
                     let Some(binding) = resolution.borrow().best_binding() else {
                         continue;

@@ -1,4 +1,3 @@
-//@ check-pass
 // https://github.com/rust-lang/rust/pull/113099#issuecomment-1633574396
 
 pub mod a {
@@ -19,4 +18,5 @@ use crate::a::HeaderMap;
 
 fn main() {
     let h: crate::b::HeaderMap = HeaderMap;
+    //~^ ERROR ambiguous
 }
