@@ -39,7 +39,7 @@ use crate::{
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     /// Compiler that builds the standard library.
@@ -949,7 +949,7 @@ pub struct BuiltRustc {
 ///   so that it can compile build scripts and proc macros when building this `rustc`.
 /// - Makes sure that `build_compiler` has a standard library prepared for `target`,
 ///   so that the built `rustc` can *link to it* and use it at runtime.
-#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     /// The target on which rustc will run (its host).
     pub target: TargetSelection,
@@ -1960,7 +1960,7 @@ impl Step for Sysroot {
 /// linker wrappers (LLD, LLVM bitcode linker, etc.).
 ///
 /// This will assemble a compiler in `build/$target/stage$stage`.
-#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Assemble {
     /// The compiler which we will produce in this step. Assemble itself will
     /// take care of ensuring that the necessary prerequisites to do so exist,
