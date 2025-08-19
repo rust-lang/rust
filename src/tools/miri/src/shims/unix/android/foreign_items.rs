@@ -4,13 +4,14 @@ use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
 
 use crate::shims::unix::android::thread::prctl;
+use crate::shims::unix::env::EvalContextExt as _;
 use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::syscall::syscall;
 use crate::*;
 
-pub fn is_dyn_sym(_name: &str) -> bool {
-    false
+pub fn is_dyn_sym(name: &str) -> bool {
+    matches!(name, "gettid")
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -52,6 +53,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
+            }
+
+            "gettid" => {
+                let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let result = this.unix_gettid(link_name.as_str())?;
+                this.write_scalar(result, dest)?;
             }
 
             // Dynamically invoked syscalls

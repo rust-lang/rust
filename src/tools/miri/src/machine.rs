@@ -12,10 +12,10 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_hir::attrs::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
+use rustc_hir::attrs::InlineAttr;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -1396,6 +1396,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                 genmc_ctx.memory_load(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_data_race) => {
+                let _trace = enter_trace_span!(data_race::before_memory_read);
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) = &alloc_extra.data_race
                 else {
                     unreachable!();
@@ -1431,6 +1432,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 genmc_ctx.memory_store(machine, ptr.addr(), range.size)?;
             }
             GlobalDataRaceHandler::Vclocks(_global_state) => {
+                let _trace = enter_trace_span!(data_race::before_memory_write);
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) =
                     &mut alloc_extra.data_race
                 else {
@@ -1467,6 +1469,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                 genmc_ctx.handle_dealloc(machine, ptr.addr(), size, align, kind)?,
             GlobalDataRaceHandler::Vclocks(_global_state) => {
+                let _trace = enter_trace_span!(data_race::before_memory_deallocation);
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
                 data_race.write(
                     alloc_id,
@@ -1677,6 +1680,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         local: mir::Local,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &frame.extra.data_race {
+            let _trace = enter_trace_span!(data_race::after_local_read);
             data_race.local_read(local, &ecx.machine);
         }
         interp_ok(())
@@ -1688,6 +1692,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         storage_live: bool,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &ecx.frame().extra.data_race {
+            let _trace = enter_trace_span!(data_race::after_local_write);
             data_race.local_write(local, storage_live, &ecx.machine);
         }
         interp_ok(())
@@ -1710,6 +1715,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(data_race) =
             &machine.threads.active_thread_stack().last().unwrap().extra.data_race
         {
+            let _trace = enter_trace_span!(data_race::after_local_moved_to_memory);
             data_race.local_moved_to_memory(
                 local,
                 alloc_info.data_race.as_vclocks_mut().unwrap(),
