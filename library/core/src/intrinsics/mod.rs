@@ -265,17 +265,16 @@ pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
-pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32) {
+pub const fn prefetch_read_data<T, const LOCALITY: i32>(data: *const T) {
     // This operation is a no-op, unless it is overridden by the backend.
     let _ = data;
-    let _ = locality;
 }
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
@@ -283,17 +282,16 @@ pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32) {
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
-pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32) {
+pub const fn prefetch_write_data<T, const LOCALITY: i32>(data: *const T) {
     // This operation is a no-op, unless it is overridden by the backend.
     let _ = data;
-    let _ = locality;
 }
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
@@ -301,17 +299,16 @@ pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32) {
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
-pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32) {
+pub const fn prefetch_read_instruction<T, const LOCALITY: i32>(data: *const T) {
     // This operation is a no-op, unless it is overridden by the backend.
     let _ = data;
-    let _ = locality;
 }
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
@@ -319,17 +316,16 @@ pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32) {
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 #[miri::intrinsic_fallback_is_spec]
-pub unsafe fn prefetch_write_instruction<T>(data: *const T, locality: i32) {
+pub const fn prefetch_write_instruction<T, const LOCALITY: i32>(data: *const T) {
     // This operation is a no-op, unless it is overridden by the backend.
     let _ = data;
-    let _ = locality;
 }
 
 /// Executes a breakpoint trap, for inspection by a debugger.
