@@ -381,8 +381,9 @@ fn check_comparison<'a, 'tcx>(
                     suggest_bool_comparison(cx, binop_span, left_side, applicability, m, h);
                 }),
                 (None, None) => no_literal.map_or((), |(h, m)| {
-                    let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
-                    let right_side = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
+                    let left_side = Sugg::hir_with_context(cx, left_side, binop_span.ctxt(), "..", &mut applicability);
+                    let right_side =
+                        Sugg::hir_with_context(cx, right_side, binop_span.ctxt(), "..", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
