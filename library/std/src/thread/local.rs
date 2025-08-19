@@ -24,10 +24,10 @@ use crate::fmt;
 /// [`with`]) within a thread, and values that implement [`Drop`] get
 /// destructed when a thread exits. Some platform-specific caveats apply, which
 /// are explained below.
-/// Note that, should the destructor panics, the whole process will be [aborted].
+/// Note that, should the destructor panic, the whole process will be [aborted].
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
-/// `LocalKey` in this way may cause panics, aborts or infinite recursion on
+/// `LocalKey` in this way may cause panics, aborts, or infinite recursion on
 /// the first call to `with`.
 ///
 /// [aborted]: crate::process::abort
