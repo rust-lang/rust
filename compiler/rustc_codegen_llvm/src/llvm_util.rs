@@ -278,11 +278,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             None
         }
         // Filter out features that are not supported by the current LLVM version
-        ("riscv32" | "riscv64", "zacas" | "rva23s64" | "rva23u64" | "sha" | "ssnpm" | "supm")
-            if get_version().0 < 20 =>
-        {
-            None
-        }
+        ("riscv32" | "riscv64", "zacas" | "rva23u64" | "supm") if get_version().0 < 20 => None,
         (
             "s390x",
             "message-security-assist-extension12"
