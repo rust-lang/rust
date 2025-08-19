@@ -349,7 +349,7 @@ fn is_first_generic_integral<'tcx>(segment: &'tcx PathSegment<'tcx>) -> bool {
             let segments = &path.segments;
             let segment = &segments[0];
             let res = &segment.res;
-            if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
+            if matches!(res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_))) {
                 return true;
             }
         }
@@ -362,7 +362,7 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
     if let Some(segment) = extract_future_output(cx, sig.output()) {
         let res = segment.res;
 
-        if matches!(res, Res::PrimTy(PrimTy::Uint(_))) || matches!(res, Res::PrimTy(PrimTy::Int(_))) {
+        if matches!(res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_))) {
             return Some(LenOutput::Integral);
         }
 
