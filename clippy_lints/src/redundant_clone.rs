@@ -96,14 +96,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let (fn_def_id, arg, arg_ty, clone_ret) =
                 unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
-            let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
-                || cx.tcx.is_diagnostic_item(sym::to_owned_method, fn_def_id)
-                || (cx.tcx.is_diagnostic_item(sym::to_string_method, fn_def_id)
-                    && is_type_lang_item(cx, arg_ty, LangItem::String));
+            let fn_name = cx.tcx.get_diagnostic_name(fn_def_id);
 
-            let from_deref = !from_borrow
-                && (cx.tcx.is_diagnostic_item(sym::path_to_pathbuf, fn_def_id)
-                    || cx.tcx.is_diagnostic_item(sym::os_str_to_os_string, fn_def_id));
+            let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
+                || fn_name == Some(sym::to_owned_method)
+                || (fn_name == Some(sym::to_string_method) && is_type_lang_item(cx, arg_ty, LangItem::String));
+
+            let from_deref = !from_borrow && matches!(fn_name, Some(sym::path_to_pathbuf | sym::os_str_to_os_string));
 
             if !from_borrow && !from_deref {
                 continue;

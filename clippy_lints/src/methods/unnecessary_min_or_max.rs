@@ -22,7 +22,8 @@ pub(super) fn check<'tcx>(
     let typeck_results = cx.typeck_results();
     let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), typeck_results);
     if let Some(id) = typeck_results.type_dependent_def_id(expr.hir_id)
-        && (cx.tcx.is_diagnostic_item(sym::cmp_ord_min, id) || cx.tcx.is_diagnostic_item(sym::cmp_ord_max, id))
+        && let Some(fn_name) = cx.tcx.get_diagnostic_name(id)
+        && matches!(fn_name, sym::cmp_ord_min | sym::cmp_ord_max)
     {
         if let Some((left, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(recv)
             && let Some((right, ConstantSource::Local | ConstantSource::CoreConstant)) = ecx.eval_with_source(arg)
