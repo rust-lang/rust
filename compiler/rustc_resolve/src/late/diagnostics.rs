@@ -2463,7 +2463,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let parent_scope = &ParentScope { module, ..self.parent_scope };
                     self.r.add_scope_set_candidates(
                         &mut names,
-                        ScopeSet::Late(ns),
+                        ScopeSet::All(ns),
                         parent_scope,
                         ctxt,
                         filter_fn,

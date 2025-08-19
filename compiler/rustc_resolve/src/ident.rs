@@ -19,7 +19,7 @@ use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingKey, CmResolver, Determinacy,
     Finalize, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot,
     NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res, ResolutionError,
-    Resolver, Scope, ScopeSet, Segment, Used, Weak, errors,
+    Resolver, Scope, ScopeSet, Segment, Stage, Used, Weak, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -100,9 +100,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let rust_2015 = ctxt.edition().is_rust_2015();
         let (ns, macro_kind) = match scope_set {
-            ScopeSet::All(ns)
-            | ScopeSet::ModuleAndExternPrelude(ns, _)
-            | ScopeSet::Late(ns, ..) => (ns, None),
+            ScopeSet::All(ns) | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
@@ -347,11 +345,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
                 let parent_scope = &ParentScope { module, ..*parent_scope };
+                let finalize = finalize.map(|f| Finalize { stage: Stage::Late, ..f });
                 return self
                     .cm()
                     .resolve_ident_in_scope_set(
                         orig_ident,
-                        ScopeSet::Late(ns),
+                        ScopeSet::All(ns),
                         parent_scope,
                         finalize,
                         finalize.is_some(),
@@ -405,9 +404,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         let (ns, macro_kind) = match scope_set {
-            ScopeSet::All(ns)
-            | ScopeSet::ModuleAndExternPrelude(ns, _)
-            | ScopeSet::Late(ns, ..) => (ns, None),
+            ScopeSet::All(ns) | ScopeSet::ModuleAndExternPrelude(ns, _) => (ns, None),
             ScopeSet::ExternPrelude => (TypeNS, None),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind)),
         };
@@ -431,8 +428,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Go through all the scopes and try to resolve the name.
-        let derive_fallback_lint_id = match (finalize, scope_set) {
-            (Some(finalize), ScopeSet::Late(..)) => Some(finalize.node_id),
+        let derive_fallback_lint_id = match finalize {
+            Some(Finalize { node_id, stage: Stage::Late, .. }) => Some(node_id),
             _ => None,
         };
         let break_result = self.visit_scopes(
@@ -509,11 +506,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ident,
                             ns,
                             adjusted_parent_scope,
-                            if matches!(scope_set, ScopeSet::Late(..)) {
-                                Shadowing::Unrestricted
-                            } else {
-                                Shadowing::Restricted
-                            },
+                            Shadowing::Restricted,
                             adjusted_finalize,
                             ignore_binding,
                             ignore_import,
@@ -642,7 +635,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             return None;
                         }
 
-                        if finalize.is_none() || matches!(scope_set, ScopeSet::Late(..)) {
+                        // Below we report various ambiguity errors.
+                        // We do not need to report them if we are either in speculative resolution,
+                        // or in late resolution when everything is already imported and expanded
+                        // and no ambiguities exist.
+                        if matches!(finalize, None | Some(Finalize { stage: Stage::Late, .. })) {
                             return Some(Ok(binding));
                         }
 
@@ -1039,6 +1036,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Forbid expanded shadowing to avoid time travel.
         if let Some(shadowed_glob) = shadowed_glob
             && shadowing == Shadowing::Restricted
+            && finalize.stage == Stage::Early
             && binding.expansion != LocalExpnId::ROOT
             && binding.res() != shadowed_glob.res()
         {

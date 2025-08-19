@@ -156,10 +156,8 @@ enum ScopeSet<'ra> {
     ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// Just two extern prelude scopes.
     ExternPrelude,
-    /// All scopes with macro namespace and the given macro kind restriction.
+    /// Same as `All(MacroNS)`, but with the given macro kind restriction.
     Macro(MacroKind),
-    /// All scopes with the given namespace, used for partially performing late resolution.
-    Late(Namespace),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -2455,6 +2453,17 @@ fn module_to_string(mut module: Module<'_>) -> Option<String> {
     Some(names_to_string(names.iter().rev().copied()))
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+enum Stage {
+    /// Resolving an import or a macro.
+    /// Used when macro expansion is either not yet finished, or we are finalizing its results.
+    /// Used by default as a more restrictive variant that can produce additional errors.
+    Early,
+    /// Resolving something in late resolution when all imports are resolved
+    /// and all macros are expanded.
+    Late,
+}
+
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.
@@ -2467,9 +2476,11 @@ struct Finalize {
     root_span: Span,
     /// Whether to report privacy errors or silently return "no resolution" for them,
     /// similarly to speculative resolution.
-    report_private: bool,
+    report_private: bool = true,
     /// Tracks whether an item is used in scope or used relatively to a module.
-    used: Used,
+    used: Used = Used::Other,
+    /// Finalizing early or late resolution.
+    stage: Stage = Stage::Early,
 }
 
 impl Finalize {
@@ -2478,7 +2489,7 @@ impl Finalize {
     }
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span, report_private: true, used: Used::Other }
+        Finalize { node_id, path_span, root_span, .. }
     }
 }
 
