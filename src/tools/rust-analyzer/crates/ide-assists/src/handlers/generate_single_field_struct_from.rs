@@ -216,7 +216,7 @@ fn from_impl_exists(
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
     let interner = DbInterner::new_with(db, Some(krate.base()), None);
     use hir::next_solver::infer::DbInternerInferExt;
-    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let strukt = strukt.instantiate_infer(&infcx);
     let field_ty = strukt.fields(db).get(main_field_i)?.ty(db);

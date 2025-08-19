@@ -87,7 +87,7 @@ fn existing_from_impl(
     let from_trait = FamousDefs(sema, krate).core_convert_From()?;
     let interner = DbInterner::new_with(db, Some(krate.base()), None);
     use hir::next_solver::infer::DbInternerInferExt;
-    let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let variant = variant.instantiate_infer(&infcx);
     let enum_ = variant.parent_enum(sema.db);
