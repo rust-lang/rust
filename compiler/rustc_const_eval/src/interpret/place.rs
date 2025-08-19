@@ -234,6 +234,12 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     }
 
     /// A place is either an mplace or some local.
+    ///
+    /// Note that the return value can be different even for logically identical places!
+    /// Specifically, if a local is stored in-memory, this may return `Local` or `MPlaceTy`
+    /// depending on how the place was constructed. In other words, seeing `Local` here does *not*
+    /// imply that this place does not point to memory. Every caller must therefore always handle
+    /// both cases.
     #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
