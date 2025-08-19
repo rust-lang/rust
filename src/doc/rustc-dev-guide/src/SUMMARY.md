@@ -103,6 +103,7 @@
 	- [The `rustdoc-json` test suite](./rustdoc-internals/rustdoc-json-test-suite.md)
 - [GPU offload internals](./offload/internals.md)
     - [Installation](./offload/installation.md)
+    - [Usage](./offload/usage.md)
 - [Autodiff internals](./autodiff/internals.md)
     - [Installation](./autodiff/installation.md)
     - [How to debug](./autodiff/debugging.md)
