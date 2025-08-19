@@ -48,7 +48,7 @@ ast_lowering_bad_return_type_notation_position = return type notation not allowe
 ast_lowering_clobber_abi_not_supported =
     `clobber_abi` is not supported on this target
 
-ast_lowering_closure_cannot_be_static = closures cannot be static
+ast_lowering_closure_cannot_be_static = {$modifier}closures cannot be static
 
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)

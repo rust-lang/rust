@@ -185,8 +185,10 @@ mod expressions {
         async move || value;
         static || value;
         static move || value;
-        (static async || value);
-        (static async move || value);
+        (static async ||
+                value);
+        (static async move ||
+                value);
         || -> u8 { value };
         1 + || {};
     }
