@@ -748,9 +748,6 @@ parse_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call 
     .suggestion_braces_for_struct = if `{$type}` is a struct, use braces as delimiters
     .suggestion_no_fields_for_fn = if `{$type}` is a function, use the arguments directly
 
-parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
-parse_parenthesized_lifetime_suggestion = remove the parentheses
-
 parse_path_double_colon = path separator must be a double colon
     .suggestion = use a double colon instead
 
