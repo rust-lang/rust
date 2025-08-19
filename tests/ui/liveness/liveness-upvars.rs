@@ -147,4 +147,21 @@ pub fn coroutine() {
     };
 }
 
+pub fn panics() {
+    use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+
+    let mut panic = true;
+
+    // `a` can be called again, even if it has panicked at an earlier run.
+    let mut a = || {
+        if panic {
+            panic = false;
+            resume_unwind(Box::new(()))
+        }
+    };
+
+    catch_unwind(AssertUnwindSafe(|| a())).ok();
+    a();
+}
+
 fn main() {}

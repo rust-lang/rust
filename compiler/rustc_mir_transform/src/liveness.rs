@@ -107,13 +107,14 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
         // `FnMut` closures can modify captured values and carry those
         // modified values with them in subsequent calls. To model this behaviour,
         // we consider the `FnMut` closure as jumping to `bb0` upon return.
-        if let CaptureKind::Closure(ty::ClosureKind::FnMut) = capture_kind
-            && checked_places.captures.iter().any(|(_, by_ref)| !by_ref)
-        {
+        if let CaptureKind::Closure(ty::ClosureKind::FnMut) = capture_kind {
             // FIXME: stop cloning the body.
             body_mem = body.clone();
             for bbdata in body_mem.basic_blocks_mut() {
-                if let TerminatorKind::Return = bbdata.terminator().kind {
+                // We can call a closure again, either after a normal return or an unwind.
+                if let TerminatorKind::Return | TerminatorKind::UnwindResume =
+                    bbdata.terminator().kind
+                {
                     bbdata.terminator_mut().kind = TerminatorKind::Goto { target: START_BLOCK };
                 }
             }
