@@ -5,6 +5,7 @@ LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the allocation of the accessed tag <TAG> also contains the strongly protected tag <TAG>
    = help: the strongly protected tag <TAG> disallows deallocations
 help: the accessed tag <TAG> was created here
