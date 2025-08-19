@@ -7,7 +7,7 @@ LL | trait Iterator {
 LL |     fn clone_first(mut self) -> Option<<Self::Item as Deref>::Target> where
    |        ^^^^^^^^^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

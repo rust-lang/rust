@@ -12,7 +12,7 @@ LL | fn avg<T = i32>(_: T) {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: defaults for generic parameters are not allowed here
   --> $DIR/invalid-type-param-default.rs:12:8
@@ -44,7 +44,7 @@ LL | fn avg<T = i32>(_: T) {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: defaults for generic parameters are not allowed here
@@ -55,7 +55,7 @@ LL | fn mdn<T = T::Item>(_: T) {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: defaults for generic parameters are not allowed here
@@ -66,5 +66,5 @@ LL | impl<T = i32> S<T> {}
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
+   = note: `#[deny(invalid_type_param_default)]` (part of `#[deny(future_incompatible)]`) on by default
 
