@@ -1567,6 +1567,16 @@ impl<'a> Parser<'a> {
                     let guar = report_lit_error(&self.psess, err, token_lit, span);
                     let token_lit = token::Lit::new(token::Err(guar), token_lit.symbol, None);
                     let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(token_lit));
+
+                    // Try to consume the next token if it looks like another string literal
+                    // This prevents cascading errors when raw strings with invalid suffixes
+                    // are immediately followed by another string
+                    if let TokenKind::Literal(lit) = &self.token.kind {
+                        if matches!(lit.kind, token::LitKind::Str | token::LitKind::StrRaw(_)) {
+                            self.bump();
+                        }
+                    }
+
                     return self.maybe_recover_from_bad_qpath(expr);
                 }
                 let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Lit(token_lit));
