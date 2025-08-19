@@ -324,7 +324,7 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SplitDebuginfo {
     Packed,
     Unpacked,
