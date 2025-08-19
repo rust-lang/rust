@@ -75,16 +75,9 @@ where
             Ok(ty::Binder::dummy(vec![args.as_coroutine_closure().tupled_upvars_ty()]))
         }
 
-        ty::Coroutine(def_id, args) => {
+        ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
-            Ok(ty::Binder::dummy(vec![
-                coroutine_args.tupled_upvars_ty(),
-                Ty::new_coroutine_witness(
-                    ecx.cx(),
-                    def_id,
-                    ecx.cx().mk_args(coroutine_args.parent_args().as_slice()),
-                ),
-            ]))
+            Ok(ty::Binder::dummy(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()]))
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
@@ -252,14 +245,7 @@ where
             Movability::Movable => {
                 if ecx.cx().features().coroutine_clone() {
                     let coroutine = args.as_coroutine();
-                    Ok(ty::Binder::dummy(vec![
-                        coroutine.tupled_upvars_ty(),
-                        Ty::new_coroutine_witness(
-                            ecx.cx(),
-                            def_id,
-                            ecx.cx().mk_args(coroutine.parent_args().as_slice()),
-                        ),
-                    ]))
+                    Ok(ty::Binder::dummy(vec![coroutine.tupled_upvars_ty(), coroutine.witness()]))
                 } else {
                     Err(NoSolution)
                 }

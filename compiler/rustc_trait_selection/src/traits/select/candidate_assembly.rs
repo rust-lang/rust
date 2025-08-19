@@ -1166,7 +1166,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if self.tcx().features().coroutine_clone() {
                             let resolved_upvars =
                                 self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                            if resolved_upvars.is_ty_var() {
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
                                 // Not yet resolved.
                                 candidates.ambiguous = true;
                             } else {
