@@ -6,6 +6,8 @@ use std::collections::{BTreeMap, VecDeque};
 use encode::{bitmap_to_string, write_vlqhex_to_string};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
@@ -421,16 +423,17 @@ pub(crate) fn build_index(
                     if fqp.last() != Some(&item.name) {
                         return None;
                     }
-                    let path =
-                        if item.ty == ItemType::Macro && tcx.has_attr(defid, sym::macro_export) {
-                            // `#[macro_export]` always exports to the crate root.
-                            tcx.crate_name(defid.krate).to_string()
-                        } else {
-                            if fqp.len() < 2 {
-                                return None;
-                            }
-                            join_path_syms(&fqp[..fqp.len() - 1])
-                        };
+                    let path = if item.ty == ItemType::Macro
+                        && find_attr!(tcx.get_all_attrs(defid), AttributeKind::MacroExport { .. })
+                    {
+                        // `#[macro_export]` always exports to the crate root.
+                        tcx.crate_name(defid.krate).to_string()
+                    } else {
+                        if fqp.len() < 2 {
+                            return None;
+                        }
+                        join_path_syms(&fqp[..fqp.len() - 1])
+                    };
                     if path == item.path {
                         return None;
                     }

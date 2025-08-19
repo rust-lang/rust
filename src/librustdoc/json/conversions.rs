@@ -908,12 +908,8 @@ fn maybe_from_hir_attr(
         hir::Attribute::Parsed(kind) => kind,
 
         hir::Attribute::Unparsed(_) => {
-            return Some(if attr.has_name(sym::macro_export) {
-                Attribute::MacroExport
-                // FIXME: We should handle `#[doc(hidden)]`.
-            } else {
-                other_attr(tcx, attr)
-            });
+            // FIXME: We should handle `#[doc(hidden)]`.
+            return Some(other_attr(tcx, attr));
         }
     };
 
@@ -921,6 +917,7 @@ fn maybe_from_hir_attr(
         AK::Deprecation { .. } => return None, // Handled separately into Item::deprecation.
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
+        AK::MacroExport { .. } => Attribute::MacroExport,
         AK::MustUse { reason, span: _ } => {
             Attribute::MustUse { reason: reason.map(|s| s.to_string()) }
         }
