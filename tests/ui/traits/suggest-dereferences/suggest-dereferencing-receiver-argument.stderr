@@ -2,8 +2,13 @@ error[E0277]: the trait bound `TargetStruct: From<&{integer}>` is not satisfied
   --> $DIR/suggest-dereferencing-receiver-argument.rs:13:30
    |
 LL |     let _b: TargetStruct = a.into();
-   |                              ^^^^ the trait `From<&{integer}>` is not implemented for `TargetStruct`
+   |                              ^^^^ unsatisfied trait bound
    |
+help: the trait `From<&{integer}>` is not implemented for `TargetStruct`
+  --> $DIR/suggest-dereferencing-receiver-argument.rs:3:1
+   |
+LL | struct TargetStruct;
+   | ^^^^^^^^^^^^^^^^^^^
    = note: required for `&{integer}` to implement `Into<TargetStruct>`
 help: consider dereferencing here
    |
