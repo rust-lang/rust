@@ -35,14 +35,10 @@ pub struct CodegenFnAttrs {
     pub inline: InlineAttr,
     /// Parsed representation of the `#[optimize]` attribute
     pub optimize: OptimizeAttr,
-    /// The `#[export_name = "..."]` attribute, indicating a custom symbol a
-    /// function should be exported under
-    pub export_name: Option<Symbol>,
-    /// The `#[link_name = "..."]` attribute, indicating a custom symbol an
-    /// imported function should be imported as. Note that `export_name`
-    /// probably isn't set when this is set, this is for foreign items while
-    /// `#[export_name]` is for Rust-defined functions.
-    pub link_name: Option<Symbol>,
+    /// The name this function will be imported/exported under. This can be set
+    /// using the `#[export_name = "..."]` or `#[link_name = "..."]` attribute
+    /// depending on if this is a function definition or foreign function.
+    pub symbol_name: Option<Symbol>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the
@@ -167,8 +163,7 @@ impl CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
             optimize: OptimizeAttr::Default,
-            export_name: None,
-            link_name: None,
+            symbol_name: None,
             link_ordinal: None,
             target_features: vec![],
             safe_target_features: false,
@@ -196,7 +191,7 @@ impl CodegenFnAttrs {
 
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
             || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-            || self.export_name.is_some()
+            || self.symbol_name.is_some()
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
