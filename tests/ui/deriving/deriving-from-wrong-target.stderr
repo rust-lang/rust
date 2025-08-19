@@ -54,45 +54,7 @@ LL | enum E1 {}
    = note: `#[derive(From)]` can only be used on structs with exactly one field
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/deriving-from-wrong-target.rs:31:10
-   |
-LL | #[derive(From)]
-   |          ^^^^ doesn't have a size known at compile-time
-...
-LL | struct SUnsizedField<T: ?Sized> {
-   |                      - this type parameter needs to be `Sized`
-   |
-note: required by an implicit `Sized` bound in `From`
-  --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - struct SUnsizedField<T: ?Sized> {
-LL + struct SUnsizedField<T> {
-   |
-
-error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/deriving-from-wrong-target.rs:31:10
-   |
-LL | #[derive(From)]
-   |          ^^^^ doesn't have a size known at compile-time
-...
-LL | struct SUnsizedField<T: ?Sized> {
-   |                      - this type parameter needs to be `Sized`
-   |
-note: required because it appears within the type `SUnsizedField<T>`
-  --> $DIR/deriving-from-wrong-target.rs:34:8
-   |
-LL | struct SUnsizedField<T: ?Sized> {
-   |        ^^^^^^^^^^^^^
-   = note: the return type of a function must have a statically known size
-help: consider removing the `?Sized` bound to make the type parameter `Sized`
-   |
-LL - struct SUnsizedField<T: ?Sized> {
-LL + struct SUnsizedField<T> {
-   |
-
-error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/deriving-from-wrong-target.rs:35:11
+  --> $DIR/deriving-from-wrong-target.rs:33:11
    |
 LL | struct SUnsizedField<T: ?Sized> {
    |                      - this type parameter needs to be `Sized`
@@ -110,6 +72,6 @@ help: function arguments must have a statically known size, borrowed types alway
 LL |     last: &T,
    |           +
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
