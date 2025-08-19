@@ -33,6 +33,7 @@ misformed = "misformed"
 targetting = "targetting"
 publically = "publically"
 clonable = "clonable"
+moreso = "moreso"
 
 # this can be valid word, depends on dictionary edition
 #matcheable = "matcheable"
