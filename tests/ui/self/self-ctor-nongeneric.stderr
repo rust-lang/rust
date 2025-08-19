@@ -9,7 +9,7 @@ LL |         const C: S0 = Self(0);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #124186 <https://github.com/rust-lang/rust/issues/124186>
-   = note: `#[warn(self_constructor_from_outer_item)]` on by default
+   = note: `#[warn(self_constructor_from_outer_item)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: can't reference `Self` constructor from outer item
   --> $DIR/self-ctor-nongeneric.rs:12:13
