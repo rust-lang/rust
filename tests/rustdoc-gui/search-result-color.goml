@@ -14,6 +14,7 @@ define-function: (
 
         // Waiting for the search results to appear...
         wait-for: "#search-tabs"
+        wait-for-false: "#search-tabs .count.loading"
         assert-css: (
             "#search-tabs > button > .count",
             {"color": |count_color|},
@@ -212,11 +213,7 @@ call-function: ("check-search-color", {
 // Check the alias.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
-write-into: (".search-input", "thisisanalias")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#search-tabs"
+call-function: ("perform-search", {"query": "thisisanalias"})
 
 define-function: (
     "check-alias",
