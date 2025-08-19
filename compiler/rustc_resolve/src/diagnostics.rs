@@ -1557,7 +1557,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
-            let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
+            let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::All(ns),
                 parent_scope,
@@ -2371,7 +2371,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 } else {
                     self.cm()
-                        .early_resolve_ident_in_lexical_scope(
+                        .resolve_ident_in_scope_set(
                             ident,
                             ScopeSet::All(ns_to_try),
                             parent_scope,
@@ -2474,7 +2474,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                 )
             });
-            if let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
+            if let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::All(ValueNS),
                 parent_scope,

@@ -1446,7 +1446,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return;
                 }
 
-                match this.cm().early_resolve_ident_in_lexical_scope(
+                match this.cm().resolve_ident_in_scope_set(
                     target,
                     ScopeSet::All(ns),
                     &import.parent_scope,

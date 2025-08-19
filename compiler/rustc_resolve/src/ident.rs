@@ -351,7 +351,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
                 return self
                     .cm()
-                    .early_resolve_ident_in_lexical_scope(
+                    .resolve_ident_in_scope_set(
                         orig_ident,
                         ScopeSet::Late(ns, module, finalize.map(|finalize| finalize.node_id)),
                         parent_scope,
@@ -376,13 +376,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         unreachable!()
     }
 
-    /// Resolve an identifier in lexical scope.
-    /// This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
-    /// expansion and import resolution (perhaps they can be merged in the future).
-    /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
-    /// `foo::bar!();` or `foo!();`) and also for import paths on 2018 edition.
+    /// Resolve an identifier in the specified set of scopes.
     #[instrument(level = "debug", skip(self))]
-    pub(crate) fn early_resolve_ident_in_lexical_scope<'r>(
+    pub(crate) fn resolve_ident_in_scope_set<'r>(
         self: CmResolver<'r, 'ra, 'tcx>,
         orig_ident: Ident,
         scope_set: ScopeSet<'ra>,
@@ -811,7 +807,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::ModuleAndExternPrelude(module) => {
                 assert_eq!(shadowing, Shadowing::Unrestricted);
-                let binding = self.early_resolve_ident_in_lexical_scope(
+                let binding = self.resolve_ident_in_scope_set(
                     ident,
                     ScopeSet::ModuleAndExternPrelude(ns, module),
                     parent_scope,
@@ -827,7 +823,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return if ns != TypeNS {
                     Err((Determined, Weak::No))
                 } else {
-                    let binding = self.early_resolve_ident_in_lexical_scope(
+                    let binding = self.resolve_ident_in_scope_set(
                         ident,
                         ScopeSet::ExternPrelude,
                         parent_scope,
@@ -852,7 +848,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
 
-                let binding = self.early_resolve_ident_in_lexical_scope(
+                let binding = self.resolve_ident_in_scope_set(
                     ident,
                     ScopeSet::All(ns),
                     parent_scope,
@@ -945,7 +941,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Now we are in situation when new item/import can appear only from a glob or a macro
         // expansion. With restricted shadowing names from globs and macro expansions cannot
         // shadow names from outer scopes, so we can freely fallback from module search to search
-        // in outer scopes. For `early_resolve_ident_in_lexical_scope` to continue search in outer
+        // in outer scopes. For `resolve_ident_in_scope_set` to continue search in outer
         // scopes we return `Undetermined` with `Weak::Yes`.
 
         // Check if one of unexpanded macros can still define the name,
@@ -1635,7 +1631,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     _ => Err(Determinacy::determined(finalize.is_some())),
                 }
             } else {
-                self.reborrow().early_resolve_ident_in_lexical_scope(
+                self.reborrow().resolve_ident_in_scope_set(
                     ident,
                     ScopeSet::All(ns),
                     parent_scope,
