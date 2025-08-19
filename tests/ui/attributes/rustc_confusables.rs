@@ -45,4 +45,5 @@ impl Bar {
 #[rustc_confusables("blah")]
 //~^ ERROR attribute cannot be used on
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 fn not_inherent_impl_method() {}

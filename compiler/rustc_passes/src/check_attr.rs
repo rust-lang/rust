@@ -194,9 +194,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::MayDangle(attr_span)) => {
                     self.check_may_dangle(hir_id, *attr_span)
                 }
-                Attribute::Parsed(AttributeKind::MustUse { span, .. }) => {
-                    self.check_must_use(hir_id, *span, target)
-                }
                 &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
                     self.check_custom_mir(dialect, phase, attr_span)
                 }
@@ -249,7 +246,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Coverage (..)
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Coroutine(..)
-                    | AttributeKind::Linkage(..),
+                    | AttributeKind::Linkage(..)
+                    | AttributeKind::MustUse { .. },
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -1261,41 +1259,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // `#[ffi_const]` functions cannot be `#[ffi_pure]`
             self.dcx().emit_err(errors::BothFfiConstAndPure { attr_span });
         }
-    }
-
-    /// Warns against some misuses of `#[must_use]`
-    fn check_must_use(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        if matches!(
-            target,
-            Target::Fn
-                | Target::Enum
-                | Target::Struct
-                | Target::Union
-                | Target::Method(MethodKind::Trait { body: false } | MethodKind::Inherent)
-                | Target::ForeignFn
-                // `impl Trait` in return position can trip
-                // `unused_must_use` if `Trait` is marked as
-                // `#[must_use]`
-                | Target::Trait
-        ) {
-            return;
-        }
-
-        // `#[must_use]` can be applied to a trait method definition with a default body
-        if let Target::Method(MethodKind::Trait { body: true }) = target
-            && let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id
-            && let containing_item = self.tcx.hir_expect_item(parent_def_id)
-            && let hir::ItemKind::Trait(..) = containing_item.kind
-        {
-            return;
-        }
-
-        self.tcx.emit_node_span_lint(
-            UNUSED_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            errors::MustUseNoEffect { target: target.plural_name(), attr_span },
-        );
     }
 
     /// Checks if `#[must_not_suspend]` is applied to a struct, enum, union, or trait.

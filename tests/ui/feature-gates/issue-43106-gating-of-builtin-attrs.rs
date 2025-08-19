@@ -50,9 +50,11 @@
 #![should_panic] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![ignore] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![no_implicit_prelude]
 #![reexport_test_harness_main = "2900"]
 // see gated-link-args.rs
@@ -61,22 +63,28 @@
 #![proc_macro_derive(Test)] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![doc = "2400"]
 #![cold] //~ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 #![link()] //~ WARN attribute should be applied to an `extern` block
 //~^ WARN this was previously accepted
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 #![link_section = "1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 #![must_use]
-//~^ WARN `#[must_use]` has no effect
+//~^ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
 //~| HELP remove the attribute
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
@@ -184,21 +192,25 @@ mod macro_use {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_use] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[macro_export]
@@ -260,57 +272,68 @@ mod path {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"]  struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[path = "3800"] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[automatically_derived]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod automatically_derived {
     mod inner { #![automatically_derived] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] fn f() { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] trait W { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[automatically_derived] impl W for S { }
 }
@@ -319,11 +342,13 @@ mod automatically_derived {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod no_mangle {
     mod inner { #![no_mangle] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] fn f() { }
 
@@ -331,27 +356,32 @@ mod no_mangle {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_mangle] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     trait Tr {
         #[no_mangle] fn foo();
         //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
+        //~| HELP remove the attribute
 
         #[no_mangle] fn bar() {}
         //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
         //~| HELP can be applied to
+        //~| HELP remove the attribute
     }
 }
 
@@ -359,11 +389,13 @@ mod no_mangle {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod should_panic {
     mod inner { #![should_panic] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] fn f() { }
 
@@ -371,27 +403,32 @@ mod should_panic {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[should_panic] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[ignore]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod ignore {
     mod inner { #![ignore] }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] fn f() { }
 
@@ -399,16 +436,19 @@ mod ignore {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[ignore] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[no_implicit_prelude]
@@ -419,21 +459,25 @@ mod no_implicit_prelude {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[no_implicit_prelude] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[reexport_test_harness_main = "2900"]
@@ -467,21 +511,25 @@ mod macro_escape {
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] struct S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] type T = S;
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[macro_escape] impl S { }
     //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[no_std]
@@ -524,12 +572,14 @@ mod doc {
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can only be applied to
+//~| HELP remove the attribute
 mod cold {
 
     mod inner { #![cold] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] fn f() { }
 
@@ -537,64 +587,76 @@ mod cold {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 
     #[cold] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can only be applied to
+    //~| HELP remove the attribute
 }
 
 #[link_name = "1900"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod link_name {
     #[link_name = "1900"]
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
     extern "C" { }
 
     mod inner { #![link_name="1900"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] fn f() { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] struct S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_name = "1900"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[link_section = "1800"]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
 //~| HELP can be applied to
+//~| HELP remove the attribute
 mod link_section {
     mod inner { #![link_section="1800"] }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] fn f() { }
 
@@ -602,16 +664,19 @@ mod link_section {
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] type T = S;
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[link_section = "1800"] impl S { }
     //~^ WARN attribute cannot be used on
     //~| WARN previously accepted
     //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 
@@ -668,21 +733,29 @@ mod deprecated {
     #[deprecated] impl super::StructForDeprecated { }
 }
 
-#[must_use] //~ WARN `#[must_use]` has no effect
-//~^ HELP remove the attribute
+#[must_use] //~ WARN attribute cannot be used on
+//~| WARN previously accepted
+//~| HELP can be applied to
+//~| HELP remove the attribute
 mod must_use {
-    mod inner { #![must_use] } //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    mod inner { #![must_use] } //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 
     #[must_use] fn f() { }
 
     #[must_use] struct S;
 
-    #[must_use] type T = S; //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    #[must_use] type T = S; //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 
-    #[must_use] impl S { } //~ WARN `#[must_use]` has no effect
-    //~^ HELP remove the attribute
+    #[must_use] impl S { } //~ WARN attribute cannot be used on
+    //~| WARN previously accepted
+    //~| HELP can be applied to
+    //~| HELP remove the attribute
 }
 
 #[windows_subsystem = "windows"]
