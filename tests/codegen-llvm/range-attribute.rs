@@ -4,7 +4,9 @@
 // 32-bit systems will return 128bit values using a return area pointer.
 //@ revisions: bit32 bit64
 //@[bit32] only-32bit
+//@[bit32] filecheck-flags: --check-prefixes=CHECK,bit32
 //@[bit64] only-64bit
+//@[bit64] filecheck-flags: --check-prefixes=CHECK,bit64
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 #![crate_type = "lib"]

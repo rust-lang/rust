@@ -1,6 +1,10 @@
 // ignore-tidy-linelength
 //@ add-core-stubs
 //@ revisions: ENABLE_SVE DISABLE_SVE DISABLE_NEON ENABLE_NEON
+//@ [ENABLE_SVE] filecheck-flags: --check-prefixes=ENABLE_SVE
+//@ [DISABLE_SVE] filecheck-flags: --check-prefixes=DISABLE_SVE
+//@ [ENABLE_NEON] filecheck-flags: --check-prefixes=ENABLE_NEON
+//@ [DISABLE_NEON] filecheck-flags: --check-prefixes=DISABLE_NEON
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 

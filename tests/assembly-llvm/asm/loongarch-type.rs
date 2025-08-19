@@ -8,6 +8,7 @@
 
 //@[loongarch64] compile-flags: --target loongarch64-unknown-none
 //@[loongarch64] needs-llvm-components: loongarch
+//@[loongarch64] filecheck-flags: --check-prefixes=CHECK,loongarch64
 
 //@ compile-flags: -Zmerge-functions=disabled
 

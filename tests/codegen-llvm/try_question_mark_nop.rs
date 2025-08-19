@@ -3,7 +3,9 @@
 //@ only-x86_64
 //@ revisions: NINETEEN TWENTY
 //@[NINETEEN] exact-llvm-major-version: 19
+//@[NINETEEN] filecheck-flags: --check-prefixes=CHECK,NINETEEN
 //@[TWENTY] min-llvm-version: 20
+//@[TWENTY] filecheck-flags: --check-prefixes=CHECK,TWENTY
 
 #![crate_type = "lib"]
 #![feature(try_blocks)]

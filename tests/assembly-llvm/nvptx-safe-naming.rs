@@ -4,6 +4,8 @@
 //@ revisions: LLVM20 LLVM21
 //@ [LLVM21] min-llvm-version: 21
 //@ [LLVM20] max-llvm-major-version: 20
+//@ [LLVM21] filecheck-flags: --check-prefixes=CHECK,LLVM21
+//@ [LLVM20] filecheck-flags: --check-prefixes=CHECK,LLVM20
 
 #![feature(abi_ptx)]
 #![no_std]

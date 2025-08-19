@@ -6,6 +6,8 @@
 //@[x86_64] needs-llvm-components: x86
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
 //@[i686] needs-llvm-components: x86
+//@[x86_64] filecheck-flags: --check-prefixes=CHECK,x86_64
+//@[i686] filecheck-flags: --check-prefixes=CHECK,i686
 //@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled

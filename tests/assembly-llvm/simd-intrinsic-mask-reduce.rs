@@ -4,8 +4,10 @@
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 // Set the base cpu explicitly, in case the default has been changed.
 //@ [x86] compile-flags: -C target-cpu=x86-64
+//@ [x86] filecheck-flags: --check-prefixes=CHECK,x86
 //@ [x86] needs-llvm-components: x86
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
+//@ [aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
 //@ [aarch64] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort

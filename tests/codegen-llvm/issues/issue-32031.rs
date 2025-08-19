@@ -2,7 +2,9 @@
 // 32-bit x86 returns `f32` and `f64` differently to avoid the x87 stack.
 //@ revisions: x86 other
 //@[x86] only-rustc_abi-x86-sse2
+//@[x86] filecheck-flags: --check-prefix=x86
 //@[other] ignore-x86
+//@[other] filecheck-flags: --check-prefix=other
 
 #![crate_type = "lib"]
 

@@ -2,12 +2,16 @@
 //@ compile-flags: --crate-type=rlib -Copt-level=0
 //@ revisions: force-on aarch64-apple aarch64-apple-on aarch64-apple-off
 //@ [force-on] compile-flags: -Cforce-frame-pointers=on
+//@ [force-on] filecheck-flags: --check-prefixes=CHECK,force-on
 //@ [aarch64-apple] needs-llvm-components: aarch64
 //@ [aarch64-apple] compile-flags: --target=aarch64-apple-darwin
+//@ [aarch64-apple] filecheck-flags: --check-prefixes=CHECK,aarch64-apple
 //@ [aarch64-apple-on] needs-llvm-components: aarch64
 //@ [aarch64-apple-on] compile-flags: --target=aarch64-apple-darwin -Cforce-frame-pointers=on
+//@ [aarch64-apple-on] filecheck-flags: --check-prefixes=CHECK,aarch64-apple-on
 //@ [aarch64-apple-off] needs-llvm-components: aarch64
 //@ [aarch64-apple-off] compile-flags: --target=aarch64-apple-darwin -Cforce-frame-pointers=off
+//@ [aarch64-apple-off] filecheck-flags: --check-prefixes=CHECK,aarch64-apple-off
 /*!
 
 Tests the extent to which frame pointers can be controlled by the CLI.

@@ -4,12 +4,16 @@
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //@[powerpc] needs-llvm-components: powerpc
 //@[powerpc_altivec] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec --cfg altivec
+//@[powerpc_altivec] filecheck-flags: --check-prefixes=CHECK,powerpc_altivec
 //@[powerpc_altivec] needs-llvm-components: powerpc
 //@[powerpc_vsx] compile-flags: --target powerpc-unknown-linux-gnu -C target-feature=+altivec,+vsx --cfg altivec --cfg vsx
+//@[powerpc_vsx] filecheck-flags: --check-prefixes=CHECK,powerpc_vsx
 //@[powerpc_vsx] needs-llvm-components: powerpc
 //@[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu --cfg altivec
+//@[powerpc64] filecheck-flags: --check-prefixes=CHECK,powerpc64
 //@[powerpc64] needs-llvm-components: powerpc
 //@[powerpc64_vsx] compile-flags: --target powerpc64-unknown-linux-gnu -C target-feature=+vsx --cfg altivec --cfg vsx
+//@[powerpc64_vsx] filecheck-flags: --check-prefixes=CHECK,powerpc64_vsx
 //@[powerpc64_vsx] needs-llvm-components: powerpc
 //@ compile-flags: -Zmerge-functions=disabled
 

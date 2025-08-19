@@ -8,14 +8,15 @@
 //@ [MSVC] needs-llvm-components: x86
 //@ [MSVC] compile-flags: --target x86_64-pc-windows-msvc
 // Use `WIN` as a common prefix for MSVC and MINGW but *not* the softfloat test.
-//@ [MSVC] filecheck-flags: --check-prefix=WIN
+//@ [MSVC] filecheck-flags: --check-prefixes=CHECK,WIN
 //@ [MINGW] needs-llvm-components: x86
 //@ [MINGW] compile-flags: --target x86_64-pc-windows-gnu
-//@ [MINGW] filecheck-flags: --check-prefix=WIN
+//@ [MINGW] filecheck-flags: --check-prefixes=CHECK,WIN
 // The `x86_64-unknown-uefi` target also uses the Windows calling convention,
 // but does not have SSE registers available.
 //@ [softfloat] needs-llvm-components: x86
 //@ [softfloat] compile-flags: --target x86_64-unknown-uefi
+//@ [softfloat] filecheck-flags: --check-prefixes=CHECK,softfloat
 
 #![crate_type = "lib"]
 #![no_std]

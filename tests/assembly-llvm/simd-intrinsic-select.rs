@@ -8,6 +8,9 @@
 //@ [x86-avx512] needs-llvm-components: x86
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
+//@ [x86-avx2] filecheck-flags: --check-prefixes=CHECK,x86-avx2
+//@ [x86-avx512] filecheck-flags: --check-prefixes=CHECK,x86-avx512
+//@ [aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 

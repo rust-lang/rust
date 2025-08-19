@@ -1,7 +1,9 @@
 //@ revisions:opt3 noopt
 //@ only-x86_64
 //@[opt3] compile-flags: -Copt-level=3
+//@[opt3] filecheck-flags: --check-prefixes=CHECK,opt3
 //@[noopt] compile-flags: -Cno-prepopulate-passes
+//@[noopt] filecheck-flags: --check-prefixes=CHECK,noopt
 
 #![crate_type = "lib"]
 #![no_std]

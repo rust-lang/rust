@@ -5,6 +5,9 @@
 //@[linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[darwin] compile-flags: --target aarch64-apple-darwin
 //@[win] compile-flags: --target aarch64-pc-windows-msvc
+//@[linux] filecheck-flags: --check-prefixes=linux
+//@[darwin] filecheck-flags: --check-prefixes=darwin
+//@[win] filecheck-flags: --check-prefixes=win
 //@[linux] needs-llvm-components: aarch64
 //@[darwin] needs-llvm-components: aarch64
 //@[win] needs-llvm-components: aarch64

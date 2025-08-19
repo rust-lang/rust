@@ -3,15 +3,21 @@
 //@ compile-flags: -Z merge-functions=disabled
 //@ revisions: x86_32 x86_32_win x86_64 aarch64 arm32
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64] filecheck-flags: --check-prefixes=CHECK,x86_64
 //@[x86_64] needs-llvm-components: x86
 //@[x86_32_win] compile-flags: --target i686-pc-windows-msvc
+//@[x86_32_win] filecheck-flags: --check-prefixes=CHECK,x86_32_win
 //@[x86_32_win] needs-llvm-components: x86
 //@[x86_32] compile-flags: --target i686-unknown-linux-gnu
+//@[x86_32] filecheck-flags: --check-prefixes=CHECK,x86_32
 //@[x86_32] needs-llvm-components: x86
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
+//@[aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
 //@[aarch64] needs-llvm-components: aarch64
 //@[arm32] compile-flags: --target armv7-unknown-linux-gnueabihf
+//@[arm32] filecheck-flags: --check-prefixes=CHECK,arm32
 //@[arm32] needs-llvm-components: arm
+
 #![crate_type = "lib"]
 #![feature(no_core)]
 #![feature(extended_varargs_abi_support, extern_system_varargs)]

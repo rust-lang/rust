@@ -4,13 +4,21 @@
 //@ revisions: BTI PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
 //@ needs-llvm-components: aarch64
 //@ [BTI] compile-flags: -Z branch-protection=bti
+//@ [BTI] filecheck-flags: --check-prefixes=CHECK,BTI
 //@ [PACRET] compile-flags: -Z branch-protection=pac-ret
+//@ [PACRET] filecheck-flags: --check-prefixes=CHECK,PACRET
 //@ [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
+//@ [LEAF] filecheck-flags: --check-prefixes=CHECK,LEAF
 //@ [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
+//@ [BKEY] filecheck-flags: --check-prefixes=CHECK,BKEY
 //@ [PAUTHLR] compile-flags: -Z branch-protection=pac-ret,pc
+//@ [PAUTHLR] filecheck-flags: --check-prefixes=CHECK,PAUTHLR
 //@ [PAUTHLR_BKEY] compile-flags: -Z branch-protection=pac-ret,pc,b-key
+//@ [PAUTHLR_BKEY] filecheck-flags: --check-prefixes=CHECK,PAUTHLR_BKEY
 //@ [PAUTHLR_LEAF] compile-flags: -Z branch-protection=pac-ret,pc,leaf
+//@ [PAUTHLR_LEAF] filecheck-flags: --check-prefixes=CHECK,PAUTHLR_LEAF
 //@ [PAUTHLR_BTI] compile-flags: -Z branch-protection=bti,pac-ret,pc
+//@ [PAUTHLR_BTI] filecheck-flags: --check-prefixes=CHECK,PAUTHLR_BTI
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 
 #![crate_type = "lib"]

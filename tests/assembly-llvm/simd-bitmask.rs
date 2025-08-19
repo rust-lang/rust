@@ -1,14 +1,18 @@
 //@ add-core-stubs
 //@ revisions: x86 x86-avx2 x86-avx512 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
+//@ [x86] filecheck-flags: --check-prefixes=CHECK,x86
 //@ [x86] needs-llvm-components: x86
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx2] compile-flags: -C target-feature=+avx2
+//@ [x86-avx2] filecheck-flags: --check-prefixes=CHECK,x86-avx2
 //@ [x86-avx2] needs-llvm-components: x86
 //@ [x86-avx512] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx512] compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512dq
+//@ [x86-avx512] filecheck-flags: --check-prefixes=CHECK,x86-avx512
 //@ [x86-avx512] needs-llvm-components: x86
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
+//@ [aarch64] filecheck-flags: --check-prefixes=CHECK,aarch64
 //@ [aarch64] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort

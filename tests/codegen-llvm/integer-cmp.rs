@@ -3,7 +3,9 @@
 
 //@ revisions: llvm-pre-20 llvm-20
 //@ [llvm-20] min-llvm-version: 20
+//@ [llvm-20] filecheck-flags: --check-prefixes=CHECK,llvm-20
 //@ [llvm-pre-20] max-llvm-major-version: 19
+//@ [llvm-pre-20] filecheck-flags: --check-prefixes=CHECK,llvm-pre-20
 //@ compile-flags: -C opt-level=3 -Zmerge-functions=disabled
 
 #![crate_type = "lib"]

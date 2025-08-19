@@ -26,6 +26,7 @@
 //@ [WIN] filecheck-flags: -DINSTR_PROF_COVMAP=.lcovmap$M
 //@ [WIN] filecheck-flags: -DINSTR_PROF_COVFUN=.lcovfun$M
 //@ [WIN] filecheck-flags: '-DCOMDAT_IF_SUPPORTED=, comdat'
+//@ [WIN] filecheck-flags: --check-prefixes=CHECK,WIN
 
 // ignore-tidy-linelength
 

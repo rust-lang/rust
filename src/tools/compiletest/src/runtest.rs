@@ -2071,25 +2071,6 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // Because we use custom prefixes, we also have to register the default prefix.
-        filecheck.arg("--check-prefix=CHECK");
-
-        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
-        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
-        // whether the test author actually wanted revision-specific check prefixes or not.
-        //
-        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
-
-        // HACK: tests are allowed to use a revision name as a check prefix.
-        if let Some(rev) = self.revision {
-            filecheck.arg("--check-prefix").arg(rev);
-        }
-
-        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
-        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
-        // concerns.
-        filecheck.arg("--allow-unused-prefixes");
-
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
 

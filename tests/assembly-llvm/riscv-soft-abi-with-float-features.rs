@@ -5,6 +5,8 @@
 //@ revisions: LLVM-PRE-20 LLVM-POST-20
 //@ [LLVM-PRE-20] max-llvm-major-version: 19
 //@ [LLVM-POST-20] min-llvm-version: 20
+//@ [LLVM-PRE-20] filecheck-flags: --check-prefixes=CHECK,LLVM-PRE-20
+//@ [LLVM-POST-20] filecheck-flags: --check-prefixes=CHECK,LLVM-POST-20
 
 #![feature(no_core, lang_items, f16)]
 #![crate_type = "lib"]

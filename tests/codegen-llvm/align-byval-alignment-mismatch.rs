@@ -5,8 +5,10 @@
 //@ compile-flags: -Cno-prepopulate-passes -Copt-level=1 -Cpanic=abort
 //@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
 //@[i686-linux] needs-llvm-components: x86
+//@[i686-linux] filecheck-flags: --check-prefixes=CHECK,i686-linux
 //@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64-linux] needs-llvm-components: x86
+//@[x86_64-linux] filecheck-flags: --check-prefixes=CHECK,x86_64-linux
 
 // Tests that we correctly copy arguments into allocas when the alignment of the byval argument
 // is different from the alignment of the Rust type.

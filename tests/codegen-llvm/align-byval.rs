@@ -3,14 +3,19 @@
 //@ revisions:m68k x86_64-linux x86_64-windows i686-linux i686-windows
 
 //@[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//@[m68k] filecheck-flags: --check-prefixes=CHECK,m68k
 //@[m68k] needs-llvm-components: m68k
 //@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64-linux] filecheck-flags: --check-prefixes=CHECK,x86_64-linux
 //@[x86_64-linux] needs-llvm-components: x86
 //@[x86_64-windows] compile-flags: --target x86_64-pc-windows-msvc
+//@[x86_64-windows] filecheck-flags: --check-prefixes=CHECK,x86_64-windows
 //@[x86_64-windows] needs-llvm-components: x86
 //@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
+//@[i686-linux] filecheck-flags: --check-prefixes=CHECK,i686-linux
 //@[i686-linux] needs-llvm-components: x86
 //@[i686-windows] compile-flags: --target i686-pc-windows-msvc
+//@[i686-windows] filecheck-flags: --check-prefixes=CHECK,i686-windows
 //@[i686-windows] needs-llvm-components: x86
 
 // Tests that `byval` alignment is properly specified (#80127).

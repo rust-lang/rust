@@ -1,7 +1,10 @@
 //@ revisions: NO-OPT SIZE-OPT SPEED-OPT
 //@[NO-OPT] compile-flags: -Copt-level=0 -Ccodegen-units=1
+//@[NO-OPT] filecheck-flags: --check-prefixes=CHECK,NO-OPT
 //@[SIZE-OPT] compile-flags: -Copt-level=s -Ccodegen-units=1
+//@[SIZE-OPT] filecheck-flags: --check-prefixes=CHECK,SIZE-OPT
 //@[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
+//@[SPEED-OPT] filecheck-flags: --check-prefixes=CHECK,SPEED-OPT
 
 #![feature(optimize_attribute)]
 #![crate_type = "rlib"]
