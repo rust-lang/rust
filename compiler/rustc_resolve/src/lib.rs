@@ -159,8 +159,7 @@ enum ScopeSet<'ra> {
     /// All scopes with macro namespace and the given macro kind restriction.
     Macro(MacroKind),
     /// All scopes with the given namespace, used for partially performing late resolution.
-    /// The node id enables lints and is used for reporting them.
-    Late(Namespace, Option<NodeId>),
+    Late(Namespace),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -1888,7 +1887,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        self.cm().visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
+        let scope_set = ScopeSet::All(TypeNS);
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |this, scope, _, _| {
             match scope {
                 Scope::Module(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);

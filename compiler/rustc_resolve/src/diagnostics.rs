@@ -1020,11 +1020,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         suggestions: &mut Vec<TypoSuggestion>,
         scope_set: ScopeSet<'ra>,
-        parent_scope: &ParentScope<'ra>,
+        ps: &ParentScope<'ra>,
         ctxt: SyntaxContext,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        self.cm().visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
+        self.cm().visit_scopes(scope_set, ps, ctxt, None, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);

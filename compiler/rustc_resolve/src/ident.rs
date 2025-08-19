@@ -49,6 +49,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         ctxt: SyntaxContext,
+        derive_fallback_lint_id: Option<NodeId>,
         mut visitor: impl FnMut(
             &mut CmResolver<'r, 'ra, 'tcx>,
             Scope<'ra>,
@@ -193,10 +194,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 },
                 Scope::Module(module, prev_lint_id) => {
                     use_prelude = !module.no_implicit_prelude;
-                    let derive_fallback_lint_id = match scope_set {
-                        ScopeSet::Late(.., lint_id) => lint_id,
-                        _ => None,
-                    };
                     match self.hygienic_lexical_parent(module, &mut ctxt, derive_fallback_lint_id) {
                         Some((parent_module, lint_id)) => {
                             Scope::Module(parent_module, lint_id.or(prev_lint_id))
@@ -354,7 +351,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .cm()
                     .resolve_ident_in_scope_set(
                         orig_ident,
-                        ScopeSet::Late(ns, finalize.map(|finalize| finalize.node_id)),
+                        ScopeSet::Late(ns),
                         parent_scope,
                         finalize,
                         finalize.is_some(),
@@ -434,10 +431,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Go through all the scopes and try to resolve the name.
+        let derive_fallback_lint_id = match (finalize, scope_set) {
+            (Some(finalize), ScopeSet::Late(..)) => Some(finalize.node_id),
+            _ => None,
+        };
         let break_result = self.visit_scopes(
             scope_set,
             parent_scope,
             orig_ident.span.ctxt(),
+            derive_fallback_lint_id,
             |this, scope, use_prelude, ctxt| {
                 let ident = Ident::new(orig_ident.name, orig_ident.span.with_ctxt(ctxt));
                 let result = match scope {
