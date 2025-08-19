@@ -206,10 +206,10 @@ mod expressions {
         move || value;
         async || value;
         async move || value;
-        static || value;            //[hir]~ ERROR closures cannot be static
-        static move || value;       //[hir]~ ERROR closures cannot be static
-        (static async || value);
-        (static async move || value);
+        static || value;              //[hir]~ ERROR closures cannot be static
+        static move || value;         //[hir]~ ERROR closures cannot be static
+        (static async || value);      //[hir]~ ERROR closures cannot be static
+        (static async move || value); //[hir]~ ERROR closures cannot be static
         || -> u8 { value };
         1 + || {};
     }

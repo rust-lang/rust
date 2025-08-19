@@ -223,6 +223,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         binder,
                         *capture_clause,
                         e.id,
+                        *movability,
                         expr_hir_id,
                         *coroutine_kind,
                         fn_decl,
@@ -1152,6 +1153,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         binder: &ClosureBinder,
         capture_clause: CaptureBy,
         closure_id: NodeId,
+        movability: Movability,
         closure_hir_id: HirId,
         coroutine_kind: CoroutineKind,
         decl: &FnDecl,
@@ -1159,6 +1161,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_decl_span: Span,
         fn_arg_span: Span,
     ) -> hir::ExprKind<'hir> {
+        if movability == Movability::Static {
+            self.dcx().emit_err(ClosureCannotBeStatic { fn_decl_span });
+        }
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 

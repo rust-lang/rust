@@ -215,8 +215,16 @@ mod expressions {
         move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
         || value;
         move || value;
-        || |mut _task_context: ResumeTy| { { let _t = value; _t } };
-        move || |mut _task_context: ResumeTy| { { let _t = value; _t } };
+        ||
+            |mut _task_context: ResumeTy|
+                {
+                    { let _t = value; _t }
+                };
+        move ||
+            |mut _task_context: ResumeTy|
+                {
+                    { let _t = value; _t }
+                };
         || -> u8 { value };
         1 + (|| { });
     }
