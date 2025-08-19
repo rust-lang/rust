@@ -23,6 +23,8 @@ extern crate std;
 #[prelude_import]
 use std::prelude::rust_2021::*;
 
+use std::from::From;
+
 // Empty struct.
 struct Empty;
 #[automatically_derived]
