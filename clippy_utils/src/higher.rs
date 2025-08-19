@@ -293,15 +293,12 @@ impl<'a> VecArgs<'a> {
                     // `vec![elem; size]` case
                     Some(VecArgs::Repeat(elem, size))
                 },
-                (Some(sym::slice_into_vec), [slice]) => {
-                    // `vec![a, b, c]` case
+                (Some(sym::slice_into_vec), [slice])
                     if let ExprKind::Call(_, [arg]) = slice.kind
-                        && let ExprKind::Array(args) = arg.kind
-                    {
-                        Some(VecArgs::Vec(args))
-                    } else {
-                        None
-                    }
+                        && let ExprKind::Array(args) = arg.kind =>
+                {
+                    // `vec![a, b, c]` case
+                    Some(VecArgs::Vec(args))
                 },
                 (Some(sym::vec_new), []) => Some(VecArgs::Vec(&[])),
                 _ => None,
