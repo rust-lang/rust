@@ -781,7 +781,10 @@ impl<'ra> std::ops::Deref for Module<'ra> {
 
 impl<'ra> fmt::Debug for Module<'ra> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.res())
+        match self.kind {
+            ModuleKind::Block => write!(f, "block"),
+            ModuleKind::Def(..) => write!(f, "{:?}", self.res()),
+        }
     }
 }
 
