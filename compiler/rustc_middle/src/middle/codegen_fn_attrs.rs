@@ -61,8 +61,8 @@ pub struct CodegenFnAttrs {
     /// The `#[link_section = "..."]` attribute, or what executable section this
     /// should be placed in.
     pub link_section: Option<Symbol>,
-    /// The `#[no_sanitize(...)]` attribute. Indicates sanitizers for which
-    /// instrumentation should be disabled inside the annotated function.
+    /// The `#[sanitize(xyz = "off")]` attribute. Indicates sanitizers for which
+    /// instrumentation should be disabled inside the function.
     pub no_sanitize: SanitizerSet,
     /// The `#[instruction_set(set)]` attribute. Indicates if the generated code should
     /// be generated against a specific instruction set. Only usable on architectures which allow

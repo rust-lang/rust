@@ -49,11 +49,23 @@ LL | #[crate_name]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/crates-and-source-files.html#the-crate_name-attribute>
 
-error: malformed `no_sanitize` attribute input
+error: malformed `sanitize` attribute input
   --> $DIR/malformed-attrs.rs:92:1
    |
-LL | #[no_sanitize]
-   | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
+LL | #[sanitize]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[sanitize(address = "on|off")]
+   |           ++++++++++++++++++++
+LL | #[sanitize(cfi = "on|off")]
+   |           ++++++++++++++++
+LL | #[sanitize(hwaddress = "on|off")]
+   |           ++++++++++++++++++++++
+LL | #[sanitize(kcfi = "on|off")]
+   |           +++++++++++++++++
+   = and 5 other candidates
 
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:106:1
