@@ -4,5 +4,4 @@
 fn main() {
     let s = r#" \\ "#r"\\ ";
     //~^ ERROR suffixes on string literals are invalid
-    //~| ERROR expected one of `.`, `;`, `?`, `else`, or an operator
 }
