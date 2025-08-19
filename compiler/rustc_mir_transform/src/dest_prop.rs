@@ -141,7 +141,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
-use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
@@ -555,24 +555,13 @@ impl<'tcx, F> Visitor<'tcx> for VisitPlacesWith<F>
 where
     F: FnMut(Place<'tcx>, PlaceContext),
 {
-    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, ctxt: PlaceContext, _: Location) {
+        (self.0)(local.into(), ctxt);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
         (self.0)(*place, ctxt);
-        for proj in place.projection.iter() {
-            match proj {
-                ProjectionElem::Index(index) => (self.0)(
-                    index.into(),
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
-                ),
-                ProjectionElem::Deref
-                | ProjectionElem::Field(..)
-                | ProjectionElem::Downcast(..)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::OpaqueCast(..)
-                | ProjectionElem::UnwrapUnsafeBinder(..)
-                | ProjectionElem::Subtype(..) => {}
-            };
-        }
+        self.visit_projection(place.as_ref(), ctxt, location);
     }
 }
 
