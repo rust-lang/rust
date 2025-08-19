@@ -254,18 +254,12 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
         _ => None,
     });
 
-    if let ExprKind::MethodCall(
-        _,
-        map,
-        [
-            Expr {
-                kind: ExprKind::AddrOf(_, _, key),
-                span: key_span,
-                ..
-            },
-        ],
-        _,
-    ) = expr.kind
+    if let ExprKind::MethodCall(_, map, [arg], _) = expr.kind
+        && let Expr {
+            kind: ExprKind::AddrOf(_, _, key),
+            span: key_span,
+            ..
+        } = arg
         && key_span.eq_ctxt(expr.span)
     {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
