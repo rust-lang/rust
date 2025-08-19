@@ -171,12 +171,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );
-
-                return;
             }
-        }
-
-        if trait_name == Some(sym::PartialOrd)
+        } else if trait_name == Some(sym::PartialOrd)
             && impl_item.ident.name == sym::partial_cmp
             && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
             && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
