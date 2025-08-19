@@ -1831,7 +1831,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -1841,7 +1840,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [1, 2, 3, 4]);
     /// assert_eq!(deque.pop_front_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let first = self.front_mut()?;
         if predicate(first) { self.pop_front() } else { None }
@@ -1854,7 +1853,6 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_deque_pop_if)]
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
@@ -1864,10 +1862,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque, [0, 1, 2, 3]);
     /// assert_eq!(deque.pop_back_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    #[stable(feature = "vec_deque_pop_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
-        let first = self.back_mut()?;
-        if predicate(first) { self.pop_back() } else { None }
+        let last = self.back_mut()?;
+        if predicate(last) { self.pop_back() } else { None }
     }
 
     /// Prepends an element to the deque.
