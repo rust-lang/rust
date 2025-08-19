@@ -99,10 +99,7 @@ LL | fn function_with_lots_of_arguments(a: i32, b: char, c: i32, d: i32, e: i32,
    |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^         -------
 help: provide the argument
    |
-LL |     function_with_lots_of_arguments(
-LL |         variable_name,
-LL ~         /* char */,
-LL ~         variable_name,
+LL +         /* char */
    |
 
 error: aborting due to 6 previous errors

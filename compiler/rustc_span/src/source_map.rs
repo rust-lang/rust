@@ -543,9 +543,13 @@ impl SourceMap {
     /// Extracts the source surrounding the given `Span` using the `extract_source` function. The
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
-    pub fn span_to_source<F, T>(&self, sp: Span, extract_source: F) -> Result<T, SpanSnippetError>
+    pub fn span_to_source<F, T>(
+        &self,
+        sp: Span,
+        mut extract_source: F,
+    ) -> Result<T, SpanSnippetError>
     where
-        F: Fn(&str, usize, usize) -> Result<T, SpanSnippetError>,
+        F: FnMut(&str, usize, usize) -> Result<T, SpanSnippetError>,
     {
         let local_begin = self.lookup_byte_offset(sp.lo());
         let local_end = self.lookup_byte_offset(sp.hi());
@@ -700,7 +704,7 @@ impl SourceMap {
     pub fn span_extend_while(
         &self,
         span: Span,
-        f: impl Fn(char) -> bool,
+        mut f: impl FnMut(char) -> bool,
     ) -> Result<Span, SpanSnippetError> {
         self.span_to_source(span, |s, _start, end| {
             let n = s[end..].char_indices().find(|&(_, c)| !f(c)).map_or(s.len() - end, |(i, _)| i);
