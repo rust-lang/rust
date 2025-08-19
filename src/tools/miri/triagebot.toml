@@ -58,3 +58,6 @@ new_draft = true
 
 # Show range-diff links on force pushes.
 [range-diff]
+
+# Add link to the review body to review changes since posting it.
+[review-changes-since]
