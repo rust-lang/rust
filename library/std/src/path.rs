@@ -1191,7 +1191,7 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_pathbuf_osstring_new", issue = "141520")]
+    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }

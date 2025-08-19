@@ -432,10 +432,6 @@ passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait
 
-passes_must_use_no_effect =
-    `#[must_use]` has no effect when applied to {$target}
-    .suggestion = remove the attribute
-
 passes_no_link =
     attribute should be applied to an `extern crate` item
     .label = not an `extern crate` item
