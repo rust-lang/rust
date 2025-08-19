@@ -1,0 +1,10 @@
+error: invalid format string: expected `>` (alignment specifier) after `:` in format string; example: `{:>#X5}`
+  --> $DIR/format-alignment-hash.rs:3:20
+   |
+LL |     println!("{0:#X>18}", 12345);
+   |                    ^ expected `>` to occur after `:` in format string
+   |
+   = note: alignment must be one of `<` (left), `^` (center), or `>` (right)
+
+error: aborting due to 1 previous error
+
