@@ -261,7 +261,7 @@ pub unsafe fn atomic_fence<const ORD: AtomicOrdering>();
 pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
@@ -271,9 +271,15 @@ pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+    let _ = locality;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
@@ -283,9 +289,15 @@ pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32);
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+    let _ = locality;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
@@ -295,9 +307,15 @@ pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32);
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+    let _ = locality;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
@@ -307,7 +325,12 @@ pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32);
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_write_instruction<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub unsafe fn prefetch_write_instruction<T>(data: *const T, locality: i32) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+    let _ = locality;
+}
 
 /// Executes a breakpoint trap, for inspection by a debugger.
 ///
