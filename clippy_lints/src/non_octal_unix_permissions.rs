@@ -44,9 +44,9 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
             ExprKind::MethodCall(path, func, [param], _) => {
                 if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def()
                     && matches!(
-                        (path.ident.name, cx.tcx.get_diagnostic_name(adt.did())),
-                        (sym::mode, Some(sym::FsOpenOptions | sym::DirBuilder))
-                            | (sym::set_mode, Some(sym::FsPermissions))
+                        (cx.tcx.get_diagnostic_name(adt.did()), path.ident.name),
+                        (Some(sym::FsOpenOptions | sym::DirBuilder), sym::mode)
+                            | (Some(sym::FsPermissions), sym::set_mode)
                     )
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)
