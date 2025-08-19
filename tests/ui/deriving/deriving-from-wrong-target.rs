@@ -1,8 +1,9 @@
-//@ edition: 2021
 //@ check-fail
 
 #![feature(derive_from)]
 #![allow(dead_code)]
+
+use std::from::From;
 
 #[derive(From)]
 //~^ ERROR `#[derive(From)]` used on a struct with no fields

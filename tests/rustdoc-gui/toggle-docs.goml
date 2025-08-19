@@ -64,7 +64,7 @@ define-function: (
             "filter": |filter|,
         })
         // moving the cursor somewhere else to not mess with next function calls.
-        move-cursor-to: ".search-input"
+        move-cursor-to: "#search-button"
     },
 )
 

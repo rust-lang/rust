@@ -1489,15 +1489,21 @@ pub(crate) struct AttrCrateLevelOnlySugg {
     pub attr: Span,
 }
 
+/// "sanitize attribute not allowed here"
 #[derive(Diagnostic)]
-#[diag(passes_no_sanitize)]
-pub(crate) struct NoSanitize<'a> {
+#[diag(passes_sanitize_attribute_not_allowed)]
+pub(crate) struct SanitizeAttributeNotAllowed {
     #[primary_span]
     pub attr_span: Span,
-    #[label]
-    pub defn_span: Span,
-    pub accepted_kind: &'a str,
-    pub attr_str: &'a str,
+    /// "not a function, impl block, or module"
+    #[label(passes_not_fn_impl_mod)]
+    pub not_fn_impl_mod: Option<Span>,
+    /// "function has no body"
+    #[label(passes_no_body)]
+    pub no_body: Option<Span>,
+    /// "sanitize attribute can be applied to a function (with body), impl block, or module"
+    #[help]
+    pub help: (),
 }
 
 // FIXME(jdonszelmann): move back to rustc_attr

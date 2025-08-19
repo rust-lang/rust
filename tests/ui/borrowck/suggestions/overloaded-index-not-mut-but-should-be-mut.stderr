@@ -1,0 +1,38 @@
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:7:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider using `get_mut`
+   |
+LL -     let string = &map[&0];
+LL +     let string = map.get_mut(&0).unwrap();
+   |
+
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:14:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider using `get_mut`
+   |
+LL -     let string = &map[&0];
+LL +     let string = map.get_mut(&0).unwrap();
+   |
+
+error[E0596]: cannot borrow `*string` as mutable, as it is behind a `&` reference
+  --> $DIR/overloaded-index-not-mut-but-should-be-mut.rs:19:5
+   |
+LL |     string.push_str("test");
+   |     ^^^^^^ `string` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let string = &mut vec[0];
+   |                   +++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

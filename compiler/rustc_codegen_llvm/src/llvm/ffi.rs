@@ -616,17 +616,6 @@ pub(crate) enum DiagnosticLevel {
     Remark,
 }
 
-/// LLVMRustArchiveKind
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub(crate) enum ArchiveKind {
-    K_GNU,
-    K_BSD,
-    K_DARWIN,
-    K_COFF,
-    K_AIXBIG,
-}
-
 unsafe extern "C" {
     // LLVMRustThinLTOData
     pub(crate) type ThinLTOData;
@@ -775,19 +764,12 @@ pub(crate) struct Builder<'a>(InvariantOpaque<'a>);
 pub(crate) struct PassManager<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub type TargetMachine;
-    pub(crate) type Archive;
 }
-#[repr(C)]
-pub(crate) struct ArchiveIterator<'a>(InvariantOpaque<'a>);
-#[repr(C)]
-pub(crate) struct ArchiveChild<'a>(InvariantOpaque<'a>);
 unsafe extern "C" {
     pub(crate) type Twine;
     pub(crate) type DiagnosticInfo;
     pub(crate) type SMDiagnostic;
 }
-#[repr(C)]
-pub(crate) struct RustArchiveMember<'a>(InvariantOpaque<'a>);
 /// Opaque pointee of `LLVMOperandBundleRef`.
 #[repr(C)]
 pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
@@ -2443,7 +2425,7 @@ unsafe extern "C" {
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         UseEmulatedTls: bool,
-        ArgsCstrBuff: *const c_char,
+        ArgsCstrBuff: *const c_uchar, // See "PTR_LEN_STR".
         ArgsCstrBuffLen: usize,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
@@ -2510,19 +2492,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
     pub(crate) fn LLVMRustRunRestrictionPass(M: &Module, syms: *const *const c_char, len: size_t);
 
-    pub(crate) fn LLVMRustOpenArchive(path: *const c_char) -> Option<&'static mut Archive>;
-    pub(crate) fn LLVMRustArchiveIteratorNew(AR: &Archive) -> &mut ArchiveIterator<'_>;
-    pub(crate) fn LLVMRustArchiveIteratorNext<'a>(
-        AIR: &ArchiveIterator<'a>,
-    ) -> Option<&'a mut ArchiveChild<'a>>;
-    pub(crate) fn LLVMRustArchiveChildName(
-        ACR: &ArchiveChild<'_>,
-        size: &mut size_t,
-    ) -> *const c_char;
-    pub(crate) fn LLVMRustArchiveChildFree<'a>(ACR: &'a mut ArchiveChild<'a>);
-    pub(crate) fn LLVMRustArchiveIteratorFree<'a>(AIR: &'a mut ArchiveIterator<'a>);
-    pub(crate) fn LLVMRustDestroyArchive(AR: &'static mut Archive);
-
     pub(crate) fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);
 
     pub(crate) fn LLVMRustUnpackOptimizationDiagnostic<'a>(
@@ -2559,21 +2528,6 @@ unsafe extern "C" {
         ranges_out: *mut c_uint,
         num_ranges: &mut usize,
     ) -> bool;
-
-    pub(crate) fn LLVMRustWriteArchive(
-        Dst: *const c_char,
-        NumMembers: size_t,
-        Members: *const &RustArchiveMember<'_>,
-        WriteSymbtab: bool,
-        Kind: ArchiveKind,
-        isEC: bool,
-    ) -> LLVMRustResult;
-    pub(crate) fn LLVMRustArchiveMemberNew<'a>(
-        Filename: *const c_char,
-        Name: *const c_char,
-        Child: Option<&ArchiveChild<'a>>,
-    ) -> &'a mut RustArchiveMember<'a>;
-    pub(crate) fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
 
     pub(crate) fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 

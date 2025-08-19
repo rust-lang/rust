@@ -10,6 +10,7 @@ fn main() {
         "static/css/normalize.css",
         "static/js/main.js",
         "static/js/search.js",
+        "static/js/stringdex.js",
         "static/js/settings.js",
         "static/js/src-script.js",
         "static/js/storage.js",
