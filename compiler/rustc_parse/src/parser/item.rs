@@ -2961,9 +2961,9 @@ impl<'a> Parser<'a> {
         let mut params = ThinVec::new();
 
         // Parse the self parameter as first parameter
+        let attrs = self.parse_outer_attributes()?;
         if let Some(mut self_param) = self.parse_self_param()? {
-            let self_attrs = self.parse_outer_attributes()?;
-            self_param.attrs = self.attrs;
+            self_param.attrs = attrs;
             params.push(self_param);
         }    
 
