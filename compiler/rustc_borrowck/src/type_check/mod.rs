@@ -1895,7 +1895,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if !output_ty
                 .is_privately_uninhabited(self.tcx(), self.infcx.typing_env(self.infcx.param_env))
             {
-                span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
+                span_mirbug!(self, term, "call to non-diverging function {:?} w/o dest", sig);
             }
         } else {
             let dest_ty = destination.ty(self.body, tcx).ty;
