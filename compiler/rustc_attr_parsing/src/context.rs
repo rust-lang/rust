@@ -5,7 +5,7 @@ use std::sync::LazyLock;
 
 use itertools::Itertools;
 use private::Sealed;
-use rustc_ast::{self as ast, LitKind, MetaItemLit, NodeId};
+use rustc_ast::{self as ast, AttrStyle, LitKind, MetaItemLit, NodeId};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
@@ -315,6 +315,7 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
 
+    pub(crate) attr_style: AttrStyle,
     /// The expected structure of the attribute.
     ///
     /// Used in reporting errors to give a hint to users what the attribute *should* look like.
@@ -396,6 +397,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                     i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
                 }),
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -406,6 +408,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIntegerLiteral,
+            attr_style: self.attr_style,
         })
     }
 
@@ -416,6 +419,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedList,
+            attr_style: self.attr_style,
         })
     }
 
@@ -426,6 +430,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNoArgs,
+            attr_style: self.attr_style,
         })
     }
 
@@ -437,6 +442,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedIdentifier,
+            attr_style: self.attr_style,
         })
     }
 
@@ -449,6 +455,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedNameValue(name),
+            attr_style: self.attr_style,
         })
     }
 
@@ -460,6 +467,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::DuplicateKey(key),
+            attr_style: self.attr_style,
         })
     }
 
@@ -472,6 +480,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::UnexpectedLiteral,
+            attr_style: self.attr_style,
         })
     }
 
@@ -482,6 +491,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedSingleArgument,
+            attr_style: self.attr_style,
         })
     }
 
@@ -492,6 +502,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::ExpectedAtLeastOneArgument,
+            attr_style: self.attr_style,
         })
     }
 
@@ -510,6 +521,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: false,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -528,6 +540,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: false,
                 list: true,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -546,6 +559,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
                 strings: true,
                 list: false,
             },
+            attr_style: self.attr_style,
         })
     }
 
@@ -804,6 +818,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 },
             },
             attr_span: attr.span,
+            attr_style: attr.style,
             template,
             attr_path: path.get_attribute_path(),
         };
@@ -914,6 +929,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                     emit_lint: &mut emit_lint,
                                 },
                                 attr_span: lower_span(attr.span),
+                                attr_style: attr.style,
                                 template: &accept.template,
                                 attr_path: path.get_attribute_path(),
                             };
