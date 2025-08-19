@@ -34,6 +34,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
@@ -1457,22 +1458,32 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
+
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::Ptr(src)), Some(CastTy::Ptr(dst))) => {
-                                let src_tail = self.struct_tail(src.ty, location);
-                                let dst_tail = self.struct_tail(dst.ty, location);
-
-                                // This checks (lifetime part of) vtable validity for pointer casts,
-                                // which is irrelevant when there are aren't principal traits on
-                                // both sides (aka only auto traits).
-                                //
-                                // Note that other checks (such as denying `dyn Send` -> `dyn
-                                // Debug`) are in `rustc_hir_typeck`.
-                                if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) = *src_tail.kind()
-                                    && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) = *dst_tail.kind()
+                                if self
+                                    .infcx
+                                    .type_is_sized_modulo_regions(self.infcx.param_env, dst.ty)
+                                {
+                                    // Wide to thin ptr cast. This may even occur in an env with
+                                    // impossible predicates, such as `where dyn Trait: Sized`.
+                                    // In this case, we don't want to fall into the case below,
+                                    // since the types may not actually be equatable, but it's
+                                    // fine to perform this operation in an impossible env.
+                                } else if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) =
+                                    *self.struct_tail(src.ty, location).kind()
+                                    && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) =
+                                        *self.struct_tail(dst.ty, location).kind()
                                     && src_tty.principal().is_some()
                                     && dst_tty.principal().is_some()
                                 {
+                                    // This checks (lifetime part of) vtable validity for pointer casts,
+                                    // which is irrelevant when there are aren't principal traits on
+                                    // both sides (aka only auto traits).
+                                    //
+                                    // Note that other checks (such as denying `dyn Send` -> `dyn
+                                    // Debug`) are in `rustc_hir_typeck`.
+
                                     // Remove auto traits.
                                     // Auto trait checks are handled in `rustc_hir_typeck` as FCW.
                                     let src_obj = Ty::new_dynamic(
