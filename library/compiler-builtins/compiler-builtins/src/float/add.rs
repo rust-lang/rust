@@ -130,7 +130,7 @@ where
             return F::from_bits(MinInt::ZERO);
         }
 
-        // If partial cancellation occured, we need to left-shift the result
+        // If partial cancellation occurred, we need to left-shift the result
         // and adjust the exponent:
         if a_significand < implicit_bit << 3 {
             let shift = a_significand.leading_zeros() as i32
