@@ -19,7 +19,7 @@
 // implementations, so, we'll have to add more doc(hidden)s anyway
 #![doc(hidden)]
 
-use crate::char::{MAX_LEN_UTF16, encode_utf16_raw};
+use crate::char::encode_utf16_raw;
 use crate::clone::CloneToUninit;
 use crate::fmt::{self, Write};
 use crate::hash::{Hash, Hasher};
@@ -541,7 +541,7 @@ impl Iterator for EncodeWide<'_> {
             return Some(tmp);
         }
 
-        let mut buf = [0; MAX_LEN_UTF16];
+        let mut buf = [0; char::MAX_LEN_UTF16];
         self.code_points.next().map(|code_point| {
             let n = encode_utf16_raw(code_point.to_u32(), &mut buf).len();
             if n == 2 {
