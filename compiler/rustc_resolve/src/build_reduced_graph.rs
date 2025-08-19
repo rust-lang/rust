@@ -485,6 +485,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_span,
             root_id,
             vis,
+            vis_span: item.vis.span,
         });
 
         self.r.indeterminate_imports.push(import);
@@ -977,6 +978,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
+            vis_span: item.vis.span,
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1111,6 +1113,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
+                vis_span: item.vis.span,
             })
         };
 
@@ -1281,6 +1284,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
+                    vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);

@@ -47,7 +47,7 @@ pub(crate) struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
