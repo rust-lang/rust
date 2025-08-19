@@ -2137,9 +2137,9 @@ fn test_append_drop_leak() {
     let mut left = BTreeMap::new();
     let mut right = BTreeMap::new();
     left.insert(a.spawn(Panic::Never), ());
-    left.insert(b.spawn(Panic::InDrop), ()); // first duplicate key, dropped during append
+    left.insert(b.spawn(Panic::Never), ());
     left.insert(c.spawn(Panic::Never), ());
-    right.insert(b.spawn(Panic::Never), ());
+    right.insert(b.spawn(Panic::InDrop), ()); // first duplicate key, dropped during append
     right.insert(c.spawn(Panic::Never), ());
 
     catch_unwind(move || left.append(&mut right)).unwrap_err();
