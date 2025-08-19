@@ -602,7 +602,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// so we create a place starting from `PlaceBase::Upvar`, which will be resolved
     /// once all projections that allow us to identify a capture have been applied.
     fn lower_captured_upvar(
-        &mut self,
+        &self,
         block: BasicBlock,
         closure_def_id: LocalDefId,
         var_hir_id: LocalVarId,

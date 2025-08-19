@@ -287,7 +287,7 @@ where
         ControlFlow::Continue(())
     }
 
-    fn found_uncovered_ty_param(&mut self, ty: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
+    fn found_uncovered_ty_param(&self, ty: I::Ty) -> ControlFlow<OrphanCheckEarlyExit<I, E>> {
         if self.search_first_local_ty {
             return ControlFlow::Continue(());
         }
@@ -295,7 +295,7 @@ where
         ControlFlow::Break(OrphanCheckEarlyExit::UncoveredTyParam(ty))
     }
 
-    fn def_id_is_local(&mut self, def_id: I::DefId) -> bool {
+    fn def_id_is_local(&self, def_id: I::DefId) -> bool {
         match self.in_crate {
             InCrate::Local { .. } => def_id.is_local(),
             InCrate::Remote => false,

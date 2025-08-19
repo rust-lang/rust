@@ -307,7 +307,7 @@ impl<'a> Parser<'a> {
         Ok((lhs, parsed_something))
     }
 
-    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
+    fn should_continue_as_assoc_expr(&self, lhs: &Expr) -> bool {
         match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
             // Semi-statement forms are odd:
             // See https://github.com/rust-lang/rust/issues/29071
@@ -2281,7 +2281,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn is_array_like_block(&mut self) -> bool {
+    fn is_array_like_block(&self) -> bool {
         self.token.kind == TokenKind::OpenBrace
             && self
                 .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
@@ -2893,7 +2893,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_on_extra_if(&mut self, cond: &Box<Expr>) -> PResult<'a, ()> {
+    fn error_on_extra_if(&self, cond: &Box<Expr>) -> PResult<'a, ()> {
         if let ExprKind::Binary(Spanned { span: binop_span, node: binop }, _, right) = &cond.kind
             && let BinOpKind::And = binop
             && let ExprKind::If(cond, ..) = &right.kind
@@ -3864,7 +3864,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Converts an ident into 'label and emits an "expected a label, found an identifier" error.
-    fn recover_ident_into_label(&mut self, ident: Ident) -> Label {
+    fn recover_ident_into_label(&self, ident: Ident) -> Label {
         // Convert `label` -> `'label`,
         // so that nameres doesn't complain about non-existing label
         let label = format!("'{}", ident.name);

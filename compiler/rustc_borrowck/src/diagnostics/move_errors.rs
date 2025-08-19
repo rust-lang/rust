@@ -293,7 +293,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn has_ambiguous_copy(&mut self, ty: Ty<'tcx>) -> bool {
+    fn has_ambiguous_copy(&self, ty: Ty<'tcx>) -> bool {
         let Some(copy_def_id) = self.infcx.tcx.lang_items().copy_trait() else { return false };
 
         // Avoid bogus move errors because of an incoherent `Copy` impl.
@@ -301,7 +301,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             && self.infcx.tcx.coherent_trait(copy_def_id).is_err()
     }
 
-    fn report_cannot_move_from_static(&mut self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
+    fn report_cannot_move_from_static(&self, place: Place<'tcx>, span: Span) -> Diag<'infcx> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {

@@ -331,13 +331,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn pat_wild_with_node_id_of(&mut self, p: &Pat, hir_id: hir::HirId) -> &'hir hir::Pat<'hir> {
+    fn pat_wild_with_node_id_of(&self, p: &Pat, hir_id: hir::HirId) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.pat_with_node_id_of(p, hir::PatKind::Wild, hir_id))
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` already lowered.
     fn pat_with_node_id_of(
-        &mut self,
+        &self,
         p: &Pat,
         kind: hir::PatKind<'hir>,
         hir_id: hir::HirId,
@@ -360,7 +360,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::PatKind::Wild
     }
 
-    fn lower_range_end(&mut self, e: &RangeEnd, has_end: bool) -> hir::RangeEnd {
+    fn lower_range_end(&self, e: &RangeEnd, has_end: bool) -> hir::RangeEnd {
         match *e {
             RangeEnd::Excluded if has_end => hir::RangeEnd::Excluded,
             // No end; so `X..` behaves like `RangeFrom`.

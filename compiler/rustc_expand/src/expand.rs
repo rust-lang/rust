@@ -2194,7 +2194,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     fn expand_cfg_true(
-        &mut self,
+        &self,
         node: &mut (impl HasAttrs + HasNodeId),
         attr: ast::Attribute,
         pos: usize,

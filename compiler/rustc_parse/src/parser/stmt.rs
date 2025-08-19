@@ -783,7 +783,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
-    fn recover_missing_dot(&mut self, err: &mut Diag<'_>) {
+    fn recover_missing_dot(&self, err: &mut Diag<'_>) {
         let Some((ident, _)) = self.token.ident() else {
             return;
         };

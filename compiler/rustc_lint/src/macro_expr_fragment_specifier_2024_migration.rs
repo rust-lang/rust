@@ -119,7 +119,7 @@ impl Expr2024 {
         }
     }
 
-    fn check_ident_token(&mut self, cx: &crate::EarlyContext<'_>, token: &Token) {
+    fn check_ident_token(&self, cx: &crate::EarlyContext<'_>, token: &Token) {
         debug!("check_ident_token: {:?}", token);
         let (sym, edition) = match token.kind {
             TokenKind::Ident(sym, _) => (sym, Edition::Edition2024),

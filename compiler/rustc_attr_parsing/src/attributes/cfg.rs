@@ -90,7 +90,7 @@ fn parse_cfg_entry<S: Stage>(
 }
 
 fn parse_cfg_entry_version<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     list: &MetaItemListParser<'_>,
     meta_span: Span,
 ) -> Option<CfgEntry> {
@@ -119,7 +119,7 @@ fn parse_cfg_entry_version<S: Stage>(
 }
 
 fn parse_cfg_entry_target<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     list: &MetaItemListParser<'_>,
     meta_span: Span,
 ) -> Option<CfgEntry> {
@@ -169,7 +169,7 @@ fn parse_name_value<S: Stage>(
     name_span: Span,
     value: Option<&NameValueParser>,
     span: Span,
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
 ) -> Option<CfgEntry> {
     try_gate_cfg(name, span, cx.sess(), cx.features_option());
 

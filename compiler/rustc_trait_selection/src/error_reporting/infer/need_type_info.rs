@@ -160,7 +160,7 @@ struct ClosureEraser<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ClosureEraser<'a, 'tcx> {
-    fn new_infer(&mut self) -> Ty<'tcx> {
+    fn new_infer(&self) -> Ty<'tcx> {
         self.infcx.next_ty_var(DUMMY_SP)
     }
 }

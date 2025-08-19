@@ -142,7 +142,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_type_alias_where_clause_location(
-        &mut self,
+        &self,
         ty_alias: &TyAlias,
     ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
         if ty_alias.ty.is_none() || !ty_alias.where_clauses.before.has_where_token {

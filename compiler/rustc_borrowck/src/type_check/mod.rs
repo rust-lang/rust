@@ -2005,7 +2005,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
+    fn check_iscleanup(&self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         match block_data.terminator().kind {
             TerminatorKind::Goto { target } => {
@@ -2085,14 +2085,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn assert_iscleanup(&mut self, ctxt: &dyn fmt::Debug, bb: BasicBlock, iscleanuppad: bool) {
+    fn assert_iscleanup(&self, ctxt: &dyn fmt::Debug, bb: BasicBlock, iscleanuppad: bool) {
         if self.body[bb].is_cleanup != iscleanuppad {
             span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}", bb, iscleanuppad);
         }
     }
 
     fn assert_iscleanup_unwind(
-        &mut self,
+        &self,
         ctxt: &dyn fmt::Debug,
         unwind: UnwindAction,
         is_cleanup: bool,

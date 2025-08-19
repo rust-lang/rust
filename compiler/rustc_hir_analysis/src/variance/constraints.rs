@@ -160,11 +160,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         });
     }
 
-    fn contravariant(&mut self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
+    fn contravariant(&self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         self.xform(variance, self.contravariant)
     }
 
-    fn invariant(&mut self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
+    fn invariant(&self, variance: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         self.xform(variance, self.invariant)
     }
 
@@ -177,7 +177,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         }
     }
 
-    fn xform(&mut self, v1: VarianceTermPtr<'a>, v2: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
+    fn xform(&self, v1: VarianceTermPtr<'a>, v2: VarianceTermPtr<'a>) -> VarianceTermPtr<'a> {
         match (*v1, *v2) {
             (_, ConstantTerm(ty::Covariant)) => {
                 // Applying a "covariant" transform is always a no-op

@@ -112,7 +112,7 @@ impl AnnotateSnippetEmitter {
     }
 
     fn emit_messages_default(
-        &mut self,
+        &self,
         level: &Level,
         messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,

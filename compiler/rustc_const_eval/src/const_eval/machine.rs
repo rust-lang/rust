@@ -229,7 +229,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     /// compatible arguments, then evaluation should continue with that function.
     /// If this returns `None`, the function call has been handled and the function has returned.
     fn hook_special_const_fn(
-        &mut self,
+        &self,
         instance: ty::Instance<'tcx>,
         args: &[FnArg<'tcx>],
         _dest: &PlaceTy<'tcx>,
@@ -276,7 +276,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     ///
     /// Note that this intrinsic is exposed on stable for comparison with null. In other words, any
     /// change to this function that affects comparison with null is insta-stable!
-    fn guaranteed_cmp(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
+    fn guaranteed_cmp(&self, a: Scalar, b: Scalar) -> InterpResult<'tcx, u8> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.
             (Scalar::Int(a), Scalar::Int(b)) => (a == b) as u8,

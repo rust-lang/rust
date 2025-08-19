@@ -1136,7 +1136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// fresh regions with the same index, they refer to the same
     /// unbound type variable.
     fn check_evaluation_cycle(
-        &mut self,
+        &self,
         stack: &TraitObligationStack<'_, 'tcx>,
     ) -> Option<EvaluationResult> {
         if let Some(cycle_depth) = stack
@@ -1238,7 +1238,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
     ///   also coinductive traits.
-    pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
+    pub(crate) fn coinductive_match<I>(&self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
@@ -1319,7 +1319,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn insert_evaluation_cache(
-        &mut self,
+        &self,
         param_env: ty::ParamEnv<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
@@ -1399,7 +1399,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// goal and a negative impl for a positive goal
     #[instrument(level = "debug", skip(self, candidates))]
     fn filter_impls(
-        &mut self,
+        &self,
         candidates: Vec<SelectionCandidate<'tcx>>,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Vec<SelectionCandidate<'tcx>> {
@@ -1455,7 +1455,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
+    fn is_knowable<'o>(&self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         let obligation = &stack.obligation;
         match self.infcx.typing_mode() {
             TypingMode::Coherence => {}
@@ -1526,7 +1526,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn check_candidate_cache(
-        &mut self,
+        &self,
         param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>> {
@@ -1579,7 +1579,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     #[instrument(skip(self, param_env, cache_fresh_trait_pred, dep_node), level = "debug")]
     fn insert_candidate_cache(
-        &mut self,
+        &self,
         param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
         dep_node: DepNodeIndex,
@@ -2098,7 +2098,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
 impl<'tcx> SelectionContext<'_, 'tcx> {
     fn sizedness_conditions(
-        &mut self,
+        &self,
         self_ty: Ty<'tcx>,
         sizedness: SizedTraitKind,
     ) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
@@ -2154,7 +2154,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
     }
 
-    fn copy_clone_conditions(&mut self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+    fn copy_clone_conditions(&self, self_ty: Ty<'tcx>) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
         match *self_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) | ty::Error(_) => ty::Binder::dummy(vec![]),
 
@@ -2241,7 +2241,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
     }
 
-    fn coroutine_is_gen(&mut self, self_ty: Ty<'tcx>) -> bool {
+    fn coroutine_is_gen(&self, self_ty: Ty<'tcx>) -> bool {
         matches!(*self_ty.kind(), ty::Coroutine(did, ..)
             if self.tcx().coroutine_is_gen(did))
     }
@@ -2696,7 +2696,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// `obligation`. If successful, return any predicates that
     /// result from the normalization.
     fn match_where_clause_trait_ref(
-        &mut self,
+        &self,
         obligation: &PolyTraitObligation<'tcx>,
         where_clause_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
@@ -2707,7 +2707,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// obligation is satisfied.
     #[instrument(skip(self), level = "debug")]
     fn match_poly_trait_ref(
-        &mut self,
+        &self,
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
@@ -2757,7 +2757,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn closure_trait_ref_unnormalized(
-        &mut self,
+        &self,
         self_ty: Ty<'tcx>,
         fn_trait_def_id: DefId,
     ) -> ty::PolyTraitRef<'tcx> {

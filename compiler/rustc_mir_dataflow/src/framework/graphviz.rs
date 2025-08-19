@@ -514,7 +514,7 @@ where
     }
 
     fn write_block_header_simple(
-        &mut self,
+        &self,
         w: &mut impl io::Write,
         block: BasicBlock,
     ) -> io::Result<()> {
@@ -546,7 +546,7 @@ where
     }
 
     fn write_block_header_with_state_columns(
-        &mut self,
+        &self,
         w: &mut impl io::Write,
         block: BasicBlock,
         state_column_names: &[&str],

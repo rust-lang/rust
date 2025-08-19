@@ -252,7 +252,7 @@ where
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_candidates(
-        &mut self,
+        &self,
         candidates: &[Candidate<I>],
     ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
         if candidates.is_empty() {
@@ -275,7 +275,7 @@ where
         None
     }
 
-    fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
+    fn bail_with_ambiguity(&self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
         debug_assert!(candidates.len() > 1);
         let maybe_cause =
             candidates.iter().fold(MaybeCause::Ambiguity, |maybe_cause, candidates| {

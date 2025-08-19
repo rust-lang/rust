@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
     ///
     /// Returns the number of characters (bytes) composing the invalid portion
     /// of the identifier and the valid portion of the identifier.
-    pub(super) fn is_lit_bad_ident(&mut self) -> Option<(usize, Symbol)> {
+    pub(super) fn is_lit_bad_ident(&self) -> Option<(usize, Symbol)> {
         // ensure that the integer literal is followed by a *invalid*
         // suffix: this is how we know that it is a identifier with an
         // invalid beginning.
@@ -766,7 +766,7 @@ impl<'a> Parser<'a> {
     ///
     /// Given that not all parser diagnostics flow through `expected_one_of_not_found`, this
     /// label may need added to other diagnostics emission paths as needed.
-    pub(super) fn label_expected_raw_ref(&mut self, err: &mut Diag<'_>) {
+    pub(super) fn label_expected_raw_ref(&self, err: &mut Diag<'_>) {
         if self.prev_token.is_keyword(kw::Raw)
             && self.expected_token_types.contains(TokenType::KwMut)
             && self.expected_token_types.contains(TokenType::KwConst)
@@ -1585,7 +1585,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn maybe_report_ambiguous_plus(&mut self, impl_dyn_multi: bool, ty: &Ty) {
+    pub(super) fn maybe_report_ambiguous_plus(&self, impl_dyn_multi: bool, ty: &Ty) {
         if impl_dyn_multi {
             self.dcx().emit_err(AmbiguousPlus {
                 span: ty.span,
@@ -1689,7 +1689,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_from_prefix_increment(
-        &mut self,
+        &self,
         operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
@@ -1700,7 +1700,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_from_postfix_increment(
-        &mut self,
+        &self,
         operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
@@ -1714,7 +1714,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_from_postfix_decrement(
-        &mut self,
+        &self,
         operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
@@ -1728,7 +1728,7 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_from_inc_dec(
-        &mut self,
+        &self,
         base: Box<Expr>,
         kind: IncDecRecovery,
         op_span: Span,
@@ -1777,7 +1777,7 @@ impl<'a> Parser<'a> {
     }
 
     fn prefix_inc_dec_suggest(
-        &mut self,
+        &self,
         base_src: String,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
@@ -1793,7 +1793,7 @@ impl<'a> Parser<'a> {
     }
 
     fn postfix_inc_dec_suggest(
-        &mut self,
+        &self,
         base_src: String,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
@@ -1810,7 +1810,7 @@ impl<'a> Parser<'a> {
     }
 
     fn inc_dec_standalone_suggest(
-        &mut self,
+        &self,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
     ) -> MultiSugg {
@@ -1899,7 +1899,7 @@ impl<'a> Parser<'a> {
 
     /// Creates a `Diag` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
-    pub(super) fn unexpected_try_recover(&mut self, t: &TokenKind) -> PResult<'a, Recovered> {
+    pub(super) fn unexpected_try_recover(&self, t: &TokenKind) -> PResult<'a, Recovered> {
         let token_str = pprust::token_kind_to_string(t);
         let this_token_str = super::token_descr(&self.token);
         let (prev_sp, sp) = match (&self.token.kind, self.subparser_name) {
@@ -2377,7 +2377,7 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    pub(super) fn recover_bad_self_param(&mut self, mut param: Param) -> PResult<'a, Param> {
+    pub(super) fn recover_bad_self_param(&self, mut param: Param) -> PResult<'a, Param> {
         let span = param.pat.span;
         let guar = self.dcx().emit_err(SelfParamNotFirst { span });
         param.ty.kind = TyKind::Err(guar);
@@ -2971,7 +2971,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    pub(crate) fn maybe_recover_bounds_doubled_colon(&mut self, ty: &Ty) -> PResult<'a, ()> {
+    pub(crate) fn maybe_recover_bounds_doubled_colon(&self, ty: &Ty) -> PResult<'a, ()> {
         let TyKind::Path(qself, path) = &ty.kind else { return Ok(()) };
         let qself_position = qself.as_ref().map(|qself| qself.position);
         for (i, segments) in path.segments.windows(2).enumerate() {
@@ -3016,7 +3016,7 @@ impl<'a> Parser<'a> {
     /// * `>>>>>>>`
     ///
     pub(super) fn is_vcs_conflict_marker(
-        &mut self,
+        &self,
         long_kind: &TokenKind,
         short_kind: &TokenKind,
     ) -> bool {

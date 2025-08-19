@@ -1078,7 +1078,7 @@ fn get_nullable_type_from_pat<'tcx>(
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the type is array and emit an unsafe type lint.
-    fn check_for_array_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
+    fn check_for_array_ty(&self, sp: Span, ty: Ty<'tcx>) -> bool {
         if let ty::Array(..) = ty.kind() {
             self.emit_ffi_unsafe_type_lint(
                 ty,
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn emit_ffi_unsafe_type_lint(
-        &mut self,
+        &self,
         ty: Ty<'tcx>,
         sp: Span,
         note: DiagMessage,
@@ -1442,7 +1442,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         );
     }
 
-    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
+    fn check_for_opaque_ty(&self, sp: Span, ty: Ty<'tcx>) -> bool {
         struct ProhibitOpaqueTypes;
         impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for ProhibitOpaqueTypes {
             type Result = ControlFlow<Ty<'tcx>>;
@@ -1476,7 +1476,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_type_for_ffi_and_report_errors(
-        &mut self,
+        &self,
         sp: Span,
         ty: Ty<'tcx>,
         is_static: bool,
@@ -1524,7 +1524,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ///
     /// For a external ABI function, argument types and the result type are walked to find fn-ptr
     /// types that have external ABIs, as these still need checked.
-    fn check_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
+    fn check_fn(&self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
         let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
@@ -1542,7 +1542,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     /// Check if a function's argument types and result type are "ffi-safe".
-    fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
+    fn check_foreign_fn(&self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
         let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_static(&mut self, id: hir::OwnerId, span: Span) {
+    fn check_foreign_static(&self, id: hir::OwnerId, span: Span) {
         let ty = self.cx.tcx.type_of(id).instantiate_identity();
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
@@ -1610,7 +1610,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, it: &hir::ForeignItem<'tcx>) {
-        let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
+        let vis = ImproperCTypesVisitor { cx, mode: CItemKind::Declaration };
         let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
 
         match it.kind {
@@ -1631,12 +1631,12 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
 
 impl ImproperCTypesDefinitions {
     fn check_ty_maybe_containing_foreign_fnptr<'tcx>(
-        &mut self,
+        &self,
         cx: &LateContext<'tcx>,
         hir_ty: &'tcx hir::Ty<'_>,
         ty: Ty<'tcx>,
     ) {
-        let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
+        let vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
         for (fn_ptr_ty, span) in vis.find_fn_ptr_ty_with_external_abi(hir_ty, ty) {
             vis.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, true, false);
         }
@@ -1771,7 +1771,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             _ => return,
         };
 
-        let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
+        let vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
         if abi.is_rustic_abi() {
             vis.check_fn(id, decl);
         } else {

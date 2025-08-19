@@ -114,7 +114,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
 
-    fn lower_block_check_mode(&mut self, b: &BlockCheckMode) -> hir::BlockCheckMode {
+    fn lower_block_check_mode(&self, b: &BlockCheckMode) -> hir::BlockCheckMode {
         match *b {
             BlockCheckMode::Default => hir::BlockCheckMode::DefaultBlock,
             BlockCheckMode::Unsafe(u) => {

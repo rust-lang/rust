@@ -24,14 +24,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Convenience function for creating a literal operand, one
     /// without any user type annotation.
-    pub(crate) fn literal_operand(&mut self, span: Span, const_: Const<'tcx>) -> Operand<'tcx> {
+    pub(crate) fn literal_operand(&self, span: Span, const_: Const<'tcx>) -> Operand<'tcx> {
         let constant = Box::new(ConstOperand { span, user_ty: None, const_ });
         Operand::Constant(constant)
     }
 
     /// Returns a zero literal operand for the appropriate type, works for
     /// bool, char and integers.
-    pub(crate) fn zero_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    pub(crate) fn zero_literal(&self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = Const::from_bits(self.tcx, 0, ty::TypingEnv::fully_monomorphized(), ty);
 
         self.literal_operand(span, literal)

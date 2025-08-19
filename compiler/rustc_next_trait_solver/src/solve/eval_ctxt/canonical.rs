@@ -273,7 +273,7 @@ where
     /// - we apply the `external_constraints` returned by the query, returning
     ///   the `normalization_nested_goals`
     pub(super) fn instantiate_and_apply_query_response(
-        &mut self,
+        &self,
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         response: CanonicalResponse<I>,
@@ -425,10 +425,7 @@ where
         }
     }
 
-    fn register_region_constraints(
-        &mut self,
-        outlives: &[ty::OutlivesPredicate<I, I::GenericArg>],
-    ) {
+    fn register_region_constraints(&self, outlives: &[ty::OutlivesPredicate<I, I::GenericArg>]) {
         for &ty::OutlivesPredicate(lhs, rhs) in outlives {
             match lhs.kind() {
                 ty::GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
@@ -438,7 +435,7 @@ where
         }
     }
 
-    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
+    fn register_new_opaque_types(&self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
             let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
             // We eagerly resolve inference variables when computing the query response.

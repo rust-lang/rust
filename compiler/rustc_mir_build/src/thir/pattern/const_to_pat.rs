@@ -44,7 +44,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> Box<Pat<'tcx>> {
-        let mut convert = ConstToPat::new(self, id, span, c);
+        let convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
@@ -93,11 +93,7 @@ impl<'tcx> ConstToPat<'tcx> {
         Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
     }
 
-    fn unevaluated_to_pat(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Box<Pat<'tcx>> {
+    fn unevaluated_to_pat(&self, uv: ty::UnevaluatedConst<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
         // not run yet. However, CTFE itself uses `TypingMode::PostAnalysis` unconditionally even
         // during typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).

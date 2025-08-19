@@ -539,7 +539,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// This takes the error provided, combines it with the span and any additional spans inside the
     /// error and emits it.
     pub(crate) fn report_error(
-        &mut self,
+        &self,
         span: Span,
         resolution_error: ResolutionError<'ra>,
     ) -> ErrorGuaranteed {
@@ -547,7 +547,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn into_struct_error(
-        &mut self,
+        &self,
         span: Span,
         resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
@@ -985,7 +985,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn report_vis_error(
-        &mut self,
+        &self,
         vis_resolution_error: VisResolutionError<'_>,
     ) -> ErrorGuaranteed {
         match vis_resolution_error {
@@ -1380,7 +1380,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// N.B., the method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).
     pub(crate) fn lookup_import_candidates<FilterFn>(
-        &mut self,
+        &self,
         lookup_ident: Ident,
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
@@ -1952,7 +1952,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.field_idents(def_id)?.iter().map(|&f| f.span).reduce(Span::to) // None for `struct Foo()`
     }
 
-    fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
+    fn report_privacy_error(&self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError {
             ident,
             binding,
@@ -2738,7 +2738,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///            at the root of the crate instead of the module where it is defined
     /// ```
     pub(crate) fn check_for_module_export_macro(
-        &mut self,
+        &self,
         import: Import<'ra>,
         module: ModuleOrUniformRoot<'ra>,
         ident: Ident,

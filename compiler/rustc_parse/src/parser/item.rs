@@ -378,7 +378,7 @@ impl<'a> Parser<'a> {
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
 
-    fn is_reuse_path_item(&mut self) -> bool {
+    fn is_reuse_path_item(&self) -> bool {
         // no: `reuse ::path` for compatibility reasons with macro invocations
         self.token.is_keyword(kw::Reuse)
             && self.look_ahead(1, |t| t.is_path_start() && *t != token::PathSep)
@@ -471,7 +471,7 @@ impl<'a> Parser<'a> {
         if let Some(err) = err { Err(self.dcx().create_err(err)) } else { Ok(()) }
     }
 
-    fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemKind>> {
+    fn parse_item_builtin(&self) -> PResult<'a, Option<ItemKind>> {
         // To be expanded
         Ok(None)
     }
@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover if we parsed attributes and expected an item but there was none.
-    fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
+    fn recover_attrs_no_item(&self, attrs: &[Attribute]) -> PResult<'a, ()> {
         let ([start @ end] | [start, .., end]) = attrs else {
             return Ok(());
         };
@@ -1545,7 +1545,7 @@ impl<'a> Parser<'a> {
     /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
     /// This means that the type is missing.
     fn recover_missing_global_item_type(
-        &mut self,
+        &self,
         colon_present: bool,
         m: Option<Mutability>,
     ) -> Box<Ty> {

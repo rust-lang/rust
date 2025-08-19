@@ -182,7 +182,7 @@ struct DirtyCleanVisitor<'tcx> {
 
 impl<'tcx> DirtyCleanVisitor<'tcx> {
     /// Possibly "deserialize" the attribute into a clean/dirty assertion
-    fn assertion_maybe(&mut self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
+    fn assertion_maybe(&self, item_id: LocalDefId, attr: &Attribute) -> Option<Assertion> {
         assert!(attr.has_name(sym::rustc_clean));
         if !check_config(self.tcx, attr) {
             // skip: not the correct `cfg=`
@@ -193,7 +193,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     }
 
     /// Gets the "auto" assertion on pre-validated attr, along with the `except` labels.
-    fn assertion_auto(&mut self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
+    fn assertion_auto(&self, item_id: LocalDefId, attr: &Attribute) -> Assertion {
         let (name, mut auto) = self.auto_labels(item_id, attr);
         let except = self.except(attr);
         let loaded_from_disk = self.loaded_from_disk(attr);
@@ -231,7 +231,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
 
     /// Return all DepNode labels that should be asserted for this item.
     /// index=0 is the "name" used for error messages
-    fn auto_labels(&mut self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
+    fn auto_labels(&self, item_id: LocalDefId, attr: &Attribute) -> (&'static str, Labels) {
         let node = self.tcx.hir_node_by_def_id(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
@@ -434,7 +434,7 @@ struct FindAllAttrs<'tcx> {
 }
 
 impl<'tcx> FindAllAttrs<'tcx> {
-    fn is_active_attr(&mut self, attr: &Attribute) -> bool {
+    fn is_active_attr(&self, attr: &Attribute) -> bool {
         if attr.has_name(sym::rustc_clean) && check_config(self.tcx, attr) {
             return true;
         }

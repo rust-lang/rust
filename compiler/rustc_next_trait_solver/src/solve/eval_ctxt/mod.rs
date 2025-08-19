@@ -1132,7 +1132,7 @@ where
     }
 
     pub(super) fn register_hidden_type_in_storage(
-        &mut self,
+        &self,
         opaque_type_key: ty::OpaqueTypeKey<I>,
         hidden_ty: I::Ty,
     ) -> Option<I::Ty> {
@@ -1160,7 +1160,7 @@ where
     // Do something for each opaque/hidden pair defined with `def_id` in the
     // current inference context.
     pub(super) fn probe_existing_opaque_ty(
-        &mut self,
+        &self,
         key: ty::OpaqueTypeKey<I>,
     ) -> Option<(ty::OpaqueTypeKey<I>, I::Ty)> {
         // We shouldn't have any duplicate entries when using
@@ -1192,7 +1192,7 @@ where
     }
 
     pub(super) fn is_transmutable(
-        &mut self,
+        &self,
         dst: I::Ty,
         src: I::Ty,
         assume: I::Const,

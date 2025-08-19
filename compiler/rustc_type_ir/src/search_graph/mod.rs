@@ -1192,7 +1192,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
     fn reached_fixpoint(
-        &mut self,
+        &self,
         cx: X,
         stack_entry: &StackEntry<X>,
         usages: HeadUsages,
@@ -1336,7 +1336,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// results. See the comment of `StackEntry::nested_goals` for
     /// more details.
     fn insert_global_cache(
-        &mut self,
+        &self,
         cx: X,
         input: X::Input,
         evaluation_result: EvaluationResult<X>,

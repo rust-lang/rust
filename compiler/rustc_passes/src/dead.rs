@@ -188,7 +188,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    fn check_for_self_assign(&mut self, assign: &'tcx hir::Expr<'tcx>) {
+    fn check_for_self_assign(&self, assign: &'tcx hir::Expr<'tcx>) {
         fn check_for_self_assign_helper<'tcx>(
             typeck_results: &'tcx ty::TypeckResults<'tcx>,
             lhs: &'tcx hir::Expr<'tcx>,
@@ -478,7 +478,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     /// `local_def_id` points to an impl or an impl item,
     /// both impl and impl item that may be passed to this function are of a trait,
     /// and added into the unsolved_items during `create_and_seed_worklist`
-    fn check_impl_or_impl_item_live(&mut self, local_def_id: LocalDefId) -> bool {
+    fn check_impl_or_impl_item_live(&self, local_def_id: LocalDefId) -> bool {
         let (impl_block_id, trait_def_id) = match self.tcx.def_kind(local_def_id) {
             // assoc impl items of traits are live if the corresponding trait items are live
             DefKind::AssocConst | DefKind::AssocTy | DefKind::AssocFn => (
@@ -888,7 +888,7 @@ enum ReportOn {
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
-    fn should_warn_about_field(&mut self, field: &ty::FieldDef) -> ShouldWarnAboutField {
+    fn should_warn_about_field(&self, field: &ty::FieldDef) -> ShouldWarnAboutField {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
@@ -1096,7 +1096,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         }
     }
 
-    fn warn_dead_code(&mut self, id: LocalDefId, participle: &str) {
+    fn warn_dead_code(&self, id: LocalDefId, participle: &str) {
         let item = DeadItem {
             def_id: id,
             name: self.tcx.item_name(id.to_def_id()),
@@ -1105,7 +1105,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         self.lint_at_single_level(&[&item], participle, None, ReportOn::NamedField);
     }
 
-    fn check_definition(&mut self, def_id: LocalDefId) {
+    fn check_definition(&self, def_id: LocalDefId) {
         if self.is_live_code(def_id) {
             return;
         }
@@ -1140,7 +1140,7 @@ impl<'tcx> DeadVisitor<'tcx> {
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
     let (live_symbols, ignored_derived_traits) = tcx.live_symbols_and_ignored_derived_traits(());
-    let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
+    let visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
 
     let module_items = tcx.hir_module_items(module);
 

@@ -117,7 +117,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn pattern_from_hir(&mut self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+    fn pattern_from_hir(&self, p: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         pat_from_hir(self.tcx, self.typing_env, self.typeck_results, p)
     }
 

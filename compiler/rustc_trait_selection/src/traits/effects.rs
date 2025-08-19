@@ -299,7 +299,7 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
 }
 
 fn evaluate_host_effect_from_builtin_impls<'tcx>(
-    selcx: &mut SelectionContext<'_, 'tcx>,
+    selcx: &SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
@@ -313,7 +313,7 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
 
 // NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
 fn evaluate_host_effect_for_destruct_goal<'tcx>(
-    selcx: &mut SelectionContext<'_, 'tcx>,
+    selcx: &SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     let tcx = selcx.tcx();
@@ -404,7 +404,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
 
 // NOTE: Keep this in sync with `extract_fn_def_from_const_callable` in the new solver.
 fn evaluate_host_effect_for_fn_goal<'tcx>(
-    selcx: &mut SelectionContext<'_, 'tcx>,
+    selcx: &SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     let tcx = selcx.tcx();

@@ -204,7 +204,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
 /// Interpreting `tts` as a comma-separated sequence of expressions,
 /// expect exactly one expression, or emit an error and return `Err`.
 pub(crate) fn get_single_expr_from_tts(
-    cx: &mut ExtCtxt<'_>,
+    cx: &ExtCtxt<'_>,
     span: Span,
     tts: TokenStream,
     name: &str,

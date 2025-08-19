@@ -1199,7 +1199,7 @@ pub(crate) const ALL_TARGETS: &'static [MaybeWarn] = &[
 /// `cx` is the context given to the attribute.
 /// `args` is the parser for the attribute arguments.
 pub(crate) fn parse_single_integer<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
 ) -> Option<u128> {
     let Some(list) = args.list() else {

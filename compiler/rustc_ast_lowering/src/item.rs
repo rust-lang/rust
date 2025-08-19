@@ -685,7 +685,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemId {
+    fn lower_foreign_item_ref(&self, i: &ForeignItem) -> hir::ForeignItemId {
         hir::ForeignItemId { owner_id: self.owner_id(i.id) }
     }
 
@@ -951,7 +951,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemId {
+    fn lower_trait_item_ref(&self, i: &AssocItem) -> hir::TraitItemId {
         hir::TraitItemId { owner_id: self.owner_id(i.id) }
     }
 
@@ -1135,7 +1135,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemId {
+    fn lower_impl_item_ref(&self, i: &AssocItem) -> hir::ImplItemId {
         hir::ImplItemId { owner_id: self.owner_id(i.id) }
     }
 
@@ -1582,7 +1582,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_fn_header(
-        &mut self,
+        &self,
         h: FnHeader,
         default_safety: hir::Safety,
         attrs: &[hir::Attribute],
@@ -1613,7 +1613,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi_str: StrLit) -> ExternAbi {
+    pub(super) fn lower_abi(&self, abi_str: StrLit) -> ExternAbi {
         let ast::StrLit { symbol_unescaped, span, .. } = abi_str;
         let extern_abi = symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
             self.error_on_invalid_abi(abi_str);
@@ -1645,7 +1645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         extern_abi
     }
 
-    pub(super) fn lower_extern(&mut self, ext: Extern) -> ExternAbi {
+    pub(super) fn lower_extern(&self, ext: Extern) -> ExternAbi {
         match ext {
             Extern::None => ExternAbi::Rust,
             Extern::Implicit(_) => ExternAbi::FALLBACK,
@@ -1670,7 +1670,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
     }
 
-    pub(super) fn lower_constness(&mut self, c: Const) -> hir::Constness {
+    pub(super) fn lower_constness(&self, c: Const) -> hir::Constness {
         match c {
             Const::Yes(_) => hir::Constness::Const,
             Const::No => hir::Constness::NotConst,

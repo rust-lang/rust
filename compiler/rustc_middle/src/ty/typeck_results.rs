@@ -630,7 +630,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
         self.data.get_mut(&id.local_id)
     }
 
-    pub fn get(&mut self, id: HirId) -> Option<&V> {
+    pub fn get(&self, id: HirId) -> Option<&V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get(&id.local_id)
     }

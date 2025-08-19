@@ -660,7 +660,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     }
 
     /// Evaluates a *not yet monomorphized* constant.
-    fn eval_constant(&mut self, constant: &mir::ConstOperand<'tcx>) -> Option<mir::ConstValue> {
+    fn eval_constant(&self, constant: &mir::ConstOperand<'tcx>) -> Option<mir::ConstValue> {
         let const_ = self.monomorphize(constant.const_);
         // Evaluate the constant. This makes const eval failure a collection-time error (rather than
         // a codegen-time error). rustc stops after collection if there was an error, so this

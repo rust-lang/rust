@@ -104,7 +104,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
         visitor.visit_pat(local.pat);
     }
 
-    fn assign(&mut self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+    fn assign(&self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         // We evaluate expressions twice occasionally in diagnostics for better
         // type information or because it needs type information out-of-order.
         // In order to not ICE and not lead to knock-on ambiguity errors, if we
@@ -133,7 +133,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     /// Allocates a type for a declaration, which may have a type annotation. If it does have
     /// a type annotation, then the [`Ty`] stored will be the resolved type. This may be found
     /// again during type checking by querying [`FnCtxt::local_ty`] for the same hir_id.
-    fn declare(&mut self, decl: Declaration<'tcx>) {
+    fn declare(&self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
             Some(ref ty) => {
                 let o_ty = self.fcx.lower_ty(ty);

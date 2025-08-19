@@ -957,7 +957,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     };
 
                     fn local(
-                        cx: &mut ThirBuildCx<'_>,
+                        cx: &ThirBuildCx<'_>,
                         expr: &rustc_hir::Expr<'_>,
                     ) -> Option<hir::HirId> {
                         if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
@@ -1102,7 +1102,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     fn user_args_applied_to_res(
-        &mut self,
+        &self,
         hir_id: hir::HirId,
         res: Res,
     ) -> Option<Box<ty::CanonicalUserType<'tcx>>> {
@@ -1137,7 +1137,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     fn method_callee(
-        &mut self,
+        &self,
         expr: &hir::Expr<'_>,
         span: Span,
         overloaded_callee: Option<Ty<'tcx>>,
@@ -1262,7 +1262,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
-    fn convert_var(&mut self, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
+    fn convert_var(&self, var_hir_id: hir::HirId) -> ExprKind<'tcx> {
         // We want upvars here not captures.
         // Captures will be handled in MIR.
         let is_upvar = self.is_upvar(var_hir_id);
@@ -1445,7 +1445,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
-    fn is_upvar(&mut self, var_hir_id: hir::HirId) -> bool {
+    fn is_upvar(&self, var_hir_id: hir::HirId) -> bool {
         self.tcx
             .upvars_mentioned(self.body_owner)
             .is_some_and(|upvars| upvars.contains_key(&var_hir_id))

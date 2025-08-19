@@ -564,7 +564,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn nominal_obligations(
-        &mut self,
+        &self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> PredicateObligations<'tcx> {

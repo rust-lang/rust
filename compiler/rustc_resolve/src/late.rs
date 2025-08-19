@@ -3948,7 +3948,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn fresh_binding(
-        &mut self,
+        &self,
         ident: Ident,
         pat_id: NodeId,
         pat_src: PatternSource,
@@ -4409,7 +4409,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// A wrapper around [`Resolver::report_error`].
     ///
     /// This doesn't emit errors for function bodies if this is rustdoc.
-    fn report_error(&mut self, span: Span, resolution_error: ResolutionError<'ra>) {
+    fn report_error(&self, span: Span, resolution_error: ResolutionError<'ra>) {
         if self.should_report_errs() {
             self.r.report_error(span, resolution_error);
         }

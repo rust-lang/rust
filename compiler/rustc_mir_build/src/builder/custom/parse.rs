@@ -275,7 +275,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         Ok(())
     }
 
-    fn parse_let_statement(&mut self, stmt_id: StmtId) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
+    fn parse_let_statement(&self, stmt_id: StmtId) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
         let pattern = match &self.thir[stmt_id].kind {
             StmtKind::Let { pattern, .. } => pattern,
             StmtKind::Expr { expr, .. } => {
@@ -286,7 +286,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         self.parse_var(pattern)
     }
 
-    fn parse_var(&mut self, mut pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
+    fn parse_var(&self, mut pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
         // Make sure we throw out any `AscribeUserType` we find
         loop {
             match &pat.kind {

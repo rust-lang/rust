@@ -262,7 +262,7 @@ struct ReplacementVisitor<'tcx, 'll> {
 
 impl<'tcx> ReplacementVisitor<'tcx, '_> {
     #[instrument(level = "trace", skip(self))]
-    fn expand_var_debug_info(&mut self, var_debug_info: &mut Vec<VarDebugInfo<'tcx>>) {
+    fn expand_var_debug_info(&self, var_debug_info: &mut Vec<VarDebugInfo<'tcx>>) {
         var_debug_info.flat_map_in_place(|mut var_debug_info| {
             let place = match var_debug_info.value {
                 VarDebugInfoContents::Const(_) => return vec![var_debug_info],

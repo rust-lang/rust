@@ -121,7 +121,7 @@ impl<'tcx> MoveCheckVisitor<'tcx> {
     }
 
     fn operand_size_if_too_large(
-        &mut self,
+        &self,
         limit: Limit,
         operand: &mir::Operand<'tcx>,
     ) -> Option<Size> {

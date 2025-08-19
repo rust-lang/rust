@@ -183,7 +183,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
 
     /// Returns a range of the type variables created during the snapshot.
     pub(crate) fn vars_since_snapshot(
-        &mut self,
+        &self,
         value_count: usize,
     ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
         let range = TyVid::from_usize(value_count)..TyVid::from_usize(self.num_vars());

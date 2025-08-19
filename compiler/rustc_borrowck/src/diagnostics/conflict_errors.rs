@@ -3833,7 +3833,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diag<'_>) {
+    fn explain_deref_coercion(&self, loan: &BorrowData<'tcx>, err: &mut Diag<'_>) {
         let tcx = self.infcx.tcx;
         if let Some(Terminator { kind: TerminatorKind::Call { call_source, fn_span, .. }, .. }) =
             &self.body[loan.reserve_location.block].terminator

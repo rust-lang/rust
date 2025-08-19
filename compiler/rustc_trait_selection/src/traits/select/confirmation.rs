@@ -220,7 +220,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_param_candidate(
-        &mut self,
+        &self,
         obligation: &PolyTraitObligation<'tcx>,
         param: ty::PolyTraitRef<'tcx>,
     ) -> PredicateObligations<'tcx> {
@@ -300,7 +300,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn confirm_transmutability_candidate(
-        &mut self,
+        &self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, SelectionError<'tcx>> {
         use rustc_transmute::{Answer, Assume, Condition};
@@ -1243,7 +1243,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_bikeshed_guaranteed_no_drop_candidate(
-        &mut self,
+        &self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> ImplSource<'tcx, PredicateObligation<'tcx>> {
         let mut obligations = thin_vec![];

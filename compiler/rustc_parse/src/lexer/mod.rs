@@ -478,7 +478,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         }
     }
 
-    fn lint_doc_comment_unicode_text_flow(&mut self, start: BytePos, content: &str) {
+    fn lint_doc_comment_unicode_text_flow(&self, start: BytePos, content: &str) {
         if contains_text_flow_control_chars(content) {
             self.report_text_direction_codepoint(
                 content,
@@ -491,7 +491,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     }
 
     fn lint_literal_unicode_text_flow(
-        &mut self,
+        &self,
         text: Symbol,
         lit_kind: token::LitKind,
         span: Span,

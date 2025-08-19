@@ -424,7 +424,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    pub(crate) fn lower_lit(&mut self, token_lit: &token::Lit, span: Span) -> hir::Lit {
+    pub(crate) fn lower_lit(&self, token_lit: &token::Lit, span: Span) -> hir::Lit {
         let lit_kind = match LitKind::from_token_lit(*token_lit) {
             Ok(lit_kind) => lit_kind,
             Err(err) => {
@@ -435,7 +435,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         respan(self.lower_span(span), lit_kind)
     }
 
-    fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
+    fn lower_unop(&self, u: UnOp) -> hir::UnOp {
         match u {
             UnOp::Deref => hir::UnOp::Deref,
             UnOp::Not => hir::UnOp::Not,
@@ -443,11 +443,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_binop(&mut self, b: BinOp) -> BinOp {
+    fn lower_binop(&self, b: BinOp) -> BinOp {
         Spanned { node: b.node, span: self.lower_span(b.span) }
     }
 
-    fn lower_assign_op(&mut self, a: AssignOp) -> AssignOp {
+    fn lower_assign_op(&self, a: AssignOp) -> AssignOp {
         Spanned { node: a.node, span: self.lower_span(a.span) }
     }
 
@@ -681,7 +681,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Arm { hir_id, pat, guard, body, span }
     }
 
-    fn lower_capture_clause(&mut self, capture_clause: CaptureBy) -> CaptureBy {
+    fn lower_capture_clause(&self, capture_clause: CaptureBy) -> CaptureBy {
         match capture_clause {
             CaptureBy::Ref => CaptureBy::Ref,
             CaptureBy::Use { use_kw } => CaptureBy::Use { use_kw: self.lower_span(use_kw) },
@@ -1103,7 +1103,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn closure_movability_for_fn(
-        &mut self,
+        &self,
         decl: &FnDecl,
         fn_decl_span: Span,
         coroutine_kind: Option<hir::CoroutineKind>,
@@ -1133,7 +1133,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_closure_binder<'c>(
-        &mut self,
+        &self,
         binder: &'c ClosureBinder,
     ) -> (hir::ClosureBinder, &'c [GenericParam]) {
         let (binder, params) = match binder {
@@ -1283,7 +1283,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// if they are not tuple structs.
     /// Type checking will take care of the full validation later.
     fn extract_tuple_struct_path<'a>(
-        &mut self,
+        &self,
         expr: &'a Expr,
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
@@ -1305,7 +1305,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// if they are not unit structs.
     /// Type checking will take care of the full validation later.
     fn extract_unit_struct_path<'a>(
-        &mut self,
+        &self,
         expr: &'a Expr,
     ) -> Option<(&'a Option<Box<QSelf>>, &'a Path)> {
         if let ExprKind::Path(qself, path) = &expr.kind {
@@ -1589,7 +1589,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         Some(Label { ident: self.lower_ident(label.ident) })
     }
 
-    fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
+    fn lower_loop_destination(&self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Some(loop_id) = self.resolver.get_label_res(id) {
@@ -1610,7 +1610,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Destination { label, target_id }
     }
 
-    fn lower_jump_destination(&mut self, id: NodeId, opt_label: Option<Label>) -> hir::Destination {
+    fn lower_jump_destination(&self, id: NodeId, opt_label: Option<Label>) -> hir::Destination {
         if self.is_in_loop_condition && opt_label.is_none() {
             hir::Destination {
                 label: None,

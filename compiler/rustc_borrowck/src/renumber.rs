@@ -61,7 +61,7 @@ struct RegionRenumberer<'a, 'tcx> {
 impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
     /// Replaces all regions appearing in `value` with fresh inference
     /// variables.
-    fn renumber_regions<T, F>(&mut self, value: T, region_ctxt_fn: F) -> T
+    fn renumber_regions<T, F>(&self, value: T, region_ctxt_fn: F) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
         F: Fn() -> RegionCtxt,

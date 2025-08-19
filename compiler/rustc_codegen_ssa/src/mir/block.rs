@@ -106,7 +106,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> (bool, bool) {
         if let Some(ref cleanup_kinds) = fx.cleanup_kinds {
@@ -1503,7 +1503,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_argument(
-        &mut self,
+        &self,
         bx: &mut Bx,
         op: OperandRef<'tcx, Bx::Value>,
         llargs: &mut Vec<Bx::Value>,
@@ -1679,7 +1679,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub(super) fn get_caller_location(
-        &mut self,
+        &self,
         bx: &mut Bx,
         source_info: mir::SourceInfo,
     ) -> OperandRef<'tcx, Bx::Value> {

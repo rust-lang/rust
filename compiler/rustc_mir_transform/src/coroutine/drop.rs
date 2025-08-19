@@ -179,7 +179,7 @@ fn build_poll_switch<'tcx>(
 }
 
 // Gather blocks, reachable through 'drop' targets of Yield and Drop terminators (chained)
-fn gather_dropline_blocks<'tcx>(body: &mut Body<'tcx>) -> DenseBitSet<BasicBlock> {
+fn gather_dropline_blocks<'tcx>(body: &Body<'tcx>) -> DenseBitSet<BasicBlock> {
     let mut dropline: DenseBitSet<BasicBlock> = DenseBitSet::new_empty(body.basic_blocks.len());
     for (bb, data) in traversal::reverse_postorder(body) {
         if dropline.contains(bb) {
@@ -223,7 +223,7 @@ pub(super) fn cleanup_async_drops<'tcx>(body: &mut Body<'tcx>) {
 
 pub(super) fn has_expandable_async_drops<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &Body<'tcx>,
     coroutine_ty: Ty<'tcx>,
 ) -> bool {
     for bb in START_BLOCK..body.basic_blocks.next_index() {

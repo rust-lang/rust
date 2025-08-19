@@ -776,7 +776,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     // Helper to get a `-1` value of the appropriate type
-    fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    fn neg_1_literal(&self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let typing_env = ty::TypingEnv::fully_monomorphized();
         let size = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size;
         let literal = Const::from_bits(self.tcx, size.unsigned_int_max(), typing_env, ty);
@@ -785,7 +785,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     // Helper to get the minimum value of the appropriate type
-    fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
+    fn minval_literal(&self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
         let typing_env = ty::TypingEnv::fully_monomorphized();
         let bits = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size.bits();

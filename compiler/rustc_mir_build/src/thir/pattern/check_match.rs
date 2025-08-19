@@ -563,7 +563,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn check_let_chain(
-        &mut self,
+        &self,
         chain_refutabilities: Vec<Option<(Span, RefutableFlag)>>,
         whole_chain_span: Span,
     ) {

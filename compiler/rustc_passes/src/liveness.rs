@@ -1312,7 +1312,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         ln
     }
 
-    fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+    fn check_is_ty_uninhabited(&self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         let ty = self.typeck_results.expr_ty(expr);
         let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
         if ty.is_inhabited_from(self.ir.tcx, m, self.typing_env) {
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn warn_about_unreachable<'desc>(
-        &mut self,
+        &self,
         orig_span: Span,
         orig_ty: Ty<'tcx>,
         expr_span: Span,

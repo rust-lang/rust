@@ -2171,7 +2171,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// edit distance based suggestions, we provide at most one such suggestion.
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn probe_for_similar_candidate(
-        &mut self,
+        &self,
     ) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);
 

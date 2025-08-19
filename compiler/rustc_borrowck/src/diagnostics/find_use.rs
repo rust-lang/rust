@@ -15,7 +15,7 @@ pub(crate) fn find<'tcx>(
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
-    let mut uf = UseFinder { body, regioncx, tcx, region_vid, start_point };
+    let uf = UseFinder { body, regioncx, tcx, region_vid, start_point };
 
     uf.find()
 }
@@ -29,7 +29,7 @@ struct UseFinder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> UseFinder<'a, 'tcx> {
-    fn find(&mut self) -> Option<Cause> {
+    fn find(&self) -> Option<Cause> {
         let mut queue = VecDeque::new();
         let mut visited = FxIndexSet::default();
 

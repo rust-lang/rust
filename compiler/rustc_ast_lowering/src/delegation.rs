@@ -122,7 +122,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    fn lower_delegation_generics(&mut self, span: Span) -> &'hir hir::Generics<'hir> {
+    fn lower_delegation_generics(&self, span: Span) -> &'hir hir::Generics<'hir> {
         self.arena.alloc(hir::Generics {
             params: &[],
             predicates: &[],
@@ -179,7 +179,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_delegation_sig(
-        &mut self,
+        &self,
         sig_id: DefId,
         decl: &'hir hir::FnDecl<'hir>,
         span: Span,

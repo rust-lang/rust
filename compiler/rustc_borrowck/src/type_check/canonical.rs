@@ -70,11 +70,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         Ok(output)
     }
 
-    pub(super) fn instantiate_canonical<T>(
-        &mut self,
-        span: Span,
-        canonical: &Canonical<'tcx, T>,
-    ) -> T
+    pub(super) fn instantiate_canonical<T>(&self, span: Span, canonical: &Canonical<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {

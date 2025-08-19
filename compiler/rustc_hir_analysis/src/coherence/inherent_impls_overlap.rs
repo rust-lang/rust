@@ -16,7 +16,7 @@ pub(crate) fn crate_inherent_impls_overlap_check(
     tcx: TyCtxt<'_>,
     (): (),
 ) -> Result<(), ErrorGuaranteed> {
-    let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
+    let inherent_overlap_checker = InherentOverlapChecker { tcx };
     let mut res = Ok(());
     for id in tcx.hir_free_items() {
         res = res.and(inherent_overlap_checker.check_item(id));
@@ -171,7 +171,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         }
     }
 
-    fn check_item(&mut self, id: hir::ItemId) -> Result<(), ErrorGuaranteed> {
+    fn check_item(&self, id: hir::ItemId) -> Result<(), ErrorGuaranteed> {
         let def_kind = self.tcx.def_kind(id.owner_id);
         if !matches!(def_kind, DefKind::Enum | DefKind::Struct | DefKind::Trait | DefKind::Union) {
             return Ok(());

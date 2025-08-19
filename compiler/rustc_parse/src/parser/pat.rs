@@ -502,7 +502,7 @@ impl<'a> Parser<'a> {
 
     /// Called by [`Parser::parse_stmt_without_recovery`], used to add statement-aware subdiagnostics to the errors stashed
     /// by [`Parser::maybe_recover_trailing_expr`].
-    pub(super) fn maybe_augment_stashed_expr_in_pats_with_suggestions(&mut self, stmt: &Stmt) {
+    pub(super) fn maybe_augment_stashed_expr_in_pats_with_suggestions(&self, stmt: &Stmt) {
         if self.dcx().has_errors().is_none() {
             // No need to walk the statement if there's no stashed errors.
             return;
@@ -1145,7 +1145,7 @@ impl<'a> Parser<'a> {
     }
 
     fn fatal_unexpected_non_pat(
-        &mut self,
+        &self,
         err: Diag<'a>,
         expected: Option<Expected>,
     ) -> PResult<'a, Box<Pat>> {

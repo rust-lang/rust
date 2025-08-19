@@ -360,7 +360,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         bb: BasicBlock,
         lhs: PlaceIndex,
         rhs: ImmTy<'tcx>,
-        state: &mut State<ConditionSet<'a>>,
+        state: &State<ConditionSet<'a>>,
     ) {
         let register_opportunity = |c: Condition| {
             debug!(?bb, ?c.target, "register");
@@ -381,7 +381,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         bb: BasicBlock,
         lhs: PlaceIndex,
         constant: OpTy<'tcx>,
-        state: &mut State<ConditionSet<'a>>,
+        state: &State<ConditionSet<'a>>,
     ) {
         self.map.for_each_projection_value(
             lhs,
@@ -642,7 +642,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         discr: &Operand<'tcx>,
         targets: &SwitchTargets,
         target_bb: BasicBlock,
-        state: &mut State<ConditionSet<'a>>,
+        state: &State<ConditionSet<'a>>,
     ) {
         debug_assert_ne!(target_bb, START_BLOCK);
         debug_assert_eq!(self.body.basic_blocks.predecessors()[target_bb].len(), 1);

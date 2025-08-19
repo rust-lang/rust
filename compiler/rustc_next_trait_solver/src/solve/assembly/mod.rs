@@ -895,7 +895,7 @@ where
     ///
     /// This is only necessary for `feature(specialization)` and seems quite ugly.
     pub(super) fn filter_specialized_impls(
-        &mut self,
+        &self,
         allow_inference_constraints: AllowInferenceConstraints,
         candidates: &mut Vec<Candidate<I>>,
     ) {

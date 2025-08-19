@@ -23,7 +23,7 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let mut symbol_names = SymbolNamesTest { tcx };
+        let symbol_names = SymbolNamesTest { tcx };
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.free_items() {
@@ -49,7 +49,7 @@ struct SymbolNamesTest<'tcx> {
 }
 
 impl SymbolNamesTest<'_> {
-    fn process_attrs(&mut self, def_id: LocalDefId) {
+    fn process_attrs(&self, def_id: LocalDefId) {
         let tcx = self.tcx;
         // The formatting of `tag({})` is chosen so that tests can elect
         // to test the entirety of the string, if they choose, or else just

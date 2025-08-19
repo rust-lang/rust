@@ -374,7 +374,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// We need a separate function here because we won't suggest for a path with single segment
     /// and we won't change `SourcePath` api `is_expected` to match `Type` with `DefKind::Mod`
     pub(crate) fn smart_resolve_partial_mod_path_errors(
-        &mut self,
+        &self,
         prefix_path: &[Segment],
         following_seg: Option<&Segment>,
     ) -> Vec<ImportSuggestion> {
@@ -2141,7 +2141,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_alternative_construction_methods(
-        &mut self,
+        &self,
         def_id: DefId,
         err: &mut Diag<'_>,
         path_span: Span,
@@ -2288,7 +2288,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// Given the target `ident` and `kind`, search for the similarly named associated item
     /// in `self.current_trait_ref`.
     pub(crate) fn find_similarly_named_assoc_item(
-        &mut self,
+        &self,
         ident: Symbol,
         kind: &AssocItemKind,
     ) -> Option<Symbol> {

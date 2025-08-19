@@ -67,7 +67,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 }
 
 fn extract_value<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     key: Symbol,
     arg: &ArgParser<'_>,
     span: Span,
@@ -96,7 +96,7 @@ fn extract_value<S: Stage>(
 }
 
 fn parse_dialect<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     dialect: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirDialect, Span)> {
@@ -118,7 +118,7 @@ fn parse_dialect<S: Stage>(
 }
 
 fn parse_phase<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     phase: Option<(Symbol, Span)>,
     failed: &mut bool,
 ) -> Option<(MirPhase, Span)> {

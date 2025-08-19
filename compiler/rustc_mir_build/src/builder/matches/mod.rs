@@ -1926,7 +1926,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// subcandidate. Any candidate that has been expanded this way should also be postprocessed
     /// at the end of [`Self::expand_and_match_or_candidates`].
     fn create_or_subcandidates(
-        &mut self,
+        &self,
         candidate: &mut Candidate<'tcx>,
         match_pair: MatchPairTree<'tcx>,
     ) {
@@ -2145,7 +2145,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Switch`]: TestKind::Switch
     /// [`SwitchInt`]: TestKind::SwitchInt
     /// [`Range`]: TestKind::Range
-    fn pick_test(&mut self, candidates: &[&mut Candidate<'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
+    fn pick_test(&self, candidates: &[&mut Candidate<'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
@@ -2197,7 +2197,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - candidate 0 becomes `[z @ true]` since we know that `x` was `true`;
     /// - candidate 1 becomes `[y @ false]` since we know that `x` was `false`.
     fn sort_candidates<'b, 'c>(
-        &mut self,
+        &self,
         match_place: Place<'tcx>,
         test: &Test<'tcx>,
         mut candidates: &'b mut [&'c mut Candidate<'tcx>],

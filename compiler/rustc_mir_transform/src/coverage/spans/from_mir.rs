@@ -151,7 +151,7 @@ pub(crate) struct Hole {
 }
 
 impl Hole {
-    pub(crate) fn merge_if_overlapping_or_adjacent(&mut self, other: &mut Self) -> bool {
+    pub(crate) fn merge_if_overlapping_or_adjacent(&mut self, other: &Self) -> bool {
         if !self.span.overlaps_or_adjacent(other.span) {
             return false;
         }

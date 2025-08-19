@@ -227,7 +227,7 @@ impl<'tcx, 'a> ExportableItemsChecker<'tcx, 'a> {
         }
     }
 
-    fn check_ty(&mut self) {
+    fn check_ty(&self) {
         let ty = self.tcx.type_of(self.item_id).skip_binder();
         if let ty::Adt(adt_def, _) = ty.kind() {
             if !adt_def.repr().inhibit_struct_field_reordering() {

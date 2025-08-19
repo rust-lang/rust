@@ -197,12 +197,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // into [T] but currently `Where` clause stops the normalization process for it,
     // here we compare types of expr and base in a code without `Where` clause they would be equal
     // if they are not we don't modify the expr, hence we bypass the ICE
-    fn is_builtin_index(
-        &mut self,
-        e: &hir::Expr<'_>,
-        base_ty: Ty<'tcx>,
-        index_ty: Ty<'tcx>,
-    ) -> bool {
+    fn is_builtin_index(&self, e: &hir::Expr<'_>, base_ty: Ty<'tcx>, index_ty: Ty<'tcx>) -> bool {
         if let Some(elem_ty) = base_ty.builtin_index()
             && let Some(exp_ty) = self.typeck_results.expr_ty_opt(e)
         {

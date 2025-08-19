@@ -369,7 +369,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Yield { .. } => false,
         }
     }
-    fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
+    fn pat_is_poly(&self, pat: &thir::Pat<'tcx>) -> bool {
         if pat.ty.has_non_region_param() {
             return true;
         }

@@ -83,7 +83,7 @@ mod llvm_enzyme {
     }
 
     pub(crate) fn from_ast(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &ExtCtxt<'_>,
         meta_item: &ThinVec<MetaItemInner>,
         has_ret: bool,
         mode: DiffMode,
@@ -203,7 +203,7 @@ mod llvm_enzyme {
     /// FIXME(ZuseZ4): Once autodiff is enabled by default, make this a doc comment which is checked
     /// in CI.
     pub(crate) fn expand_with_mode(
-        ecx: &mut ExtCtxt<'_>,
+        ecx: &ExtCtxt<'_>,
         expand_span: Span,
         meta_item: &ast::MetaItem,
         mut item: Annotatable,

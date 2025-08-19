@@ -66,7 +66,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
 }
 
 fn parse_derive_like<S: Stage>(
-    cx: &mut AcceptContext<'_, '_, S>,
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
     trait_name_mandatory: bool,
 ) -> Option<(Option<Symbol>, ThinVec<Symbol>)> {

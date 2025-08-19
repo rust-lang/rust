@@ -128,7 +128,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 
     fn lower_pattern_range_endpoint(
-        &mut self,
+        &self,
         expr: Option<&'tcx hir::PatExpr<'tcx>>,
         // Out-parameters collecting extra data to be reapplied by the caller
         ascriptions: &mut Vec<Ascription<'tcx>>,
@@ -212,7 +212,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 
     fn lower_pattern_range(
-        &mut self,
+        &self,
         lo_expr: Option<&'tcx hir::PatExpr<'tcx>>,
         hi_expr: Option<&'tcx hir::PatExpr<'tcx>>,
         end: RangeEnd,
@@ -456,7 +456,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 
     fn lower_variant_or_leaf(
-        &mut self,
+        &self,
         res: Res,
         hir_id: hir::HirId,
         span: Span,
@@ -549,7 +549,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     #[instrument(skip(self), level = "debug")]
-    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Box<Pat<'tcx>> {
+    fn lower_path(&self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Box<Pat<'tcx>> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
@@ -598,7 +598,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
     /// Lowers an inline const block (e.g. `const { 1 + 1 }`) to a pattern.
     fn lower_inline_const(
-        &mut self,
+        &self,
         block: &'tcx hir::ConstBlock,
         id: hir::HirId,
         span: Span,
@@ -646,7 +646,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// - Inline const blocks (e.g. `const { 1 + 1 }`)
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
     fn lower_pat_expr(
-        &mut self,
+        &self,
         expr: &'tcx hir::PatExpr<'tcx>,
         pat_ty: Option<Ty<'tcx>>,
     ) -> PatKind<'tcx> {

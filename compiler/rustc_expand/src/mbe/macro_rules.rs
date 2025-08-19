@@ -104,7 +104,7 @@ impl<'a> ParserAnyMacro<'a> {
 
     #[instrument(skip(cx, tts))]
     pub(crate) fn from_tts<'cx>(
-        cx: &'cx mut ExtCtxt<'a>,
+        cx: &'cx ExtCtxt<'a>,
         tts: TokenStream,
         site_span: Span,
         arm_span: Span,

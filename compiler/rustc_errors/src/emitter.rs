@@ -1333,7 +1333,7 @@ impl HumanEmitter {
             .collect::<Vec<_>>()
     }
 
-    fn get_multispan_max_line_num(&mut self, msp: &MultiSpan) -> usize {
+    fn get_multispan_max_line_num(&self, msp: &MultiSpan) -> usize {
         let Some(ref sm) = self.sm else {
             return 0;
         };
@@ -1364,7 +1364,7 @@ impl HumanEmitter {
         max
     }
 
-    fn get_max_line_num(&mut self, span: &MultiSpan, children: &[Subdiag]) -> usize {
+    fn get_max_line_num(&self, span: &MultiSpan, children: &[Subdiag]) -> usize {
         let primary = self.get_multispan_max_line_num(span);
         children
             .iter()

@@ -1700,7 +1700,7 @@ impl<'tcx> VnState<'_, 'tcx> {
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it. If you used this local, add it to `reused_locals` to remove storage statements.
-    fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
+    fn try_as_local(&self, index: VnIndex, loc: Location) -> Option<Local> {
         let other = self.rev_locals.get(index)?;
         other
             .iter()

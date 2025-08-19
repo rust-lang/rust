@@ -77,7 +77,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 ///
 /// This may result in errors being reported.
 pub(crate) fn compute_regions<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     location_table: &PoloniusLocationTable,

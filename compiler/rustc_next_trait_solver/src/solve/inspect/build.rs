@@ -239,7 +239,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
     }
 
     pub(in crate::solve) fn new_goal_evaluation(
-        &mut self,
+        &self,
         uncanonicalized_goal: Goal<I, I::Predicate>,
         orig_values: &[I::GenericArg],
         kind: GoalEvaluationKind,
@@ -280,7 +280,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
     }
 
     pub(crate) fn new_goal_evaluation_step(
-        &mut self,
+        &self,
         var_values: ty::CanonicalVarValues<I>,
     ) -> ProofTreeBuilder<D> {
         self.nested(|| WipCanonicalGoalEvaluationStep {

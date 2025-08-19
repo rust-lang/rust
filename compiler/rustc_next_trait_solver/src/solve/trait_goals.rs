@@ -1315,7 +1315,7 @@ where
     /// Importantly, we also only prefer the builtin impls for trait goals, and not during
     /// normalization. This means the only case where this special-case results in exploitable
     /// unsoundness should be lifetime dependent user-written impls.
-    pub(super) fn unsound_prefer_builtin_dyn_impl(&mut self, candidates: &mut Vec<Candidate<I>>) {
+    pub(super) fn unsound_prefer_builtin_dyn_impl(&self, candidates: &mut Vec<Candidate<I>>) {
         match self.typing_mode() {
             TypingMode::Coherence => return,
             TypingMode::Analysis { .. }

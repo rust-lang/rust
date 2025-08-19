@@ -191,7 +191,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// See also [`Self::codegen_transmute_operand`] for cases that can be done
     /// without needing a pre-allocated place for the destination.
     fn codegen_transmute(
-        &mut self,
+        &self,
         bx: &mut Bx,
         src: OperandRef<'tcx, Bx::Value>,
         dst: PlaceRef<'tcx, Bx::Value>,
@@ -220,7 +220,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// This is supported for all cases where the `cast` type is SSA,
     /// but for non-ZSTs with [`abi::BackendRepr::Memory`] it ICEs.
     pub(crate) fn codegen_transmute_operand(
-        &mut self,
+        &self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
         cast: TyAndLayout<'tcx>,
@@ -782,7 +782,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_scalar_binop(
-        &mut self,
+        &self,
         bx: &mut Bx,
         op: mir::BinOp,
         lhs: Bx::Value,
@@ -935,7 +935,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_wide_ptr_binop(
-        &mut self,
+        &self,
         bx: &mut Bx,
         op: mir::BinOp,
         lhs_addr: Bx::Value,
@@ -977,7 +977,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_scalar_checked_binop(
-        &mut self,
+        &self,
         bx: &mut Bx,
         op: mir::BinOp,
         lhs: Bx::Value,

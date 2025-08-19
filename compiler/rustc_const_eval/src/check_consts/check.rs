@@ -375,7 +375,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
     /// Returns whether there are const-conditions.
     fn revalidate_conditional_constness(
-        &mut self,
+        &self,
         callee: DefId,
         callee_args: ty::GenericArgsRef<'tcx>,
         call_span: Span,

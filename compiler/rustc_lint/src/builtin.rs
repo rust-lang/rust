@@ -1888,7 +1888,7 @@ impl KeywordIdents {
     }
 
     fn check_ident_token(
-        &mut self,
+        &self,
         cx: &EarlyContext<'_>,
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,

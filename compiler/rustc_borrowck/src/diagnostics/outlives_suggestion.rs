@@ -160,7 +160,7 @@ impl OutlivesSuggestionBuilder {
 
     /// Emit an intermediate note on the given `Diag` if the involved regions are suggestable.
     pub(crate) fn intermediate_suggestion(
-        &mut self,
+        &self,
         mbcx: &MirBorrowckCtxt<'_, '_, '_>,
         errci: &ErrorConstraintInfo<'_>,
         diag: &mut Diag<'_>,

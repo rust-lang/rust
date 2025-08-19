@@ -70,7 +70,7 @@ pub(crate) enum DivergingBlockBehavior {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(in super::super) fn check_casts(&mut self) {
+    pub(in super::super) fn check_casts(&self) {
         // don't hold the borrow to deferred_cast_checks while checking to avoid borrow checker errors
         // when writing to `self.param_env`.
         let mut deferred_cast_checks = mem::take(&mut *self.deferred_cast_checks.borrow_mut());
@@ -666,7 +666,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     callee_ty.peel_refs(),
                     callee_expr.unwrap().hir_id,
                     TraitsInScope,
-                    |mut ctxt| ctxt.probe_for_similar_candidate(),
+                    |ctxt| ctxt.probe_for_similar_candidate(),
                 )
                 && assoc.is_method()
             {

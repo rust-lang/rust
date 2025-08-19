@@ -318,7 +318,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        fx: &FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
@@ -928,7 +928,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn maybe_codegen_consume_direct(
-        &mut self,
+        &self,
         bx: &mut Bx,
         place_ref: mir::PlaceRef<'tcx>,
     ) -> Option<OperandRef<'tcx, Bx::Value>> {

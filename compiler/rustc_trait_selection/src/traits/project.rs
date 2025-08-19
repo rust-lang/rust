@@ -2134,7 +2134,7 @@ impl<'cx, 'tcx> ProjectionCacheKeyExt<'cx, 'tcx> for ProjectionCacheKey<'tcx> {
 }
 
 fn get_associated_const_value<'tcx>(
-    selcx: &mut SelectionContext<'_, 'tcx>,
+    selcx: &SelectionContext<'_, 'tcx>,
     alias_ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> ty::Const<'tcx> {

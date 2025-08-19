@@ -200,7 +200,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn instantiate_binder_with_existentials<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    fn instantiate_binder_with_existentials<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
         T: ty::TypeFoldable<TyCtxt<'tcx>> + Copy,
     {
@@ -244,7 +244,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn next_existential_region_var(&mut self, name: Option<Symbol>) -> ty::Region<'tcx> {
+    fn next_existential_region_var(&self, name: Option<Symbol>) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { name };
         self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name))
     }

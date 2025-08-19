@@ -45,7 +45,7 @@ impl AttrProcMacro for ExpandEnsures {
 // our attribute infrastructure does not yet support mixing a token-tree annotation with an AST
 // annotated, we end up doing token tree manipulation.
 fn expand_contract_clause(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     attr_span: Span,
     annotated: TokenStream,
     inject: impl FnOnce(&mut TokenStream) -> Result<(), ErrorGuaranteed>,
@@ -123,7 +123,7 @@ fn expand_contract_clause(
 }
 
 fn expand_requires_tts(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     attr_span: Span,
     annotation: TokenStream,
     annotated: TokenStream,
@@ -149,7 +149,7 @@ fn expand_requires_tts(
 }
 
 fn expand_ensures_tts(
-    ecx: &mut ExtCtxt<'_>,
+    ecx: &ExtCtxt<'_>,
     attr_span: Span,
     annotation: TokenStream,
     annotated: TokenStream,

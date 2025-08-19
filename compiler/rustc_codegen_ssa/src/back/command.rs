@@ -95,7 +95,7 @@ impl Command {
         self.env_remove.push(key.to_owned());
     }
 
-    pub(crate) fn output(&mut self) -> io::Result<Output> {
+    pub(crate) fn output(&self) -> io::Result<Output> {
         self.command().output()
     }
 

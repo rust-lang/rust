@@ -2477,7 +2477,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub(super) fn is_recursive_obligation(
         &self,
-        obligated_types: &mut Vec<Ty<'tcx>>,
+        obligated_types: &Vec<Ty<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool {
         if let ObligationCauseCode::BuiltinDerived(data) = cause_code {

@@ -1132,7 +1132,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Validate a local resolution (from ribs).
     #[instrument(level = "debug", skip(self, all_ribs))]
     fn validate_res_from_ribs(
-        &mut self,
+        &self,
         rib_index: usize,
         rib_ident: Ident,
         mut res: Res,

@@ -70,7 +70,7 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
 }
 
 impl CfgEval<'_> {
-    fn configure<T: HasAttrs + HasTokens>(&mut self, node: T) -> Option<T> {
+    fn configure<T: HasAttrs + HasTokens>(&self, node: T) -> Option<T> {
         self.0.configure(node)
     }
 

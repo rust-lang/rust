@@ -164,11 +164,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // ADJUSTMENTS
 
-    fn adjust_self_ty(
-        &mut self,
-        unadjusted_self_ty: Ty<'tcx>,
-        pick: &probe::Pick<'tcx>,
-    ) -> Ty<'tcx> {
+    fn adjust_self_ty(&self, unadjusted_self_ty: Ty<'tcx>, pick: &probe::Pick<'tcx>) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
         let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
@@ -384,7 +380,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     fn instantiate_method_args(
-        &mut self,
+        &self,
         pick: &probe::Pick<'tcx>,
         seg: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
@@ -525,7 +521,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     fn unify_receivers(
-        &mut self,
+        &self,
         self_ty: Ty<'tcx>,
         method_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
@@ -566,7 +562,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     // inference guessing, the predicates and method signature can't be normalized
     // until we unify the `Self` type.
     fn instantiate_method_sig(
-        &mut self,
+        &self,
         pick: &probe::Pick<'tcx>,
         all_args: GenericArgsRef<'tcx>,
     ) -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
@@ -590,7 +586,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     fn add_obligations(
-        &mut self,
+        &self,
         sig: ty::FnSig<'tcx>,
         all_args: GenericArgsRef<'tcx>,
         method_predicates: ty::InstantiatedPredicates<'tcx>,
@@ -719,7 +715,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     }
 
     fn upcast(
-        &mut self,
+        &self,
         source_trait_ref: ty::PolyTraitRef<'tcx>,
         target_trait_def_id: DefId,
     ) -> ty::PolyTraitRef<'tcx> {

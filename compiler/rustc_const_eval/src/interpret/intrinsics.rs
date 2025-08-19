@@ -875,7 +875,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     pub(crate) fn compare_bytes_intrinsic(
-        &mut self,
+        &self,
         left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         byte_count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
@@ -893,7 +893,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     pub(crate) fn raw_eq_intrinsic(
-        &mut self,
+        &self,
         lhs: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         rhs: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
