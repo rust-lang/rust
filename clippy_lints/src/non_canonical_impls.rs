@@ -114,136 +114,126 @@ declare_lint_pass!(NonCanonicalImpls => [NON_CANONICAL_CLONE_IMPL, NON_CANONICAL
 impl LateLintPass<'_> for NonCanonicalImpls {
     #[expect(clippy::too_many_lines)]
     fn check_impl_item<'tcx>(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'tcx>) {
-        let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id()) else {
-            return;
-        };
-        let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder) else {
-            return;
-        };
-        if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
-            return;
-        }
-        let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir_impl_item(impl_item.impl_item_id()).kind else {
-            return;
-        };
-        let body = cx.tcx.hir_body(impl_item_id);
-        let ExprKind::Block(block, ..) = body.value.kind else {
-            return;
-        };
-        if block.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, impl_item) {
-            return;
-        }
-
-        let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id);
-        if trait_name == Some(sym::Clone)
-            && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
-            && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
+        if let Node::Item(item) = cx.tcx.parent_hir_node(impl_item.hir_id())
+            && let Some(trait_impl) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::skip_binder)
+            && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
+            && let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir_impl_item(impl_item.impl_item_id()).kind
+            && let body = cx.tcx.hir_body(impl_item_id)
+            && let ExprKind::Block(block, ..) = body.value.kind
+            && !block.span.in_external_macro(cx.sess().source_map())
+            && !is_from_proc_macro(cx, impl_item)
         {
-            if impl_item.ident.name == sym::clone {
-                if block.stmts.is_empty()
-                    && let Some(expr) = block.expr
-                    && let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
-                    && let ExprKind::Path(qpath) = deref.kind
-                    && last_path_segment(&qpath).ident.name == kw::SelfLower
-                {
-                } else {
+            let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id);
+            if trait_name == Some(sym::Clone)
+                && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
+                && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
+            {
+                if impl_item.ident.name == sym::clone {
+                    if block.stmts.is_empty()
+                        && let Some(expr) = block.expr
+                        && let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
+                        && let ExprKind::Path(qpath) = deref.kind
+                        && last_path_segment(&qpath).ident.name == kw::SelfLower
+                    {
+                    } else {
+                        span_lint_and_sugg(
+                            cx,
+                            NON_CANONICAL_CLONE_IMPL,
+                            block.span,
+                            "non-canonical implementation of `clone` on a `Copy` type",
+                            "change this to",
+                            "{ *self }".to_owned(),
+                            Applicability::MaybeIncorrect,
+                        );
+
+                        return;
+                    }
+                }
+
+                if impl_item.ident.name == sym::clone_from {
                     span_lint_and_sugg(
                         cx,
                         NON_CANONICAL_CLONE_IMPL,
-                        block.span,
-                        "non-canonical implementation of `clone` on a `Copy` type",
-                        "change this to",
-                        "{ *self }".to_owned(),
+                        impl_item.span,
+                        "unnecessary implementation of `clone_from` on a `Copy` type",
+                        "remove it",
+                        String::new(),
                         Applicability::MaybeIncorrect,
                     );
+                }
+            } else if trait_name == Some(sym::PartialOrd)
+                && impl_item.ident.name == sym::partial_cmp
+                && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
+                && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
+            {
+                // If the `cmp` call likely needs to be fully qualified in the suggestion
+                // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't
+                // access `cmp_expr` in the suggestion without major changes, as we lint in `else`.
+                let mut needs_fully_qualified = false;
 
+                if block.stmts.is_empty()
+                    && let Some(expr) = block.expr
+                    && expr_is_cmp(cx, expr, impl_item, &mut needs_fully_qualified)
+                {
                     return;
                 }
-            }
+                // Fix #12683, allow [`needless_return`] here
+                else if block.expr.is_none()
+                    && let Some(stmt) = block.stmts.first()
+                    && let rustc_hir::StmtKind::Semi(Expr {
+                        kind: ExprKind::Ret(Some(ret)),
+                        ..
+                    }) = stmt.kind
+                    && expr_is_cmp(cx, ret, impl_item, &mut needs_fully_qualified)
+                {
+                    return;
+                }
+                // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
+                // suggestion tons more complex.
+                else if let [lhs, rhs, ..] = trait_impl.args.as_slice()
+                    && lhs != rhs
+                {
+                    return;
+                }
 
-            if impl_item.ident.name == sym::clone_from {
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
-                    NON_CANONICAL_CLONE_IMPL,
-                    impl_item.span,
-                    "unnecessary implementation of `clone_from` on a `Copy` type",
-                    "remove it",
-                    String::new(),
-                    Applicability::MaybeIncorrect,
+                    NON_CANONICAL_PARTIAL_ORD_IMPL,
+                    item.span,
+                    "non-canonical implementation of `partial_cmp` on an `Ord` type",
+                    |diag| {
+                        let [_, other] = body.params else {
+                            return;
+                        };
+                        let Some(std_or_core) = std_or_core(cx) else {
+                            return;
+                        };
+
+                        let suggs = match (other.pat.simple_ident(), needs_fully_qualified) {
+                            (Some(other_ident), true) => vec![(
+                                block.span,
+                                format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, {})) }}", other_ident.name),
+                            )],
+                            (Some(other_ident), false) => {
+                                vec![(block.span, format!("{{ Some(self.cmp({})) }}", other_ident.name))]
+                            },
+                            (None, true) => vec![
+                                (
+                                    block.span,
+                                    format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, other)) }}"),
+                                ),
+                                (other.pat.span, "other".to_owned()),
+                            ],
+                            (None, false) => vec![
+                                (block.span, "{ Some(self.cmp(other)) }".to_owned()),
+                                (other.pat.span, "other".to_owned()),
+                            ],
+                        };
+
+                        diag.multipart_suggestion("change this to", suggs, Applicability::Unspecified);
+                    },
                 );
             }
-        } else if trait_name == Some(sym::PartialOrd)
-            && impl_item.ident.name == sym::partial_cmp
-            && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
-            && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])
-        {
-            // If the `cmp` call likely needs to be fully qualified in the suggestion
-            // (like `std::cmp::Ord::cmp`). It's unfortunate we must put this here but we can't
-            // access `cmp_expr` in the suggestion without major changes, as we lint in `else`.
-            let mut needs_fully_qualified = false;
-
-            if block.stmts.is_empty()
-                && let Some(expr) = block.expr
-                && expr_is_cmp(cx, expr, impl_item, &mut needs_fully_qualified)
-            {
-                return;
-            }
-            // Fix #12683, allow [`needless_return`] here
-            else if block.expr.is_none()
-                && let Some(stmt) = block.stmts.first()
-                && let rustc_hir::StmtKind::Semi(Expr {
-                    kind: ExprKind::Ret(Some(ret)),
-                    ..
-                }) = stmt.kind
-                && expr_is_cmp(cx, ret, impl_item, &mut needs_fully_qualified)
-            {
-                return;
-            }
-            // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
-            // suggestion tons more complex.
-            else if let [lhs, rhs, ..] = trait_impl.args.as_slice()
-                && lhs != rhs
-            {
-                return;
-            }
-
-            span_lint_and_then(
-                cx,
-                NON_CANONICAL_PARTIAL_ORD_IMPL,
-                item.span,
-                "non-canonical implementation of `partial_cmp` on an `Ord` type",
-                |diag| {
-                    let [_, other] = body.params else {
-                        return;
-                    };
-                    let Some(std_or_core) = std_or_core(cx) else {
-                        return;
-                    };
-
-                    let suggs = match (other.pat.simple_ident(), needs_fully_qualified) {
-                        (Some(other_ident), true) => vec![(
-                            block.span,
-                            format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, {})) }}", other_ident.name),
-                        )],
-                        (Some(other_ident), false) => {
-                            vec![(block.span, format!("{{ Some(self.cmp({})) }}", other_ident.name))]
-                        },
-                        (None, true) => vec![
-                            (
-                                block.span,
-                                format!("{{ Some({std_or_core}::cmp::Ord::cmp(self, other)) }}"),
-                            ),
-                            (other.pat.span, "other".to_owned()),
-                        ],
-                        (None, false) => vec![
-                            (block.span, "{ Some(self.cmp(other)) }".to_owned()),
-                            (other.pat.span, "other".to_owned()),
-                        ],
-                    };
-
-                    diag.multipart_suggestion("change this to", suggs, Applicability::Unspecified);
-                },
-            );
         }
     }
 }
