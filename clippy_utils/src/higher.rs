@@ -288,14 +288,14 @@ impl<'a> VecArgs<'a> {
             && is_expn_of(fun.span, sym::vec).is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         {
-            return match (cx.tcx.get_diagnostic_name(fun_def_id), args.len()) {
-                (Some(sym::vec_from_elem), 2) => {
+            return match (cx.tcx.get_diagnostic_name(fun_def_id), args) {
+                (Some(sym::vec_from_elem), [elem, size]) => {
                     // `vec![elem; size]` case
-                    Some(VecArgs::Repeat(&args[0], &args[1]))
+                    Some(VecArgs::Repeat(elem, size))
                 },
-                (Some(sym::slice_into_vec), 1) => {
+                (Some(sym::slice_into_vec), [slice]) => {
                     // `vec![a, b, c]` case
-                    if let ExprKind::Call(_, [arg]) = &args[0].kind
+                    if let ExprKind::Call(_, [arg]) = slice.kind
                         && let ExprKind::Array(args) = arg.kind
                     {
                         Some(VecArgs::Vec(args))
@@ -303,7 +303,7 @@ impl<'a> VecArgs<'a> {
                         None
                     }
                 },
-                (Some(sym::vec_new), 0) => Some(VecArgs::Vec(&[])),
+                (Some(sym::vec_new), []) => Some(VecArgs::Vec(&[])),
                 _ => None,
             };
         }
