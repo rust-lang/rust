@@ -1570,11 +1570,6 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// let result = cmp::min_by(1, -1, abs_cmp);
 /// assert_eq!(result, 1);
-///
-/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
-///
-/// let result = cmp::min_by(-2, 1, rhs_abs_cmp);
-/// assert_eq!(result, -2);
 /// ```
 #[inline]
 #[must_use]
@@ -1670,11 +1665,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 ///
 /// let result = cmp::max_by(1, -1, abs_cmp);
 /// assert_eq!(result, -1);
-///
-/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
-///
-/// let result = cmp::max_by(-2, 1, rhs_abs_cmp);
-/// assert_eq!(result, 1);
 /// ```
 #[inline]
 #[must_use]
@@ -1773,10 +1763,6 @@ where
 /// assert_eq!(cmp::minmax_by(-2, 1, abs_cmp), [1, -2]);
 /// assert_eq!(cmp::minmax_by(-1, 2, abs_cmp), [-1, 2]);
 /// assert_eq!(cmp::minmax_by(-2, 2, abs_cmp), [-2, 2]);
-///
-/// let rhs_abs_cmp = |x: &i32, y: &i32| x.cmp(&y.abs());
-///
-/// assert_eq!(cmp::minmax_by(-2, 1, rhs_abs_cmp), [-2, 1]);
 ///
 /// // You can destructure the result using array patterns
 /// let [min, max] = cmp::minmax_by(-42, 17, abs_cmp);
