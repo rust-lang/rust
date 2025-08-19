@@ -69,6 +69,8 @@ fn aarch64() {
 #[test]
 #[cfg(any(target_arch = "loongarch32", target_arch = "loongarch64"))]
 fn loongarch() {
+    let _ = is_loongarch_feature_detected!("32s");
+    let _ = is_loongarch_feature_detected!("32s",);
     let _ = is_loongarch_feature_detected!("lsx");
     let _ = is_loongarch_feature_detected!("lsx",);
 }
