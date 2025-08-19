@@ -9,6 +9,8 @@ LL |         |_outlives1, _outlives2, x, y| {
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 &'^0 u32>, std::cell::Cell<&'^1 &'?2 u32>, std::cell::Cell<&'^0 u32>, std::cell::Cell<&'^1 u32>)),
                (),
            ]
+   = note: late-bound region is '?4
+   = note: late-bound region is '?5
    = note: late-bound region is '?3
    = note: number of external vids: 4
    = note: where '?1: '?2

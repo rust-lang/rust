@@ -45,7 +45,7 @@ macro_rules! int {
     }
 }
 
-int!(u32, u64);
+int!(u16, u32, u64);
 
 /// A helper trait to avoid duplicating basically all the conversion code for IEEE floats.
 ///
@@ -109,7 +109,7 @@ pub trait RawFloat:
 
     /// Round-to-even only happens for negative values of q
     /// when q ≥ −4 in the 64-bit case and when q ≥ −17 in
-    /// the 32-bitcase.
+    /// the 32-bit case.
     ///
     /// When q ≥ 0,we have that 5^q ≤ 2m+1. In the 64-bit case,we
     /// have 5^q ≤ 2m+1 ≤ 2^54 or q ≤ 23. In the 32-bit case,we have
@@ -119,7 +119,7 @@ pub trait RawFloat:
     /// so (2m+1)×5^−q < 2^64. We have that 2m+1 > 2^53 (64-bit case)
     /// or 2m+1 > 2^24 (32-bit case). Hence,we must have 2^53×5^−q < 2^64
     /// (64-bit) and 2^24×5^−q < 2^64 (32-bit). Hence we have 5^−q < 2^11
-    /// or q ≥ −4 (64-bit case) and 5^−q < 2^40 or q ≥ −17 (32-bitcase).
+    /// or q ≥ −4 (64-bit case) and 5^−q < 2^40 or q ≥ −17 (32-bit case).
     ///
     /// Thus we have that we only need to round ties to even when
     /// we have that q ∈ [−4,23](in the 64-bit case) or q∈[−17,10]
@@ -143,7 +143,7 @@ pub trait RawFloat:
     /// smaller than `10^SMALLEST_POWER_OF_TEN`, which will round to zero.
     ///
     /// The smallest power of ten is represented by `⌊log10(2^-n / (2^64 - 1))⌋`, where `n` is
-    /// the smallest power of two. The `2^64 - 1)` denomenator comes from the number of values
+    /// the smallest power of two. The `2^64 - 1)` denominator comes from the number of values
     /// that are representable by the intermediate storage format. I don't actually know _why_
     /// the storage format is relevant here.
     ///
@@ -189,9 +189,14 @@ pub trait RawFloat:
 
     /// Returns the mantissa, exponent and sign as integers.
     ///
-    /// That is, this returns `(m, p, s)` such that `s * m * 2^p` represents the original float.
-    /// For 0, the exponent will be `-(EXP_BIAS + SIG_BITS`, which is the
-    /// minimum subnormal power.
+    /// This returns `(m, p, s)` such that `s * m * 2^p` represents the original float. For 0, the
+    /// exponent will be `-(EXP_BIAS + SIG_BITS)`, which is the minimum subnormal power. For
+    /// infinity or NaN, the exponent will be `EXP_SAT - EXP_BIAS - SIG_BITS`.
+    ///
+    /// If subnormal, the mantissa will be shifted one bit to the left. Otherwise, it is returned
+    /// with the explicit bit set but otherwise unshifted
+    ///
+    /// `s` is only ever +/-1.
     fn integer_decode(self) -> (u64, i16, i8) {
         let bits = self.to_bits();
         let sign: i8 = if bits >> (Self::BITS - 1) == Self::Int::ZERO { 1 } else { -1 };
@@ -211,6 +216,50 @@ pub trait RawFloat:
 const fn pow2_to_pow10(a: i64) -> i64 {
     let res = (a as f64) / f64::consts::LOG2_10;
     res as i64
+}
+
+#[cfg(target_has_reliable_f16)]
+impl RawFloat for f16 {
+    type Int = u16;
+
+    const INFINITY: Self = Self::INFINITY;
+    const NEG_INFINITY: Self = Self::NEG_INFINITY;
+    const NAN: Self = Self::NAN;
+    const NEG_NAN: Self = -Self::NAN;
+
+    const BITS: u32 = 16;
+    const SIG_TOTAL_BITS: u32 = Self::MANTISSA_DIGITS;
+    const EXP_MASK: Self::Int = Self::EXP_MASK;
+    const SIG_MASK: Self::Int = Self::MAN_MASK;
+
+    const MIN_EXPONENT_ROUND_TO_EVEN: i32 = -22;
+    const MAX_EXPONENT_ROUND_TO_EVEN: i32 = 5;
+    const SMALLEST_POWER_OF_TEN: i32 = -27;
+
+    #[inline]
+    fn from_u64(v: u64) -> Self {
+        debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
+        v as _
+    }
+
+    #[inline]
+    fn from_u64_bits(v: u64) -> Self {
+        Self::from_bits((v & 0xFFFF) as u16)
+    }
+
+    fn pow10_fast_path(exponent: usize) -> Self {
+        #[allow(clippy::use_self)]
+        const TABLE: [f16; 8] = [1e0, 1e1, 1e2, 1e3, 1e4, 0.0, 0.0, 0.];
+        TABLE[exponent & 7]
+    }
+
+    fn to_bits(self) -> Self::Int {
+        self.to_bits()
+    }
+
+    fn classify(self) -> FpCategory {
+        self.classify()
+    }
 }
 
 impl RawFloat for f32 {

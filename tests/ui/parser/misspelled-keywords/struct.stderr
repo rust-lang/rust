@@ -4,7 +4,7 @@ error: expected one of `!` or `::`, found `Foor`
 LL | Struct Foor {
    |        ^^^^ expected one of `!` or `::`
    |
-help: write keyword `struct` in lowercase (notice the capitalization difference)
+help: write keyword `struct` in lowercase (notice the capitalization)
    |
 LL - Struct Foor {
 LL + struct Foor {

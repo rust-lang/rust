@@ -34,7 +34,7 @@ fn variant_data_is_aligned<A,B>(amnt: usize, u: &Tag<A,B>) -> bool {
 }
 
 pub fn main() {
-    let u64_align = std::mem::min_align_of::<u64>();
+    let u64_align = std::mem::align_of::<u64>();
     let x = mk_rec(22u64, 23u64);
     assert!(is_aligned(u64_align, &x.tA));
     assert!(variant_data_is_aligned(u64_align, &x.tA));

@@ -11,6 +11,13 @@
 //@ needs-dynamic-linking
 //@ only-nightly (requires unstable rustc flag)
 
+// This test trips a check in the MSVC linker for an outdated processor:
+// "LNK1322: cannot avoid potential ARM hazard (Cortex-A53 MPCore processor bug #843419)"
+// Until MSVC removes this check:
+// https://developercommunity.microsoft.com/t/Remove-checking-for-and-fixing-Cortex-A/10905134
+// we'll need to disable this test on Arm64 Windows.
+//@ ignore-aarch64-pc-windows-msvc
+
 #![deny(warnings)]
 
 use run_make_support::{dynamic_lib_name, rfs, rust_lib_name, rustc};

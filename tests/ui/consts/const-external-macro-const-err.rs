@@ -9,5 +9,5 @@ extern crate external_macro;
 use external_macro::static_assert;
 
 fn main() {
-    static_assert!(2 + 2 == 5); //~ ERROR constant
+    static_assert!(2 + 2 == 5); //~ ERROR index out of bounds: the length is 1 but the index is 1
 }

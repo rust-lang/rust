@@ -10,11 +10,13 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 object.workspace = true
 libloading.workspace = true
 memmap2.workspace = true
+temp-dir.workspace = true
 
 tt.workspace = true
 syntax-bridge.workspace = true
@@ -24,6 +26,7 @@ span = { path = "../span", version = "0.0.0", default-features = false}
 intern.workspace = true
 
 ra-ap-rustc_lexer.workspace = true
+
 
 [target.'cfg(unix)'.dependencies]
 libc.workspace = true

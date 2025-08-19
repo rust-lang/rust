@@ -1,0 +1,31 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/trait-incorrect-generic-args.rs:6:13
+   |
+LL |     impl<T> Seq<T> for Vec<T> {
+   |             ^^^--- help: remove the unnecessary generics
+   |             |
+   |             expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/trait-incorrect-generic-args.rs:4:11
+   |
+LL |     trait Seq {}
+   |           ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/trait-incorrect-generic-args.rs:11:10
+   |
+LL |     impl Seq<bool> for u32 {
+   |          ^^^------ help: remove the unnecessary generics
+   |          |
+   |          expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/trait-incorrect-generic-args.rs:4:11
+   |
+LL |     trait Seq {}
+   |           ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

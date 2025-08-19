@@ -8,7 +8,6 @@ extern crate alloc;
 #[macro_use]
 extern crate proc_macro_derive;
 
-#[warn(clippy::std_instead_of_core)]
 fn std_instead_of_core() {
     // Regular import
     use std::hash::Hasher;

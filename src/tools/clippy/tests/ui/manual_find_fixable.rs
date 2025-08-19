@@ -19,7 +19,7 @@ fn lookup(n: u32) -> Option<u32> {
 fn with_pat(arr: Vec<(u32, u32)>) -> Option<u32> {
     for (a, _) in arr {
         //~^ manual_find
-        if a % 2 == 0 {
+        if a.is_multiple_of(2) {
             return Some(a);
         }
     }
@@ -111,7 +111,7 @@ fn with_side_effects(arr: Vec<u32>) -> Option<u32> {
 
 fn with_else(arr: Vec<u32>) -> Option<u32> {
     for el in arr {
-        if el % 2 == 0 {
+        if el.is_multiple_of(2) {
             return Some(el);
         } else {
             println!("{}", el);
@@ -251,3 +251,25 @@ fn two_bindings(v: Vec<(u8, u8)>) -> Option<u8> {
 }
 
 fn main() {}
+
+mod issue14826 {
+    fn adjust_fixable(needle: &str) -> Option<&'static str> {
+        for candidate in &["foo", "bar"] {
+            //~^ manual_find
+            if candidate.eq_ignore_ascii_case(needle) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    fn adjust_unfixable(needle: &str) -> Option<*const str> {
+        for &candidate in &["foo", "bar"] {
+            //~^ manual_find
+            if candidate.eq_ignore_ascii_case(needle) {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+}

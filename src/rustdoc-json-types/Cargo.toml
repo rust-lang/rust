@@ -10,7 +10,8 @@ path = "lib.rs"
 default = ["rustc-hash"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = "1.0"
+serde_derive = "1.0"
 rustc-hash = { version = "2.0", optional = true }
 
 [dev-dependencies]

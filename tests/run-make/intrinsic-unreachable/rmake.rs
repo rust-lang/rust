@@ -4,6 +4,7 @@
 // which means the emitted artifacts should be shorter in length.
 // See https://github.com/rust-lang/rust/pull/16970
 
+//@ needs-target-std
 //@ needs-asm-support
 //@ ignore-windows
 // Reason: Because of Windows exception handling, the code is not necessarily any shorter.

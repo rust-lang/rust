@@ -3,7 +3,7 @@
 
 // Ensure that we check if trivial bounds on const items hold or not.
 
-const UNUSABLE: () = () //~ ERROR evaluation of constant value failed
+const UNUSABLE: () = () //~ ERROR entering unreachable code
 where
     String: Copy;
 

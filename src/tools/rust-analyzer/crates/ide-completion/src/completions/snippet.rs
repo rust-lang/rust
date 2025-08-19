@@ -11,8 +11,8 @@ use crate::{
 pub(crate) fn complete_expr_snippet(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
-    &PathExprCtx { in_block_expr, .. }: &PathExprCtx,
+    path_ctx: &PathCompletionCtx<'_>,
+    &PathExprCtx { in_block_expr, .. }: &PathExprCtx<'_>,
 ) {
     if !matches!(path_ctx.qualified, Qualified::No) {
         return;
@@ -51,7 +51,7 @@ macro_rules! $1 {
 pub(crate) fn complete_item_snippet(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
+    path_ctx: &PathCompletionCtx<'_>,
     kind: &ItemListKind,
 ) {
     if !matches!(path_ctx.qualified, Qualified::No) {

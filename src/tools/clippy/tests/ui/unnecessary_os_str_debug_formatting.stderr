@@ -54,5 +54,14 @@ LL |     let _: String = format!("{:?}", os_string);
    = help: use `Display` formatting and change this to `os_string.display()`
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
-error: aborting due to 6 previous errors
+error: unnecessary `Debug` formatting in `println!` args
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:34:22
+   |
+LL |     println!("{:?}", os_str);
+   |                      ^^^^^^
+   |
+   = help: use `Display` formatting and change this to `os_str.display()`
+   = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
+
+error: aborting due to 7 previous errors
 

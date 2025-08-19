@@ -10,7 +10,7 @@ pub trait Provides<'a> {
 pub trait Selector: for<'a> Provides<'a> {
     type Namespace: PartialEq + for<'a> PartialEq<<Self as Provides<'a>>::Item>;
 
-    fn get_namespace(&self) -> <Self as Provides>::Item;
+    fn get_namespace(&self) -> <Self as Provides<'_>>::Item;
 }
 
 pub struct MySelector;

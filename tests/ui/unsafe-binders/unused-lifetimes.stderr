@@ -1,0 +1,14 @@
+warning: lifetime parameter `'a` never used
+  --> $DIR/unused-lifetimes.rs:15:28
+   |
+LL | pub fn by_value(_x: unsafe<'a> S) -> usize {
+   |                     -------^^-- help: elide the unused lifetime
+   |
+note: the lint level is defined here
+  --> $DIR/unused-lifetimes.rs:5:9
+   |
+LL | #![warn(unused_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

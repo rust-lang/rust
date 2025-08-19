@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_refutable, peel_hir_pat_refs, recurse_or_patterns};
 use rustc_errors::Applicability;
@@ -116,11 +117,12 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let format_suggestion = |variant: &VariantDef| {
         format!(
             "{}{}{}{}",
-            if let Some(ident) = wildcard_ident {
-                format!("{} @ ", ident.name)
-            } else {
-                String::new()
-            },
+            wildcard_ident.map_or(String::new(), |ident| {
+                ident
+                    .span
+                    .get_source_text(cx)
+                    .map_or_else(|| format!("{} @ ", ident.name), |s| format!("{s} @ "))
+            }),
             if let CommonPrefixSearcher::Path(path_prefix) = path_prefix {
                 let mut s = String::new();
                 for seg in path_prefix {
@@ -138,7 +140,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 Some(CtorKind::Fn) if variant.fields.len() == 1 => "(_)",
                 Some(CtorKind::Fn) => "(..)",
                 Some(CtorKind::Const) => "",
-                None => "{ .. }",
+                None => " { .. }",
             }
         )
     };

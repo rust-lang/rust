@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When using the flag -C linker-plugin-lto, static libraries could lose their upstream object
 // files during compilation. This bug was fixed in #53031, and this test compiles a staticlib
 // dependent on upstream, checking that the upstream object file still exists after no LTO and

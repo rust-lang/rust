@@ -15,25 +15,15 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
         tcx: TyCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if sizedness_fast_path(tcx, key.value.predicate) {
+        if sizedness_fast_path(tcx, key.value.predicate, key.param_env) {
             return Some(());
         }
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) =
             key.value.predicate.kind().skip_binder()
+            && term.is_trivially_wf(tcx)
         {
-            match term.as_type()?.kind() {
-                ty::Param(_)
-                | ty::Bool
-                | ty::Char
-                | ty::Int(_)
-                | ty::Float(_)
-                | ty::Str
-                | ty::Uint(_) => {
-                    return Some(());
-                }
-                _ => {}
-            }
+            return Some(());
         }
 
         None

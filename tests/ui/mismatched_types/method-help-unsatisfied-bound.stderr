@@ -2,9 +2,8 @@ error[E0277]: `Foo` doesn't implement `Debug`
   --> $DIR/method-help-unsatisfied-bound.rs:5:7
    |
 LL |     a.unwrap();
-   |       ^^^^^^ `Foo` cannot be formatted using `{:?}`
+   |       ^^^^^^ the trait `Debug` is not implemented for `Foo`
    |
-   = help: the trait `Debug` is not implemented for `Foo`
    = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`
 note: required by a bound in `Result::<T, E>::unwrap`
   --> $SRC_DIR/core/src/result.rs:LL:COL

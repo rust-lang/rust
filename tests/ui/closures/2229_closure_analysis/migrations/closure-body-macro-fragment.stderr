@@ -15,7 +15,7 @@ LL | |         println!("{:?}", x);
 LL | |     });
    | |______- in this macro invocation
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
   --> $DIR/closure-body-macro-fragment.rs:4:9
    |

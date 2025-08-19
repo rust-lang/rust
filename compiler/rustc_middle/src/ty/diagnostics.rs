@@ -3,18 +3,18 @@
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
 };
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
 use crate::ty::{
-    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Opaque,
+    self, AliasTy, Const, ConstKind, FallibleTypeFolder, InferConst, InferTy, Instance, Opaque,
     PolyTraitPredicate, Projection, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
@@ -24,6 +24,15 @@ impl IntoDiagArg for Ty<'_> {
         ty::tls::with(|tcx| {
             let ty = tcx.short_string(self, path);
             rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+        })
+    }
+}
+
+impl IntoDiagArg for Instance<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        ty::tls::with(|tcx| {
+            let instance = tcx.short_string_namespace(self, path, Namespace::ValueNS);
+            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(instance))
         })
     }
 }
@@ -287,7 +296,7 @@ pub fn suggest_constraining_type_params<'a>(
     param_names_and_constraints: impl Iterator<Item = (&'a str, &'a str, Option<DefId>)>,
     span_to_replace: Option<Span>,
 ) -> bool {
-    let mut grouped = FxHashMap::default();
+    let mut grouped = FxIndexMap::default();
     let mut unstable_suggestion = false;
     param_names_and_constraints.for_each(|(param_name, constraint, def_id)| {
         let stable = match def_id {

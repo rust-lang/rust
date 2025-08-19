@@ -2,7 +2,7 @@ error: Undefined Behavior: pointer not dereferenceable: ALLOC has been freed, so
   --> tests/fail/rc_as_ptr.rs:LL:CC
    |
 LL |     assert_eq!(42, **unsafe { &*Weak::as_ptr(&weak) });
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer not dereferenceable: ALLOC has been freed, so this pointer is dangling
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

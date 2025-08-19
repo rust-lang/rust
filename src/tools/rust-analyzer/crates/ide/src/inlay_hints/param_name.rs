@@ -87,10 +87,10 @@ pub(super) fn hints(
     Some(())
 }
 
-fn get_callable(
-    sema: &Semantics<'_, RootDatabase>,
+fn get_callable<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     expr: &ast::Expr,
-) -> Option<(hir::Callable, ast::ArgList)> {
+) -> Option<(hir::Callable<'db>, ast::ArgList)> {
     match expr {
         ast::Expr::CallExpr(expr) => {
             let descended = sema.descend_node_into_attributes(expr.clone()).pop();
@@ -135,10 +135,10 @@ fn should_hide_param_name_hint(
     }
 
     if unary_function {
-        if let Some(function_name) = function_name {
-            if is_param_name_suffix_of_fn_name(param_name, function_name) {
-                return true;
-            }
+        if let Some(function_name) = function_name
+            && is_param_name_suffix_of_fn_name(param_name, function_name)
+        {
+            return true;
         }
         if is_obvious_param(param_name) {
             return true;

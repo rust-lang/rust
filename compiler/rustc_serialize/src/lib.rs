@@ -14,6 +14,7 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
+#![feature(sized_hierarchy)]
 // tidy-alphabetical-end
 
 // Allows macros to refer to this crate as `::rustc_serialize`.

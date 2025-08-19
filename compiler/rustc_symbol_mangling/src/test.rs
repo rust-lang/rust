@@ -56,7 +56,7 @@ impl SymbolNamesTest<'_> {
         // some subset.
         for attr in tcx.get_attrs(def_id, SYMBOL_NAME) {
             let def_id = def_id.to_def_id();
-            let instance = Instance::new(
+            let instance = Instance::new_raw(
                 def_id,
                 tcx.erase_regions(GenericArgs::identity_for_item(tcx, def_id)),
             );

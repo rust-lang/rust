@@ -4,6 +4,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    assists::ExprFillDefaultMode,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
@@ -46,7 +47,7 @@ use crate::{
 //     bar("", baz());
 // }
 //
-// fn bar(arg: &str, baz: Baz) ${0:-> _} {
+// fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
 //     todo!()
 // }
 //
@@ -69,10 +70,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let TargetInfo { target_module, adt_info, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
-    if let Some(m) = target_module {
-        if !is_editable_crate(m.krate(), ctx.db()) {
-            return None;
-        }
+    if let Some(m) = target_module
+        && !is_editable_crate(m.krate(), ctx.db())
+    {
+        return None;
     }
 
     let function_builder =
@@ -276,7 +277,11 @@ impl FunctionBuilder {
                 target_module,
                 &mut necessary_generic_params,
             );
-            let placeholder_expr = make::ext::expr_todo();
+            let placeholder_expr = match ctx.config.expr_fill_default {
+                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                ExprFillDefaultMode::Default => make::ext::expr_todo(),
+            };
             fn_body = make::block_expr(vec![], Some(placeholder_expr));
         };
 
@@ -302,7 +307,7 @@ impl FunctionBuilder {
         ctx: &AssistContext<'_>,
         call: &ast::MethodCallExpr,
         name: &ast::NameRef,
-        receiver_ty: Type,
+        receiver_ty: Type<'_>,
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
@@ -331,7 +336,11 @@ impl FunctionBuilder {
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
 
-        let placeholder_expr = make::ext::expr_todo();
+        let placeholder_expr = match ctx.config.expr_fill_default {
+            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+        };
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
 
         Some(Self {
@@ -383,14 +392,14 @@ impl FunctionBuilder {
                 // Focus the return type if there is one
                 match ret_type {
                     Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type.clone());
+                        edit.add_placeholder_snippet(cap, ret_type);
                     }
                     None => {
-                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                        edit.add_placeholder_snippet(cap, tail_expr);
                     }
                 }
             } else {
-                edit.add_placeholder_snippet(cap, tail_expr.clone());
+                edit.add_placeholder_snippet(cap, tail_expr);
             }
         }
 
@@ -444,7 +453,11 @@ fn make_fn_body_as_new_function(
     let adt_info = adt_info.as_ref()?;
 
     let path_self = make::ext::ident_path("Self");
-    let placeholder_expr = make::ext::expr_todo();
+    let placeholder_expr = match ctx.config.expr_fill_default {
+        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+    };
     let tail_expr = if let Some(strukt) = adt_info.adt.as_struct() {
         match strukt.kind(ctx.db()) {
             StructKind::Record => {
@@ -730,17 +743,30 @@ fn fn_generic_params(
     let where_preds: Vec<ast::WherePred> =
         where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
 
-    // 4. Rewrite paths
-    if let Some(param) = generic_params.first() {
-        let source_scope = ctx.sema.scope(param.syntax())?;
-        let target_scope = ctx.sema.scope(&target.parent())?;
-        if source_scope.module() != target_scope.module() {
+    let (generic_params, where_preds): (Vec<ast::GenericParam>, Vec<ast::WherePred>) =
+        if let Some(param) = generic_params.first()
+            && let source_scope = ctx.sema.scope(param.syntax())?
+            && let target_scope = ctx.sema.scope(&target.parent())?
+            && source_scope.module() != target_scope.module()
+        {
+            // 4. Rewrite paths
             let transform = PathTransform::generic_transformation(&target_scope, &source_scope);
             let generic_params = generic_params.iter().map(|it| it.syntax());
             let where_preds = where_preds.iter().map(|it| it.syntax());
-            transform.apply_all(generic_params.chain(where_preds));
-        }
-    }
+            transform
+                .apply_all(generic_params.chain(where_preds))
+                .into_iter()
+                .filter_map(|it| {
+                    if let Some(it) = ast::GenericParam::cast(it.clone()) {
+                        Some(either::Either::Left(it))
+                    } else {
+                        ast::WherePred::cast(it).map(either::Either::Right)
+                    }
+                })
+                .partition_map(|it| it)
+        } else {
+            (generic_params, where_preds)
+        };
 
     let generic_param_list = make::generic_param_list(generic_params);
     let where_clause =
@@ -1505,7 +1531,7 @@ fn foo() {
     bar("bar")
 }
 
-fn bar(arg: &str) {
+fn bar(arg: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -2122,7 +2148,7 @@ fn foo() {
     bar(baz(), baz(), "foo", "bar")
 }
 
-fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
+fn bar(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -3090,7 +3116,7 @@ pub struct Foo {
     field_2: String,
 }
 impl Foo {
-    fn new(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) -> Self {
+    fn new(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) -> Self {
         ${0:Self { field_1: todo!(), field_2: todo!() }}
     }
 }

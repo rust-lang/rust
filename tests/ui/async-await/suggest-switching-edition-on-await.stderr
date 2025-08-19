@@ -1,5 +1,5 @@
 error[E0609]: no field `await` on type `await_on_struct_missing::S`
-  --> $DIR/suggest-switching-edition-on-await.rs:9:7
+  --> $DIR/suggest-switching-edition-on-await.rs:10:7
    |
 LL |     x.await;
    |       ^^^^^ unknown field
@@ -9,7 +9,7 @@ LL |     x.await;
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0609]: no field `await` on type `await_on_struct_similar::S`
-  --> $DIR/suggest-switching-edition-on-await.rs:22:7
+  --> $DIR/suggest-switching-edition-on-await.rs:23:7
    |
 LL |     x.await;
    |       ^^^^^ unknown field
@@ -24,7 +24,7 @@ LL +     x.awai;
    |
 
 error[E0609]: no field `await` on type `Pin<&mut dyn Future<Output = ()>>`
-  --> $DIR/suggest-switching-edition-on-await.rs:32:7
+  --> $DIR/suggest-switching-edition-on-await.rs:33:7
    |
 LL |     x.await;
    |       ^^^^^ unknown field
@@ -34,7 +34,7 @@ LL |     x.await;
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0609]: no field `await` on type `impl Future<Output = ()>`
-  --> $DIR/suggest-switching-edition-on-await.rs:41:7
+  --> $DIR/suggest-switching-edition-on-await.rs:42:7
    |
 LL |     x.await;
    |       ^^^^^ unknown field

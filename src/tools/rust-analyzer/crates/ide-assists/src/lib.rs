@@ -139,6 +139,7 @@ mod handlers {
     mod destructure_struct_binding;
     mod destructure_tuple_binding;
     mod desugar_doc_comment;
+    mod desugar_try_expr;
     mod expand_glob_import;
     mod expand_rest_pattern;
     mod extract_expressions_from_format_string;
@@ -171,6 +172,7 @@ mod handlers {
     mod generate_is_empty_from_len;
     mod generate_mut_trait_impl;
     mod generate_new;
+    mod generate_single_field_struct_from;
     mod generate_trait_from_impl;
     mod inline_call;
     mod inline_const_as_literal;
@@ -214,7 +216,6 @@ mod handlers {
     mod replace_named_generic_with_impl;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
-    mod replace_try_expr_with_match;
     mod replace_turbofish_with_explicit_type;
     mod sort_items;
     mod split_import;
@@ -222,13 +223,14 @@ mod handlers {
     mod toggle_async_sugar;
     mod toggle_ignore;
     mod toggle_macro_delimiter;
+    mod unmerge_imports;
     mod unmerge_match_arm;
-    mod unmerge_use;
     mod unnecessary_async;
     mod unqualify_method_call;
     mod unwrap_block;
     mod unwrap_return_type;
     mod unwrap_tuple;
+    mod unwrap_type_to_generic_arg;
     mod wrap_return_type;
     mod wrap_unwrap_cfg_attr;
 
@@ -272,6 +274,7 @@ mod handlers {
             destructure_struct_binding::destructure_struct_binding,
             destructure_tuple_binding::destructure_tuple_binding,
             desugar_doc_comment::desugar_doc_comment,
+            desugar_try_expr::desugar_try_expr,
             expand_glob_import::expand_glob_import,
             expand_glob_import::expand_glob_reexport,
             expand_rest_pattern::expand_rest_pattern,
@@ -299,10 +302,12 @@ mod handlers {
             generate_function::generate_function,
             generate_impl::generate_impl,
             generate_impl::generate_trait_impl,
+            generate_impl::generate_impl_trait,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_mut_trait_impl::generate_mut_trait_impl,
             generate_new::generate_new,
             generate_trait_from_impl::generate_trait_from_impl,
+            generate_single_field_struct_from::generate_single_field_struct_from,
             inline_call::inline_call,
             inline_call::inline_into_callers,
             inline_const_as_literal::inline_const_as_literal,
@@ -353,7 +358,6 @@ mod handlers {
             replace_method_eager_lazy::replace_with_lazy_method,
             replace_named_generic_with_impl::replace_named_generic_with_impl,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
-            replace_try_expr_with_match::replace_try_expr_with_match,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             sort_items::sort_items,
             split_import::split_import,
@@ -363,12 +367,13 @@ mod handlers {
             toggle_ignore::toggle_ignore,
             toggle_macro_delimiter::toggle_macro_delimiter,
             unmerge_match_arm::unmerge_match_arm,
-            unmerge_use::unmerge_use,
+            unmerge_imports::unmerge_imports,
             unnecessary_async::unnecessary_async,
             unqualify_method_call::unqualify_method_call,
             unwrap_block::unwrap_block,
             unwrap_return_type::unwrap_return_type,
             unwrap_tuple::unwrap_tuple,
+            unwrap_type_to_generic_arg::unwrap_type_to_generic_arg,
             wrap_return_type::wrap_return_type,
             wrap_unwrap_cfg_attr::wrap_unwrap_cfg_attr,
 

@@ -2,7 +2,7 @@ error[E0599]: no function or associated item named `make_g` found for fn pointer
   --> $DIR/issue-57362-2.rs:23:25
    |
 LL |     let x = <fn (&())>::make_g();
-   |                         ^^^^^^ function or associated item not found in `fn(&())`
+   |                         ^^^^^^ function or associated item not found in `for<'a> fn(&'a ())`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `X` defines an item `make_g`, perhaps you need to implement it

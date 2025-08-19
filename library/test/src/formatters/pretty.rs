@@ -303,4 +303,14 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
 
         Ok(success)
     }
+
+    fn write_merged_doctests_times(
+        &mut self,
+        total_time: f64,
+        compilation_time: f64,
+    ) -> io::Result<()> {
+        self.write_plain(format!(
+            "all doctests ran in {total_time:.2}s; merged doctests compilation took {compilation_time:.2}s\n",
+        ))
+    }
 }

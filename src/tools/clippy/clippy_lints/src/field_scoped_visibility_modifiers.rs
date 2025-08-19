@@ -51,7 +51,7 @@ declare_lint_pass!(FieldScopedVisibilityModifiers => [FIELD_SCOPED_VISIBILITY_MO
 
 impl EarlyLintPass for FieldScopedVisibilityModifiers {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        let ItemKind::Struct(_, ref st, _) = item.kind else {
+        let ItemKind::Struct(_, _, ref st) = item.kind else {
             return;
         };
         for field in st.fields() {

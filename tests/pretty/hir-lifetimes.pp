@@ -5,10 +5,10 @@
 // This tests the pretty-printing of lifetimes in lots of ways.
 
 #![allow(unused)]
+#[attr = MacroUse {arguments: UseAll}]
+extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
-#[macro_use]
-extern crate std;
 
 struct Foo<'a> {
     x: &'a u32,
@@ -69,7 +69,7 @@ type Q<'a> = dyn MyTrait<'a, 'a> + 'a;
 fn h<'b, F>(f: F, y: Foo<'b>) where F: for<'d> MyTrait<'d, 'b> { }
 
 // FIXME(?): attr printing is weird
-#[attr = Repr([ReprC])]
+#[attr = Repr {reprs: [ReprC]}]
 struct S<'a>(&'a u32);
 
 extern "C" {

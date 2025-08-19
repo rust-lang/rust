@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{bug, mir, ty};
 use rustc_session::config::DebugInfo;
-use rustc_span::{BytePos, Span, Symbol, hygiene, kw};
+use rustc_span::{BytePos, Span, Symbol, hygiene, sym};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::{PlaceRef, PlaceValue};
@@ -283,7 +283,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // (after #67586 gets fixed).
                 None
             } else {
-                let name = kw::Empty;
+                let name = sym::empty;
                 let decl = &self.mir.local_decls[local];
                 let dbg_var = if full_debug_info {
                     self.adjusted_span_and_dbg_scope(decl.source_info).map(
@@ -317,8 +317,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let name = if bx.sess().fewer_names() {
             None
         } else {
-            Some(match whole_local_var.or(fallback_var.clone()) {
-                Some(var) if var.name != kw::Empty => var.name.to_string(),
+            Some(match whole_local_var.or_else(|| fallback_var.clone()) {
+                Some(var) if var.name != sym::empty => var.name.to_string(),
                 _ => format!("{local:?}"),
             })
         };
@@ -356,7 +356,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(operand) => {
                 // Don't spill operands onto the stack in naked functions.
                 // See: https://github.com/rust-lang/rust/issues/42779
-                let attrs = bx.tcx().codegen_fn_attrs(self.instance.def_id());
+                let attrs = bx.tcx().codegen_instance_attrs(self.instance.def);
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     return;
                 }

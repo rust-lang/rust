@@ -61,9 +61,6 @@ and check the output.
 Use `--bless` if you've made a change and want to update the `.stderr` files
 with the new output.
 
-> `./x suggest` can also be helpful for suggesting which tests to run after a
-> change.
-
 Congrats, you are now ready to make a change to the compiler! If you have more
 questions, [the full chapter](./how-to-build-and-run.md) might contain the
 answers, and if it doesn't, feel free to ask for help on

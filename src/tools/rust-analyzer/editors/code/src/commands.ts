@@ -1114,11 +1114,11 @@ export function applySnippetWorkspaceEditCommand(_ctx: CtxInit): Cmd {
     };
 }
 
-export function run(ctx: CtxInit): Cmd {
+export function run(ctx: CtxInit, mode?: "cursor"): Cmd {
     let prevRunnable: RunnableQuickPick | undefined;
 
     return async () => {
-        const item = await selectRunnable(ctx, prevRunnable);
+        const item = await selectRunnable(ctx, prevRunnable, false, true, mode);
         if (!item) return;
 
         item.detail = "rerun";

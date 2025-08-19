@@ -1,6 +1,8 @@
 // Assert that the search index is generated deterministically, regardless of the
 // order that crates are documented in.
 
+//@ needs-target-std
+
 use run_make_support::{diff, path, rustdoc};
 
 fn main() {
@@ -13,7 +15,7 @@ fn main() {
     rustdoc().input("foo.rs").out_dir(&bar_first).run();
 
     diff()
-        .expected_file(foo_first.join("search-index.js"))
-        .actual_file(bar_first.join("search-index.js"))
+        .expected_file(foo_first.join("search.index/root.js"))
+        .actual_file(bar_first.join("search.index/root.js"))
         .run();
 }

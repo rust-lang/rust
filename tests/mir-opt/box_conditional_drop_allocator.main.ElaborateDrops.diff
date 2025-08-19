@@ -1,0 +1,186 @@
+- // MIR for `main` before ElaborateDrops
++ // MIR for `main` after ElaborateDrops
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: std::boxed::Box<HasDrop, DropAllocator>;
+      let mut _2: HasDrop;
+      let mut _3: DropAllocator;
+      let mut _4: bool;
+      let _5: ();
+      let mut _6: HasDrop;
+      let _7: ();
+      let mut _8: std::boxed::Box<HasDrop, DropAllocator>;
++     let mut _9: bool;
++     let mut _10: &mut std::boxed::Box<HasDrop, DropAllocator>;
++     let mut _11: ();
++     let mut _12: &mut std::boxed::Box<HasDrop, DropAllocator>;
++     let mut _13: ();
++     let mut _14: *const HasDrop;
++     let mut _15: &mut std::boxed::Box<HasDrop, DropAllocator>;
++     let mut _16: ();
++     let mut _17: *const HasDrop;
+      scope 1 {
+          debug b => _1;
+      }
+  
+      bb0: {
++         _9 = const false;
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = HasDrop;
+          StorageLive(_3);
+          _3 = DropAllocator;
+          _1 = Box::<HasDrop, DropAllocator>::new_in(move _2, move _3) -> [return: bb1, unwind: bb11];
+      }
+  
+      bb1: {
++         _9 = const true;
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageLive(_4);
+          _4 = const true;
+          switchInt(move _4) -> [0: bb4, otherwise: bb2];
+      }
+  
+      bb2: {
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = move (*_1);
+          _5 = std::mem::drop::<HasDrop>(move _6) -> [return: bb3, unwind: bb9];
+      }
+  
+      bb3: {
+          StorageDead(_6);
+          StorageDead(_5);
+          _0 = const ();
+          goto -> bb6;
+      }
+  
+      bb4: {
+          StorageLive(_7);
+          StorageLive(_8);
++         _9 = const false;
+          _8 = move _1;
+          _7 = std::mem::drop::<Box<HasDrop, DropAllocator>>(move _8) -> [return: bb5, unwind: bb8];
+      }
+  
+      bb5: {
+          StorageDead(_8);
+          StorageDead(_7);
+          _0 = const ();
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_4);
+-         drop(_1) -> [return: bb7, unwind continue];
++         goto -> bb23;
+      }
+  
+      bb7: {
++         _9 = const false;
+          StorageDead(_1);
+          return;
+      }
+  
+      bb8 (cleanup): {
+-         drop(_8) -> [return: bb10, unwind terminate(cleanup)];
++         goto -> bb10;
+      }
+  
+      bb9 (cleanup): {
+-         drop(_6) -> [return: bb10, unwind terminate(cleanup)];
++         goto -> bb10;
+      }
+  
+      bb10 (cleanup): {
+-         drop(_1) -> [return: bb13, unwind terminate(cleanup)];
++         goto -> bb29;
+      }
+  
+      bb11 (cleanup): {
+-         drop(_3) -> [return: bb12, unwind terminate(cleanup)];
++         goto -> bb12;
+      }
+  
+      bb12 (cleanup): {
+-         drop(_2) -> [return: bb13, unwind terminate(cleanup)];
++         goto -> bb13;
+      }
+  
+      bb13 (cleanup): {
+          resume;
++     }
++ 
++     bb14: {
++         _9 = const false;
++         goto -> bb7;
++     }
++ 
++     bb15 (cleanup): {
++         drop((_1.1: DropAllocator)) -> [return: bb13, unwind terminate(cleanup)];
++     }
++ 
++     bb16 (cleanup): {
++         switchInt(copy _9) -> [0: bb13, otherwise: bb15];
++     }
++ 
++     bb17: {
++         drop((_1.1: DropAllocator)) -> [return: bb14, unwind: bb13];
++     }
++ 
++     bb18: {
++         switchInt(copy _9) -> [0: bb14, otherwise: bb17];
++     }
++ 
++     bb19: {
++         _10 = &mut _1;
++         _11 = <Box<HasDrop, DropAllocator> as Drop>::drop(move _10) -> [return: bb18, unwind: bb16];
++     }
++ 
++     bb20 (cleanup): {
++         _12 = &mut _1;
++         _13 = <Box<HasDrop, DropAllocator> as Drop>::drop(move _12) -> [return: bb16, unwind terminate(cleanup)];
++     }
++ 
++     bb21: {
++         goto -> bb19;
++     }
++ 
++     bb22: {
++         _14 = copy ((_1.0: std::ptr::Unique<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
++         goto -> bb21;
++     }
++ 
++     bb23: {
++         switchInt(copy _9) -> [0: bb18, otherwise: bb22];
++     }
++ 
++     bb24 (cleanup): {
++         drop((_1.1: DropAllocator)) -> [return: bb13, unwind terminate(cleanup)];
++     }
++ 
++     bb25 (cleanup): {
++         switchInt(copy _9) -> [0: bb13, otherwise: bb24];
++     }
++ 
++     bb26 (cleanup): {
++         _15 = &mut _1;
++         _16 = <Box<HasDrop, DropAllocator> as Drop>::drop(move _15) -> [return: bb25, unwind terminate(cleanup)];
++     }
++ 
++     bb27 (cleanup): {
++         goto -> bb26;
++     }
++ 
++     bb28 (cleanup): {
++         _17 = copy ((_1.0: std::ptr::Unique<HasDrop>).0: std::ptr::NonNull<HasDrop>) as *const HasDrop (Transmute);
++         goto -> bb27;
++     }
++ 
++     bb29 (cleanup): {
++         switchInt(copy _9) -> [0: bb25, otherwise: bb28];
+      }
+  }
+  

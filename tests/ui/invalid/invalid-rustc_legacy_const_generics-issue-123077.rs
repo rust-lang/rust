@@ -28,4 +28,11 @@ fn main() {
 
     std::arch::x86_64::_mm_inserti_si64(loop {}, loop {}, || (), 1 + || ());
     //~^ ERROR invalid argument to a legacy const generic
+
+    // A regression test for <https://github.com/rust-lang/rust/issues/142525>.
+    struct Struct<T> {
+        field: T,
+    }
+    std::arch::x86_64::_mm_blend_ps(loop {}, loop {}, Struct { field: || () });
+    //~^ ERROR invalid argument to a legacy const generic
 }

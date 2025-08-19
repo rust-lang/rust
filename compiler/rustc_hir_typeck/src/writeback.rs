@@ -9,17 +9,21 @@
 //! which creates a new `TypeckResults` which doesn't contain any inference variables.
 
 use std::mem;
+use std::ops::ControlFlow;
 
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::ExtendUnord;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{E0720, ErrorGuaranteed};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, fold_regions,
+    self, DefiningScopeKind, OpaqueHiddenType, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    fold_regions,
 };
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
@@ -223,21 +227,19 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     self.typeck_results.type_dependent_defs_mut().remove(e.hir_id);
                     self.typeck_results.node_args_mut().remove(e.hir_id);
 
-                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id) {
+                    if let Some(a) = self.typeck_results.adjustments_mut().get_mut(base.hir_id)
                         // Discard the need for a mutable borrow
-
                         // Extra adjustment made when indexing causes a drop
                         // of size information - we need to get rid of it
                         // Since this is "after" the other adjustment to be
                         // discarded, we do an extra `pop()`
-                        if let Some(Adjustment {
+                        && let Some(Adjustment {
                             kind: Adjust::Pointer(PointerCoercion::Unsize),
                             ..
                         }) = a.pop()
-                        {
-                            // So the borrow discard actually happens here
-                            a.pop();
-                        }
+                    {
+                        // So the borrow discard actually happens here
+                        a.pop();
                     }
                 }
             }
@@ -535,13 +537,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let tcx = self.tcx();
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
-        //
-        // FIXME(-Znext-solver): Opaque types defined after this would simply get dropped
-        // at the end of typeck. While this seems unlikely to happen in practice this
-        // should still get fixed. Either by preventing writeback from defining new opaque
-        // types or by using this function at the end of writeback and running it as a
-        // fixpoint.
         let opaque_types = self.fcx.infcx.clone_opaque_types();
+        let num_entries = self.fcx.inner.borrow_mut().opaque_types().num_entries();
+        let prev = self.fcx.checked_opaque_types_storage_entries.replace(Some(num_entries));
+        debug_assert_eq!(prev, None);
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
@@ -555,15 +554,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if let Err(guar) = check_opaque_type_parameter_valid(
+            if let Err(err) = check_opaque_type_parameter_valid(
                 &self.fcx,
                 opaque_type_key,
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
             ) {
-                self.typeck_results
-                    .concrete_opaque_types
-                    .insert(opaque_type_key.def_id, ty::OpaqueHiddenType::new_error(tcx, guar));
+                self.typeck_results.concrete_opaque_types.insert(
+                    opaque_type_key.def_id,
+                    ty::OpaqueHiddenType::new_error(tcx, err.report(self.fcx)),
+                );
             }
 
             let hidden_type = hidden_type.remap_generic_params_to_declaration_params(
@@ -596,6 +596,35 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 entry.span = prev.span.substitute_dummy(hidden_type.span);
             }
+        }
+
+        let recursive_opaques: Vec<_> = self
+            .typeck_results
+            .concrete_opaque_types
+            .iter()
+            .filter(|&(&def_id, hidden_ty)| {
+                hidden_ty
+                    .ty
+                    .visit_with(&mut HasRecursiveOpaque {
+                        def_id,
+                        seen: Default::default(),
+                        opaques: &self.typeck_results.concrete_opaque_types,
+                        tcx,
+                    })
+                    .is_break()
+            })
+            .map(|(def_id, hidden_ty)| (*def_id, hidden_ty.span))
+            .collect();
+        for (def_id, span) in recursive_opaques {
+            let guar = self
+                .fcx
+                .dcx()
+                .struct_span_err(span, "cannot resolve opaque type")
+                .with_code(E0720)
+                .emit();
+            self.typeck_results
+                .concrete_opaque_types
+                .insert(def_id, OpaqueHiddenType { span, ty: Ty::new_error(tcx, guar) });
         }
     }
 
@@ -959,5 +988,36 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerlyNormalizeConsts<'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.tcx.try_normalize_erasing_regions(self.typing_env, ct).unwrap_or(ct)
+    }
+}
+
+struct HasRecursiveOpaque<'a, 'tcx> {
+    def_id: LocalDefId,
+    seen: FxHashSet<LocalDefId>,
+    opaques: &'a FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        if let ty::Alias(ty::Opaque, alias_ty) = *t.kind()
+            && let Some(def_id) = alias_ty.def_id.as_local()
+        {
+            if self.def_id == def_id {
+                return ControlFlow::Break(());
+            }
+
+            if self.seen.insert(def_id)
+                && let Some(hidden_ty) = self.opaques.get(&def_id)
+            {
+                ty::EarlyBinder::bind(hidden_ty.ty)
+                    .instantiate(self.tcx, alias_ty.args)
+                    .visit_with(self)?;
+            }
+        }
+
+        t.super_visit_with(self)
     }
 }

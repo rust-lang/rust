@@ -1,4 +1,6 @@
 //@ dont-require-annotations: NOTE
+//@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr: "([[:xdigit:]]{2}\s){4}(__\s){4}\s+│\s+([?|\.]){4}\W{4}" -> "HEX_DUMP"
 
 type Field1 = i32;
 type Field2 = f32;
@@ -26,8 +28,7 @@ const fn read_field2() -> Field2 {
 
 const fn read_field3() -> Field3 {
     const FIELD3: Field3 = unsafe { UNION.field3 };
-    //~^ ERROR evaluation of constant value failed
-    //~| NOTE uninitialized
+    //~^ ERROR uninitialized
     FIELD3
 }
 

@@ -2,7 +2,9 @@ error[E0277]: `Foo` doesn't implement `Debug`
   --> $DIR/no-debug.rs:10:27
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
-   |                           ^^^ `Foo` cannot be formatted using `{:?}`
+   |               ----        ^^^ `Foo` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |               |
+   |               required by this formatting parameter
    |
    = help: the trait `Debug` is not implemented for `Foo`
    = note: add `#[derive(Debug)]` to `Foo` or manually `impl Debug for Foo`
@@ -17,7 +19,9 @@ error[E0277]: `Bar` doesn't implement `Debug`
   --> $DIR/no-debug.rs:10:32
    |
 LL |     println!("{:?} {:?}", Foo, Bar);
-   |                                ^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                    ----        ^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |                    |
+   |                    required by this formatting parameter
    |
    = help: the trait `Debug` is not implemented for `Bar`
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -26,7 +30,9 @@ error[E0277]: `Foo` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:23
    |
 LL |     println!("{} {}", Foo, Bar);
-   |                       ^^^ `Foo` cannot be formatted with the default formatter
+   |               --      ^^^ `Foo` cannot be formatted with the default formatter
+   |               |
+   |               required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Foo`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
@@ -36,7 +42,9 @@ error[E0277]: `Bar` doesn't implement `std::fmt::Display`
   --> $DIR/no-debug.rs:11:28
    |
 LL |     println!("{} {}", Foo, Bar);
-   |                            ^^^ `Bar` cannot be formatted with the default formatter
+   |                  --        ^^^ `Bar` cannot be formatted with the default formatter
+   |                  |
+   |                  required by this formatting parameter
    |
    = help: the trait `std::fmt::Display` is not implemented for `Bar`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead

@@ -10,10 +10,10 @@ struct S<
     T: Tr +, // OK
     T: ?'a, //~ ERROR `?` may only modify trait bounds, not lifetime bounds
 
-    T: ~const Tr, // OK
-    T: ~const ?Tr, //~ ERROR `~const` trait not allowed with `?` trait polarity modifier
-    T: ~const Tr + 'a, // OK
-    T: ~const 'a, //~ ERROR `~const` may only modify trait bounds, not lifetime bounds
+    T: [const] Tr, // OK
+    T: [const] ?Tr, //~ ERROR `[const]` trait not allowed with `?` trait polarity modifier
+    T: [const] Tr + 'a, // OK
+    T: [const] 'a, //~ ERROR `[const]` may only modify trait bounds, not lifetime bounds
     T: const 'a, //~ ERROR `const` may only modify trait bounds, not lifetime bounds
 
     T: async Tr, // OK

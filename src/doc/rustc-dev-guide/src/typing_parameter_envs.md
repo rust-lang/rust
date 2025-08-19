@@ -1,10 +1,8 @@
 # Typing/Parameter Environments
 
-<!-- toc -->
-
 ## Typing Environments
 
-When interacting with the type system there are a few variables to consider that can affect the results of trait solving. The the set of in-scope where clauses, and what phase of the compiler type system operations are being performed in (the [`ParamEnv`][penv] and [`TypingMode`][tmode] structs respectively).
+When interacting with the type system there are a few variables to consider that can affect the results of trait solving. The set of in-scope where clauses, and what phase of the compiler type system operations are being performed in (the [`ParamEnv`][penv] and [`TypingMode`][tmode] structs respectively).
 
 When an environment to perform type system operations in has not yet been created, the [`TypingEnv`][tenv] can be used to bundle all of the external context required into a single type.
 
@@ -13,11 +11,11 @@ Once a context to perform type system operations in has been created (e.g. an [`
 [ocx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html
 [fnctxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html
 
-## Parameter Environemnts
+## Parameter Environments
 
 ### What is a `ParamEnv`
 
-The [`ParamEnv`][penv] is a list of in-scope where-clauses, it typically corresponds to a specific item's where clauses. Some clauses are not explicitly written but are instead are implicitly added in the [`predicates_of`][predicates_of] query, such as `ConstArgHasType` or (some) implied bounds.
+The [`ParamEnv`][penv] is a list of in-scope where-clauses, it typically corresponds to a specific item's where clauses. Some clauses are not explicitly written but are instead implicitly added in the [`predicates_of`][predicates_of] query, such as `ConstArgHasType` or (some) implied bounds.
 
 In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses. A `ParamEnv` can also be created with arbitrary sets of clauses that are not derived from a specific item, such as in [`compare_method_predicate_entailment`][method_pred_entailment] where we create a hybrid `ParamEnv` consisting of the impl's where clauses and the trait definition's function's where clauses.
 
@@ -32,7 +30,7 @@ where
     <T as Trait>::Assoc: Clone,
 {}
 ```
-If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as normalization (TODO: write a chapter about normalization and link it), evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
+If we were conceptually inside of `foo` (for example, type-checking or linting it) we would use this `ParamEnv` everywhere that we interact with the type system. This would allow things such as [normalization], evaluating generic constants, and proving where clauses/goals, to rely on `T` being sized, implementing `Trait`, etc.
 
 A more concrete example:
 ```rust
@@ -70,10 +68,11 @@ fn foo2<T>(a: T) {
 [predicates_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/predicates_of/fn.predicates_of.html
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
+[normalization]: normalization.md
 
 ### Acquiring a `ParamEnv`
 
-Using the wrong [`ParamEnv`][penv] when interacting with the type system can lead to ICEs, illformed programs compiling, or erroing when we shouldn't. See [#82159](https://github.com/rust-lang/rust/pull/82159) and [#82067](https://github.com/rust-lang/rust/pull/82067) as examples of PRs that modified the compiler to use the correct param env and in the process fixed ICEs.
+Using the wrong [`ParamEnv`][penv] when interacting with the type system can lead to ICEs, illformed programs compiling, or erroring when we shouldn't. See [#82159](https://github.com/rust-lang/rust/pull/82159) and [#82067](https://github.com/rust-lang/rust/pull/82067) as examples of PRs that modified the compiler to use the correct param env and in the process fixed ICEs.
 
 In the large majority of cases, when a `ParamEnv` is required it either already exists somewhere in scope, or above in the call stack and should be passed down. A non exhaustive list of places where you might find an existing `ParamEnv`:
 - During typeck `FnCtxt` has a [`param_env` field][fnctxt_param_env]
@@ -199,8 +198,8 @@ In the next-gen trait solver the requirement for all where clauses in the `Param
 
 Depending on what context we are performing type system operations in, different behaviour may be required. For example during coherence there are stronger requirements about when we can consider goals to not hold or when we can consider types to be unequal.
 
-Tracking which "phase" of the compiler type system operations are being performed in is done by the [`TypingMode`][tenv] enum. The documentation on the `TypingMode` enum is quite good so instead of repeating it here verbatim we would recommend reading the API documentation directly.
+Tracking which "phase" of the compiler type system operations are being performed in is done by the [`TypingMode`][tmode] enum. The documentation on the `TypingMode` enum is quite good so instead of repeating it here verbatim we would recommend reading the API documentation directly.
 
 [penv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
-[tenv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/infer_ctxt/enum.TypingMode.html
+[tenv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypingEnv.html
 [tmode]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.TypingMode.html

@@ -1,14 +1,5 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/by-value-trait-dyn-compatibility.rs:1:12
-   |
-LL | #![feature(unsized_locals)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error: the `foo` method cannot be invoked on a trait object
-  --> $DIR/by-value-trait-dyn-compatibility.rs:20:7
+  --> $DIR/by-value-trait-dyn-compatibility.rs:17:7
    |
 LL |         Self: Sized;
    |               ----- this has a `Sized` requirement
@@ -16,5 +7,20 @@ LL |         Self: Sized;
 LL |     x.foo();
    |       ^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error[E0277]: the size for values of type `dyn Foo` cannot be known at compilation time
+  --> $DIR/by-value-trait-dyn-compatibility.rs:16:9
+   |
+LL |     let x = *(Box::new(A) as Box<dyn Foo>);
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Foo`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *(Box::new(A) as Box<dyn Foo>);
+LL +     let x = (Box::new(A) as Box<dyn Foo>);
+   |
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

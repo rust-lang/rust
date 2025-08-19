@@ -170,7 +170,7 @@ print("Time,Idle")
 while True:
     time.sleep(1)
     next_state = State()
-    now = datetime.datetime.utcnow().isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
     idle = next_state.idle_since(cur_state)
     print("%s,%s" % (now, idle))
     sys.stdout.flush()

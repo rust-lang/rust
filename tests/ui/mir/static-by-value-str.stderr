@@ -1,0 +1,13 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/static-by-value-str.rs:10:1
+   |
+LL | static C: (E, u16, str) = (E::V16(0xDEAD), 0x600D, 0xBAD);
+   | ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `(E, u16, str)`, the trait `Sized` is not implemented for `str`
+   = note: required because it appears within the type `(E, u16, str)`
+   = note: statics and constants must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

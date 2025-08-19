@@ -3,19 +3,23 @@
 #![feature(cfg_target_compact)]
 
 #[cfg(target(o::o))]
-//~^ ERROR `cfg` predicate key must be an identifier
+//~^ ERROR malformed `cfg` attribute input
 fn one() {}
 
 #[cfg(target(os = 8))]
-//~^ ERROR literal in `cfg` predicate value must be a string
+//~^ ERROR malformed `cfg` attribute input
 fn two() {}
 
 #[cfg(target(os = "linux", pointer(width = "64")))]
-//~^ ERROR invalid predicate `target_pointer`
+//~^ ERROR malformed `cfg` attribute input
 fn three() {}
 
 #[cfg(target(true))]
-//~^ ERROR `cfg` predicate key must be an identifier
+//~^ ERROR malformed `cfg` attribute input
 fn four() {}
+
+#[cfg(target(clippy::os = "linux"))]
+//~^ ERROR `cfg` predicate key must be an identifier
+fn five() {}
 
 fn main() {}

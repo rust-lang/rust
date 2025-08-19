@@ -334,5 +334,22 @@ error: use Option::map_or_else instead of an if let/else
 LL |     let mut _hm = if let Some(hm) = &opt { hm.clone() } else { new_map!() };
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone())`
 
-error: aborting due to 25 previous errors
+error: use Option::map_or instead of an if let/else
+  --> tests/ui/option_if_let_else.rs:372:22
+   |
+LL |     let _ = unsafe { if let Some(o) = *opt_raw_ptr { o } else { 1 } };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*opt_raw_ptr).map_or(1, |o| o)`
+
+error: use Option::map_or_else instead of an if let/else
+  --> tests/ui/option_if_let_else.rs:378:13
+   |
+LL |       let _ = match res {
+   |  _____________^
+LL | |
+LL | |         Ok(s) => s.clone(),
+LL | |         Err(_) => String::new(),
+LL | |     };
+   | |_____^ help: try: `res.map_or_else(|_| String::new(), |s| s.clone())`
+
+error: aborting due to 27 previous errors
 

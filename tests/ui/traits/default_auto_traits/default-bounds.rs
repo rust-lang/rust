@@ -11,8 +11,14 @@
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+trait PointeeSized {}
+
+#[lang = "meta_sized"]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 pub trait Copy {}

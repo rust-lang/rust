@@ -10,7 +10,7 @@ use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
-use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
+use rustc_infer::infer::{NllRegionVariableOrigin, SubregionOrigin};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
@@ -91,9 +91,6 @@ impl<'tcx> RegionErrors<'tcx> {
         self,
     ) -> impl Iterator<Item = (RegionErrorKind<'tcx>, ErrorGuaranteed)> {
         self.0.into_iter()
-    }
-    pub(crate) fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.0.get(0).map(|x| x.1)
     }
 }
 
@@ -218,7 +215,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
     ) {
-        let mut suggestions = vec![];
         let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
@@ -240,9 +236,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             .collect::<Vec<_>>();
         debug!(?gat_id_and_generics);
 
-        // find higher-ranked trait bounds bounded to the generic associated types
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
+        gat_id_and_generics.iter().flatten().for_each(|&(gat_hir_id, generics)| {
             for pred in generics.predicates {
                 let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
                     pred.kind
@@ -251,17 +249,32 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {
                         hrtb_bounds.push(bound);
+                    }
+                } else {
+                    for bound in *bounds {
+                        if let Trait(trait_bound) = bound {
+                            if trait_bound
+                                .bound_generic_params
+                                .iter()
+                                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                                .is_some()
+                            {
+                                hrtb_bounds.push(bound);
+                                return;
+                            }
+                        }
                     }
                 }
             }
         });
         debug!(?hrtb_bounds);
 
+        let mut suggestions = vec![];
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
@@ -329,7 +342,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             self.infcx.tcx,
                             type_test.generic_kind.to_ty(self.infcx.tcx),
                         );
-                        let origin = RelateParamBound(type_test_span, generic_ty, None);
+                        let origin =
+                            SubregionOrigin::RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                             self.body.source.def_id().expect_local(),
                             type_test_span,
@@ -664,14 +678,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names,
+            &self.local_names(),
             &self.upvars,
             errci.fr,
         );
         let outlived_fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
             self.infcx.tcx,
             self.body,
-            &self.local_names,
+            &self.local_names(),
             &self.upvars,
             errci.outlived_fr,
         );
@@ -851,7 +865,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             };
 
-            let lifetime = if f.has_name() { fr_name.name } else { kw::UnderscoreLifetime };
+            let lifetime =
+                if f.is_named(self.infcx.tcx) { fr_name.name } else { kw::UnderscoreLifetime };
 
             let arg = match param.param.pat.simple_ident() {
                 Some(simple_ident) => format!("argument `{simple_ident}`"),

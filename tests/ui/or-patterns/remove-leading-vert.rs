@@ -8,7 +8,7 @@ fn main() {}
 
 #[cfg(false)]
 fn leading() {
-    fn fun1( | A: E) {} //~ ERROR top-level or-patterns are not allowed
+    fn fun1( | A: E) {} //~ ERROR function parameters require top-level or-patterns in parentheses
     fn fun2( || A: E) {} //~ ERROR unexpected `||` before function parameter
     let ( | A): E;
     let ( || A): (E); //~ ERROR unexpected token `||` in pattern
@@ -32,7 +32,7 @@ fn trailing() {
     //~^ ERROR a trailing `|` is not allowed in an or-pattern
     match A {
         A | => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
-        A || => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
+        A || => {} //~ ERROR a trailing `||` is not allowed in an or-pattern
         A || B | => {} //~ ERROR unexpected token `||` in pattern
         //~^ ERROR a trailing `|` is not allowed in an or-pattern
         | A | B | => {}

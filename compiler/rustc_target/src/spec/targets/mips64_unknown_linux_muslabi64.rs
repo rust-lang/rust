@@ -5,7 +5,7 @@ use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "mips64r2".into();
-    base.features = "+mips64r2".into();
+    base.features = "+mips64r2,+xgot".into();
     base.max_atomic_width = Some(64);
     Target {
         // LLVM doesn't recognize "muslabi64" yet.
@@ -23,8 +23,7 @@ pub(crate) fn target() -> Target {
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
-            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
-            crt_static_default: true,
+            llvm_abiname: "n64".into(),
             ..base
         },
     }

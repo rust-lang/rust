@@ -1,32 +1,80 @@
-error: this match arm has an identical body to the `_` wildcard arm
-  --> tests/ui/match_same_arms_non_exhaustive.rs:44:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms_non_exhaustive.rs:16:9
    |
-LL | /         Ordering::AcqRel | Ordering::SeqCst => repeat(),
-LL | |
-   | |________^ help: try removing the arm
-   |
-   = help: or try changing either arm body
-note: `_` wildcard arm here
-  --> tests/ui/match_same_arms_non_exhaustive.rs:46:9
-   |
+LL |         Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         _ => repeat(),
    |         ^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: otherwise merge the patterns into a single arm
+   |
+LL ~
+LL ~         Ordering::AcqRel | Ordering::SeqCst | _ => repeat(),
+   |
 
-error: this match arm has an identical body to the `_` wildcard arm
-  --> tests/ui/match_same_arms_non_exhaustive.rs:58:13
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms_non_exhaustive.rs:25:9
    |
-LL | /             Ordering::AcqRel | Ordering::SeqCst => repeat(),
-LL | |
-   | |____________^ help: try removing the arm
+LL |         Ordering::AcqRel => repeat(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         Ordering::SeqCst | _ => repeat(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: or try changing either arm body
-note: `_` wildcard arm here
-  --> tests/ui/match_same_arms_non_exhaustive.rs:60:13
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
+LL ~
+LL ~         Ordering::AcqRel | Ordering::SeqCst | _ => repeat(),
+   |
+
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms_non_exhaustive.rs:41:13
+   |
+LL |             Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |             _ => repeat(),
    |             ^^^^^^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
+   |
+LL ~
+LL ~             Ordering::AcqRel | Ordering::SeqCst | _ => repeat(),
+   |
 
-error: aborting due to 2 previous errors
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms_non_exhaustive.rs:55:9
+   |
+LL |         Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         _ => repeat(),
+   |         ^^^^^^^^^^^^^ the wildcard arm
+   |
+   = help: if this is unintentional make the arms return different values
+help: otherwise remove the non-wildcard arm
+   |
+LL -         Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |
+
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms_non_exhaustive.rs:69:13
+   |
+LL |             Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             _ => repeat(),
+   |             ^^^^^^^^^^^^^ the wildcard arm
+   |
+   = help: if this is unintentional make the arms return different values
+help: otherwise remove the non-wildcard arm
+   |
+LL -             Ordering::AcqRel | Ordering::SeqCst => repeat(),
+   |
+
+error: aborting due to 5 previous errors
 

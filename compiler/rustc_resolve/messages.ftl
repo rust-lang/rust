@@ -41,8 +41,6 @@ resolve_attempt_to_use_non_constant_value_in_constant_without_suggestion =
 resolve_attributes_starting_with_rustc_are_reserved =
     attributes starting with `rustc` are reserved for use by the `rustc` compiler
 
-resolve_bad_macro_import = bad macro import
-
 resolve_binding_in_never_pattern =
     never patterns cannot contain variable bindings
     .suggestion = use a wildcard `_` instead
@@ -119,7 +117,7 @@ resolve_const_param_in_enum_discriminant =
     const parameters may not be used in enum discriminant values
 
 resolve_const_param_in_non_trivial_anon_const =
-    const parameters may only be used as standalone arguments, i.e. `{$name}`
+    const parameters may only be used as standalone arguments here, i.e. `{$name}`
 
 resolve_constructor_private_if_any_field_private =
     a constructor is private if any of the fields is private
@@ -244,11 +242,14 @@ resolve_lowercase_self =
     attempt to use a non-constant value in a constant
     .suggestion = try using `Self`
 
+resolve_macro_cannot_use_as_fn_like =
+    `{$ident}` exists, but has no rules for function-like invocation
+
 resolve_macro_cannot_use_as_attr =
-    `{$ident}` exists, but a declarative macro cannot be used as an attribute macro
+    `{$ident}` exists, but has no `attr` rules
 
 resolve_macro_cannot_use_as_derive =
-     `{$ident}` exists, but a declarative macro cannot be used as a derive macro
+     `{$ident}` exists, but has no `derive` rules
 
 resolve_macro_defined_later =
     a macro with the same name exists, but it appears later
@@ -432,6 +433,7 @@ resolve_undeclared_label =
 
 resolve_underscore_lifetime_is_reserved = `'_` cannot be used here
     .label = `'_` is a reserved lifetime name
+    .help = use another lifetime specifier
 
 resolve_unexpected_res_change_ty_to_const_param_sugg =
     you might have meant to write a const parameter here

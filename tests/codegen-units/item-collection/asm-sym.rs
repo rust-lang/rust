@@ -1,5 +1,5 @@
 //@ needs-asm-support
-//@ compile-flags: -Ccodegen-units=1 -Zprint-mono-items=lazy --crate-type=lib
+//@ compile-flags: -Ccodegen-units=1 --crate-type=lib
 
 #[inline(always)]
 pub unsafe fn f() {

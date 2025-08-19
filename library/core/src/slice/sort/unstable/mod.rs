@@ -5,7 +5,7 @@ use crate::mem::SizedTypeProperties;
 use crate::slice::sort::shared::find_existing_run;
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::smallsort::insertion_sort_shift_left;
-use crate::{cfg_match, intrinsics};
+use crate::{cfg_select, intrinsics};
 
 pub(crate) mod heapsort;
 pub(crate) mod quicksort;
@@ -30,7 +30,7 @@ pub fn sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], is_less: &mut F) {
         return;
     }
 
-    cfg_match! {
+    cfg_select! {
         any(feature = "optimize_for_size", target_pointer_width = "16") => {
             heapsort::heapsort(v, is_less);
         }

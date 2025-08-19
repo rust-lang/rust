@@ -100,10 +100,10 @@ fn is_bool_literal_expr(
     sema: &Semantics<'_, RootDatabase>,
     expr: &ast::Expr,
 ) -> Option<ArmBodyExpression> {
-    if let ast::Expr::Literal(lit) = expr {
-        if let ast::LiteralKind::Bool(b) = lit.kind() {
-            return Some(ArmBodyExpression::Literal(b));
-        }
+    if let ast::Expr::Literal(lit) = expr
+        && let ast::LiteralKind::Bool(b) = lit.kind()
+    {
+        return Some(ArmBodyExpression::Literal(b));
     }
 
     if !sema.type_of_expr(expr)?.original.is_bool() {

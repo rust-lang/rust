@@ -1,11 +1,12 @@
-error[E0658]: the `#[pattern_complexity_limit]` attribute is just used for rustc unit tests and will never be stable
+error[E0658]: use of an internal attribute
   --> $DIR/feature-gate-pattern-complexity-limit.rs:3:1
    |
 LL | #![pattern_complexity_limit = "42"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `#[pattern_complexity_limit]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[pattern_complexity_limit]` attribute is used for rustc unit tests
 
 error: aborting due to 1 previous error
 

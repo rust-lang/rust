@@ -3,11 +3,10 @@
 This test suite is designed to test that codegen unit partitioning works as intended.
 Note that it does not evaluate whether CGU partitioning is *good*. That is the job of the compiler benchmark suite.
 
-All tests in this suite use the flag `-Zprint-mono-items=lazy`, which makes the compiler print a machine-readable summary of all MonoItems that were collected, which CGUs they were assigned to, and the linkage in each CGU. The output looks like:
+All tests in this suite use the flag `-Zprint-mono-items`, which makes the compiler print a machine-readable summary of all MonoItems that were collected, which CGUs they were assigned to, and the linkage in each CGU. The output looks like:
 ```
 MONO_ITEM <item> @@ <cgu name>[<linkage>] <other cgu name>[<linkage in other cgu>]
 ```
-DO NOT add tests to this suite that use `-Zprint-mono-items=eager`. That flag changes the way that MonoItem collection works in rather fundamental ways that are otherwise only used by `-Clink-dead-code`, and thus the MonoItems collected and their linkage under `-Zprint-mono-items=eager` does not correlate very well with normal compilation behavior.
 
 The current CGU partitioning algorithm essentially groups MonoItems by which module they are defined in, then merges small CGUs. There are a lot of inline modules in this test suite because that's the only way to observe the partitioning.
 

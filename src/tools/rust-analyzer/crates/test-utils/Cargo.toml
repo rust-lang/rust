@@ -10,6 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 # Avoid adding deps here, this crate is widely used in tests it should compile fast!

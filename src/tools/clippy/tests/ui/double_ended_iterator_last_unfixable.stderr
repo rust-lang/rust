@@ -1,5 +1,5 @@
 error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
-  --> tests/ui/double_ended_iterator_last_unfixable.rs:23:36
+  --> tests/ui/double_ended_iterator_last_unfixable.rs:36:36
    |
 LL |     println!("Last element is {}", v.0.last().unwrap().0);
    |                                    ^^^^------
@@ -8,7 +8,7 @@ LL |     println!("Last element is {}", v.0.last().unwrap().0);
    |
    = note: this change will alter drop order which may be undesirable
 note: this must be made mutable to use `.next_back()`
-  --> tests/ui/double_ended_iterator_last_unfixable.rs:23:36
+  --> tests/ui/double_ended_iterator_last_unfixable.rs:36:36
    |
 LL |     println!("Last element is {}", v.0.last().unwrap().0);
    |                                    ^^^

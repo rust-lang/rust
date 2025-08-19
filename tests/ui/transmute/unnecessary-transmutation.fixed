@@ -8,7 +8,27 @@ pub fn bytes_at_home(x: u32) -> [u8; 4] {
     //~^ ERROR
 }
 
+pub const fn intinator_const(from: bool) -> u8 {
+    unsafe { (from) as u8 }
+    //~^ ERROR
+}
+
+pub static X: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+pub const Y: u8 = unsafe { (true) as u8 };
+//~^ ERROR
+
+pub struct Z {}
+impl Z {
+    pub const fn intinator_assoc(x: bool) -> u8 {
+        unsafe { (x) as u8 }
+        //~^ ERROR
+    }
+}
+
 fn main() {
+    const { unsafe { (true) as u8 } };
+    //~^ ERROR
     unsafe {
         let x: u16 = u16::from_ne_bytes(*b"01");
         //~^ ERROR
@@ -49,6 +69,10 @@ fn main() {
         //~^ ERROR
         let y: char = char::from_u32_unchecked(y);
         //~^ ERROR
+        let y: i32 = u32::from('🐱').cast_signed();
+        //~^ ERROR
+        let y: char = char::from_u32_unchecked(i32::cast_unsigned(y));
+        //~^ ERROR
 
         let x: u16 = i16::cast_unsigned(8i16);
         //~^ ERROR
@@ -72,14 +96,19 @@ fn main() {
         let y: u64 = f64::to_bits(2.0);
         //~^ ERROR
 
-        let z: bool = (1u8 == 1);
+        let y: f64 = f64::from_bits(i64::cast_unsigned(1i64));
         //~^ ERROR
-        let z: u8 = (z) as u8;
+        let y: i64 = f64::to_bits(1f64).cast_signed();
+        //~^ ERROR
+
+        let z: bool = transmute(1u8);
+        // clippy
+        let z: u8 = u8::from(z);
         //~^ ERROR
 
         let z: bool = transmute(1i8);
-        // no error!
-        let z: i8 = (z) as i8;
+        // clippy
+        let z: i8 = i8::from(z);
         //~^ ERROR
     }
 }

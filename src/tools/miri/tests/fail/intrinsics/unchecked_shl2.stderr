@@ -2,7 +2,7 @@ error: Undefined Behavior: overflowing shift by -1 in `unchecked_shl`
   --> tests/fail/intrinsics/unchecked_shl2.rs:LL:CC
    |
 LL |         let _n = intrinsics::unchecked_shl(1i8, -1);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflowing shift by -1 in `unchecked_shl`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

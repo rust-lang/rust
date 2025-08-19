@@ -1,3 +1,5 @@
+//@ ignore-cross-compile
+
 // Regression test for https://github.com/rust-lang/rust/issues/107407 which
 // checks that rustc can read thin archive. Before the object crate added thin
 // archive support rustc would add emit object files to the staticlib and after

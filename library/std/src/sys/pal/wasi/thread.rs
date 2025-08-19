@@ -2,11 +2,11 @@
 
 use crate::ffi::CStr;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, mem};
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_select! {
+    target_feature = "atomics" => {
         use crate::cmp;
         use crate::ptr;
         use crate::sys::os;
@@ -62,7 +62,8 @@ cfg_if::cfg_if! {
                 debug_assert_eq!(ret, 0);
             }
         }
-    } else {
+    }
+    _ => {
         pub struct Thread(!);
     }
 }
@@ -71,9 +72,9 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    cfg_if::cfg_if! {
-        if #[cfg(target_feature = "atomics")] {
-            pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    cfg_select! {
+        target_feature = "atomics" => {
+            pub unsafe fn new(stack: usize, _name: Option<&str>, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 let p = Box::into_raw(Box::new(p));
                 let mut native: libc::pthread_t = unsafe { mem::zeroed() };
                 let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
@@ -119,8 +120,9 @@ impl Thread {
                     ptr::null_mut()
                 }
             }
-        } else {
-            pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+        }
+        _ => {
+            pub unsafe fn new(_stack: usize, _name: Option<&str>, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
                 crate::sys::unsupported()
             }
         }
@@ -171,30 +173,42 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn join(self) {
-        cfg_if::cfg_if! {
-            if #[cfg(target_feature = "atomics")] {
+        cfg_select! {
+            target_feature = "atomics" => {
                 let id = mem::ManuallyDrop::new(self).id;
                 let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
                 if ret != 0 {
                     rtabort!("failed to join thread: {}", io::Error::from_raw_os_error(ret));
                 }
-            } else {
+            }
+            _ => {
                 self.0
             }
         }
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
+}
+
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    cfg_if::cfg_if! {
-        if #[cfg(target_feature = "atomics")] {
+    cfg_select! {
+        target_feature = "atomics" => {
             match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
                 -1 => Err(io::Error::last_os_error()),
                 cpus => NonZero::new(cpus as usize).ok_or(io::Error::UNKNOWN_THREAD_COUNT),
             }
-        } else {
-            crate::sys::unsupported()
         }
+        _ => crate::sys::unsupported(),
     }
 }

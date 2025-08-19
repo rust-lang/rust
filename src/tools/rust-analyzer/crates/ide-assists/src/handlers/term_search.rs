@@ -46,7 +46,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         return None;
     }
 
-    let mut formatter = |_: &hir::Type| String::from("todo!()");
+    let mut formatter = |_: &hir::Type<'_>| String::from("todo!()");
 
     let edition = scope.krate().edition(ctx.db());
     let paths = paths
@@ -111,7 +111,7 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
         check_assist(
             term_search,
             r#"//- minicore: todo, unimplemented
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!("asd") }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }
@@ -121,7 +121,7 @@ fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
         check_assist(
             term_search,
             r#"//- minicore: todo, unimplemented
-fn f() { let a: u128 = 1; let b: u128 = todo$0!("asd") }"#,
+fn f() { let a: u128 = 1; let b: u128 = unimplemented$0!() }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
     }

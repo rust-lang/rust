@@ -11,9 +11,10 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node, find_attr};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -66,8 +67,7 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
                 }
             };
 
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
+            // Checking liveness after building the THIR ensures there were no typeck errors.
             //
             // maybe move the check to a MIR pass?
             tcx.ensure_ok().check_liveness(def);
@@ -451,10 +451,6 @@ fn construct_fn<'tcx>(
     let span = tcx.def_span(fn_def);
     let fn_id = tcx.local_def_id_to_hir_id(fn_def);
 
-    // The representation of thir for `-Zunpretty=thir-tree` relies on
-    // the entry expression being the last element of `thir.exprs`.
-    assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
-
     // Figure out what primary body this item has.
     let body = tcx.hir_body_owned_by(fn_def);
     let span_with_body = tcx.hir_span_with_body(fn_id);
@@ -484,8 +480,7 @@ fn construct_fn<'tcx>(
         ty => span_bug!(span_with_body, "unexpected type of body: {ty:?}"),
     };
 
-    if let Some(custom_mir_attr) =
-        tcx.hir_attrs(fn_id).iter().find(|attr| attr.has_name(sym::custom_mir))
+    if let Some((dialect, phase)) = find_attr!(tcx.hir_attrs(fn_id), AttributeKind::CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,
@@ -497,7 +492,8 @@ fn construct_fn<'tcx>(
             return_ty,
             return_ty_span,
             span_with_body,
-            custom_mir_attr,
+            dialect.as_ref().map(|(d, _)| *d),
+            phase.as_ref().map(|(p, _)| *p),
         );
     }
 
@@ -563,7 +559,7 @@ fn construct_const<'a, 'tcx>(
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir_node(hir_id) {
         Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(_, ty, _, _) | hir::ItemKind::Const(_, ty, _, _),
+            kind: hir::ItemKind::Static(_, _, ty, _) | hir::ItemKind::Const(_, _, ty, _),
             span,
             ..
         })
@@ -998,7 +994,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.source_scope = source_scope;
         }
 
-        if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden) {
+        if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden)
+            || self.tcx.is_sdylib_interface_build()
+        {
             let source_info = self.source_info(rustc_span::DUMMY_SP);
             self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             self.cfg.start_new_block().unit()
@@ -1048,11 +1046,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-fn parse_float_into_constval<'tcx>(
-    num: Symbol,
-    float_ty: ty::FloatTy,
-    neg: bool,
-) -> Option<ConstValue<'tcx>> {
+fn parse_float_into_constval(num: Symbol, float_ty: ty::FloatTy, neg: bool) -> Option<ConstValue> {
     parse_float_into_scalar(num, float_ty, neg).map(|s| ConstValue::Scalar(s.into()))
 }
 

@@ -6,7 +6,7 @@ mod m {
 }
 
 mod glob_in_normal_module {
-    use m::*;
+    use crate::m::*;
     fn check() {
         let x = env!("PATH"); //~ ERROR `env` is ambiguous
     }
@@ -14,7 +14,7 @@ mod glob_in_normal_module {
 
 mod glob_in_block_module {
     fn block() {
-        use m::*;
+        use crate::m::*;
         fn check() {
             let x = env!("PATH"); //~ ERROR `env` is ambiguous
         }
@@ -24,7 +24,7 @@ mod glob_in_block_module {
 mod glob_shadows_item {
     pub macro fenv($e: expr) { $e }
     fn block() {
-        use m::*;
+        use crate::m::*;
         fn check() {
             let x = fenv!(); //~ ERROR `fenv` is ambiguous
         }

@@ -1,20 +1,18 @@
 use clippy_utils::ast_utils::is_useless_with_eq_exprs;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace};
-use clippy_utils::{eq_expr_value, is_in_test_function};
+use clippy_utils::{eq_expr_value, is_in_test_function, sym};
 use rustc_hir::{BinOpKind, Expr};
 use rustc_lint::LateContext;
 
 use super::EQ_OP;
 
 pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-    if let Some((macro_call, macro_name)) = first_node_macro_backtrace(cx, e).find_map(|macro_call| {
-        let name = cx.tcx.item_name(macro_call.def_id);
+    if let Some(macro_call) = first_node_macro_backtrace(cx, e).find(|macro_call| {
         matches!(
-            name.as_str(),
-            "assert_eq" | "assert_ne" | "debug_assert_eq" | "debug_assert_ne"
+            cx.tcx.get_diagnostic_name(macro_call.def_id),
+            Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
         )
-        .then(|| (macro_call, name))
     }) && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
         && eq_expr_value(cx, lhs, rhs)
         && macro_call.is_local()
@@ -24,7 +22,10 @@ pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
             cx,
             EQ_OP,
             lhs.span.to(rhs.span),
-            format!("identical args used in this `{macro_name}!` macro call"),
+            format!(
+                "identical args used in this `{}!` macro call",
+                cx.tcx.item_name(macro_call.def_id)
+            ),
         );
     }
 }

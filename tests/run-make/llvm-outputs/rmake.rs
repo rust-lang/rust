@@ -1,3 +1,4 @@
+//@ needs-target-std
 // test that directories get created when emitting llvm bitcode and IR
 
 use std::path::PathBuf;

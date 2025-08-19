@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_copy};
 use rustc_errors::Applicability;
@@ -73,7 +74,7 @@ impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if let ItemKind::Enum(ident, ref def, _) = item.kind
+        if let ItemKind::Enum(ident, _, ref def) = item.kind
             && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
             && let ty::Adt(adt, subst) = ty.kind()
             && adt.variants().len() > 1
@@ -83,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
 
             let mut difference = variants_size[0].size - variants_size[1].size;
             if difference > self.maximum_size_difference_allowed {
-                let help_text = "consider boxing the large fields to reduce the total size of the enum";
+                let help_text = "consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum";
                 span_lint_and_then(
                     cx,
                     LARGE_ENUM_VARIANT,
@@ -117,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                                 ident.span,
                                 "boxing a variant would require the type no longer be `Copy`",
                             );
-                        } else {
+                        } else if !is_no_std_crate(cx) {
                             let sugg: Vec<(Span, String)> = variants_size[0]
                                 .fields_size
                                 .iter()

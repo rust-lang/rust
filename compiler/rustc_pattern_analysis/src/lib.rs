@@ -6,9 +6,9 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![allow(unused_crate_dependencies)]
-#![cfg_attr(all(feature = "rustc", bootstrap), feature(let_chains))]
 // tidy-alphabetical-end
 
+pub(crate) mod checks;
 pub mod constructor;
 #[cfg(feature = "rustc")]
 pub mod errors;
@@ -56,6 +56,13 @@ pub trait PatCx: Sized + fmt::Debug {
     type PatData: Clone;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
+
+    /// Whether to ensure the non-exhaustiveness witnesses we report for a complete set. This is
+    /// `false` by default to avoid some exponential blowup cases such as
+    /// <https://github.com/rust-lang/rust/issues/118437>.
+    fn exhaustive_witnesses(&self) -> bool {
+        false
+    }
 
     /// The number of fields for this constructor.
     fn ctor_arity(&self, ctor: &Constructor<Self>, ty: &Self::Ty) -> usize;
@@ -108,6 +115,20 @@ pub trait PatCx: Sized + fmt::Debug {
         _gapped_with: &[&DeconstructedPat<Self>],
     ) {
     }
+
+    /// Check if we may need to perform additional deref-pattern-specific validation.
+    fn match_may_contain_deref_pats(&self) -> bool {
+        true
+    }
+
+    /// The current implementation of deref patterns requires that they can't match on the same
+    /// place as a normal constructor. Since this isn't caught by type-checking, we check it in the
+    /// `PatCx` before running the analysis. This reports an error if the check fails.
+    fn report_mixed_deref_pat_ctors(
+        &self,
+        deref_pat: &DeconstructedPat<Self>,
+        normal_pat: &DeconstructedPat<Self>,
+    ) -> Self::Error;
 }
 
 /// The arm of a match expression.

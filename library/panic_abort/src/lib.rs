@@ -7,15 +7,11 @@
 #![unstable(feature = "panic_abort", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
-#![allow(unused_features)]
-#![feature(asm_experimental_arch)]
-#![feature(core_intrinsics)]
 #![feature(panic_runtime)]
 #![feature(std_internals)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
-#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(target_os = "android")]
 mod android;
@@ -45,75 +41,13 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
         zkvm::zkvm_set_abort_message(_payload);
     }
 
-    unsafe {
-        abort();
+    unsafe extern "Rust" {
+        // This is defined in std::rt.
+        #[rustc_std_internal_symbol]
+        safe fn __rust_abort() -> !;
     }
 
-    cfg_if::cfg_if! {
-        if #[cfg(any(unix, target_os = "solid_asp3"))] {
-            unsafe fn abort() -> ! {
-                unsafe { libc::abort(); }
-            }
-        } else if #[cfg(any(target_os = "hermit",
-                            all(target_vendor = "fortanix", target_env = "sgx"),
-                            target_os = "xous",
-                            target_os = "uefi",
-        ))] {
-            unsafe fn abort() -> ! {
-                // call std::sys::abort_internal
-                unsafe extern "C" {
-                    pub fn __rust_abort() -> !;
-                }
-                unsafe { __rust_abort(); }
-            }
-        } else if #[cfg(all(windows, not(miri)))] {
-            // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
-            // and later, this will terminate the process immediately without running any
-            // in-process exception handlers. In earlier versions of Windows, this
-            // sequence of instructions will be treated as an access violation,
-            // terminating the process but without necessarily bypassing all exception
-            // handlers.
-            //
-            // https://docs.microsoft.com/en-us/cpp/intrinsics/fastfail
-            //
-            // Note: this is the same implementation as in std's `abort_internal`
-            unsafe fn abort() -> ! {
-                #[allow(unused)]
-                const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
-                cfg_if::cfg_if! {
-                    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                        unsafe {
-                            core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-                        }
-                    } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                        unsafe {
-                            core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-                        }
-                    } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
-                        unsafe {
-                            core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
-                        }
-                    } else {
-                        core::intrinsics::abort();
-                    }
-                }
-            }
-        } else if #[cfg(target_os = "teeos")] {
-            mod teeos {
-                unsafe extern "C" {
-                    pub fn TEE_Panic(code: u32) -> !;
-                }
-            }
-
-            unsafe fn abort() -> ! {
-                unsafe { teeos::TEE_Panic(1); }
-            }
-        } else {
-            unsafe fn abort() -> ! {
-                core::intrinsics::abort();
-            }
-        }
-    }
+    __rust_abort()
 }
 
 // This... is a bit of an oddity. The tl;dr; is that this is required to link

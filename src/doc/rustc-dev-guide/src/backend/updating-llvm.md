@@ -1,7 +1,5 @@
 # Updating LLVM
 
-<!-- toc -->
-
 <!-- date-check: Aug 2024 -->
 Rust supports building against multiple LLVM versions:
 

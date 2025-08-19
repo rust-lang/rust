@@ -1,3 +1,4 @@
+//@ run-rustfix
 use std::thread;
 
 fn main() {

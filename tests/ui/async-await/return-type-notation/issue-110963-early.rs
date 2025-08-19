@@ -1,5 +1,8 @@
 //@ edition: 2021
-//@ known-bug: #110963
+//@ revisions: assumptions no_assumptions
+//@[assumptions] compile-flags: -Zhigher-ranked-assumptions
+//@[assumptions] check-pass
+//@[no_assumptions] known-bug: #110338
 
 #![feature(return_type_notation)]
 

@@ -17,7 +17,7 @@ Type "collection" is the process of converting the types found in the HIR
 **internal representation** used by the compiler (`Ty<'tcx>`) – we also do
 similar conversions for where-clauses and other bits of the function signature.
 
-To try and get a sense for the difference, consider this function:
+To try and get a sense of the difference, consider this function:
 
 ```rust,ignore
 struct Foo { }

@@ -19,23 +19,29 @@ pub struct Assume {
 /// Either transmutation is allowed, we have an error, or we have an optional
 /// Condition that must hold.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub enum Answer<R> {
+pub enum Answer<R, T> {
     Yes,
-    No(Reason<R>),
-    If(Condition<R>),
+    No(Reason<T>),
+    If(Condition<R, T>),
 }
 
 /// A condition which must hold for safe transmutation to be possible.
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub enum Condition<R> {
+pub enum Condition<R, T> {
     /// `Src` is transmutable into `Dst`, if `src` is transmutable into `dst`.
-    IfTransmutable { src: R, dst: R },
+    Transmutable { src: T, dst: T },
+
+    /// The region `long` must outlive `short`.
+    Outlives { long: R, short: R },
+
+    /// The `ty` is immutable.
+    Immutable { ty: T },
 
     /// `Src` is transmutable into `Dst`, if all of the enclosed requirements are met.
-    IfAll(Vec<Condition<R>>),
+    IfAll(Vec<Condition<R, T>>),
 
     /// `Src` is transmutable into `Dst` if any of the enclosed requirements are met.
-    IfAny(Vec<Condition<R>>),
+    IfAny(Vec<Condition<R, T>>),
 }
 
 /// Answers "why wasn't the source type transmutable into the destination type?"
@@ -53,12 +59,16 @@ pub enum Reason<T> {
     DstMayHaveSafetyInvariants,
     /// `Dst` is larger than `Src`, and the excess bytes were not exclusively uninitialized.
     DstIsTooBig,
-    /// A referent of `Dst` is larger than a referent in `Src`.
+    /// `Dst` is larger `Src`.
     DstRefIsTooBig {
         /// The referent of the source type.
         src: T,
+        /// The size of the source type's referent.
+        src_size: usize,
         /// The too-large referent of the destination type.
         dst: T,
+        /// The size of the destination type's referent.
+        dst_size: usize,
     },
     /// Src should have a stricter alignment than Dst, but it does not.
     DstHasStricterAlignment { src_min_align: usize, dst_min_align: usize },
@@ -79,7 +89,7 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_middle::ty::{Const, Ty, TyCtxt};
+    use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
 
     use super::*;
 
@@ -105,7 +115,7 @@ mod rustc {
             &mut self,
             types: Types<'tcx>,
             assume: crate::Assume,
-        ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
+        ) -> crate::Answer<Region<'tcx>, Ty<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
                 types.src, types.dst, assume, self.tcx,
             )

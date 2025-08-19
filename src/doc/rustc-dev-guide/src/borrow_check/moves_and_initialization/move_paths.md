@@ -1,7 +1,5 @@
 # Move paths
 
-<!-- toc -->
-
 In reality, it's not enough to track initialization at the granularity
 of local variables. Rust also allows us to do moves and initialization
 at the field granularity:

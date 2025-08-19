@@ -1,100 +1,58 @@
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:37:13
+error: a diagnostic name exists for this path: sym::Option
+  --> tests/ui-internal/unnecessary_def_path.rs:6:29
    |
-LL |     let _ = match_type(cx, ty, &OPTION);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Option)`
+LL | static OPTION: PathLookup = type_path!(core::option::Option);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> tests/ui-internal/unnecessary_def_path.rs:2:9
-   |
-LL | #![deny(clippy::unnecessary_def_path)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils
+   = note: `-D clippy::unnecessary-def-path` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_def_path)]`
 
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:39:13
+error: a language item exists for this path: LangItem::OptionSome
+  --> tests/ui-internal/unnecessary_def_path.rs:8:27
    |
-LL |     let _ = match_type(cx, ty, RESULT);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
+LL | static SOME: PathLookup = type_path!(core::option::Option::Some);
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.lang_items` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=lang&filter-crate=clippy_utils
 
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:41:13
+error: a diagnostic name exists for this path: sym::Result
+  --> tests/ui-internal/unnecessary_def_path.rs:11:29
    |
-LL |     let _ = match_type(cx, ty, &["core", "result", "Result"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
+LL | static RESULT: PathLookup = type_path!(core::result::Result);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils
 
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:46:13
+error: a diagnostic name exists for this path: sym::Result
+  --> tests/ui-internal/unnecessary_def_path.rs:13:37
    |
-LL |     let _ = clippy_utils::ty::match_type(cx, ty, rc_path);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Rc)`
+LL | static RESULT_VIA_STD: PathLookup = type_path!(std::result::Result);
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils
 
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:49:13
+error: a diagnostic name exists for this path: sym::vec_new
+  --> tests/ui-internal/unnecessary_def_path.rs:16:30
    |
-LL |     let _ = match_type(cx, ty, &paths::OPTION);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Option)`
+LL | static VEC_NEW: PathLookup = value_path!(alloc::vec::Vec::new);
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils
 
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:51:13
+error: a diagnostic name exists for this path: sym::vec_macro
+  --> tests/ui-internal/unnecessary_def_path.rs:19:32
    |
-LL |     let _ = match_type(cx, ty, paths::RESULT);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::Result)`
+LL | static VEC_MACRO: PathLookup = macro_path!(std::vec);
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `PathLookup` and use utilities such as `cx.tcx.is_diagnostic_item` instead
+   = help: see also https://doc.rust-lang.org/nightly/nightly-rustc/?search=diag&filter-crate=clippy_utils
 
-error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:54:13
-   |
-LL |     let _ = match_type(cx, ty, &["alloc", "boxed", "Box"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_lang_item(cx, ty, LangItem::OwnedBox)`
-
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:56:13
-   |
-LL |     let _ = match_type(cx, ty, &["core", "mem", "maybe_uninit", "MaybeUninit", "uninit"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_type_diagnostic_item(cx, ty, sym::maybe_uninit_uninit)`
-
-error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:59:13
-   |
-LL |     let _ = match_def_path(cx, did, &["alloc", "boxed", "Box"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OwnedBox) == Some(did)`
-
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:61:13
-   |
-LL |     let _ = match_def_path(cx, did, &["core", "option", "Option"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.is_diagnostic_item(sym::Option, did)`
-
-error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:63:13
-   |
-LL |     let _ = match_def_path(cx, did, &["core", "option", "Option", "Some"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cx.tcx.lang_items().get(LangItem::OptionSome) == Some(did)`
-   |
-   = help: if this `DefId` came from a constructor expression or pattern then the parent `DefId` should be used instead
-
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:66:13
-   |
-LL |     let _ = match_trait_method(cx, expr, &["core", "convert", "AsRef"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_trait_method(cx, expr, sym::AsRef)`
-
-error: use of a def path to a diagnostic item
-  --> tests/ui-internal/unnecessary_def_path.rs:69:13
-   |
-LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_path_diagnostic_item(cx, expr, sym::Option)`
-
-error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:71:13
-   |
-LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "iter", "traits", "Iterator", "next"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `path_res(cx, expr).opt_def_id().map_or(false, |id| cx.tcx.lang_items().get(LangItem::IteratorNext) == Some(id))`
-
-error: use of a def path to a `LangItem`
-  --> tests/ui-internal/unnecessary_def_path.rs:73:13
-   |
-LL |     let _ = is_expr_path_def_path(cx, expr, &["core", "option", "Option", "Some"]);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `is_res_lang_ctor(cx, path_res(cx, expr), LangItem::OptionSome)`
-
-error: aborting due to 15 previous errors
+error: aborting due to 6 previous errors
 

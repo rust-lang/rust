@@ -13,10 +13,8 @@ LL | trait T2 : T1 {
 note: cycle used when checking that `T1` is well-formed
   --> $DIR/issue-12511.rs:1:1
    |
-LL | / trait T1 : T2 {
-LL | |
-LL | | }
-   | |_^
+LL | trait T1 : T2 {
+   | ^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

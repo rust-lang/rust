@@ -6,7 +6,6 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -356,10 +355,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             hir::ConstContext::ConstFn => true,
             _ => {
                 // For indirect places, we are not creating a new permanent borrow, it's just as
-                // transient as the already existing one. For reborrowing references this is handled
-                // at the top of `visit_rvalue`, but for raw pointers we handle it here.
-                // Pointers/references to `static mut` and cases where the `*` is not the first
-                // projection also end up here.
+                // transient as the already existing one.
                 // Locals with StorageDead do not live beyond the evaluation and can
                 // thus safely be borrowed without being able to be leaked to the final
                 // value of the constant.
@@ -395,7 +391,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }
 
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(self.body.typing_env(tcx));
-        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let ocx = ObligationCtxt::new(&infcx);
 
         let body_id = self.body.source.def_id().expect_local();
         let host_polarity = match self.const_kind() {
@@ -424,7 +420,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
-                .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+                .span_delayed_bug(call_span, "this should have reported a [const] error in HIR");
             Some(ConstConditionsHold::No)
         }
     }
@@ -466,16 +462,10 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         );
     }
 
-    fn crate_inject_span(&self) -> Option<Span> {
-        self.tcx.hir_crate_items(()).definitions().next().and_then(|id| {
-            self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
-        })
-    }
-
     /// Check the const stability of the given item (fn or trait).
     fn check_callee_stability(&mut self, def_id: DefId) {
         match self.tcx.lookup_const_stability(def_id) {
-            Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+            Some(hir::ConstStability { level: hir::StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
             None => {
@@ -491,8 +481,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     });
                 }
             }
-            Some(ConstStability {
-                level: StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
+            Some(hir::ConstStability {
+                level: hir::StabilityLevel::Unstable { implied_by: implied_feature, issue, .. },
                 feature,
                 ..
             }) => {
@@ -546,7 +536,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                         feature,
                         feature_enabled,
                         safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
-                        suggestion_span: self.crate_inject_span(),
                         is_function_call: self.tcx.def_kind(def_id) != DefKind::Trait,
                     });
                 }
@@ -589,12 +578,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
-                    && let Some(
-                        coroutine_kind @ hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Async,
-                            _,
-                        ),
-                    ) = self.tcx.coroutine_kind(def_id)
+                    && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
                 {
                     self.check_op(ops::Coroutine(coroutine_kind));
                 }
@@ -610,11 +594,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.const_kind() == hir::ConstContext::Static(hir::Mutability::Mut);
 
                 if !is_allowed && self.place_may_escape(place) {
-                    self.check_op(ops::EscapingMutBorrow(if matches!(rvalue, Rvalue::Ref(..)) {
-                        hir::BorrowKind::Ref
-                    } else {
-                        hir::BorrowKind::Raw
-                    }));
+                    self.check_op(ops::EscapingMutBorrow);
                 }
             }
 
@@ -655,14 +635,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 _,
             ) => {
                 // These are all okay; they only change the type, not the data.
-            }
-
-            Rvalue::Cast(
-                CastKind::PointerCoercion(PointerCoercion::Unsize | PointerCoercion::DynStar, _),
-                _,
-                _,
-            ) => {
-                // Unsizing and `dyn*` coercions are implemented for CTFE.
             }
 
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
@@ -741,10 +713,10 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
-            if let Some(def_id) = c.check_static_ptr(self.tcx) {
-                self.check_static(def_id, self.span);
-            }
+        if let Operand::Constant(c) = op
+            && let Some(def_id) = c.check_static_ptr(self.tcx)
+        {
+            self.check_static(def_id, self.span);
         }
     }
 
@@ -811,7 +783,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.revalidate_conditional_constness(callee, fn_args, *fn_span);
 
                 // Attempting to call a trait method?
-                if let Some(trait_did) = tcx.trait_of_item(callee) {
+                if let Some(trait_did) = tcx.trait_of_assoc(callee) {
                     // We can't determine the actual callee here, so we have to do different checks
                     // than usual.
 
@@ -855,7 +827,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...
 
-                // `begin_panic` and `#[rustc_const_panic_str]` functions accept generic
+                // `begin_panic` and `panic_display` functions accept generic
                 // types other than str. Check to enforce that only str can be used in
                 // const-eval.
 
@@ -869,8 +841,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
-                if tcx.has_attr(callee, sym::rustc_const_panic_str) {
+                // const-eval of `panic_display` assumes the argument is `&&str`
+                if tcx.is_lang_item(callee, LangItem::PanicDisplay) {
                     match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                             {}
@@ -918,8 +890,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 });
                             }
                         }
-                        Some(ConstStability {
-                            level: StabilityLevel::Unstable { .. },
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Unstable { .. },
                             feature,
                             ..
                         }) => {
@@ -927,10 +899,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
-                                suggestion: self.crate_inject_span(),
                             });
                         }
-                        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Stable { .. },
+                            ..
+                        }) => {
                             // All good. Note that a `#[rustc_const_stable]` intrinsic (meaning it
                             // can be *directly* invoked from stable const code) does not always
                             // have the `#[rustc_intrinsic_const_stable_indirect]` attribute (which controls

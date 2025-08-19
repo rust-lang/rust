@@ -2,9 +2,9 @@ use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed, is_mutable};
+use clippy_utils::{get_parent_expr, is_expr_temporary_value, is_from_proc_macro, is_lint_allowed, is_mutable};
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, ExprKind, UnOp};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
@@ -48,7 +48,7 @@ declare_clippy_lint! {
 declare_lint_pass!(BorrowDerefRef => [BORROW_DEREF_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &rustc_hir::Expr<'tcx>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, addrof_target) = e.kind
             && let ExprKind::Unary(UnOp::Deref, deref_target) = addrof_target.kind
             && !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..))
@@ -76,6 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             && let e_ty = cx.typeck_results().expr_ty_adjusted(e)
             // check if the reference is coercing to a mutable reference
             && (!matches!(e_ty.kind(), ty::Ref(_, _, Mutability::Mut)) || is_mutable(cx, deref_target))
+            // If the new borrow might be itself borrowed mutably and the original reference is not a temporary
+            // value, do not propose to use it directly.
+            && (is_expr_temporary_value(cx, deref_target) || !potentially_bound_to_mutable_ref(cx, e))
             && let Some(deref_text) = deref_target.span.get_source_text(cx)
         {
             span_lint_and_then(
@@ -109,4 +112,10 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             );
         }
     }
+}
+
+/// Checks if `expr` is used as part of a `let` statement containing a `ref mut` binding.
+fn potentially_bound_to_mutable_ref<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::LetStmt(let_stmt)
+             if let_stmt.pat.contains_explicit_ref_binding() == Some(Mutability::Mut))
 }

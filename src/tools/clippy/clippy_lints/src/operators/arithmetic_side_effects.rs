@@ -3,12 +3,11 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
+use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -89,6 +88,18 @@ impl ArithmeticSideEffects {
         self.allowed_unary.contains(ty_string_elem)
     }
 
+    fn is_non_zero_u(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+        if let ty::Adt(adt, substs) = ty.kind()
+            && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
+            && let int_type = substs.type_at(0)
+            && matches!(int_type.kind(), ty::Uint(_))
+        {
+            true
+        } else {
+            false
+        }
+    }
+
     /// Verifies built-in types that have specific allowed operations
     fn has_specific_allowed_type_and_operation<'tcx>(
         cx: &LateContext<'tcx>,
@@ -97,33 +108,12 @@ impl ArithmeticSideEffects {
         rhs_ty: Ty<'tcx>,
     ) -> bool {
         let is_div_or_rem = matches!(op, hir::BinOpKind::Div | hir::BinOpKind::Rem);
-        let is_non_zero_u = |cx: &LateContext<'tcx>, ty: Ty<'tcx>| {
-            let tcx = cx.tcx;
-
-            let ty::Adt(adt, substs) = ty.kind() else { return false };
-
-            if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
-                return false;
-            }
-
-            let int_type = substs.type_at(0);
-            let unsigned_int_types = [
-                tcx.types.u8,
-                tcx.types.u16,
-                tcx.types.u32,
-                tcx.types.u64,
-                tcx.types.u128,
-                tcx.types.usize,
-            ];
-
-            unsigned_int_types.contains(&int_type)
-        };
         let is_sat_or_wrap = |ty: Ty<'_>| {
             is_type_diagnostic_item(cx, ty, sym::Saturating) || is_type_diagnostic_item(cx, ty, sym::Wrapping)
         };
 
         // If the RHS is `NonZero<u*>`, then division or module by zero will never occur.
-        if is_non_zero_u(cx, rhs_ty) && is_div_or_rem {
+        if Self::is_non_zero_u(cx, rhs_ty) && is_div_or_rem {
             return true;
         }
 
@@ -219,6 +209,18 @@ impl ArithmeticSideEffects {
         let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
         actual_lhs = expr_or_init(cx, actual_lhs);
         actual_rhs = expr_or_init(cx, actual_rhs);
+
+        // `NonZeroU*.get() - 1`, will never overflow
+        if let hir::BinOpKind::Sub = op
+            && let hir::ExprKind::MethodCall(method, receiver, [], _) = actual_lhs.kind
+            && method.ident.name == sym::get
+            && let receiver_ty = cx.typeck_results().expr_ty(receiver).peel_refs()
+            && Self::is_non_zero_u(cx, receiver_ty)
+            && let Some(1) = Self::literal_integer(cx, actual_rhs)
+        {
+            return;
+        }
+
         let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
         let rhs_ty = cx.typeck_results().expr_ty_adjusted(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
@@ -227,6 +229,7 @@ impl ArithmeticSideEffects {
         if Self::has_specific_allowed_type_and_operation(cx, lhs_ty, op, rhs_ty) {
             return;
         }
+
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
             if let hir::BinOpKind::Shl | hir::BinOpKind::Shr = op {
                 // At least for integers, shifts are already handled by the CTFE

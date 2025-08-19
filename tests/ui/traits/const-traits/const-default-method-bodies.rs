@@ -23,7 +23,7 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    //~^ ERROR the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
+    //~^ ERROR the trait bound `NonConstImpl: [const] ConstDefaultFn` is not satisfied
     ConstImpl.a();
 }
 

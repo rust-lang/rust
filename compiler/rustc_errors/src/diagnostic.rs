@@ -289,6 +289,9 @@ pub struct DiagInner {
     pub suggestions: Suggestions,
     pub args: DiagArgMap,
 
+    // This is used to store args and restore them after a subdiagnostic is rendered.
+    pub reserved_args: DiagArgMap,
+
     /// This is not used for highlighting or rendering any error message. Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics. By default, it is the primary span of
     /// `span` if there is one. Otherwise, it is `DUMMY_SP`.
@@ -319,6 +322,7 @@ impl DiagInner {
             children: vec![],
             suggestions: Suggestions::Enabled(vec![]),
             args: Default::default(),
+            reserved_args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
             long_ty_path: None,
@@ -390,7 +394,36 @@ impl DiagInner {
     }
 
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
-        self.args.insert(name.into(), arg.into_diag_arg(&mut self.long_ty_path));
+        let name = name.into();
+        let value = arg.into_diag_arg(&mut self.long_ty_path);
+        // This assertion is to avoid subdiagnostics overwriting an existing diagnostic arg.
+        debug_assert!(
+            !self.args.contains_key(&name) || self.args.get(&name) == Some(&value),
+            "arg {} already exists",
+            name
+        );
+        self.args.insert(name, value);
+    }
+
+    pub fn remove_arg(&mut self, name: &str) {
+        self.args.swap_remove(name);
+    }
+
+    pub fn store_args(&mut self) {
+        self.reserved_args = self.args.clone();
+    }
+
+    pub fn restore_args(&mut self) {
+        self.args = std::mem::take(&mut self.reserved_args);
+    }
+
+    pub fn emitted_at_sub_diag(&self) -> Subdiag {
+        let track = format!("-Ztrack-diagnostics: created at {}", self.emitted_at);
+        Subdiag {
+            level: crate::Level::Note,
+            messages: vec![(DiagMessage::Str(Cow::Owned(track)), Style::NoStyle)],
+            span: MultiSpan::new(),
+        }
     }
 
     /// Fields used for Hash, and PartialEq trait.
@@ -814,17 +847,18 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self
     }
 
+    with_fn! { with_span_help,
     /// Prints the span with some help above it.
     /// This is like [`Diag::help()`], but it gets its own span.
     #[rustc_lint_diagnostics]
-    pub fn span_help<S: Into<MultiSpan>>(
+    pub fn span_help(
         &mut self,
-        sp: S,
+        sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagMessage>,
     ) -> &mut Self {
         self.sub(Level::Help, msg, sp.into());
         self
-    }
+    } }
 
     /// Disallow attaching suggestions to this diagnostic.
     /// Any suggestions attached e.g. with the `span_suggestion_*` methods
@@ -981,7 +1015,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// * may look like "to do xyz, use" or "to do xyz, use abc"
     /// * may contain a name of a function, variable, or type, but not whole expressions
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion(
         &mut self,
@@ -1079,7 +1113,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             .map(|snippet| {
                 debug_assert!(
                     !(sp.is_empty() && snippet.is_empty()),
-                    "Span must not be empty and have no suggestion"
+                    "Span `{sp:?}` must not be empty and have no suggestion"
                 );
                 Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] }
             })
@@ -1132,7 +1166,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: self.subdiagnostic_message_to_diagnostic_message(msg),
-            style: SuggestionStyle::ShowCode,
+            style: SuggestionStyle::ShowAlways,
             applicability,
         });
         self
@@ -1142,7 +1176,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// Prints out a message with a suggested edit of the code. If the suggestion is presented
     /// inline, it will only show the message and not the suggestion.
     ///
-    /// See `CodeSuggestion` for more information.
+    /// See [`CodeSuggestion`] for more information.
     #[rustc_lint_diagnostics]
     pub fn span_suggestion_short(
         &mut self,
@@ -1325,7 +1359,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             ));
             self.note("consider using `--verbose` to print the full type name to the console");
         }
-        Box::into_inner(self.diag.take().unwrap())
+        *self.diag.take().unwrap()
     }
 
     /// This method allows us to access the path of the file where "long types" are written to.
@@ -1347,6 +1381,11 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// scope, `diag.long_ty_path()` should be called once somewhere close by.
     pub fn long_ty_path(&mut self) -> &mut Option<PathBuf> {
         &mut self.long_ty_path
+    }
+
+    pub fn with_long_ty_path(mut self, long_ty_path: Option<PathBuf>) -> Self {
+        self.long_ty_path = long_ty_path;
+        self
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.
@@ -1388,7 +1427,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
+    pub fn emit_unless_delay(mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }
@@ -1422,6 +1461,12 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     pub fn delay_as_bug(mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
+    }
+
+    pub fn remove_arg(&mut self, name: &str) {
+        if let Some(diag) = self.diag.as_mut() {
+            diag.remove_arg(name);
+        }
     }
 }
 

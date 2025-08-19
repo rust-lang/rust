@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // If the static library provided is not valid (in this test,
 // created as an empty file),
 // rustc should print a normal error message and not throw

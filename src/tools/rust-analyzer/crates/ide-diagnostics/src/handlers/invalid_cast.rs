@@ -18,7 +18,7 @@ macro_rules! format_ty {
 // Diagnostic: invalid-cast
 //
 // This diagnostic is triggered if the code contains an illegal cast
-pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -> Diagnostic {
+pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast<'_>) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     let (code, message) = match d.error {
         CastError::CastToBool => (
@@ -100,19 +100,23 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -
         //     "cannot cast to a pointer of an unknown kind".to_owned(),
         // ),
     };
-    Diagnostic::new(code, message, display_range)
+    Diagnostic::new(code, message, display_range).stable()
 }
 
 // Diagnostic: cast-to-unsized
 //
 // This diagnostic is triggered when casting to an unsized type
-pub(crate) fn cast_to_unsized(ctx: &DiagnosticsContext<'_>, d: &hir::CastToUnsized) -> Diagnostic {
+pub(crate) fn cast_to_unsized(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::CastToUnsized<'_>,
+) -> Diagnostic {
     let display_range = ctx.sema.diagnostics_display_range(d.expr.map(|it| it.into()));
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0620"),
         format_ty!(ctx, "cast to unsized type: `{}`", d.cast_ty),
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]
@@ -166,7 +170,7 @@ fn main() {
     let _ = ptr as bool;
           //^^^^^^^^^^^ error: cannot cast `*const ()` as `bool`
     let v = "hello" as bool;
-          //^^^^^^^^^^^^^^^ error: casting `&str` as `bool` is invalid: needs casting through a raw pointer first
+          //^^^^^^^^^^^^^^^ error: casting `&'static str` as `bool` is invalid: needs casting through a raw pointer first
 }
 "#,
         );
@@ -956,7 +960,7 @@ fn main() {
 fn main() {
     let pointer: usize = &1_i32 as *const i32 as usize;
     let _reference: &'static i32 = unsafe { pointer as *const i32 as &'static i32 };
-                                          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `*const i32` as `&i32`
+                                          //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: non-primitive cast: `*const i32` as `&'static i32`
 }
 "#,
         );
@@ -992,7 +996,7 @@ impl Deref for Foo {
 
 fn main() {
     let _ = "foo" as bool;
-          //^^^^^^^^^^^^^ error: casting `&str` as `bool` is invalid: needs casting through a raw pointer first
+          //^^^^^^^^^^^^^ error: casting `&'static str` as `bool` is invalid: needs casting through a raw pointer first
 
     let _ = Foo as bool;
           //^^^^^^^^^^^ error: non-primitive cast: `Foo` as `bool`

@@ -10,16 +10,19 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 la-arena.workspace = true
 dashmap.workspace = true
 salsa.workspace = true
+salsa-macros.workspace = true
 query-group.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
 semver.workspace = true
 tracing.workspace = true
+indexmap.workspace = true
 
 # local deps
 cfg.workspace = true

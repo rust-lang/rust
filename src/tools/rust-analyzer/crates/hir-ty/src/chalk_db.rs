@@ -16,7 +16,7 @@ use hir_def::{
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
     TypeAliasId, VariantId,
     hir::Movability,
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::LangItem,
     signatures::{ImplFlags, StructFlags, TraitFlags},
 };
 
@@ -63,7 +63,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     ) -> Option<rust_ir::AssociatedTyValueId<Interner>> {
         let alias_id = from_assoc_type_id(assoc_type_id);
         let trait_sig = self.db.type_alias_signature(alias_id);
-        self.db.impl_items(hir_def::ImplId::from_chalk(self.db, impl_id)).items.iter().find_map(
+        hir_def::ImplId::from_chalk(self.db, impl_id).impl_items(self.db).items.iter().find_map(
             |(name, item)| match item {
                 AssocItemId::TypeAliasId(alias) if &trait_sig.name == name => {
                     Some(TypeAliasAsValue(*alias).to_chalk(self.db))
@@ -83,34 +83,34 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         Arc::new(rust_ir::AdtRepr { c: false, packed: false, int: None })
     }
     fn discriminant_type(&self, ty: chalk_ir::Ty<Interner>) -> chalk_ir::Ty<Interner> {
-        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner) {
-            if let hir_def::AdtId::EnumId(e) = id.0 {
-                let enum_data = self.db.enum_signature(e);
-                let ty = enum_data.repr.unwrap_or_default().discr_type();
-                return chalk_ir::TyKind::Scalar(match ty {
-                    hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
-                        true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
-                        false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
-                    },
-                    hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
-                        true => chalk_ir::Scalar::Int(match size {
-                            hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
-                            hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
-                            hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
-                            hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
-                            hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
-                        }),
-                        false => chalk_ir::Scalar::Uint(match size {
-                            hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
-                            hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
-                            hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
-                            hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
-                            hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
-                        }),
-                    },
-                })
-                .intern(Interner);
-            }
+        if let chalk_ir::TyKind::Adt(id, _) = ty.kind(Interner)
+            && let hir_def::AdtId::EnumId(e) = id.0
+        {
+            let enum_data = self.db.enum_signature(e);
+            let ty = enum_data.repr.unwrap_or_default().discr_type();
+            return chalk_ir::TyKind::Scalar(match ty {
+                hir_def::layout::IntegerType::Pointer(is_signed) => match is_signed {
+                    true => chalk_ir::Scalar::Int(chalk_ir::IntTy::Isize),
+                    false => chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize),
+                },
+                hir_def::layout::IntegerType::Fixed(size, is_signed) => match is_signed {
+                    true => chalk_ir::Scalar::Int(match size {
+                        hir_def::layout::Integer::I8 => chalk_ir::IntTy::I8,
+                        hir_def::layout::Integer::I16 => chalk_ir::IntTy::I16,
+                        hir_def::layout::Integer::I32 => chalk_ir::IntTy::I32,
+                        hir_def::layout::Integer::I64 => chalk_ir::IntTy::I64,
+                        hir_def::layout::Integer::I128 => chalk_ir::IntTy::I128,
+                    }),
+                    false => chalk_ir::Scalar::Uint(match size {
+                        hir_def::layout::Integer::I8 => chalk_ir::UintTy::U8,
+                        hir_def::layout::Integer::I16 => chalk_ir::UintTy::U16,
+                        hir_def::layout::Integer::I32 => chalk_ir::UintTy::U32,
+                        hir_def::layout::Integer::I64 => chalk_ir::UintTy::U64,
+                        hir_def::layout::Integer::I128 => chalk_ir::UintTy::U128,
+                    }),
+                },
+            })
+            .intern(Interner);
         }
         chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::U8)).intern(Interner)
     }
@@ -142,10 +142,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         ) -> Option<chalk_ir::TyVariableKind> {
             if let TyKind::BoundVar(bv) = ty.kind(Interner) {
                 let binders = binders.as_slice(Interner);
-                if bv.debruijn == DebruijnIndex::INNERMOST {
-                    if let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind {
-                        return Some(tk);
-                    }
+                if bv.debruijn == DebruijnIndex::INNERMOST
+                    && let chalk_ir::VariableKind::Ty(tk) = binders[bv.index].kind
+                {
+                    return Some(tk);
                 }
             }
             None
@@ -259,14 +259,21 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
     fn well_known_trait_id(
         &self,
-        well_known_trait: rust_ir::WellKnownTrait,
+        well_known_trait: WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
-        let lang_attr = lang_item_from_well_known_trait(well_known_trait);
-        let trait_ = match self.db.lang_item(self.krate, lang_attr) {
-            Some(LangItemTarget::Trait(trait_)) => trait_,
-            _ => return None,
-        };
+        let lang_item = lang_item_from_well_known_trait(well_known_trait);
+        let trait_ = lang_item.resolve_trait(self.db, self.krate)?;
         Some(to_chalk_trait_id(trait_))
+    }
+    fn well_known_assoc_type_id(
+        &self,
+        assoc_type: rust_ir::WellKnownAssocType,
+    ) -> Option<chalk_ir::AssocTypeId<Interner>> {
+        let lang_item = match assoc_type {
+            rust_ir::WellKnownAssocType::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+        };
+        let alias = lang_item.resolve_type_alias(self.db, self.krate)?;
+        Some(to_assoc_type_id(alias))
     }
 
     fn program_clauses_for_env(
@@ -306,14 +313,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                if let Some((future_trait, future_output)) = self
-                    .db
-                    .lang_item(self.krate, LangItem::Future)
-                    .and_then(|item| item.as_trait())
-                    .and_then(|trait_| {
-                        let alias = self
-                            .db
-                            .trait_items(trait_)
+                if let Some((future_trait, future_output)) =
+                    LangItem::Future.resolve_trait(self.db, self.krate).and_then(|trait_| {
+                        let alias = trait_
+                            .trait_items(self.db)
                             .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
                         Some((trait_, alias))
                     })
@@ -338,10 +341,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                     });
                     let mut binder = vec![];
                     binder.push(crate::wrap_empty_binders(impl_bound));
-                    let sized_trait = self
-                        .db
-                        .lang_item(self.krate, LangItem::Sized)
-                        .and_then(|item| item.as_trait());
+                    let sized_trait = LangItem::Sized.resolve_trait(self.db, self.krate);
                     if let Some(sized_trait_) = sized_trait {
                         let sized_bound = WhereClause::Implemented(TraitRef {
                             trait_id: to_chalk_trait_id(sized_trait_),
@@ -646,7 +646,10 @@ pub(crate) fn associated_ty_data_query(
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
         .build();
     let pro_ty = TyBuilder::assoc_type_projection(db, type_alias, Some(trait_subst))
-        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
+        .fill_with_bound_vars(
+            crate::DebruijnIndex::INNERMOST,
+            generic_params.parent_generics().map_or(0, |it| it.len()),
+        )
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
 
@@ -660,9 +663,8 @@ pub(crate) fn associated_ty_data_query(
     }
 
     if !ctx.unsized_types.contains(&self_ty) {
-        let sized_trait = db
-            .lang_item(resolver.krate(), LangItem::Sized)
-            .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+        let sized_trait =
+            LangItem::Sized.resolve_trait(db, resolver.krate()).map(to_chalk_trait_id);
         let sized_bound = sized_trait.into_iter().map(|sized_trait| {
             let trait_bound =
                 rust_ir::TraitBound { trait_id: sized_trait, args_no_self: Default::default() };
@@ -708,7 +710,7 @@ pub(crate) fn trait_datum_query(
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids =
-        db.trait_items(trait_).associated_types().map(to_assoc_type_id).collect();
+        trait_.trait_items(db).associated_types().map(to_assoc_type_id).collect();
     let trait_datum_bound = rust_ir::TraitDatumBound { where_clauses };
     let well_known = db.lang_attr(trait_.into()).and_then(well_known_trait_from_lang_item);
     let trait_datum = TraitDatum {
@@ -799,7 +801,7 @@ pub(crate) fn adt_datum_query(
 
     // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
     let _variant_id_to_fields = |id: VariantId| {
-        let variant_data = &id.variant_data(db);
+        let variant_data = &id.fields(db);
         let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
@@ -820,11 +822,11 @@ pub(crate) fn adt_datum_query(
             (rust_ir::AdtKind::Struct, vec![variant_id_to_fields(id.into())])
         }
         hir_def::AdtId::EnumId(id) => {
-            let variants = db
-                .enum_variants(id)
+            let variants = id
+                .enum_variants(db)
                 .variants
                 .iter()
-                .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))
+                .map(|&(variant_id, _, _)| variant_id_to_fields(variant_id.into()))
                 .collect();
             (rust_ir::AdtKind::Enum, variants)
         }
@@ -876,9 +878,9 @@ fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
     let impl_datum_bound = rust_ir::ImplDatumBound { trait_ref, where_clauses };
-    let trait_data = db.trait_items(trait_);
-    let associated_ty_value_ids = db
-        .impl_items(impl_id)
+    let trait_data = trait_.trait_items(db);
+    let associated_ty_value_ids = impl_id
+        .impl_items(db)
         .items
         .iter()
         .filter_map(|(_, item)| match item {
@@ -928,8 +930,9 @@ fn type_alias_associated_ty_value(
         .into_value_and_skipped_binders()
         .0; // we don't return any assoc ty values if the impl'd trait can't be resolved
 
-    let assoc_ty = db
-        .trait_items(trait_ref.hir_trait_id())
+    let assoc_ty = trait_ref
+        .hir_trait_id()
+        .trait_items(db)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let (ty, binders) = db.ty(type_alias.into()).into_value_and_skipped_binders();

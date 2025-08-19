@@ -46,11 +46,8 @@ pub(crate) fn where_clauses(cx: &DocContext<'_>, clauses: ThinVec<WP>) -> ThinVe
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates.
     equalities.retain(|(lhs, rhs)| {
-        let Some((ty, trait_did, name)) = lhs.projection() else {
-            return true;
-        };
-        let Some((bounds, _)) = tybounds.get_mut(ty) else { return true };
-        merge_bounds(cx, bounds, trait_did, name, rhs)
+        let Some((bounds, _)) = tybounds.get_mut(&lhs.self_type) else { return true };
+        merge_bounds(cx, bounds, lhs.trait_.as_ref().unwrap().def_id(), lhs.assoc.clone(), rhs)
     });
 
     // And finally, let's reassemble everything
@@ -138,10 +135,16 @@ pub(crate) fn sized_bounds(cx: &mut DocContext<'_>, generics: &mut clean::Generi
     // don't actually know the set of associated types right here so that
     // should be handled when cleaning associated types.
     generics.where_predicates.retain(|pred| {
-        if let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred
-            && bounds.iter().any(|b| b.is_sized_bound(cx))
-        {
+        let WP::BoundPredicate { ty: clean::Generic(param), bounds, .. } = pred else {
+            return true;
+        };
+
+        if bounds.iter().any(|b| b.is_sized_bound(cx)) {
             sized_params.insert(*param);
+            false
+        } else if bounds.iter().any(|b| b.is_meta_sized_bound(cx)) {
+            // FIXME(sized-hierarchy): Always skip `MetaSized` bounds so that only `?Sized`
+            // is shown and none of the new sizedness traits leak into documentation.
             false
         } else {
             true

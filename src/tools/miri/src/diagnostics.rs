@@ -31,6 +31,8 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
+    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
+    GenmcStuckExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -75,6 +77,7 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
+            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -82,7 +85,7 @@ impl fmt::Display for TerminationInfo {
             DataRace { involves_non_atomic, ptr, op1, op2, .. } =>
                 write!(
                     f,
-                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
+                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}",
                     if *involves_non_atomic { "Data race" } else { "Race condition" },
                     op1.action,
                     op1.thread_info,
@@ -129,7 +132,9 @@ pub enum NonHaltingDiagnostic {
     Int2Ptr {
         details: bool,
     },
-    NativeCallSharedMem,
+    NativeCallSharedMem {
+        tracing: bool,
+    },
     WeakMemoryOutdatedLoad {
         ptr: Pointer,
     },
@@ -221,7 +226,7 @@ pub fn report_error<'tcx>(
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 
-    let mut msg = vec![];
+    let mut labels = vec![];
 
     let (title, helps) = if let MachineStop(info) = e.kind() {
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
@@ -234,7 +239,16 @@ pub fn report_error<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
-            Deadlock => Some("deadlock"),
+            Deadlock => {
+                labels.push(format!("this thread got stuck here"));
+                None
+            }
+            GenmcStuckExecution => {
+                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
+                tracing::info!("GenMC: found stuck execution");
+                return Some((0, true));
+            }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
         #[rustfmt::skip]
@@ -246,12 +260,11 @@ pub fn report_error<'tcx>(
                 ],
             UnsupportedForeignItem(_) => {
                 vec![
-                    note!("if this is a basic API commonly used on this target, please report an issue with Miri"),
-                    note!("however, note that Miri does not aim to support every FFI function out there; for instance, we will not support APIs for things such as GUIs, scripting languages, or databases"),
+                    note!("this means the program tried to do something Miri does not support; it does not indicate a bug in the program"),
                 ]
             }
             StackedBorrowsUb { help, history, .. } => {
-                msg.extend(help.clone());
+                labels.extend(help.clone());
                 let mut helps = vec![
                     note!("this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental"),
                     note!("see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information"),
@@ -289,6 +302,7 @@ pub fn report_error<'tcx>(
             Int2PtrWithStrictProvenance =>
                 vec![note!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead")],
             DataRace { op1, extra, retag_explain, .. } => {
+                labels.push(format!("(2) just happened here"));
                 let mut helps = vec![note_span!(op1.span, "and (1) occurred earlier here")];
                 if let Some(extra) = extra {
                     helps.push(note!("{extra}"));
@@ -418,12 +432,20 @@ pub fn report_error<'tcx>(
         _ => {}
     }
 
-    msg.insert(0, format_interp_error(ecx.tcx.dcx(), e));
+    let mut primary_msg = String::new();
+    if let Some(title) = title {
+        write!(primary_msg, "{title}: ").unwrap();
+    }
+    write!(primary_msg, "{}", format_interp_error(ecx.tcx.dcx(), e)).unwrap();
+
+    if labels.is_empty() {
+        labels.push(format!("{} occurred here", title.unwrap_or("error")));
+    }
 
     report_msg(
         DiagLevel::Error,
-        if let Some(title) = title { format!("{title}: {}", msg[0]) } else { msg[0].clone() },
-        msg,
+        primary_msg,
+        labels,
         vec![],
         helps,
         &stacktrace,
@@ -441,8 +463,8 @@ pub fn report_error<'tcx>(
                 any_pruned |= was_pruned;
                 report_msg(
                     DiagLevel::Error,
-                    format!("deadlock: the evaluated program deadlocked"),
-                    vec![format!("the evaluated program deadlocked")],
+                    format!("the evaluated program deadlocked"),
+                    vec![format!("this thread got stuck here")],
                     vec![],
                     vec![],
                     &stacktrace,
@@ -603,11 +625,11 @@ impl<'tcx> MiriMachine<'tcx> {
         let stacktrace = Frame::generate_stacktrace_from_stack(self.threads.active_thread_stack());
         let (stacktrace, _was_pruned) = prune_stacktrace(stacktrace, self);
 
-        let (title, diag_level) = match &e {
+        let (label, diag_level) = match &e {
             RejectedIsolatedOp(_) =>
                 ("operation rejected by isolation".to_string(), DiagLevel::Warning),
             Int2Ptr { .. } => ("integer-to-pointer cast".to_string(), DiagLevel::Warning),
-            NativeCallSharedMem =>
+            NativeCallSharedMem { .. } =>
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
@@ -618,10 +640,10 @@ impl<'tcx> MiriMachine<'tcx> {
             | FreedAlloc(..)
             | ProgressReport { .. }
             | WeakMemoryOutdatedLoad { .. } =>
-                ("tracking was triggered".to_string(), DiagLevel::Note),
+                ("tracking was triggered here".to_string(), DiagLevel::Note),
         };
 
-        let msg = match &e {
+        let title = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
             CreatedPointerTag(tag, Some(perm), None) =>
                 format!("created {tag:?} with {perm} derived from unknown tag"),
@@ -639,12 +661,12 @@ impl<'tcx> MiriMachine<'tcx> {
             AccessedAlloc(AllocId(id), access_kind) =>
                 format!("{access_kind} to allocation with id {id}"),
             FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
-            RejectedIsolatedOp(ref op) =>
-                format!("{op} was made to return an error due to isolation"),
+            RejectedIsolatedOp(op) => format!("{op} was made to return an error due to isolation"),
             ProgressReport { .. } =>
                 format!("progress report: current operation being executed is here"),
             Int2Ptr { .. } => format!("integer-to-pointer cast"),
-            NativeCallSharedMem => format!("sharing memory with a native function called via FFI"),
+            NativeCallSharedMem { .. } =>
+                format!("sharing memory with a native function called via FFI"),
             WeakMemoryOutdatedLoad { ptr } =>
                 format!("weak memory emulation: outdated value returned from load at {ptr}"),
             ExternTypeReborrow =>
@@ -675,7 +697,10 @@ impl<'tcx> MiriMachine<'tcx> {
                     ),
                 ];
                 if self.borrow_tracker.as_ref().is_some_and(|b| {
-                    matches!(b.borrow().borrow_tracker_method(), BorrowTrackerMethod::TreeBorrows)
+                    matches!(
+                        b.borrow().borrow_tracker_method(),
+                        BorrowTrackerMethod::TreeBorrows { .. }
+                    )
                 }) {
                     v.push(
                         note!("Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used")
@@ -687,22 +712,41 @@ impl<'tcx> MiriMachine<'tcx> {
                 }
                 v
             }
-            NativeCallSharedMem => {
-                vec![
-                    note!(
-                        "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
-                    ),
-                    note!(
-                        "in particular, Miri assumes that the native call initializes all memory it has access to"
-                    ),
-                    note!(
-                        "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
-                    ),
-                    note!(
-                        "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
-                    ),
-                ]
-            }
+            NativeCallSharedMem { tracing } =>
+                if *tracing {
+                    vec![
+                        note!(
+                            "when memory is shared with a native function call, Miri can only track initialisation and provenance on a best-effort basis"
+                        ),
+                        note!(
+                            "in particular, Miri assumes that the native call initializes all memory it has written to"
+                        ),
+                        note!(
+                            "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
+                        ),
+                        note!(
+                            "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
+                        ),
+                        note!(
+                            "tracing memory accesses in native code is not yet fully implemented, so there can be further imprecisions beyond what is documented here"
+                        ),
+                    ]
+                } else {
+                    vec![
+                        note!(
+                            "when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory"
+                        ),
+                        note!(
+                            "in particular, Miri assumes that the native call initializes all memory it has access to"
+                        ),
+                        note!(
+                            "Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory"
+                        ),
+                        note!(
+                            "what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free"
+                        ),
+                    ]
+                },
             ExternTypeReborrow => {
                 assert!(self.borrow_tracker.as_ref().is_some_and(|b| {
                     matches!(
@@ -725,7 +769,7 @@ impl<'tcx> MiriMachine<'tcx> {
         report_msg(
             diag_level,
             title,
-            vec![msg],
+            vec![label],
             notes,
             helps,
             &stacktrace,

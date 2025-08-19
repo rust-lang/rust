@@ -1,5 +1,6 @@
 //! Various number casting functions
 
+use crate::codegen_f16_f128;
 use crate::prelude::*;
 
 pub(crate) fn clif_intcast(
@@ -36,6 +37,14 @@ pub(crate) fn clif_int_or_float_cast(
 ) -> Value {
     let from_ty = fx.bcx.func.dfg.value_type(from);
 
+    // FIXME(bytecodealliance/wasmtime#8312): Remove in favour of native
+    // Cranelift operations once Cranelift backends have lowerings for them.
+    if matches!(from_ty, types::F16 | types::F128)
+        || matches!(to_ty, types::F16 | types::F128) && from_ty != to_ty
+    {
+        return codegen_f16_f128::codegen_cast(fx, from, from_signed, to_ty, to_signed);
+    }
+
     if from_ty.is_int() && to_ty.is_int() {
         // int-like -> int-like
         clif_intcast(
@@ -58,8 +67,10 @@ pub(crate) fn clif_int_or_float_cast(
                 "__float{sign}ti{flt}f",
                 sign = if from_signed { "" } else { "un" },
                 flt = match to_ty {
+                    types::F16 => "h",
                     types::F32 => "s",
                     types::F64 => "d",
+                    types::F128 => "t",
                     _ => unreachable!("{:?}", to_ty),
                 },
             );
@@ -90,8 +101,10 @@ pub(crate) fn clif_int_or_float_cast(
                 "__fix{sign}{flt}fti",
                 sign = if to_signed { "" } else { "uns" },
                 flt = match from_ty {
+                    types::F16 => "h",
                     types::F32 => "s",
                     types::F64 => "d",
+                    types::F128 => "t",
                     _ => unreachable!("{:?}", to_ty),
                 },
             );
@@ -145,8 +158,12 @@ pub(crate) fn clif_int_or_float_cast(
     } else if from_ty.is_float() && to_ty.is_float() {
         // float -> float
         match (from_ty, to_ty) {
-            (types::F32, types::F64) => fx.bcx.ins().fpromote(types::F64, from),
-            (types::F64, types::F32) => fx.bcx.ins().fdemote(types::F32, from),
+            (types::F16, types::F32 | types::F64 | types::F128)
+            | (types::F32, types::F64 | types::F128)
+            | (types::F64, types::F128) => fx.bcx.ins().fpromote(to_ty, from),
+            (types::F128, types::F64 | types::F32 | types::F16)
+            | (types::F64, types::F32 | types::F16)
+            | (types::F32, types::F16) => fx.bcx.ins().fdemote(to_ty, from),
             _ => from,
         }
     } else {

@@ -3,18 +3,38 @@
 mod atomic;
 mod simd;
 
+use std::ops::Neg;
+
 use rand::Rng;
 use rustc_abi::Size;
-use rustc_apfloat::{Float, Round};
+use rustc_apfloat::ieee::{IeeeFloat, Semantics};
+use rustc_apfloat::{self, Float, Round};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, FloatTy};
+use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
-use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
+use self::helpers::{ToHost, ToSoft};
 use self::simd::EvalContextExt as _;
-use crate::math::apply_random_float_error_to_imm;
+use crate::math::{IeeeExt, apply_random_float_error_ulp};
 use crate::*;
+
+/// Check that the number of args is what we expect.
+fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
+    args: &'a [OpTy<'tcx>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
+where
+    &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
+{
+    if let Ok(ops) = args.try_into() {
+        return interp_ok(ops);
+    }
+    throw_ub_format!(
+        "incorrect number of arguments for intrinsic: got {}, expected {}",
+        args.len(),
+        N
+    )
+}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -22,11 +42,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: &MPlaceTy<'tcx>,
+        dest: &PlaceTy<'tcx>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
+
+        // Force use of fallback body, if available.
+        if this.machine.force_intrinsic_fallback
+            && !this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden
+        {
+            return interp_ok(Some(ty::Instance {
+                def: ty::InstanceKind::Item(instance.def_id()),
+                args: instance.args,
+            }));
+        }
 
         // See if the core engine can handle this intrinsic.
         if this.eval_intrinsic(instance, args, dest, ret)? {
@@ -35,7 +65,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let intrinsic_name = this.tcx.item_name(instance.def_id());
         let intrinsic_name = intrinsic_name.as_str();
 
-        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, dest, ret)? {
+        // FIXME: avoid allocating memory
+        let dest = this.force_allocation(dest)?;
+
+        match this.emulate_intrinsic_by_name(intrinsic_name, instance.args, args, &dest, ret)? {
             EmulateItemResult::NotSupported => {
                 // We haven't handled the intrinsic, let's see if we can use a fallback body.
                 if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
@@ -84,7 +117,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
-            return this.emulate_atomic_intrinsic(name, args, dest);
+            return this.emulate_atomic_intrinsic(name, generic_args, args, dest);
         }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
             return this.emulate_simd_intrinsic(name, generic_args, args, dest);
@@ -98,7 +131,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ));
             }
             "catch_unwind" => {
-                this.handle_catch_unwind(args, dest, ret)?;
+                let [try_fn, data, catch_fn] = check_intrinsic_arg_count(args)?;
+                this.handle_catch_unwind(try_fn, data, catch_fn, dest, ret)?;
                 // This pushed a stack frame, don't jump to `ret`.
                 return interp_ok(EmulateItemResult::AlreadyJumped);
             }
@@ -146,67 +180,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
-            "floorf16" | "ceilf16" | "truncf16" | "roundf16" | "round_ties_even_f16" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f16()?;
-                let mode = match intrinsic_name {
-                    "floorf16" => Round::TowardNegative,
-                    "ceilf16" => Round::TowardPositive,
-                    "truncf16" => Round::TowardZero,
-                    "roundf16" => Round::NearestTiesToAway,
-                    "round_ties_even_f16" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "round_ties_even_f32" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f32()?;
-                let mode = match intrinsic_name {
-                    "floorf32" => Round::TowardNegative,
-                    "ceilf32" => Round::TowardPositive,
-                    "truncf32" => Round::TowardZero,
-                    "roundf32" => Round::NearestTiesToAway,
-                    "round_ties_even_f32" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "round_ties_even_f64" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f64()?;
-                let mode = match intrinsic_name {
-                    "floorf64" => Round::TowardNegative,
-                    "ceilf64" => Round::TowardPositive,
-                    "truncf64" => Round::TowardZero,
-                    "roundf64" => Round::NearestTiesToAway,
-                    "round_ties_even_f64" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-            "floorf128" | "ceilf128" | "truncf128" | "roundf128" | "round_ties_even_f128" => {
-                let [f] = check_intrinsic_arg_count(args)?;
-                let f = this.read_scalar(f)?.to_f128()?;
-                let mode = match intrinsic_name {
-                    "floorf128" => Round::TowardNegative,
-                    "ceilf128" => Round::TowardPositive,
-                    "truncf128" => Round::TowardZero,
-                    "roundf128" => Round::NearestTiesToAway,
-                    "round_ties_even_f128" => Round::NearestTiesToEven,
-                    _ => bug!(),
-                };
-                let res = f.round_to_integral(mode).value;
-                let res = this.adjust_nan(res, &[f]);
-                this.write_scalar(res, dest)?;
-            }
-
             "sqrtf32" => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -235,31 +208,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
-                // Using host floats (but it's fine, these operations do not have
-                // guaranteed precision).
-                let host = f.to_host();
-                let res = match intrinsic_name {
-                    "sinf32" => host.sin(),
-                    "cosf32" => host.cos(),
-                    "expf32" => host.exp(),
-                    "exp2f32" => host.exp2(),
-                    "logf32" => host.ln(),
-                    "log10f32" => host.log10(),
-                    "log2f32" => host.log2(),
-                    _ => bug!(),
-                };
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = apply_random_float_error_ulp(
-                //     this,
-                //     res,
-                //     4, // log2(16)
-                // );
+
+                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, these operations do not have
+                    // guaranteed precision).
+                    let host = f.to_host();
+                    let res = match intrinsic_name {
+                        "sinf32" => host.sin(),
+                        "cosf32" => host.cos(),
+                        "expf32" => host.exp(),
+                        "exp2f32" => host.exp2(),
+                        "logf32" => host.ln(),
+                        "log10f32" => host.log10(),
+                        "log2f32" => host.log2(),
+                        _ => bug!(),
+                    };
+                    let res = res.to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    let res = apply_random_float_error_ulp(
+                        this,
+                        res,
+                        2, // log2(4)
+                    );
+
+                    // Clamp the result to the guaranteed range of this function according to the C standard,
+                    // if any.
+                    clamp_float_value(intrinsic_name, res)
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
+
             #[rustfmt::skip]
             | "sinf64"
             | "cosf64"
@@ -271,28 +252,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             => {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
-                // Using host floats (but it's fine, these operations do not have
-                // guaranteed precision).
-                let host = f.to_host();
-                let res = match intrinsic_name {
-                    "sinf64" => host.sin(),
-                    "cosf64" => host.cos(),
-                    "expf64" => host.exp(),
-                    "exp2f64" => host.exp2(),
-                    "logf64" => host.ln(),
-                    "log10f64" => host.log10(),
-                    "log2f64" => host.log2(),
-                    _ => bug!(),
-                };
-                let res = res.to_soft();
-                // Apply a relative error of 16ULP to introduce some non-determinism
-                // simulating imprecise implementations and optimizations.
-                // FIXME: temporarily disabled as it breaks std tests.
-                // let res = apply_random_float_error_ulp(
-                //     this,
-                //     res,
-                //     4, // log2(16)
-                // );
+
+                let res = fixed_float_value(this, intrinsic_name, &[f]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, these operations do not have
+                    // guaranteed precision).
+                    let host = f.to_host();
+                    let res = match intrinsic_name {
+                        "sinf64" => host.sin(),
+                        "cosf64" => host.cos(),
+                        "expf64" => host.exp(),
+                        "exp2f64" => host.exp2(),
+                        "logf64" => host.ln(),
+                        "log10f64" => host.log10(),
+                        "log2f64" => host.log2(),
+                        _ => bug!(),
+                    };
+                    let res = res.to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    let res = apply_random_float_error_ulp(
+                        this,
+                        res,
+                        2, // log2(4)
+                    );
+
+                    // Clamp the result to the guaranteed range of this function according to the C standard,
+                    // if any.
+                    clamp_float_value(intrinsic_name, res)
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -302,8 +290,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                let res = a.mul_add(b, c).value;
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -312,8 +299,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
-                // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                let res = a.to_host().mul_add(b.to_host(), c.to_host()).to_soft();
+                let res = a.mul_add(b, c).value;
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -323,13 +309,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
-                let fuse: bool = this.machine.rng.get_mut().random();
-                let res = if fuse {
-                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
-                } else {
-                    ((a * b).value + c).value
-                };
+                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
+                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
@@ -338,55 +319,82 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
-                let fuse: bool = this.machine.rng.get_mut().random();
-                let res = if fuse {
-                    // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
-                    a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
-                } else {
-                    ((a * b).value + c).value
-                };
+                let fuse: bool = this.machine.float_nondet && this.machine.rng.get_mut().random();
+                let res = if fuse { a.mul_add(b, c).value } else { ((a * b).value + c).value };
                 let res = this.adjust_nan(res, &[a, b, c]);
                 this.write_scalar(res, dest)?;
             }
 
             "powf32" => {
-                // FIXME: apply random relative error but without altering behaviour of powf
                 let [f1, f2] = check_intrinsic_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                let res = fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
             "powf64" => {
-                // FIXME: apply random relative error but without altering behaviour of powf
                 let [f1, f2] = check_intrinsic_arg_count(args)?;
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                let res = fixed_float_value(this, intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
 
             "powif32" => {
-                // FIXME: apply random relative error but without altering behaviour of powi
                 let [f, i] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f.to_host().powi(i).to_soft();
+
+                let res = fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f.to_host().powi(i).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
             "powif64" => {
-                // FIXME: apply random relative error but without altering behaviour of powi
                 let [f, i] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
-                // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                let res = f.to_host().powi(i).to_soft();
+
+                let res = fixed_powi_float_value(this, f, i).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f.to_host().powi(i).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -467,9 +475,143 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 throw_machine_stop!(TerminationInfo::Abort(format!("trace/breakpoint trap")))
             }
 
+            "assert_inhabited" | "assert_zero_valid" | "assert_mem_uninitialized_valid" => {
+                // Make these a NOP, so we get the better Miri-native error messages.
+            }
+
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }
 
         interp_ok(EmulateItemResult::NeedsReturn)
+    }
+}
+
+/// Applies a random ULP floating point error to `val` and returns the new value.
+/// So if you want an X ULP error, `ulp_exponent` should be log2(X).
+///
+/// Will fail if `val` is not a floating point number.
+fn apply_random_float_error_to_imm<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    val: ImmTy<'tcx>,
+    ulp_exponent: u32,
+) -> InterpResult<'tcx, ImmTy<'tcx>> {
+    let scalar = val.to_scalar_int()?;
+    let res: ScalarInt = match val.layout.ty.kind() {
+        ty::Float(FloatTy::F16) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+        ty::Float(FloatTy::F32) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+        ty::Float(FloatTy::F64) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+        ty::Float(FloatTy::F128) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+        _ => bug!("intrinsic called with non-float input type"),
+    };
+
+    interp_ok(ImmTy::from_scalar_int(res, val.layout))
+}
+
+/// For the intrinsics:
+/// - sinf32, sinf64
+/// - cosf32, cosf64
+/// - expf32, expf64, exp2f32, exp2f64
+/// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
+/// - powf32, powf64
+///
+/// # Return
+///
+/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
+/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
+/// implementation. Returns `None` if no specific value is guaranteed.
+///
+/// # Note
+///
+/// For `powf*` operations of the form:
+///
+/// - `(SNaN)^(±0)`
+/// - `1^(SNaN)`
+///
+/// The result is implementation-defined:
+/// - musl returns for both `1.0`
+/// - glibc returns for both `NaN`
+///
+/// This discrepancy exists because SNaN handling is not consistently defined across platforms,
+/// and the C standard leaves behavior for SNaNs unspecified.
+///
+/// Miri chooses to adhere to both implementations and returns either one of them non-deterministically.
+fn fixed_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    intrinsic_name: &str,
+    args: &[IeeeFloat<S>],
+) -> Option<IeeeFloat<S>> {
+    let one = IeeeFloat::<S>::one();
+    Some(match (intrinsic_name, args) {
+        // cos(+- 0) = 1
+        ("cosf32" | "cosf64", [input]) if input.is_zero() => one,
+
+        // e^0 = 1
+        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => one,
+
+        // (-1)^(±INF) = 1
+        ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => one,
+
+        // 1^y = 1 for any y, even a NaN
+        ("powf32" | "powf64", [base, exp]) if *base == one => {
+            let rng = ecx.machine.rng.get_mut();
+            // SNaN exponents get special treatment: they might return 1, or a NaN.
+            let return_nan = exp.is_signaling() && ecx.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { ecx.generate_nan(args) } else { one }
+        }
+
+        // x^(±0) = 1 for any x, even a NaN
+        ("powf32" | "powf64", [base, exp]) if exp.is_zero() => {
+            let rng = ecx.machine.rng.get_mut();
+            // SNaN bases get special treatment: they might return 1, or a NaN.
+            let return_nan = base.is_signaling() && ecx.machine.float_nondet && rng.random();
+            // Handle both the musl and glibc cases non-deterministically.
+            if return_nan { ecx.generate_nan(args) } else { one }
+        }
+
+        // There are a lot of cases for fixed outputs according to the C Standard, but these are
+        // mainly INF or zero which are not affected by the applied error.
+        _ => return None,
+    })
+}
+
+/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the
+/// C standard (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
+fn fixed_powi_float_value<S: Semantics>(
+    ecx: &mut MiriInterpCx<'_>,
+    base: IeeeFloat<S>,
+    exp: i32,
+) -> Option<IeeeFloat<S>> {
+    Some(match exp {
+        0 => {
+            let one = IeeeFloat::<S>::one();
+            let rng = ecx.machine.rng.get_mut();
+            let return_nan = ecx.machine.float_nondet && rng.random() && base.is_signaling();
+            // For SNaN treatment, we are consistent with `powf`above.
+            // (We wouldn't have two, unlike powf all implementations seem to agree for powi,
+            // but for now we are maximally conservative.)
+            if return_nan { ecx.generate_nan(&[base]) } else { one }
+        }
+
+        _ => return None,
+    })
+}
+
+/// Given an floating-point operation and a floating-point value, clamps the result to the output
+/// range of the given operation.
+fn clamp_float_value<S: Semantics>(intrinsic_name: &str, val: IeeeFloat<S>) -> IeeeFloat<S> {
+    match intrinsic_name {
+        // sin and cos: [-1, 1]
+        "sinf32" | "cosf32" | "sinf64" | "cosf64" =>
+            val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one()),
+        // exp: [0, +INF]
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" =>
+            IeeeFloat::<S>::maximum(val, IeeeFloat::<S>::ZERO),
+        _ => val,
     }
 }

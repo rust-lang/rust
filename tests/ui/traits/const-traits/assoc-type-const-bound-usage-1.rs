@@ -5,7 +5,7 @@
 
 #[const_trait]
 trait Trait {
-    type Assoc: ~const Trait;
+    type Assoc: [const] Trait;
     fn func() -> i32;
 }
 

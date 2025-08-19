@@ -5,7 +5,8 @@
 //! # Important notes
 //!
 //! - `minicore` is **only** intended for `core` items, and the stubs should match the actual `core`
-//!   items.
+//!   items. For identical error output, any `diagnostic` attributes (e.g. `on_unimplemented`)
+//!   should also be replicated here.
 //! - Be careful of adding new features and things that are only available for a subset of targets.
 //!
 //! # References
@@ -16,6 +17,7 @@
 
 #![feature(
     no_core,
+    intrinsics,
     lang_items,
     auto_traits,
     freeze_impls,
@@ -39,13 +41,31 @@ macro_rules! impl_marker_trait {
     }
 }
 
+#[lang = "pointee_sized"]
+#[diagnostic::on_unimplemented(
+    message = "values of type `{Self}` may or may not have a size",
+    label = "may or may not have a known size"
+)]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known",
+    label = "doesn't have a known size"
+)]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+#[diagnostic::on_unimplemented(
+    message = "the size for values of type `{Self}` cannot be known at compilation time",
+    label = "doesn't have a size known at compile-time"
+)]
+pub trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
-impl<T: ?Sized> LegacyReceiver for &T {}
-impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}
 
 #[lang = "copy"]
 pub trait Copy: Sized {}
@@ -57,6 +77,10 @@ pub trait BikeshedGuaranteedNoDrop {}
 pub unsafe auto trait Freeze {}
 
 #[lang = "unpin"]
+#[diagnostic::on_unimplemented(
+    note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
+    message = "`{Self}` cannot be unpinned"
+)]
 pub auto trait Unpin {}
 
 impl_marker_trait!(
@@ -67,14 +91,14 @@ impl_marker_trait!(
         f16, f32, f64, f128,
     ]
 );
-impl<'a, T: ?Sized> Copy for &'a T {}
-impl<T: ?Sized> Copy for *const T {}
-impl<T: ?Sized> Copy for *mut T {}
+impl<'a, T: PointeeSized> Copy for &'a T {}
+impl<T: PointeeSized> Copy for *const T {}
+impl<T: PointeeSized> Copy for *mut T {}
 impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: ?Sized>;
-impl<T: ?Sized> Copy for PhantomData<T> {}
+pub struct PhantomData<T: PointeeSized>;
+impl<T: PointeeSized> Copy for PhantomData<T> {}
 
 pub enum Option<T> {
     None,
@@ -90,19 +114,20 @@ impl<T: Copy, E: Copy> Copy for Result<T, E> {}
 
 #[lang = "manually_drop"]
 #[repr(transparent)]
-pub struct ManuallyDrop<T: ?Sized> {
+pub struct ManuallyDrop<T: PointeeSized> {
     value: T,
 }
-impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
+impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-pub struct UnsafeCell<T: ?Sized> {
+pub struct UnsafeCell<T: PointeeSized> {
     value: T,
 }
-impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
 
 #[lang = "tuple_trait"]
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 pub trait Tuple {}
 
 #[rustc_builtin_macro]
@@ -115,6 +140,10 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 }
 #[rustc_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro cfg_select($($tt:tt)*) {
     /* compiler built-in */
 }
 
@@ -176,17 +205,30 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 #[lang = "dispatch_from_dyn"]
 trait DispatchFromDyn<T> {}
 
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
 
 #[lang = "unsize"]
-trait Unsize<T: ?Sized> {}
+trait Unsize<T: PointeeSized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
+pub trait CoerceUnsized<T: PointeeSized> {}
 
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
 trait Drop {
     fn drop(&mut self);
+}
+
+pub mod mem {
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+}
+
+#[lang = "c_void"]
+#[repr(u8)]
+pub enum c_void {
+    __variant1,
+    __variant2,
 }

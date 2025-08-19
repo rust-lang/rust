@@ -930,6 +930,47 @@ comment"]
 }
 
 #[test]
+fn doctest_desugar_try_expr_let_else() {
+    check_doc_test(
+        "desugar_try_expr_let_else",
+        r#####"
+//- minicore: try, option
+fn handle() {
+    let pat = Some(true)$0?;
+}
+"#####,
+        r#####"
+fn handle() {
+    let Some(pat) = Some(true) else {
+        return None;
+    };
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_desugar_try_expr_match() {
+    check_doc_test(
+        "desugar_try_expr_match",
+        r#####"
+//- minicore: try, option
+fn handle() {
+    let pat = Some(true)$0?;
+}
+"#####,
+        r#####"
+fn handle() {
+    let pat = match Some(true) {
+        Some(it) => it,
+        None => return None,
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",
@@ -1737,7 +1778,7 @@ fn foo() {
     bar("", baz());
 }
 
-fn bar(arg: &str, baz: Baz) ${0:-> _} {
+fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
     todo!()
 }
 
@@ -1840,6 +1881,29 @@ impl<T: Clone> Ctx<T> {$0}
 }
 
 #[test]
+fn doctest_generate_impl_trait() {
+    check_doc_test(
+        "generate_impl_trait",
+        r#####"
+trait $0Foo {
+    fn foo(&self) -> i32;
+}
+"#####,
+        r#####"
+trait Foo {
+    fn foo(&self) -> i32;
+}
+
+impl Foo for ${1:_} {
+    fn foo(&self) -> i32 {
+        $0todo!()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_is_empty_from_len() {
     check_doc_test(
         "generate_is_empty_from_len",
@@ -1892,7 +1956,7 @@ pub enum Axis { X = 0, Y = 1, Z = 2 }
 
 $0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
-        &self[index as usize]
+        &mut self[index as usize]
     }
 }
 
@@ -1947,6 +2011,34 @@ struct Person {
 impl Person {
     fn $0set_name(&mut self, name: String) {
         self.name = name;
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_single_field_struct_from() {
+    check_doc_test(
+        "generate_single_field_struct_from",
+        r#####"
+//- minicore: from, phantom_data
+use core::marker::PhantomData;
+struct $0Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+"#####,
+        r#####"
+use core::marker::PhantomData;
+struct Foo<T> {
+    id: i32,
+    _phantom_data: PhantomData<T>,
+}
+
+impl<T> From<i32> for Foo<T> {
+    fn from(id: i32) -> Self {
+        Self { id, _phantom_data: PhantomData }
     }
 }
 "#####,
@@ -3097,27 +3189,6 @@ fn main() {
 }
 
 #[test]
-fn doctest_replace_try_expr_with_match() {
-    check_doc_test(
-        "replace_try_expr_with_match",
-        r#####"
-//- minicore: try, option
-fn handle() {
-    let pat = Some(true)$0?;
-}
-"#####,
-        r#####"
-fn handle() {
-    let pat = match Some(true) {
-        Some(it) => it,
-        None => return None,
-    };
-}
-"#####,
-    )
-}
-
-#[test]
 fn doctest_replace_turbofish_with_explicit_type() {
     check_doc_test(
         "replace_turbofish_with_explicit_type",
@@ -3340,6 +3411,20 @@ sth!{ }
 }
 
 #[test]
+fn doctest_unmerge_imports() {
+    check_doc_test(
+        "unmerge_imports",
+        r#####"
+use std::fmt::{Debug, Display$0};
+"#####,
+        r#####"
+use std::fmt::{Debug};
+use std::fmt::Display;
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unmerge_match_arm() {
     check_doc_test(
         "unmerge_match_arm",
@@ -3361,20 +3446,6 @@ fn handle(action: Action) {
         Action::Stop => foo(),
     }
 }
-"#####,
-    )
-}
-
-#[test]
-fn doctest_unmerge_use() {
-    check_doc_test(
-        "unmerge_use",
-        r#####"
-use std::fmt::{Debug, Display$0};
-"#####,
-        r#####"
-use std::fmt::{Debug};
-use std::fmt::Display;
 "#####,
     )
 }
@@ -3476,6 +3547,23 @@ fn main() {
 fn main() {
     let foo = "Foo";
     let bar = "Bar";
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_unwrap_type_to_generic_arg() {
+    check_doc_test(
+        "unwrap_type_to_generic_arg",
+        r#####"
+fn foo() -> $0Option<i32> {
+    todo!()
+}
+"#####,
+        r#####"
+fn foo() -> i32 {
+    todo!()
 }
 "#####,
     )

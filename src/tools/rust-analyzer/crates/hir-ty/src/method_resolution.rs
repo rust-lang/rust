@@ -10,7 +10,7 @@ use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
-    nameres::{DefMap, assoc::ImplItems},
+    nameres::{DefMap, assoc::ImplItems, block_def_map, crate_def_map},
     signatures::{ConstFlags, EnumFlags, FnFlags, StructFlags, TraitFlags, TypeAliasFlags},
 };
 use hir_expand::name::Name;
@@ -152,7 +152,7 @@ impl TraitImpls {
         let _p = tracing::info_span!("trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
-        Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
+        Self::collect_def_map(db, &mut impls, crate_def_map(db, krate));
 
         Arc::new(Self::finish(impls))
     }
@@ -164,7 +164,7 @@ impl TraitImpls {
         let _p = tracing::info_span!("trait_impls_in_block_query").entered();
         let mut impls = FxHashMap::default();
 
-        Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
+        Self::collect_def_map(db, &mut impls, block_def_map(db, block));
 
         if impls.is_empty() { None } else { Some(Arc::new(Self::finish(impls))) }
     }
@@ -214,7 +214,7 @@ impl TraitImpls {
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db) {
-                    Self::collect_def_map(db, map, &block_def_map);
+                    Self::collect_def_map(db, map, block_def_map);
                 }
             }
         }
@@ -280,8 +280,8 @@ impl InherentImpls {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
-        let crate_def_map = db.crate_def_map(krate);
-        impls.collect_def_map(db, &crate_def_map);
+        let crate_def_map = crate_def_map(db, krate);
+        impls.collect_def_map(db, crate_def_map);
         impls.shrink_to_fit();
 
         Arc::new(impls)
@@ -294,8 +294,8 @@ impl InherentImpls {
         let _p = tracing::info_span!("inherent_impls_in_block_query").entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
-        let block_def_map = db.block_def_map(block);
-        impls.collect_def_map(db, &block_def_map);
+        let block_def_map = block_def_map(db, block);
+        impls.collect_def_map(db, block_def_map);
         impls.shrink_to_fit();
 
         if impls.map.is_empty() && impls.invalid_impls.is_empty() {
@@ -337,7 +337,7 @@ impl InherentImpls {
             for konst in module_data.scope.unnamed_consts() {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db) {
-                    self.collect_def_map(db, &block_def_map);
+                    self.collect_def_map(db, block_def_map);
                 }
             }
         }
@@ -515,9 +515,15 @@ impl From<Option<BlockId>> for VisibleFromModule {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum AutorefOrPtrAdjustment {
+    Autoref(Mutability),
+    ToConstPtr,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ReceiverAdjustments {
-    autoref: Option<Mutability>,
+    autoref: Option<AutorefOrPtrAdjustment>,
     autoderefs: usize,
     unsize_array: bool,
 }
@@ -535,10 +541,15 @@ impl ReceiverAdjustments {
                 }
                 Some((kind, new_ty)) => {
                     ty = new_ty.clone();
+                    let mutbl = match self.autoref {
+                        Some(AutorefOrPtrAdjustment::Autoref(m)) => Some(m),
+                        Some(AutorefOrPtrAdjustment::ToConstPtr) => Some(Mutability::Not),
+                        // FIXME should we know the mutability here, when autoref is `None`?
+                        None => None,
+                    };
                     adjust.push(Adjustment {
                         kind: Adjust::Deref(match kind {
-                            // FIXME should we know the mutability here, when autoref is `None`?
-                            AutoderefKind::Overloaded => Some(OverloadedDeref(self.autoref)),
+                            AutoderefKind::Overloaded => Some(OverloadedDeref(mutbl)),
                             AutoderefKind::Builtin => None,
                         }),
                         target: new_ty,
@@ -546,23 +557,39 @@ impl ReceiverAdjustments {
                 }
             }
         }
-        if let Some(m) = self.autoref {
+        if let Some(autoref) = &self.autoref {
             let lt = table.new_lifetime_var();
-            let a = Adjustment::borrow(m, ty, lt);
-            ty = a.target.clone();
-            adjust.push(a);
+            match autoref {
+                AutorefOrPtrAdjustment::Autoref(m) => {
+                    let a = Adjustment::borrow(*m, ty, lt);
+                    ty = a.target.clone();
+                    adjust.push(a);
+                }
+                AutorefOrPtrAdjustment::ToConstPtr => {
+                    if let TyKind::Raw(Mutability::Mut, pointee) = ty.kind(Interner) {
+                        let a = Adjustment {
+                            kind: Adjust::Pointer(PointerCast::MutToConstPointer),
+                            target: TyKind::Raw(Mutability::Not, pointee.clone()).intern(Interner),
+                        };
+                        ty = a.target.clone();
+                        adjust.push(a);
+                    } else {
+                        never!("`ToConstPtr` target is not a raw mutable pointer");
+                    }
+                }
+            };
         }
         if self.unsize_array {
             ty = 'it: {
-                if let TyKind::Ref(m, l, inner) = ty.kind(Interner) {
-                    if let TyKind::Array(inner, _) = inner.kind(Interner) {
-                        break 'it TyKind::Ref(
-                            *m,
-                            l.clone(),
-                            TyKind::Slice(inner.clone()).intern(Interner),
-                        )
-                        .intern(Interner);
-                    }
+                if let TyKind::Ref(m, l, inner) = ty.kind(Interner)
+                    && let TyKind::Array(inner, _) = inner.kind(Interner)
+                {
+                    break 'it TyKind::Ref(
+                        *m,
+                        l.clone(),
+                        TyKind::Slice(inner.clone()).intern(Interner),
+                    )
+                    .intern(Interner);
                 }
                 // FIXME: report diagnostic if array unsizing happens without indirection.
                 ty
@@ -575,8 +602,8 @@ impl ReceiverAdjustments {
         (ty, adjust)
     }
 
-    fn with_autoref(&self, m: Mutability) -> ReceiverAdjustments {
-        Self { autoref: Some(m), ..*self }
+    fn with_autoref(&self, a: AutorefOrPtrAdjustment) -> ReceiverAdjustments {
+        Self { autoref: Some(a), ..*self }
     }
 }
 
@@ -763,7 +790,7 @@ fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
     mut table: InferenceTable<'_>,
     actual_trait_ref: TraitRef,
-) -> Option<(Arc<ImplItems>, Substitution)> {
+) -> Option<(&ImplItems, Substitution)> {
     let db = table.db;
     impls.find_map(|impl_| {
         table.run_in_snapshot(|table| {
@@ -784,7 +811,7 @@ fn find_matching_impl(
             let goal = crate::Goal::all(Interner, wcs);
             table.try_obligation(goal.clone())?;
             table.register_obligation(goal);
-            Some((db.impl_items(impl_), table.resolve_completely(impl_substs)))
+            Some((impl_.impl_items(db), table.resolve_completely(impl_substs)))
         })
     })
 }
@@ -848,7 +875,7 @@ fn is_inherent_impl_coherent(
 
             _ => false,
         };
-        let items = db.impl_items(impl_id);
+        let items = impl_id.impl_items(db);
         rustc_has_incoherent_inherent_impls
             && !items.items.is_empty()
             && items.items.iter().all(|&(_, assoc)| match assoc {
@@ -1051,7 +1078,7 @@ fn iterate_method_candidates_with_autoref(
     let mut maybe_reborrowed = first_adjustment.clone();
     if let Some((_, _, m)) = receiver_ty.value.as_reference() {
         // Prefer reborrow of references to move
-        maybe_reborrowed.autoref = Some(m);
+        maybe_reborrowed.autoref = Some(AutorefOrPtrAdjustment::Autoref(m));
         maybe_reborrowed.autoderefs += 1;
     }
 
@@ -1063,15 +1090,34 @@ fn iterate_method_candidates_with_autoref(
         binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(refed, first_adjustment.with_autoref(Mutability::Not))?;
+    iterate_method_candidates_by_receiver(
+        refed,
+        first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Not)),
+    )?;
 
     let ref_muted = Canonical {
         value: TyKind::Ref(Mutability::Mut, error_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
-        binders: receiver_ty.binders,
+        binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(ref_muted, first_adjustment.with_autoref(Mutability::Mut))
+    iterate_method_candidates_by_receiver(
+        ref_muted,
+        first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Mut)),
+    )?;
+
+    if let Some((ty, Mutability::Mut)) = receiver_ty.value.as_raw_ptr() {
+        let const_ptr_ty = Canonical {
+            value: TyKind::Raw(Mutability::Not, ty.clone()).intern(Interner),
+            binders: receiver_ty.binders,
+        };
+        iterate_method_candidates_by_receiver(
+            const_ptr_ty,
+            first_adjustment.with_autoref(AutorefOrPtrAdjustment::ToConstPtr),
+        )?;
+    }
+
+    ControlFlow::Continue(())
 }
 
 pub trait MethodCandidateCallback {
@@ -1256,7 +1302,7 @@ fn iterate_trait_method_candidates(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = false;
-        for &(_, item) in db.trait_items(t).items.iter() {
+        for &(_, item) in t.trait_items(db).items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
             let visible =
@@ -1353,7 +1399,7 @@ fn iterate_inherent_methods(
             )?;
         }
 
-        block = db.block_def_map(block_id).parent().and_then(|module| module.containing_block());
+        block = block_def_map(db, block_id).parent().and_then(|module| module.containing_block());
     }
 
     for krate in def_crates {
@@ -1383,7 +1429,7 @@ fn iterate_inherent_methods(
     ) -> ControlFlow<()> {
         let db = table.db;
         for t in traits {
-            let data = db.trait_items(t);
+            let data = t.trait_items(db);
             for &(_, item) in data.items.iter() {
                 // We don't pass `visible_from_module` as all trait items should be visible.
                 let visible = match is_valid_trait_method_candidate(
@@ -1416,7 +1462,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &(ref item_name, item) in table.db.impl_items(impl_id).items.iter() {
+            for &(ref item_name, item) in impl_id.impl_items(table.db).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1503,11 +1549,11 @@ fn is_valid_impl_method_candidate(
             check_that!(receiver_ty.is_none());
             check_that!(name.is_none_or(|n| n == item_name));
 
-            if let Some(from_module) = visible_from_module {
-                if !db.const_visibility(c).is_visible_from(db, from_module) {
-                    cov_mark::hit!(const_candidate_not_visible);
-                    return IsValidCandidate::NotVisible;
-                }
+            if let Some(from_module) = visible_from_module
+                && !db.assoc_visibility(c.into()).is_visible_from(db, from_module)
+            {
+                cov_mark::hit!(const_candidate_not_visible);
+                return IsValidCandidate::NotVisible;
             }
             let self_ty_matches = table.run_in_snapshot(|table| {
                 let expected_self_ty =
@@ -1592,11 +1638,11 @@ fn is_valid_impl_fn_candidate(
     let db = table.db;
     let data = db.function_signature(fn_id);
 
-    if let Some(from_module) = visible_from_module {
-        if !db.function_visibility(fn_id).is_visible_from(db, from_module) {
-            cov_mark::hit!(autoderef_candidate_not_visible);
-            return IsValidCandidate::NotVisible;
-        }
+    if let Some(from_module) = visible_from_module
+        && !db.assoc_visibility(fn_id.into()).is_visible_from(db, from_module)
+    {
+        cov_mark::hit!(autoderef_candidate_not_visible);
+        return IsValidCandidate::NotVisible;
     }
     table.run_in_snapshot(|table| {
         let _p = tracing::info_span!("subst_for_def").entered();

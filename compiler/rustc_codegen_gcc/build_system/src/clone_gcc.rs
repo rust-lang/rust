@@ -43,7 +43,7 @@ impl Args {
                 }
                 arg => {
                     if !command_args.config_info.parse_argument(arg, &mut args)? {
-                        return Err(format!("Unknown option {}", arg));
+                        return Err(format!("Unknown option {arg}"));
                     }
                 }
             }
@@ -52,7 +52,7 @@ impl Args {
             Some(p) => p.into(),
             None => PathBuf::from("./gcc"),
         };
-        return Ok(Some(command_args));
+        Ok(Some(command_args))
     }
 }
 
@@ -64,7 +64,7 @@ pub fn run() -> Result<(), String> {
     let result = git_clone("https://github.com/rust-lang/gcc", Some(&args.out_path), false)?;
     if result.ran_clone {
         let gcc_commit = args.config_info.get_gcc_commit()?;
-        println!("Checking out GCC commit `{}`...", gcc_commit);
+        println!("Checking out GCC commit `{gcc_commit}`...");
         run_command_with_output(
             &[&"git", &"checkout", &gcc_commit],
             Some(Path::new(&result.repo_dir)),

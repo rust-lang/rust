@@ -1,9 +1,0 @@
-error[E0605]: non-primitive cast: `i32` as `&dyn* Debug`
-  --> $DIR/unsize-into-ref-dyn-star.rs:7:13
-   |
-LL |     let i = 42 as &dyn* Debug;
-   |             ^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0605`.

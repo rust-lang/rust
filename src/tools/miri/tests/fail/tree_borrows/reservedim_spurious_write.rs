@@ -1,7 +1,7 @@
 // Illustrating a problematic interaction between Reserved, interior mutability,
 // and protectors, that makes spurious writes fail in the previous model of Tree Borrows.
 // As for all similar tests, we disable preemption so that the error message is deterministic.
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-tree-borrows -Zmiri-deterministic-concurrency
 //
 // One revision without spurious read (default source code) and one with spurious read.
 // Both are expected to be UB. Both revisions are expected to have the *same* error

@@ -37,5 +37,11 @@ error: it is more concise to loop over containers instead of using explicit iter
 LL |     for _ in mr.into_iter() {}
    |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *mr`
 
-error: aborting due to 6 previous errors
+error: it is more concise to loop over containers instead of using explicit iteration methods
+  --> tests/ui/explicit_into_iter_loop.rs:84:14
+   |
+LL |     for _ in dbg!([1, 2]).into_iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `dbg!([1, 2])`
+
+error: aborting due to 7 previous errors
 

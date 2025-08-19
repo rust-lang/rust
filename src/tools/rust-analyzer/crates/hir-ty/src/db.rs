@@ -31,6 +31,7 @@ use crate::{
 #[query_group::query_group]
 pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     #[salsa::invoke(crate::infer::infer_query)]
+    #[salsa::cycle(cycle_result = crate::infer::infer_cycle_result)]
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     // region:mir
@@ -132,6 +133,7 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // FIXME: Make this a non-interned query.
     #[salsa::invoke_interned(crate::lower::const_param_ty_with_diagnostics_query)]
+    #[salsa::cycle(cycle_result = crate::lower::const_param_ty_with_diagnostics_cycle_result)]
     fn const_param_ty_with_diagnostics(&self, def: ConstParamId) -> (Ty, Diagnostics);
 
     #[salsa::invoke(crate::lower::const_param_ty_query)]
@@ -235,18 +237,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_callable_def(&self, callable_def: CallableDefId) -> InternedCallableDefId;
-
-    #[salsa::interned]
-    fn intern_type_or_const_param_id(
-        &self,
-        param_id: TypeOrConstParamId,
-    ) -> InternedTypeOrConstParamId;
-
-    #[salsa::interned]
-    fn intern_lifetime_param_id(&self, param_id: LifetimeParamId) -> InternedLifetimeParamId;
-
-    #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
 
     #[salsa::interned]
@@ -283,8 +273,9 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::variance::variances_of)]
     #[salsa::cycle(
-        cycle_fn = crate::variance::variances_of_cycle_fn,
-        cycle_initial = crate::variance::variances_of_cycle_initial,
+        // cycle_fn = crate::variance::variances_of_cycle_fn,
+        // cycle_initial = crate::variance::variances_of_cycle_initial,
+        cycle_result = crate::variance::variances_of_cycle_initial,
     )]
     fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
 
@@ -329,9 +320,31 @@ fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
 }
 
-impl_intern_key!(InternedTypeOrConstParamId, TypeOrConstParamId);
+#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedTypeOrConstParamId {
+    pub loc: TypeOrConstParamId,
+}
+impl ::std::fmt::Debug for InternedTypeOrConstParamId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        f.debug_tuple(stringify!(InternedTypeOrConstParamId))
+            .field(&format_args!("{:04x}", self.0.index()))
+            .finish()
+    }
+}
 
-impl_intern_key!(InternedLifetimeParamId, LifetimeParamId);
+#[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedLifetimeParamId {
+    pub loc: LifetimeParamId,
+}
+impl ::std::fmt::Debug for InternedLifetimeParamId {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        f.debug_tuple(stringify!(InternedLifetimeParamId))
+            .field(&format_args!("{:04x}", self.0.index()))
+            .finish()
+    }
+}
 
 impl_intern_key!(InternedConstParamId, ConstParamId);
 
@@ -344,7 +357,3 @@ impl_intern_key!(InternedClosureId, InternedClosure);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
 impl_intern_key!(InternedCoroutineId, InternedCoroutine);
-
-// This exists just for Chalk, because Chalk just has a single `FnDefId` where
-// we have different IDs for struct and enum variant constructors.
-impl_intern_key!(InternedCallableDefId, CallableDefId);

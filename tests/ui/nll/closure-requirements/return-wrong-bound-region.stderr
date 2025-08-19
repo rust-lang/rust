@@ -9,6 +9,8 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
                for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 i32, &'^1 i32)) -> &'^0 i32,
                (),
            ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
 
 error: lifetime may not live long enough
   --> $DIR/return-wrong-bound-region.rs:11:23

@@ -198,3 +198,13 @@ mod issue14677 {
         child.wait().unwrap();
     }
 }
+
+fn issue14911() -> std::io::Result<String> {
+    let (mut recv, send) = std::io::pipe()?;
+    let mut command = Command::new("ls")
+        .stdout(send.try_clone()?)
+        .spawn()
+        .expect("Could not spawn new process...");
+    command.wait()?;
+    Ok("".into())
+}

@@ -84,12 +84,12 @@ fn single_element_range_exclusive() -> pattern_type!(u32 is 0..1) {
 }
 
 fn empty_range_at_base_type_min() -> pattern_type!(u32 is 0..0) {
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR evaluation panicked: exclusive range end at minimum value of type
     0
 }
 
 fn empty_range_at_base_type_min2() -> pattern_type!(u32 is 0..0) {
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR evaluation panicked: exclusive range end at minimum value of type
     1
 }
 
@@ -104,17 +104,17 @@ fn empty_range2() -> pattern_type!(u32 is 1..1) {
 }
 
 fn wraparound_range_at_base_ty_end() -> pattern_type!(u32 is 1..0) {
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR evaluation panicked: exclusive range end at minimum value of type
     1
 }
 
 fn wraparound_range_at_base_ty_end2() -> pattern_type!(u32 is 1..0) {
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR evaluation panicked: exclusive range end at minimum value of type
     0
 }
 
 fn wraparound_range_at_base_ty_end3() -> pattern_type!(u32 is 1..0) {
-    //~^ ERROR evaluation of constant value failed
+    //~^ ERROR evaluation panicked: exclusive range end at minimum value of type
     2
 }
 

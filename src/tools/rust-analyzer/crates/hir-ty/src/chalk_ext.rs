@@ -16,7 +16,8 @@ use crate::{
     ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
     QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
+    from_placeholder_idx, generics::generics, mapping::ToChalk, to_chalk_trait_id,
+    utils::ClosureSubst,
 };
 
 pub trait TyExt {
@@ -190,10 +191,9 @@ impl TyExt for Ty {
     fn as_generic_def(&self, db: &dyn HirDatabase) -> Option<GenericDefId> {
         match *self.kind(Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
-            TyKind::FnDef(callable, ..) => Some(GenericDefId::from_callable(
-                db,
-                db.lookup_intern_callable_def(callable.into()),
-            )),
+            TyKind::FnDef(callable, ..) => {
+                Some(GenericDefId::from_callable(db, ToChalk::from_chalk(db, callable)))
+            }
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
             TyKind::Foreign(type_alias, ..) => Some(from_foreign_def_id(type_alias).into()),
             _ => None,
@@ -202,7 +202,7 @@ impl TyExt for Ty {
 
     fn callable_def(&self, db: &dyn HirDatabase) -> Option<CallableDefId> {
         match self.kind(Interner) {
-            &TyKind::FnDef(def, ..) => Some(db.lookup_intern_callable_def(def.into())),
+            &TyKind::FnDef(def, ..) => Some(ToChalk::from_chalk(db, def)),
             _ => None,
         }
     }
@@ -251,9 +251,7 @@ impl TyExt for Ty {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
                         let krate = def.module(db).krate();
-                        if let Some(future_trait) =
-                            db.lang_item(krate, LangItem::Future).and_then(|item| item.as_trait())
-                        {
+                        if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
                             // This is only used by type walking.
                             // Parameters will be walked outside, and projection predicate is not used.
                             // So just provide the Future trait.
@@ -364,8 +362,7 @@ impl TyExt for Ty {
 
     fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
         let crate_id = owner.module(db).krate();
-        let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|it| it.as_trait())
-        else {
+        let Some(copy_trait) = LangItem::Copy.resolve_trait(db, crate_id) else {
             return false;
         };
         let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(self).build();

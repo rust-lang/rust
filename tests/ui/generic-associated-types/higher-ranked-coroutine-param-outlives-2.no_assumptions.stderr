@@ -1,0 +1,24 @@
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-coroutine-param-outlives-2.rs:14:5
+   |
+LL | /     async { // a coroutine checked for autotrait impl `Send`
+LL | |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
+LL | |         async {}.await; // a yield point
+LL | |     }
+   | |_____^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-coroutine-param-outlives-2.rs:21:5
+   |
+LL | /     async { // a coroutine checked for autotrait impl `Send`
+LL | |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
+LL | |         async {}.await; // a yield point
+LL | |     }
+   | |_____^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: aborting due to 2 previous errors
+

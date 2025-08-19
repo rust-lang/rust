@@ -1,8 +1,10 @@
+use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
-use rustc_target::callconv::{Conv, FnAbi};
+use rustc_target::callconv::FnAbi;
 
-use crate::helpers::check_min_vararg_count;
+use crate::shims::sig::check_min_vararg_count;
+use crate::shims::unix::env::EvalContextExt;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;
 use crate::*;
@@ -14,7 +16,7 @@ pub fn syscall<'tcx>(
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ([op], varargs) = ecx.check_shim_variadic(abi, Conv::C, link_name, args)?;
+    let ([op], varargs) = ecx.check_shim_sig_variadic_lenient(abi, CanonAbi::C, link_name, args)?;
     // The syscall variadic function is legal to call with more arguments than needed,
     // extra arguments are simply ignored. The important check is that when we use an
     // argument, we have to also check all arguments *before* it to ensure that they
@@ -23,6 +25,7 @@ pub fn syscall<'tcx>(
     let sys_getrandom = ecx.eval_libc("SYS_getrandom").to_target_usize(ecx)?;
     let sys_futex = ecx.eval_libc("SYS_futex").to_target_usize(ecx)?;
     let sys_eventfd2 = ecx.eval_libc("SYS_eventfd2").to_target_usize(ecx)?;
+    let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
 
     match ecx.read_target_usize(op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -51,6 +54,10 @@ pub fn syscall<'tcx>(
 
             let result = ecx.eventfd(initval, flags)?;
             ecx.write_int(result.to_i32()?, dest)?;
+        }
+        num if num == sys_gettid => {
+            let result = ecx.unix_gettid("SYS_gettid")?;
+            ecx.write_int(result.to_u32()?, dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");

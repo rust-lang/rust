@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 // On windows, joining main is not UB, but it will block a thread forever.
@@ -18,7 +18,7 @@ const MAIN_THREAD: HANDLE = (2i32 << 29) as HANDLE;
 fn main() {
     thread::spawn(|| {
         unsafe {
-            assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock: the evaluated program deadlocked
+            assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock
         }
     })
     .join()

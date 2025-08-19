@@ -128,3 +128,42 @@ fn added_note_for_expression_use() -> u32 {
 }
 
 fn main() {}
+
+mod issue14873 {
+    fn foo() -> i32 {
+        todo!()
+    }
+
+    macro_rules! qux {
+        ($a:ident, $b:ident, $condition:expr) => {
+            let mut $a: i32 = foo();
+            let mut $b: i32 = foo();
+            if $condition {
+                "."
+            } else {
+                ""
+            };
+            $a = foo();
+            $b = foo();
+        };
+    }
+
+    fn share_on_top_and_bottom() {
+        if false {
+            qux!(a, b, a == b);
+        } else {
+            qux!(a, b, a != b);
+        };
+
+        if false {
+            //~^ branches_sharing_code
+            let x = 1;
+            qux!(a, b, a == b);
+            let y = 1;
+        } else {
+            let x = 1;
+            qux!(a, b, a != b);
+            let y = 1;
+        }
+    }
+}

@@ -1,6 +1,8 @@
 //@ run-pass
 //@ aux-build:mir_external_refs.rs
 
+#![allow(unpredictable_function_pointer_comparisons)]
+
 extern crate mir_external_refs as ext;
 
 struct S(#[allow(dead_code)] u8);

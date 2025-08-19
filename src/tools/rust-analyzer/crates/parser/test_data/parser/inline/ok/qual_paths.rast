@@ -11,21 +11,22 @@ SOURCE_FILE
       PATH
         PATH
           PATH_SEGMENT
-            L_ANGLE "<"
-            PATH_TYPE
-              PATH
-                PATH_SEGMENT
-                  NAME_REF
-                    IDENT "A"
-            WHITESPACE " "
-            AS_KW "as"
-            WHITESPACE " "
-            PATH_TYPE
-              PATH
-                PATH_SEGMENT
-                  NAME_REF
-                    IDENT "B"
-            R_ANGLE ">"
+            TYPE_ANCHOR
+              L_ANGLE "<"
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "A"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "B"
+              R_ANGLE ">"
         COLON2 "::"
         PATH_SEGMENT
           NAME_REF
@@ -51,21 +52,22 @@ SOURCE_FILE
               PATH
                 PATH
                   PATH_SEGMENT
-                    L_ANGLE "<"
-                    PATH_TYPE
-                      PATH
-                        PATH_SEGMENT
-                          NAME_REF
-                            IDENT "usize"
-                    WHITESPACE " "
-                    AS_KW "as"
-                    WHITESPACE " "
-                    PATH_TYPE
-                      PATH
-                        PATH_SEGMENT
-                          NAME_REF
-                            IDENT "Default"
-                    R_ANGLE ">"
+                    TYPE_ANCHOR
+                      L_ANGLE "<"
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "usize"
+                      WHITESPACE " "
+                      AS_KW "as"
+                      WHITESPACE " "
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Default"
+                      R_ANGLE ">"
                 COLON2 "::"
                 PATH_SEGMENT
                   NAME_REF

@@ -1,8 +1,10 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use libc::{EXIT_FAILURE, EXIT_SUCCESS, c_char, c_int, gid_t, pid_t, uid_t};
+use libc::{EXIT_FAILURE, EXIT_SUCCESS, c_int, gid_t, pid_t, uid_t};
 
+pub use self::cstring_array::CStringArray;
+use self::cstring_array::CStringIter;
 use crate::collections::BTreeMap;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::os::unix::prelude::*;
@@ -12,16 +14,20 @@ use crate::sys::fs::File;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
+use crate::sys::process::env::{CommandEnv, CommandEnvs};
 use crate::sys_common::{FromInner, IntoInner};
-use crate::{fmt, io, ptr};
+use crate::{fmt, io};
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "fuchsia")] {
+mod cstring_array;
+
+cfg_select! {
+    target_os = "fuchsia" => {
         // fuchsia doesn't have /dev/null
-    } else if #[cfg(target_os = "vxworks")] {
+    }
+    target_os = "vxworks" => {
         const DEV_NULL: &CStr = c"/null";
-    } else {
+    }
+    _ => {
         const DEV_NULL: &CStr = c"/dev/null";
     }
 }
@@ -31,8 +37,8 @@ cfg_if::cfg_if! {
 // to support older Android version (independent of libc version).
 // The following implementations are based on
 // https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "android")] {
+cfg_select! {
+    target_os = "android" => {
         #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
@@ -65,7 +71,8 @@ cfg_if::cfg_if! {
             raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
             return 0;
         }
-    } else {
+    }
+    _ => {
         #[allow(unused_imports)]
         pub use libc::{sigemptyset, sigaddset};
     }
@@ -77,17 +84,12 @@ cfg_if::cfg_if! {
 
 pub struct Command {
     program: CString,
-    args: Vec<CString>,
-    /// Exactly what will be passed to `execvp`.
-    ///
-    /// First element is a pointer to `program`, followed by pointers to
-    /// `args`, followed by a `null`. Be careful when modifying `program` or
-    /// `args` to properly update this as well.
-    argv: Argv,
+    args: CStringArray,
     env: CommandEnv,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
+    chroot: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
@@ -99,15 +101,8 @@ pub struct Command {
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
     pgroup: Option<pid_t>,
+    setsid: bool,
 }
-
-// Create a new type for argv, so that we can make it `Send` and `Sync`
-struct Argv(Vec<*const c_char>);
-
-// It is safe to make `Argv` `Send` and `Sync`, because it contains
-// pointers to memory owned by `Command.args`
-unsafe impl Send for Argv {}
-unsafe impl Sync for Argv {}
 
 // passed back to std::process with the pipes connected to the child, if any
 // were requested
@@ -170,18 +165,19 @@ impl ProgramKind {
 }
 
 impl Command {
-    #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
         let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
+        let mut args = CStringArray::with_capacity(1);
+        args.push(program.clone());
         Command {
-            argv: Argv(vec![program.as_ptr(), ptr::null()]),
-            args: vec![program.clone()],
             program,
-            program_kind,
+            args,
             env: Default::default(),
+            program_kind,
             cwd: None,
+            chroot: None,
             uid: None,
             gid: None,
             saw_nul,
@@ -190,52 +186,21 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
-            pgroup: None,
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    pub fn new(program: &OsStr) -> Command {
-        let mut saw_nul = false;
-        let program_kind = ProgramKind::new(program.as_ref());
-        let program = os2c(program, &mut saw_nul);
-        Command {
-            argv: Argv(vec![program.as_ptr(), ptr::null()]),
-            args: vec![program.clone()],
-            program,
-            program_kind,
-            env: Default::default(),
-            cwd: None,
-            uid: None,
-            gid: None,
-            saw_nul,
-            closures: Vec::new(),
-            groups: None,
-            stdin: None,
-            stdout: None,
-            stderr: None,
+            #[cfg(target_os = "linux")]
             create_pidfd: false,
             pgroup: None,
+            setsid: false,
         }
     }
 
     pub fn set_arg_0(&mut self, arg: &OsStr) {
         // Set a new arg0
         let arg = os2c(arg, &mut self.saw_nul);
-        debug_assert!(self.argv.0.len() > 1);
-        self.argv.0[0] = arg.as_ptr();
-        self.args[0] = arg;
+        self.args.write(0, arg);
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        // Overwrite the trailing null pointer in `argv` and then add a new null
-        // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv.0[self.args.len()] = arg.as_ptr();
-        self.argv.0.push(ptr::null());
-
-        // Also make sure we keep track of the owned value to schedule a
-        // destructor for this memory.
         self.args.push(arg);
     }
 
@@ -253,6 +218,15 @@ impl Command {
     }
     pub fn pgroup(&mut self, pgroup: pid_t) {
         self.pgroup = Some(pgroup);
+    }
+    pub fn chroot(&mut self, dir: &Path) {
+        self.chroot = Some(os2c(dir.as_os_str(), &mut self.saw_nul));
+        if self.cwd.is_none() {
+            self.cwd(&OsStr::new("/"));
+        }
+    }
+    pub fn setsid(&mut self, setsid: bool) {
+        self.setsid = setsid;
     }
 
     #[cfg(target_os = "linux")]
@@ -286,6 +260,8 @@ impl Command {
 
     pub fn get_args(&self) -> CommandArgs<'_> {
         let mut iter = self.args.iter();
+        // argv[0] contains the program name, but we are only interested in the
+        // arguments so skip it.
         iter.next();
         CommandArgs { iter }
     }
@@ -298,12 +274,12 @@ impl Command {
         self.cwd.as_ref().map(|cs| Path::new(OsStr::from_bytes(cs.as_bytes())))
     }
 
-    pub fn get_argv(&self) -> &Vec<*const c_char> {
-        &self.argv.0
+    pub fn get_argv(&self) -> &CStringArray {
+        &self.args
     }
 
     pub fn get_program_cstr(&self) -> &CStr {
-        &*self.program
+        &self.program
     }
 
     #[allow(dead_code)]
@@ -325,6 +301,14 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_pgroup(&self) -> Option<pid_t> {
         self.pgroup
+    }
+    #[allow(dead_code)]
+    pub fn get_chroot(&self) -> Option<&CStr> {
+        self.chroot.as_deref()
+    }
+    #[allow(dead_code)]
+    pub fn get_setsid(&self) -> bool {
+        self.setsid
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
@@ -390,32 +374,6 @@ fn os2c(s: &OsStr, saw_nul: &mut bool) -> CString {
         *saw_nul = true;
         c"<string-with-nul>".to_owned()
     })
-}
-
-// Helper type to manage ownership of the strings within a C-style array.
-pub struct CStringArray {
-    items: Vec<CString>,
-    ptrs: Vec<*const c_char>,
-}
-
-impl CStringArray {
-    pub fn with_capacity(capacity: usize) -> Self {
-        let mut result = CStringArray {
-            items: Vec::with_capacity(capacity),
-            ptrs: Vec::with_capacity(capacity + 1),
-        };
-        result.ptrs.push(ptr::null());
-        result
-    }
-    pub fn push(&mut self, item: CString) {
-        let l = self.ptrs.len();
-        self.ptrs[l - 1] = item.as_ptr();
-        self.ptrs.push(ptr::null());
-        self.items.push(item);
-    }
-    pub fn as_ptr(&self) -> *const *const c_char {
-        self.ptrs.as_ptr()
-    }
 }
 
 fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
@@ -606,14 +564,16 @@ impl fmt::Debug for Command {
                     write!(f, "{}={value:?} ", key.to_string_lossy())?;
                 }
             }
-            if self.program != self.args[0] {
+
+            if *self.program != self.args[0] {
                 write!(f, "[{:?}] ", self.program)?;
             }
-            write!(f, "{:?}", self.args[0])?;
+            write!(f, "{:?}", &self.args[0])?;
 
-            for arg in &self.args[1..] {
+            for arg in self.get_args() {
                 write!(f, " {:?}", arg)?;
             }
+
             Ok(())
         }
     }
@@ -645,14 +605,16 @@ impl From<u8> for ExitCode {
 }
 
 pub struct CommandArgs<'a> {
-    iter: crate::slice::Iter<'a, CString>,
+    iter: CStringIter<'a>,
 }
 
 impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
+
     fn next(&mut self) -> Option<&'a OsStr> {
-        self.iter.next().map(|cs| OsStr::from_bytes(cs.as_bytes()))
+        self.iter.next().map(|cs| OsStr::from_bytes(cs.to_bytes()))
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -662,6 +624,7 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
     fn len(&self) -> usize {
         self.iter.len()
     }
+
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }

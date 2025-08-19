@@ -2,6 +2,7 @@ use std::fmt::Write;
 
 use hir::def_id::DefId;
 use hir::{HirId, ItemKind};
+use rustc_ast::join_path_idents;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
@@ -383,13 +384,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we
         // pick, so just take the first one.
         match import_items[0].kind {
-            ItemKind::Use(path, _) => Some(
-                path.segments
-                    .iter()
-                    .map(|segment| segment.ident.to_string())
-                    .collect::<Vec<_>>()
-                    .join("::"),
-            ),
+            ItemKind::Use(path, _) => {
+                Some(join_path_idents(path.segments.iter().map(|seg| seg.ident)))
+            }
             _ => {
                 span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
             }

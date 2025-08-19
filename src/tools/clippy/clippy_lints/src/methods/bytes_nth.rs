@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sym;
 use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, LangItem};
@@ -25,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
 
     if let Some(parent) = clippy_utils::get_parent_expr(cx, expr)
         && let Some((name, _, _, _, _)) = method_call(parent)
-        && name == "unwrap"
+        && name == sym::unwrap
     {
         span_lint_and_sugg(
             cx,

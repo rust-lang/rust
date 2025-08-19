@@ -50,7 +50,7 @@ pub fn main() {
     test_all_refs(&mut 13, b.values_mut());
 
     // Test forgetting the extractor.
-    let mut d = b.extract_if(|_, i| *i < 30);
+    let mut d = b.extract_if(.., |_, i| *i < 30);
     d.next().unwrap();
     mem::forget(d);
 }

@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::time::Duration;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::edition::Edition;
@@ -12,6 +13,7 @@ use crate::html::markdown::{Ignore, LangString};
 /// Convenient type to merge compatible doctests into one.
 pub(crate) struct DocTestRunner {
     crate_attrs: FxIndexSet<String>,
+    global_crate_attrs: FxIndexSet<String>,
     ids: String,
     output: String,
     output_merged_tests: String,
@@ -23,6 +25,7 @@ impl DocTestRunner {
     pub(crate) fn new() -> Self {
         Self {
             crate_attrs: FxIndexSet::default(),
+            global_crate_attrs: FxIndexSet::default(),
             ids: String::new(),
             output: String::new(),
             output_merged_tests: String::new(),
@@ -46,6 +49,9 @@ impl DocTestRunner {
             for line in doctest.crate_attrs.split('\n') {
                 self.crate_attrs.insert(line.to_string());
             }
+            for line in &doctest.global_crate_attrs {
+                self.global_crate_attrs.insert(line.to_string());
+            }
         }
         self.ids.push_str(&format!(
             "tests.push({}::TEST);\n",
@@ -62,6 +68,10 @@ impl DocTestRunner {
         self.nb_tests += 1;
     }
 
+    /// Returns a tuple containing the `Duration` of the compilation and the `Result` of the test.
+    ///
+    /// If compilation failed, it will return `Err`, otherwise it will return `Ok` containing if
+    /// the test ran successfully.
     pub(crate) fn run_merged_tests(
         &mut self,
         test_options: IndividualTestOptions,
@@ -69,7 +79,7 @@ impl DocTestRunner {
         opts: &GlobalTestOptions,
         test_args: &[String],
         rustdoc_options: &RustdocOptions,
-    ) -> Result<bool, ()> {
+    ) -> (Duration, Result<bool, ()>) {
         let mut code = "\
 #![allow(unused_extern_crates)]
 #![allow(internal_features)]
@@ -85,7 +95,7 @@ impl DocTestRunner {
             code_prefix.push('\n');
         }
 
-        if opts.attrs.is_empty() {
+        if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
             // commonly used to make tests fail in case they trigger warnings, so having this there in
@@ -93,8 +103,8 @@ impl DocTestRunner {
             code_prefix.push_str("#![allow(unused)]\n");
         }
 
-        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
-        for attr in &opts.attrs {
+        // Next, any attributes that came from #![doc(test(attr(...)))].
+        for attr in &self.global_crate_attrs {
             code_prefix.push_str(&format!("#![{attr}]\n"));
         }
 
@@ -199,9 +209,9 @@ std::process::Termination::report(test::test_main(test_args, tests, None))
             no_run: false,
             merged_test_code: Some(code),
         };
-        let ret =
+        let (duration, ret) =
             run_test(runnable_test, rustdoc_options, self.supports_color, |_: UnusedExterns| {});
-        if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) }
+        (duration, if let Err(TestFailure::CompileError) = ret { Err(()) } else { Ok(ret.is_ok()) })
     }
 }
 

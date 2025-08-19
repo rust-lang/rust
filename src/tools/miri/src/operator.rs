@@ -50,17 +50,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Some more operations are possible with atomics.
-            // The return value always has the provenance of the *left* operand.
+            // The RHS must be `usize`.
             Add | Sub | BitOr | BitAnd | BitXor => {
                 assert!(left.layout.ty.is_raw_ptr());
-                assert!(right.layout.ty.is_raw_ptr());
+                assert_eq!(right.layout.ty, this.tcx.types.usize);
                 let ptr = left.to_scalar().to_pointer(this)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);
-                let right = ImmTy::from_uint(
-                    right.to_scalar().to_target_usize(this)?,
-                    this.machine.layouts.usize,
-                );
                 let result = this.binary_op(bin_op, &left, &right)?;
                 // Construct a new pointer with the provenance of `ptr` (the LHS).
                 let result_ptr = Pointer::new(
@@ -76,6 +72,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn generate_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, inputs: &[F1]) -> F2 {
+        let this = self.eval_context_ref();
+        if !this.machine.float_nondet {
+            return F2::NAN;
+        }
+
         /// Make the given NaN a signaling NaN.
         /// Returns `None` if this would not result in a NaN.
         fn make_signaling<F: Float>(f: F) -> Option<F> {
@@ -89,7 +90,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if f.is_nan() { Some(f) } else { None }
         }
 
-        let this = self.eval_context_ref();
         let mut rand = this.machine.rng.borrow_mut();
         // Assemble an iterator of possible NaNs: preferred, quieting propagation, unchanged propagation.
         // On some targets there are more possibilities; for now we just generate those options that
@@ -118,6 +118,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
         let this = self.eval_context_ref();
+        if !this.machine.float_nondet {
+            return a;
+        }
         // Return one side non-deterministically.
         let mut rand = this.machine.rng.borrow_mut();
         if rand.random() { a } else { b }

@@ -161,7 +161,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
@@ -172,12 +172,14 @@ pub use core::ffi::c_void;
               all supported platforms",
     issue = "44930"
 )]
-pub use core::ffi::{VaList, VaListImpl};
+pub use core::ffi::{VaArgSafe, VaList, VaListImpl};
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use core::ffi::{
     c_char, c_double, c_float, c_int, c_long, c_longlong, c_schar, c_short, c_uchar, c_uint,
     c_ulong, c_ulonglong, c_ushort,
 };
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub use core::ffi::{c_ptrdiff_t, c_size_t, c_ssize_t};
 
 #[doc(inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]

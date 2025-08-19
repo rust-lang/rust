@@ -1,15 +1,19 @@
 use std::num::NonZero;
 
-use rustc_attr_data_structures::{
-    AttributeKind, DefaultBodyStability, PartialConstStability, Stability, StabilityLevel,
-    StableSince, UnstableReason, VERSION_PLACEHOLDER,
-};
 use rustc_errors::ErrorGuaranteed;
-use rustc_span::{Span, Symbol, sym};
+use rustc_feature::template;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{
+    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
+    StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
+};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AcceptMapping, AttributeParser, SingleAttributeParser};
-use crate::context::{AcceptContext, FinalizeContext};
+use super::{AcceptMapping, AttributeParser, OnDuplicate};
+use crate::attributes::NoArgsAttributeParser;
+use crate::context::MaybeWarn::Allow;
+use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
 
@@ -23,6 +27,35 @@ macro_rules! reject_outside_std {
     };
 }
 
+const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+    Allow(Target::Fn),
+    Allow(Target::Struct),
+    Allow(Target::Enum),
+    Allow(Target::Union),
+    Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: false })),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
+    Allow(Target::Method(MethodKind::TraitImpl)),
+    Allow(Target::Impl { of_trait: false }),
+    Allow(Target::Impl { of_trait: true }),
+    Allow(Target::MacroDef),
+    Allow(Target::Crate),
+    Allow(Target::Mod),
+    Allow(Target::Use), // FIXME I don't think this does anything?
+    Allow(Target::Const),
+    Allow(Target::AssocConst),
+    Allow(Target::AssocTy),
+    Allow(Target::Trait),
+    Allow(Target::TraitAlias),
+    Allow(Target::TyAlias),
+    Allow(Target::Variant),
+    Allow(Target::Field),
+    Allow(Target::Param),
+    Allow(Target::Static),
+    Allow(Target::ForeignFn),
+    Allow(Target::ForeignStatic),
+]);
+
 #[derive(Default)]
 pub(crate) struct StabilityParser {
     allowed_through_unstable_modules: Option<Symbol>,
@@ -31,7 +64,7 @@ pub(crate) struct StabilityParser {
 
 impl StabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
-    fn check_duplicate(&self, cx: &AcceptContext<'_>) -> bool {
+    fn check_duplicate<S: Stage>(&self, cx: &AcceptContext<'_, '_, S>) -> bool {
         if let Some((_, _)) = self.stability {
             cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
@@ -41,31 +74,52 @@ impl StabilityParser {
     }
 }
 
-impl AttributeParser for StabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[
-        (&[sym::stable], |this, cx, args| {
-            reject_outside_std!(cx);
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_stability(cx, args)
-            {
-                this.stability = Some((Stability { level, feature }, cx.attr_span));
-            }
-        }),
-        (&[sym::unstable], |this, cx, args| {
-            reject_outside_std!(cx);
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_unstability(cx, args)
-            {
-                this.stability = Some((Stability { level, feature }, cx.attr_span));
-            }
-        }),
-        (&[sym::rustc_allowed_through_unstable_modules], |this, cx, args| {
-            reject_outside_std!(cx);
-            this.allowed_through_unstable_modules = args.name_value().and_then(|i| i.value_as_str())
-        }),
+impl<S: Stage> AttributeParser<S> for StabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[
+        (
+            &[sym::stable],
+            template!(List: &[r#"feature = "name", since = "version""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_stability(cx, args)
+                {
+                    this.stability = Some((Stability { level, feature }, cx.attr_span));
+                }
+            },
+        ),
+        (
+            &[sym::unstable],
+            template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_unstability(cx, args)
+                {
+                    this.stability = Some((Stability { level, feature }, cx.attr_span));
+                }
+            },
+        ),
+        (
+            &[sym::rustc_allowed_through_unstable_modules],
+            template!(NameValueStr: "deprecation message"),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                let Some(nv) = args.name_value() else {
+                    cx.expected_name_value(cx.attr_span, None);
+                    return;
+                };
+                let Some(value_str) = nv.value_as_str() else {
+                    cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    return;
+                };
+                this.allowed_through_unstable_modules = Some(value_str);
+            },
+        ),
     ];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
-    fn finalize(mut self, cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(atum) = self.allowed_through_unstable_modules {
             if let Some((
                 Stability {
@@ -83,6 +137,16 @@ impl AttributeParser for StabilityParser {
             }
         }
 
+        if let Some((Stability { level: StabilityLevel::Stable { .. }, .. }, _)) = self.stability {
+            for other_attr in cx.all_attrs {
+                if other_attr.word_is(sym::unstable_feature_bound) {
+                    cx.emit_err(session_diagnostics::UnstableFeatureBoundIncompatibleStability {
+                        span: cx.target_span,
+                    });
+                }
+            }
+        }
+
         let (stability, span) = self.stability?;
 
         Some(AttributeKind::Stability { stability, span })
@@ -95,9 +159,11 @@ pub(crate) struct BodyStabilityParser {
     stability: Option<(DefaultBodyStability, Span)>,
 }
 
-impl AttributeParser for BodyStabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> =
-        &[(&[sym::rustc_default_body_unstable], |this, cx, args| {
+impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        &[sym::rustc_default_body_unstable],
+        template!(List: &[r#"feature = "name", reason = "...", issue = "N""#]),
+        |this, cx, args| {
             reject_outside_std!(cx);
             if this.stability.is_some() {
                 cx.dcx()
@@ -105,9 +171,11 @@ impl AttributeParser for BodyStabilityParser {
             } else if let Some((feature, level)) = parse_unstability(cx, args) {
                 this.stability = Some((DefaultBodyStability { level, feature }, cx.attr_span));
             }
-        })];
+        },
+    )];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
-    fn finalize(self, _cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
         Some(AttributeKind::BodyStability { stability, span })
@@ -115,16 +183,14 @@ impl AttributeParser for BodyStabilityParser {
 }
 
 pub(crate) struct ConstStabilityIndirectParser;
-// FIXME(jdonszelmann): single word attribute group when we have these
-impl SingleAttributeParser for ConstStabilityIndirectParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_const_stable_indirect];
-
-    // ignore
-    fn on_duplicate(_cx: &AcceptContext<'_>, _first_span: Span) {}
-
-    fn convert(_cx: &AcceptContext<'_>, _args: &ArgParser<'_>) -> Option<AttributeKind> {
-        Some(AttributeKind::ConstStabilityIndirect)
-    }
+impl<S: Stage> NoArgsAttributeParser<S> for ConstStabilityIndirectParser {
+    const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ConstStabilityIndirect;
 }
 
 #[derive(Default)]
@@ -135,7 +201,7 @@ pub(crate) struct ConstStabilityParser {
 
 impl ConstStabilityParser {
     /// Checks, and emits an error when a stability (or unstability) was already set, which would be a duplicate.
-    fn check_duplicate(&self, cx: &AcceptContext<'_>) -> bool {
+    fn check_duplicate<S: Stage>(&self, cx: &AcceptContext<'_, '_, S>) -> bool {
         if let Some((_, _)) = self.stability {
             cx.emit_err(session_diagnostics::MultipleStabilityLevels { span: cx.attr_span });
             true
@@ -145,38 +211,47 @@ impl ConstStabilityParser {
     }
 }
 
-impl AttributeParser for ConstStabilityParser {
-    const ATTRIBUTES: AcceptMapping<Self> = &[
-        (&[sym::rustc_const_stable], |this, cx, args| {
-            reject_outside_std!(cx);
+impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[
+        (
+            &[sym::rustc_const_stable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
 
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_stability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
-        (&[sym::rustc_const_unstable], |this, cx, args| {
-            reject_outside_std!(cx);
-            if !this.check_duplicate(cx)
-                && let Some((feature, level)) = parse_unstability(cx, args)
-            {
-                this.stability = Some((
-                    PartialConstStability { level, feature, promotable: false },
-                    cx.attr_span,
-                ));
-            }
-        }),
-        (&[sym::rustc_promotable], |this, cx, _| {
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_stability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
+        (
+            &[sym::rustc_const_unstable],
+            template!(List: &[r#"feature = "name""#]),
+            |this, cx, args| {
+                reject_outside_std!(cx);
+                if !this.check_duplicate(cx)
+                    && let Some((feature, level)) = parse_unstability(cx, args)
+                {
+                    this.stability = Some((
+                        PartialConstStability { level, feature, promotable: false },
+                        cx.attr_span,
+                    ));
+                }
+            },
+        ),
+        (&[sym::rustc_promotable], template!(Word), |this, cx, _| {
             reject_outside_std!(cx);
             this.promotable = true;
         }),
     ];
+    const ALLOWED_TARGETS: AllowedTargets = ALLOWED_TARGETS;
 
-    fn finalize(mut self, cx: &FinalizeContext<'_>) -> Option<AttributeKind> {
+    fn finalize(mut self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if self.promotable {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;
@@ -196,16 +271,14 @@ impl AttributeParser for ConstStabilityParser {
 ///
 /// Emits an error when either the option was already Some, or the arguments weren't of form
 /// `name = value`
-fn insert_value_into_option_or_error(
-    cx: &AcceptContext<'_>,
+fn insert_value_into_option_or_error<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     param: &MetaItemParser<'_>,
     item: &mut Option<Symbol>,
+    name: Ident,
 ) -> Option<()> {
     if item.is_some() {
-        cx.emit_err(session_diagnostics::MultipleItem {
-            span: param.span(),
-            item: param.path_without_args().to_string(),
-        });
+        cx.duplicate_key(name.span, name.name);
         None
     } else if let Some(v) = param.args().name_value()
         && let Some(s) = v.value_as_str()
@@ -213,24 +286,26 @@ fn insert_value_into_option_or_error(
         *item = Some(s);
         Some(())
     } else {
-        cx.emit_err(session_diagnostics::IncorrectMetaItem {
-            span: param.span(),
-            suggestion: None,
-        });
+        cx.expected_name_value(param.span(), Some(name.name));
         None
     }
 }
 
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
 /// its stability information.
-pub(crate) fn parse_stability(
-    cx: &AcceptContext<'_>,
+pub(crate) fn parse_stability<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut since = None;
 
-    for param in args.list()?.mixed() {
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -242,13 +317,18 @@ pub(crate) fn parse_stability(
             return None;
         };
 
-        match param.word_or_empty_without_args().name {
-            sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            sym::since => insert_value_into_option_or_error(cx, &param, &mut since)?,
+        let word = param.path().word();
+        match word.map(|i| i.name) {
+            Some(sym::feature) => {
+                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+            }
+            Some(sym::since) => {
+                insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
+            }
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param_span,
-                    item: param.path_without_args().to_string(),
+                    item: param.path().to_string(),
                     expected: &["feature", "since"],
                 });
                 return None;
@@ -270,12 +350,12 @@ pub(crate) fn parse_stability(
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
-            StableSince::Err
+            let err = cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            StableSince::Err(err)
         }
     } else {
-        cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
-        StableSince::Err
+        let err = cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+        StableSince::Err(err)
     };
 
     match feature {
@@ -289,8 +369,8 @@ pub(crate) fn parse_stability(
 
 // Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
-pub(crate) fn parse_unstability(
-    cx: &AcceptContext<'_>,
+pub(crate) fn parse_unstability<S: Stage>(
+    cx: &AcceptContext<'_, '_, S>,
     args: &ArgParser<'_>,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
@@ -299,7 +379,14 @@ pub(crate) fn parse_unstability(
     let mut issue_num = None;
     let mut is_soft = false;
     let mut implied_by = None;
-    for param in args.list()?.mixed() {
+    let mut old_name = None;
+
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return None;
+    };
+
+    for param in list.mixed() {
         let Some(param) = param.meta_item() else {
             cx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: param.span(),
@@ -310,12 +397,16 @@ pub(crate) fn parse_unstability(
             return None;
         };
 
-        let (word, args) = param.word_or_empty();
-        match word.name {
-            sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason)?,
-            sym::issue => {
-                insert_value_into_option_or_error(cx, &param, &mut issue)?;
+        let word = param.path().word();
+        match word.map(|i| i.name) {
+            Some(sym::feature) => {
+                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+            }
+            Some(sym::reason) => {
+                insert_value_into_option_or_error(cx, &param, &mut reason, word.unwrap())?
+            }
+            Some(sym::issue) => {
+                insert_value_into_option_or_error(cx, &param, &mut issue, word.unwrap())?;
 
                 // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
                 // is a name/value pair string literal.
@@ -328,7 +419,7 @@ pub(crate) fn parse_unstability(
                                 session_diagnostics::InvalidIssueString {
                                     span: param.span(),
                                     cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
-                                        args.name_value().unwrap().value_span,
+                                        param.args().name_value().unwrap().value_span,
                                         err.kind(),
                                     ),
                                 },
@@ -338,18 +429,23 @@ pub(crate) fn parse_unstability(
                     },
                 };
             }
-            sym::soft => {
-                if !args.no_args() {
-                    cx.emit_err(session_diagnostics::SoftNoArgs { span: param.span() });
+            Some(sym::soft) => {
+                if let Err(span) = args.no_args() {
+                    cx.emit_err(session_diagnostics::SoftNoArgs { span });
                 }
                 is_soft = true;
             }
-            sym::implied_by => insert_value_into_option_or_error(cx, &param, &mut implied_by)?,
+            Some(sym::implied_by) => {
+                insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
+            }
+            Some(sym::old_name) => {
+                insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
+            }
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),
-                    item: param.path_without_args().to_string(),
-                    expected: &["feature", "reason", "issue", "soft", "implied_by"],
+                    item: param.path().to_string(),
+                    expected: &["feature", "reason", "issue", "soft", "implied_by", "old_name"],
                 });
                 return None;
             }
@@ -374,6 +470,7 @@ pub(crate) fn parse_unstability(
                 issue: issue_num,
                 is_soft,
                 implied_by,
+                old_name,
             };
             Some((feature, level))
         }

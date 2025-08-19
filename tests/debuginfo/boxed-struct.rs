@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -22,8 +23,6 @@
 // lldb-check:[...] { x = 77 y = 777 z = 7777 w = 77777 }
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct StructWithSomePadding {
     x: i16,

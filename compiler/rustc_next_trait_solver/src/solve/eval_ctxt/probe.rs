@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 
+use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::instrument;
 
@@ -25,33 +26,48 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
-        let ProbeCtxt { ecx: outer_ecx, probe_kind, _result } = self;
+    pub(in crate::solve) fn enter_single_candidate(
+        self,
+        f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T,
+    ) -> (T, CandidateHeadUsages) {
+        self.ecx.search_graph.enter_single_candidate();
+        let mut candidate_usages = CandidateHeadUsages::default();
+        let result = self.enter(|ecx| {
+            let result = f(ecx);
+            candidate_usages = ecx.search_graph.finish_single_candidate();
+            result
+        });
+        (result, candidate_usages)
+    }
 
-        let delegate = outer_ecx.delegate;
-        let max_input_universe = outer_ecx.max_input_universe;
-        let mut nested_ecx = EvalCtxt {
+    pub(in crate::solve) fn enter(self, f: impl FnOnce(&mut EvalCtxt<'_, D>) -> T) -> T {
+        let ProbeCtxt { ecx: outer, probe_kind, _result } = self;
+
+        let delegate = outer.delegate;
+        let max_input_universe = outer.max_input_universe;
+        let mut nested = EvalCtxt {
             delegate,
-            variables: outer_ecx.variables,
-            var_values: outer_ecx.var_values,
-            current_goal_kind: outer_ecx.current_goal_kind,
-            predefined_opaques_in_body: outer_ecx.predefined_opaques_in_body,
+            variables: outer.variables,
+            var_values: outer.var_values,
+            current_goal_kind: outer.current_goal_kind,
             max_input_universe,
-            search_graph: outer_ecx.search_graph,
-            nested_goals: outer_ecx.nested_goals.clone(),
-            origin_span: outer_ecx.origin_span,
-            tainted: outer_ecx.tainted,
-            inspect: outer_ecx.inspect.take_and_enter_probe(),
+            initial_opaque_types_storage_num_entries: outer
+                .initial_opaque_types_storage_num_entries,
+            search_graph: outer.search_graph,
+            nested_goals: outer.nested_goals.clone(),
+            origin_span: outer.origin_span,
+            tainted: outer.tainted,
+            inspect: outer.inspect.take_and_enter_probe(),
         };
-        let r = nested_ecx.delegate.probe(|| {
-            let r = f(&mut nested_ecx);
-            nested_ecx.inspect.probe_final_state(delegate, max_input_universe);
+        let r = nested.delegate.probe(|| {
+            let r = f(&mut nested);
+            nested.inspect.probe_final_state(delegate, max_input_universe);
             r
         });
-        if !nested_ecx.inspect.is_noop() {
+        if !nested.inspect.is_noop() {
             let probe_kind = probe_kind(&r);
-            nested_ecx.inspect.probe_kind(probe_kind);
-            outer_ecx.inspect = nested_ecx.inspect.finish_probe();
+            nested.inspect.probe_kind(probe_kind);
+            outer.inspect = nested.inspect.finish_probe();
         }
         r
     }
@@ -77,7 +93,8 @@ where
         self,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
-        self.cx.enter(|ecx| f(ecx)).map(|result| Candidate { source: self.source, result })
+        let (result, head_usages) = self.cx.enter_single_candidate(f);
+        result.map(|result| Candidate { source: self.source, result, head_usages })
     }
 }
 

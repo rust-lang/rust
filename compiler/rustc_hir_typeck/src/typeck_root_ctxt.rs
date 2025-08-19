@@ -1,10 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, HirId, HirIdMap, LangItem};
-use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, InferOk, OpaqueTypeStorageEntries, TyCtxtInferExt};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
@@ -16,6 +16,19 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 
 use super::callee::DeferredCallResolution;
+
+#[derive(Debug, Default, Copy, Clone)]
+pub(crate) struct InferVarInfo {
+    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
+    /// obligation, where:
+    ///
+    ///  * `Foo` is not `Sized`
+    ///  * `(): Foo` may be satisfied
+    pub self_in_trait: bool,
+    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
+    /// _>::AssocType = ?T`
+    pub output: bool,
+}
 
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
@@ -36,6 +49,11 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx, FulfillmentError<'tcx>>>>,
+
+    // Used to detect opaque types uses added after we've already checked them.
+    //
+    // See [FnCtxt::detect_opaque_types_added_during_writeback] for more details.
+    pub(super) checked_opaque_types_storage_entries: Cell<Option<OpaqueTypeStorageEntries>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
@@ -58,8 +76,6 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
-    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, Ty<'tcx>)>>,
-
     pub(super) deferred_repeat_expr_checks:
         RefCell<Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>, ty::Const<'tcx>)>>,
 
@@ -68,7 +84,7 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     /// fallback. See the `fallback` module for details.
     pub(super) diverging_type_vars: RefCell<UnordSet<Ty<'tcx>>>,
 
-    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, ty::InferVarInfo>>,
+    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, InferVarInfo>>,
 }
 
 impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
@@ -82,21 +98,25 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
-        let infcx =
-            tcx.infer_ctxt().ignoring_regions().build(TypingMode::typeck_for_body(tcx, def_id));
+        let infcx = tcx
+            .infer_ctxt()
+            .ignoring_regions()
+            .in_hir_typeck()
+            .build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
+        let fulfillment_cx = RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx));
 
         TypeckRootCtxt {
-            typeck_results,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_, _>>::new(&infcx)),
             infcx,
+            typeck_results,
             locals: RefCell::new(Default::default()),
+            fulfillment_cx,
+            checked_opaque_types_storage_entries: Cell::new(None),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
-            deferred_coroutine_interiors: RefCell::new(Vec::new()),
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
@@ -147,7 +167,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
                 obligation.predicate.kind().rebind(
                     // (*) binder moved here
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(
-                        tpred.with_self_ty(self.tcx, new_self_ty),
+                        tpred.with_replaced_self_ty(self.tcx, new_self_ty),
                     )),
                 ),
             );
@@ -161,13 +181,12 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) =
             obligation.predicate.kind().skip_binder()
-        {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,
             // we need to make it into one.
-            if let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid()) {
-                debug!("infer_var_info: {:?}.output = true", vid);
-                infer_var_info.entry(vid).or_default().output = true;
-            }
+            && let Some(vid) = predicate.term.as_type().and_then(|ty| ty.ty_vid())
+        {
+            debug!("infer_var_info: {:?}.output = true", vid);
+            infer_var_info.entry(vid).or_default().output = true;
         }
     }
 }

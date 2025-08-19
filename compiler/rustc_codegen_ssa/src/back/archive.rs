@@ -14,11 +14,12 @@ use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_fs_util::TempDirBuilder;
+use rustc_metadata::EncodedMetadata;
 use rustc_session::Session;
 use rustc_span::Symbol;
 use tracing::trace;
 
-use super::metadata::search_for_section;
+use super::metadata::{create_compressed_metadata_file, search_for_section};
 use crate::common;
 // Re-exporting for rustc_codegen_llvm::back::archive
 pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
@@ -57,6 +58,15 @@ impl From<ImportLibraryItem> for COFFShortExport {
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder + 'a>;
+
+    fn create_dylib_metadata_wrapper(
+        &self,
+        sess: &Session,
+        metadata: &EncodedMetadata,
+        symbol_name: &str,
+    ) -> Vec<u8> {
+        create_compressed_metadata_file(sess, metadata, symbol_name)
+    }
 
     /// Creates a DLL Import Library <https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-creation#creating-an-import-library>.
     /// and returns the path on disk to that import library.

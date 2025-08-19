@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2024"
 
 [dependencies]
-jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 # tidy-alphabetical-start
+jiff = { version = "0.2.5", default-features = false, features = ["std"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
@@ -41,10 +41,10 @@ rustc_parse = { path = "../rustc_parse" }
 rustc_passes = { path = "../rustc_passes" }
 rustc_pattern_analysis = { path = "../rustc_pattern_analysis" }
 rustc_privacy = { path = "../rustc_privacy" }
+rustc_public = { path = "../rustc_public", features = ["rustc_internal"] }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }
-rustc_smir = { path = "../rustc_smir" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
@@ -60,7 +60,7 @@ libc = "0.2"
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.59.0"
+version = "0.61.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]
@@ -72,6 +72,7 @@ ctrlc = "3.4.4"
 
 [features]
 # tidy-alphabetical-start
+check_only = ['rustc_interface/check_only']
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
 rustc_randomized_layouts = [

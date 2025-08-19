@@ -12,7 +12,7 @@ const unsafe fn ub() {
 pub const FOO: () = unsafe {
     // Make sure that this gets promoted and then fails to evaluate, and we deal with that
     // correctly.
-    let _x: &'static () = &ub(); //~ ERROR evaluation of constant value failed
+    let _x: &'static () = &ub(); //~ ERROR unreachable code
 };
 
 fn main() {}

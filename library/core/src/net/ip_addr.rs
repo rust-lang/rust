@@ -2,7 +2,6 @@ use super::display_buffer::DisplayBuffer;
 use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
 use crate::hash::{Hash, Hasher};
-use crate::iter;
 use crate::mem::transmute;
 use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
@@ -68,6 +67,7 @@ pub enum IpAddr {
 /// assert!("0000000.0.0.0".parse::<Ipv4Addr>().is_err()); // first octet is a zero in octal
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
+#[rustc_diagnostic_item = "Ipv4Addr"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
@@ -160,6 +160,7 @@ impl Hash for Ipv4Addr {
 /// assert_eq!("::1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
+#[rustc_diagnostic_item = "Ipv6Addr"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
@@ -625,13 +626,13 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::from_octets([13u8, 12u8, 11u8, 10u8]);
     /// assert_eq!(Ipv4Addr::new(13, 12, 11, 10), addr);
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
@@ -785,7 +786,6 @@ impl Ipv4Addr {
     /// [IANA IPv4 Special-Purpose Address Registry]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [unspecified address]: Ipv4Addr::UNSPECIFIED
     /// [broadcast address]: Ipv4Addr::BROADCAST
-
     ///
     /// # Examples
     ///
@@ -1087,7 +1087,8 @@ impl fmt::Debug for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv4Addr> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv4Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V4`.
     ///
     /// # Examples
@@ -1109,7 +1110,8 @@ impl From<Ipv4Addr> for IpAddr {
 }
 
 #[stable(feature = "ip_from_ip", since = "1.16.0")]
-impl From<Ipv6Addr> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv6Addr> for IpAddr {
     /// Copies this address to a new `IpAddr::V6`.
     ///
     /// # Examples
@@ -1219,7 +1221,8 @@ impl Ord for Ipv4Addr {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<Ipv4Addr> for u32 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv4Addr> for u32 {
     /// Uses [`Ipv4Addr::to_bits`] to convert an IPv4 address to a host byte order `u32`.
     #[inline]
     fn from(ip: Ipv4Addr) -> u32 {
@@ -1228,7 +1231,8 @@ impl From<Ipv4Addr> for u32 {
 }
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
-impl From<u32> for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<u32> for Ipv4Addr {
     /// Uses [`Ipv4Addr::from_bits`] to convert a host byte order `u32` into an IPv4 address.
     #[inline]
     fn from(ip: u32) -> Ipv4Addr {
@@ -1237,7 +1241,8 @@ impl From<u32> for Ipv4Addr {
 }
 
 #[stable(feature = "from_slice_v4", since = "1.9.0")]
-impl From<[u8; 4]> for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 4]> for Ipv4Addr {
     /// Creates an `Ipv4Addr` from a four element byte array.
     ///
     /// # Examples
@@ -1255,7 +1260,8 @@ impl From<[u8; 4]> for Ipv4Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 4]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 4]> for IpAddr {
     /// Creates an `IpAddr::V4` from a four element byte array.
     ///
     /// # Examples
@@ -1458,7 +1464,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_segments([
@@ -1473,7 +1478,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_segments(segments: [u16; 8]) -> Ipv6Addr {
@@ -2023,7 +2029,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip_from)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::from_octets([
@@ -2038,7 +2043,8 @@ impl Ipv6Addr {
     ///     addr
     /// );
     /// ```
-    #[unstable(feature = "ip_from", issue = "131360")]
+    #[stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ip_from", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
@@ -2209,7 +2215,8 @@ impl Ord for Ipv6Addr {
 }
 
 #[stable(feature = "i128", since = "1.26.0")]
-impl From<Ipv6Addr> for u128 {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<Ipv6Addr> for u128 {
     /// Uses [`Ipv6Addr::to_bits`] to convert an IPv6 address to a host byte order `u128`.
     #[inline]
     fn from(ip: Ipv6Addr) -> u128 {
@@ -2217,7 +2224,8 @@ impl From<Ipv6Addr> for u128 {
     }
 }
 #[stable(feature = "i128", since = "1.26.0")]
-impl From<u128> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<u128> for Ipv6Addr {
     /// Uses [`Ipv6Addr::from_bits`] to convert a host byte order `u128` to an IPv6 address.
     #[inline]
     fn from(ip: u128) -> Ipv6Addr {
@@ -2226,7 +2234,8 @@ impl From<u128> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_octets", since = "1.9.0")]
-impl From<[u8; 16]> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 16]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2253,7 +2262,8 @@ impl From<[u8; 16]> for Ipv6Addr {
 }
 
 #[stable(feature = "ipv6_from_segments", since = "1.16.0")]
-impl From<[u16; 8]> for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u16; 8]> for Ipv6Addr {
     /// Creates an `Ipv6Addr` from an eight element 16-bit array.
     ///
     /// # Examples
@@ -2281,7 +2291,8 @@ impl From<[u16; 8]> for Ipv6Addr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u8; 16]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u8; 16]> for IpAddr {
     /// Creates an `IpAddr::V6` from a sixteen element byte array.
     ///
     /// # Examples
@@ -2308,7 +2319,8 @@ impl From<[u8; 16]> for IpAddr {
 }
 
 #[stable(feature = "ip_from_slice", since = "1.17.0")]
-impl From<[u16; 8]> for IpAddr {
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl const From<[u16; 8]> for IpAddr {
     /// Creates an `IpAddr::V6` from an eight element 16-bit array.
     ///
     /// # Examples
@@ -2335,20 +2347,24 @@ impl From<[u16; 8]> for IpAddr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
     fn not(mut self) -> Ipv4Addr {
-        for octet in &mut self.octets {
-            *octet = !*octet;
+        let mut idx = 0;
+        while idx < 4 {
+            self.octets[idx] = !self.octets[idx];
+            idx += 1;
         }
         self
     }
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for &'_ Ipv4Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for &'_ Ipv4Addr {
     type Output = Ipv4Addr;
 
     #[inline]
@@ -2358,20 +2374,24 @@ impl Not for &'_ Ipv4Addr {
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
     fn not(mut self) -> Ipv6Addr {
-        for octet in &mut self.octets {
-            *octet = !*octet;
+        let mut idx = 0;
+        while idx < 16 {
+            self.octets[idx] = !self.octets[idx];
+            idx += 1;
         }
         self
     }
 }
 
 #[stable(feature = "ip_bitops", since = "1.75.0")]
-impl Not for &'_ Ipv6Addr {
+#[rustc_const_unstable(feature = "const_ops", issue = "143802")]
+impl const Not for &'_ Ipv6Addr {
     type Output = Ipv6Addr;
 
     #[inline]
@@ -2387,23 +2407,25 @@ macro_rules! bitop_impls {
     )*) => {
         $(
             $(#[$attr])*
-            impl $BitOpAssign for $ty {
+            impl const $BitOpAssign for $ty {
                 fn $bitop_assign(&mut self, rhs: $ty) {
-                    for (lhs, rhs) in iter::zip(&mut self.octets, rhs.octets) {
-                        lhs.$bitop_assign(rhs);
+                    let mut idx = 0;
+                    while idx < self.octets.len() {
+                        self.octets[idx].$bitop_assign(rhs.octets[idx]);
+                        idx += 1;
                     }
                 }
             }
 
             $(#[$attr])*
-            impl $BitOpAssign<&'_ $ty> for $ty {
+            impl const $BitOpAssign<&'_ $ty> for $ty {
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }
             }
 
             $(#[$attr])*
-            impl $BitOp for $ty {
+            impl const $BitOp for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2414,7 +2436,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<&'_ $ty> for $ty {
+            impl const $BitOp<&'_ $ty> for $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2425,7 +2447,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<$ty> for &'_ $ty {
+            impl const $BitOp<$ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2437,7 +2459,7 @@ macro_rules! bitop_impls {
             }
 
             $(#[$attr])*
-            impl $BitOp<&'_ $ty> for &'_ $ty {
+            impl const $BitOp<&'_ $ty> for &'_ $ty {
                 type Output = $ty;
 
                 #[inline]
@@ -2453,12 +2475,16 @@ macro_rules! bitop_impls {
 
 bitop_impls! {
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv4Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv4Addr = (bitor, bitor_assign);
 
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitAnd, BitAndAssign) for Ipv6Addr = (bitand, bitand_assign);
     #[stable(feature = "ip_bitops", since = "1.75.0")]
+    #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
     impl (BitOr, BitOrAssign) for Ipv6Addr = (bitor, bitor_assign);
 }

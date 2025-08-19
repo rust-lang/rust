@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In this test, the function `bar` has #[inline(never)] and the function `foo`
 // does not. This test outputs LLVM optimization remarks twice - first for all
 // functions (including `bar`, and the `inline` mention), and then for only `foo`

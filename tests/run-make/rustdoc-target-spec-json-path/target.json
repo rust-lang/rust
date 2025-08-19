@@ -6,7 +6,6 @@
   "dynamic-linking": true,
   "env": "gnu",
   "executables": true,
-  "has-elf-tls": true,
   "has-rpath": true,
   "linker-is-gnu": true,
   "llvm-target": "x86_64-unknown-linux-gnu",

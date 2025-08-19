@@ -49,7 +49,7 @@ impl ToTokens for TrackedQuery {
             })
             .into_iter()
             .chain(self.lru.map(|lru| quote!(lru = #lru)));
-        let annotation = quote!(#[salsa::tracked( #(#options),* )]);
+        let annotation = quote!(#[salsa_macros::tracked( #(#options),* )]);
 
         let pat_and_tys = &self.pat_and_tys;
         let params = self
@@ -74,8 +74,8 @@ impl ToTokens for TrackedQuery {
                 quote! {
                     #sig {
                         #annotation
-                        fn #shim(
-                            db: &dyn #trait_name,
+                        fn #shim<'db>(
+                            db: &'db dyn #trait_name,
                             _input: #input_struct_name,
                             #(#pat_and_tys),*
                         ) #ret
@@ -88,8 +88,8 @@ impl ToTokens for TrackedQuery {
                 quote! {
                     #sig {
                         #annotation
-                        fn #shim(
-                            db: &dyn #trait_name,
+                        fn #shim<'db>(
+                            db: &'db dyn #trait_name,
                             #(#pat_and_tys),*
                         ) #ret
                             #invoke_block

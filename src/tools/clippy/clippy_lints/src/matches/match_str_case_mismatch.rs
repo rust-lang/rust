@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sym;
 use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -42,7 +43,7 @@ impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
     type Result = ControlFlow<CaseMethod>;
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) -> Self::Result {
         if let ExprKind::MethodCall(segment, receiver, [], _) = ex.kind {
-            let result = self.case_altered(segment.ident.as_str(), receiver);
+            let result = self.case_altered(segment.ident.name, receiver);
             if result.is_break() {
                 return result;
             }
@@ -53,7 +54,7 @@ impl<'tcx> Visitor<'tcx> for MatchExprVisitor<'_, 'tcx> {
 }
 
 impl MatchExprVisitor<'_, '_> {
-    fn case_altered(&mut self, segment_ident: &str, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
+    fn case_altered(&mut self, segment_ident: Symbol, receiver: &Expr<'_>) -> ControlFlow<CaseMethod> {
         if let Some(case_method) = get_case_method(segment_ident) {
             let ty = self.cx.typeck_results().expr_ty(receiver).peel_refs();
 
@@ -66,12 +67,12 @@ impl MatchExprVisitor<'_, '_> {
     }
 }
 
-fn get_case_method(segment_ident_str: &str) -> Option<CaseMethod> {
-    match segment_ident_str {
-        "to_lowercase" => Some(CaseMethod::LowerCase),
-        "to_ascii_lowercase" => Some(CaseMethod::AsciiLowerCase),
-        "to_uppercase" => Some(CaseMethod::UpperCase),
-        "to_ascii_uppercase" => Some(CaseMethod::AsciiUppercase),
+fn get_case_method(segment_ident: Symbol) -> Option<CaseMethod> {
+    match segment_ident {
+        sym::to_lowercase => Some(CaseMethod::LowerCase),
+        sym::to_ascii_lowercase => Some(CaseMethod::AsciiLowerCase),
+        sym::to_uppercase => Some(CaseMethod::UpperCase),
+        sym::to_ascii_uppercase => Some(CaseMethod::AsciiUppercase),
         _ => None,
     }
 }

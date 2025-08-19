@@ -37,11 +37,12 @@ impl Bar {
     fn qux() {}
 
     #[rustc_confusables(invalid_meta_item)]
-    //~^ ERROR expected a quoted string literal
-    //~| HELP consider surrounding this with quotes
+    //~^ ERROR malformed `rustc_confusables` attribute input [E0539]
+    //~| HELP must be of the form
     fn quux() {}
 }
 
 #[rustc_confusables("blah")]
-//~^ ERROR attribute should be applied to an inherent method
+//~^ ERROR attribute cannot be used on
+//~| HELP can only be applied to
 fn not_inherent_impl_method() {}

@@ -110,7 +110,7 @@ pub struct SsrMatches {
 pub struct MatchFinder<'db> {
     /// Our source of information about the user's code.
     sema: Semantics<'db, ide_db::RootDatabase>,
-    rules: Vec<ResolvedRule>,
+    rules: Vec<ResolvedRule<'db>>,
     resolution_scope: resolving::ResolutionScope<'db>,
     restrict_ranges: Vec<ide_db::FileRange>,
 }
@@ -186,7 +186,7 @@ impl<'db> MatchFinder<'db> {
                     replacing::matches_to_edit(
                         self.sema.db,
                         &matches,
-                        &self.sema.db.file_text(file_id).text(self.sema.db),
+                        self.sema.db.file_text(file_id).text(self.sema.db),
                         &self.rules,
                     ),
                 )
@@ -228,7 +228,7 @@ impl<'db> MatchFinder<'db> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
         let file_text = self.sema.db.file_text(file_id.file_id(self.sema.db)).text(self.sema.db);
-        let mut remaining_text = &*file_text;
+        let mut remaining_text = &**file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
         while let Some(offset) = remaining_text.find(snippet) {
@@ -283,17 +283,16 @@ impl<'db> MatchFinder<'db> {
                         node: node.clone(),
                     });
                 }
-            } else if let Some(macro_call) = ast::MacroCall::cast(node.clone()) {
-                if let Some(expanded) = self.sema.expand_macro_call(&macro_call) {
-                    if let Some(tt) = macro_call.token_tree() {
-                        self.output_debug_for_nodes_at_range(
-                            &expanded,
-                            range,
-                            &Some(self.sema.original_range(tt.syntax())),
-                            out,
-                        );
-                    }
-                }
+            } else if let Some(macro_call) = ast::MacroCall::cast(node.clone())
+                && let Some(expanded) = self.sema.expand_macro_call(&macro_call)
+                && let Some(tt) = macro_call.token_tree()
+            {
+                self.output_debug_for_nodes_at_range(
+                    &expanded.value,
+                    range,
+                    &Some(self.sema.original_range(tt.syntax())),
+                    out,
+                );
             }
             self.output_debug_for_nodes_at_range(&node, range, restrict_range, out);
         }

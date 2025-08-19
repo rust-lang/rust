@@ -83,7 +83,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
     }
 
     /// Check whether a passed literal has potential to cause fallback or not.
-    fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
+    fn check_lit(&self, lit: Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
         if !lit.span.in_external_macro(self.cx.sess().source_map())
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
@@ -210,7 +210,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
 
             ExprKind::Lit(lit) => {
                 let ty = self.cx.typeck_results().expr_ty(expr);
-                self.check_lit(lit, ty, expr.hir_id);
+                self.check_lit(*lit, ty, expr.hir_id);
                 return;
             },
 

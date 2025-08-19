@@ -56,7 +56,10 @@ impl<S: Copy> TokenStream<S> {
         self.token_trees.is_empty()
     }
 
-    pub(crate) fn into_bridge(self) -> Vec<bridge::TokenTree<Self, S, intern::Symbol>> {
+    pub(crate) fn into_bridge(
+        self,
+        join_spans: &mut dyn FnMut(S, S) -> S,
+    ) -> Vec<bridge::TokenTree<Self, S, intern::Symbol>> {
         let mut result = Vec::new();
         let mut iter = self.token_trees.into_iter();
         while let Some(tree) = iter.next() {
@@ -68,6 +71,11 @@ impl<S: Copy> TokenStream<S> {
                         span: ident.span,
                     }))
                 }
+                // Note, we do not have to assemble our `-` punct and literal split into a single
+                // negative bridge literal here. As the proc-macro docs state
+                // > Literals created from negative numbers might not survive round-trips through
+                // > TokenStream or strings and may be broken into two tokens (- and positive
+                // > literal).
                 tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
                     result.push(bridge::TokenTree::Literal(bridge::Literal {
                         span: lit.span,
@@ -93,7 +101,11 @@ impl<S: Copy> TokenStream<S> {
                                 token_trees: iter.by_ref().take(subtree.usize_len()).collect(),
                             })
                         },
-                        span: bridge::DelimSpan::from_single(subtree.delimiter.open),
+                        span: bridge::DelimSpan {
+                            open: subtree.delimiter.open,
+                            close: subtree.delimiter.close,
+                            entire: join_spans(subtree.delimiter.open, subtree.delimiter.close),
+                        },
                     }))
                 }
             }

@@ -138,12 +138,25 @@ fn issue_12928() {
     let y = if let Some(Y(a, ..)) = x { a } else { 0 };
 }
 
-// For symetry with `manual_unwrap_or` test
+// For symmetry with `manual_unwrap_or` test
 fn allowed_manual_unwrap_or_zero() -> u32 {
     if let Some(x) = Some(42) {
         //~^ manual_unwrap_or_default
         x
     } else {
         0
+    }
+}
+
+mod issue14716 {
+    struct Foo {
+        name: Option<String>,
+    }
+
+    fn bar(project: &Foo) {
+        let _name = match project.name {
+            Some(ref x) => x,
+            None => "",
+        };
     }
 }

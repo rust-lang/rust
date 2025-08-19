@@ -26,6 +26,7 @@ pub(crate) fn mismatched_tuple_struct_pat_arg_count(
         message,
         invalid_args_range(ctx, d.expr_or_pat, d.expected, d.found),
     )
+    .stable()
 }
 
 // Diagnostic: mismatched-arg-count
@@ -42,6 +43,7 @@ pub(crate) fn mismatched_arg_count(
         message,
         invalid_args_range(ctx, d.call_expr, d.expected, d.found),
     )
+    .stable()
 }
 
 fn invalid_args_range(

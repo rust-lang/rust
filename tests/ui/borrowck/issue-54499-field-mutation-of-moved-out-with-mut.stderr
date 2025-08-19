@@ -17,6 +17,15 @@ LL |         drop(u);
    |              - value moved here
 LL |         u.0 = S(1);
    |         ^^^^^^^^^^ value partially assigned here after move
+   |
+note: if `Tpair` implemented `Clone`, you could clone the value
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:6:1
+   |
+LL | struct Tpair(S, i32);
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         drop(u);
+   |              - you could clone this value
 
 error[E0382]: assign to part of moved value: `v`
   --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:31:9
@@ -27,6 +36,15 @@ LL |         drop(v);
    |              - value moved here
 LL |         v.x = S(1);
    |         ^^^^^^^^^^ value partially assigned here after move
+   |
+note: if `Spair` implemented `Clone`, you could clone the value
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:7:1
+   |
+LL | struct Spair { x: S, y: i32 }
+   | ^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         drop(v);
+   |              - you could clone this value
 
 error: aborting due to 3 previous errors
 

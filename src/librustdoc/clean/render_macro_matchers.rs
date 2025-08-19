@@ -167,7 +167,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
 }
 
 fn usually_needs_space_between_keyword_and_open_delim(symbol: Symbol, span: Span) -> bool {
-    let ident = Ident { name: symbol, span };
+    let ident = Ident::new(symbol, span);
     let is_keyword = ident.is_used_keyword() || ident.is_unused_keyword();
     if !is_keyword {
         // An identifier that is not a keyword usually does not need a space

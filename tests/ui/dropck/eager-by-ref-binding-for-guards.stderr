@@ -1,0 +1,28 @@
+error[E0597]: `short1` does not live long enough
+  --> $DIR/eager-by-ref-binding-for-guards.rs:12:46
+   |
+LL |         (mut long1, ref short1) => long1.0 = &short1,
+   |                     ----------               ^^^^^^-
+   |                     |                        |     |
+   |                     |                        |     `short1` dropped here while still borrowed
+   |                     |                        |     borrow might be used here, when `long1` is dropped and runs the `Drop` code for type `Struct`
+   |                     |                        borrowed value does not live long enough
+   |                     binding `short1` declared here
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `short4` does not live long enough
+  --> $DIR/eager-by-ref-binding-for-guards.rs:27:69
+   |
+LL |         (mut long4, &Err(short4) | Ok(short4)) if true => long4.0 = &short4,
+   |                          ------                                     ^^^^^^-
+   |                          |                                          |     |
+   |                          |                                          |     `short4` dropped here while still borrowed
+   |                          |                                          |     borrow might be used here, when `long4` is dropped and runs the `Drop` code for type `Struct`
+   |                          binding `short4` declared here             borrowed value does not live long enough
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

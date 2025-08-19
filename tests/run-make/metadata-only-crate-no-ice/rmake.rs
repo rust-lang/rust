@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In a dependency hierarchy, metadata-only crates could cause an Internal
 // Compiler Error (ICE) due to a compiler bug - not correctly fetching sources for
 // metadata-only crates. This test is a minimal reproduction of a program that triggered

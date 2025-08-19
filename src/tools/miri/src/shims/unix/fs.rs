@@ -2,7 +2,8 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
+    DirBuilder, File, FileType, OpenOptions, ReadDir, TryLockError, read_dir, remove_dir,
+    remove_file, rename,
 };
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -12,9 +13,9 @@ use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
 use self::shims::time::system_time_to_duration;
-use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileHandle;
 use crate::shims::os_str::bytes_to_os_str;
+use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
 
@@ -90,91 +91,26 @@ impl UnixFileDescription for FileHandle {
         op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        cfg_match! {
-            all(target_family = "unix", not(target_os = "solaris")) => {
-                use std::os::fd::AsRawFd;
 
-                use FlockOp::*;
-                // We always use non-blocking call to prevent interpreter from being blocked
-                let (host_op, lock_nb) = match op {
-                    SharedLock { nonblocking } => (libc::LOCK_SH | libc::LOCK_NB, nonblocking),
-                    ExclusiveLock { nonblocking } => (libc::LOCK_EX | libc::LOCK_NB, nonblocking),
-                    Unlock => (libc::LOCK_UN, false),
-                };
-
-                let fd = self.file.as_raw_fd();
-                let ret = unsafe { libc::flock(fd, host_op) };
-                let res = match ret {
-                    0 => Ok(()),
-                    -1 => {
-                        let err = io::Error::last_os_error();
-                        if !lock_nb && err.kind() == io::ErrorKind::WouldBlock {
-                            throw_unsup_format!("blocking `flock` is not currently supported");
-                        }
-                        Err(err)
-                    }
-                    ret => panic!("Unexpected return value from flock: {ret}"),
-                };
-                interp_ok(res)
+        use FlockOp::*;
+        // We must not block the interpreter loop, so we always `try_lock`.
+        let (res, nonblocking) = match op {
+            SharedLock { nonblocking } => (self.file.try_lock_shared(), nonblocking),
+            ExclusiveLock { nonblocking } => (self.file.try_lock(), nonblocking),
+            Unlock => {
+                return interp_ok(self.file.unlock());
             }
-            target_family = "windows" => {
-                use std::os::windows::io::AsRawHandle;
+        };
 
-                use windows_sys::Win32::Foundation::{
-                    ERROR_IO_PENDING, ERROR_LOCK_VIOLATION, FALSE, HANDLE, TRUE,
-                };
-                use windows_sys::Win32::Storage::FileSystem::{
-                    LOCKFILE_EXCLUSIVE_LOCK, LOCKFILE_FAIL_IMMEDIATELY, LockFileEx, UnlockFile,
-                };
-
-                let fh = self.file.as_raw_handle() as HANDLE;
-
-                use FlockOp::*;
-                let (ret, lock_nb) = match op {
-                    SharedLock { nonblocking } | ExclusiveLock { nonblocking } => {
-                        // We always use non-blocking call to prevent interpreter from being blocked
-                        let mut flags = LOCKFILE_FAIL_IMMEDIATELY;
-                        if matches!(op, ExclusiveLock { .. }) {
-                            flags |= LOCKFILE_EXCLUSIVE_LOCK;
-                        }
-                        let ret = unsafe { LockFileEx(fh, flags, 0, !0, !0, &mut std::mem::zeroed()) };
-                        (ret, nonblocking)
-                    }
-                    Unlock => {
-                        let ret = unsafe { UnlockFile(fh, 0, 0, !0, !0) };
-                        (ret, false)
-                    }
-                };
-
-                let res = match ret {
-                    TRUE => Ok(()),
-                    FALSE => {
-                        let mut err = io::Error::last_os_error();
-                        // This only runs on Windows hosts so we can use `raw_os_error`.
-                        // We have to be careful not to forward that error code to target code.
-                        let code: u32 = err.raw_os_error().unwrap().try_into().unwrap();
-                        if matches!(code, ERROR_IO_PENDING | ERROR_LOCK_VIOLATION) {
-                            if lock_nb {
-                                // The io error mapping does not know about these error codes,
-                                // so we translate it to `WouldBlock` manually.
-                                let desc = format!("LockFileEx wouldblock error: {err}");
-                                err = io::Error::new(io::ErrorKind::WouldBlock, desc);
-                            } else {
-                                throw_unsup_format!("blocking `flock` is not currently supported");
-                            }
-                        }
-                        Err(err)
-                    }
-                    _ => panic!("Unexpected return value: {ret}"),
-                };
-                interp_ok(res)
-            }
-            _ => {
-                let _ = op;
-                throw_unsup_format!(
-                    "flock is supported only on UNIX (except Solaris) and Windows hosts"
-                );
-            }
+        match res {
+            Ok(()) => interp_ok(Ok(())),
+            Err(TryLockError::Error(err)) => interp_ok(Err(err)),
+            Err(TryLockError::WouldBlock) =>
+                if nonblocking {
+                    interp_ok(Err(ErrorKind::WouldBlock.into()))
+                } else {
+                    throw_unsup_format!("blocking `flock` is not currently supported");
+                },
         }
     }
 }
@@ -196,12 +132,12 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
         this.write_int_fields_named(
             &[
-                ("st_dev", 0),
+                ("st_dev", metadata.dev.into()),
                 ("st_mode", mode.try_into().unwrap()),
                 ("st_nlink", 0),
                 ("st_ino", 0),
-                ("st_uid", 0),
-                ("st_gid", 0),
+                ("st_uid", metadata.uid.into()),
+                ("st_gid", metadata.gid.into()),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
                 ("st_mtime", modified_sec.into()),
@@ -1608,6 +1544,9 @@ struct FileMetadata {
     created: Option<(u64, u32)>,
     accessed: Option<(u64, u32)>,
     modified: Option<(u64, u32)>,
+    dev: u64,
+    uid: u32,
+    gid: u32,
 }
 
 impl FileMetadata {
@@ -1665,6 +1604,21 @@ impl FileMetadata {
         let modified = extract_sec_and_nsec(metadata.modified())?;
 
         // FIXME: Provide more fields using platform specific methods.
-        interp_ok(Ok(FileMetadata { mode, size, created, accessed, modified }))
+
+        cfg_select! {
+            unix => {
+                use std::os::unix::fs::MetadataExt;
+                let dev = metadata.dev();
+                let uid = metadata.uid();
+                let gid = metadata.gid();
+            }
+            _ => {
+                let dev = 0;
+                let uid = 0;
+                let gid = 0;
+            }
+        }
+
+        interp_ok(Ok(FileMetadata { mode, size, created, accessed, modified, dev, uid, gid }))
     }
 }

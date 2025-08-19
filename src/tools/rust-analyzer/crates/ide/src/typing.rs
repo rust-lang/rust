@@ -15,6 +15,7 @@
 
 mod on_enter;
 
+use either::Either;
 use hir::EditionedFileId;
 use ide_db::{FilePosition, RootDatabase, base_db::RootQueryDb};
 use span::Edition;
@@ -33,7 +34,7 @@ use crate::SourceChange;
 pub(crate) use on_enter::on_enter;
 
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
-pub(crate) const TRIGGER_CHARS: &str = ".=<>{(|";
+pub(crate) const TRIGGER_CHARS: &[char] = &['.', '=', '<', '>', '{', '(', '|', '+'];
 
 struct ExtendedTextEdit {
     edit: TextEdit,
@@ -66,7 +67,7 @@ pub(crate) fn on_char_typed(
     position: FilePosition,
     char_typed: char,
 ) -> Option<SourceChange> {
-    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
+    if !TRIGGER_CHARS.contains(&char_typed) {
         return None;
     }
     // FIXME: We need to figure out the edition of the file here, but that means hitting the
@@ -101,6 +102,7 @@ fn on_char_typed_(
         '>' => on_right_angle_typed(&file.tree(), offset),
         '{' | '(' | '<' => on_opening_delimiter_typed(file, offset, char_typed, edition),
         '|' => on_pipe_typed(&file.tree(), offset),
+        '+' => on_plus_typed(&file.tree(), offset),
         _ => None,
     }
     .map(conv)
@@ -400,6 +402,28 @@ fn on_pipe_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     }
     let after_lpipe = offset + TextSize::of('|');
     Some(TextEdit::insert(after_lpipe, "|".to_owned()))
+}
+
+fn on_plus_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    let plus_token = file.syntax().token_at_offset(offset).right_biased()?;
+    if plus_token.kind() != SyntaxKind::PLUS {
+        return None;
+    }
+    let mut ancestors = plus_token.parent_ancestors();
+    ancestors.next().and_then(ast::TypeBoundList::cast)?;
+    let trait_type =
+        ancestors.next().and_then(<Either<ast::DynTraitType, ast::ImplTraitType>>::cast)?;
+    let kind = ancestors.next()?.kind();
+
+    if ast::RefType::can_cast(kind) || ast::PtrType::can_cast(kind) || ast::RetType::can_cast(kind)
+    {
+        let mut builder = TextEdit::builder();
+        builder.insert(trait_type.syntax().text_range().start(), "(".to_owned());
+        builder.insert(trait_type.syntax().text_range().end(), ")".to_owned());
+        Some(builder.finish())
+    } else {
+        None
+    }
 }
 
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
@@ -1594,6 +1618,66 @@ fn foo() {
 fn foo() {
     let $0
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn adds_parentheses_around_trait_object_in_ref_type() {
+        type_char(
+            '+',
+            r#"
+fn foo(x: &dyn A$0) {}
+"#,
+            r#"
+fn foo(x: &(dyn A+)) {}
+"#,
+        );
+        type_char(
+            '+',
+            r#"
+fn foo(x: &'static dyn A$0B) {}
+"#,
+            r#"
+fn foo(x: &'static (dyn A+B)) {}
+"#,
+        );
+        type_char_noop(
+            '+',
+            r#"
+fn foo(x: &(dyn A$0)) {}
+"#,
+        );
+        type_char_noop(
+            '+',
+            r#"
+fn foo(x: Box<dyn A$0>) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn adds_parentheses_around_trait_object_in_ptr_type() {
+        type_char(
+            '+',
+            r#"
+fn foo(x: *const dyn A$0) {}
+"#,
+            r#"
+fn foo(x: *const (dyn A+)) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn adds_parentheses_around_trait_object_in_return_type() {
+        type_char(
+            '+',
+            r#"
+fn foo(x: fn() -> dyn A$0) {}
+"#,
+            r#"
+fn foo(x: fn() -> (dyn A+)) {}
 "#,
         );
     }

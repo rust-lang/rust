@@ -17,7 +17,7 @@ providing the `LateContext` (`cx`), our expression at hand, and
 the symbol of the trait in question:
 
 ```rust
-use clippy_utils::is_trait_method;
+use clippy_utils::ty::implements_trait;
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_span::symbol::sym;
@@ -25,7 +25,7 @@ use rustc_span::symbol::sym;
 impl LateLintPass<'_> for CheckIteratorTraitLint {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
 		let implements_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
-    		implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
+    		implements_trait(cx, cx.typeck_results().expr_ty(expr), id, &[])
 		});
 		if implements_iterator {
 			// [...]
@@ -73,22 +73,24 @@ impl LateLintPass<'_> for CheckDropTraitLint {
 ## Using Type Path
 
 If neither diagnostic item nor a language item is available, we can use
-[`clippy_utils::paths`][paths] with the `match_trait_method` to determine trait
-implementation.
+[`clippy_utils::paths`][paths] to determine get a trait's `DefId`.
 
 > **Note**: This approach should be avoided if possible, the best thing to do would be to make a PR to [`rust-lang/rust`][rust] adding a diagnostic item.
 
-Below, we check if the given `expr` implements the `Iterator`'s trait method `cloned` :
+Below, we check if the given `expr` implements [`core::iter::Step`](https://doc.rust-lang.org/std/iter/trait.Step.html):
 
 ```rust
-use clippy_utils::{match_trait_method, paths};
+use clippy_utils::{implements_trait, paths};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, LateLintPass};
 
-impl LateLintPass<'_> for CheckTokioAsyncReadExtTrait {
+impl LateLintPass<'_> for CheckIterStep {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if match_trait_method(cx, expr, &paths::CORE_ITER_CLONED) {
-            println!("`expr` implements `CORE_ITER_CLONED` trait!");
+        let ty = cx.typeck_results().expr_ty(expr);
+        if let Some(trait_def_id) = paths::ITER_STEP.first(cx)
+            && implements_trait(cx, ty, trait_def_id, &[])
+        {
+            println!("`expr` implements the `core::iter::Step` trait!");
         }
     }
 }

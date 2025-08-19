@@ -7,4 +7,4 @@ pub trait Trait {
     type Issue25467BarT;
 }
 
-pub type Object = Option<Box<Trait<Issue25467FooT=(),Issue25467BarT=()>>>;
+pub type Object = Option<Box<dyn Trait<Issue25467FooT=(),Issue25467BarT=()>>>;

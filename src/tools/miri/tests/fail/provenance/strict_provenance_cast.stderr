@@ -2,7 +2,7 @@ error: unsupported operation: integer-to-pointer casts and `ptr::with_exposed_pr
   --> tests/fail/provenance/strict_provenance_cast.rs:LL:CC
    |
 LL |     let _ptr = std::ptr::with_exposed_provenance::<i32>(addr);
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer casts and `ptr::with_exposed_provenance` are not supported with `-Zmiri-strict-provenance`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsupported operation occurred here
    |
    = help: use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
    = note: BACKTRACE:

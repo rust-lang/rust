@@ -2,8 +2,8 @@ use std::any::Any;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_attr_parsing::Deprecation;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::attrs::Deprecation;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
@@ -71,24 +71,6 @@ impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>> ProcessQueryValue<'
     #[inline(always)]
     fn process_decoded(self, tcx: TyCtxt<'tcx>, err: impl Fn() -> !) -> &'tcx [T] {
         if let Some(iter) = self { tcx.arena.alloc_from_iter(iter) } else { err() }
-    }
-}
-
-impl<'a, 'tcx, T: Copy + Decodable<DecodeContext<'a, 'tcx>>>
-    ProcessQueryValue<'tcx, ty::EarlyBinder<'tcx, &'tcx [T]>>
-    for Option<DecodeIterator<'a, 'tcx, T>>
-{
-    #[inline(always)]
-    fn process_decoded(
-        self,
-        tcx: TyCtxt<'tcx>,
-        err: impl Fn() -> !,
-    ) -> ty::EarlyBinder<'tcx, &'tcx [T]> {
-        ty::EarlyBinder::bind(if let Some(iter) = self {
-            tcx.arena.alloc_from_iter(iter)
-        } else {
-            err()
-        })
     }
 }
 
@@ -326,7 +308,7 @@ provide! { tcx, def_id, other, cdata,
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
 
-    associated_types_for_impl_traits_in_associated_fn => { table_defaulted_array }
+    associated_types_for_impl_traits_in_trait_or_impl => { table }
 
     visibility => { cdata.get_visibility(def_id.index) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -358,7 +340,7 @@ provide! { tcx, def_id, other, cdata,
     specialization_enabled_in => { cdata.root.specialization_enabled_in }
     reachable_non_generics => {
         let reachable_non_generics = tcx
-            .exported_symbols(cdata.cnum)
+            .exported_non_generic_symbols(cdata.cnum)
             .iter()
             .filter_map(|&(exported_symbol, export_info)| {
                 if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
@@ -406,23 +388,20 @@ provide! { tcx, def_id, other, cdata,
     used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
-    exported_symbols => {
-        let syms = cdata.exported_symbols(tcx);
-
-        // FIXME rust-lang/rust#64319, rust-lang/rust#64872: We want
-        // to block export of generics from dylibs, but we must fix
-        // rust-lang/rust#65890 before we can do that robustly.
-
-        syms
-    }
+    exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items()) }
+    stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls().collect()) }
+    exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
+    exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
+    default_field => { cdata.get_default_field(def_id.index) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(def_id.index))
     }
+    anon_const_kind => { table }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {
@@ -514,10 +493,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         }
                         Entry::Vacant(entry) => {
                             entry.insert(parent);
-                            if matches!(
-                                child.res,
-                                Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, _)
-                            ) {
+                            if child.res.module_like_def_id().is_some() {
                                 bfs_queue.push_back(def_id);
                             }
                         }
@@ -546,8 +522,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
         has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {
-            tcx.arena
-                .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
+            tcx.arena.alloc_from_iter(
+                CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE).into_iter(),
+            )
         },
         crates: |tcx, ()| {
             // The list of loaded crates is now frozen in query cache,
@@ -633,14 +610,37 @@ impl CStore {
         }
     }
 
-    pub(crate) fn update_extern_crate(&mut self, cnum: CrateNum, extern_crate: ExternCrate) {
+    /// Track how an extern crate has been loaded. Called after resolving an import in the local crate.
+    ///
+    /// * the `name` is for [`Self::set_resolved_extern_crate_name`] saving `--extern name=`
+    /// * `extern_crate` is for diagnostics
+    pub(crate) fn update_extern_crate(
+        &mut self,
+        cnum: CrateNum,
+        name: Symbol,
+        extern_crate: ExternCrate,
+    ) {
+        debug_assert_eq!(
+            extern_crate.dependency_of, LOCAL_CRATE,
+            "this function should not be called on transitive dependencies"
+        );
+        self.set_resolved_extern_crate_name(name, cnum);
+        self.update_transitive_extern_crate_diagnostics(cnum, extern_crate);
+    }
+
+    /// `CrateMetadata` uses `ExternCrate` only for diagnostics
+    fn update_transitive_extern_crate_diagnostics(
+        &mut self,
+        cnum: CrateNum,
+        extern_crate: ExternCrate,
+    ) {
         let cmeta = self.get_crate_data_mut(cnum);
-        if cmeta.update_extern_crate(extern_crate) {
+        if cmeta.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
             let dependencies = mem::take(&mut cmeta.dependencies);
             for &dep_cnum in &dependencies {
-                self.update_extern_crate(dep_cnum, extern_crate);
+                self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }
             self.get_crate_data_mut(cnum).dependencies = dependencies;
         }

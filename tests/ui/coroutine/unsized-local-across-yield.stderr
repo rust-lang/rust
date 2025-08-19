@@ -1,21 +1,16 @@
-warning: the feature `unsized_locals` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/unsized-local-across-yield.rs:3:12
-   |
-LL | #![feature(unsized_locals)]
-   |            ^^^^^^^^^^^^^^
-   |
-   = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-local-across-yield.rs:11:13
+  --> $DIR/unsized-local-across-yield.rs:9:13
    |
 LL |         let b: [u8] = *(Box::new([]) as Box<[u8]>);
    |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
-   = note: all values live across `yield` must have a statically known size
+   = note: all local variables must have a statically known size
+help: consider borrowing here
+   |
+LL |         let b: &[u8] = *(Box::new([]) as Box<[u8]>);
+   |                +
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

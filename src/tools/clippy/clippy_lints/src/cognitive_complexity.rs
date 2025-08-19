@@ -3,32 +3,39 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn};
+use clippy_utils::{LimitStack, get_async_fn_body, is_async_fn, sym};
 use core::ops::ControlFlow;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Attribute, Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for methods with high cognitive complexity.
+    /// We used to think it measured how hard a method is to understand.
     ///
     /// ### Why is this bad?
-    /// Methods of high cognitive complexity tend to be hard to
-    /// both read and maintain. Also LLVM will tend to optimize small methods better.
+    /// Ideally, we would like to be able to measure how hard a function is
+    /// to understand given its context (what we call its Cognitive Complexity).
+    /// But that's not what this lint does. See "Known problems"
     ///
     /// ### Known problems
-    /// Sometimes it's hard to find a way to reduce the
-    /// complexity.
+    /// The true Cognitive Complexity of a method is not something we can
+    /// calculate using modern technology. This lint has been left in the
+    /// `nursery` so as to not mislead users into using this lint as a
+    /// measurement tool.
     ///
-    /// ### Example
-    /// You'll see it when you get the warning.
+    /// For more detailed information, see [rust-clippy#3793](https://github.com/rust-lang/rust-clippy/issues/3793)
+    ///
+    /// ### Lints to consider instead of this
+    ///
+    /// * [`excessive_nesting`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_nesting)
+    /// * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
-    nursery,
+    restriction,
     "functions that should be split up into multiple functions",
     @eval_always = true
 }
@@ -103,8 +110,7 @@ impl CognitiveComplexity {
                 FnKind::ItemFn(ident, _, _) | FnKind::Method(ident, _) => ident.span,
                 FnKind::Closure => {
                     let header_span = body_span.with_hi(decl.output.span().lo());
-                    #[expect(clippy::range_plus_one)]
-                    if let Some(range) = header_span.map_range(cx, |src, range| {
+                    if let Some(range) = header_span.map_range(cx, |_, src, range| {
                         let mut idxs = src.get(range.clone())?.match_indices('|');
                         Some(range.start + idxs.next()?.0..range.start + idxs.next()?.0 + 1)
                     }) {
@@ -157,9 +163,9 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
     }
 
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.push_attrs(cx.sess(), attrs, "cognitive_complexity");
+        self.limit.push_attrs(cx.sess(), attrs, sym::cognitive_complexity);
     }
     fn check_attributes_post(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.pop_attrs(cx.sess(), attrs, "cognitive_complexity");
+        self.limit.pop_attrs(cx.sess(), attrs, sym::cognitive_complexity);
     }
 }

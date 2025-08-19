@@ -2,7 +2,7 @@ error: Undefined Behavior: deallocation through <TAG> (root of the allocation) a
   --> tests/fail/both_borrows/zero-sized-protected.rs:LL:CC
    |
 LL |     unsafe { dealloc(ptr, l) };
-   |              ^^^^^^^^^^^^^^^ deallocation through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
+   |              ^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the allocation of the accessed tag <TAG> (root of the allocation) also contains the strongly protected tag <TAG>

@@ -107,9 +107,6 @@ fn main() {
     let x = (1, 2);
     let _ = (&x).0;
     //~^ needless_borrow
-    let x = &x as *const (i32, i32);
-    let _ = unsafe { (&*x).0 };
-    //~^ needless_borrow
 
     // Issue #8367
     trait Foo {
@@ -288,4 +285,16 @@ fn issue_12268() {
     //~^ needless_borrow
 
     // compiler
+}
+
+fn issue_14743<T>(slice: &[T]) {
+    let _ = (&slice).len();
+    //~^ needless_borrow
+
+    let slice = slice as *const [T];
+    let _ = unsafe { (&*slice).len() };
+
+    // Check that rustc would actually warn if Clippy had suggested removing the reference
+    #[expect(dangerous_implicit_autorefs)]
+    let _ = unsafe { (*slice).len() };
 }

@@ -1,8 +1,8 @@
 error[E0568]: auto traits cannot have super traits or lifetime bounds
-  --> $DIR/supertrait-auto-trait.rs:8:17
+  --> $DIR/supertrait-auto-trait.rs:8:19
    |
 LL | auto trait Magic: Copy {}
-   |            -----^^^^^^ help: remove the super traits or lifetime bounds
+   |            -----  ^^^^
    |            |
    |            auto traits cannot have super traits or lifetime bounds
 

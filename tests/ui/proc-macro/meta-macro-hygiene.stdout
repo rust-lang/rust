@@ -16,10 +16,10 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 // in the stdout
 
 #![no_std /* 0#0 */]
-#[prelude_import /* 0#1 */]
-use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#1 */;
+#[prelude_import /* 0#1 */]
+use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 
@@ -49,12 +49,6 @@ crate0::{{expn1}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt:
 crate0::{{expn2}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
 crate0::{{expn3}}: parent: crate0::{{expn2}}, call_site_ctxt: #3, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
 crate0::{{expn4}}: parent: crate0::{{expn3}}, call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "diagnostic::on_unimplemented")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Attr, "derive")
-crate1::{{expnNNN}}: parent: crate0::{{expn0}}, call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "include")
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)

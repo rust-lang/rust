@@ -1,7 +1,5 @@
 # Name resolution
 
-<!-- toc -->
-
 In the previous chapters, we saw how the [*Abstract Syntax Tree* (`AST`)][ast]
 is built with all macros expanded. We saw how doing that requires doing some
 name resolution to resolve imports and macro names. In this chapter, we show

@@ -585,12 +585,7 @@ fn write_coverage_info_hi(
     coverage_info_hi: &coverage::CoverageInfoHi,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::CoverageInfoHi {
-        num_block_markers: _,
-        branch_spans,
-        mcdc_degraded_branch_spans,
-        mcdc_spans,
-    } = coverage_info_hi;
+    let coverage::CoverageInfoHi { num_block_markers: _, branch_spans } = coverage_info_hi;
 
     // Only add an extra trailing newline if we printed at least one thing.
     let mut did_print = false;
@@ -600,38 +595,6 @@ fn write_coverage_info_hi(
             w,
             "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
         )?;
-        did_print = true;
-    }
-
-    for coverage::MCDCBranchSpan { span, true_marker, false_marker, .. } in
-        mcdc_degraded_branch_spans
-    {
-        writeln!(
-            w,
-            "{INDENT}coverage branch {{ true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-        )?;
-        did_print = true;
-    }
-
-    for (
-        coverage::MCDCDecisionSpan { span, end_markers, decision_depth, num_conditions: _ },
-        conditions,
-    ) in mcdc_spans
-    {
-        let num_conditions = conditions.len();
-        writeln!(
-            w,
-            "{INDENT}coverage mcdc decision {{ num_conditions: {num_conditions:?}, end: {end_markers:?}, depth: {decision_depth:?} }} => {span:?}"
-        )?;
-        for coverage::MCDCBranchSpan { span, condition_info, true_marker, false_marker } in
-            conditions
-        {
-            writeln!(
-                w,
-                "{INDENT}coverage mcdc branch {{ condition_id: {:?}, true: {true_marker:?}, false: {false_marker:?} }} => {span:?}",
-                condition_info.condition_id
-            )?;
-        }
         did_print = true;
     }
 
@@ -970,11 +933,11 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
-                for (index, arg) in args.iter().map(|a| &a.node).enumerate() {
+                for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{arg:?}")?;
+                    write!(fmt, "{:?}", arg.node)?;
                 }
                 write!(fmt, ")")
             }
@@ -984,7 +947,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }
-                    write!(fmt, "{:?}", arg)?;
+                    write!(fmt, "{:?}", arg.node)?;
                 }
                 write!(fmt, ")")
             }
@@ -1197,8 +1160,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
                             let args = tcx.lift(args).expect("could not lift for printing");
-                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
-                                cx.print_def_path(variant_def.def_id, args)
+                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |p| {
+                                p.print_def_path(variant_def.def_id, args)
                             })?;
 
                             match variant_def.ctor_kind() {
@@ -1465,7 +1428,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                 self.push(&format!("+ user_ty: {user_ty:?}"));
             }
 
-            let fmt_val = |val: ConstValue<'tcx>, ty: Ty<'tcx>| {
+            let fmt_val = |val: ConstValue, ty: Ty<'tcx>| {
                 let tcx = self.tcx;
                 rustc_data_structures::make_display(move |fmt| {
                     pretty_print_const_value_tcx(tcx, val, ty, fmt)
@@ -1473,9 +1436,9 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             };
 
             let fmt_valtree = |cv: &ty::Value<'tcx>| {
-                let mut cx = FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                cx.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
-                cx.into_buffer()
+                let mut p = FmtPrinter::new(self.tcx, Namespace::ValueNS);
+                p.pretty_print_const_valtree(*cv, /*print_ty*/ true).unwrap();
+                p.into_buffer()
             };
 
             let val = match const_ {
@@ -1562,16 +1525,12 @@ pub fn write_allocations<'tcx>(
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
-    fn alloc_id_from_const_val(val: ConstValue<'_>) -> Option<AllocId> {
+    fn alloc_id_from_const_val(val: ConstValue) -> Option<AllocId> {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => Some(ptr.provenance.alloc_id()),
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => None,
             ConstValue::ZeroSized => None,
-            ConstValue::Slice { .. } => {
-                // `u8`/`str` slices, shouldn't contain pointers that we want to print.
-                None
-            }
-            ConstValue::Indirect { alloc_id, .. } => {
+            ConstValue::Slice { alloc_id, .. } | ConstValue::Indirect { alloc_id, .. } => {
                 // FIXME: we don't actually want to print all of these, since some are printed nicely directly as values inline in MIR.
                 // Really we'd want `pretty_print_const_value` to decide which allocations to print, instead of having a separate visitor.
                 Some(alloc_id)
@@ -1621,10 +1580,15 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::VTable(ty, dyn_ty)) => {
                 write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
+            Some(GlobalAlloc::TypeId { ty }) => write!(w, " (typeid for {ty})")?,
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;
                 if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)
-                    && tcx.hir_body_const_context(body.source.def_id()).is_some()
+                    && body
+                        .source
+                        .def_id()
+                        .as_local()
+                        .is_some_and(|def_id| tcx.hir_body_const_context(def_id).is_some())
                 {
                     // Statics may be cyclic and evaluating them too early
                     // in the MIR pipeline may cause cycle errors even though
@@ -1749,7 +1713,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
     let mut i = Size::ZERO;
     let mut line_start = Size::ZERO;
 
-    let ptr_size = tcx.data_layout.pointer_size;
+    let ptr_size = tcx.data_layout.pointer_size();
 
     let mut ascii = String::new();
 
@@ -1825,7 +1789,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
+        } else if let Some((prov, idx)) = alloc.provenance().get_byte(i, &tcx) {
             // Memory with provenance must be defined
             assert!(
                 alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
@@ -1835,7 +1799,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "╾{c:02x}{prov:#?} (1 ptr byte)╼")?;
+            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼")?;
             i += Size::from_bytes(1);
         } else if alloc
             .init_mask()
@@ -1880,7 +1844,7 @@ fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Resul
 fn comma_sep<'tcx>(
     tcx: TyCtxt<'tcx>,
     fmt: &mut Formatter<'_>,
-    elems: Vec<(ConstValue<'tcx>, Ty<'tcx>)>,
+    elems: Vec<(ConstValue, Ty<'tcx>)>,
 ) -> fmt::Result {
     let mut first = true;
     for (ct, ty) in elems {
@@ -1895,7 +1859,7 @@ fn comma_sep<'tcx>(
 
 fn pretty_print_const_value_tcx<'tcx>(
     tcx: TyCtxt<'tcx>,
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {
@@ -1942,7 +1906,7 @@ fn pretty_print_const_value_tcx<'tcx>(
             let ct = tcx.lift(ct).unwrap();
             let ty = tcx.lift(ty).unwrap();
             if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
-                let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
+                let fields: Vec<(ConstValue, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
                     ty::Array(..) => {
                         fmt.write_str("[")?;
@@ -1966,10 +1930,10 @@ fn pretty_print_const_value_tcx<'tcx>(
                             .expect("destructed mir constant of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         let args = tcx.lift(args).unwrap();
-                        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                        cx.print_alloc_ids = true;
-                        cx.print_value_path(variant_def.def_id, args)?;
-                        fmt.write_str(&cx.into_buffer())?;
+                        let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+                        p.print_alloc_ids = true;
+                        p.pretty_print_value_path(variant_def.def_id, args)?;
+                        fmt.write_str(&p.into_buffer())?;
 
                         match variant_def.ctor_kind() {
                             Some(CtorKind::Const) => {}
@@ -2000,18 +1964,18 @@ fn pretty_print_const_value_tcx<'tcx>(
             }
         }
         (ConstValue::Scalar(scalar), _) => {
-            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-            cx.print_alloc_ids = true;
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.print_alloc_ids = true;
             let ty = tcx.lift(ty).unwrap();
-            cx.pretty_print_const_scalar(scalar, ty)?;
-            fmt.write_str(&cx.into_buffer())?;
+            p.pretty_print_const_scalar(scalar, ty)?;
+            fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
-            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-            cx.print_alloc_ids = true;
-            cx.print_value_path(*d, s)?;
-            fmt.write_str(&cx.into_buffer())?;
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.print_alloc_ids = true;
+            p.pretty_print_value_path(*d, s)?;
+            fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }
         // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
@@ -2023,7 +1987,7 @@ fn pretty_print_const_value_tcx<'tcx>(
 }
 
 pub(crate) fn pretty_print_const_value<'tcx>(
-    ct: ConstValue<'tcx>,
+    ct: ConstValue,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
 ) -> fmt::Result {

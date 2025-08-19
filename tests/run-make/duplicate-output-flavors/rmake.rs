@@ -1,3 +1,4 @@
+//@ needs-target-std
 use run_make_support::rustc;
 
 fn main() {

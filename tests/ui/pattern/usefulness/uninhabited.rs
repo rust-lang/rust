@@ -120,7 +120,7 @@ mod visibility {
     mod c {
         use super::*;
         pub struct AlsoSecretlyUninhabited {
-            _priv: ::Struct1,
+            _priv: crate::Struct1,
         }
         assert_empty!(SometimesEmptyStruct);
         assert_non_empty!(SometimesEmptyEnum);

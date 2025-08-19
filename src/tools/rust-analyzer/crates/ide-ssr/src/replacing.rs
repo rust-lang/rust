@@ -14,21 +14,21 @@ use crate::{Match, SsrMatches, fragments, resolving::ResolvedRule};
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
 /// template. Placeholders in the template will have been substituted with whatever they matched to
 /// in the original code.
-pub(crate) fn matches_to_edit(
-    db: &dyn hir::db::ExpandDatabase,
+pub(crate) fn matches_to_edit<'db>(
+    db: &'db dyn hir::db::ExpandDatabase,
     matches: &SsrMatches,
     file_src: &str,
-    rules: &[ResolvedRule],
+    rules: &[ResolvedRule<'db>],
 ) -> TextEdit {
     matches_to_edit_at_offset(db, matches, file_src, 0.into(), rules)
 }
 
-fn matches_to_edit_at_offset(
-    db: &dyn hir::db::ExpandDatabase,
+fn matches_to_edit_at_offset<'db>(
+    db: &'db dyn hir::db::ExpandDatabase,
     matches: &SsrMatches,
     file_src: &str,
     relative_start: TextSize,
-    rules: &[ResolvedRule],
+    rules: &[ResolvedRule<'db>],
 ) -> TextEdit {
     let mut edit_builder = TextEdit::builder();
     for m in &matches.matches {
@@ -40,12 +40,12 @@ fn matches_to_edit_at_offset(
     edit_builder.finish()
 }
 
-struct ReplacementRenderer<'a> {
-    db: &'a dyn hir::db::ExpandDatabase,
+struct ReplacementRenderer<'a, 'db> {
+    db: &'db dyn hir::db::ExpandDatabase,
     match_info: &'a Match,
     file_src: &'a str,
-    rules: &'a [ResolvedRule],
-    rule: &'a ResolvedRule,
+    rules: &'a [ResolvedRule<'db>],
+    rule: &'a ResolvedRule<'db>,
     out: String,
     // Map from a range within `out` to a token in `template` that represents a placeholder. This is
     // used to validate that the generated source code doesn't split any placeholder expansions (see
@@ -58,11 +58,11 @@ struct ReplacementRenderer<'a> {
     edition: Edition,
 }
 
-fn render_replace(
-    db: &dyn hir::db::ExpandDatabase,
+fn render_replace<'db>(
+    db: &'db dyn hir::db::ExpandDatabase,
     match_info: &Match,
     file_src: &str,
-    rules: &[ResolvedRule],
+    rules: &[ResolvedRule<'db>],
     edition: Edition,
 ) -> String {
     let rule = &rules[match_info.rule_index];
@@ -89,7 +89,7 @@ fn render_replace(
     renderer.out
 }
 
-impl ReplacementRenderer<'_> {
+impl<'db> ReplacementRenderer<'_, 'db> {
     fn render_node_children(&mut self, node: &SyntaxNode) {
         for node_or_token in node.children_with_tokens() {
             self.render_node_or_token(&node_or_token);
@@ -112,12 +112,12 @@ impl ReplacementRenderer<'_> {
             self.out.push_str(&mod_path.display(self.db, self.edition).to_string());
             // Emit everything except for the segment's name-ref, since we already effectively
             // emitted that as part of `mod_path`.
-            if let Some(path) = ast::Path::cast(node.clone()) {
-                if let Some(segment) = path.segment() {
-                    for node_or_token in segment.syntax().children_with_tokens() {
-                        if node_or_token.kind() != SyntaxKind::NAME_REF {
-                            self.render_node_or_token(&node_or_token);
-                        }
+            if let Some(path) = ast::Path::cast(node.clone())
+                && let Some(segment) = path.segment()
+            {
+                for node_or_token in segment.syntax().children_with_tokens() {
+                    if node_or_token.kind() != SyntaxKind::NAME_REF {
+                        self.render_node_or_token(&node_or_token);
                     }
                 }
             }
@@ -242,15 +242,15 @@ fn token_is_method_call_receiver(token: &SyntaxToken) -> bool {
 }
 
 fn parse_as_kind(code: &str, kind: SyntaxKind) -> Option<SyntaxNode> {
-    if ast::Expr::can_cast(kind) {
-        if let Ok(expr) = fragments::expr(code) {
-            return Some(expr);
-        }
+    if ast::Expr::can_cast(kind)
+        && let Ok(expr) = fragments::expr(code)
+    {
+        return Some(expr);
     }
-    if ast::Item::can_cast(kind) {
-        if let Ok(item) = fragments::item(code) {
-            return Some(item);
-        }
+    if ast::Item::can_cast(kind)
+        && let Ok(item) = fragments::item(code)
+    {
+        return Some(item);
     }
     None
 }

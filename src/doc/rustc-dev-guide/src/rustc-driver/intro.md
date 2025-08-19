@@ -7,8 +7,8 @@ It acts as the glue for running the various phases of the compiler in the correc
 using the interface defined in the [`rustc_interface`] crate. Where possible, using [`rustc_driver`] rather than [`rustc_interface`] is recommended.
 
 The main entry point of [`rustc_driver`] is [`rustc_driver::run_compiler`][rd_rc].
-This builder accepts the same command-line args as rustc as well as an implementation of [`Callbacks`][cb] and a couple of other optional options.
-[`Callbacks`][cb] is a `trait` that allows for custom compiler configuration,
+This builder accepts the same command-line args as rustc as well as an implementation of [`Callbacks`] and a couple of other optional options.
+[`Callbacks`] is a `trait` that allows for custom compiler configuration,
 as well as allowing custom code to run after different phases of the compilation.
 
 ## `rustc_interface`
@@ -33,14 +33,8 @@ specifically [`rustc_driver_impl::run_compiler`][rdi_rc]
 [`Compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
-[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
-[`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/source_map/struct.SourceMap.html
-[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
-[Appendix A]: appendix/stupid-stats.html
-[cb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
+[`Callbacks`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/trait.Callbacks.html
 [example]: https://github.com/rust-lang/rustc-dev-guide/blob/master/examples/rustc-interface-example.rs
 [i_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/fn.run_compiler.html
 [rd_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.run_compiler.html
 [rdi_rc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver_impl/fn.run_compiler.html
-[stupid-stats]: https://github.com/nrc/stupid-stats
-[`nightly-rustc`]: https://doc.rust-lang.org/nightly/nightly-rustc/

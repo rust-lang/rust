@@ -1,7 +1,5 @@
 # Region inference (NLL)
 
-<!-- toc -->
-
 The MIR-based region checking code is located in [the `rustc_mir::borrow_check`
 module][nll].
 

@@ -118,6 +118,14 @@ impl AsmExpr {
     pub fn asm_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![asm]) }
     #[inline]
     pub fn builtin_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![builtin]) }
+    #[inline]
+    pub fn global_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![global_asm])
+    }
+    #[inline]
+    pub fn naked_asm_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![naked_asm])
+    }
 }
 pub struct AsmLabel {
     pub(crate) syntax: SyntaxNode,
@@ -369,22 +377,13 @@ impl CastExpr {
     #[inline]
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
-pub struct ClosureBinder {
-    pub(crate) syntax: SyntaxNode,
-}
-impl ClosureBinder {
-    #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
-}
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
     #[inline]
-    pub fn closure_binder(&self) -> Option<ClosureBinder> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     #[inline]
@@ -607,6 +606,15 @@ impl FnPtrType {
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
+pub struct ForBinder {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ForBinder {
+    #[inline]
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    #[inline]
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+}
 pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -624,11 +632,9 @@ pub struct ForType {
 }
 impl ForType {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
 }
 pub struct FormatArgsArg {
     pub(crate) syntax: SyntaxNode,
@@ -1232,21 +1238,13 @@ impl PathSegment {
         support::child(&self.syntax)
     }
     #[inline]
-    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
-    #[inline]
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     #[inline]
     pub fn return_type_syntax(&self) -> Option<ReturnTypeSyntax> { support::child(&self.syntax) }
     #[inline]
-    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    pub fn type_anchor(&self) -> Option<TypeAnchor> { support::child(&self.syntax) }
     #[inline]
     pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
-    #[inline]
-    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    #[inline]
-    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
-    #[inline]
-    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
 pub struct PathType {
     pub(crate) syntax: SyntaxNode,
@@ -1525,6 +1523,10 @@ impl ast::HasDocComments for SourceFile {}
 impl ast::HasModuleItem for SourceFile {}
 impl SourceFile {
     #[inline]
+    pub fn frontmatter_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![frontmatter])
+    }
+    #[inline]
     pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
 pub struct Static {
@@ -1735,6 +1737,21 @@ impl TypeAlias {
     #[inline]
     pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
 }
+pub struct TypeAnchor {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TypeAnchor {
+    #[inline]
+    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
+    #[inline]
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    #[inline]
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
+    #[inline]
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
+    #[inline]
+    pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
+}
 pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1747,6 +1764,8 @@ pub struct TypeBound {
 }
 impl TypeBound {
     #[inline]
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
+    #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
@@ -1754,6 +1773,10 @@ impl TypeBound {
     pub fn use_bound_generic_args(&self) -> Option<UseBoundGenericArgs> {
         support::child(&self.syntax)
     }
+    #[inline]
+    pub fn l_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['[']) }
+    #[inline]
+    pub fn r_brack_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![']']) }
     #[inline]
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     #[inline]
@@ -1915,13 +1938,11 @@ pub struct WherePred {
 impl ast::HasTypeBounds for WherePred {}
 impl WherePred {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
+    pub fn for_binder(&self) -> Option<ForBinder> { support::child(&self.syntax) }
     #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
-    #[inline]
-    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
 }
 pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
@@ -2072,6 +2093,7 @@ impl ast::HasAttrs for GenericParam {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Item {
+    AsmExpr(AsmExpr),
     Const(Const),
     Enum(Enum),
     ExternBlock(ExternBlock),
@@ -2091,7 +2113,6 @@ pub enum Item {
     Use(Use),
 }
 impl ast::HasAttrs for Item {}
-impl ast::HasDocComments for Item {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
@@ -3216,42 +3237,6 @@ impl fmt::Debug for CastExpr {
         f.debug_struct("CastExpr").field("syntax", &self.syntax).finish()
     }
 }
-impl AstNode for ClosureBinder {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        CLOSURE_BINDER
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CLOSURE_BINDER }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for ClosureBinder {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for ClosureBinder {}
-impl PartialEq for ClosureBinder {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for ClosureBinder {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for ClosureBinder {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ClosureBinder").field("syntax", &self.syntax).finish()
-    }
-}
 impl AstNode for ClosureExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -3790,6 +3775,42 @@ impl Clone for FnPtrType {
 impl fmt::Debug for FnPtrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FnPtrType").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for ForBinder {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        FOR_BINDER
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == FOR_BINDER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for ForBinder {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for ForBinder {}
+impl PartialEq for ForBinder {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for ForBinder {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for ForBinder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ForBinder").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for ForExpr {
@@ -7104,6 +7125,42 @@ impl fmt::Debug for TypeAlias {
         f.debug_struct("TypeAlias").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for TypeAnchor {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        TYPE_ANCHOR
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TYPE_ANCHOR }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for TypeAnchor {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for TypeAnchor {}
+impl PartialEq for TypeAnchor {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for TypeAnchor {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for TypeAnchor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TypeAnchor").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for TypeArg {
     #[inline]
     fn kind() -> SyntaxKind
@@ -8358,6 +8415,10 @@ impl AstNode for GenericParam {
         }
     }
 }
+impl From<AsmExpr> for Item {
+    #[inline]
+    fn from(node: AsmExpr) -> Item { Item::AsmExpr(node) }
+}
 impl From<Const> for Item {
     #[inline]
     fn from(node: Const) -> Item { Item::Const(node) }
@@ -8431,7 +8492,8 @@ impl AstNode for Item {
     fn can_cast(kind: SyntaxKind) -> bool {
         matches!(
             kind,
-            CONST
+            ASM_EXPR
+                | CONST
                 | ENUM
                 | EXTERN_BLOCK
                 | EXTERN_CRATE
@@ -8453,6 +8515,7 @@ impl AstNode for Item {
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
+            ASM_EXPR => Item::AsmExpr(AsmExpr { syntax }),
             CONST => Item::Const(Const { syntax }),
             ENUM => Item::Enum(Enum { syntax }),
             EXTERN_BLOCK => Item::ExternBlock(ExternBlock { syntax }),
@@ -8477,6 +8540,7 @@ impl AstNode for Item {
     #[inline]
     fn syntax(&self) -> &SyntaxNode {
         match self {
+            Item::AsmExpr(it) => &it.syntax,
             Item::Const(it) => &it.syntax,
             Item::Enum(it) => &it.syntax,
             Item::ExternBlock(it) => &it.syntax,
@@ -10080,11 +10144,6 @@ impl std::fmt::Display for CastExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for ClosureBinder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10156,6 +10215,11 @@ impl std::fmt::Display for Fn {
     }
 }
 impl std::fmt::Display for FnPtrType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ForBinder {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -10616,6 +10680,11 @@ impl std::fmt::Display for TupleType {
     }
 }
 impl std::fmt::Display for TypeAlias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for TypeAnchor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

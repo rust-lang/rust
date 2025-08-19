@@ -1,7 +1,14 @@
 //! Compiler intrinsics.
 //!
-//! The corresponding definitions are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>.
-//! The corresponding const implementations are in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
+//! The functions in this module are implementation details of `core` and should
+//! not be used outside of the standard library. We generally provide access to
+//! intrinsics via stable wrapper functions. Use these instead.
+//!
+//! These are the imports making intrinsics available to Rust code. The actual implementations live in the compiler.
+//! Some of these intrinsics are lowered to MIR in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_mir_transform/src/lower_intrinsics.rs>.
+//! The remaining intrinsics are implemented for the LLVM backend in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_ssa/src/mir/intrinsic.rs>
+//! and <https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/intrinsic.rs>,
+//! and for const evaluation in <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>.
 //!
 //! # Const intrinsics
 //!
@@ -20,28 +27,14 @@
 //!
 //! The volatile intrinsics provide operations intended to act on I/O
 //! memory, which are guaranteed to not be reordered by the compiler
-//! across other volatile intrinsics. See the LLVM documentation on
-//! [[volatile]].
-//!
-//! [volatile]: https://llvm.org/docs/LangRef.html#volatile-memory-accesses
+//! across other volatile intrinsics. See [`read_volatile`][ptr::read_volatile]
+//! and [`write_volatile`][ptr::write_volatile].
 //!
 //! # Atomics
 //!
 //! The atomic intrinsics provide common atomic operations on machine
-//! words, with multiple possible memory orderings. They obey the same
-//! semantics as C++11. See the LLVM documentation on [[atomics]].
-//!
-//! [atomics]: https://llvm.org/docs/Atomics.html
-//!
-//! A quick refresher on memory ordering:
-//!
-//! * Acquire - a barrier for acquiring a lock. Subsequent reads and writes
-//!   take place after the barrier.
-//! * Release - a barrier for releasing a lock. Preceding reads and writes
-//!   take place before the barrier.
-//! * Sequentially consistent - sequentially consistent operations are
-//!   guaranteed to happen in order. This is the standard mode for working
-//!   with atomic types and is equivalent to Java's `volatile`.
+//! words, with multiple possible memory orderings. See the
+//! [atomic types][atomic] docs for details.
 //!
 //! # Unwinding
 //!
@@ -61,10 +54,11 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::{DiscriminantKind, Tuple};
-use crate::mem::SizedTypeProperties;
-use crate::{ptr, ub_checks};
+use crate::ffi::va_list::{VaArgSafe, VaListImpl};
+use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::ptr;
 
+mod bounds;
 pub mod fallback;
 pub mod mir;
 pub mod simd;
@@ -74,13 +68,18 @@ pub mod simd;
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
-#[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
-#[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
-#[inline]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-    // SAFETY: see `ptr::drop_in_place`
-    unsafe { crate::ptr::drop_in_place(to_drop) }
+/// A type for atomic ordering parameters for intrinsics. This is a separate type from
+/// `atomic::Ordering` so that we can make it `ConstParamTy` and fix the values used here without a
+/// risk of leaking that to stable code.
+#[derive(Debug, ConstParamTy, PartialEq, Eq)]
+pub enum AtomicOrdering {
+    // These values must match the compiler's `AtomicOrdering` defined in
+    // `rustc_middle/src/ty/consts/int.rs`!
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
 }
 
 // N.B., these intrinsics take raw pointers because they mutate aliased
@@ -90,1047 +89,176 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Relaxed`] as both the success and failure parameters.
+/// [`atomic`] types via the `compare_exchange` method.
 /// For example, [`AtomicBool::compare_exchange`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_cxchg_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Acquire`] as both the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange` method by passing
-/// [`Ordering::SeqCst`] as both the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchg_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
+pub unsafe fn atomic_cxchg<
+    T: Copy,
+    const ORD_SUCC: AtomicOrdering,
+    const ORD_FAIL: AtomicOrdering,
+>(
+    dst: *mut T,
+    old: T,
+    src: T,
+) -> (T, bool);
 
 /// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
+/// `T` must be an integer or pointer type. The comparison may spuriously fail.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Relaxed`] as both the success and failure parameters.
+/// [`atomic`] types via the `compare_exchange_weak` method.
 /// For example, [`AtomicBool::compare_exchange_weak`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_relaxed_relaxed<T: Copy>(
+pub unsafe fn atomic_cxchgweak<
+    T: Copy,
+    const ORD_SUCC: AtomicOrdering,
+    const ORD_FAIL: AtomicOrdering,
+>(
     _dst: *mut T,
     _old: T,
     _src: T,
 ) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Relaxed`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_relaxed_acquire<T: Copy>(
-    _dst: *mut T,
-    _old: T,
-    _src: T,
-) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Relaxed`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Acquire`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acquire_relaxed<T: Copy>(
-    _dst: *mut T,
-    _old: T,
-    _src: T,
-) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Acquire`] as both the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acquire_acquire<T: Copy>(
-    _dst: *mut T,
-    _old: T,
-    _src: T,
-) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Acquire`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Release`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_release_relaxed<T: Copy>(
-    _dst: *mut T,
-    _old: T,
-    _src: T,
-) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Release`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_release_acquire<T: Copy>(
-    _dst: *mut T,
-    _old: T,
-    _src: T,
-) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::Release`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::AcqRel`] and [`Ordering::SeqCst`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::SeqCst`] and [`Ordering::Relaxed`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::SeqCst`] and [`Ordering::Acquire`] as the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
-/// Stores a value if the current value is the same as the `old` value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `compare_exchange_weak` method by passing
-/// [`Ordering::SeqCst`] as both the success and failure parameters.
-/// For example, [`AtomicBool::compare_exchange_weak`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
 /// Loads the current value of the pointer.
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::load`].
+/// [`atomic`] types via the `load` method. For example, [`AtomicBool::load`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
-/// Loads the current value of the pointer.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `load` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
-/// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
-/// In terms of the Rust Abstract Machine, this operation is equivalent to `src.read()`,
-/// i.e., it performs a non-atomic read.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
+pub unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `store` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::store`].
+/// [`atomic`] types via the `store` method. For example, [`AtomicBool::store`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_store_seqcst<T: Copy>(dst: *mut T, val: T);
-/// Stores the value at the specified memory location.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `store` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::store`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
-/// Stores the value at the specified memory location.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `store` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::store`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
-/// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
-/// In terms of the Rust Abstract Machine, this operation is equivalent to `dst.write(val)`,
-/// i.e., it performs a non-atomic write.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
+pub unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, val: T);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `swap` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::swap`].
+/// [`atomic`] types via the `swap` method. For example, [`AtomicBool::swap`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xchg_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Stores the value at the specified memory location, returning the old value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `swap` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::swap`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Stores the value at the specified memory location, returning the old value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `swap` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::swap`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xchg_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Stores the value at the specified memory location, returning the old value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `swap` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::swap`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Stores the value at the specified memory location, returning the old value.
-/// `T` must be an integer or pointer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `swap` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::swap`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xchg<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Adds to the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_add` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_add`].
+/// [`atomic`] types via the `fetch_add` method. For example, [`AtomicIsize::fetch_add`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xadd_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Adds to the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_add` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xadd_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Adds to the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_add` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xadd_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Adds to the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_add` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Adds to the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_add` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicIsize::fetch_add`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xadd<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Subtract from the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_sub` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
+/// [`atomic`] types via the `fetch_sub` method. For example, [`AtomicIsize::fetch_sub`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Subtract from the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_sub` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xsub_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Subtract from the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_sub` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xsub_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Subtract from the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_sub` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Subtract from the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_sub` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicIsize::fetch_sub`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xsub<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise and with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_and` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_and`].
+/// [`atomic`] types via the `fetch_and` method. For example, [`AtomicBool::fetch_and`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_and_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise and with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_and` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_and`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise and with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_and` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_and`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_and_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise and with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_and` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_and`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise and with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_and` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_and`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_and<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise nand with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_nand`].
+/// [`AtomicBool`] type via the `fetch_nand` method. For example, [`AtomicBool::fetch_nand`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise nand with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_nand_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise nand with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_nand_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise nand with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise nand with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`AtomicBool`] type via the `fetch_nand` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_nand`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_nand<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise or with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_or` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_or`].
+/// [`atomic`] types via the `fetch_or` method. For example, [`AtomicBool::fetch_or`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_or_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise or with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_or` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_or`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_or_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise or with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_or` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_or`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise or with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_or` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_or`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise or with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_or` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_or`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_or<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Bitwise xor with the current value, returning the previous value.
 /// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
+/// `U` must be the same as `T` if that is an integer type, or `usize` if `T` is a pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_xor` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicBool::fetch_xor`].
+/// [`atomic`] types via the `fetch_xor` method. For example, [`AtomicBool::fetch_xor`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise xor with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_xor` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xor_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise xor with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_xor` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xor_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise xor with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_xor` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Bitwise xor with the current value, returning the previous value.
-/// `T` must be an integer or pointer type.
-/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
-/// value stored at `*dst` will have the provenance of the old value stored there.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] types via the `fetch_xor` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::fetch_xor`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_xor<T: Copy, U: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: U) -> T;
 
 /// Maximum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_max` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_max`].
+/// [`atomic`] signed integer types via the `fetch_max` method. For example, [`AtomicI32::fetch_max`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_max_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_max` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_max_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_max` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_max_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_max` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicI32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_max` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicI32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_max<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using a signed comparison.
 /// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_min` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicI32::fetch_min`].
+/// [`atomic`] signed integer types via the `fetch_min` method. For example, [`AtomicI32::fetch_min`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_min_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_min` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicI32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_min_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_min` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicI32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_min_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_min` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicI32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using a signed comparison.
-/// `T` must be a signed integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] signed integer types via the `fetch_min` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicI32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_min<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_min` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_min`].
+/// [`atomic`] unsigned integer types via the `fetch_min` method. For example, [`AtomicU32::fetch_min`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_umin_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_min` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umin_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_min` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umin_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_min` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicU32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Minimum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_min` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicU32::fetch_min`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_umin<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// Maximum with the current value using an unsigned comparison.
 /// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_max` method by passing
-/// [`Ordering::SeqCst`] as the `order`. For example, [`AtomicU32::fetch_max`].
+/// [`atomic`] unsigned integer types via the `fetch_max` method. For example, [`AtomicU32::fetch_max`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_umax_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_max` method by passing
-/// [`Ordering::Acquire`] as the `order`. For example, [`AtomicU32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umax_acquire<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_max` method by passing
-/// [`Ordering::Release`] as the `order`. For example, [`AtomicU32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umax_release<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_max` method by passing
-/// [`Ordering::AcqRel`] as the `order`. For example, [`AtomicU32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value using an unsigned comparison.
-/// `T` must be an unsigned integer type.
-///
-/// The stabilized version of this intrinsic is available on the
-/// [`atomic`] unsigned integer types via the `fetch_max` method by passing
-/// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicU32::fetch_max`].
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_umax_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
+pub unsafe fn atomic_umax<T: Copy, const ORD: AtomicOrdering>(dst: *mut T, src: T) -> T;
 
 /// An atomic fence.
 ///
 /// The stabilized version of this intrinsic is available in
-/// [`atomic::fence`] by passing [`Ordering::SeqCst`]
-/// as the `order`.
+/// [`atomic::fence`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_fence_seqcst();
-/// An atomic fence.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::fence`] by passing [`Ordering::Acquire`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_fence_acquire();
-/// An atomic fence.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::fence`] by passing [`Ordering::Release`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_fence_release();
-/// An atomic fence.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::fence`] by passing [`Ordering::AcqRel`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_fence_acqrel();
+pub unsafe fn atomic_fence<const ORD: AtomicOrdering>();
 
-/// A compiler-only memory barrier.
-///
-/// Memory accesses will never be reordered across this barrier by the
-/// compiler, but no instructions will be emitted for it. This is
-/// appropriate for operations on the same thread that may be preempted,
-/// such as when interacting with signal handlers.
+/// An atomic fence for synchronization within a single thread.
 ///
 /// The stabilized version of this intrinsic is available in
-/// [`atomic::compiler_fence`] by passing [`Ordering::SeqCst`]
-/// as the `order`.
+/// [`atomic::compiler_fence`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn atomic_singlethreadfence_seqcst();
-/// A compiler-only memory barrier.
-///
-/// Memory accesses will never be reordered across this barrier by the
-/// compiler, but no instructions will be emitted for it. This is
-/// appropriate for operations on the same thread that may be preempted,
-/// such as when interacting with signal handlers.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::compiler_fence`] by passing [`Ordering::Acquire`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_singlethreadfence_acquire();
-/// A compiler-only memory barrier.
-///
-/// Memory accesses will never be reordered across this barrier by the
-/// compiler, but no instructions will be emitted for it. This is
-/// appropriate for operations on the same thread that may be preempted,
-/// such as when interacting with signal handlers.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::compiler_fence`] by passing [`Ordering::Release`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_singlethreadfence_release();
-/// A compiler-only memory barrier.
-///
-/// Memory accesses will never be reordered across this barrier by the
-/// compiler, but no instructions will be emitted for it. This is
-/// appropriate for operations on the same thread that may be preempted,
-/// such as when interacting with signal handlers.
-///
-/// The stabilized version of this intrinsic is available in
-/// [`atomic::compiler_fence`] by passing [`Ordering::AcqRel`]
-/// as the `order`.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_singlethreadfence_acqrel();
+pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
 /// if supported; otherwise, it is a no-op.
@@ -1326,7 +454,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The public form of this instrinsic is [`core::hint::select_unpredictable`].
+/// The public form of this intrinsic is [`core::hint::select_unpredictable`].
 /// However unlike the public form, the intrinsic will not drop the value that
 /// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
@@ -1339,7 +467,8 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 }
 
 /// A guard for unsafe functions that cannot ever be executed if `T` is uninhabited:
-/// This will statically either panic, or do nothing.
+/// This will statically either panic, or do nothing. It does not *guarantee* to ever panic,
+/// and should only be called if an assertion failure will imply language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -1348,7 +477,9 @@ pub fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
 pub const fn assert_inhabited<T>();
 
 /// A guard for unsafe functions that cannot ever be executed if `T` does not permit
-/// zero-initialization: This will statically either panic, or do nothing.
+/// zero-initialization: This will statically either panic, or do nothing. It does not *guarantee*
+/// to ever panic, and should only be called if an assertion failure will imply language UB in the
+/// following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -1356,7 +487,9 @@ pub const fn assert_inhabited<T>();
 #[rustc_intrinsic]
 pub const fn assert_zero_valid<T>();
 
-/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
+/// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing. It does
+/// not *guarantee* to ever panic, and should only be called if an assertion failure will imply
+/// language UB in the following code.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic_const_stable_indirect]
@@ -1497,7 +630,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
 ///
 /// ```
-/// # #![cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
+/// # #![allow(unnecessary_transmutes)]
 /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
 ///
 /// let num = unsafe {
@@ -1706,10 +839,10 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 /// If the actual type neither requires drop glue nor implements
 /// `Copy`, then the return value of this function is unspecified.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`mem::needs_drop`](crate::mem::needs_drop).
 #[rustc_intrinsic_const_stable_indirect]
@@ -1729,7 +862,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 /// # Safety
 ///
 /// If the computed offset is non-zero, then both the starting and resulting pointer must be
-/// either in bounds or at the end of an allocated object. If either pointer is out
+/// either in bounds or at the end of an allocation. If either pointer is out
 /// of bounds or arithmetic overflow occurs then this operation is undefined behavior.
 ///
 /// The stabilized version of this intrinsic is [`pointer::offset`].
@@ -1737,7 +870,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+pub const unsafe fn offset<Ptr: bounds::BuiltinDeref, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
 /// Calculates the offset from a pointer, potentially wrapping.
 ///
@@ -1758,6 +891,32 @@ pub const unsafe fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 #[rustc_intrinsic]
 pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
+/// Projects to the `index`-th element of `slice_ptr`, as the same kind of pointer
+/// as the slice was provided -- so `&mut [T] → &mut T`, `&[T] → &T`,
+/// `*mut [T] → *mut T`, or `*const [T] → *const T` -- without a bounds check.
+///
+/// This is exposed via `<usize as SliceIndex>::get(_unchecked)(_mut)`,
+/// and isn't intended to be used elsewhere.
+///
+/// Expands in MIR to `{&, &mut, &raw const, &raw mut} (*slice_ptr)[index]`,
+/// depending on the types involved, so no backend support is needed.
+///
+/// # Safety
+///
+/// - `index < PtrMetadata(slice_ptr)`, so the indexing is in-bounds for the slice
+/// - the resulting offsetting is in-bounds of the allocation, which is
+///   always the case for references, but needs to be upheld manually for pointers
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn slice_get_unchecked<
+    ItemPtr: bounds::ChangePointee<[T], Pointee = T, Output = SlicePtr>,
+    SlicePtr,
+    T,
+>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
+
 /// Masks out bits of the pointer according to a mask.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
@@ -1771,8 +930,7 @@ pub const unsafe fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 
 /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
-/// a size of `count` * `size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`
+/// a size of `count` * `size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
 /// # Safety
@@ -1786,8 +944,7 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
-/// a size of `count * size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`
+/// a size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// The volatile parameter is set to `true`, so it will not be optimized out
 /// unless size is equal to zero.
@@ -1797,8 +954,7 @@ pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
-/// size of `count * size_of::<T>()` and an alignment of
-/// `min_align_of::<T>()`.
+/// size of `count * size_of::<T>()` and an alignment of `align_of::<T>()`.
 ///
 /// This intrinsic does not have a stable counterpart.
 /// # Safety
@@ -2217,165 +1373,173 @@ pub unsafe fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf16(x: f16) -> f16;
+pub const unsafe fn floorf16(x: f16) -> f16;
 /// Returns the largest integer less than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::floor`](../../std/primitive.f32.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf32(x: f32) -> f32;
+pub const unsafe fn floorf32(x: f32) -> f32;
 /// Returns the largest integer less than or equal to an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::floor`](../../std/primitive.f64.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf64(x: f64) -> f64;
+pub const unsafe fn floorf64(x: f64) -> f64;
 /// Returns the largest integer less than or equal to an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::floor`](../../std/primitive.f128.html#method.floor)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn floorf128(x: f128) -> f128;
+pub const unsafe fn floorf128(x: f128) -> f128;
 
 /// Returns the smallest integer greater than or equal to an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf16(x: f16) -> f16;
+pub const unsafe fn ceilf16(x: f16) -> f16;
 /// Returns the smallest integer greater than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::ceil`](../../std/primitive.f32.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf32(x: f32) -> f32;
+pub const unsafe fn ceilf32(x: f32) -> f32;
 /// Returns the smallest integer greater than or equal to an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::ceil`](../../std/primitive.f64.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf64(x: f64) -> f64;
+pub const unsafe fn ceilf64(x: f64) -> f64;
 /// Returns the smallest integer greater than or equal to an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::ceil`](../../std/primitive.f128.html#method.ceil)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn ceilf128(x: f128) -> f128;
+pub const unsafe fn ceilf128(x: f128) -> f128;
 
 /// Returns the integer part of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf16(x: f16) -> f16;
+pub const unsafe fn truncf16(x: f16) -> f16;
 /// Returns the integer part of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::trunc`](../../std/primitive.f32.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf32(x: f32) -> f32;
+pub const unsafe fn truncf32(x: f32) -> f32;
 /// Returns the integer part of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::trunc`](../../std/primitive.f64.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf64(x: f64) -> f64;
+pub const unsafe fn truncf64(x: f64) -> f64;
 /// Returns the integer part of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::trunc`](../../std/primitive.f128.html#method.trunc)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn truncf128(x: f128) -> f128;
+pub const unsafe fn truncf128(x: f128) -> f128;
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
 /// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f16(x: f16) -> f16;
+pub const fn round_ties_even_f16(x: f16) -> f16;
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f32(x: f32) -> f32;
-
-/// Provided for compatibility with stdarch. DO NOT USE.
-#[inline(always)]
-pub unsafe fn rintf32(x: f32) -> f32 {
-    round_ties_even_f32(x)
-}
+pub const fn round_ties_even_f32(x: f32) -> f32;
 
 /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
 /// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f64(x: f64) -> f64;
-
-/// Provided for compatibility with stdarch. DO NOT USE.
-#[inline(always)]
-pub unsafe fn rintf64(x: f64) -> f64 {
-    round_ties_even_f64(x)
-}
+pub const fn round_ties_even_f64(x: f64) -> f64;
 
 /// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
 /// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn round_ties_even_f128(x: f128) -> f128;
+pub const fn round_ties_even_f128(x: f128) -> f128;
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round`](../../std/primitive.f16.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf16(x: f16) -> f16;
+pub const unsafe fn roundf16(x: f16) -> f16;
 /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round`](../../std/primitive.f32.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf32(x: f32) -> f32;
+pub const unsafe fn roundf32(x: f32) -> f32;
 /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round`](../../std/primitive.f64.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf64(x: f64) -> f64;
+pub const unsafe fn roundf64(x: f64) -> f64;
 /// Returns the nearest integer to an `f128`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round`](../../std/primitive.f128.html#method.round)
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn roundf128(x: f128) -> f128;
+pub const unsafe fn roundf128(x: f128) -> f128;
 
 /// Float addition that allows optimizations based on algebraic rules.
 /// May assume inputs are finite.
@@ -2656,9 +1820,9 @@ pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering
 #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 #[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell Miri
-pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
+pub const unsafe fn disjoint_bitor<T: [const] fallback::DisjointBitOr>(a: T, b: T) -> T {
     // SAFETY: same preconditions as this function.
     unsafe { fallback::DisjointBitOr::disjoint_bitor(a, b) }
 }
@@ -2727,7 +1891,7 @@ pub const fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
-pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, U>(
+pub const fn carrying_mul_add<T: [const] fallback::CarryingMulAdd<Unsigned = U>, U>(
     multiplier: T,
     multiplicand: T,
     addend: T,
@@ -3058,6 +2222,7 @@ pub const unsafe fn raw_eq<T>(a: &T, b: &T) -> bool;
 /// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[rustc_intrinsic]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 pub const unsafe fn compare_bytes(left: *const u8, right: *const u8, bytes: usize) -> i32;
 
 /// See documentation of [`std::hint::black_box`] for details.
@@ -3129,7 +2294,7 @@ pub const fn const_eval_select<ARG: Tuple, F, G, RET>(
 ) -> RET
 where
     G: FnOnce<ARG, Output = RET>,
-    F: FnOnce<ARG, Output = RET>;
+    F: const FnOnce<ARG, Output = RET>;
 
 /// A macro to make it easier to invoke const_eval_select. Use as follows:
 /// ```rust,ignore (just a macro example)
@@ -3146,7 +2311,7 @@ where
 /// used inside the `if const`.
 /// Note that the two arms of this `if` really each become their own function, which is why the
 /// macro supports setting attributes for those functions. The runtime function is always
-/// markes as `#[inline]`.
+/// marked as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {
@@ -3338,7 +2503,7 @@ pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
 /// `#[inline]`), gating assertions on `ub_checks()` rather than `cfg!(ub_checks)` means that
 /// assertions are enabled whenever the *user crate* has UB checks enabled. However, if the
 /// user has UB checks disabled, the checks will still get optimized out. This intrinsic is
-/// primarily used by [`ub_checks::assert_unsafe_precondition`].
+/// primarily used by [`crate::ub_checks::assert_unsafe_precondition`].
 #[rustc_intrinsic_const_stable_indirect] // just for UB checks
 #[inline(always)]
 #[rustc_intrinsic]
@@ -3383,10 +2548,19 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
     // Runtime NOP
 }
 
+#[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn const_make_global(ptr: *mut u8) -> *const u8 {
+    // const eval overrides this function; at runtime, it is a NOP.
+    ptr
+}
+
 /// Returns whether we should perform contract-checking at runtime.
 ///
 /// This is meant to be similar to the ub_checks intrinsic, in terms
-/// of not prematurely commiting at compile-time to whether contract
+/// of not prematurely committing at compile-time to whether contract
 /// checking is turned on, so that we can specify contracts in libstd
 /// and let an end user opt into turning them on.
 #[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
@@ -3434,7 +2608,6 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 /// returns false.
 ///
 /// Note that this function is a no-op during constant evaluation.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts_internals", issue = "128044")]
 // Similar to `contract_check_requires`, we need to use the user-facing
 // `contracts` feature rather than the perma-unstable `contracts_internals`.
@@ -3456,16 +2629,6 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, re
             ret
         }
     )
-}
-
-/// This is the old version of contract_check_ensures kept here for bootstrap only.
-#[cfg(bootstrap)]
-#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
-#[rustc_intrinsic]
-pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
-    if contract_checks() && !cond(ret) {
-        crate::panicking::panic_nounwind("failed ensures check");
-    }
 }
 
 /// The intrinsic will return the size stored in that vtable.
@@ -3498,7 +2661,7 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 /// More specifically, this is the offset in bytes between successive
 /// items of the same type, including alignment padding.
 ///
-/// The stabilized version of this intrinsic is [`size_of`].
+/// The stabilized version of this intrinsic is [`core::mem::size_of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
@@ -3512,29 +2675,20 @@ pub const fn size_of<T>() -> usize;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The stabilized version of this intrinsic is [`align_of`].
+/// The stabilized version of this intrinsic is [`core::mem::align_of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn min_align_of<T>() -> usize;
-
-/// The preferred alignment of a type.
-///
-/// This intrinsic does not have a stable counterpart.
-/// It's "tracking issue" is [#91971](https://github.com/rust-lang/rust/issues/91971).
-#[rustc_nounwind]
-#[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_intrinsic]
-pub const unsafe fn pref_align_of<T>() -> usize;
+pub const fn align_of<T>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The to-be-stabilized version of this intrinsic is [`crate::mem::variant_count`].
 #[rustc_nounwind]
@@ -3544,7 +2698,7 @@ pub const fn variant_count<T>() -> usize;
 
 /// The size of the referenced value in bytes.
 ///
-/// The stabilized version of this intrinsic is [`size_of_val`].
+/// The stabilized version of this intrinsic is [`core::mem::size_of_val`].
 ///
 /// # Safety
 ///
@@ -3557,7 +2711,7 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 /// The required alignment of the referenced value.
 ///
-/// The stabilized version of this intrinsic is [`align_of_val`].
+/// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
 ///
 /// # Safety
 ///
@@ -3566,14 +2720,14 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
-pub const unsafe fn min_align_of_val<T: ?Sized>(ptr: *const T) -> usize;
+pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
 /// Gets a static string slice containing the name of a type.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::type_name`].
 #[rustc_nounwind]
@@ -3585,16 +2739,29 @@ pub const fn type_name<T: ?Sized>() -> &'static str;
 /// function will return the same value for a type regardless of whichever
 /// crate it is invoked in.
 ///
-/// Note that, unlike most intrinsics, this is safe to call;
-/// it does not require an `unsafe` block.
-/// Therefore, implementations must not require the user to uphold
-/// any safety invariants.
+/// Note that, unlike most intrinsics, this can only be called at compile-time
+/// as backends do not have an implementation for it. The only caller (its
+/// stable counterpart) wraps this intrinsic call in a `const` block so that
+/// backends only see an evaluated constant.
 ///
 /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_id<T: ?Sized + 'static>() -> u128;
+pub const fn type_id<T: ?Sized + 'static>() -> crate::any::TypeId;
+
+/// Tests (at compile-time) if two [`crate::any::TypeId`] instances identify the
+/// same type. This is necessary because at const-eval time the actual discriminating
+/// data is opaque and cannot be inspected directly.
+///
+/// The stabilized version of this intrinsic is the [PartialEq] impl for [`core::any::TypeId`].
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+#[rustc_do_not_const_check]
+pub const fn type_id_eq(a: crate::any::TypeId, b: crate::any::TypeId) -> bool {
+    a.data == b.data
+}
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
@@ -3605,18 +2772,9 @@ pub const fn type_id<T: ?Sized + 'static>() -> u128;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn aggregate_raw_ptr<P: AggregateRawPtr<D, Metadata = M>, D, M>(data: D, meta: M) -> P;
-
-#[unstable(feature = "core_intrinsics", issue = "none")]
-pub trait AggregateRawPtr<D> {
-    type Metadata: Copy;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*const T> for *const P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
-impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
-    type Metadata = <P as ptr::Pointee>::Metadata;
-}
+pub const fn aggregate_raw_ptr<P: bounds::BuiltinDeref, D, M>(data: D, meta: M) -> P
+where
+    <P as bounds::BuiltinDeref>::Pointee: ptr::Pointee<Metadata = M>;
 
 /// Lowers in MIR to `Rvalue::UnaryOp` with `UnOp::PtrMetadata`.
 ///
@@ -3625,310 +2783,42 @@ impl<P: ?Sized, T: ptr::Thin> AggregateRawPtr<*mut T> for *mut P {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const P) -> M;
+pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + PointeeSized, M>(ptr: *const P) -> M;
 
-// Some functions are defined here because they accidentally got made
-// available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
-// (`transmute` also falls into this category, but it cannot be wrapped due to the
-// check that `T` and `U` have the same size.)
-
-/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-/// and destination must *not* overlap.
-///
-/// For regions of memory which might overlap, use [`copy`] instead.
-///
-/// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the source and destination arguments swapped,
-/// and `count` counting the number of `T`s instead of bytes.
-///
-/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
-/// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memcpy`]: https://en.cppreference.com/w/c/string/byte/memcpy
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-///
-/// * Both `src` and `dst` must be properly aligned.
-///
-/// * The region of memory beginning at `src` with a size of `count *
-///   size_of::<T>()` bytes must *not* overlap with the region of memory
-///   beginning at `dst` with the same size.
-///
-/// Like [`read`], `copy_nonoverlapping` creates a bitwise copy of `T`, regardless of
-/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using *both* the values
-/// in the region beginning at `*src` and the region beginning at `*dst` can
-/// [violate memory safety][read-ownership].
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be properly aligned.
-///
-/// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Manually implement [`Vec::append`]:
-///
-/// ```
-/// use std::ptr;
-///
-/// /// Moves all the elements of `src` into `dst`, leaving `src` empty.
-/// fn append<T>(dst: &mut Vec<T>, src: &mut Vec<T>) {
-///     let src_len = src.len();
-///     let dst_len = dst.len();
-///
-///     // Ensure that `dst` has enough capacity to hold all of `src`.
-///     dst.reserve(src_len);
-///
-///     unsafe {
-///         // The call to add is always safe because `Vec` will never
-///         // allocate more than `isize::MAX` bytes.
-///         let dst_ptr = dst.as_mut_ptr().add(dst_len);
-///         let src_ptr = src.as_ptr();
-///
-///         // Truncate `src` without dropping its contents. We do this first,
-///         // to avoid problems in case something further down panics.
-///         src.set_len(0);
-///
-///         // The two regions cannot overlap because mutable references do
-///         // not alias, and two different vectors cannot own the same
-///         // memory.
-///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
-///
-///         // Notify `dst` that it now holds the contents of `src`.
-///         dst.set_len(dst_len + src_len);
-///     }
-/// }
-///
-/// let mut a = vec!['r'];
-/// let mut b = vec!['u', 's', 't'];
-///
-/// append(&mut a, &mut b);
-///
-/// assert_eq!(a, &['r', 'u', 's', 't']);
-/// assert!(b.is_empty());
-/// ```
-///
-/// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
-#[doc(alias = "memcpy")]
+/// This is an accidentally-stable alias to [`ptr::copy_nonoverlapping`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::copy_nonoverlapping` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy_nonoverlapping"]
-pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
-    ub_checks::assert_unsafe_precondition!(
-        check_language_ub,
-        "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
-        (
-            src: *const () = src as *const (),
-            dst: *mut () = dst as *mut (),
-            size: usize = size_of::<T>(),
-            align: usize = align_of::<T>(),
-            count: usize = count,
-        ) => {
-            let zero_size = count == 0 || size == 0;
-            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
-                && ub_checks::maybe_is_nonoverlapping(src, dst, size, count)
-        }
-    );
-
-    // SAFETY: the safety contract for `copy_nonoverlapping` must be
-    // upheld by the caller.
-    unsafe { copy_nonoverlapping(src, dst, count) }
-}
-
-/// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-/// and destination may overlap.
-///
-/// If the source and destination will *never* overlap,
-/// [`copy_nonoverlapping`] can be used instead.
-///
-/// `copy` is semantically equivalent to C's [`memmove`], but
-/// with the source and destination arguments swapped,
-/// and `count` counting the number of `T`s instead of bytes.
-/// Copying takes place as if the bytes were copied from `src`
-/// to a temporary array and then copied from the array to `dst`.
-///
-/// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
-/// requirements of `T`. The initialization state is preserved exactly.
-///
-/// [`memmove`]: https://en.cppreference.com/w/c/string/byte/memmove
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
-///   when `src` is read for `count * size_of::<T>()` bytes. (This means if the memory ranges
-///   overlap, the `dst` pointer must not be invalidated by `src` reads.)
-///
-/// * Both `src` and `dst` must be properly aligned.
-///
-/// Like [`read`], `copy` creates a bitwise copy of `T`, regardless of
-/// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the values
-/// in the region beginning at `*src` and the region beginning at `*dst` can
-/// [violate memory safety][read-ownership].
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointers must be properly aligned.
-///
-/// [`read`]: crate::ptr::read
-/// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Efficiently create a Rust vector from an unsafe buffer:
-///
-/// ```
-/// use std::ptr;
-///
-/// /// # Safety
-/// ///
-/// /// * `ptr` must be correctly aligned for its type and non-zero.
-/// /// * `ptr` must be valid for reads of `elts` contiguous elements of type `T`.
-/// /// * Those elements must not be used after calling this function unless `T: Copy`.
-/// # #[allow(dead_code)]
-/// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
-///     let mut dst = Vec::with_capacity(elts);
-///
-///     // SAFETY: Our precondition ensures the source is aligned and valid,
-///     // and `Vec::with_capacity` ensures that we have usable space to write them.
-///     unsafe { ptr::copy(ptr, dst.as_mut_ptr(), elts); }
-///
-///     // SAFETY: We created it with this much capacity earlier,
-///     // and the previous `copy` has initialized these elements.
-///     unsafe { dst.set_len(elts); }
-///     dst
-/// }
-/// ```
-#[doc(alias = "memmove")]
+/// This is an accidentally-stable alias to [`ptr::copy`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::copy` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_copy"]
-pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
 
-    // SAFETY: the safety contract for `copy` must be upheld by the caller.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
-            (
-                src: *const () = src as *const (),
-                dst: *mut () = dst as *mut (),
-                align: usize = align_of::<T>(),
-                zero_size: bool = T::IS_ZST || count == 0,
-            ) =>
-            ub_checks::maybe_is_aligned_and_not_null(src, align, zero_size)
-                && ub_checks::maybe_is_aligned_and_not_null(dst, align, zero_size)
-        );
-        copy(src, dst, count)
-    }
-}
-
-/// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-/// `val`.
-///
-/// `write_bytes` is similar to C's [`memset`], but sets `count *
-/// size_of::<T>()` bytes to `val`.
-///
-/// [`memset`]: https://en.cppreference.com/w/c/string/byte/memset
-///
-/// # Safety
-///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes.
-///
-/// * `dst` must be properly aligned.
-///
-/// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointer must be properly aligned.
-///
-/// Additionally, note that changing `*dst` in this way can easily lead to undefined behavior (UB)
-/// later if the written bytes are not a valid representation of some `T`. For instance, the
-/// following is an **incorrect** use of this function:
-///
-/// ```rust,no_run
-/// unsafe {
-///     let mut value: u8 = 0;
-///     let ptr: *mut bool = &mut value as *mut u8 as *mut bool;
-///     let _bool = ptr.read(); // This is fine, `ptr` points to a valid `bool`.
-///     ptr.write_bytes(42u8, 1); // This function itself does not cause UB...
-///     let _bool = ptr.read(); // ...but it makes this operation UB! ⚠️
-/// }
-/// ```
-///
-/// [valid]: crate::ptr#safety
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::ptr;
-///
-/// let mut vec = vec![0u32; 4];
-/// unsafe {
-///     let vec_ptr = vec.as_mut_ptr();
-///     ptr::write_bytes(vec_ptr, 0xfe, 2);
-/// }
-/// assert_eq!(vec, [0xfefefefe, 0xfefefefe, 0, 0]);
-/// ```
-#[doc(alias = "memset")]
+/// This is an accidentally-stable alias to [`ptr::write_bytes`]; use that instead.
+// Note (intentionally not in the doc comment): `ptr::write_bytes` adds some extra
+// debug assertions; if you are writing compiler tests or code inside the standard library
+// that wants to avoid those debug assertions, directly call this intrinsic instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
-#[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
-#[inline(always)]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[rustc_diagnostic_item = "ptr_write_bytes"]
-pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
-    #[rustc_intrinsic_const_stable_indirect]
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
 
-    // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
-            (
-                addr: *const () = dst as *const (),
-                align: usize = align_of::<T>(),
-                zero_size: bool = T::IS_ZST || count == 0,
-            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, zero_size)
-        );
-        write_bytes(dst, val, count)
-    }
-}
-
-/// Returns the minimum of two `f16` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3941,7 +2831,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[rustc_intrinsic]
 pub const fn minnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the minimum of two `f32` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f32` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3955,7 +2845,7 @@ pub const fn minnumf16(x: f16, y: f16) -> f16;
 #[rustc_intrinsic]
 pub const fn minnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the minimum of two `f64` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f64` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3969,7 +2859,7 @@ pub const fn minnumf32(x: f32, y: f32) -> f32;
 #[rustc_intrinsic]
 pub const fn minnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the minimum of two `f128` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f128` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3982,7 +2872,91 @@ pub const fn minnumf64(x: f64, y: f64) -> f64;
 #[rustc_intrinsic]
 pub const fn minnumf128(x: f128, y: f128) -> f128;
 
-/// Returns the maximum of two `f16` values.
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn minimumf16(x: f16, y: f16) -> f16 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn minimumf32(x: f32, y: f32) -> f32 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn minimumf64(x: f64, y: f64) -> f64 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn minimumf128(x: f128, y: f128) -> f128 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
+
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f16` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3995,7 +2969,7 @@ pub const fn minnumf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn maxnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the maximum of two `f32` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f32` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4009,7 +2983,7 @@ pub const fn maxnumf16(x: f16, y: f16) -> f16;
 #[rustc_intrinsic]
 pub const fn maxnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the maximum of two `f64` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f64` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4023,7 +2997,7 @@ pub const fn maxnumf32(x: f32, y: f32) -> f32;
 #[rustc_intrinsic]
 pub const fn maxnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the maximum of two `f128` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f128` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4035,6 +3009,86 @@ pub const fn maxnumf64(x: f64, y: f64) -> f64;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn maxnumf128(x: f128, y: f128) -> f128;
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn maximumf16(x: f16, y: f16) -> f16 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn maximumf32(x: f32, y: f32) -> f32 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn maximumf64(x: f64, y: f64) -> f64 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn maximumf128(x: f128, y: f128) -> f128 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
 
 /// Returns the absolute value of an `f16`.
 ///
@@ -4103,6 +3157,44 @@ pub const unsafe fn copysignf64(x: f64, y: f64) -> f64;
 #[rustc_intrinsic]
 pub const unsafe fn copysignf128(x: f128, y: f128) -> f128;
 
+/// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
+/// with `df` as the derivative function and `args` as its arguments.
+///
+/// Used internally as the body of `df` when expanding the `#[autodiff_forward]`
+/// and `#[autodiff_reverse]` attribute macros.
+///
+/// Type Parameters:
+/// - `F`: The original function to differentiate. Must be a function item.
+/// - `G`: The derivative function. Must be a function item.
+/// - `T`: A tuple of arguments passed to `df`.
+/// - `R`: The return type of the derivative function.
+///
+/// This shows where the `autodiff` intrinsic is used during macro expansion:
+///
+/// ```rust,ignore (macro example)
+/// #[autodiff_forward(df1, Dual, Const, Dual)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// expands to:
+///
+/// ```rust,ignore (macro example)
+/// #[rustc_autodiff]
+/// #[inline(never)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     ::core::panicking::panic("not implemented")
+/// }
+/// #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
+/// pub fn df1(x: &[f64], bx_0: &[f64], y: f64) -> (f64, f64) {
+///     ::core::intrinsics::autodiff(f1::<>, df1::<>, (x, bx_0, y))
+/// }
+/// ```
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
@@ -4126,3 +3218,25 @@ pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize
         }
     )
 }
+
+/// Copies the current location of arglist `src` to the arglist `dst`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+
+/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// argument `ap` points to.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_arg<T: VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
+
+/// Destroy the arglist `ap` after initialization with `va_start` or `va_copy`.
+///
+/// FIXME: document safety requirements
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub unsafe fn va_end(ap: &mut VaListImpl<'_>);

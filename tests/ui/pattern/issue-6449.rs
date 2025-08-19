@@ -13,32 +13,32 @@ enum Other {
 
 fn main() {
     match Foo::Baz {
-        ::Foo::Bar(3) => panic!(),
-        ::Foo::Bar(_) if false => panic!(),
-        ::Foo::Bar(..) if false => panic!(),
-        ::Foo::Bar(_n) => panic!(),
-        ::Foo::Baz => {}
+        crate::Foo::Bar(3) => panic!(),
+        crate::Foo::Bar(_) if false => panic!(),
+        crate::Foo::Bar(..) if false => panic!(),
+        crate::Foo::Bar(_n) => panic!(),
+        crate::Foo::Baz => {}
     }
     match Foo::Bar(3) {
-        ::Foo::Bar(3) => {}
-        ::Foo::Bar(_) if false => panic!(),
-        ::Foo::Bar(..) if false => panic!(),
-        ::Foo::Bar(_n) => panic!(),
-        ::Foo::Baz => panic!(),
+        crate::Foo::Bar(3) => {}
+        crate::Foo::Bar(_) if false => panic!(),
+        crate::Foo::Bar(..) if false => panic!(),
+        crate::Foo::Bar(_n) => panic!(),
+        crate::Foo::Baz => panic!(),
     }
     match Foo::Bar(4) {
-        ::Foo::Bar(3) => panic!(),
-        ::Foo::Bar(_) if false => panic!(),
-        ::Foo::Bar(..) if false => panic!(),
-        ::Foo::Bar(n) => assert_eq!(n, 4),
-        ::Foo::Baz => panic!(),
+        crate::Foo::Bar(3) => panic!(),
+        crate::Foo::Bar(_) if false => panic!(),
+        crate::Foo::Bar(..) if false => panic!(),
+        crate::Foo::Bar(n) => assert_eq!(n, 4),
+        crate::Foo::Baz => panic!(),
     }
 
     match Other::Other1(Foo::Baz) {
-        ::Other::Other1(::Foo::Baz) => {}
-        ::Other::Other1(::Foo::Bar(_)) => {}
-        ::Other::Other2(::Foo::Baz, ::Foo::Bar(_)) => {}
-        ::Other::Other2(::Foo::Bar(..), ::Foo::Baz) => {}
-        ::Other::Other2(..) => {}
+        crate::Other::Other1(crate::Foo::Baz) => {}
+        crate::Other::Other1(crate::Foo::Bar(_)) => {}
+        crate::Other::Other2(crate::Foo::Baz, crate::Foo::Bar(_)) => {}
+        crate::Other::Other2(crate::Foo::Bar(..), crate::Foo::Baz) => {}
+        crate::Other::Other2(..) => {}
     }
 }

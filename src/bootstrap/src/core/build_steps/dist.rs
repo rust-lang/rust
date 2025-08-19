@@ -19,11 +19,12 @@ use object::read::archive::ArchiveFile;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::core::build_steps::compile::{get_codegen_backend_file, normalize_codegen_backend_name};
 use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::tool::{self, Tool};
+use crate::core::build_steps::tool::{self, RustcPrivateCompilers, Tool};
 use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
@@ -32,7 +33,7 @@ use crate::utils::helpers::{
     exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
-use crate::{Compiler, DependencyType, FileType, LLVM_TOOLS, Mode, trace};
+use crate::{CodegenBackendKind, Compiler, DependencyType, FileType, LLVM_TOOLS, Mode, trace};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     format!("{}-{}", component, builder.rust_package_vers())
@@ -84,11 +85,16 @@ impl Step for Docs {
         tarball.add_file(builder.src.join("src/doc/robots.txt"), dest, FileType::Regular);
         Some(tarball.generate())
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("docs", self.host))
+    }
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct JsonDocs {
-    pub host: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for JsonDocs {
@@ -101,24 +107,27 @@ impl Step for JsonDocs {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(JsonDocs { host: run.target });
+        run.builder.ensure(JsonDocs {
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            target: run.target,
+        });
     }
 
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let host = self.host;
-        builder.ensure(crate::core::build_steps::doc::Std::new(
-            builder.top_stage,
-            host,
+        let target = self.target;
+        let directory = builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
+            self.build_compiler,
+            target,
             DocumentationFormat::Json,
         ));
 
         let dest = "share/doc/rust/json";
 
-        let mut tarball = Tarball::new(builder, "rust-docs-json", &host.triple);
+        let mut tarball = Tarball::new(builder, "rust-docs-json", &target.triple);
         tarball.set_product_name("Rust Documentation In JSON Format");
         tarball.is_preview(true);
-        tarball.add_bulk_dir(builder.json_doc_out(host), dest);
+        tarball.add_bulk_dir(directory, dest);
         Some(tarball.generate())
     }
 }
@@ -131,7 +140,7 @@ pub struct RustcDocs {
 impl Step for RustcDocs {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -170,36 +179,12 @@ fn find_files(files: &[&str], path: &[PathBuf]) -> Vec<PathBuf> {
     found
 }
 
-fn make_win_dist(
-    rust_root: &Path,
-    plat_root: &Path,
-    target: TargetSelection,
-    builder: &Builder<'_>,
-) {
+fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
     if builder.config.dry_run() {
         return;
     }
 
-    //Ask gcc where it keeps its stuff
-    let mut cmd = command(builder.cc(target));
-    cmd.arg("-print-search-dirs");
-    let gcc_out = cmd.run_capture_stdout(builder).stdout();
-
-    let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
-    let mut lib_path = Vec::new();
-
-    for line in gcc_out.lines() {
-        let idx = line.find(':').unwrap();
-        let key = &line[..idx];
-        let trim_chars: &[_] = &[' ', '='];
-        let value = env::split_paths(line[(idx + 1)..].trim_start_matches(trim_chars));
-
-        if key == "programs" {
-            bin_path.extend(value);
-        } else if key == "libraries" {
-            lib_path.extend(value);
-        }
-    }
+    let (bin_path, lib_path) = get_cc_search_dirs(target, builder);
 
     let compiler = if target == "i686-pc-windows-gnu" {
         "i686-w64-mingw32-gcc.exe"
@@ -209,12 +194,6 @@ fn make_win_dist(
         "gcc.exe"
     };
     let target_tools = [compiler, "ld.exe", "dlltool.exe", "libwinpthread-1.dll"];
-    let mut rustc_dlls = vec!["libwinpthread-1.dll"];
-    if target.starts_with("i686-") {
-        rustc_dlls.push("libgcc_s_dw2-1.dll");
-    } else {
-        rustc_dlls.push("libgcc_s_seh-1.dll");
-    }
 
     // Libraries necessary to link the windows-gnu toolchains.
     // System libraries will be preferred if they are available (see #67429).
@@ -270,24 +249,7 @@ fn make_win_dist(
 
     //Find mingw artifacts we want to bundle
     let target_tools = find_files(&target_tools, &bin_path);
-    let rustc_dlls = find_files(&rustc_dlls, &bin_path);
     let target_libs = find_files(&target_libs, &lib_path);
-
-    // Copy runtime dlls next to rustc.exe
-    let rust_bin_dir = rust_root.join("bin/");
-    fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
-    for src in &rustc_dlls {
-        builder.copy_link_to_folder(src, &rust_bin_dir);
-    }
-
-    if builder.config.lld_enabled {
-        // rust-lld.exe also needs runtime dlls
-        let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
-        fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
-        for src in &rustc_dlls {
-            builder.copy_link_to_folder(src, &rust_target_bin_dir);
-        }
-    }
 
     //Copy platform tools to platform-specific bin directory
     let plat_target_bin_self_contained_dir =
@@ -314,6 +276,82 @@ fn make_win_dist(
     for src in target_libs {
         builder.copy_link_to_folder(&src, &plat_target_lib_self_contained_dir);
     }
+}
+
+fn runtime_dll_dist(rust_root: &Path, target: TargetSelection, builder: &Builder<'_>) {
+    if builder.config.dry_run() {
+        return;
+    }
+
+    let (bin_path, libs_path) = get_cc_search_dirs(target, builder);
+
+    let mut rustc_dlls = vec![];
+    // windows-gnu and windows-gnullvm require different runtime libs
+    if target.ends_with("windows-gnu") {
+        rustc_dlls.push("libwinpthread-1.dll");
+        if target.starts_with("i686-") {
+            rustc_dlls.push("libgcc_s_dw2-1.dll");
+        } else {
+            rustc_dlls.push("libgcc_s_seh-1.dll");
+        }
+    } else if target.ends_with("windows-gnullvm") {
+        rustc_dlls.push("libunwind.dll");
+    } else {
+        panic!("Vendoring of runtime DLLs for `{target}` is not supported`");
+    }
+    // FIXME(#144656): Remove this whole `let ...`
+    let bin_path = if target.ends_with("windows-gnullvm") && builder.host_target != target {
+        bin_path
+            .into_iter()
+            .chain(libs_path.iter().map(|path| path.with_file_name("bin")))
+            .collect()
+    } else {
+        bin_path
+    };
+    let rustc_dlls = find_files(&rustc_dlls, &bin_path);
+
+    // Copy runtime dlls next to rustc.exe
+    let rust_bin_dir = rust_root.join("bin/");
+    fs::create_dir_all(&rust_bin_dir).expect("creating rust_bin_dir failed");
+    for src in &rustc_dlls {
+        builder.copy_link_to_folder(src, &rust_bin_dir);
+    }
+
+    if builder.config.lld_enabled {
+        // rust-lld.exe also needs runtime dlls
+        let rust_target_bin_dir = rust_root.join("lib/rustlib").join(target).join("bin");
+        fs::create_dir_all(&rust_target_bin_dir).expect("creating rust_target_bin_dir failed");
+        for src in &rustc_dlls {
+            builder.copy_link_to_folder(src, &rust_target_bin_dir);
+        }
+    }
+}
+
+fn get_cc_search_dirs(
+    target: TargetSelection,
+    builder: &Builder<'_>,
+) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    //Ask gcc where it keeps its stuff
+    let mut cmd = command(builder.cc(target));
+    cmd.arg("-print-search-dirs");
+    let gcc_out = cmd.run_capture_stdout(builder).stdout();
+
+    let mut bin_path: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap_or_default()).collect();
+    let mut lib_path = Vec::new();
+
+    for line in gcc_out.lines() {
+        let idx = line.find(':').unwrap();
+        let key = &line[..idx];
+        let trim_chars: &[_] = &[' ', '='];
+        let value = env::split_paths(line[(idx + 1)..].trim_start_matches(trim_chars));
+
+        if key == "programs" {
+            bin_path.extend(value);
+        } else if key == "libraries" {
+            lib_path.extend(value);
+        }
+    }
+    (bin_path, lib_path)
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -346,13 +384,13 @@ impl Step for Mingw {
         let mut tarball = Tarball::new(builder, "rust-mingw", &host.triple);
         tarball.set_product_name("Rust MinGW");
 
-        // The first argument is a "temporary directory" which is just
-        // thrown away (this contains the runtime DLLs included in the rustc package
-        // above) and the second argument is where to place all the MinGW components
-        // (which is what we want).
-        make_win_dist(&tmpdir(builder), tarball.image_dir(), host, builder);
+        make_win_dist(tarball.image_dir(), host, builder);
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("mingw", self.host))
     }
 }
 
@@ -364,7 +402,7 @@ pub struct Rustc {
 impl Step for Rustc {
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc")
@@ -386,17 +424,14 @@ impl Step for Rustc {
         prepare_image(builder, compiler, tarball.image_dir());
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
-        // include. The first argument to this script is where to put these DLLs
-        // (the image we're creating), and the second argument is a junk directory
-        // to ignore all other MinGW stuff the script creates.
-        //
+        // include.
         // On 32-bit MinGW we're always including a DLL which needs some extra
         // licenses to distribute. On 64-bit MinGW we don't actually distribute
         // anything requiring us to distribute a license, but it's likely the
         // install will *also* include the rust-mingw package, which also needs
         // licenses, so to be safe we just include it here in all MinGW packages.
-        if host.ends_with("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
-            make_win_dist(tarball.image_dir(), &tmpdir(builder), host, builder);
+        if host.contains("pc-windows-gnu") && builder.config.dist_include_mingw_linker {
+            runtime_dll_dist(tarball.image_dir(), host, builder);
             tarball.add_dir(builder.src.join("src/etc/third-party"), "share/doc");
         }
 
@@ -417,19 +452,20 @@ impl Step for Rustc {
                 .as_ref()
                 .is_none_or(|tools| tools.iter().any(|tool| tool == "rustdoc"))
             {
-                let rustdoc = builder.rustdoc(compiler);
+                let rustdoc = builder.rustdoc_for_compiler(compiler);
                 builder.install(&rustdoc, &image.join("bin"), FileType::Executable);
             }
 
             let ra_proc_macro_srv_compiler =
-                builder.compiler_for(compiler.stage, builder.config.build, compiler.host);
-            builder.ensure(compile::Rustc::new(ra_proc_macro_srv_compiler, compiler.host));
+                builder.compiler_for(compiler.stage, builder.config.host_target, compiler.host);
+            let compilers = RustcPrivateCompilers::from_build_compiler(
+                builder,
+                ra_proc_macro_srv_compiler,
+                compiler.host,
+            );
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
-                tool::RustAnalyzerProcMacroSrv {
-                    compiler: ra_proc_macro_srv_compiler,
-                    target: compiler.host,
-                },
+                tool::RustAnalyzerProcMacroSrv::from_compilers(compilers),
                 builder.kind,
             ) {
                 let dst = image.join("libexec");
@@ -442,7 +478,19 @@ impl Step for Rustc {
             if libdir_relative.to_str() != Some("bin") {
                 let libdir = builder.rustc_libdir(compiler);
                 for entry in builder.read_dir(&libdir) {
-                    if is_dylib(&entry.path()) {
+                    // A safeguard that we will not ship libgccjit.so from the libdir, in case the
+                    // GCC codegen backend is enabled by default.
+                    // Long-term we should probably split the config options for:
+                    // - Include cg_gcc in the rustc sysroot by default
+                    // - Run dist of a specific codegen backend in `x dist` by default
+                    if is_dylib(&entry.path())
+                        && !entry
+                            .path()
+                            .file_name()
+                            .and_then(|n| n.to_str())
+                            .map(|n| n.contains("libgccjit"))
+                            .unwrap_or(false)
+                    {
                         // Don't use custom libdir here because ^lib/ will be resolved again
                         // with installer
                         builder.install(&entry.path(), &image.join("lib"), FileType::NativeLibrary);
@@ -539,6 +587,10 @@ impl Step for Rustc {
                 license(&entry.path());
             }
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("rustc", self.compiler.host))
     }
 }
 
@@ -696,7 +748,7 @@ impl Step for Std {
         run.builder.ensure(Std {
             compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -711,7 +763,7 @@ impl Step for Std {
             return None;
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        builder.std(compiler, target);
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
@@ -722,6 +774,10 @@ impl Step for Std {
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("std", self.target).built_by(self.compiler))
     }
 }
 
@@ -738,7 +794,7 @@ pub struct RustcDev {
 impl Step for RustcDev {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rustc-dev")
@@ -748,7 +804,7 @@ impl Step for RustcDev {
         run.builder.ensure(RustcDev {
             compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -776,7 +832,8 @@ impl Step for RustcDev {
         copy_src_dirs(
             builder,
             &builder.src,
-            &["compiler"],
+            // The compiler has a path dependency on proc_macro, so make sure to include it.
+            &["compiler", "library/proc_macro"],
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );
@@ -814,7 +871,7 @@ impl Step for Analysis {
             // through the sysroot uplifting.
             compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -859,7 +916,20 @@ fn copy_src_dirs(
     exclude_dirs: &[&str],
     dst_dir: &Path,
 ) {
+    // The src directories should be relative to `base`, we depend on them not being absolute
+    // paths below.
+    for src_dir in src_dirs {
+        assert!(Path::new(src_dir).is_relative());
+    }
+
+    // Iterating, filtering and copying a large number of directories can be quite slow.
+    // Avoid doing it in dry run (and thus also tests).
+    if builder.config.dry_run() {
+        return;
+    }
+
     fn filter_fn(exclude_dirs: &[&str], dir: &str, path: &Path) -> bool {
+        // The paths are relative, e.g. `llvm-project/...`.
         let spath = match path.to_str() {
             Some(path) => path,
             None => return false,
@@ -867,51 +937,53 @@ fn copy_src_dirs(
         if spath.ends_with('~') || spath.ends_with(".pyc") {
             return false;
         }
+        // Normalize slashes
+        let spath = spath.replace("\\", "/");
 
-        const LLVM_PROJECTS: &[&str] = &[
+        static LLVM_PROJECTS: &[&str] = &[
             "llvm-project/clang",
-            "llvm-project\\clang",
             "llvm-project/libunwind",
-            "llvm-project\\libunwind",
             "llvm-project/lld",
-            "llvm-project\\lld",
             "llvm-project/lldb",
-            "llvm-project\\lldb",
             "llvm-project/llvm",
-            "llvm-project\\llvm",
             "llvm-project/compiler-rt",
-            "llvm-project\\compiler-rt",
             "llvm-project/cmake",
-            "llvm-project\\cmake",
             "llvm-project/runtimes",
-            "llvm-project\\runtimes",
+            "llvm-project/third-party",
         ];
-        if spath.contains("llvm-project")
-            && !spath.ends_with("llvm-project")
-            && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))
-        {
-            return false;
-        }
+        if spath.starts_with("llvm-project") && spath != "llvm-project" {
+            if !LLVM_PROJECTS.iter().any(|path| spath.starts_with(path)) {
+                return false;
+            }
 
-        const LLVM_TEST: &[&str] = &["llvm-project/llvm/test", "llvm-project\\llvm\\test"];
-        if LLVM_TEST.iter().any(|path| spath.contains(path))
-            && (spath.ends_with(".ll") || spath.ends_with(".td") || spath.ends_with(".s"))
-        {
-            return false;
+            // Keep siphash third-party dependency
+            if spath.starts_with("llvm-project/third-party")
+                && spath != "llvm-project/third-party"
+                && !spath.starts_with("llvm-project/third-party/siphash")
+            {
+                return false;
+            }
+
+            if spath.starts_with("llvm-project/llvm/test")
+                && (spath.ends_with(".ll") || spath.ends_with(".td") || spath.ends_with(".s"))
+            {
+                return false;
+            }
         }
 
         // Cargo tests use some files like `.gitignore` that we would otherwise exclude.
-        const CARGO_TESTS: &[&str] = &["tools/cargo/tests", "tools\\cargo\\tests"];
-        if CARGO_TESTS.iter().any(|path| spath.contains(path)) {
+        if spath.starts_with("tools/cargo/tests") {
             return true;
         }
 
-        let full_path = Path::new(dir).join(path);
-        if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
-            return false;
+        if !exclude_dirs.is_empty() {
+            let full_path = Path::new(dir).join(path);
+            if exclude_dirs.iter().any(|excl| full_path == Path::new(excl)) {
+                return false;
+            }
         }
 
-        let excludes = [
+        static EXCLUDES: &[&str] = &[
             "CVS",
             "RCS",
             "SCCS",
@@ -934,7 +1006,15 @@ fn copy_src_dirs(
             ".hgrags",
             "_darcs",
         ];
-        !path.iter().map(|s| s.to_str().unwrap()).any(|s| excludes.contains(&s))
+
+        // We want to check if any component of `path` doesn't contain the strings in `EXCLUDES`.
+        // However, since we traverse directories top-down in `Builder::cp_link_filtered`,
+        // it is enough to always check only the last component:
+        // - If the path is a file, we will iterate to it and then check it's filename
+        // - If the path is a dir, if it's dir name contains an excluded string, we will not even
+        //   recurse into it.
+        let last_component = path.iter().next_back().map(|s| s.to_str().unwrap()).unwrap();
+        !EXCLUDES.contains(&last_component)
     }
 
     // Copy the directories using our filter
@@ -953,7 +1033,7 @@ impl Step for Src {
     /// The output path of the src installer tarball
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-src")
@@ -1001,6 +1081,10 @@ impl Step for Src {
 
         tarball.generate()
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("src", TargetSelection::default()))
+    }
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
@@ -1010,7 +1094,7 @@ impl Step for PlainSourceTarball {
     /// Produces the location of the tarball generated
     type Output = GeneratedTarball;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1035,18 +1119,20 @@ impl Step for PlainSourceTarball {
         let src_files = [
             // tidy-alphabetical-start
             ".gitmodules",
-            "bootstrap.example.toml",
-            "Cargo.lock",
-            "Cargo.toml",
-            "configure",
             "CONTRIBUTING.md",
             "COPYRIGHT",
+            "Cargo.lock",
+            "Cargo.toml",
             "LICENSE-APACHE",
-            "license-metadata.json",
             "LICENSE-MIT",
             "README.md",
             "RELEASES.md",
             "REUSE.toml",
+            "bootstrap.example.toml",
+            "configure",
+            "license-metadata.json",
+            "package-lock.json",
+            "package.json",
             "x",
             "x.ps1",
             "x.py",
@@ -1149,14 +1235,14 @@ impl Step for PlainSourceTarball {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct Cargo {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
 impl Step for Cargo {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "cargo");
@@ -1165,9 +1251,9 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -1175,12 +1261,10 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let cargo = builder.ensure(tool::Cargo { compiler, target });
+        let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
 
@@ -1205,14 +1289,14 @@ impl Step for Cargo {
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct RustAnalyzer {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
 impl Step for RustAnalyzer {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "rust-analyzer");
@@ -1221,9 +1305,9 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -1231,12 +1315,11 @@ impl Step for RustAnalyzer {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let rust_analyzer = builder.ensure(tool::RustAnalyzer { compiler, target });
+        let rust_analyzer = builder.ensure(tool::RustAnalyzer::from_compilers(compilers));
 
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
@@ -1247,16 +1330,16 @@ impl Step for RustAnalyzer {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Clippy {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
 impl Step for Clippy {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "clippy");
@@ -1265,9 +1348,9 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -1275,16 +1358,15 @@ impl Step for Clippy {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
-
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
 
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder.ensure(tool::Clippy { compiler, target });
-        let cargoclippy = builder.ensure(tool::CargoClippy { compiler, target });
+        let clippy = builder.ensure(tool::Clippy::from_compilers(compilers));
+        let cargoclippy = builder.ensure(tool::CargoClippy::from_compilers(compilers));
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1296,16 +1378,16 @@ impl Step for Clippy {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Miri {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
 impl Step for Miri {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "miri");
@@ -1314,9 +1396,9 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -1331,15 +1413,12 @@ impl Step for Miri {
             return None;
         }
 
-        let compiler = self.compiler;
-        let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(compilers));
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let miri = builder.ensure(tool::Miri { compiler, target });
-        let cargomiri = builder.ensure(tool::CargoMiri { compiler, target });
-
-        let mut tarball = Tarball::new(builder, "miri", &target.triple);
+        let mut tarball = Tarball::new(builder, "miri", &self.target.triple);
         tarball.set_overlay(OverlayKind::Miri);
         tarball.is_preview(true);
         tarball.add_file(&miri.tool_path, "bin", FileType::Executable);
@@ -1349,39 +1428,42 @@ impl Step for Miri {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
-pub struct CodegenBackend {
-    pub compiler: Compiler,
-    pub backend: String,
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct CraneliftCodegenBackend {
+    pub build_compiler: Compiler,
+    pub target: TargetSelection,
 }
 
-impl Step for CodegenBackend {
+impl Step for CraneliftCodegenBackend {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("compiler/rustc_codegen_cranelift")
+        // We only want to build the cranelift backend in `x dist` if the backend was enabled
+        // in rust.codegen-backends.
+        // Sadly, we don't have access to the actual target for which we're disting clif here..
+        // So we just use the host target.
+        let clif_enabled_by_default = run
+            .builder
+            .config
+            .enabled_codegen_backends(run.builder.host_target)
+            .contains(&CodegenBackendKind::Cranelift);
+        run.alias("rustc_codegen_cranelift").default_condition(clif_enabled_by_default)
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if backend == "llvm" {
-                continue; // Already built as part of rustc
-            }
-
-            run.builder.ensure(CodegenBackend {
-                compiler: run.builder.compiler(run.builder.top_stage, run.target),
-                backend: backend.clone(),
-            });
-        }
+        run.builder.ensure(CraneliftCodegenBackend {
+            build_compiler: run.builder.compiler_for(
+                run.builder.top_stage,
+                run.builder.config.host_target,
+                run.target,
+            ),
+            target: run.target,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        if builder.config.dry_run() {
-            return None;
-        }
-
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
@@ -1389,68 +1471,64 @@ impl Step for CodegenBackend {
             return None;
         }
 
-        if !builder.config.codegen_backends(self.compiler.host).contains(&self.backend.to_string())
-        {
-            return None;
-        }
-
-        if self.backend == "cranelift" && !target_supports_cranelift_backend(self.compiler.host) {
+        let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, target);
+        if !target_supports_cranelift_backend(target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return None;
         }
 
-        let compiler = self.compiler;
-        let backend = self.backend;
-
-        let mut tarball =
-            Tarball::new(builder, &format!("rustc-codegen-{}", backend), &compiler.host.triple);
-        if backend == "cranelift" {
-            tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
-        } else {
-            panic!("Unknown backend rustc_codegen_{}", backend);
-        }
+        let mut tarball = Tarball::new(builder, "rustc-codegen-cranelift", &target.triple);
+        tarball.set_overlay(OverlayKind::RustcCodegenCranelift);
         tarball.is_preview(true);
-        tarball.add_legal_and_readme_to(format!("share/doc/rustc_codegen_{}", backend));
+        tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
-        let src = builder.sysroot(compiler);
-        let backends_src = builder.sysroot_codegen_backends(compiler);
-        let backends_rel = backends_src
-            .strip_prefix(src)
+        let stamp = builder.ensure(compile::CraneliftCodegenBackend { compilers });
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        // Get the relative path of where the codegen backend should be stored.
+        let backends_dst = builder.sysroot_codegen_backends(compilers.target_compiler());
+        let backends_rel = backends_dst
+            .strip_prefix(builder.sysroot(compilers.target_compiler()))
             .unwrap()
-            .strip_prefix(builder.sysroot_libdir_relative(compiler))
+            .strip_prefix(builder.sysroot_libdir_relative(compilers.target_compiler()))
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
         let backends_dst = PathBuf::from("lib").join(backends_rel);
 
-        let backend_name = format!("rustc_codegen_{}", backend);
-        let mut found_backend = false;
-        for backend in fs::read_dir(&backends_src).unwrap() {
-            let file_name = backend.unwrap().file_name();
-            if file_name.to_str().unwrap().contains(&backend_name) {
-                tarball.add_file(
-                    backends_src.join(file_name),
-                    &backends_dst,
-                    FileType::NativeLibrary,
-                );
-                found_backend = true;
-            }
-        }
-        assert!(found_backend);
+        let codegen_backend_dylib = get_codegen_backend_file(&stamp);
+        tarball.add_renamed_file(
+            &codegen_backend_dylib,
+            &backends_dst,
+            &normalize_codegen_backend_name(builder, &codegen_backend_dylib),
+            FileType::NativeLibrary,
+        );
 
         Some(tarball.generate())
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::dist("rustc_codegen_cranelift", self.build_compiler.host)
+                .built_by(self.build_compiler),
+        )
+    }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustfmt {
-    pub compiler: Compiler,
+    pub build_compiler: Compiler,
     pub target: TargetSelection,
 }
 
 impl Step for Rustfmt {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "rustfmt");
@@ -1459,9 +1537,9 @@ impl Step for Rustfmt {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
-            compiler: run.builder.compiler_for(
+            build_compiler: run.builder.compiler_for(
                 run.builder.top_stage,
-                run.builder.config.build,
+                run.builder.config.host_target,
                 run.target,
             ),
             target: run.target,
@@ -1469,14 +1547,13 @@ impl Step for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
-        let target = self.target;
+        let compilers =
+            RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target);
 
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let rustfmt = builder.ensure(tool::Rustfmt::from_compilers(compilers));
+        let cargofmt = builder.ensure(tool::Cargofmt::from_compilers(compilers));
 
-        let rustfmt = builder.ensure(tool::Rustfmt { compiler, target });
-        let cargofmt = builder.ensure(tool::Cargofmt { compiler, target });
-        let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
+        let mut tarball = Tarball::new(builder, "rustfmt", &self.target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
         tarball.add_file(&rustfmt.tool_path, "bin", FileType::Executable);
@@ -1496,7 +1573,7 @@ pub struct Extended {
 impl Step for Extended {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
@@ -1506,7 +1583,7 @@ impl Step for Extended {
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
-            host: run.builder.config.build,
+            host: run.builder.config.host_target,
             target: run.target,
         });
     }
@@ -1523,18 +1600,19 @@ impl Step for Extended {
         let mut built_tools = HashSet::new();
         macro_rules! add_component {
             ($name:expr => $step:expr) => {
-                if let Some(tarball) = builder.ensure_if_default($step, Kind::Dist) {
+                if let Some(Some(tarball)) = builder.ensure_if_default($step, Kind::Dist) {
                     tarballs.push(tarball);
                     built_tools.insert($name);
                 }
             };
         }
 
+        let target_compiler = builder.compiler(stage, target);
         // When rust-std package split from rustc, we needed to ensure that during
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
-        tarballs.push(builder.ensure(Rustc { compiler: builder.compiler(stage, target) }));
+        tarballs.push(builder.ensure(Rustc { compiler: target_compiler }));
         tarballs.push(builder.ensure(Std { compiler, target }).expect("missing std"));
 
         if target.is_windows_gnu() {
@@ -1542,19 +1620,23 @@ impl Step for Extended {
         }
 
         add_component!("rust-docs" => Docs { host: target });
-        add_component!("rust-json-docs" => JsonDocs { host: target });
-        add_component!("cargo" => Cargo { compiler, target });
-        add_component!("rustfmt" => Rustfmt { compiler, target });
-        add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
+        // Std stage N is documented with compiler stage N
+        add_component!("rust-json-docs" => JsonDocs { build_compiler: target_compiler, target });
+        add_component!("cargo" => Cargo { build_compiler: compiler, target });
+        add_component!("rustfmt" => Rustfmt { build_compiler: compiler, target });
+        add_component!("rust-analyzer" => RustAnalyzer { build_compiler: compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
-        add_component!("clippy" => Clippy { compiler, target });
-        add_component!("miri" => Miri { compiler, target });
+        add_component!("clippy" => Clippy { build_compiler: compiler, target });
+        add_component!("miri" => Miri { build_compiler: compiler, target });
         add_component!("analysis" => Analysis { compiler, target });
-        add_component!("rustc-codegen-cranelift" => CodegenBackend {
-            compiler: builder.compiler(stage, target),
-            backend: "cranelift".to_string(),
+        add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
+            build_compiler: compiler,
+            target
         });
-        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {compiler, target});
+        add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {
+            build_compiler: compiler,
+            target
+        });
 
         let etc = builder.src.join("src/etc/installer");
 
@@ -1623,7 +1705,7 @@ impl Step for Extended {
             let pkgbuild = |component: &str| {
                 let mut cmd = command("pkgbuild");
                 cmd.arg("--identifier")
-                    .arg(format!("org.rust-lang.{}", component))
+                    .arg(format!("org.rust-lang.{component}"))
                     .arg("--scripts")
                     .arg(pkg.join(component))
                     .arg("--nopayload")
@@ -1680,7 +1762,8 @@ impl Step for Extended {
             cmd.run(builder);
         }
 
-        if target.is_windows() {
+        // FIXME(mati865): `gnullvm` here is temporary, remove it once it can host itself
+        if target.is_windows() && !target.contains("gnullvm") {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 
@@ -2155,7 +2238,7 @@ fn maybe_install_llvm(
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
-        let build_llvm_out = &builder.llvm_out(builder.config.build);
+        let build_llvm_out = &builder.llvm_out(builder.config.host_target);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
             // If we're not using a custom LLVM, make sure we package for the target.
@@ -2227,7 +2310,7 @@ pub struct LlvmTools {
 
 impl Step for LlvmTools {
     type Output = Option<GeneratedTarball>;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2274,12 +2357,17 @@ impl Step for LlvmTools {
 
         let target = self.target;
 
-        /* run only if llvm-config isn't used */
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
-                return None;
-            }
+        // Run only if a custom llvm-config is not used
+        if let Some(config) = builder.config.target_config.get(&target)
+            && !builder.config.llvm_from_ci
+            && config.llvm_config.is_some()
+        {
+            builder.info(&format!("Skipping LlvmTools ({target}): external LLVM"));
+            return None;
+        }
+
+        if !builder.config.dry_run() {
+            builder.require_submodule("src/llvm-project", None);
         }
 
         builder.ensure(crate::core::build_steps::llvm::Llvm { target });
@@ -2294,6 +2382,12 @@ impl Step for LlvmTools {
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
             for tool in tools_to_install(&builder.paths) {
                 let exe = src_bindir.join(exe(tool, target));
+                // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
+                if !exe.exists() && builder.config.llvm_from_ci {
+                    eprintln!("{} does not exist; skipping copy", exe.display());
+                    continue;
+                }
+
                 tarball.add_file(&exe, &dst_bindir, FileType::Executable);
             }
         }
@@ -2308,16 +2402,20 @@ impl Step for LlvmTools {
     }
 }
 
+/// Distributes the `llvm-bitcode-linker` tool so that it can be used by a compiler whose host
+/// is `target`.
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct LlvmBitcodeLinker {
-    pub compiler: Compiler,
+    /// The linker will be compiled by this compiler.
+    pub build_compiler: Compiler,
+    /// The linker will by usable by rustc on this host.
     pub target: TargetSelection,
 }
 
 impl Step for LlvmBitcodeLinker {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let default = should_build_extended_tool(run.builder, "llvm-bitcode-linker");
@@ -2326,9 +2424,8 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
+            build_compiler: tool::LlvmBitcodeLinker::get_build_compiler_for_target(
+                run.builder,
                 run.target,
             ),
             target: run.target,
@@ -2336,13 +2433,10 @@ impl Step for LlvmBitcodeLinker {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(compile::Rustc::new(compiler, target));
-
-        let llbc_linker =
-            builder.ensure(tool::LlvmBitcodeLinker { compiler, target, extra_features: vec![] });
+        let llbc_linker = builder
+            .ensure(tool::LlvmBitcodeLinker::from_build_compiler(self.build_compiler, target));
 
         let self_contained_bin_dir = format!("lib/rustlib/{}/bin/self-contained", target.triple);
 
@@ -2373,7 +2467,7 @@ pub struct RustDev {
 impl Step for RustDev {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("rust-dev")
@@ -2387,11 +2481,15 @@ impl Step for RustDev {
         let target = self.target;
 
         /* run only if llvm-config isn't used */
-        if let Some(config) = builder.config.target_config.get(&target) {
-            if let Some(ref _s) = config.llvm_config {
-                builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
-                return None;
-            }
+        if let Some(config) = builder.config.target_config.get(&target)
+            && let Some(ref _s) = config.llvm_config
+        {
+            builder.info(&format!("Skipping RustDev ({target}): external LLVM"));
+            return None;
+        }
+
+        if !builder.config.dry_run() {
+            builder.require_submodule("src/llvm-project", None);
         }
 
         let mut tarball = Tarball::new(builder, "rust-dev", &target.triple);
@@ -2472,7 +2570,7 @@ pub struct Bootstrap {
 impl Step for Bootstrap {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("bootstrap")
@@ -2512,7 +2610,7 @@ pub struct BuildManifest {
 impl Step for BuildManifest {
     type Output = GeneratedTarball;
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("build-manifest")
@@ -2544,7 +2642,7 @@ pub struct ReproducibleArtifacts {
 impl Step for ReproducibleArtifacts {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.alias("reproducible-artifacts")

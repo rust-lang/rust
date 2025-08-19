@@ -38,7 +38,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, true);
-        let var_data = def.map(|it| it.variant_data(self.db));
+        let var_data = def.map(|it| it.fields(self.db));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -60,7 +60,7 @@ impl InferenceContext<'_> {
             _ if subs.is_empty() => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
@@ -129,7 +129,7 @@ impl InferenceContext<'_> {
             _ if subs.len() == 0 => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db);
+                let variant_data = def.fields(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
@@ -143,7 +143,7 @@ impl InferenceContext<'_> {
                                 {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
-                                        private: true,
+                                        private: Some(local_id),
                                         variant: def,
                                     });
                                 }
@@ -157,7 +157,7 @@ impl InferenceContext<'_> {
                             None => {
                                 self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                     field: inner.into(),
-                                    private: false,
+                                    private: None,
                                     variant: def,
                                 });
                                 self.err_ty()
@@ -435,7 +435,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (expectation_type, expectation_lt) = match expected.as_reference() {
-            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime.clone()),
+            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime),
             None => {
                 let inner_ty = self.table.new_type_var();
                 let inner_lt = self.table.new_lifetime_var();
@@ -459,7 +459,7 @@ impl InferenceContext<'_> {
         expected: &Ty,
         decl: Option<DeclContext>,
     ) -> Ty {
-        let Binding { mode, .. } = self.body.bindings[binding];
+        let Binding { mode, .. } = self.body[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
             default_bm
         } else {
@@ -498,12 +498,12 @@ impl InferenceContext<'_> {
 
         // If `expected` is an infer ty, we try to equate it to an array if the given pattern
         // allows it. See issue #16609
-        if self.pat_is_irrefutable(decl) && expected.is_ty_var() {
-            if let Some(resolved_array_ty) =
+        if self.pat_is_irrefutable(decl)
+            && expected.is_ty_var()
+            && let Some(resolved_array_ty) =
                 self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
-            {
-                self.unify(&expected, &resolved_array_ty);
-            }
+        {
+            self.unify(&expected, &resolved_array_ty);
         }
 
         let expected = self.resolve_ty_shallow(&expected);
@@ -539,17 +539,16 @@ impl InferenceContext<'_> {
 
     fn infer_lit_pat(&mut self, expr: ExprId, expected: &Ty) -> Ty {
         // Like slice patterns, byte string patterns can denote both `&[u8; N]` and `&[u8]`.
-        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr] {
-            if let Some((inner, ..)) = expected.as_reference() {
-                let inner = self.resolve_ty_shallow(inner);
-                if matches!(inner.kind(Interner), TyKind::Slice(_)) {
-                    let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
-                    let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
-                    let ty =
-                        TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty).intern(Interner);
-                    self.write_expr_ty(expr, ty.clone());
-                    return ty;
-                }
+        if let Expr::Literal(Literal::ByteString(_)) = self.body[expr]
+            && let Some((inner, ..)) = expected.as_reference()
+        {
+            let inner = self.resolve_ty_shallow(inner);
+            if matches!(inner.kind(Interner), TyKind::Slice(_)) {
+                let elem_ty = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(Interner);
+                let slice_ty = TyKind::Slice(elem_ty).intern(Interner);
+                let ty = TyKind::Ref(Mutability::Not, static_lifetime(), slice_ty).intern(Interner);
+                self.write_expr_ty(expr, ty.clone());
+                return ty;
             }
         }
 
@@ -597,7 +596,7 @@ impl InferenceContext<'_> {
         let size = consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db));
 
         let elem_ty = self.table.new_type_var();
-        let array_ty = TyKind::Array(elem_ty.clone(), size).intern(Interner);
+        let array_ty = TyKind::Array(elem_ty, size).intern(Interner);
         Some(array_ty)
     }
 
@@ -639,7 +638,7 @@ impl InferenceContext<'_> {
 pub(super) fn contains_explicit_ref_binding(body: &Body, pat_id: PatId) -> bool {
     let mut res = false;
     body.walk_pats(pat_id, &mut |pat| {
-        res |= matches!(body[pat], Pat::Bind { id, .. } if body.bindings[id].mode == BindingAnnotation::Ref);
+        res |= matches!(body[pat], Pat::Bind { id, .. } if body[id].mode == BindingAnnotation::Ref);
     });
     res
 }

@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     }
 
                     let generics_suggestion_span = impl_.generics.span.substitute_dummy({
-                        let range = (item.span.lo()..target.span().lo()).map_range(cx, |src, range| {
+                        let range = (item.span.lo()..target.span().lo()).map_range(cx, |_, src, range| {
                             Some(src.get(range.clone())?.find("impl")? + 4..range.end)
                         });
                         if let Some(range) = range {
@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in impl_.items.iter().map(|item| cx.tcx.hir_impl_item(item.id)) {
+                    for item in impl_.items.iter().map(|&item| cx.tcx.hir_impl_item(item)) {
                         ctr_vis.visit_impl_item(item);
                     }
 
@@ -165,11 +165,12 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let range = (item.span.lo()..body.params[0].pat.span.lo()).map_range(cx, |src, range| {
-                                let (pre, post) = src.get(range.clone())?.split_once("fn")?;
-                                let pos = post.find('(')? + pre.len() + 2;
-                                Some(pos..pos)
-                            });
+                            let range =
+                                (item.span.lo()..body.params[0].pat.span.lo()).map_range(cx, |_, src, range| {
+                                    let (pre, post) = src.get(range.clone())?.split_once("fn")?;
+                                    let pos = post.find('(')? + pre.len() + 2;
+                                    Some(pos..pos)
+                                });
                             if let Some(range) = range {
                                 range.with_ctxt(item.span.ctxt())
                             } else {

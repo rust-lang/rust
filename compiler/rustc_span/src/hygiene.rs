@@ -41,6 +41,7 @@ use tracing::{debug, trace};
 
 use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
 use crate::edition::Edition;
+use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
 use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
@@ -321,6 +322,7 @@ impl ExpnId {
 
     /// `expn_id.outer_expn_is_descendant_of(ctxt)` is equivalent to but faster than
     /// `expn_id.is_descendant_of(ctxt.outer_expn())`.
+    #[inline]
     pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer_expn(ctxt)))
     }
@@ -393,6 +395,7 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn with<R>(f: impl FnOnce(&mut HygieneData) -> R) -> R {
         with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
     }
@@ -405,6 +408,7 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn local_expn_data(&self, expn_id: LocalExpnId) -> &ExpnData {
         self.local_expn_data[expn_id].as_ref().expect("no expansion data for an expansion ID")
     }
@@ -436,23 +440,28 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
+    #[inline]
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
     }
 
+    #[inline]
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
+    #[inline]
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
         let data = &self.syntax_context_data[ctxt.0 as usize];
         (data.outer_expn, data.outer_transparency)
     }
 
+    #[inline]
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
         self.syntax_context_data[ctxt.0 as usize].parent
     }
@@ -717,11 +726,13 @@ impl SyntaxContext {
         SyntaxContext(raw as u32)
     }
 
+    #[inline]
     fn from_usize(raw: usize) -> SyntaxContext {
         SyntaxContext(u32::try_from(raw).unwrap())
     }
 
     /// Extend a syntax context with a given expansion and transparency.
+    #[inline]
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
@@ -742,10 +753,12 @@ impl SyntaxContext {
     /// of g (call it g1), calling remove_mark will result in the SyntaxContext for the
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
+    #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
         HygieneData::with(|data| data.remove_mark(self).0)
     }
 
+    #[inline]
     pub fn marks(self) -> Vec<(ExpnId, Transparency)> {
         HygieneData::with(|data| data.marks(self))
     }
@@ -755,7 +768,9 @@ impl SyntaxContext {
     ///
     /// ```rust
     /// #![feature(decl_macro)]
-    /// mod foo { pub fn f() {} } // `f`'s `SyntaxContext` is empty.
+    /// mod foo {
+    ///     pub fn f() {} // `f`'s `SyntaxContext` is empty.
+    /// }
     /// m!(f);
     /// macro m($f:ident) {
     ///     mod bar {
@@ -775,11 +790,13 @@ impl SyntaxContext {
     /// ```
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
     /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
+    #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| data.adjust(self, expn_id))
     }
 
     /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
+    #[inline]
     pub(crate) fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
             *self = data.normalize_to_macros_2_0(*self);
@@ -900,12 +917,38 @@ impl SyntaxContext {
         HygieneData::with(|data| data.outer_mark(self))
     }
 
+    #[inline]
     pub(crate) fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }
 
+    #[inline]
     pub fn edition(self) -> Edition {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).edition)
+    }
+
+    /// Returns whether this context originates in a foreign crate's external macro.
+    ///
+    /// This is used to test whether a lint should not even begin to figure out whether it should
+    /// be reported on the current node.
+    pub fn in_external_macro(self, sm: &SourceMap) -> bool {
+        let expn_data = self.outer_expn_data();
+        match expn_data.kind {
+            ExpnKind::Root
+            | ExpnKind::Desugaring(
+                DesugaringKind::ForLoop
+                | DesugaringKind::WhileLoop
+                | DesugaringKind::OpaqueTy
+                | DesugaringKind::Async
+                | DesugaringKind::Await,
+            ) => false,
+            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
+            ExpnKind::Macro(MacroKind::Bang, _) => {
+                // Dummy span for the `def_site` means it's an external macro.
+                expn_data.def_site.is_dummy() || sm.is_imported(expn_data.def_site)
+            }
+            ExpnKind::Macro { .. } => true, // definitely a plugin
+        }
     }
 }
 
@@ -1110,7 +1153,7 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
@@ -1166,11 +1209,6 @@ impl AstPass {
 /// The kind of compiler desugaring.
 #[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum DesugaringKind {
-    /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
-    /// However, we do not want to blame `c` for unreachability but rather say that `i`
-    /// is unreachable. This desugaring kind allows us to avoid blaming `c`.
-    /// This also applies to `while` loops.
-    CondTemporary,
     QuestionMark,
     TryBlock,
     YeetExpr,
@@ -1188,13 +1226,23 @@ pub enum DesugaringKind {
     Contract,
     /// A pattern type range start/end
     PatTyRange,
+    /// A format literal.
+    FormatLiteral {
+        /// Was this format literal written in the source?
+        /// - `format!("boo")` => Yes,
+        /// - `format!(concat!("b", "o", "o"))` => No,
+        /// - `format!(include_str!("boo.txt"))` => No,
+        ///
+        /// If it wasn't written in the source then we have to be careful with suggestions about
+        /// rewriting it.
+        source: bool,
+    },
 }
 
 impl DesugaringKind {
     /// The description wording should combine well with "desugaring of {}".
     pub fn descr(self) -> &'static str {
         match self {
-            DesugaringKind::CondTemporary => "`if` or `while` condition",
             DesugaringKind::Async => "`async` block or function",
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
@@ -1206,6 +1254,10 @@ impl DesugaringKind {
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
             DesugaringKind::PatTyRange => "pattern type",
+            DesugaringKind::FormatLiteral { source: true } => "format string literal",
+            DesugaringKind::FormatLiteral { source: false } => {
+                "expression that expanded into a format string literal"
+            }
         }
     }
 
@@ -1213,7 +1265,6 @@ impl DesugaringKind {
     /// like `from_desugaring = "QuestionMark"`
     pub fn matches(&self, value: &str) -> bool {
         match self {
-            DesugaringKind::CondTemporary => value == "CondTemporary",
             DesugaringKind::Async => value == "Async",
             DesugaringKind::Await => value == "Await",
             DesugaringKind::QuestionMark => value == "QuestionMark",
@@ -1225,6 +1276,7 @@ impl DesugaringKind {
             DesugaringKind::BoundModifier => value == "BoundModifier",
             DesugaringKind::Contract => value == "Contract",
             DesugaringKind::PatTyRange => value == "PatTyRange",
+            DesugaringKind::FormatLiteral { .. } => value == "FormatLiteral",
         }
     }
 }

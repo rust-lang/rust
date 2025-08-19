@@ -4,7 +4,7 @@ warning: unknown diagnostic attribute
 LL | #[diagnostic::non_existing_attribute]
    |               ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(unknown_diagnostic_attributes)]` on by default
 
 warning: unknown diagnostic attribute
   --> $DIR/non_existing_attributes_accepted.rs:8:15

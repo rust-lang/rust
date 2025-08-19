@@ -6,7 +6,7 @@ union Foo {
 
 enum Bar {
     Boo = {
-        let _: Option<Foo> = None; //~ ERROR evaluation of constant value failed
+        let _: Option<Foo> = None; //~ ERROR `Foo` has an unknown layout
         0
     },
 }

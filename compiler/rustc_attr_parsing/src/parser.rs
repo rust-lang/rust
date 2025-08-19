@@ -12,8 +12,7 @@ use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, Norma
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 
 pub struct SegmentIterator<'a> {
     offset: usize,
@@ -78,8 +77,8 @@ impl<'a> PathParser<'a> {
         (self.len() == 1).then(|| **self.segments().next().as_ref().unwrap())
     }
 
-    pub fn word_or_empty(&self) -> Ident {
-        self.word().unwrap_or_else(Ident::empty)
+    pub fn word_sym(&self) -> Option<Symbol> {
+        self.word().map(|ident| ident.name)
     }
 
     /// Asserts that this MetaItem is some specific word.
@@ -87,6 +86,14 @@ impl<'a> PathParser<'a> {
     /// See [`word`](Self::word) for examples of what a word is.
     pub fn word_is(&self, sym: Symbol) -> bool {
         self.word().map(|i| i.name == sym).unwrap_or(false)
+    }
+
+    /// Checks whether the first segments match the givens.
+    ///
+    /// Unlike [`segments_is`](Self::segments_is),
+    /// `self` may contain more segments than the number matched  against.
+    pub fn starts_with(&self, segments: &[Symbol]) -> bool {
+        segments.len() < self.len() && self.segments().zip(segments).all(|(a, b)| a.name == *b)
     }
 }
 
@@ -116,7 +123,7 @@ impl<'a> ArgParser<'a> {
         }
     }
 
-    pub fn from_attr_args(value: &'a AttrArgs, dcx: DiagCtxtHandle<'a>) -> Self {
+    pub fn from_attr_args<'sess>(value: &'a AttrArgs, dcx: DiagCtxtHandle<'sess>) -> Self {
         match value {
             AttrArgs::Empty => Self::NoArgs,
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
@@ -162,9 +169,15 @@ impl<'a> ArgParser<'a> {
         }
     }
 
-    /// Asserts that there are no arguments
-    pub fn no_args(&self) -> bool {
-        matches!(self, Self::NoArgs)
+    /// Assert that there were no args.
+    /// If there were, get a span to the arguments
+    /// (to pass to [`AcceptContext::expected_no_args`](crate::context::AcceptContext::expected_no_args)).
+    pub fn no_args(&self) -> Result<(), Span> {
+        match self {
+            Self::NoArgs => Ok(()),
+            Self::List(args) => Err(args.span),
+            Self::NameValue(args) => Err(args.eq_span.to(args.value_span)),
+        }
     }
 }
 
@@ -236,7 +249,7 @@ impl<'a> Debug for MetaItemParser<'a> {
 impl<'a> MetaItemParser<'a> {
     /// Create a new parser from a [`NormalAttr`], which is stored inside of any
     /// [`ast::Attribute`](rustc_ast::Attribute)
-    pub fn from_attr(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'a>) -> Self {
+    pub fn from_attr<'sess>(attr: &'a NormalAttr, dcx: DiagCtxtHandle<'sess>) -> Self {
         Self {
             path: PathParser::Ast(&attr.item.path),
             args: ArgParser::from_attr_args(&attr.item.args, dcx),
@@ -253,40 +266,18 @@ impl<'a> MetaItemParser<'a> {
         }
     }
 
-    /// Gets just the path, without the args.
-    pub fn path_without_args(&self) -> PathParser<'a> {
-        self.path.clone()
+    /// Gets just the path, without the args. Some examples:
+    ///
+    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
+    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
+    /// - `#[inline]`: `inline` is a single segment path
+    pub fn path(&self) -> &PathParser<'a> {
+        &self.path
     }
 
     /// Gets just the args parser, without caring about the path.
     pub fn args(&self) -> &ArgParser<'a> {
         &self.args
-    }
-
-    pub fn deconstruct(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        (self.path_without_args(), self.args())
-    }
-
-    /// Asserts that this MetaItem starts with a path. Some examples:
-    ///
-    /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path
-    /// - `#[allow(clippy::complexity)]`: `clippy::complexity` is a path
-    /// - `#[inline]`: `inline` is a single segment path
-    pub fn path(&self) -> (PathParser<'a>, &ArgParser<'a>) {
-        self.deconstruct()
-    }
-
-    /// Asserts that this MetaItem starts with a word, or single segment path.
-    /// Doesn't return the args parser.
-    ///
-    /// For examples. see [`Self::word`]
-    pub fn word_without_args(&self) -> Option<Ident> {
-        Some(self.word()?.0)
-    }
-
-    /// Like [`word`](Self::word), but returns an empty symbol instead of None
-    pub fn word_or_empty_without_args(&self) -> Ident {
-        self.word_or_empty().0
     }
 
     /// Asserts that this MetaItem starts with a word, or single segment path.
@@ -295,29 +286,8 @@ impl<'a> MetaItemParser<'a> {
     /// - `#[inline]`: `inline` is a word
     /// - `#[rustfmt::skip]`: `rustfmt::skip` is a path,
     ///   and not a word and should instead be parsed using [`path`](Self::path)
-    pub fn word(&self) -> Option<(Ident, &ArgParser<'a>)> {
-        let (path, args) = self.deconstruct();
-        Some((path.word()?, args))
-    }
-
-    /// Like [`word`](Self::word), but returns an empty symbol instead of None
-    pub fn word_or_empty(&self) -> (Ident, &ArgParser<'a>) {
-        let (path, args) = self.deconstruct();
-        (path.word().unwrap_or(Ident::empty()), args)
-    }
-
-    /// Asserts that this MetaItem starts with some specific word.
-    ///
-    /// See [`word`](Self::word) for examples of what a word is.
     pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser<'a>> {
-        self.path_without_args().word_is(sym).then(|| self.args())
-    }
-
-    /// Asserts that this MetaItem starts with some specific path.
-    ///
-    /// See [`word`](Self::path) for examples of what a word is.
-    pub fn path_is(&self, segments: &[Symbol]) -> Option<&ArgParser<'a>> {
-        self.path_without_args().segments_is(segments).then(|| self.args())
+        self.path().word_is(sym).then(|| self.args())
     }
 }
 
@@ -364,13 +334,13 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit 
     }
 }
 
-struct MetaItemListParserContext<'a> {
+struct MetaItemListParserContext<'a, 'sess> {
     // the tokens inside the delimiters, so `#[some::attr(a b c)]` would have `a b c` inside
     inside_delimiters: Peekable<TokenStreamIter<'a>>,
-    dcx: DiagCtxtHandle<'a>,
+    dcx: DiagCtxtHandle<'sess>,
 }
 
-impl<'a> MetaItemListParserContext<'a> {
+impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     fn done(&mut self) -> bool {
         self.inside_delimiters.peek().is_none()
     }
@@ -551,16 +521,16 @@ pub struct MetaItemListParser<'a> {
 }
 
 impl<'a> MetaItemListParser<'a> {
-    fn new(delim: &'a DelimArgs, dcx: DiagCtxtHandle<'a>) -> MetaItemListParser<'a> {
+    fn new<'sess>(delim: &'a DelimArgs, dcx: DiagCtxtHandle<'sess>) -> Self {
         MetaItemListParser::new_tts(delim.tokens.iter(), delim.dspan.entire(), dcx)
     }
 
-    fn new_tts(tts: TokenStreamIter<'a>, span: Span, dcx: DiagCtxtHandle<'a>) -> Self {
+    fn new_tts<'sess>(tts: TokenStreamIter<'a>, span: Span, dcx: DiagCtxtHandle<'sess>) -> Self {
         MetaItemListParserContext { inside_delimiters: tts.peekable(), dcx }.parse(span)
     }
 
     /// Lets you pick and choose as what you want to parse each element in the list
-    pub fn mixed<'s>(&'s self) -> impl Iterator<Item = &'s MetaItemOrLitParser<'a>> + 's {
+    pub fn mixed(&self) -> impl Iterator<Item = &MetaItemOrLitParser<'a>> {
         self.sub_parsers.iter()
     }
 
@@ -570,20 +540,6 @@ impl<'a> MetaItemListParser<'a> {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Asserts that every item in the list is another list starting with a word.
-    ///
-    /// See [`MetaItemParser::word`] for examples of words.
-    pub fn all_word_list<'s>(&'s self) -> Option<Vec<(Ident, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| i.meta_item()?.word()).collect()
-    }
-
-    /// Asserts that every item in the list is another list starting with a full path.
-    ///
-    /// See [`MetaItemParser::path`] for examples of paths.
-    pub fn all_path_list<'s>(&'s self) -> Option<Vec<(PathParser<'a>, &'s ArgParser<'a>)>> {
-        self.mixed().map(|i| Some(i.meta_item()?.path())).collect()
     }
 
     /// Returns Some if the list contains only a single element.

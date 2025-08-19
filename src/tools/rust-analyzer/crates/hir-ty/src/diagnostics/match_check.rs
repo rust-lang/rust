@@ -25,7 +25,6 @@ use crate::{
     db::HirDatabase,
     display::{HirDisplay, HirDisplayError, HirFormatter},
     infer::BindingMode,
-    lang_items::is_box,
 };
 
 use self::pat_util::EnumerateAndAdjustIterator;
@@ -77,7 +76,7 @@ pub(crate) enum PatKind {
         subpatterns: Vec<FieldPat>,
     },
 
-    /// `box P`, `&P`, `&mut P`, etc.
+    /// `&P`, `&mut P`, etc.
     Deref {
         subpattern: Pat,
     },
@@ -151,7 +150,7 @@ impl<'a> PatCtxt<'a> {
             hir_def::hir::Pat::Bind { id, subpat, .. } => {
                 let bm = self.infer.binding_modes[pat];
                 ty = &self.infer[id];
-                let name = &self.body.bindings[id].name;
+                let name = &self.body[id].name;
                 match (bm, ty.kind(Interner)) {
                     (BindingMode::Ref(_), TyKind::Ref(.., rty)) => ty = rty,
                     (BindingMode::Ref(_), _) => {
@@ -169,13 +168,13 @@ impl<'a> PatCtxt<'a> {
             }
 
             hir_def::hir::Pat::TupleStruct { ref args, ellipsis, .. } if variant.is_some() => {
-                let expected_len = variant.unwrap().variant_data(self.db).fields().len();
+                let expected_len = variant.unwrap().fields(self.db).fields().len();
                 let subpatterns = self.lower_tuple_subpats(args, expected_len, ellipsis);
                 self.lower_variant_or_leaf(pat, ty, subpatterns)
             }
 
             hir_def::hir::Pat::Record { ref args, .. } if variant.is_some() => {
-                let variant_data = variant.unwrap().variant_data(self.db);
+                let variant_data = variant.unwrap().fields(self.db);
                 let subpatterns = args
                     .iter()
                     .map(|field| {
@@ -328,7 +327,7 @@ impl HirDisplay for Pat {
                             write!(
                                 f,
                                 "{}",
-                                f.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                loc.parent.enum_variants(f.db).variants[loc.index as usize]
                                     .1
                                     .display(f.db, f.edition())
                             )?;
@@ -345,7 +344,7 @@ impl HirDisplay for Pat {
                         )?,
                     };
 
-                    let variant_data = variant.variant_data(f.db);
+                    let variant_data = variant.fields(f.db);
                     if variant_data.shape == FieldsShape::Record {
                         write!(f, " {{ ")?;
 
@@ -377,16 +376,16 @@ impl HirDisplay for Pat {
                 }
 
                 let num_fields =
-                    variant.map_or(subpatterns.len(), |v| v.variant_data(f.db).fields().len());
+                    variant.map_or(subpatterns.len(), |v| v.fields(f.db).fields().len());
                 if num_fields != 0 || variant.is_none() {
                     write!(f, "(")?;
                     let subpats = (0..num_fields).map(|i| {
                         WriteWith(move |f| {
                             let fid = LocalFieldId::from_raw((i as u32).into());
-                            if let Some(p) = subpatterns.get(i) {
-                                if p.field == fid {
-                                    return p.pattern.hir_fmt(f);
-                                }
+                            if let Some(p) = subpatterns.get(i)
+                                && p.field == fid
+                            {
+                                return p.pattern.hir_fmt(f);
                             }
                             if let Some(p) = subpatterns.iter().find(|p| p.field == fid) {
                                 p.pattern.hir_fmt(f)
@@ -406,7 +405,6 @@ impl HirDisplay for Pat {
             }
             PatKind::Deref { subpattern } => {
                 match self.ty.kind(Interner) {
-                    TyKind::Adt(adt, _) if is_box(f.db, adt.0) => write!(f, "box ")?,
                     &TyKind::Ref(mutbl, ..) => {
                         write!(f, "&{}", if mutbl == Mutability::Mut { "mut " } else { "" })?
                     }

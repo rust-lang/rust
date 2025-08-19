@@ -1,19 +1,79 @@
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc_markdown-issue_13097.rs:7:9
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:8:13
    |
-LL |     /// HumaNified
-   |         ^^^^^^^^^^
+LL |         /// HumaNified
+   |             ^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> tests/ui/doc/doc_markdown-issue_13097.rs:4:9
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:1:9
    |
 LL | #![deny(clippy::doc_markdown)]
    |         ^^^^^^^^^^^^^^^^^^^^
 help: try
    |
-LL -     /// HumaNified
-LL +     /// `HumaNified`
+LL -         /// HumaNified
+LL +         /// `HumaNified`
    |
 
-error: aborting due to 1 previous error
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:20:8
+   |
+LL |      * HumaNified
+   |        ^^^^^^^^^^
+   |
+help: try
+   |
+LL -      * HumaNified
+LL +      * `HumaNified`
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:22:25
+   |
+LL |      * Before \u{08888} HumaNified \{u08888} After
+   |                         ^^^^^^^^^^
+   |
+help: try
+   |
+LL -      * Before \u{08888} HumaNified \{u08888} After
+LL +      * Before \u{08888} `HumaNified` \{u08888} After
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:24:20
+   |
+LL |      * meow meow \[meow_meow\] meow meow?
+   |                    ^^^^^^^^^
+   |
+help: try
+   |
+LL -      * meow meow \[meow_meow\] meow meow?
+LL +      * meow meow \[`meow_meow`\] meow meow?
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:26:18
+   |
+LL |      * \u{08888} meow_meow \[meow meow] meow?
+   |                  ^^^^^^^^^
+   |
+help: try
+   |
+LL -      * \u{08888} meow_meow \[meow meow] meow?
+LL +      * \u{08888} `meow_meow` \[meow meow] meow?
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/doc_markdown-issue_13097.rs:30:38
+   |
+LL |      * \[hi\](<https://example.com>) HumaNified \[example](<https://example.com>)
+   |                                      ^^^^^^^^^^
+   |
+help: try
+   |
+LL -      * \[hi\](<https://example.com>) HumaNified \[example](<https://example.com>)
+LL +      * \[hi\](<https://example.com>) `HumaNified` \[example](<https://example.com>)
+   |
+
+error: aborting due to 6 previous errors
 

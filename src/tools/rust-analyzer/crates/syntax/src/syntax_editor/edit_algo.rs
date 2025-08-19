@@ -391,7 +391,7 @@ fn report_intersecting_changes(
 fn to_owning_node(element: &SyntaxElement) -> SyntaxNode {
     match element {
         SyntaxElement::Node(node) => node.clone(),
-        SyntaxElement::Token(token) => token.parent().unwrap().clone(),
+        SyntaxElement::Token(token) => token.parent().unwrap(),
     }
 }
 

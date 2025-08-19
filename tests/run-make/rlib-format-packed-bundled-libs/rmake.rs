@@ -8,8 +8,8 @@
 // Reason: cross-compilation fails to export native symbols
 
 use run_make_support::{
-    bin_name, build_native_static_lib, cwd, filename_contains, is_msvc, llvm_ar, llvm_nm, rfs,
-    rust_lib_name, rustc, shallow_find_files,
+    bin_name, build_native_static_lib, cwd, filename_contains, is_windows_msvc, llvm_ar, llvm_nm,
+    rfs, rust_lib_name, rustc, shallow_find_files,
 };
 
 fn main() {
@@ -74,7 +74,7 @@ fn main() {
         .assert_stdout_contains_regex("native_dep_1.*native_dep_2.*native_dep_3");
 
     // The binary "main" will not contain any symbols on MSVC.
-    if !is_msvc() {
+    if !is_windows_msvc() {
         llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f1");
         llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f2");
         llvm_nm().input(bin_name("main")).run().assert_stdout_contains_regex("T.*native_f3");

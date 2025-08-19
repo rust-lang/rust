@@ -1,7 +1,5 @@
 # Constraint propagation
 
-<!-- toc -->
-
 The main work of the region inference is **constraint propagation**,
 which is done in the [`propagate_constraints`] function.  There are
 three sorts of constraints that are used in NLL, and we'll explain how

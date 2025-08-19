@@ -33,6 +33,11 @@ fn wake_nobody() {
             0,
         );
     }
+
+    // Wake u32::MAX waiters.
+    unsafe {
+        assert_eq!(libc::syscall(libc::SYS_futex, addr_of!(futex), libc::FUTEX_WAKE, u32::MAX), 0);
+    }
 }
 
 fn wake_dangling() {

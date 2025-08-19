@@ -1,6 +1,7 @@
 //@ check-pass
 //@ edition:2018
 //@ aux-crate:fn_header_aux=fn-header-aux.rs
+//@ ignore-backends: gcc
 
 #![feature(c_variadic)]
 #![feature(fn_delegation)]

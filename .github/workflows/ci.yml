@@ -34,7 +34,7 @@ concurrency:
   # For a given workflow, if we push to the same branch, cancel all previous builds on that branch.
   # We add an exception for try builds (try branch) and unrolled rollup builds (try-perf), which
   # are all triggered on the same branch, but which should be able to run concurrently.
-  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.sha) || github.ref }}
+  group: ${{ github.workflow }}-${{ ((github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try') && github.sha) || github.ref }}
   cancel-in-progress: true
 env:
   TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -46,26 +46,25 @@ jobs:
   # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
   calculate_matrix:
     name: Calculate job matrix
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     outputs:
       jobs: ${{ steps.jobs.outputs.jobs }}
       run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
-        uses: actions/checkout@v4
-      # Cache citool to make its build faster, as it's in the critical path.
-      # The rust-cache doesn't bleed into the main `job`, so it should not affect any other
-      # Rust compilation.
-      - name: Cache citool
-        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
-        with:
-          workspaces: src/ci/citool
+        uses: actions/checkout@v5
+      - name: Test citool
+        # Only test citool on the auto branch, to reduce latency of the calculate matrix job
+        # on PR/try builds.
+        if: ${{ github.ref == 'refs/heads/auto' }}
+        run: |
+          cd src/ci/citool
+          CARGO_INCREMENTAL=0 cargo test
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          CARGO_INCREMENTAL=0 cargo test
           CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
@@ -73,6 +72,14 @@ jobs:
     needs: [ calculate_matrix ]
     runs-on: "${{ matrix.os }}"
     timeout-minutes: 360
+    # The bors environment contains secrets required for elevated workflows (try and auto builds),
+    # which need to access e.g. S3 and upload artifacts. We want to provide access to that
+    # environment only on the try/auto branches, which are only accessible to bors.
+    # This also ensures that PR CI (which doesn't get write access to S3) works, as it cannot
+    # access the environment.
+    #
+    # We only enable the environment for the rust-lang/rust repository, so that CI works on forks.
+    environment: ${{ ((github.repository == 'rust-lang/rust' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf' || github.ref == 'refs/heads/automation/bors/try' || github.ref == 'refs/heads/auto')) && 'bors') || '' }}
     env:
       CI_JOB_NAME: ${{ matrix.name }}
       CI_JOB_DOC_URL: ${{ matrix.doc_url }}
@@ -106,17 +113,24 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux by removing preinstalled components that
+      # Free up disk space on Linux and Windows by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
       - name: free up disk space
         run: src/ci/scripts/free-disk-space.sh
         if: matrix.free_disk
+
+      # If we don't need to free up disk space then just report how much space we have
+      - name: print disk usage
+        run: |
+          echo "disk usage:"
+          df -h
+        if: matrix.free_disk == false
 
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
@@ -209,6 +223,11 @@ jobs:
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
+      - name: wait for Windows disk cleanup to finish
+        if: ${{ matrix.free_disk && startsWith(matrix.os, 'windows-') }}
+        run: |
+          python3 src/ci/scripts/free-disk-space-windows-wait.py
+
       - name: run the build
         run: |
           set +e
@@ -225,8 +244,8 @@ jobs:
           fi
           exit ${STATUS}
         env:
-          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.CACHES_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CACHES_AWS_SECRET_ACCESS_KEY }}
 
       - name: create github artifacts
         run: src/ci/scripts/create-doc-artifacts.sh
@@ -248,8 +267,8 @@ jobs:
       - name: upload artifacts to S3
         run: src/ci/scripts/upload-artifacts.sh
         env:
-          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.ARTIFACTS_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.ARTIFACTS_AWS_SECRET_ACCESS_KEY }}
         # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
         # builders *should* have the AWS credentials available. Still, explicitly
         # adding the condition is helpful as this way CI will not silently skip
@@ -299,7 +318,7 @@ jobs:
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       # Calculate the exit status of the whole CI workflow.

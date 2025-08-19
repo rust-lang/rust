@@ -8,7 +8,7 @@ trait Foo {
 }
 
 #[const_trait]
-trait Bar: ~const Foo {}
+trait Bar: [const] Foo {}
 
 struct S;
 impl const Foo for S {
@@ -17,7 +17,7 @@ impl const Foo for S {
 
 impl const Bar for S {}
 
-const fn foo<T: ~const Bar>(t: &T) {
+const fn foo<T: [const] Bar>(t: &T) {
     t.a();
 }
 

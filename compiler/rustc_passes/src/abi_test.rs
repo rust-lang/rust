@@ -79,7 +79,7 @@ fn dump_abi_of_fn_item(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
     for meta_item in meta_items {
         match meta_item.name() {
             Some(sym::debug) => {
-                let fn_name = tcx.item_name(item_def_id.into());
+                let fn_name = tcx.item_name(item_def_id);
                 tcx.dcx().emit_err(AbiOf {
                     span: tcx.def_span(item_def_id),
                     fn_name,
@@ -135,7 +135,7 @@ fn dump_abi_of_fn_type(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribut
                     item_def_id,
                 );
 
-                let fn_name = tcx.item_name(item_def_id.into());
+                let fn_name = tcx.item_name(item_def_id);
                 tcx.dcx().emit_err(AbiOf { span, fn_name, fn_abi: format!("{:#?}", abi) });
             }
             Some(sym::assert_eq) => {

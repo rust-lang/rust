@@ -1,7 +1,5 @@
 #![allow(clippy::legacy_numeric_constants, unused_imports)]
 
-use std::{i32, i128, u32, u128};
-
 fn main() {
     let _ = 1u32.saturating_add(1);
     //~^ manual_saturating_arithmetic

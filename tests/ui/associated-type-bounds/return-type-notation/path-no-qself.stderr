@@ -7,7 +7,7 @@ LL |     Trait::method(..): Send,
 help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
    |
 LL -     Trait::method(..): Send,
-LL +     <Example as Trait>::method: Send,
+LL +     <Example as Trait>::method(..): Send,
    |
 
 error: aborting due to 1 previous error

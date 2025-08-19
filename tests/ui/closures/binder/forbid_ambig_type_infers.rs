@@ -1,4 +1,4 @@
-#![feature(generic_arg_infer, closure_lifetime_binder)]
+#![feature(closure_lifetime_binder)]
 
 struct Foo<T>(T);
 

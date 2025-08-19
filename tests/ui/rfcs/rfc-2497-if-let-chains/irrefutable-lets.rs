@@ -1,7 +1,8 @@
 //@ revisions: allowed disallowed
 //@[allowed] check-pass
+//@ edition: 2024
 
-#![feature(if_let_guard, let_chains)]
+#![feature(if_let_guard)]
 #![cfg_attr(allowed, allow(irrefutable_let_patterns))]
 #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
 
@@ -10,16 +11,16 @@ use std::ops::Range;
 fn main() {
     let opt = Some(None..Some(1));
 
-    if let first = &opt && let Some(ref second) = first && let None = second.start {}
+    if let first = &opt && let Some(second) = first && let None = second.start {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
 
     // No lint as the irrefutable pattern is surrounded by other stuff
-    if 4 * 2 == 0 && let first = &opt && let Some(ref second) = first && let None = second.start {}
+    if 4 * 2 == 0 && let first = &opt && let Some(second) = first && let None = second.start {}
 
     if let first = &opt && let (a, b) = (1, 2) {}
     //[disallowed]~^ ERROR irrefutable `if let` patterns
 
-    if let first = &opt && let Some(ref second) = first && let None = second.start && let v = 0 {}
+    if let first = &opt && let Some(second) = first && let None = second.start && let v = 0 {}
     //[disallowed]~^ ERROR leading irrefutable pattern in let chain
     //[disallowed]~^^ ERROR trailing irrefutable pattern in let chain
 
@@ -63,7 +64,7 @@ fn main() {
 
     // No error, despite the prefix being irrefutable: moving out could change the behaviour,
     // due to possible side effects of the operation.
-    while let first = &opt && let Some(ref second) = first && let None = second.start {}
+    while let first = &opt && let Some(second) = first && let None = second.start {}
 
     while let first = &opt && let (a, b) = (1, 2) {}
     //[disallowed]~^ ERROR irrefutable `while let` patterns

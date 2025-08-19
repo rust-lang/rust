@@ -51,12 +51,11 @@ pub(super) fn hints(
             if ty.is_unknown() {
                 return None;
             }
-            if matches!(expr, ast::Expr::PathExpr(_)) {
-                if let Some(hir::Adt::Struct(st)) = ty.as_adt() {
-                    if st.fields(sema.db).is_empty() {
-                        return None;
-                    }
-                }
+            if matches!(expr, ast::Expr::PathExpr(_))
+                && let Some(hir::Adt::Struct(st)) = ty.as_adt()
+                && st.fields(sema.db).is_empty()
+            {
+                return None;
             }
             let label = label_of_ty(famous_defs, config, &ty, display_target)?;
             acc.push(InlayHint {

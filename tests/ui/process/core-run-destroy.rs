@@ -37,7 +37,7 @@ pub fn sleeper() -> Child {
 pub fn sleeper() -> Child {
     // There's a `timeout` command on windows, but it doesn't like having
     // its output piped, so instead just ping ourselves a few times with
-    // gaps in between so we're sure this process is alive for awhile
+    // gaps in between so we're sure this process is alive for a while
     t!(Command::new("ping").arg("127.0.0.1").arg("-n").arg("1000").spawn())
 }
 

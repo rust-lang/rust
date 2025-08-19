@@ -7,8 +7,8 @@ LL | #[diagnostic::onunimplemented]
 note: the lint level is defined here
   --> $DIR/suggest_typos.rs:2:9
    |
-LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(unknown_diagnostic_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: an attribute with a similar name exists
    |
 LL | #[diagnostic::on_unimplemented]

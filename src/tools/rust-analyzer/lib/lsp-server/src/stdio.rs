@@ -38,7 +38,7 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
             while let Some(msg) = Message::read(&mut stdin)? {
                 let is_exit = matches!(&msg, Message::Notification(n) if n.is_exit());
 
-                debug!("sending message {:#?}", msg);
+                debug!("sending message {msg:#?}");
                 if let Err(e) = reader_sender.send(msg) {
                     return Err(io::Error::other(e));
                 }

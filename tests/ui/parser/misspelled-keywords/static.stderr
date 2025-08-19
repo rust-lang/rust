@@ -4,7 +4,7 @@ error: expected one of `!` or `::`, found `a`
 LL | Static a = 0;
    |        ^ expected one of `!` or `::`
    |
-help: write keyword `static` in lowercase (notice the capitalization difference)
+help: write keyword `static` in lowercase (notice the capitalization)
    |
 LL - Static a = 0;
 LL + static a = 0;

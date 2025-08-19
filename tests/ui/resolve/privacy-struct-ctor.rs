@@ -9,10 +9,10 @@ mod m {
     }
 
     pub mod n {
-        pub(in m) struct Z(pub(in m::n) u8);
+        pub(in crate::m) struct Z(pub(in crate::m::n) u8);
     }
 
-    use m::n::Z; // OK, only the type is imported
+    use crate::m::n::Z; // OK, only the type is imported
 
     fn f() {
         n::Z;

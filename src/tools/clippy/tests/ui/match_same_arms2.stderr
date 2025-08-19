@@ -1,4 +1,4 @@
-error: this match arm has an identical body to the `_` wildcard arm
+error: these match arms have identical bodies
   --> tests/ui/match_same_arms2.rs:17:9
    |
 LL | /         42 => {
@@ -6,14 +6,10 @@ LL | |             foo();
 LL | |             let mut a = 42 + [23].len() as i32;
 LL | |             if true {
 ...  |
+LL | |             a
 LL | |         },
-LL | |
-   | |________^ help: try removing the arm
-   |
-   = help: or try changing either arm body
-note: `_` wildcard arm here
-  --> tests/ui/match_same_arms2.rs:27:9
-   |
+   | |_________^
+LL |
 LL | /         _ => {
 LL | |             foo();
 LL | |             let mut a = 42 + [23].len() as i32;
@@ -21,134 +17,169 @@ LL | |             if true {
 ...  |
 LL | |             a
 LL | |         },
-   | |_________^
+   | |_________^ the wildcard arm
+   |
+   = help: if this is unintentional make the arms return different values
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
-
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:40:9
+help: otherwise remove the non-wildcard arm
    |
+LL -         42 => {
+LL -             foo();
+LL -             let mut a = 42 + [23].len() as i32;
+LL -             if true {
+LL -                 a += 7;
+LL -             }
+LL -             a = -31 - a;
+LL -             a
+LL -         },
+   |
+
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:39:9
+   |
+LL |         42 => foo(),
+   |         ^^^^^^^^^^^
+LL |
 LL |         51 => foo(),
    |         ^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         42 => foo(),
-LL -         51 => foo(),
-LL +         51 | 42 => foo(),
+LL ~
+LL ~         42 | 51 => foo(),
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:47:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:46:9
    |
+LL |         Some(_) => 24,
+   |         ^^^^^^^^^^^^^
+LL |
 LL |         None => 24,
    |         ^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         Some(_) => 24,
-LL -         None => 24,
-LL +         None | Some(_) => 24,
+LL ~
+LL ~         Some(_) | None => 24,
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:70:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:69:9
    |
+LL |         (Some(a), None) => bar(a),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         (None, Some(a)) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         (Some(a), None) => bar(a),
-LL -         (None, Some(a)) => bar(a),
-LL +         (None, Some(a)) | (Some(a), None) => bar(a),
+LL ~
+LL ~         (Some(a), None) | (None, Some(a)) => bar(a),
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:85:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:84:9
    |
+LL |         (Some(a), None) if a == 42 => a,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         (None, Some(a)) if a == 42 => a,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         (Some(a), None) if a == 42 => a,
-LL -         (None, Some(a)) if a == 42 => a,
-LL +         (None, Some(a)) | (Some(a), None) if a == 42 => a,
+LL ~
+LL ~         (Some(a), None) | (None, Some(a)) if a == 42 => a,
    |
 
-error: this match arm has an identical body to another arm
+error: these match arms have identical bodies
   --> tests/ui/match_same_arms2.rs:91:9
    |
 LL |         (Some(a), ..) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         (.., Some(a)) => bar(a),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
 LL ~         (Some(a), ..) | (.., Some(a)) => bar(a),
 LL |
 LL ~         _ => (),
    |
 
-error: this match arm has an identical body to another arm
+error: these match arms have identical bodies
   --> tests/ui/match_same_arms2.rs:126:9
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         (Ok(_), Some(x)) => println!("ok {}", x),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
 LL ~         (Ok(x), Some(_)) | (Ok(_), Some(x)) => println!("ok {}", x),
 LL |
 LL ~         _ => println!("err"),
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:143:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:142:9
    |
+LL |         Ok(3) => println!("ok"),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         Ok(_) => println!("ok"),
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         Ok(3) => println!("ok"),
-LL -         Ok(_) => println!("ok"),
-LL +         Ok(_) | Ok(3) => println!("ok"),
+LL ~
+LL ~         Ok(3) | Ok(_) => println!("ok"),
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:171:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:168:9
    |
+LL | /         0 => {
+LL | |             empty!(0);
+LL | |         },
+   | |_________^
+LL |
 LL | /         1 => {
 LL | |             empty!(0);
 LL | |         },
    | |_________^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         0 => {
-LL -             empty!(0);
-LL -         },
-LL -         1 => {
-LL +         1 | 0 => {
+LL ~
+LL ~         0 | 1 => {
    |
 
-error: this match arm has an identical body to another arm
+error: these match arms have identical bodies
   --> tests/ui/match_same_arms2.rs:222:9
    |
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
+...
+LL |         Foo::Z(_) => 1,
+   |         ^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
 LL ~         Foo::X(0) | Foo::Z(_) => 1,
 LL |
@@ -156,60 +187,106 @@ LL |         Foo::X(_) | Foo::Y(_) => 2,
 LL ~         _ => 0,
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:233:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:231:9
    |
+LL |         Foo::X(0) => 1,
+   |         ^^^^^^^^^^^^^^
+...
 LL |         Foo::Z(_) => 1,
    |         ^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL ~         Foo::Y(_) | Foo::Z(0) => 2,
-LL ~         Foo::Z(_) | Foo::X(0) => 1,
+LL ~
+LL |         Foo::Y(_) | Foo::Z(0) => 2,
+LL ~         Foo::X(0) | Foo::Z(_) => 1,
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:257:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:254:9
    |
+LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
 LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL ~         Some(Bar { y: 10, z: 0, .. }) => 2,
+LL ~
+LL |         Some(Bar { y: 10, z: 0, .. }) => 2,
 LL |         None => 50,
-LL ~         Some(Bar { y: 0, x: 5, .. }) | Some(Bar { x: 0, y: 5, .. }) => 1,
+LL ~         Some(Bar { x: 0, y: 5, .. }) | Some(Bar { y: 0, x: 5, .. }) => 1,
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:272:9
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:271:9
    |
+LL |         0 => cfg!(not_enable),
+   |         ^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |         1 => cfg!(not_enable),
    |         ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -         0 => cfg!(not_enable),
-LL -         1 => cfg!(not_enable),
-LL +         1 | 0 => cfg!(not_enable),
+LL ~
+LL ~         0 | 1 => cfg!(not_enable),
    |
 
-error: this match arm has an identical body to another arm
-  --> tests/ui/match_same_arms2.rs:289:17
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:288:17
    |
+LL |                 MaybeStaticStr::Static(s) => s,
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
 LL |                 MaybeStaticStr::Borrowed(s) => s,
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: try changing either arm body
-help: or try merging the arm patterns and removing the obsolete arm
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
    |
-LL -                 MaybeStaticStr::Static(s) => s,
-LL -                 MaybeStaticStr::Borrowed(s) => s,
-LL +                 MaybeStaticStr::Borrowed(s) | MaybeStaticStr::Static(s) => s,
+LL ~
+LL ~                 MaybeStaticStr::Static(s) | MaybeStaticStr::Borrowed(s) => s,
    |
 
-error: aborting due to 14 previous errors
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:306:9
+   |
+LL |         1 => "b",
+   |         ^^^^^^^^
+LL |
+LL |         2 => "b",
+   |         ^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
+   |
+LL ~         1 | 2 => "b",
+LL |
+LL ~         #[allow(clippy::match_same_arms)]
+   |
+
+error: these match arms have identical bodies
+  --> tests/ui/match_same_arms2.rs:315:9
+   |
+LL |         1 => "b",
+   |         ^^^^^^^^
+LL |
+LL |         2 => "b",
+   |         ^^^^^^^^
+   |
+   = help: if this is unintentional make the arms return different values
+help: otherwise merge the patterns into a single arm
+   |
+LL ~         1 | 2 => "b",
+LL |
+LL ~         #[expect(clippy::match_same_arms)]
+   |
+
+error: aborting due to 16 previous errors
 

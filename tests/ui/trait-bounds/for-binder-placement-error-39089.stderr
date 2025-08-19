@@ -1,0 +1,10 @@
+error: `for<...>` binder should be placed before trait bound modifiers
+  --> $DIR/for-binder-placement-error-39089.rs:1:13
+   |
+LL | fn f<T: ?for<'a> Sized>() {}
+   |         -   ^^^^
+   |         |
+   |         place the `for<...>` binder before any modifiers
+
+error: aborting due to 1 previous error
+

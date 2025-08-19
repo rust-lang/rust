@@ -75,12 +75,16 @@ LL | fn foo(p1: T1, p2: Arc<T2>, p3: T3, p4: Arc<T4>, p5: T5, p6: T6, p7: T7, p8
    |    ^^^         -----------
 help: provide the argument
    |
-LL -     foo(
-LL -
-LL -         p1, //p2,
-LL -         p3, p4, p5, p6, p7, p8,
-LL -     );
-LL +     foo(p1, /* Arc<T2> */, p3, p4, p5, p6, p7, p8);
+LL ~     foo(
+LL +         p1,
+LL +         /* Arc<T2> */,
+LL +         p3,
+LL +         p4,
+LL +         p5,
+LL +         p6,
+LL +         p7,
+LL +         p8,
+LL ~     );
    |
 
 error: aborting due to 4 previous errors

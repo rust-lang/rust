@@ -22,6 +22,9 @@ vfs.workspace = true
 syntax.workspace = true
 stdx.workspace = true
 
+[dev-dependencies]
+syntax.workspace = true
+
 [features]
 default = ["salsa"]
 

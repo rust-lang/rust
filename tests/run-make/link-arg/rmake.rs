@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // In 2016, the rustc flag "-C link-arg" was introduced - it can be repeatedly used
 // to add single arguments to the linker. This test passes 2 arguments to the linker using it,
 // then checks that the compiler's output contains the arguments passed to it.

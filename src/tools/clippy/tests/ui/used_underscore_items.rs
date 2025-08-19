@@ -62,13 +62,13 @@ fn main() {
     //~^ used_underscore_items
 }
 
-// should not lint exteranl crate.
+// should not lint external crate.
 // user cannot control how others name their items
 fn external_item_call() {
     let foo_struct3 = external_item::_ExternalStruct {};
     foo_struct3._foo();
 
-    external_item::_exernal_foo();
+    external_item::_external_foo();
 }
 
 // should not lint foreign functions.

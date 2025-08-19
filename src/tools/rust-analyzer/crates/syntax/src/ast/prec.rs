@@ -276,19 +276,19 @@ impl Expr {
         }
 
         // Not every expression can be followed by `else` in the `let-else`
-        if let Some(ast::Stmt::LetStmt(e)) = stmt {
-            if e.let_else().is_some() {
-                match self {
-                    BinExpr(e)
-                        if e.op_kind()
-                            .map(|op| matches!(op, BinaryOp::LogicOp(_)))
-                            .unwrap_or(false) =>
-                    {
-                        return true;
-                    }
-                    _ if self.clone().trailing_brace().is_some() => return true,
-                    _ => {}
+        if let Some(ast::Stmt::LetStmt(e)) = stmt
+            && e.let_else().is_some()
+        {
+            match self {
+                BinExpr(e)
+                    if e.op_kind()
+                        .map(|op| matches!(op, BinaryOp::LogicOp(_)))
+                        .unwrap_or(false) =>
+                {
+                    return true;
                 }
+                _ if self.clone().trailing_brace().is_some() => return true,
+                _ => {}
             }
         }
 

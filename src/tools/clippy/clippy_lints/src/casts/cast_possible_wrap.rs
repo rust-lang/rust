@@ -17,9 +17,12 @@ enum EmitState {
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    if !(cast_from.is_integral() && cast_to.is_integral()) {
+    let (Some(from_nbits), Some(to_nbits)) = (
+        utils::int_ty_to_nbits(cx.tcx, cast_from),
+        utils::int_ty_to_nbits(cx.tcx, cast_to),
+    ) else {
         return;
-    }
+    };
 
     // emit a lint if a cast is:
     // 1. unsigned to signed
@@ -34,9 +37,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
     if cast_from.is_signed() || !cast_to.is_signed() {
         return;
     }
-
-    let from_nbits = utils::int_ty_to_nbits(cast_from, cx.tcx);
-    let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
     let should_lint = match (cast_from.is_ptr_sized_integral(), cast_to.is_ptr_sized_integral()) {
         (true, true) => {

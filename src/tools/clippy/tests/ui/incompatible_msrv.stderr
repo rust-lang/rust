@@ -1,5 +1,5 @@
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.10.0`
-  --> tests/ui/incompatible_msrv.rs:14:39
+  --> tests/ui/incompatible_msrv.rs:16:39
    |
 LL |     assert_eq!(map.entry("poneyland").key(), &"poneyland");
    |                                       ^^^^^
@@ -8,45 +8,107 @@ LL |     assert_eq!(map.entry("poneyland").key(), &"poneyland");
    = help: to override `-D warnings` add `#[allow(clippy::incompatible_msrv)]`
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.12.0`
-  --> tests/ui/incompatible_msrv.rs:18:11
+  --> tests/ui/incompatible_msrv.rs:22:11
    |
 LL |         v.into_key();
    |           ^^^^^^^^^^
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.4.0`
-  --> tests/ui/incompatible_msrv.rs:22:5
+  --> tests/ui/incompatible_msrv.rs:26:5
    |
 LL |     sleep(Duration::new(1, 0));
    |     ^^^^^
 
-error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
-  --> tests/ui/incompatible_msrv.rs:46:9
+error: current MSRV (Minimum Supported Rust Version) is `1.2.0` but this item is stable since `1.3.0`
+  --> tests/ui/incompatible_msrv.rs:31:33
    |
-LL |         core::panicking::panic("foo");
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL | static NO_BODY_BAD_MSRV: Option<Duration> = None;
+   |                                 ^^^^^^^^
 
-error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
-  --> tests/ui/incompatible_msrv.rs:53:13
+error: current MSRV (Minimum Supported Rust Version) is `1.2.0` but this item is stable since `1.3.0`
+  --> tests/ui/incompatible_msrv.rs:38:19
    |
-LL |             core::panicking::panic($msg)
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _: Option<Duration> = None;
+   |                   ^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.43.0`
+  --> tests/ui/incompatible_msrv.rs:62:17
+   |
+LL |         let _ = core::iter::once_with(|| 0);
+   |                 ^^^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.43.0`
+  --> tests/ui/incompatible_msrv.rs:69:21
+   |
+LL |             let _ = core::iter::once_with(|| $msg);
+   |                     ^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     my_panic!("foo");
    |     ---------------- in this macro invocation
    |
    = note: this error originates in the macro `my_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
-  --> tests/ui/incompatible_msrv.rs:59:13
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.43.0`
+  --> tests/ui/incompatible_msrv.rs:76:13
    |
-LL |     assert!(core::panicking::panic("out of luck"));
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+LL |     assert!(core::iter::once_with(|| 0).next().is_some());
+   |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: current MSRV (Minimum Supported Rust Version) is `1.80.0` but this item is stable since `1.82.0`
-  --> tests/ui/incompatible_msrv.rs:72:13
+  --> tests/ui/incompatible_msrv.rs:89:13
    |
 LL |     let _ = std::iter::repeat_n((), 5);
    |             ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.82.0`
+  --> tests/ui/incompatible_msrv.rs:100:13
+   |
+LL |     let _ = std::iter::repeat_n((), 5);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.82.0`
+  --> tests/ui/incompatible_msrv.rs:105:17
+   |
+LL |         let _ = std::iter::repeat_n((), 5);
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: you may want to conditionally increase the MSRV considered by Clippy using the `clippy::msrv` attribute
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.82.0`
+  --> tests/ui/incompatible_msrv.rs:110:17
+   |
+LL |         let _ = std::iter::repeat_n((), 5);
+   |                 ^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.78.0` but this item is stable since `1.84.0`
+  --> tests/ui/incompatible_msrv.rs:123:7
+   |
+LL |     r.isqrt()
+   |       ^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.85.0`
+  --> tests/ui/incompatible_msrv.rs:128:13
+   |
+LL |     let _ = std::io::ErrorKind::CrossesDevices;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.87.0` but this item is stable in a `const` context since `1.88.0`
+  --> tests/ui/incompatible_msrv.rs:140:15
+   |
+LL |         _ = c.get();
+   |               ^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.86.0` but this item is stable since `1.87.0`
+  --> tests/ui/incompatible_msrv.rs:159:13
+   |
+LL |     let _ = std::io::ErrorKind::InvalidFilename;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.86.0` but this item is stable since `1.87.0`
+  --> tests/ui/incompatible_msrv.rs:161:21
+   |
+LL |     let _ = const { std::io::ErrorKind::InvalidFilename };
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
 

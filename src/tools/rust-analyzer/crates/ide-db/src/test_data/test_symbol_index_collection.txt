@@ -11,6 +11,40 @@
         },
         [
             FileSymbol {
+                name: "A",
+                def: Variant(
+                    Variant {
+                        id: EnumVariantId(
+                            7800,
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        EditionedFileId(
+                            Id(2000),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: VARIANT,
+                        range: 201..202,
+                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 201..202,
+                        },
+                    ),
+                },
+                container_name: Some(
+                    "Enum",
+                ),
+                is_alias: false,
+                is_assoc: true,
+                is_import: false,
+                do_not_complete: Yes,
+            },
+            FileSymbol {
                 name: "Alias",
                 def: TypeAlias(
                     TypeAlias {
@@ -39,6 +73,41 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
+                do_not_complete: Yes,
+            },
+            FileSymbol {
+                name: "B",
+                def: Variant(
+                    Variant {
+                        id: EnumVariantId(
+                            7801,
+                        ),
+                    },
+                ),
+                loc: DeclarationLocation {
+                    hir_file_id: FileId(
+                        EditionedFileId(
+                            Id(2000),
+                        ),
+                    ),
+                    ptr: SyntaxNodePtr {
+                        kind: VARIANT,
+                        range: 204..205,
+                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 204..205,
+                        },
+                    ),
+                },
+                container_name: Some(
+                    "Enum",
+                ),
+                is_alias: false,
+                is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -70,6 +139,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -101,6 +171,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -134,6 +205,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -167,6 +239,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -200,6 +273,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -231,6 +305,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -264,6 +339,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -297,6 +373,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -332,6 +409,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -367,6 +445,7 @@
                 ),
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -400,6 +479,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -433,6 +513,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -464,6 +545,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -497,6 +579,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -530,6 +613,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -565,6 +649,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -600,6 +685,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -633,6 +719,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -666,6 +753,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -699,6 +787,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -732,6 +821,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -763,6 +853,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -796,6 +887,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -829,6 +921,7 @@
                 ),
                 is_alias: false,
                 is_assoc: true,
+                is_import: false,
                 do_not_complete: Yes,
             },
         ],
@@ -875,6 +968,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
         ],
@@ -919,6 +1013,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -952,6 +1047,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -985,6 +1081,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: false,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -1018,6 +1115,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
             FileSymbol {
@@ -1051,6 +1149,7 @@
                 container_name: None,
                 is_alias: false,
                 is_assoc: false,
+                is_import: true,
                 do_not_complete: Yes,
             },
         ],

@@ -80,7 +80,7 @@ unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
     let needle = needle as u32;
 
     let last_idx =
-        match short_offset_runs.binary_search_by_key(&(needle << 11), |header| (header.0 << 11)) {
+        match short_offset_runs.binary_search_by_key(&(needle << 11), |header| header.0 << 11) {
             Ok(idx) => idx + 1,
             Err(idx) => idx,
         };

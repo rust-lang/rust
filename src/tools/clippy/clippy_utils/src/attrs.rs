@@ -1,15 +1,16 @@
+use crate::source::SpanRangeExt;
+use crate::{sym, tokenize_with_text};
 use rustc_ast::attr;
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{AdtDef, TyCtxt};
 use rustc_session::Session;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol};
 use std::str::FromStr;
-
-use crate::source::SpanRangeExt;
-use crate::tokenize_with_text;
 
 /// Deprecation status of attributes known by Clippy.
 pub enum DeprecationStatus {
@@ -21,17 +22,17 @@ pub enum DeprecationStatus {
 }
 
 #[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
-    ("author",                DeprecationStatus::None),
-    ("version",               DeprecationStatus::None),
-    ("cognitive_complexity",  DeprecationStatus::None),
-    ("cyclomatic_complexity", DeprecationStatus::Replaced("cognitive_complexity")),
-    ("dump",                  DeprecationStatus::None),
-    ("msrv",                  DeprecationStatus::None),
+pub const BUILTIN_ATTRIBUTES: &[(Symbol, DeprecationStatus)] = &[
+    (sym::author,                DeprecationStatus::None),
+    (sym::version,               DeprecationStatus::None),
+    (sym::cognitive_complexity,  DeprecationStatus::None),
+    (sym::cyclomatic_complexity, DeprecationStatus::Replaced("cognitive_complexity")),
+    (sym::dump,                  DeprecationStatus::None),
+    (sym::msrv,                  DeprecationStatus::None),
     // The following attributes are for the 3rd party crate authors.
     // See book/src/attribs.md
-    ("has_significant_drop",  DeprecationStatus::None),
-    ("format_args",           DeprecationStatus::None),
+    (sym::has_significant_drop,  DeprecationStatus::None),
+    (sym::format_args,           DeprecationStatus::None),
 ];
 
 pub struct LimitStack {
@@ -52,11 +53,11 @@ impl LimitStack {
     pub fn limit(&self) -> u64 {
         *self.stack.last().expect("there should always be a value in the stack")
     }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: &'static str) {
+    pub fn push_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| stack.push(val));
     }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: &'static str) {
+    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| assert_eq!(stack.pop(), Some(val)));
     }
@@ -65,7 +66,7 @@ impl LimitStack {
 pub fn get_attr<'a, A: AttributeExt + 'a>(
     sess: &'a Session,
     attrs: &'a [A],
-    name: &'static str,
+    name: Symbol,
 ) -> impl Iterator<Item = &'a A> {
     attrs.iter().filter(move |attr| {
         let Some(attr_segments) = attr.ident_path() else {
@@ -75,8 +76,8 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
         if attr_segments.len() == 2 && attr_segments[0].name == sym::clippy {
             BUILTIN_ATTRIBUTES
                 .iter()
-                .find_map(|&(builtin_name, ref deprecation_status)| {
-                    if attr_segments[1].name.as_str() == builtin_name {
+                .find_map(|(builtin_name, deprecation_status)| {
+                    if attr_segments[1].name == *builtin_name {
                         Some(deprecation_status)
                     } else {
                         None
@@ -108,7 +109,7 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
                             },
                             DeprecationStatus::None => {
                                 diag.cancel();
-                                attr_segments[1].as_str() == name
+                                attr_segments[1].name == name
                             },
                         }
                     },
@@ -119,9 +120,9 @@ pub fn get_attr<'a, A: AttributeExt + 'a>(
     })
 }
 
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: &'static str, mut f: F) {
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
     for attr in get_attr(sess, attrs, name) {
-        if let Some(ref value) = attr.value_str() {
+        if let Some(value) = attr.value_str() {
             if let Ok(value) = FromStr::from_str(value.as_str()) {
                 f(value);
             } else {
@@ -133,7 +134,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name:
     }
 }
 
-pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: &'static str) -> Option<&'a A> {
+pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
     let mut unique_attr: Option<&A> = None;
     for attr in get_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {
@@ -165,13 +166,14 @@ pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
 
 pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
     adt.is_variant_list_non_exhaustive()
-        || tcx.has_attr(adt.did(), sym::non_exhaustive)
+        || find_attr!(tcx.get_all_attrs(adt.did()), AttributeKind::NonExhaustive(..))
         || adt.variants().iter().any(|variant_def| {
-            variant_def.is_field_list_non_exhaustive() || tcx.has_attr(variant_def.def_id, sym::non_exhaustive)
+            variant_def.is_field_list_non_exhaustive()
+                || find_attr!(tcx.get_all_attrs(variant_def.def_id), AttributeKind::NonExhaustive(..))
         })
         || adt
             .all_fields()
-            .any(|field_def| tcx.has_attr(field_def.did, sym::non_exhaustive))
+            .any(|field_def| find_attr!(tcx.get_all_attrs(field_def.did), AttributeKind::NonExhaustive(..)))
 }
 
 /// Checks if the given span contains a `#[cfg(..)]` attribute

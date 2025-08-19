@@ -120,8 +120,8 @@ pub trait TypeVisitor<I: Interner>: Sized {
         p.super_visit_with(self)
     }
 
-    fn visit_clauses(&mut self, p: I::Clauses) -> Self::Result {
-        p.super_visit_with(self)
+    fn visit_clauses(&mut self, c: I::Clauses) -> Self::Result {
+        c.super_visit_with(self)
     }
 
     fn visit_error(&mut self, _guar: I::ErrorGuaranteed) -> Self::Result {
@@ -267,6 +267,10 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
+    }
+
+    fn has_coroutines(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_TY_CORO)
     }
 
     fn references_error(&self) -> bool {

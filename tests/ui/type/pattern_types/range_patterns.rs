@@ -23,7 +23,7 @@ type EMPTY = pattern_type!(u32 is 1..1); //~ ERROR unknown layout
 
 #[rustc_layout(debug)]
 type WRAP = pattern_type!(u32 is 1..0); //~ ERROR unknown layout
-//~^ ERROR: evaluation of constant value failed
+//~^ ERROR: evaluation panicked: exclusive range end at minimum value of type
 
 #[rustc_layout(debug)]
 type WRAP2 = pattern_type!(u32 is 5..2); //~ ERROR unknown layout

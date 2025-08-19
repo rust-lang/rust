@@ -1,5 +1,5 @@
 error: holding a disallowed type across an await point `std::string::String`
-  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:5:9
+  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:6:9
    |
 LL |     let _x = String::from("hello");
    |         ^^
@@ -9,13 +9,13 @@ LL |     let _x = String::from("hello");
    = help: to override `-D warnings` add `#[allow(clippy::await_holding_invalid_type)]`
 
 error: holding a disallowed type across an await point `std::net::Ipv4Addr`
-  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:11:9
+  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:12:9
    |
 LL |     let x = Ipv4Addr::new(127, 0, 0, 1);
    |         ^
 
 error: holding a disallowed type across an await point `std::string::String`
-  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:35:13
+  --> tests/ui-toml/await_holding_invalid_type/await_holding_invalid_type.rs:36:13
    |
 LL |         let _x = String::from("hi!");
    |             ^^

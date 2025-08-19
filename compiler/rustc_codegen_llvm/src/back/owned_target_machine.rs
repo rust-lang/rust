@@ -1,4 +1,5 @@
-use std::ffi::{CStr, c_char};
+use std::assert_matches::assert_matches;
+use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -39,12 +40,11 @@ impl OwnedTargetMachine {
         debug_info_compression: &CStr,
         use_emulated_tls: bool,
         args_cstr_buff: &[u8],
+        use_wasm_eh: bool,
     ) -> Result<Self, LlvmError<'static>> {
-        assert!(args_cstr_buff.len() > 0);
-        assert!(
-            *args_cstr_buff.last().unwrap() == 0,
-            "The last character must be a null terminator."
-        );
+        // The argument list is passed as the concatenation of one or more C strings.
+        // This implies that there must be a last byte, and it must be 0.
+        assert_matches!(args_cstr_buff, [.., b'\0'], "the last byte must be a NUL terminator");
 
         // SAFETY: llvm::LLVMRustCreateTargetMachine copies pointed to data
         let tm_ptr = unsafe {
@@ -70,8 +70,9 @@ impl OwnedTargetMachine {
                 output_obj_file.as_ptr(),
                 debug_info_compression.as_ptr(),
                 use_emulated_tls,
-                args_cstr_buff.as_ptr() as *const c_char,
+                args_cstr_buff.as_ptr(),
                 args_cstr_buff.len(),
+                use_wasm_eh,
             )
         };
 
@@ -97,7 +98,7 @@ impl Drop for OwnedTargetMachine {
         // llvm::LLVMRustCreateTargetMachine OwnedTargetMachine is not copyable so there is no
         // double free or use after free.
         unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_mut());
+            llvm::LLVMRustDisposeTargetMachine(self.tm_unique.as_ptr());
         }
     }
 }

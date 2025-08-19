@@ -1,0 +1,23 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-nested-fn-scope-error.rs:5:16
+   |
+LL | fn foo<U>(v: Vec<U>) -> U {
+   |        - type parameter from outer item
+LL |     fn bar(w: [U]) -> U {
+   |           -    ^ use of generic parameter from outer item
+   |           |
+   |           help: try introducing a local generic parameter here: `<U>`
+
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/generic-params-nested-fn-scope-error.rs:5:23
+   |
+LL | fn foo<U>(v: Vec<U>) -> U {
+   |        - type parameter from outer item
+LL |     fn bar(w: [U]) -> U {
+   |           -           ^ use of generic parameter from outer item
+   |           |
+   |           help: try introducing a local generic parameter here: `<U>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0401`.

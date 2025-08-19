@@ -8,9 +8,10 @@
 use std::fs;
 use std::path::Path;
 
+use super::exec::ExecutionContext;
 use super::helpers;
 use crate::Build;
-use crate::utils::helpers::{start_process, t};
+use crate::utils::helpers::t;
 
 #[derive(Clone, Default)]
 pub enum GitInfo {
@@ -34,7 +35,7 @@ pub struct Info {
 }
 
 impl GitInfo {
-    pub fn new(omit_git_hash: bool, dir: &Path) -> GitInfo {
+    pub fn new(omit_git_hash: bool, dir: &Path, exec_ctx: impl AsRef<ExecutionContext>) -> GitInfo {
         // See if this even begins to look like a git dir
         if !dir.join(".git").exists() {
             match read_commit_info_file(dir) {
@@ -43,10 +44,12 @@ impl GitInfo {
             }
         }
 
-        // Make sure git commands work
-        match helpers::git(Some(dir)).arg("rev-parse").as_command_mut().output() {
-            Ok(ref out) if out.status.success() => {}
-            _ => return GitInfo::Absent,
+        let mut git_command = helpers::git(Some(dir));
+        git_command.arg("rev-parse");
+        let output = git_command.allow_failure().run_capture(&exec_ctx);
+
+        if output.is_failure() {
+            return GitInfo::Absent;
         }
 
         // If we're ignoring the git info, we don't actually need to collect it, just make sure this
@@ -56,23 +59,35 @@ impl GitInfo {
         }
 
         // Ok, let's scrape some info
-        let ver_date = start_process(
-            helpers::git(Some(dir))
-                .arg("log")
-                .arg("-1")
-                .arg("--date=short")
-                .arg("--pretty=format:%cd")
-                .as_command_mut(),
-        );
-        let ver_hash =
-            start_process(helpers::git(Some(dir)).arg("rev-parse").arg("HEAD").as_command_mut());
-        let short_ver_hash = start_process(
-            helpers::git(Some(dir)).arg("rev-parse").arg("--short=9").arg("HEAD").as_command_mut(),
-        );
+        // We use the command's spawn API to execute these commands concurrently, which leads to performance improvements.
+        let mut git_log_cmd = helpers::git(Some(dir));
+        let ver_date = git_log_cmd
+            .arg("log")
+            .arg("-1")
+            .arg("--date=short")
+            .arg("--pretty=format:%cd")
+            .run_in_dry_run()
+            .start_capture_stdout(&exec_ctx);
+
+        let mut git_hash_cmd = helpers::git(Some(dir));
+        let ver_hash = git_hash_cmd
+            .arg("rev-parse")
+            .arg("HEAD")
+            .run_in_dry_run()
+            .start_capture_stdout(&exec_ctx);
+
+        let mut git_short_hash_cmd = helpers::git(Some(dir));
+        let short_ver_hash = git_short_hash_cmd
+            .arg("rev-parse")
+            .arg("--short=9")
+            .arg("HEAD")
+            .run_in_dry_run()
+            .start_capture_stdout(&exec_ctx);
+
         GitInfo::Present(Some(Info {
-            commit_date: ver_date().trim().to_string(),
-            sha: ver_hash().trim().to_string(),
-            short_sha: short_ver_hash().trim().to_string(),
+            commit_date: ver_date.wait_for_output(&exec_ctx).stdout().trim().to_string(),
+            sha: ver_hash.wait_for_output(&exec_ctx).stdout().trim().to_string(),
+            short_sha: short_ver_hash.wait_for_output(&exec_ctx).stdout().trim().to_string(),
         }))
     }
 

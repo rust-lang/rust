@@ -38,5 +38,9 @@
 +         StorageLive(_7);
 +         _7 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
       }
++ }
++ 
++ ALLOC0 (size: 14, align: 1) {
++     65 78 70 6c 69 63 69 74 20 70 61 6e 69 63       │ explicit panic
   }
   

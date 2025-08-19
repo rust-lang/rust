@@ -1,5 +1,6 @@
 //@ run-rustfix
 
+#![feature(impl_trait_in_fn_trait_return)]
 #![deny(unused_parens)]
 #![allow(while_true)] // for rustfix
 
@@ -16,11 +17,11 @@ fn bar(y: bool) -> X {
     return (X { y }); //~ ERROR unnecessary parentheses around `return` value
 }
 
-pub fn unused_parens_around_return_type() -> (u32) { //~ ERROR unnecessary parentheses around type
+pub fn around_return_type() -> (u32) { //~ ERROR unnecessary parentheses around type
     panic!()
 }
 
-pub fn unused_parens_around_block_return() -> u32 {
+pub fn around_block_return() -> u32 {
     let _foo = {
         (5) //~ ERROR unnecessary parentheses around block return value
     };
@@ -31,8 +32,88 @@ pub trait Trait {
     fn test(&self);
 }
 
-pub fn passes_unused_parens_lint() -> &'static (dyn Trait) {
+pub fn around_multi_bound_ref() -> &'static (dyn Trait + Send) {
     panic!()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_single_bound_ref() -> &'static (dyn Trait) {
+    panic!()
+}
+
+pub fn around_multi_bound_ptr() -> *const (dyn Trait + Send) {
+    panic!()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_single_bound_ptr() -> *const (dyn Trait) {
+    panic!()
+}
+
+pub fn around_multi_bound_dyn_fn_output() -> &'static dyn FnOnce() -> (impl Send + Sync) {
+    &|| ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_single_bound_dyn_fn_output() -> &'static dyn FnOnce() -> (impl Send) {
+    &|| ()
+}
+
+pub fn around_dyn_fn_output_given_more_bounds() -> &'static (dyn FnOnce() -> (impl Send) + Sync) {
+    &|| ()
+}
+
+pub fn around_multi_bound_impl_fn_output() -> impl FnOnce() -> (impl Send + Sync) {
+    || ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_single_bound_impl_fn_output() -> impl FnOnce() -> (impl Send) {
+    || ()
+}
+
+pub fn around_impl_fn_output_given_more_bounds() -> impl FnOnce() -> (impl Send) + Sync {
+    || ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_dyn_bound() -> &'static dyn (FnOnce()) {
+    &|| ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_impl_trait_bound() -> impl (FnOnce()) {
+    || ()
+}
+
+// these parens aren't strictly required but they help disambiguate => no lint
+pub fn around_fn_bound_with_explicit_ret_ty() -> impl (Fn() -> ()) + Send {
+    || ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_fn_bound_with_implicit_ret_ty() -> impl (Fn()) + Send {
+    || ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_last_fn_bound_with_explicit_ret_ty() -> impl Send + (Fn() -> ()) {
+    || ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_regular_bound1() -> &'static (dyn (Send) + Sync) {
+    &|| ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_regular_bound2() -> &'static (dyn Send + (Sync)) {
+    &|| ()
+}
+
+//~v ERROR unnecessary parentheses around type
+pub fn around_regular_bound3() -> &'static (dyn Send + (::std::marker::Sync)) {
+    &|| ()
 }
 
 pub fn parens_with_keyword(e: &[()]) -> i32 {

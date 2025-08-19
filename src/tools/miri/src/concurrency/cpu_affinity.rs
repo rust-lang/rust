@@ -25,7 +25,7 @@ impl CpuAffinityMask {
         let mut this = Self([0; Self::CPU_MASK_BYTES]);
 
         // the default affinity mask includes only the available CPUs
-        for i in 0..cpu_count as usize {
+        for i in 0..cpu_count.to_usize() {
             this.set(cx, i);
         }
 

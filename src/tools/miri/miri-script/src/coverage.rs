@@ -49,7 +49,7 @@ impl CoverageReport {
 
     /// show_coverage_report will print coverage information using the artifact
     /// files in `self.path`.
-    pub fn show_coverage_report(&self, e: &MiriEnv) -> Result<()> {
+    pub fn show_coverage_report(&self, e: &MiriEnv, features: &[String]) -> Result<()> {
         let profraw_files = self.profraw_files()?;
 
         let profdata_bin = path!(e.libdir / ".." / "bin" / "llvm-profdata");
@@ -63,8 +63,9 @@ impl CoverageReport {
 
         // Create the coverage report.
         let cov_bin = path!(e.libdir / ".." / "bin" / "llvm-cov");
-        let miri_bin =
-            e.build_get_binary(".").context("failed to get filename of miri executable")?;
+        let miri_bin = e
+            .build_get_binary(".", features)
+            .context("failed to get filename of miri executable")?;
         cmd!(
             e.sh,
             "{cov_bin} report --instr-profile={merged_file} --object {miri_bin} --sources src/"

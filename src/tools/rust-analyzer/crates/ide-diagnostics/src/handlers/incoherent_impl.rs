@@ -19,6 +19,7 @@ pub(crate) fn incoherent_impl(ctx: &DiagnosticsContext<'_>, d: &hir::IncoherentI
         "cannot define inherent `impl` for foreign type".to_owned(),
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]

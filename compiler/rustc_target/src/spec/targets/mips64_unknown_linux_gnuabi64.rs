@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
             features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
+            llvm_abiname: "n64".into(),
 
             ..base::linux_gnu::opts()
         },

@@ -27,6 +27,7 @@ fn ct_unused_0() {
 fn ct_unused_1() {
     #[allow(trivial_bounds)]
     type AliasConstUnused where String: Copy = I32<{ 0; 0 }>;
+    //[neg]~^ ERROR entering unreachable code
     #[cfg(neg)]
     let _: AliasConstUnused;
     //[neg]~^ ERROR the trait bound `String: Copy` is not satisfied

@@ -4,13 +4,13 @@
 
 pub mod tls;
 
-use std::assert_matches::{assert_matches, debug_assert_matches};
-use std::borrow::Borrow;
+use std::assert_matches::debug_assert_matches;
+use std::borrow::{Borrow, Cow};
 use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
-use std::marker::PhantomData;
+use std::marker::{PhantomData, PointeeSized};
 use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
@@ -29,16 +29,16 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
 };
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
+use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
@@ -48,7 +48,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
-use rustc_session::{Limit, MetadataKind, Session};
+use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
@@ -61,11 +61,11 @@ use tracing::{debug, instrument};
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
+use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind, CanonicalVarKinds};
 use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
-use crate::middle::{resolve_bound_vars, stability};
+use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::plumbing::QuerySystem;
@@ -87,6 +87,10 @@ use crate::ty::{
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Interner for TyCtxt<'tcx> {
+    fn next_trait_solver_globally(self) -> bool {
+        self.next_trait_solver_globally()
+    }
+
     type DefId = DefId;
     type LocalDefId = LocalDefId;
     type Span = Span;
@@ -108,9 +112,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_predefined_opaques_in_body(data)
     }
     type LocalDefIds = &'tcx ty::List<LocalDefId>;
-    type CanonicalVars = CanonicalVarInfos<'tcx>;
-    fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
-        self.mk_canonical_var_infos(infos)
+    type CanonicalVarKinds = CanonicalVarKinds<'tcx>;
+    fn mk_canonical_var_kinds(
+        self,
+        kinds: &[ty::CanonicalVarKind<Self>],
+    ) -> Self::CanonicalVarKinds {
+        self.mk_canonical_var_kinds(kinds)
     }
 
     type ExternalConstraints = ExternalConstraints<'tcx>;
@@ -130,6 +137,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type FnInputTys = &'tcx [Ty<'tcx>];
     type ParamTy = ParamTy;
     type BoundTy = ty::BoundTy;
+    type Symbol = Symbol;
 
     type PlaceholderTy = ty::PlaceholderType;
     type ErrorGuaranteed = ErrorGuaranteed;
@@ -144,7 +152,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PlaceholderConst = ty::PlaceholderConst;
 
     type ParamConst = ty::ParamConst;
-    type BoundConst = ty::BoundVar;
+    type BoundConst = ty::BoundConst;
     type ValueConst = ty::Value<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
@@ -154,6 +162,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type LateParamRegion = ty::LateParamRegion;
     type BoundRegion = ty::BoundRegion;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;
@@ -175,6 +185,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         f(&mut *self.new_solver_evaluation_cache.lock())
+    }
+
+    fn canonical_param_env_cache_get_or_insert<R>(
+        self,
+        param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce() -> ty::CanonicalParamEnvCacheEntry<Self>,
+        from_entry: impl FnOnce(&ty::CanonicalParamEnvCacheEntry<Self>) -> R,
+    ) -> R {
+        let mut cache = self.new_solver_canonical_param_env_cache.lock();
+        let entry = cache.entry(param_env).or_insert_with(f);
+        from_entry(entry)
     }
 
     fn evaluation_is_concurrent(&self) -> bool {
@@ -266,14 +287,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
+        debug_assert_matches!(self.def_kind(def_id), DefKind::AssocTy | DefKind::AssocConst);
         let trait_def_id = self.parent(def_id);
-        assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
-        let trait_generics = self.generics_of(trait_def_id);
-        (
-            ty::TraitRef::new_from_args(self, trait_def_id, args.truncate_to(self, trait_generics)),
-            &args[trait_generics.count()..],
-        )
+        debug_assert_matches!(self.def_kind(trait_def_id), DefKind::Trait);
+        let trait_ref = ty::TraitRef::from_assoc(self, trait_def_id, args);
+        (trait_ref, &args[trait_ref.args.len()..])
     }
 
     fn mk_args(self, args: &[Self::GenericArg]) -> ty::GenericArgsRef<'tcx> {
@@ -341,7 +359,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
         self.coroutine_hidden_types(def_id)
     }
 
@@ -414,6 +432,13 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
+    fn impl_super_outlives(
+        self,
+        impl_def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
+        self.impl_super_outlives(impl_def_id)
+    }
+
     fn impl_is_const(self, def_id: DefId) -> bool {
         debug_assert_matches!(self.def_kind(def_id), DefKind::Impl { of_trait: true });
         self.is_conditionally_const(def_id)
@@ -456,7 +481,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> DefId {
-        self.require_lang_item(trait_lang_item_to_lang_item(lang_item), None)
+        self.require_lang_item(trait_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
     fn is_lang_item(self, def_id: DefId, lang_item: TraitSolverLangItem) -> bool {
@@ -673,14 +698,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.unsizing_params_for_adt(adt_def_id)
     }
 
-    fn find_const_ty_from_env(
-        self,
-        param_env: ty::ParamEnv<'tcx>,
-        placeholder: Self::PlaceholderConst,
-    ) -> Ty<'tcx> {
-        placeholder.find_const_ty_from_env(param_env)
-    }
-
     fn anonymize_bound_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
         self,
         binder: ty::Binder<'tcx, T>,
@@ -692,19 +709,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opaque_types_defined_by(defining_anchor)
     }
 
-    fn opaque_types_and_generators_defined_by(
+    fn opaque_types_and_coroutines_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
-        if self.next_trait_solver_globally() {
-            self.mk_local_def_ids_from_iter(
-                self.opaque_types_defined_by(defining_anchor)
-                    .iter()
-                    .chain(self.stalled_generators_within(defining_anchor)),
-            )
-        } else {
-            self.opaque_types_defined_by(defining_anchor)
-        }
+        let coroutines_defined_by = self
+            .nested_bodies_within(defining_anchor)
+            .iter()
+            .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
+        self.mk_local_def_ids_from_iter(
+            self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
+        )
     }
 }
 
@@ -754,8 +769,10 @@ bidirectional_lang_item_map! {
     Future,
     FutureOutput,
     Iterator,
+    MetaSized,
     Metadata,
     Option,
+    PointeeSized,
     PointeeTrait,
     Poll,
     Sized,
@@ -812,6 +829,13 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
     fn associated_const_equality(self) -> bool {
         self.associated_const_equality()
     }
+
+    fn feature_bound_holds_in_crate(self, symbol: Symbol) -> bool {
+        // We don't consider feature bounds to hold in the crate when `staged_api` feature is
+        // enabled, even if it is enabled through `#[feature]`.
+        // This is to prevent accidentally leaking unstable APIs to stable.
+        !self.staged_api() && self.enabled(symbol)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {
@@ -832,7 +856,7 @@ pub struct CtxtInterners<'tcx> {
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
     args: InternedSet<'tcx, GenericArgs<'tcx>>,
     type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
-    canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
+    canonical_var_kinds: InternedSet<'tcx, List<CanonicalVarKind<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
     poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
     predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
@@ -853,6 +877,7 @@ pub struct CtxtInterners<'tcx> {
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
+    outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -871,7 +896,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             type_lists: InternedSet::with_capacity(N * 4),
             region: InternedSet::with_capacity(N * 4),
             poly_existential_predicates: InternedSet::with_capacity(N / 4),
-            canonical_var_infos: InternedSet::with_capacity(N / 2),
+            canonical_var_kinds: InternedSet::with_capacity(N / 2),
             predicate: InternedSet::with_capacity(N),
             clauses: InternedSet::with_capacity(N),
             projs: InternedSet::with_capacity(N * 4),
@@ -890,6 +915,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
+            outlives: InternedSet::with_capacity(N),
         }
     }
 
@@ -1012,11 +1038,13 @@ const NUM_PREINTERNED_TY_VARS: u32 = 100;
 const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
 const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
 const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
+const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
+const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
 
 // This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_I: u32 = 2;
-const NUM_PREINTERNED_RE_LATE_BOUNDS_V: u32 = 20;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_I: u32 = 3;
+const NUM_PREINTERNED_ANON_RE_BOUNDS_V: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -1059,6 +1087,11 @@ pub struct CommonTypes<'tcx> {
 
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
     pub fresh_float_tys: Vec<Ty<'tcx>>,
+
+    /// Pre-interned values of the form:
+    /// `Bound(DebruijnIndex(i), BoundTy { var: v, kind: BoundTyKind::Anon})`
+    /// for small values of `i` and `v`.
+    pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -1072,9 +1105,9 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
+    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
-    pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
+    pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -1101,6 +1134,19 @@ impl<'tcx> CommonTypes<'tcx> {
             (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
         let fresh_float_tys: Vec<_> =
             (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+
+        let anon_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_I)
+            .map(|i| {
+                (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+                    .map(|v| {
+                        mk(ty::Bound(
+                            ty::DebruijnIndex::from(i),
+                            ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
+                        ))
+                    })
+                    .collect()
+            })
+            .collect();
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -1132,6 +1178,7 @@ impl<'tcx> CommonTypes<'tcx> {
             fresh_tys,
             fresh_int_tys,
             fresh_float_tys,
+            anon_bound_tys,
         }
     }
 }
@@ -1147,9 +1194,9 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let re_vars =
             (0..NUM_PREINTERNED_RE_VARS).map(|n| mk(ty::ReVar(ty::RegionVid::from(n)))).collect();
 
-        let re_late_bounds = (0..NUM_PREINTERNED_RE_LATE_BOUNDS_I)
+        let anon_re_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_I)
             .map(|i| {
-                (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
+                (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
                     .map(|v| {
                         mk(ty::ReBound(
                             ty::DebruijnIndex::from(i),
@@ -1167,7 +1214,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
-            re_late_bounds,
+            anon_re_bounds,
         }
     }
 }
@@ -1331,8 +1378,8 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let bodies = Default::default();
         let attrs = hir::AttributeMap::EMPTY;
 
-        let (opt_hash_including_bodies, _) =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
+        let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, &[], attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1368,6 +1415,18 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 #[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
+}
+
+impl<'tcx> LintEmitter for TyCtxt<'tcx> {
+    fn emit_node_span_lint(
+        self,
+        lint: &'static Lint,
+        hir_id: HirId,
+        span: impl Into<MultiSpan>,
+        decorator: impl for<'a> LintDiagnostic<'a, ()>,
+    ) {
+        self.emit_node_span_lint(lint, hir_id, span, decorator);
+    }
 }
 
 // Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
@@ -1440,8 +1499,16 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Caches the results of goal evaluation in the new solver.
     pub new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
+    pub new_solver_canonical_param_env_cache:
+        Lock<FxHashMap<ty::ParamEnv<'tcx>, ty::CanonicalParamEnvCacheEntry<TyCtxt<'tcx>>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
+
+    /// Caches the index of the highest bound var in clauses in a canonical binder.
+    pub highest_var_in_clauses_cache: Lock<FxHashMap<ty::Clauses<'tcx>, usize>>,
+    /// Caches the instantiation of a canonical binder given a set of args.
+    pub clauses_cache:
+        Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
@@ -1576,23 +1643,28 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Allocates a read-only byte or string literal for `mir::interpret` with alignment 1.
     /// Returns the same `AllocId` if called again with the same bytes.
-    pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
+    pub fn allocate_bytes_dedup<'a>(
+        self,
+        bytes: impl Into<Cow<'a, [u8]>>,
+        salt: usize,
+    ) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
-        let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
+        let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes, ());
         let alloc = self.mk_const_alloc(alloc);
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    /// Traits added on all bounds by default, excluding `Sized` which is treated separately.
     pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
-        match self.sess.opts.unstable_opts.experimental_default_bounds {
-            true => &[
-                LangItem::Sized,
+        if self.sess.opts.unstable_opts.experimental_default_bounds {
+            &[
                 LangItem::DefaultTrait1,
                 LangItem::DefaultTrait2,
                 LangItem::DefaultTrait3,
                 LangItem::DefaultTrait4,
-            ],
-            false => &[LangItem::Sized],
+            ]
+        } else {
+            &[]
         }
     }
 
@@ -1606,32 +1678,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `rustc_layout_scalar_valid_range` attribute.
     // FIXME(eddyb) this is an awkward spot for this method, maybe move it?
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
-        let get = |name| {
-            let Some(attr) = self.get_attr(def_id, name) else {
-                return Bound::Unbounded;
-            };
-            debug!("layout_scalar_valid_range: attr={:?}", attr);
-            if let Some(
-                &[
-                    ast::MetaItemInner::Lit(ast::MetaItemLit {
-                        kind: ast::LitKind::Int(a, _), ..
-                    }),
-                ],
-            ) = attr.meta_item_list().as_deref()
-            {
-                Bound::Included(a.get())
-            } else {
-                self.dcx().span_delayed_bug(
-                    attr.span(),
-                    "invalid rustc_layout_scalar_valid_range attribute",
-                );
-                Bound::Unbounded
-            }
-        };
-        (
-            get(sym::rustc_layout_scalar_valid_range_start),
-            get(sym::rustc_layout_scalar_valid_range_end),
-        )
+        let start = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeStart(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        let end = find_attr!(self.get_all_attrs(def_id), AttributeKind::RustcLayoutScalarValidRangeEnd(n, _) => Bound::Included(**n)).unwrap_or(Bound::Unbounded);
+        (start, end)
     }
 
     pub fn lift<T: Lift<TyCtxt<'tcx>>>(self, value: T) -> Option<T::Lifted> {
@@ -1688,7 +1737,10 @@ impl<'tcx> TyCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
+            new_solver_canonical_param_env_cache: Default::default(),
             canonical_param_env_cache: Default::default(),
+            highest_var_in_clauses_cache: Default::default(),
+            clauses_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
@@ -1706,7 +1758,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets a `Ty` representing the [`LangItem::OrderingEnum`]
     #[track_caller]
-    pub fn ty_ordering_enum(self, span: Option<Span>) -> Ty<'tcx> {
+    pub fn ty_ordering_enum(self, span: Span) -> Ty<'tcx> {
         let ordering_enum = self.require_lang_item(hir::LangItem::OrderingEnum, span);
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
@@ -1777,10 +1829,6 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn stability(self) -> &'tcx stability::Index {
-        self.stability_index(())
-    }
-
     pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(())
     }
@@ -1824,22 +1872,14 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.crate_types
     }
 
-    pub fn metadata_kind(self) -> MetadataKind {
-        self.crate_types()
-            .iter()
-            .map(|ty| match *ty {
-                CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => {
-                    MetadataKind::None
-                }
-                CrateType::Rlib => MetadataKind::Uncompressed,
-                CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
-            })
-            .max()
-            .unwrap_or(MetadataKind::None)
-    }
-
     pub fn needs_metadata(self) -> bool {
-        self.metadata_kind() != MetadataKind::None
+        self.crate_types().iter().any(|ty| match *ty {
+            CrateType::Executable
+            | CrateType::Staticlib
+            | CrateType::Cdylib
+            | CrateType::Sdylib => false,
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+        })
     }
 
     pub fn needs_crate_hash(self) -> bool {
@@ -1977,8 +2017,11 @@ impl<'tcx> TyCtxtAt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let feed = self.tcx.create_def(parent, name, def_kind);
+        let feed =
+            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
 
         feed.def_span(self.span);
         feed
@@ -1992,8 +2035,10 @@ impl<'tcx> TyCtxt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let data = def_kind.def_path_data(name);
+        let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -2003,12 +2048,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        //
-        // This call also writes to the value of the `source_span` query.
-        // This is fine because:
-        // - that query is `eval_always` so we won't miss its result changing;
-        // - this write will have happened before that query is called.
-        let def_id = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
@@ -2044,34 +2084,29 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
-        // Create a dependency to the red node to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         let definitions = &self.untracked.definitions;
-        std::iter::from_coroutine(
-            #[coroutine]
-            || {
-                let mut i = 0;
+        gen {
+            let mut i = 0;
 
-                // Recompute the number of definitions each time, because our caller may be creating
-                // new ones.
-                while i < { definitions.read().num_definitions() } {
-                    let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
-                    yield LocalDefId { local_def_index };
-                    i += 1;
-                }
+            // Recompute the number of definitions each time, because our caller may be creating
+            // new ones.
+            while i < { definitions.read().num_definitions() } {
+                let local_def_index = rustc_span::def_id::DefIndex::from_usize(i);
+                yield LocalDefId { local_def_index };
+                i += 1;
+            }
 
-                // Freeze definitions once we finish iterating on them, to prevent adding new ones.
-                definitions.freeze();
-            },
-        )
+            // Freeze definitions once we finish iterating on them, to prevent adding new ones.
+            definitions.freeze();
+        }
     }
 
     pub fn def_path_table(self) -> &'tcx rustc_hir::definitions::DefPathTable {
-        // Create a dependency to the crate to be sure we re-execute this when the amount of
-        // definitions change.
-        self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
+        // Depend on the `analysis` query to ensure compilation if finished.
+        self.ensure_ok().analysis(());
 
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
@@ -2083,7 +2118,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> &'tcx rustc_hir::def_path_hash_map::DefPathHashMap {
         // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
-        self.ensure_ok().hir_crate(());
+        self.ensure_ok().hir_crate_items(());
         // Freeze definitions once we start iterating on them, to prevent adding new ones
         // while iterating. If some query needs to add definitions, it should be `ensure`d above.
         self.untracked.definitions.freeze().def_path_hash_to_def_index_map()
@@ -2133,7 +2168,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable
                 | CrateType::Staticlib
                 | CrateType::ProcMacro
-                | CrateType::Cdylib => false,
+                | CrateType::Cdylib
+                | CrateType::Sdylib => false,
 
                 // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
                 // We want to block export of generics from dylibs,
@@ -2247,7 +2283,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Ty::new_imm_ref(
             self,
             self.lifetimes.re_static,
-            self.type_of(self.require_lang_item(LangItem::PanicLocation, None))
+            self.type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
                 .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
         )
     }
@@ -2275,7 +2311,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// All traits in the crate graph, including those not visible to the user.
-    pub fn all_traits(self) -> impl Iterator<Item = DefId> {
+    pub fn all_traits_including_private(self) -> impl Iterator<Item = DefId> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
@@ -2421,6 +2457,8 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
                 for shard in tcx.interners.type_.lock_shards() {
+                    // It seems that ordering doesn't affect anything here.
+                    #[allow(rustc::potential_query_instability)]
                     let types = shard.iter();
                     for &(InternedInSet(t), ()) in types {
                         let variant = match t.internee {
@@ -2509,17 +2547,17 @@ impl<'tcx> TyCtxt<'tcx> {
 // this type just holds a pointer to it, but it still effectively owns it. It
 // impls `Borrow` so that it can be looked up using the original
 // (non-arena-memory-owning) types.
-struct InternedInSet<'tcx, T: ?Sized>(&'tcx T);
+struct InternedInSet<'tcx, T: ?Sized + PointeeSized>(&'tcx T);
 
-impl<'tcx, T: 'tcx + ?Sized> Clone for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Clone for InternedInSet<'tcx, T> {
     fn clone(&self) -> Self {
         InternedInSet(self.0)
     }
 }
 
-impl<'tcx, T: 'tcx + ?Sized> Copy for InternedInSet<'tcx, T> {}
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> Copy for InternedInSet<'tcx, T> {}
 
-impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized + PointeeSized> IntoPointer for InternedInSet<'tcx, T> {
     fn into_pointer(&self) -> *const () {
         self.0 as *const _ as *const ()
     }
@@ -2670,7 +2708,7 @@ slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
     args: pub mk_args(GenericArg<'tcx>),
     type_lists: pub mk_type_list(Ty<'tcx>),
-    canonical_var_infos: pub mk_canonical_var_infos(CanonicalVarInfo<'tcx>),
+    canonical_var_kinds: pub mk_canonical_var_kinds(CanonicalVarKind<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
@@ -2680,6 +2718,7 @@ slice_interners!(
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
     patterns: pub mk_patterns(Pattern<'tcx>),
+    outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2704,7 +2743,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
         let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
-        let future_trait = self.require_lang_item(LangItem::Future, None);
+        let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
             let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() else {
@@ -2773,7 +2812,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return false;
             }
 
-            if !matches!(args[0].unpack(), ty::GenericArgKind::Type(_)) {
+            if !matches!(args[0].kind(), ty::GenericArgKind::Type(_)) {
                 return false;
             }
 
@@ -2795,7 +2834,7 @@ impl<'tcx> TyCtxt<'tcx> {
         };
 
         for (param, arg) in std::iter::zip(&generics.own_params, own_args) {
-            match (&param.kind, arg.unpack()) {
+            match (&param.kind, arg.kind()) {
                 (ty::GenericParamDefKind::Type { .. }, ty::GenericArgKind::Type(_))
                 | (ty::GenericParamDefKind::Lifetime, ty::GenericArgKind::Lifetime(_))
                 | (ty::GenericParamDefKind::Const { .. }, ty::GenericArgKind::Const(_)) => {}
@@ -3050,9 +3089,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_canonical_var_infos_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<CanonicalVarInfo<'tcx>, &'tcx List<CanonicalVarInfo<'tcx>>>,
+        T: CollectAndApply<CanonicalVarKind<'tcx>, &'tcx List<CanonicalVarKind<'tcx>>>,
     {
-        T::collect_and_apply(iter, |xs| self.mk_canonical_var_infos(xs))
+        T::collect_and_apply(iter, |xs| self.mk_canonical_var_kinds(xs))
     }
 
     pub fn mk_place_elems_from_iter<I, T>(self, iter: I) -> T::Output
@@ -3095,6 +3134,17 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_bound_variable_kinds(xs))
     }
 
+    pub fn mk_outlives_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<
+                ty::ArgOutlivesPredicate<'tcx>,
+                &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>,
+            >,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_outlives(xs))
+    }
+
     /// Emit a lint at `span` from a lint struct (some type that implements `LintDiagnostic`,
     /// typically generated by `#[derive(LintDiagnostic)]`).
     #[track_caller]
@@ -3127,42 +3177,33 @@ impl<'tcx> TyCtxt<'tcx> {
         lint_level(self.sess, lint, level, Some(span.into()), decorate);
     }
 
-    /// Find the crate root and the appropriate span where `use` and outer attributes can be
-    /// inserted at.
-    pub fn crate_level_attribute_injection_span(self, hir_id: HirId) -> Option<Span> {
-        for (_hir_id, node) in self.hir_parent_iter(hir_id) {
-            if let hir::Node::Crate(m) = node {
-                return Some(m.spans.inject_use_span.shrink_to_lo());
-            }
-        }
-        None
+    /// Find the appropriate span where `use` and outer attributes can be inserted at.
+    pub fn crate_level_attribute_injection_span(self) -> Span {
+        let node = self.hir_node(hir::CRATE_HIR_ID);
+        let hir::Node::Crate(m) = node else { bug!() };
+        m.spans.inject_use_span.shrink_to_lo()
     }
 
     pub fn disabled_nightly_features<E: rustc_errors::EmissionGuarantee>(
         self,
         diag: &mut Diag<'_, E>,
-        hir_id: Option<HirId>,
         features: impl IntoIterator<Item = (String, Symbol)>,
     ) {
         if !self.sess.is_nightly_build() {
             return;
         }
 
-        let span = hir_id.and_then(|id| self.crate_level_attribute_injection_span(id));
+        let span = self.crate_level_attribute_injection_span();
         for (desc, feature) in features {
             // FIXME: make this string translatable
             let msg =
                 format!("add `#![feature({feature})]` to the crate attributes to enable{desc}");
-            if let Some(span) = span {
-                diag.span_suggestion_verbose(
-                    span,
-                    msg,
-                    format!("#![feature({feature})]\n"),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                diag.help(msg);
-            }
+            diag.span_suggestion_verbose(
+                span,
+                msg,
+                format!("#![feature({feature})]\n"),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
@@ -3276,10 +3317,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::LateParamRegionKind::Named(
-                            lbv.to_def_id(),
-                            self.item_name(lbv.to_def_id()),
-                        ),
+                        ty::LateParamRegionKind::Named(lbv.to_def_id()),
                     );
                 }
                 resolve_bound_vars::ResolvedArg::Error(guar) => {
@@ -3313,6 +3351,10 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_trait_impl(self, def_id: DefId) -> bool {
         self.def_kind(def_id) == DefKind::Impl { of_trait: true }
             && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
+    }
+
+    pub fn is_sdylib_interface_build(self) -> bool {
+        self.sess.opts.unstable_opts.build_sdylib_interface
     }
 
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
@@ -3353,8 +3395,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 
+    /// Return the crate imported by given use item.
+    pub fn extern_mod_stmt_cnum(self, def_id: LocalDefId) -> Option<CrateNum> {
+        self.resolutions(()).extern_crate_map.get(&def_id).copied()
+    }
+
     pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
+    }
+
+    pub fn metadata_dep_node(self) -> crate::dep_graph::DepNode {
+        crate::dep_graph::make_metadata(self)
     }
 
     /// Given an `impl_id`, return the trait it implements.
@@ -3386,6 +3437,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn do_not_recommend_impl(self, def_id: DefId) -> bool {
         self.get_diagnostic_attr(def_id, sym::do_not_recommend).is_some()
     }
+
+    /// Whether this def is one of the special bin crate entrypoint functions that must have a
+    /// monomorphization and also not be internalized in the bin crate.
+    pub fn is_entrypoint(self, def_id: DefId) -> bool {
+        if self.is_lang_item(def_id, LangItem::Start) {
+            return true;
+        }
+        if let Some((entry_def_id, _)) = self.entry_fn(())
+            && entry_def_id == def_id
+        {
+            return true;
+        }
+        false
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead
@@ -3404,16 +3469,6 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.maybe_unused_trait_imports =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(UnordSet::from(
-            tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default(),
-        ))
-    };
-
-    providers.extern_mod_stmt_cnum =
-        |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =
         |tcx, LocalCrate| contains_name(tcx.hir_krate_attrs(), sym::panic_runtime);
     providers.is_compiler_builtins =

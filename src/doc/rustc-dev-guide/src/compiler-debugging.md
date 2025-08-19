@@ -1,7 +1,5 @@
 # Debugging the compiler
 
-<!-- toc -->
-
 This chapter contains a few tips to debug the compiler. These tips aim to be
 useful no matter what you are working on.  Some of the other chapters have
 advice about specific parts of the compiler (e.g. the [Queries Debugging and

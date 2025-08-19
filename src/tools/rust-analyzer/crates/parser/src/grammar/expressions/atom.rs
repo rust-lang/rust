@@ -46,7 +46,6 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['['],
         T![|],
         T![async],
-        T![box],
         T![break],
         T![const],
         T![continue],
@@ -68,7 +67,8 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME_IDENT,
     ]));
 
-pub(super) const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
+pub(in crate::grammar) const EXPR_RECOVERY_SET: TokenSet =
+    TokenSet::new(&[T!['}'], T![')'], T![']'], T![,]]);
 
 pub(super) fn atom_expr(
     p: &mut Parser<'_>,
@@ -253,8 +253,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = p.start();
     p.bump_remap(T![builtin]);
     p.bump(T![#]);
-    if p.at_contextual_kw(T![offset_of]) {
-        p.bump_remap(T![offset_of]);
+    if p.eat_contextual_kw(T![offset_of]) {
         p.expect(T!['(']);
         type_(p);
         p.expect(T![,]);
@@ -278,8 +277,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             p.expect(T![')']);
         }
         Some(m.complete(p, OFFSET_OF_EXPR))
-    } else if p.at_contextual_kw(T![format_args]) {
-        p.bump_remap(T![format_args]);
+    } else if p.eat_contextual_kw(T![format_args]) {
         p.expect(T!['(']);
         expr(p);
         if p.eat(T![,]) {
@@ -302,7 +300,16 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         }
         p.expect(T![')']);
         Some(m.complete(p, FORMAT_ARGS_EXPR))
-    } else if p.at_contextual_kw(T![asm]) {
+    } else if p.eat_contextual_kw(T![asm])
+        || p.eat_contextual_kw(T![global_asm])
+        || p.eat_contextual_kw(T![naked_asm])
+    {
+        // test asm_kinds
+        // fn foo() {
+        //     builtin#asm("");
+        //     builtin#global_asm("");
+        //     builtin#naked_asm("");
+        // }
         parse_asm_expr(p, m)
     } else {
         m.abandon(p);
@@ -321,8 +328,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
 //         tmp = out(reg) _,
 //     );
 // }
-fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
-    p.bump_remap(T![asm]);
+pub(crate) fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
     p.expect(T!['(']);
     if expr(p).is_none() {
         p.err_and_bump("expected asm template");
@@ -381,10 +387,14 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
             op.complete(p, ASM_REG_OPERAND);
             op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat_contextual_kw(T![label]) {
+            // test asm_label
+            // fn foo() {
+            //     builtin#asm("", label {});
+            // }
             dir_spec.abandon(p);
             block_expr(p);
-            op.complete(p, ASM_OPERAND_NAMED);
-            op_n.complete(p, ASM_LABEL);
+            op.complete(p, ASM_LABEL);
+            op_n.complete(p, ASM_OPERAND_NAMED);
         } else if p.eat(T![const]) {
             dir_spec.abandon(p);
             expr(p);
@@ -407,11 +417,10 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
             dir_spec.abandon(p);
             op.abandon(p);
             op_n.abandon(p);
-            p.err_and_bump("expected asm operand");
 
-            // improves error recovery and handles err_and_bump recovering from `{` which gets
-            // the parser stuck here
+            // improves error recovery
             if p.at(T!['{']) {
+                p.error("expected asm operand");
                 // test_err bad_asm_expr
                 // fn foo() {
                 //     builtin#asm(
@@ -419,6 +428,8 @@ fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedMarker> {
                 //     );
                 // }
                 expr(p);
+            } else {
+                p.err_and_bump("expected asm operand");
             }
 
             if p.at(T!['}']) {
@@ -558,6 +569,8 @@ fn closure_expr(p: &mut Parser<'_>) -> CompletedMarker {
 
     let m = p.start();
 
+    // test closure_binder
+    // fn main() { for<'a> || (); }
     if p.at(T![for]) {
         types::for_binder(p);
     }

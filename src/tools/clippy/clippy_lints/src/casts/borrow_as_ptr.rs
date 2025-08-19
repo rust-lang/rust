@@ -18,7 +18,8 @@ pub(super) fn check<'tcx>(
     cast_to: &'tcx Ty<'_>,
     msrv: Msrv,
 ) -> bool {
-    if matches!(cast_to.kind, TyKind::Ptr(_))
+    if let TyKind::Ptr(target) = cast_to.kind
+        && !matches!(target.ty.kind, TyKind::TraitObject(..))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
         && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
     {

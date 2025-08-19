@@ -1,4 +1,6 @@
 //@ run-pass
+//@ ignore-backends: gcc
+
 #![allow(dead_code)]
 // check that we don't have linear stack usage with multiple calls to `push`
 

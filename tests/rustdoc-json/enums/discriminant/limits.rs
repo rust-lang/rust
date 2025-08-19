@@ -1,6 +1,3 @@
-#![feature(repr128)]
-#![allow(incomplete_features)]
-
 #[repr(u64)]
 pub enum U64 {
     //@ is "$.index[?(@.name=='U64Min')].inner.variant.discriminant.value" '"0"'

@@ -58,8 +58,8 @@ fn main() {
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
-    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
-    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
+    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{rustc:?} was not set"));
+    let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{libdir:?} was not set"));
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
@@ -120,14 +120,12 @@ fn main() {
     };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-    if let Some(crate_name) = crate_name {
-        if let Some(target) = env::var_os("RUSTC_TIME") {
-            if target == "all"
-                || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name)
-            {
-                cmd.arg("-Ztime-passes");
-            }
-        }
+    if let Some(crate_name) = crate_name
+        && let Some(target) = env::var_os("RUSTC_TIME")
+        && (target == "all"
+            || target.into_string().unwrap().split(',').any(|c| c.trim() == crate_name))
+    {
+        cmd.arg("-Ztime-passes");
     }
 
     // Print backtrace in case of ICE
@@ -151,18 +149,6 @@ fn main() {
         // unless one is already set.
         if !args.iter().any(|arg| arg == "--sysroot") {
             cmd.arg("--sysroot").arg(&sysroot);
-        }
-
-        // If we're compiling specifically the `panic_abort` crate then we pass
-        // the `-C panic=abort` option. Note that we do not do this for any
-        // other crate intentionally as this is the only crate for now that we
-        // ship with panic=abort.
-        //
-        // This... is a bit of a hack how we detect this. Ideally this
-        // information should be encoded in the crate I guess? Would likely
-        // require an RFC amendment to RFC 1513, however.
-        if crate_name == Some("panic_abort") {
-            cmd.arg("-C").arg("panic=abort");
         }
 
         let crate_type = parse_value_from_args(&orig_args, "--crate-type");
@@ -190,6 +176,16 @@ fn main() {
     if let Ok(maps) = env::var("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP") {
         for map in maps.split('\t') {
             cmd.arg("--remap-path-prefix").arg(map);
+        }
+    }
+
+    // Here we pass additional paths that essentially act as a sysroot.
+    // These are used to load rustc crates (e.g. `extern crate rustc_ast;`)
+    // for rustc_private tools, so that we do not have to copy them into the
+    // actual sysroot of the compiler that builds the tool.
+    if let Ok(dirs) = env::var("RUSTC_ADDITIONAL_SYSROOT_PATHS") {
+        for dir in dirs.split(",") {
+            cmd.arg(format!("-L{dir}"));
         }
     }
 
@@ -242,10 +238,10 @@ fn main() {
         }
     }
 
-    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some() {
-        if let Some("rustc_driver") = crate_name {
-            cmd.arg("-Clink-args=-Wl,-q");
-        }
+    if env::var_os("RUSTC_BOLT_LINK_FLAGS").is_some()
+        && let Some("rustc_driver") = crate_name
+    {
+        cmd.arg("-Clink-args=-Wl,-q");
     }
 
     let is_test = args.iter().any(|a| a == "--test");
@@ -272,7 +268,7 @@ fn main() {
         eprintln!("{prefix} libdir: {libdir:?}");
     }
 
-    maybe_dump(format!("stage{stage}-rustc"), &cmd);
+    maybe_dump(format!("stage{}-rustc", stage + 1), &cmd);
 
     let start = Instant::now();
     let (child, status) = {
@@ -282,25 +278,24 @@ fn main() {
         (child, status)
     };
 
-    if env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
-        || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some()
+    if (env::var_os("RUSTC_PRINT_STEP_TIMINGS").is_some()
+        || env::var_os("RUSTC_PRINT_STEP_RUSAGE").is_some())
+        && let Some(crate_name) = crate_name
     {
-        if let Some(crate_name) = crate_name {
-            let dur = start.elapsed();
-            // If the user requested resource usage data, then
-            // include that in addition to the timing output.
-            let rusage_data =
-                env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
-            eprintln!(
-                "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
-                crate_name,
-                is_test,
-                dur.as_secs(),
-                dur.subsec_millis(),
-                if rusage_data.is_some() { " " } else { "" },
-                rusage_data.unwrap_or_default(),
-            );
-        }
+        let dur = start.elapsed();
+        // If the user requested resource usage data, then
+        // include that in addition to the timing output.
+        let rusage_data =
+            env::var_os("RUSTC_PRINT_STEP_RUSAGE").and_then(|_| format_rusage_data(child));
+        eprintln!(
+            "[RUSTC-TIMING] {} test:{} {}.{:03}{}{}",
+            crate_name,
+            is_test,
+            dur.as_secs(),
+            dur.subsec_millis(),
+            if rusage_data.is_some() { " " } else { "" },
+            rusage_data.unwrap_or_default(),
+        );
     }
 
     if status.success() {
@@ -342,7 +337,7 @@ fn format_rusage_data(child: Child) -> Option<String> {
     use windows::Win32::System::Threading::GetProcessTimes;
     use windows::Win32::System::Time::FileTimeToSystemTime;
 
-    let handle = HANDLE(child.as_raw_handle() as isize);
+    let handle = HANDLE(child.as_raw_handle());
 
     let mut user_filetime = Default::default();
     let mut user_time = Default::default();

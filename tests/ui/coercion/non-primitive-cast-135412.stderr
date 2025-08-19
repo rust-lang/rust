@@ -2,9 +2,8 @@ error[E0605]: non-primitive cast: `u32` as `Option<_>`
   --> $DIR/non-primitive-cast-135412.rs:6:13
    |
 LL |     let _ = 7u32 as Option<_>;
-   |             ^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
    |
-   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 help: consider using the `From` trait instead
    |
 LL -     let _ = 7u32 as Option<_>;
@@ -15,9 +14,8 @@ error[E0605]: non-primitive cast: `&'static str` as `Arc<str>`
   --> $DIR/non-primitive-cast-135412.rs:8:13
    |
 LL |     let _ = "String" as Arc<str>;
-   |             ^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
    |
-   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 help: consider using the `From` trait instead
    |
 LL -     let _ = "String" as Arc<str>;

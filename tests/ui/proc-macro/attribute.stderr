@@ -1,104 +1,286 @@
-error: malformed `proc_macro_derive` attribute input
+error[E0539]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:9:1
    |
 LL | #[proc_macro_derive]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
-
-error: malformed `proc_macro_derive` attribute input
-  --> $DIR/attribute.rs:12:1
+   | ^^^^^^^^^^^^^^^^^^^^ expected this to be a list
    |
-LL | #[proc_macro_derive = ""]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[proc_macro_derive(TraitName)]
+   |                    +++++++++++
+LL | #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |                    ++++++++++++++++++++++++++++++++++++++++++
 
-error: attribute must have either one or two arguments
+error[E0539]: malformed `proc_macro_derive` attribute input
   --> $DIR/attribute.rs:15:1
    |
-LL | #[proc_macro_derive(d3, a, b)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[proc_macro_derive = ""]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive = ""]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive = ""]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must have either one or two arguments
-  --> $DIR/attribute.rs:19:1
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:21:1
+   |
+LL | #[proc_macro_derive(d3, a, b)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^-^^^^^
+   |                         |
+   |                         the only valid argument here is `attributes`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d3, a, b)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d3, a, b)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
+
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:27:1
    |
 LL | #[proc_macro_derive(d4, attributes(a), b)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                                        |
+   |                                        didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d4, attributes(a), b)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d4, attributes(a), b)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: not a meta item
-  --> $DIR/attribute.rs:23:21
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:33:1
    |
 LL | #[proc_macro_derive("a")]
-   |                     ^^^
+   | ^^^^^^^^^^^^^^^^^^^^---^^
+   |                     |
+   |                     didn't expect a literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive("a")]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive("a")]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: must only be one word
-  --> $DIR/attribute.rs:27:21
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:39:1
    |
 LL | #[proc_macro_derive(d6 = "")]
-   |                     ^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^----^^
+   |                        |
+   |                        didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d6 = "")]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d6 = "")]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: must only be one word
-  --> $DIR/attribute.rs:31:21
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:45:1
    |
 LL | #[proc_macro_derive(m::d7)]
-   |                     ^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^-----^^
+   |                     |
+   |                     expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(m::d7)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(m::d7)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: must only be one word
-  --> $DIR/attribute.rs:35:21
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:51:1
    |
 LL | #[proc_macro_derive(d8(a))]
-   |                     ^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^---^^
+   |                       |
+   |                       didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d8(a))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d8(a))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: `self` cannot be a name of derive macro
-  --> $DIR/attribute.rs:39:21
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:57:1
    |
 LL | #[proc_macro_derive(self)]
-   |                     ^^^^
+   | ^^^^^^^^^^^^^^^^^^^^----^^
+   |                     |
+   |                     expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(self)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(self)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: second argument must be `attributes`
-  --> $DIR/attribute.rs:46:26
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:66:1
    |
 LL | #[proc_macro_derive(d11, a)]
-   |                          ^
-
-error: attribute must be of form: `attributes(foo, bar)`
-  --> $DIR/attribute.rs:46:26
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^-^^
+   |                          |
+   |                          the only valid argument here is `attributes`
    |
-LL | #[proc_macro_derive(d11, a)]
-   |                          ^
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d11, a)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d11, a)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must be of form: `attributes(foo, bar)`
-  --> $DIR/attribute.rs:51:26
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:72:1
    |
 LL | #[proc_macro_derive(d12, attributes)]
-   |                          ^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^----------^^
+   |                          |
+   |                          expected this to be a list
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d12, attributes)]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d12, attributes)]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must be a meta item, not a literal
-  --> $DIR/attribute.rs:55:37
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:78:1
    |
 LL | #[proc_macro_derive(d13, attributes("a"))]
-   |                                     ^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^
+   |                                     |
+   |                                     expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d13, attributes("a"))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d13, attributes("a"))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must only be a single word
-  --> $DIR/attribute.rs:59:37
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:84:1
    |
 LL | #[proc_macro_derive(d14, attributes(a = ""))]
-   |                                     ^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----^^^
+   |                                       |
+   |                                       didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d14, attributes(a = ""))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d14, attributes(a = ""))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must only be a single word
-  --> $DIR/attribute.rs:63:37
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:90:1
    |
 LL | #[proc_macro_derive(d15, attributes(m::a))]
-   |                                     ^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----^^^
+   |                                     |
+   |                                     expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d15, attributes(m::a))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d15, attributes(m::a))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: attribute must only be a single word
-  --> $DIR/attribute.rs:67:37
+error[E0565]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:96:1
    |
 LL | #[proc_macro_derive(d16, attributes(a(b)))]
-   |                                     ^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^
+   |                                      |
+   |                                      didn't expect any arguments here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d16, attributes(a(b)))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d16, attributes(a(b)))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: `self` cannot be a name of derive helper attribute
-  --> $DIR/attribute.rs:71:37
+error[E0539]: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:102:1
    |
 LL | #[proc_macro_derive(d17, attributes(self))]
-   |                                     ^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----^^^
+   |                                     |
+   |                                     expected a valid identifier here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[proc_macro_derive(d17, attributes(self))]
+LL + #[proc_macro_derive(TraitName)]
+   |
+LL - #[proc_macro_derive(d17, attributes(self))]
+LL + #[proc_macro_derive(TraitName, attributes(name1, name2, ...))]
+   |
 
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 
+Some errors have detailed explanations: E0539, E0565.
+For more information about an error, try `rustc --explain E0539`.

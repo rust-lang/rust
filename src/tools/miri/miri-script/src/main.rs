@@ -14,24 +14,40 @@ pub enum Command {
     /// Sets up the rpath such that the installed binary should work in any
     /// working directory.
     Install {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo install`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Build Miri.
     Build {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo build`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Check Miri.
     Check {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo check`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Check Miri with Clippy.
     Clippy {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo clippy`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -47,6 +63,10 @@ pub enum Command {
         /// Produce coverage report.
         #[arg(long)]
         coverage: bool,
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to the test harness.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -55,7 +75,7 @@ pub enum Command {
     ///
     /// Also respects MIRIFLAGS environment variable.
     Run {
-        /// Build the program with the dependencies declared in `test_dependencies/Cargo.toml`.
+        /// Build the program with the dependencies declared in `tests/deps/Cargo.toml`.
         #[arg(long)]
         dep: bool,
         /// Show build progress.
@@ -67,6 +87,10 @@ pub enum Command {
         /// The Rust edition.
         #[arg(long)]
         edition: Option<String>,
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `miri`.
         ///
         /// The flags set in `MIRIFLAGS` are added in front of these flags.
@@ -75,6 +99,10 @@ pub enum Command {
     },
     /// Build documentation.
     Doc {
+        /// Pass features to cargo invocations on the "miri" crate in the root. This option does
+        /// **not** apply to other crates, so e.g. these features won't be used on "cargo-miri".
+        #[arg(long, value_delimiter = ',', action = clap::ArgAction::Append)]
+        features: Vec<String>,
         /// Flags that are passed through to `cargo doc`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -114,25 +142,8 @@ pub enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Pull and merge Miri changes from the rustc repo.
-    ///
-    /// The fetched commit is stored in the `rust-version` file, so the next `./miri toolchain` will
-    /// install the rustc that just got pulled.
-    RustcPull {
-        /// The commit to fetch (default: latest rustc commit).
-        commit: Option<String>,
-    },
-    /// Push Miri changes back to the rustc repo.
-    ///
-    /// This will pull a copy of the rustc history into the Miri repo, unless you set the RUSTC_GIT
-    /// env var to an existing clone of the rustc repo.
-    RustcPush {
-        /// The Github user that owns the rustc fork to which we should push.
-        github_user: String,
-        /// The branch to push to.
-        #[arg(default_value = "miri-sync")]
-        branch: String,
-    },
+    /// Squash the commits of the current feature branch into one.
+    Squash,
 }
 
 impl Command {
@@ -142,20 +153,19 @@ impl Command {
         }
 
         match self {
-            Self::Install { flags }
-            | Self::Build { flags }
-            | Self::Check { flags }
-            | Self::Doc { flags }
+            Self::Install { flags, .. }
+            | Self::Build { flags, .. }
+            | Self::Check { flags, .. }
+            | Self::Doc { flags, .. }
             | Self::Fmt { flags }
             | Self::Toolchain { flags }
-            | Self::Clippy { flags }
+            | Self::Clippy { flags, .. }
             | Self::Run { flags, .. }
             | Self::Test { flags, .. } => {
                 flags.extend(remainder);
                 Ok(())
             }
-            Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } =>
-                bail!("unexpected \"--\" found in arguments"),
+            Self::Bench { .. } | Self::Squash => bail!("unexpected \"--\" found in arguments"),
         }
     }
 }
@@ -170,6 +180,11 @@ pub struct Cli {
 }
 
 fn main() -> Result<()> {
+    // If we are invoked as the git sequence editor, jump to that logic.
+    if !std::env::var_os("MIRI_SCRIPT_IS_GIT_SEQUENCE_EDITOR").unwrap_or_default().is_empty() {
+        return Command::squash_sequence_editor();
+    }
+
     // Split the arguments into the part before the `--` and the part after.
     // The `--` itself ends up in the second part.
     let miri_args: Vec<_> = std::env::args().take_while(|x| *x != "--").collect();

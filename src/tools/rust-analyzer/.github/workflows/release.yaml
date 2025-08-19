@@ -134,13 +134,13 @@ jobs:
 
       - name: Run analysis-stats on rust-analyzer
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats .
+        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats . -q
 
       - name: Run analysis-stats on rust std library
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         env:
           RUSTC_BOOTSTRAP: 1
-        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std
+        run: target/${{ matrix.target }}/release/rust-analyzer analysis-stats --with-deps $(rustc --print sysroot)/lib/rustlib/src/rust/library/std -q
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

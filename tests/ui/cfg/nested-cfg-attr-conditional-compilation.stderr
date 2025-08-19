@@ -1,0 +1,17 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/nested-cfg-attr-conditional-compilation.rs:17:5
+   |
+LL |     f()
+   |     ^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/nested-cfg-attr-conditional-compilation.rs:14:4
+   |
+LL | #[cfg_attr(all(), cfg_attr(all(), cfg(false)))]
+   |                                       ----- the item is gated here
+LL | fn f() {}
+   |    ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

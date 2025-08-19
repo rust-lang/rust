@@ -2,17 +2,25 @@ error[E0747]: type provided when a constant was expected
   --> $DIR/kind_mismatch.rs:11:38
    |
 LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
-   |      -                               ^
-   |      |
-   |      help: consider changing this type parameter to a const parameter: `const K: u8`
+   |                                      ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL - impl<K> ContainsKey<K> for KeyHolder<K> {}
+LL + impl<const K: u8> ContainsKey<K> for KeyHolder<K> {}
+   |
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/kind_mismatch.rs:11:21
    |
 LL | impl<K> ContainsKey<K> for KeyHolder<K> {}
-   |      -              ^
-   |      |
-   |      help: consider changing this type parameter to a const parameter: `const K: u8`
+   |                     ^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL - impl<K> ContainsKey<K> for KeyHolder<K> {}
+LL + impl<const K: u8> ContainsKey<K> for KeyHolder<K> {}
+   |
 
 error: aborting due to 2 previous errors
 

@@ -1,21 +1,16 @@
-use std::path::PathBuf;
-
 use rustc_macros::{Diagnostic, LintDiagnostic};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Instance, Ty};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_recursion_limit)]
-pub(crate) struct RecursionLimit {
+pub(crate) struct RecursionLimit<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub shrunk: String,
+    pub instance: Instance<'tcx>,
     #[note]
     pub def_span: Span,
     pub def_path_str: String,
-    #[note(monomorphize_written_to_path)]
-    pub was_written: bool,
-    pub path: PathBuf,
 }
 
 #[derive(Diagnostic)]
@@ -53,22 +48,24 @@ pub(crate) struct CouldntDumpMonoStats {
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_encountered_error_while_instantiating)]
-pub(crate) struct EncounteredErrorWhileInstantiating {
+pub(crate) struct EncounteredErrorWhileInstantiating<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub formatted_item: String,
+    pub kind: &'static str,
+    pub instance: Instance<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_encountered_error_while_instantiating_global_asm)]
+pub(crate) struct EncounteredErrorWhileInstantiatingGlobalAsm {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_start_not_found)]
 #[help]
 pub(crate) struct StartNotFound;
-
-#[derive(Diagnostic)]
-#[diag(monomorphize_unknown_cgu_collection_mode)]
-pub(crate) struct UnknownCguCollectionMode<'a> {
-    pub mode: &'a str,
-}
 
 #[derive(Diagnostic)]
 #[diag(monomorphize_abi_error_disabled_vector_type)]
@@ -103,15 +100,6 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub span: Span,
     pub required_feature: &'a str,
     pub abi: &'a str,
-    /// Whether this is a problem at a call site or at a declaration.
-    pub is_call: bool,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_wasm_c_abi_transition)]
-#[help]
-pub(crate) struct WasmCAbiTransition<'a> {
-    pub ty: Ty<'a>,
     /// Whether this is a problem at a call site or at a declaration.
     pub is_call: bool,
 }

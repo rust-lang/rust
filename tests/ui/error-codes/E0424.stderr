@@ -40,8 +40,6 @@ LL |     fn qux(&self) {
 error[E0424]: expected unit struct, unit variant or constant, found module `self`
   --> $DIR/E0424.rs:20:9
    |
-LL | fn main () {
-   |    ---- this function can't have a `self` parameter
 LL |     let self = "self";
    |         ^^^^ `self` value is a keyword and may not be bound to variables or shadowed
 

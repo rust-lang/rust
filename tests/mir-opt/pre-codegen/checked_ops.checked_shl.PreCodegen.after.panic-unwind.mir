@@ -7,7 +7,7 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
     scope 1 (inlined core::num::<impl u32>::checked_shl) {
         let mut _3: bool;
         let mut _4: u32;
-        scope 2 (inlined core::num::<impl u32>::unchecked_shl) {
+        scope 2 (inlined #[track_caller] core::num::<impl u32>::unchecked_shl) {
             scope 3 (inlined core::ub_checks::check_language_ub) {
                 scope 4 (inlined core::ub_checks::check_language_ub::runtime) {
                 }

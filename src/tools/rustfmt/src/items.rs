@@ -4,8 +4,8 @@ use std::borrow::Cow;
 use std::cmp::{Ordering, max, min};
 
 use regex::Regex;
+use rustc_ast::ast;
 use rustc_ast::visit;
-use rustc_ast::{ast, ptr};
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
 use tracing::debug;
 
@@ -60,6 +60,11 @@ impl Rewrite for ast::Local {
         skip_out_of_file_lines_range_err!(context, self.span);
 
         if contains_skip(&self.attrs) {
+            return Err(RewriteError::SkipFormatting);
+        }
+
+        // FIXME(super_let): Implement formatting
+        if self.super_.is_some() {
             return Err(RewriteError::SkipFormatting);
         }
 
@@ -720,9 +725,9 @@ impl<'a> FmtVisitor<'a> {
             .ok()
     }
 
-    fn visit_impl_items(&mut self, items: &[ptr::P<ast::AssocItem>]) {
+    fn visit_impl_items(&mut self, items: &[Box<ast::AssocItem>]) {
         if self.get_context().config.reorder_impl_items() {
-            type TyOpt = Option<ptr::P<ast::Ty>>;
+            type TyOpt = Option<Box<ast::Ty>>;
             use crate::ast::AssocItemKind::*;
             let is_type = |ty: &TyOpt| opaque_ty(ty).is_none();
             let is_opaque = |ty: &TyOpt| opaque_ty(ty).is_some();
@@ -929,7 +934,7 @@ pub(crate) fn format_impl(
 
 fn is_impl_single_line(
     context: &RewriteContext<'_>,
-    items: &[ptr::P<ast::AssocItem>],
+    items: &[Box<ast::AssocItem>],
     result: &str,
     where_clause_str: &str,
     item: &ast::Item,
@@ -953,20 +958,19 @@ fn format_impl_ref_and_type(
     offset: Indent,
 ) -> Option<String> {
     let ast::Impl {
-        safety,
-        polarity,
-        defaultness,
-        constness,
-        ref generics,
-        of_trait: ref trait_ref,
-        ref self_ty,
-        ..
-    } = *iimpl;
+        generics,
+        of_trait,
+        self_ty,
+        items: _,
+    } = iimpl;
     let mut result = String::with_capacity(128);
 
     result.push_str(&format_visibility(context, &item.vis));
-    result.push_str(format_defaultness(defaultness));
-    result.push_str(format_safety(safety));
+
+    if let Some(of_trait) = of_trait.as_deref() {
+        result.push_str(format_defaultness(of_trait.defaultness));
+        result.push_str(format_safety(of_trait.safety));
+    }
 
     let shape = if context.config.style_edition() >= StyleEdition::Edition2024 {
         Shape::indented(offset + last_line_width(&result), context.config)
@@ -979,28 +983,24 @@ fn format_impl_ref_and_type(
     };
     let generics_str = rewrite_generics(context, "impl", generics, shape).ok()?;
     result.push_str(&generics_str);
-    result.push_str(format_constness_right(constness));
 
-    let polarity_str = match polarity {
-        ast::ImplPolarity::Negative(_) => "!",
-        ast::ImplPolarity::Positive => "",
-    };
-
-    let polarity_overhead;
     let trait_ref_overhead;
-    if let Some(ref trait_ref) = *trait_ref {
+    if let Some(of_trait) = of_trait.as_deref() {
+        result.push_str(format_constness_right(of_trait.constness));
+        let polarity_str = match of_trait.polarity {
+            ast::ImplPolarity::Negative(_) => "!",
+            ast::ImplPolarity::Positive => "",
+        };
         let result_len = last_line_width(&result);
         result.push_str(&rewrite_trait_ref(
             context,
-            trait_ref,
+            &of_trait.trait_ref,
             offset,
             polarity_str,
             result_len,
         )?);
-        polarity_overhead = 0; // already written
         trait_ref_overhead = " for".len();
     } else {
-        polarity_overhead = polarity_str.len();
         trait_ref_overhead = 0;
     }
 
@@ -1015,17 +1015,15 @@ fn format_impl_ref_and_type(
     } else {
         0
     };
-    let used_space =
-        last_line_width(&result) + polarity_overhead + trait_ref_overhead + curly_brace_overhead;
+    let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
     // 1 = space before the type.
     let budget = context.budget(used_space + 1);
     if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
         if !self_ty_str.contains('\n') {
-            if trait_ref.is_some() {
+            if of_trait.is_some() {
                 result.push_str(" for ");
             } else {
                 result.push(' ');
-                result.push_str(polarity_str);
             }
             result.push_str(&self_ty_str);
             return Some(result);
@@ -1037,12 +1035,10 @@ fn format_impl_ref_and_type(
     // Add indentation of one additional tab.
     let new_line_offset = offset.block_indent(context.config);
     result.push_str(&new_line_offset.to_string(context.config));
-    if trait_ref.is_some() {
+    if of_trait.is_some() {
         result.push_str("for ");
-    } else {
-        result.push_str(polarity_str);
     }
-    let budget = context.budget(last_line_width(&result) + polarity_overhead);
+    let budget = context.budget(last_line_width(&result));
     let type_offset = match context.config.indent_style() {
         IndentStyle::Visual => new_line_offset + trait_ref_overhead,
         IndentStyle::Block => new_line_offset,
@@ -1105,10 +1101,10 @@ impl<'a> StructParts<'a> {
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, def, ident, generics) = match item.kind {
-            ast::ItemKind::Struct(ident, ref def, ref generics) => {
+            ast::ItemKind::Struct(ident, ref generics, ref def) => {
                 ("struct ", def, ident, generics)
             }
-            ast::ItemKind::Union(ident, ref def, ref generics) => ("union ", def, ident, generics),
+            ast::ItemKind::Union(ident, ref generics, ref def) => ("union ", def, ident, generics),
             _ => unreachable!(),
         };
         StructParts {
@@ -1167,6 +1163,7 @@ pub(crate) fn format_trait(
         unreachable!();
     };
     let ast::Trait {
+        constness,
         is_auto,
         safety,
         ident,
@@ -1177,7 +1174,8 @@ pub(crate) fn format_trait(
 
     let mut result = String::with_capacity(128);
     let header = format!(
-        "{}{}{}trait ",
+        "{}{}{}{}trait ",
+        format_constness(constness),
         format_visibility(context, &item.vis),
         format_safety(safety),
         format_auto(is_auto),
@@ -2017,7 +2015,7 @@ pub(crate) struct StaticParts<'a> {
     generics: Option<&'a ast::Generics>,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
-    expr_opt: Option<&'a ptr::P<ast::Expr>>,
+    expr_opt: Option<&'a Box<ast::Expr>>,
     defaultness: Option<ast::Defaultness>,
     span: Span,
 }

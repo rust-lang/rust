@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:attempt to subtract with overflow
+//@ regex-error-pattern: thread 'main'.*panicked
+//@ error-pattern: attempt to subtract with overflow
 //@ needs-subprocess
 //@ compile-flags: -C debug-assertions
 

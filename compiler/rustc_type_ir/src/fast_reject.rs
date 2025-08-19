@@ -84,6 +84,9 @@ pub enum TreatParams {
     ///
     /// This also treats projections with inference variables as infer vars
     /// since they could be further normalized.
+    // FIXME(@lcnr): This treats aliases as rigid. This is only correct if the
+    // type has been structurally normalized. We should reflect this requirement
+    // in the variant name. It is currently incorrectly used in diagnostics.
     AsRigid,
 }
 
@@ -151,9 +154,11 @@ pub fn simplify_type<I: Interner>(
         ty::Alias(..) => match treat_params {
             // When treating `ty::Param` as a placeholder, projections also
             // don't unify with anything else as long as they are fully normalized.
-            // FIXME(-Znext-solver): Can remove this `if` and always simplify to `Placeholder`
-            // when the new solver is enabled by default.
-            TreatParams::AsRigid if !ty.has_non_region_infer() => Some(SimplifiedType::Placeholder),
+            TreatParams::AsRigid
+                if !ty.has_non_region_infer() || cx.next_trait_solver_globally() =>
+            {
+                Some(SimplifiedType::Placeholder)
+            }
             TreatParams::AsRigid | TreatParams::InstantiateWithInfer => None,
         },
         ty::Foreign(def_id) => Some(SimplifiedType::Foreign(def_id)),
@@ -235,6 +240,10 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
+    pub fn types_may_unify_with_depth(self, lhs: I::Ty, rhs: I::Ty, depth_limit: usize) -> bool {
+        self.types_may_unify_inner(lhs, rhs, depth_limit)
+    }
+
     fn args_may_unify_inner(
         self,
         obligation_args: I::GenericArgs,
@@ -260,6 +269,10 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     }
 
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
+        if lhs == rhs {
+            return true;
+        }
+
         match rhs.kind() {
             // Start by checking whether the `rhs` type may unify with
             // pretty much everything. Just return `true` in that case.

@@ -11,15 +11,23 @@ mod parse;
 // Requires a *polymorphic literal*, i.e., one that can serve as f64 as well as f32.
 macro_rules! test_literal {
     ($x: expr) => {{
+        #[cfg(target_has_reliable_f16)]
+        let x16: f16 = $x;
         let x32: f32 = $x;
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
+
         for input in inputs {
-            assert_eq!(input.parse(), Ok(x64));
-            assert_eq!(input.parse(), Ok(x32));
+            assert_eq!(input.parse(), Ok(x64), "failed f64 {input}");
+            assert_eq!(input.parse(), Ok(x32), "failed f32 {input}");
+            #[cfg(target_has_reliable_f16)]
+            assert_eq!(input.parse(), Ok(x16), "failed f16 {input}");
+
             let neg_input = format!("-{input}");
-            assert_eq!(neg_input.parse(), Ok(-x64));
-            assert_eq!(neg_input.parse(), Ok(-x32));
+            assert_eq!(neg_input.parse(), Ok(-x64), "failed f64 {neg_input}");
+            assert_eq!(neg_input.parse(), Ok(-x32), "failed f32 {neg_input}");
+            #[cfg(target_has_reliable_f16)]
+            assert_eq!(neg_input.parse(), Ok(-x16), "failed f16 {neg_input}");
         }
     }};
 }
@@ -84,48 +92,87 @@ fn fast_path_correct() {
     test_literal!(1.448997445238699);
 }
 
+// FIXME(f16_f128): remove gates once tests work on all targets
+
 #[test]
 fn lonely_dot() {
+    #[cfg(target_has_reliable_f16)]
+    assert!(".".parse::<f16>().is_err());
     assert!(".".parse::<f32>().is_err());
     assert!(".".parse::<f64>().is_err());
 }
 
 #[test]
 fn exponentiated_dot() {
+    #[cfg(target_has_reliable_f16)]
+    assert!(".e0".parse::<f16>().is_err());
     assert!(".e0".parse::<f32>().is_err());
     assert!(".e0".parse::<f64>().is_err());
 }
 
 #[test]
 fn lonely_sign() {
-    assert!("+".parse::<f32>().is_err());
-    assert!("-".parse::<f64>().is_err());
+    #[cfg(target_has_reliable_f16)]
+    assert!("+".parse::<f16>().is_err());
+    assert!("-".parse::<f32>().is_err());
+    assert!("+".parse::<f64>().is_err());
 }
 
 #[test]
 fn whitespace() {
+    #[cfg(target_has_reliable_f16)]
+    assert!("1.0 ".parse::<f16>().is_err());
     assert!(" 1.0".parse::<f32>().is_err());
     assert!("1.0 ".parse::<f64>().is_err());
 }
 
 #[test]
 fn nan() {
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert!("NaN".parse::<f16>().unwrap().is_nan());
+        assert!("-NaN".parse::<f16>().unwrap().is_nan());
+    }
+
     assert!("NaN".parse::<f32>().unwrap().is_nan());
+    assert!("-NaN".parse::<f32>().unwrap().is_nan());
+
     assert!("NaN".parse::<f64>().unwrap().is_nan());
+    assert!("-NaN".parse::<f64>().unwrap().is_nan());
 }
 
 #[test]
 fn inf() {
-    assert_eq!("inf".parse(), Ok(f64::INFINITY));
-    assert_eq!("-inf".parse(), Ok(f64::NEG_INFINITY));
+    #[cfg(target_has_reliable_f16)]
+    {
+        assert_eq!("inf".parse(), Ok(f16::INFINITY));
+        assert_eq!("-inf".parse(), Ok(f16::NEG_INFINITY));
+    }
+
     assert_eq!("inf".parse(), Ok(f32::INFINITY));
     assert_eq!("-inf".parse(), Ok(f32::NEG_INFINITY));
+
+    assert_eq!("inf".parse(), Ok(f64::INFINITY));
+    assert_eq!("-inf".parse(), Ok(f64::NEG_INFINITY));
 }
 
 #[test]
 fn massive_exponent() {
+    #[cfg(target_has_reliable_f16)]
+    {
+        let max = i16::MAX;
+        assert_eq!(format!("1e{max}000").parse(), Ok(f16::INFINITY));
+        assert_eq!(format!("1e-{max}000").parse(), Ok(0.0f16));
+        assert_eq!(format!("1e{max}000").parse(), Ok(f16::INFINITY));
+    }
+
+    let max = i32::MAX;
+    assert_eq!(format!("1e{max}000").parse(), Ok(f32::INFINITY));
+    assert_eq!(format!("1e-{max}000").parse(), Ok(0.0f32));
+    assert_eq!(format!("1e{max}000").parse(), Ok(f32::INFINITY));
+
     let max = i64::MAX;
     assert_eq!(format!("1e{max}000").parse(), Ok(f64::INFINITY));
-    assert_eq!(format!("1e-{max}000").parse(), Ok(0.0));
+    assert_eq!(format!("1e-{max}000").parse(), Ok(0.0f64));
     assert_eq!(format!("1e{max}000").parse(), Ok(f64::INFINITY));
 }

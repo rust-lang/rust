@@ -1,7 +1,7 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
 include: "utils.goml"
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
 
 // First, check the sidebar colors.
@@ -84,13 +84,13 @@ assert-property: ("html", {"scrollTop": "0"})
 
 // We now go back to the crate page to click on the "lib2" crate link.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 assert-css: (".sidebar-elems ul.crate > li:first-child > a", {"color": "#356da4"})
 click: ".sidebar-elems ul.crate > li:first-child > a"
 
 // PAGE: lib2/index.html
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
 assert-count: (".sidebar .location", 0)
 // We check that we have the crates list and that the "current" on is now "lib2".
@@ -116,7 +116,7 @@ assert-text: (".sidebar-elems ul.block > li.current > a", "foobar")
 assert-false: ".sidebar-elems > .crate"
 
 go-to: "./module/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
 assert-text: (".sidebar .location", "Module module")
 assert-count: (".sidebar .location", 1)
@@ -134,7 +134,7 @@ assert-property: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2 > a", {
 assert-false: ".sidebar-elems > .crate"
 
 go-to: "./sub_module/sub_sub_module/index.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "lib2")
 assert-text: (".sidebar .location", "Module sub_sub_module")
 assert-text: (".sidebar > .sidebar-elems > #rustdoc-modnav > h2", "In lib2::module::sub_module")
@@ -149,13 +149,13 @@ assert-text: ("#functions + .item-table dt > a", "foo")
 
 // Links to trait implementations in the sidebar should not wrap even if they are long.
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.HasALongTraitWithParams.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 assert-property: (".sidebar-elems section .block li > a", {"offsetHeight": 29})
 
 // Test that clicking on of the "In <module>" headings in the sidebar links to the
 // appropriate anchor in index.html.
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 click: "//ul[@class='block mod']/preceding-sibling::h3/a"
 // PAGE: index.html
 assert-css: ("#modules", {"background-color": "#fdffd3"})
@@ -163,10 +163,10 @@ assert-css: ("#modules", {"background-color": "#fdffd3"})
 // Finally, assert that the Summary toggle doesn't affect sidebar width.
 click: "#toggle-all-docs"
 assert-text: ("#toggle-all-docs", "Show all")
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 click: "#toggle-all-docs"
 assert-text: ("#toggle-all-docs", "Summary")
-assert-property: (".sidebar", {"clientWidth": "200"})
+assert-property: (".sidebar", {"clientWidth": "199"})
 
 // Checks that all.html and index.html have their sidebar link in the same place.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -198,6 +198,42 @@ assert-position-false: (".sidebar-crate > h2 > a", {"x": -3})
 // when line-wrapped, see that it becomes flush-left again
 drag-and-drop: ((205, 100), (108, 100))
 assert-position: (".sidebar-crate > h2 > a", {"x": -3})
+
+// Check that the mobile sidebar and the source sidebar use the same icon.
+store-css: ("rustdoc-topbar .sidebar-menu-toggle::before", {"content": image_url})
+// Then we go to a source page.
+click: ".main-heading .src"
+assert-css: ("#sidebar-button a::before", {"content": |image_url|})
+// Check that hover events work as expected.
+store-css: ("#sidebar-button a", {"background-color": sidebar_background})
+move-cursor-to: "#sidebar-button a"
+store-css: ("#sidebar-button a:hover", {"background-color": sidebar_background_hover})
+assert: |sidebar_background| != |sidebar_background_hover|
+click: "#sidebar-button a"
+wait-for: "html.src-sidebar-expanded"
+assert-css: ("#sidebar-button a:hover", {"background-color": |sidebar_background_hover|})
+move-cursor-to: "#search-button"
+assert-css: ("#sidebar-button a:not(:hover)", {"background-color": |sidebar_background|})
+// Closing sidebar.
+click: "#sidebar-button a"
+wait-for: "html:not(.src-sidebar-expanded)"
+// Now we check the same when the sidebar button is moved alongside the search.
+set-window-size: (500, 500)
+store-css: ("#sidebar-button a:hover", {"background-color": not_sidebar_background_hover})
+move-cursor-to: "rustdoc-toolbar #search-button"
+store-css: ("#sidebar-button a:not(:hover)", {"background-color": not_sidebar_background})
+// The sidebar background is supposed to be the same as the main background.
+assert-css: ("body", {"background-color": |not_sidebar_background|})
+assert: |not_sidebar_background| != |not_sidebar_background_hover| && |not_sidebar_background| != |sidebar_background|
+// The hover background is supposed to be the same as the sidebar background.
+assert: |not_sidebar_background_hover| == |sidebar_background|
+click: "#sidebar-button a"
+wait-for: "html.src-sidebar-expanded"
+// And now the background colors are supposed to be the same as the sidebar since the sidebar has
+// been open.
+assert-css: ("#sidebar-button a:hover", {"background-color": |sidebar_background_hover|})
+move-cursor-to: "h2"
+assert-css: ("#sidebar-button a:not(:hover)", {"background-color": |sidebar_background|})
 
 // Configuration option to show TOC in sidebar.
 set-local-storage: {"rustdoc-hide-toc": "true"}

@@ -2,7 +2,7 @@ error: Undefined Behavior: deallocating ALLOC, which is stack variable memory, u
   --> RUSTLIB/alloc/src/boxed.rs:LL:CC
    |
 LL |                 self.1.deallocate(From::from(ptr.cast()), layout);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ deallocating ALLOC, which is stack variable memory, using Rust heap deallocation operation
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

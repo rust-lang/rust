@@ -7,6 +7,8 @@
       let mut _2: bool;
       let mut _3: isize;
 +     let mut _4: isize;
+      scope 1 {
+      }
   
       bb0: {
           StorageLive(_2);

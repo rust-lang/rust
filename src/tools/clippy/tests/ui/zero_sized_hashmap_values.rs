@@ -71,6 +71,27 @@ fn test2(map: HashMap<String, usize>, key: &str) -> HashMap<String, usize> {
     todo!();
 }
 
+fn issue14822() {
+    trait Trait {
+        type T;
+    }
+    struct S<T: Trait>(T::T);
+
+    // The `delay_bug` happens when evaluating the pointer metadata of `S<T>` which depends on
+    // whether `T::T` is `Sized`. Since the type alias doesn't have a trait bound of `T: Trait`
+    // evaluating `T::T: Sized` ultimately fails with `NoSolution`.
+    type A<T> = HashMap<u32, *const S<T>>;
+    type B<T> = HashMap<u32, S<T>>;
+
+    enum E {}
+    impl Trait for E {
+        type T = ();
+    }
+    type C = HashMap<u32, *const S<E>>;
+    type D = HashMap<u32, S<E>>;
+    //~^ zero_sized_map_values
+}
+
 fn main() {
     let _: HashMap<String, ()> = HashMap::new();
     //~^ zero_sized_map_values

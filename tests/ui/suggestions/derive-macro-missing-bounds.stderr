@@ -4,9 +4,8 @@ error[E0277]: `a::Inner<T>` doesn't implement `Debug`
 LL |     #[derive(Debug)]
    |              ----- in this derive macro expansion
 LL |     struct Outer<T>(Inner<T>);
-   |                     ^^^^^^^^ `a::Inner<T>` cannot be formatted using `{:?}`
+   |                     ^^^^^^^^ the trait `Debug` is not implemented for `a::Inner<T>`
    |
-   = help: the trait `Debug` is not implemented for `a::Inner<T>`
    = note: add `#[derive(Debug)]` to `a::Inner<T>` or manually `impl Debug for a::Inner<T>`
 help: consider annotating `a::Inner<T>` with `#[derive(Debug)]`
    |

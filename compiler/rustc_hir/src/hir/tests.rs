@@ -45,26 +45,18 @@ define_tests! {
 #[test]
 fn trait_object_roundtrips() {
     trait_object_roundtrips_impl(TraitObjectSyntax::Dyn);
-    trait_object_roundtrips_impl(TraitObjectSyntax::DynStar);
     trait_object_roundtrips_impl(TraitObjectSyntax::None);
 }
 
 fn trait_object_roundtrips_impl(syntax: TraitObjectSyntax) {
-    let unambig = TyKind::TraitObject::<'_, ()>(
-        &[],
-        TaggedRef::new(
-            &const {
-                Lifetime {
-                    hir_id: HirId::INVALID,
-                    ident: Ident::new(sym::name, DUMMY_SP),
-                    kind: LifetimeKind::Static,
-                    source: LifetimeSource::Other,
-                    syntax: LifetimeSyntax::Hidden,
-                }
-            },
-            syntax,
-        ),
-    );
+    let lt = Lifetime {
+        hir_id: HirId::INVALID,
+        ident: Ident::new(sym::name, DUMMY_SP),
+        kind: LifetimeKind::Static,
+        source: LifetimeSource::Other,
+        syntax: LifetimeSyntax::Implicit,
+    };
+    let unambig = TyKind::TraitObject::<'_, ()>(&[], TaggedRef::new(&lt, syntax));
     let unambig_to_ambig = unsafe { std::mem::transmute::<_, TyKind<'_, AmbigArg>>(unambig) };
 
     match unambig_to_ambig {

@@ -24,7 +24,7 @@ use rustc_middle::mir::interpret::{
     ExpectedKind, InterpErrorKind, InvalidMetaKind, Misalignment, PointerKind, Provenance,
     UnsupportedOpInfo, ValidationErrorInfo, alloc_range, interp_ok,
 };
-use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
@@ -35,6 +35,7 @@ use super::{
     Machine, MemPlaceMeta, PlaceTy, Pointer, Projectable, Scalar, ValueVisitor, err_ub,
     format_interp_error,
 };
+use crate::enter_trace_span;
 
 // for the validation errors
 #[rustfmt::skip]
@@ -294,7 +295,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // First, check if we are projecting to a variant.
         match layout.variants {
             Variants::Multiple { tag_field, .. } => {
-                if tag_field == field {
+                if tag_field.as_usize() == field {
                     return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
                         ty::Coroutine(..) => PathElem::CoroutineTag,
@@ -319,10 +320,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                         // for a coroutine).
                         let var_hir_id = captured_place.get_root_variable();
                         let node = self.ecx.tcx.hir_node(var_hir_id);
-                        if let hir::Node::Pat(pat) = node {
-                            if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
-                                name = Some(ident.name);
-                            }
+                        if let hir::Node::Pat(pat) = node
+                            && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                        {
+                            name = Some(ident.name);
                         }
                     }
                 }
@@ -356,9 +357,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
 
             // arrays/slices
             ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),
-
-            // dyn* vtables
-            ty::Dynamic(_, _, ty::DynKind::DynStar) if field == 1 => PathElem::Vtable,
 
             // dyn traits
             ty::Dynamic(..) => {
@@ -396,7 +394,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         interp_ok(try_validation!(
             self.ecx.read_immediate(val),
             self.path,
-            Ub(InvalidUninitBytes(None)) =>
+            Ub(InvalidUninitBytes(_)) =>
                 Uninit { expected },
             // The `Unsup` cases can only occur during CTFE
             Unsup(ReadPointerAsInt(_)) =>
@@ -493,7 +491,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         }
         // Make sure this is dereferenceable and all.
         let size_and_align = try_validation!(
-            self.ecx.size_and_align_of_mplace(&place),
+            self.ecx.size_and_align_of_val(&place),
             self.path,
             Ub(InvalidMeta(msg)) => match msg {
                 InvalidMetaKind::SliceTooBig => InvalidMetaSliceTooLarge { ptr_kind },
@@ -517,7 +515,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             Ub(DanglingIntPointer { addr: i, .. }) => DanglingPtrNoProvenance {
                 ptr_kind,
                 // FIXME this says "null pointer" when null but we need translate
-                pointer: format!("{}", Pointer::<Option<AllocId>>::from_addr_invalid(i))
+                pointer: format!("{}", Pointer::<Option<AllocId>>::without_provenance(i))
             },
             Ub(PointerOutOfBounds { .. }) => DanglingPtrOutOfBounds {
                 ptr_kind
@@ -560,7 +558,15 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 {
                     // Everything should be already interned.
                     let Some(global_alloc) = self.ecx.tcx.try_get_global_alloc(alloc_id) else {
-                        assert!(self.ecx.memory.alloc_map.get(alloc_id).is_none());
+                        if self.ecx.memory.alloc_map.contains_key(&alloc_id) {
+                            // This can happen when interning didn't complete due to, e.g.
+                            // missing `make_global`. This must mean other errors are already
+                            // being reported.
+                            self.ecx.tcx.dcx().delayed_bug(
+                                "interning did not complete, there should be an error",
+                            );
+                            return interp_ok(());
+                        }
                         // We can't have *any* references to non-existing allocations in const-eval
                         // as the rest of rustc isn't happy with them... so we throw an error, even
                         // though for zero-sized references this isn't really UB.
@@ -570,39 +576,45 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                     };
                     let (size, _align) =
                         global_alloc.size_and_align(*self.ecx.tcx, self.ecx.typing_env);
+                    let alloc_actual_mutbl =
+                        global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
 
-                    if let GlobalAlloc::Static(did) = global_alloc {
-                        let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
-                            bug!()
-                        };
-                        // Special handling for pointers to statics (irrespective of their type).
-                        assert!(!self.ecx.tcx.is_thread_local_static(did));
-                        assert!(self.ecx.tcx.is_static(did));
-                        // Mode-specific checks
-                        match ctfe_mode {
-                            CtfeValidationMode::Static { .. }
-                            | CtfeValidationMode::Promoted { .. } => {
-                                // We skip recursively checking other statics. These statics must be sound by
-                                // themselves, and the only way to get broken statics here is by using
-                                // unsafe code.
-                                // The reasons we don't check other statics is twofold. For one, in all
-                                // sound cases, the static was already validated on its own, and second, we
-                                // trigger cycle errors if we try to compute the value of the other static
-                                // and that static refers back to us (potentially through a promoted).
-                                // This could miss some UB, but that's fine.
-                                // We still walk nested allocations, as they are fundamentally part of this validation run.
-                                // This means we will also recurse into nested statics of *other*
-                                // statics, even though we do not recurse into other statics directly.
-                                // That's somewhat inconsistent but harmless.
-                                skip_recursive_check = !nested;
-                            }
-                            CtfeValidationMode::Const { .. } => {
-                                // We can't recursively validate `extern static`, so we better reject them.
-                                if self.ecx.tcx.is_foreign_item(did) {
-                                    throw_validation_failure!(self.path, ConstRefToExtern);
+                    match global_alloc {
+                        GlobalAlloc::Static(did) => {
+                            let DefKind::Static { nested, .. } = self.ecx.tcx.def_kind(did) else {
+                                bug!()
+                            };
+                            assert!(!self.ecx.tcx.is_thread_local_static(did));
+                            assert!(self.ecx.tcx.is_static(did));
+                            match ctfe_mode {
+                                CtfeValidationMode::Static { .. }
+                                | CtfeValidationMode::Promoted { .. } => {
+                                    // We skip recursively checking other statics. These statics must be sound by
+                                    // themselves, and the only way to get broken statics here is by using
+                                    // unsafe code.
+                                    // The reasons we don't check other statics is twofold. For one, in all
+                                    // sound cases, the static was already validated on its own, and second, we
+                                    // trigger cycle errors if we try to compute the value of the other static
+                                    // and that static refers back to us (potentially through a promoted).
+                                    // This could miss some UB, but that's fine.
+                                    // We still walk nested allocations, as they are fundamentally part of this validation run.
+                                    // This means we will also recurse into nested statics of *other*
+                                    // statics, even though we do not recurse into other statics directly.
+                                    // That's somewhat inconsistent but harmless.
+                                    skip_recursive_check = !nested;
+                                }
+                                CtfeValidationMode::Const { .. } => {
+                                    // If this is mutable memory or an `extern static`, there's no point in checking it -- we'd
+                                    // just get errors trying to read the value.
+                                    if alloc_actual_mutbl.is_mut()
+                                        || self.ecx.tcx.is_foreign_item(did)
+                                    {
+                                        skip_recursive_check = true;
+                                    }
                                 }
                             }
                         }
+                        _ => (),
                     }
 
                     // If this allocation has size zero, there is no actual mutability here.
@@ -618,9 +630,6 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                                 mutbl
                             }
                         };
-                        // Determine what it actually points to.
-                        let alloc_actual_mutbl =
-                            global_alloc.mutability(*self.ecx.tcx, self.ecx.typing_env);
                         // Mutable pointer to immutable memory is no good.
                         if ptr_expected_mutbl == Mutability::Mut
                             && alloc_actual_mutbl == Mutability::Not
@@ -628,12 +637,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                             // This can actually occur with transmutes.
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
-                        // In a const, everything must be completely immutable.
+                        // In a const, any kind of mutable reference is not good.
                         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. })) {
-                            if ptr_expected_mutbl == Mutability::Mut
-                                || alloc_actual_mutbl == Mutability::Mut
-                            {
-                                throw_validation_failure!(self.path, ConstRefToMutable);
+                            if ptr_expected_mutbl == Mutability::Mut {
+                                throw_validation_failure!(self.path, MutableRefInConst);
                             }
                         }
                     }
@@ -868,7 +875,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
     fn add_data_range(&mut self, ptr: Pointer<Option<M::Provenance>>, size: Size) {
         if let Some(data_bytes) = self.data_bytes.as_mut() {
             // We only have to store the offset, the rest is the same for all pointers here.
-            let (_prov, offset) = ptr.into_parts();
+            // The logic is agnostic to whether the offset is relative or absolute as long as
+            // it is consistent.
+            let (_prov, offset) = ptr.into_raw_parts();
             // Add this.
             data_bytes.add_range(offset, size);
         };
@@ -894,7 +903,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             .as_mplace_or_imm()
             .expect_left("place must be in memory")
             .ptr();
-        let (_prov, offset) = ptr.into_parts();
+        let (_prov, offset) = ptr.into_raw_parts();
         offset
     }
 
@@ -903,10 +912,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         // Our value must be in memory, otherwise we would not have set up `data_bytes`.
         let mplace = self.ecx.force_allocation(place)?;
         // Determine starting offset and size.
-        let (_prov, start_offset) = mplace.ptr().into_parts();
+        let (_prov, start_offset) = mplace.ptr().into_raw_parts();
         let (size, _align) = self
             .ecx
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_val(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // If there is no padding at all, we can skip the rest: check for
         // a single data range covering the entire value.
@@ -940,7 +949,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 let padding_size = offset - padding_cleared_until;
                 let range = alloc_range(padding_start, padding_size);
                 trace!("reset_padding on {}: resetting padding range {range:?}", mplace.layout.ty);
-                alloc.write_uninit(range)?;
+                alloc.write_uninit(range);
             }
             padding_cleared_until = offset + size;
         }
@@ -1086,8 +1095,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
     ) -> InterpResult<'tcx> {
         // Special check for CTFE validation, preventing `UnsafeCell` inside unions in immutable memory.
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
-            if !val.layout.is_zst() && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.typing_env)
-            {
+            // Unsized unions are currently not a thing, but let's keep this code consistent with
+            // the check in `visit_value`.
+            let zst = self.ecx.size_and_align_of_val(val)?.is_some_and(|(s, _a)| s.bytes() == 0);
+            if !zst && !val.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.typing_env) {
                 if !self.in_mutable_memory(val) {
                     throw_validation_failure!(self.path, UnsafeCellInImmutable);
                 }
@@ -1131,7 +1142,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
 
         // Special check preventing `UnsafeCell` in the inner part of constants
         if self.ctfe_mode.is_some_and(|c| !c.allow_immutable_unsafe_cell()) {
-            if !val.layout.is_zst()
+            // Exclude ZST values. We need to compute the dynamic size/align to properly
+            // handle slices and trait objects.
+            let zst = self.ecx.size_and_align_of_val(val)?.is_some_and(|(s, _a)| s.bytes() == 0);
+            if !zst
                 && let Some(def) = val.layout.ty.ty_adt_def()
                 && def.is_unsafe_cell()
             {
@@ -1225,7 +1239,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                 if self.reset_provenance_and_padding {
                     // We can't share this with above as above, we might be looking at read-only memory.
                     let mut alloc = self.ecx.get_ptr_alloc_mut(mplace.ptr(), size)?.expect("we already excluded size 0");
-                    alloc.clear_provenance()?;
+                    alloc.clear_provenance();
                     // Also, mark this as containing data, not padding.
                     self.add_data_range(mplace.ptr(), size);
                 }
@@ -1364,8 +1378,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         })
     }
 
-    /// This function checks the data at `op` to be const-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be const-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     ///
     /// `ref_tracking` is used to record references that we encounter so that they
@@ -1391,8 +1405,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         )
     }
 
-    /// This function checks the data at `op` to be runtime-valid.
-    /// `op` is assumed to cover valid memory if it is an indirect operand.
+    /// This function checks the data at `val` to be runtime-valid.
+    /// `val` is assumed to cover valid memory if it is an indirect operand.
     /// It will error if the bits at the destination do not match the ones described by the layout.
     #[inline(always)]
     pub fn validate_operand(
@@ -1401,6 +1415,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         recursive: bool,
         reset_provenance_and_padding: bool,
     ) -> InterpResult<'tcx> {
+        let _trace = enter_trace_span!(
+            M,
+            "validate_operand",
+            "recursive={recursive}, reset_provenance_and_padding={reset_provenance_and_padding}, val={val:?}"
+        );
+
         // Note that we *could* actually be in CTFE here with `-Zextra-const-ub-checks`, but it's
         // still correct to not use `ctfe_mode`: that mode is for validation of the final constant
         // value, it rules out things like `UnsafeCell` in awkward places.

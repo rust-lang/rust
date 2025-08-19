@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_from_proc_macro, path_to_local_id};
+use clippy_utils::{is_from_proc_macro, path_to_local_id, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPath, Stmt, StmtKind};
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = stmt.kind
                 && let ExprKind::MethodCall(name, self_arg, [space_hint], _) = expr.kind
                 && path_to_local_id(self_arg, searcher.local_id)
-                && name.ident.as_str() == "reserve"
+                && name.ident.name == sym::reserve
                 && !is_from_proc_macro(cx, expr)
             {
                 self.searcher = Some(VecReserveSearcher {

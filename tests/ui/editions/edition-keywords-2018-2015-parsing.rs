@@ -26,7 +26,7 @@ pub fn check_async() {
     module::async(); //~ ERROR expected identifier, found keyword `async`
     module::r#async(); // OK
 
-    let _recovery_witness: () = 0; //~ ERROR mismatched types
+    let _recovery_witness: () = 0; // not emitted because of the macro parsing error
 }
 
 //~? ERROR macro expansion ends with an incomplete expression

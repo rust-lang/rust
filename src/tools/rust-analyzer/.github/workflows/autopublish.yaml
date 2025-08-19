@@ -28,7 +28,7 @@ jobs:
         run: rustup update --no-self-update stable
 
       - name: Install cargo-workspaces
-        run: cargo install cargo-workspaces
+        run: cargo install cargo-workspaces --version "0.3.6"
 
       - name: Publish Crates
         env:
@@ -54,8 +54,8 @@ jobs:
           cargo workspaces rename --from project-model project_model
           cargo workspaces rename --from test-fixture test_fixture
           cargo workspaces rename --from test-utils test_utils
-          # Remove library crates from the workspaces so we don't auto-publish them as well
-          sed -i 's/ "lib\/\*",//' ./Cargo.toml
+          # Remove library crates and xtask from the workspaces so we don't auto-publish them as well
+          sed -i 's|^members = .*$|members = ["crates/*"]|' Cargo.toml
           cargo workspaces rename ra_ap_%n
           find crates/rust-analyzer -type f -name '*.rs' -exec sed -i 's/rust_analyzer/ra_ap_rust_analyzer/g' {} +
           cargo workspaces publish --yes --force '*' --exact --no-git-commit --allow-dirty --skip-published custom 0.0.$(($RUN_NUMBER + 133))

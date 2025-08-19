@@ -2,7 +2,7 @@ error: Undefined Behavior: `float_to_int_unchecked` intrinsic called on -2147483
   --> tests/fail/intrinsics/float_to_int_64_too_small1.rs:LL:CC
    |
 LL |         float_to_int_unchecked::<f64, i32>(-2147483649.0f64);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `float_to_int_unchecked` intrinsic called on -2147483649f64 which cannot be represented in target type `i32`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

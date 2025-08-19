@@ -9,6 +9,9 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
                for<Region(BrAnon), Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 mut &'^1 i32, &'^2 i32)),
                (),
            ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+   = note: late-bound region is '?3
 
 error: lifetime may not live long enough
   --> $DIR/escape-argument-callee.rs:26:45

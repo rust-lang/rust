@@ -73,6 +73,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
@@ -213,8 +214,15 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     let mut by_move_body = body.clone();
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
-    // This will always be `{closure#1}`, since the original coroutine is `{closure#0}`.
-    let body_def = tcx.create_def(parent_def_id, None, DefKind::SyntheticCoroutineBody);
+    // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
+    // and this is the only location creating `SyntheticCoroutineBody`.
+    let body_def = tcx.create_def(
+        parent_def_id,
+        None,
+        DefKind::SyntheticCoroutineBody,
+        None,
+        &mut DisambiguatorState::new(),
+    );
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
@@ -231,7 +239,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
     body_def.generics_of(tcx.generics_of(coroutine_def_id).clone());
     body_def.param_env(tcx.param_env(coroutine_def_id));
-    body_def.predicates_of(tcx.predicates_of(coroutine_def_id));
+    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
 
     // The type of the coroutine is the `by_move_coroutine_ty`.
     body_def.type_of(ty::EarlyBinder::bind(by_move_coroutine_ty));

@@ -6,7 +6,7 @@
    LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
    LL|      1|    let truthy = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    let a
    LL|       |        =
    LL|       |        |

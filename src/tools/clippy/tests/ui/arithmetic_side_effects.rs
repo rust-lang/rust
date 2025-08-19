@@ -664,6 +664,20 @@ pub fn issue_12318() {
     //~^ arithmetic_side_effects
 }
 
+pub fn issue_15225() {
+    use core::num::{NonZero, NonZeroU8};
+
+    let one = const { NonZeroU8::new(1).unwrap() };
+    let _ = one.get() - 1;
+
+    let one: NonZero<u8> = const { NonZero::new(1).unwrap() };
+    let _ = one.get() - 1;
+
+    type AliasedType = u8;
+    let one: NonZero<AliasedType> = const { NonZero::new(1).unwrap() };
+    let _ = one.get() - 1;
+}
+
 pub fn explicit_methods() {
     use core::ops::Add;
     let one: i32 = 1;

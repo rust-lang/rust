@@ -1,0 +1,10 @@
+warning: trait bound str: Sized does not depend on any type or lifetime parameters
+  --> $DIR/gvn-nonsensical-sized-str.rs:10:10
+   |
+LL |     str: Sized,
+   |          ^^^^^
+   |
+   = note: `#[warn(trivial_bounds)]` on by default
+
+warning: 1 warning emitted
+

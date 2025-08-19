@@ -50,8 +50,7 @@ pub(crate) fn unused_variables(
                 ast.file_id.is_macro(),
                 ctx.edition,
             )
-        }))
-        .experimental(),
+        })),
     )
 }
 

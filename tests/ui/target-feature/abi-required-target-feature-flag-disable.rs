@@ -20,8 +20,14 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
 pub trait Sized {}
 
 //~? WARN must be enabled to ensure that the ABI of the current target can be implemented correctly
-//[x86,riscv,loongarch]~? WARN unstable feature specified for `-Ctarget-feature`
+//[x86,riscv]~? WARN unstable feature specified for `-Ctarget-feature`

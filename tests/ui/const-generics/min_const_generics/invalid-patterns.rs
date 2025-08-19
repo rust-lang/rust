@@ -38,12 +38,10 @@ fn main() {
 
 
   get_flag::<false, { unsafe { char_raw.character } }>();
-  //~^ ERROR evaluation of constant value failed
-  //~| NOTE uninitialized
+  //~^ ERROR uninitialized
   get_flag::<{ unsafe { bool_raw.boolean } }, 'z'>();
-  //~^ ERROR it is undefined behavior
+  //~^ ERROR 0x42, but expected a boolean
   get_flag::<{ unsafe { bool_raw.boolean } }, { unsafe { char_raw.character } }>();
-  //~^ ERROR evaluation of constant value failed
-  //~| NOTE uninitialized
-  //~| ERROR it is undefined behavior
+  //~^ ERROR uninitialized
+  //~| ERROR 0x42, but expected a boolean
 }

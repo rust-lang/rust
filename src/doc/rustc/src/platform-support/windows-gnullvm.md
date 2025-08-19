@@ -1,6 +1,6 @@
 # \*-windows-gnullvm
 
-**Tier: 2 (without host tools)**
+**Tier: 2 (with host tools)**
 
 Windows targets similar to `*-windows-gnu` but using UCRT as the runtime and various LLVM tools/libraries instead of GCC/Binutils.
 

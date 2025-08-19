@@ -68,15 +68,15 @@ mod with_crate {
 
 mod garden {
     mod with_pub_restricted_path {
-        vis_passthru! { pub(in garden) const A: i32 = 0; }
-        vis_passthru! { pub(in garden) enum B {} }
-        vis_passthru! { pub(in garden) extern "C" fn c() {} }
-        vis_passthru! { pub(in garden) mod d {} }
-        vis_passthru! { pub(in garden) static E: i32 = 0; }
-        vis_passthru! { pub(in garden) struct F; }
-        vis_passthru! { pub(in garden) trait G {} }
-        vis_passthru! { pub(in garden) type H = i32; }
-        vis_passthru! { pub(in garden) use A as I; }
+        vis_passthru! { pub(in crate::garden) const A: i32 = 0; }
+        vis_passthru! { pub(in crate::garden) enum B {} }
+        vis_passthru! { pub(in crate::garden) extern "C" fn c() {} }
+        vis_passthru! { pub(in crate::garden) mod d {} }
+        vis_passthru! { pub(in crate::garden) static E: i32 = 0; }
+        vis_passthru! { pub(in crate::garden) struct F; }
+        vis_passthru! { pub(in crate::garden) trait G {} }
+        vis_passthru! { pub(in crate::garden) type H = i32; }
+        vis_passthru! { pub(in crate::garden) use A as I; }
     }
 }
 

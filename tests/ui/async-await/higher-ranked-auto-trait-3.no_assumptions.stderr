@@ -1,0 +1,12 @@
+error: lifetime bound not satisfied
+  --> $DIR/higher-ranked-auto-trait-3.rs:66:9
+   |
+LL | /         async {
+LL | |             self.fi_2.get_iter(cx).await;
+LL | |         }
+   | |_________^
+   |
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
+
+error: aborting due to 1 previous error
+

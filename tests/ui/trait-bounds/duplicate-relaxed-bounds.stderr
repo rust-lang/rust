@@ -1,0 +1,47 @@
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/duplicate-relaxed-bounds.rs:1:13
+   |
+LL | fn dupes<T: ?Sized + ?Sized + ?Iterator + ?Iterator>() {}
+   |             ^^^^^^   ^^^^^^
+
+error[E0203]: duplicate relaxed `Iterator` bounds
+  --> $DIR/duplicate-relaxed-bounds.rs:1:31
+   |
+LL | fn dupes<T: ?Sized + ?Sized + ?Iterator + ?Iterator>() {}
+   |                               ^^^^^^^^^   ^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/duplicate-relaxed-bounds.rs:1:31
+   |
+LL | fn dupes<T: ?Sized + ?Sized + ?Iterator + ?Iterator>() {}
+   |                               ^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/duplicate-relaxed-bounds.rs:1:43
+   |
+LL | fn dupes<T: ?Sized + ?Sized + ?Iterator + ?Iterator>() {}
+   |                                           ^^^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/duplicate-relaxed-bounds.rs:19:26
+   |
+LL | fn not_dupes<T: ?Sized + ?Iterator>() {}
+   |                          ^^^^^^^^^
+
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/duplicate-relaxed-bounds.rs:10:16
+   |
+LL |     type Type: ?Sized + ?Sized;
+   |                ^^^^^^   ^^^^^^
+
+error[E0203]: duplicate relaxed `Sized` bounds
+  --> $DIR/duplicate-relaxed-bounds.rs:10:16
+   |
+LL |     type Type: ?Sized + ?Sized;
+   |                ^^^^^^   ^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0203`.

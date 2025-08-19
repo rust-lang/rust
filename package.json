@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "browser-ui-test": "^0.21.1",
+    "es-check": "^6.2.1",
+    "eslint": "^8.57.1",
+    "eslint-js": "github:eslint/js",
+    "typescript": "^5.8.3"
+  }
+}

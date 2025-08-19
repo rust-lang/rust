@@ -23,7 +23,7 @@ pub fn test() -> TestImpl {
 
 #[define_opaque(TestImpl)]
 fn make_option2() -> Option<TestImpl> {
-    //~^ ERROR concrete type differs from previous defining opaque type use
+    //~^ ERROR cannot resolve opaque type
     let inner = make_option().unwrap();
     Some(B { inner })
 }

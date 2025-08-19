@@ -1,0 +1,20 @@
+error: bound modifier `?` can only be applied to default traits like `Sized`
+  --> $DIR/more_maybe_bounds.rs:17:20
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                    ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits like `Sized`
+  --> $DIR/more_maybe_bounds.rs:17:30
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                              ^^^^^^^
+
+error: bound modifier `?` can only be applied to default traits like `Sized`
+  --> $DIR/more_maybe_bounds.rs:17:40
+   |
+LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
+   |                                        ^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 use std::{env, thread};
 
 fn main() {

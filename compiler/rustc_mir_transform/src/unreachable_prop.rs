@@ -75,7 +75,7 @@ fn remove_successors_from_switch<'tcx>(
     let is_unreachable = |bb| unreachable_blocks.contains(&bb);
 
     // If there are multiple targets, we want to keep information about reachability for codegen.
-    // For example (see tests/codegen/match-optimizes-away.rs)
+    // For example (see tests/codegen-llvm/match-optimizes-away.rs)
     //
     // pub enum Two { A, B }
     // pub fn identity(x: Two) -> Two {

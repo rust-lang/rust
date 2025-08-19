@@ -13,7 +13,7 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
 
     if is_file {
         exit_if_err(
-            Command::new(env::var("CARGO").unwrap_or("cargo".into()))
+            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
                 .args(["run", "--bin", "clippy-driver", "--"])
                 .args(["-L", "./target/debug"])
                 .args(["-Z", "no-codegen"])
@@ -26,7 +26,7 @@ pub fn run<'a>(path: &str, edition: &str, args: impl Iterator<Item = &'a String>
         );
     } else {
         exit_if_err(
-            Command::new(env::var("CARGO").unwrap_or("cargo".into()))
+            Command::new(env::var("CARGO").unwrap_or_else(|_| "cargo".into()))
                 .arg("build")
                 .status(),
         );

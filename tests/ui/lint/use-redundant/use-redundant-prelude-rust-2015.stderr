@@ -1,5 +1,5 @@
 warning: the item `Some` is imported redundantly
-  --> $DIR/use-redundant-prelude-rust-2015.rs:5:5
+  --> $DIR/use-redundant-prelude-rust-2015.rs:6:5
    |
 LL | use std::option::Option::Some;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL | use std::option::Option::Some;
    = note: the item `Some` is already defined here
    |
 note: the lint level is defined here
-  --> $DIR/use-redundant-prelude-rust-2015.rs:2:9
+  --> $DIR/use-redundant-prelude-rust-2015.rs:3:9
    |
 LL | #![warn(redundant_imports)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: the item `None` is imported redundantly
-  --> $DIR/use-redundant-prelude-rust-2015.rs:6:5
+  --> $DIR/use-redundant-prelude-rust-2015.rs:7:5
    |
 LL | use std::option::Option::None;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | use std::option::Option::None;
    = note: the item `None` is already defined here
 
 warning: the item `Ok` is imported redundantly
-  --> $DIR/use-redundant-prelude-rust-2015.rs:8:5
+  --> $DIR/use-redundant-prelude-rust-2015.rs:9:5
    |
 LL | use std::result::Result::Ok;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | use std::result::Result::Ok;
    = note: the item `Ok` is already defined here
 
 warning: the item `Err` is imported redundantly
-  --> $DIR/use-redundant-prelude-rust-2015.rs:9:5
+  --> $DIR/use-redundant-prelude-rust-2015.rs:10:5
    |
 LL | use std::result::Result::Err;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

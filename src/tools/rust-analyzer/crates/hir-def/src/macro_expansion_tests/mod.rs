@@ -14,33 +14,35 @@ mod builtin_fn_macro;
 mod mbe;
 mod proc_macros;
 
-use std::{iter, ops::Range, sync};
+use std::{any::TypeId, iter, ops::Range, sync};
 
 use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
-    InFile, MacroCallKind, MacroKind,
+    AstId, InFile, MacroCallId, MacroCallKind, MacroKind,
+    builtin::quote::quote,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
 };
-use intern::Symbol;
+use intern::{Symbol, sym};
 use itertools::Itertools;
-use span::{Edition, Span};
+use span::{Edition, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor, SyntaxContext};
 use stdx::{format_to, format_to_acc};
 use syntax::{
-    AstNode,
+    AstNode, AstPtr,
     SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
     ast::{self, edit::IndentLevel},
 };
+use syntax_bridge::token_tree_to_syntax_node;
 use test_fixture::WithFixture;
+use tt::{TextRange, TextSize};
 
 use crate::{
-    AdtId, AsMacroCall, Lookup, ModuleDefId,
+    AdtId, Lookup, ModuleDefId,
     db::DefDatabase,
-    nameres::{DefMap, MacroSubNs, ModuleSource},
-    resolver::HasResolver,
+    nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
     test_db::TestDB,
     tt::TopSubtree,
@@ -50,7 +52,7 @@ use crate::{
 fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let errors = def_map
         .modules()
         .flat_map(|module| module.1.scope.all_macro_calls())
@@ -78,7 +80,6 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
     expect.assert_eq(&errors);
 }
 
-#[track_caller]
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
     let extra_proc_macros = vec![(
         r#"
@@ -95,54 +96,59 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             disabled: false,
         },
     )];
+
+    fn resolve(
+        db: &dyn DefDatabase,
+        def_map: &DefMap,
+        ast_id: AstId<ast::MacroCall>,
+        ast_ptr: InFile<AstPtr<ast::MacroCall>>,
+    ) -> Option<MacroCallId> {
+        def_map.modules().find_map(|module| {
+            for decl in
+                module.1.scope.declarations().chain(module.1.scope.unnamed_consts().map(Into::into))
+            {
+                let body = match decl {
+                    ModuleDefId::FunctionId(it) => it.into(),
+                    ModuleDefId::ConstId(it) => it.into(),
+                    ModuleDefId::StaticId(it) => it.into(),
+                    _ => continue,
+                };
+
+                let (body, sm) = db.body_with_source_map(body);
+                if let Some(it) =
+                    body.blocks(db).find_map(|block| resolve(db, block.1, ast_id, ast_ptr))
+                {
+                    return Some(it);
+                }
+                if let Some((_, res)) = sm.macro_calls().find(|it| it.0 == ast_ptr) {
+                    return Some(res);
+                }
+            }
+            module.1.scope.macro_invoc(ast_id)
+        })
+    }
+
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
     let krate = db.fetch_test_crate();
-    let def_map = db.crate_def_map(krate);
+    let def_map = crate_def_map(&db, krate);
     let local_id = DefMap::ROOT;
-    let module = def_map.module_id(local_id);
-    let resolver = module.resolver(&db);
     let source = def_map[local_id].definition_source(&db);
     let source_file = match source.value {
         ModuleSource::SourceFile(it) => it,
         ModuleSource::Module(_) | ModuleSource::BlockExpr(_) => panic!(),
     };
 
-    // What we want to do is to replace all macros (fn-like, derive, attr) with
-    // their expansions. Turns out, we don't actually store enough information
-    // to do this precisely though! Specifically, if a macro expands to nothing,
-    // it leaves zero traces in def-map, so we can't get its expansion after the
-    // fact.
-    //
-    // This is the usual
-    // <https://github.com/rust-lang/rust-analyzer/issues/3407>
-    // resolve/record tension!
-    //
-    // So here we try to do a resolve, which is necessary a heuristic. For macro
-    // calls, we use `as_call_id_with_errors`. For derives, we look at the impls
-    // in the module and assume that, if impls's source is a different
-    // `HirFileId`, than it came from macro expansion.
-
     let mut text_edits = Vec::new();
     let mut expansions = Vec::new();
 
-    for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
-        let macro_call = InFile::new(source.file_id, &macro_call);
-        let res = macro_call
-            .as_call_id_with_errors(
-                &db,
-                krate,
-                |path| {
-                    resolver
-                        .resolve_path_as_macro(&db, path, Some(MacroSubNs::Bang))
-                        .map(|(it, _)| db.macro_def(it))
-                },
-                &mut |_, _| (),
-            )
-            .unwrap();
-        let macro_call_id = res.value.unwrap();
-        let mut expansion_result = db.parse_macro_expansion(macro_call_id);
-        expansion_result.err = expansion_result.err.or(res.err);
-        expansions.push((macro_call.value.clone(), expansion_result));
+    for macro_call_node in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
+        let ast_id = db.ast_id_map(source.file_id).ast_id(&macro_call_node);
+        let ast_id = InFile::new(source.file_id, ast_id);
+        let ptr = InFile::new(source.file_id, AstPtr::new(&macro_call_node));
+        let macro_call_id = resolve(&db, def_map, ast_id, ptr)
+            .unwrap_or_else(|| panic!("unable to find semantic macro call {macro_call_node}"));
+        let expansion_result = db.parse_macro_expansion(macro_call_id);
+        expansions.push((macro_call_node.clone(), expansion_result));
     }
 
     for (call, exp) in expansions.into_iter().rev() {
@@ -215,46 +221,42 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             _ => None,
         };
 
-        if let Some(src) = src {
-            if let Some(file_id) = src.file_id.macro_file() {
-                if let MacroKind::Derive
-                | MacroKind::DeriveBuiltIn
-                | MacroKind::Attr
-                | MacroKind::AttrBuiltIn = file_id.kind(&db)
-                {
-                    let call = file_id.call_node(&db);
-                    let mut show_spans = false;
-                    let mut show_ctxt = false;
-                    for comment in
-                        call.value.children_with_tokens().filter(|it| it.kind() == COMMENT)
-                    {
-                        show_spans |= comment.to_string().contains("+spans");
-                        show_ctxt |= comment.to_string().contains("+syntaxctxt");
-                    }
-                    let pp = pretty_print_macro_expansion(
-                        src.value,
-                        db.span_map(src.file_id).as_ref(),
-                        show_spans,
-                        show_ctxt,
-                    );
-                    format_to!(expanded_text, "\n{}", pp)
-                }
+        if let Some(src) = src
+            && let Some(file_id) = src.file_id.macro_file()
+            && let MacroKind::Derive
+            | MacroKind::DeriveBuiltIn
+            | MacroKind::Attr
+            | MacroKind::AttrBuiltIn = file_id.kind(&db)
+        {
+            let call = file_id.call_node(&db);
+            let mut show_spans = false;
+            let mut show_ctxt = false;
+            for comment in call.value.children_with_tokens().filter(|it| it.kind() == COMMENT) {
+                show_spans |= comment.to_string().contains("+spans");
+                show_ctxt |= comment.to_string().contains("+syntaxctxt");
             }
+            let pp = pretty_print_macro_expansion(
+                src.value,
+                db.span_map(src.file_id).as_ref(),
+                show_spans,
+                show_ctxt,
+            );
+            format_to!(expanded_text, "\n{}", pp)
         }
     }
 
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
-        if let Some(macro_file) = src.file_id.macro_file() {
-            if let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db) {
-                let pp = pretty_print_macro_expansion(
-                    src.value.syntax().clone(),
-                    db.span_map(macro_file.into()).as_ref(),
-                    false,
-                    false,
-                );
-                format_to!(expanded_text, "\n{}", pp)
-            }
+        if let Some(macro_file) = src.file_id.macro_file()
+            && let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db)
+        {
+            let pp = pretty_print_macro_expansion(
+                src.value.syntax().clone(),
+                db.span_map(macro_file.into()).as_ref(),
+                false,
+                false,
+            );
+            format_to!(expanded_text, "\n{}", pp)
         }
     }
 
@@ -299,14 +301,15 @@ fn pretty_print_macro_expansion(
             (_, T!['{']) => " ",
             (T![;] | T!['{'] | T!['}'], _) => "\n",
             (_, T!['}']) => "\n",
-            (IDENT | LIFETIME_IDENT, IDENT | LIFETIME_IDENT) => " ",
-            _ if prev_kind.is_keyword(Edition::CURRENT)
-                && curr_kind.is_keyword(Edition::CURRENT) =>
+            _ if (prev_kind.is_any_identifier()
+                || prev_kind == LIFETIME_IDENT
+                || prev_kind.is_literal())
+                && (curr_kind.is_any_identifier()
+                    || curr_kind == LIFETIME_IDENT
+                    || curr_kind.is_literal()) =>
             {
                 " "
             }
-            (IDENT, _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
-            (_, IDENT) if prev_kind.is_keyword(Edition::CURRENT) => " ",
             (T![>], IDENT) => " ",
             (T![>], _) if curr_kind.is_keyword(Edition::CURRENT) => " ",
             (T![->], _) | (_, T![->]) => " ",
@@ -379,6 +382,41 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     }
 
     fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+        other.type_id() == TypeId::of::<Self>()
     }
+}
+
+#[test]
+fn regression_20171() {
+    // This really isn't the appropriate place to put this test, but it's convenient with access to `quote!`.
+    let span = Span {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: SpanAnchor {
+            file_id: span::EditionedFileId::current_edition(span::FileId::from_raw(0)),
+            ast_id: ROOT_ERASED_FILE_AST_ID,
+        },
+        ctx: SyntaxContext::root(Edition::CURRENT),
+    };
+    let close_brace = tt::Punct { char: '}', spacing: tt::Spacing::Alone, span };
+    let dotdot1 = tt::Punct { char: '.', spacing: tt::Spacing::Joint, span };
+    let dotdot2 = tt::Punct { char: '.', spacing: tt::Spacing::Alone, span };
+    let dollar_crate = sym::dollar_crate;
+    let tt = quote! {
+            span => {
+        if !((matches!(
+            drive_parser(&mut parser, data, false),
+            Err(TarParserError::CorruptField {
+                field: CorruptFieldContext::PaxKvLength,
+                error: GeneralParseError::ParseInt(ParseIntError { #dotdot1 #dotdot2 })
+            })
+        #close_brace  ))) {
+        #dollar_crate::panic::panic_2021!();
+    }}
+        };
+    token_tree_to_syntax_node(
+        &tt,
+        syntax_bridge::TopEntryPoint::MacroStmts,
+        &mut |_| Edition::CURRENT,
+        Edition::CURRENT,
+    );
 }

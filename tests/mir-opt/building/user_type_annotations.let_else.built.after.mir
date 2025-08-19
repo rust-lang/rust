@@ -21,9 +21,6 @@ fn let_else() -> () {
     }
 
     bb0: {
-        StorageLive(_2);
-        StorageLive(_3);
-        StorageLive(_4);
         StorageLive(_5);
         StorageLive(_6);
         StorageLive(_7);
@@ -51,16 +48,19 @@ fn let_else() -> () {
 
     bb4: {
         AscribeUserType(_5, +, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_2);
         _2 = copy (_5.0: u32);
+        StorageLive(_3);
         _3 = copy (_5.1: u64);
+        StorageLive(_4);
         _4 = copy (_5.2: &char);
         StorageDead(_7);
         StorageDead(_5);
         _0 = const ();
-        StorageDead(_8);
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
+        StorageDead(_8);
         return;
     }
 
@@ -68,13 +68,16 @@ fn let_else() -> () {
         StorageDead(_7);
         StorageDead(_5);
         StorageDead(_8);
-        StorageDead(_4);
-        StorageDead(_3);
-        StorageDead(_2);
         goto -> bb1;
     }
 
     bb6 (cleanup): {
         resume;
     }
+}
+
+ALLOC0 (size: 40, align: 1) {
+    0x00 │ 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72 3a 20 │ internal error: 
+    0x10 │ 65 6e 74 65 72 65 64 20 75 6e 72 65 61 63 68 61 │ entered unreacha
+    0x20 │ 62 6c 65 20 63 6f 64 65                         │ ble code
 }

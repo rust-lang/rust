@@ -2,17 +2,16 @@ use clippy_utils::consts::Constant::{F32, F64, Int};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
-    eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg, sym,
+    eq_expr_value, get_parent_expr, has_ambiguous_literal_in_expr, higher, is_in_const_context,
+    is_inherent_method_call, is_no_std_crate, numeric_literal, peel_blocks, sugg, sym,
 };
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-
-use rustc_ast::ast;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
 use sugg::Sugg;
@@ -149,7 +148,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
         .into();
 
         suggestion = match suggestion {
-            Sugg::MaybeParen(_) => Sugg::MaybeParen(op),
+            Sugg::MaybeParen(_) | Sugg::UnOp(UnOp::Neg, _) => Sugg::MaybeParen(op),
             _ => Sugg::NonParen(op),
         };
     }
@@ -294,8 +293,8 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
         && let Some(parent) = get_parent_expr(cx, expr)
     {
         if let Some(grandparent) = get_parent_expr(cx, parent)
-            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = grandparent.kind
-            && method_name.as_str() == "sqrt"
+            && let ExprKind::MethodCall(PathSegment { ident: method, .. }, receiver, ..) = grandparent.kind
+            && method.name == sym::sqrt
             && detect_hypot(cx, receiver).is_some()
         {
             return;
@@ -375,24 +374,10 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         }
 
         // check if expression of the form x.powi(2) + y.powi(2)
-        if let ExprKind::MethodCall(
-            PathSegment {
-                ident: lmethod_name, ..
-            },
-            largs_0,
-            [largs_1, ..],
-            _,
-        ) = &add_lhs.kind
-            && let ExprKind::MethodCall(
-                PathSegment {
-                    ident: rmethod_name, ..
-                },
-                rargs_0,
-                [rargs_1, ..],
-                _,
-            ) = &add_rhs.kind
-            && lmethod_name.as_str() == "powi"
-            && rmethod_name.as_str() == "powi"
+        if let ExprKind::MethodCall(PathSegment { ident: lmethod, .. }, largs_0, [largs_1, ..], _) = &add_lhs.kind
+            && let ExprKind::MethodCall(PathSegment { ident: rmethod, .. }, rargs_0, [rargs_1, ..], _) = &add_rhs.kind
+            && lmethod.name == sym::powi
+            && rmethod.name == sym::powi
             && let ecx = ConstEvalCtxt::new(cx)
             && let Some(lvalue) = ecx.eval(largs_1)
             && let Some(rvalue) = ecx.eval(rargs_1)
@@ -470,7 +455,6 @@ fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'
     None
 }
 
-// TODO: Fix rust-lang/rust-clippy#4735
 fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
         Spanned {
@@ -482,8 +466,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
     ) = &expr.kind
     {
         if let Some(parent) = get_parent_expr(cx, expr)
-            && let ExprKind::MethodCall(PathSegment { ident: method_name, .. }, receiver, ..) = parent.kind
-            && method_name.as_str() == "sqrt"
+            && let ExprKind::MethodCall(PathSegment { ident: method, .. }, receiver, ..) = parent.kind
+            && method.name == sym::sqrt
             && detect_hypot(cx, receiver).is_some()
         {
             return;
@@ -505,6 +489,14 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
         } else {
             return;
         };
+
+        // Check if any variable in the expression has an ambiguous type (could be f32 or f64)
+        // see: https://github.com/rust-lang/rust-clippy/issues/14897
+        if (matches!(recv.kind, ExprKind::Path(_)) || matches!(recv.kind, ExprKind::Call(_, _)))
+            && has_ambiguous_literal_in_expr(cx, recv)
+        {
+            return;
+        }
 
         span_lint_and_sugg(
             cx,
@@ -623,27 +615,13 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(
-        PathSegment {
-            ident: method_name_a, ..
-        },
-        _,
-        args_a,
-        _,
-    ) = expr_a.kind
-        && let ExprKind::MethodCall(
-            PathSegment {
-                ident: method_name_b, ..
-            },
-            _,
-            args_b,
-            _,
-        ) = expr_b.kind
+    if let ExprKind::MethodCall(PathSegment { ident: method_a, .. }, _, args_a, _) = expr_a.kind
+        && let ExprKind::MethodCall(PathSegment { ident: method_b, .. }, _, args_b, _) = expr_b.kind
     {
-        return method_name_a.as_str() == method_name_b.as_str()
+        return method_a.name == method_b.name
             && args_a.len() == args_b.len()
-            && (["ln", "log2", "log10"].contains(&method_name_a.as_str())
-                || method_name_a.as_str() == "log" && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0]));
+            && (matches!(method_a.name, sym::ln | sym::log2 | sym::log10)
+                || method_a.name == sym::log && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0]));
     }
 
     false
@@ -759,12 +737,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatingPointArithmetic {
             let recv_ty = cx.typeck_results().expr_ty(receiver);
 
             if recv_ty.is_floating_point() && !is_no_std_crate(cx) && is_inherent_method_call(cx, expr) {
-                match path.ident.name.as_str() {
-                    "ln" => check_ln1p(cx, expr, receiver),
-                    "log" => check_log_base(cx, expr, receiver, args),
-                    "powf" => check_powf(cx, expr, receiver, args),
-                    "powi" => check_powi(cx, expr, receiver, args),
-                    "sqrt" => check_hypot(cx, expr, receiver),
+                match path.ident.name {
+                    sym::ln => check_ln1p(cx, expr, receiver),
+                    sym::log => check_log_base(cx, expr, receiver, args),
+                    sym::powf => check_powf(cx, expr, receiver, args),
+                    sym::powi => check_powi(cx, expr, receiver, args),
+                    sym::sqrt => check_hypot(cx, expr, receiver),
                     _ => {},
                 }
             }

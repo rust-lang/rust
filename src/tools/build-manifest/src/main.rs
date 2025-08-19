@@ -14,6 +14,7 @@ use crate::versions::{PkgType, Versions};
 
 static HOSTS: &[&str] = &[
     "aarch64-apple-darwin",
+    "aarch64-pc-windows-gnullvm",
     "aarch64-pc-windows-msvc",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
@@ -40,8 +41,11 @@ static HOSTS: &[&str] = &[
     "powerpc64le-unknown-linux-musl",
     "riscv64gc-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",
+    "sparcv9-sun-solaris",
     "x86_64-apple-darwin",
+    "x86_64-pc-solaris",
     "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-gnullvm",
     "x86_64-pc-windows-msvc",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-illumos",
@@ -111,6 +115,8 @@ static TARGETS: &[&str] = &[
     "i686-unknown-uefi",
     "loongarch64-unknown-linux-gnu",
     "loongarch64-unknown-linux-musl",
+    "loongarch32-unknown-none",
+    "loongarch32-unknown-none-softfloat",
     "loongarch64-unknown-none",
     "loongarch64-unknown-none-softfloat",
     "m68k-unknown-linux-gnu",
@@ -466,7 +472,7 @@ impl Builder {
                 }
                 // so is rust-mingw if it's available for the target
                 PkgType::RustMingw => {
-                    if host.contains("pc-windows-gnu") {
+                    if host.ends_with("pc-windows-gnu") {
                         components.push(host_component(pkg));
                     }
                 }

@@ -56,6 +56,12 @@ LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
    = help: add `#![feature(dispatch_from_dyn)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0377]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/issue-78372.rs:3:1
+   |
+LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0307]: invalid `self` parameter type: `Smaht<Self, T>`
   --> $DIR/issue-78372.rs:9:18
    |
@@ -64,12 +70,6 @@ LL |     fn foo(self: Smaht<Self, T>);
    |
    = note: type of `self` must be `Self` or a type that dereferences to it
    = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
-
-error[E0377]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
-  --> $DIR/issue-78372.rs:3:1
-   |
-LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

@@ -55,7 +55,11 @@ for i in ${!modules[@]}; do
         bg_pids[${i}]=$!
         continue
     else
+      # Submodule paths contained in SKIP_SUBMODULES (comma-separated list) will not be
+      # checked out.
+      if [ -z "${SKIP_SUBMODULES:-}" ] || [[ ! ",$SKIP_SUBMODULES," = *",$module,"* ]]; then
         use_git="$use_git $module"
+      fi
     fi
 done
 retry sh -c "git submodule deinit -f $use_git && \

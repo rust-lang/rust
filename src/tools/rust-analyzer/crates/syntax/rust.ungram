@@ -39,7 +39,10 @@ PathSegment =
 | NameRef GenericArgList?
 | NameRef ParenthesizedArgList RetType?
 | NameRef ReturnTypeSyntax
-| '<' Type ('as' PathType)? '>'
+| TypeAnchor
+
+TypeAnchor =
+  '<' Type ('as' PathType)? '>'
 
 ReturnTypeSyntax =
   '(' '..' ')'
@@ -98,7 +101,7 @@ WhereClause =
   'where' predicates:(WherePred (',' WherePred)* ','?)
 
 WherePred =
-  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList?
+  ForBinder? (Lifetime | Type) ':' TypeBoundList?
 
 
 //*************************//
@@ -133,6 +136,7 @@ Meta =
 
 SourceFile =
   '#shebang'?
+  '#frontmatter'?
   Attr*
   Item*
 
@@ -154,6 +158,7 @@ Item =
 | TypeAlias
 | Union
 | Use
+| AsmExpr
 
 MacroRules =
   Attr* Visibility?
@@ -405,7 +410,8 @@ OffsetOfExpr =
 // global_asm := "global_asm!(" format_string *("," format_string) *("," operand) [","] ")"
 // format_string := STRING_LITERAL / RAW_STRING_LITERAL
 AsmExpr =
-  Attr* 'builtin' '#' 'asm' '(' template:(Expr (',' Expr)*) (AsmPiece (',' AsmPiece)*)? ','? ')'
+  Attr* 'builtin' '#' ( 'asm' | 'global_asm' | 'naked_asm' )
+  '(' template:(Expr (',' Expr)*) (AsmPiece (',' AsmPiece)*)? ','? ')'
 
 // operand_expr := expr / "_" / expr "=>" expr / expr "=>" "_"
 AsmOperandExpr = in_expr:Expr ('=>' out_expr:Expr)?
@@ -528,10 +534,10 @@ FieldExpr =
   Attr* Expr '.' NameRef
 
 ClosureExpr =
-  Attr* ClosureBinder? 'const'? 'static'? 'async'? 'gen'? 'move'?  ParamList RetType?
+  Attr* ForBinder? 'const'? 'static'? 'async'? 'gen'? 'move'?  ParamList RetType?
   body:Expr
 
-ClosureBinder =
+ForBinder =
   'for' GenericParamList
 
 IfExpr =
@@ -652,7 +658,7 @@ FnPtrType =
   'const'? 'async'? 'unsafe'? Abi? 'fn' ParamList RetType?
 
 ForType =
-  'for' GenericParamList Type
+  ForBinder Type
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -665,7 +671,7 @@ TypeBoundList =
 
 TypeBound =
   Lifetime
-| ('~' 'const' | 'const')? 'async'? '?'? Type
+| ForBinder? ('~' 'const' | '[' 'const' ']' | 'const')? 'async'? '?'? Type
 | 'use' UseBoundGenericArgs
 
 UseBoundGenericArgs =

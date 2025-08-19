@@ -17,7 +17,7 @@ mod s {
 }
 
 mod id {
-    use s;
+    use crate::s;
     #[derive(Debug)]
     pub struct Id {
         orig_count: usize,

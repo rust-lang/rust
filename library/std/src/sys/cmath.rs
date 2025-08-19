@@ -7,13 +7,9 @@ unsafe extern "C" {
     pub safe fn asin(n: f64) -> f64;
     pub safe fn atan(n: f64) -> f64;
     pub safe fn atan2(a: f64, b: f64) -> f64;
-    pub safe fn cbrt(n: f64) -> f64;
-    pub safe fn cbrtf(n: f32) -> f32;
     pub safe fn cosh(n: f64) -> f64;
     pub safe fn expm1(n: f64) -> f64;
     pub safe fn expm1f(n: f32) -> f32;
-    pub safe fn fdim(a: f64, b: f64) -> f64;
-    pub safe fn fdimf(a: f32, b: f32) -> f32;
     #[cfg_attr(target_env = "msvc", link_name = "_hypot")]
     pub safe fn hypot(x: f64, y: f64) -> f64;
     #[cfg_attr(target_env = "msvc", link_name = "_hypotf")]
@@ -49,18 +45,65 @@ unsafe extern "C" {
     pub safe fn lgammaf128_r(n: f128, s: &mut i32) -> f128;
     pub safe fn erff128(n: f128) -> f128;
     pub safe fn erfcf128(n: f128) -> f128;
+}
 
-    cfg_if::cfg_if! {
-    if #[cfg(not(all(target_os = "windows", target_env = "msvc", target_arch = "x86")))] {
-        pub safe fn acosf(n: f32) -> f32;
-        pub safe fn asinf(n: f32) -> f32;
-        pub safe fn atan2f(a: f32, b: f32) -> f32;
-        pub safe fn atanf(n: f32) -> f32;
-        pub safe fn coshf(n: f32) -> f32;
-        pub safe fn sinhf(n: f32) -> f32;
-        pub safe fn tanf(n: f32) -> f32;
-        pub safe fn tanhf(n: f32) -> f32;
-    }}
+cfg_select! {
+    all(target_os = "windows", target_env = "msvc", target_arch = "x86") => {
+        // On 32-bit x86 MSVC these functions aren't defined, so we just define shims
+        // which promote everything to f64, perform the calculation, and then demote
+        // back to f32. While not precisely correct should be "correct enough" for now.
+        #[inline]
+        pub fn acosf(n: f32) -> f32 {
+            f64::acos(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn asinf(n: f32) -> f32 {
+            f64::asin(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn atan2f(n: f32, b: f32) -> f32 {
+            f64::atan2(n as f64, b as f64) as f32
+        }
+
+        #[inline]
+        pub fn atanf(n: f32) -> f32 {
+            f64::atan(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn coshf(n: f32) -> f32 {
+            f64::cosh(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn sinhf(n: f32) -> f32 {
+            f64::sinh(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn tanf(n: f32) -> f32 {
+            f64::tan(n as f64) as f32
+        }
+
+        #[inline]
+        pub fn tanhf(n: f32) -> f32 {
+            f64::tanh(n as f64) as f32
+        }
+    }
+    _ => {
+        unsafe extern "C" {
+            pub safe fn acosf(n: f32) -> f32;
+            pub safe fn asinf(n: f32) -> f32;
+            pub safe fn atan2f(a: f32, b: f32) -> f32;
+            pub safe fn atanf(n: f32) -> f32;
+            pub safe fn coshf(n: f32) -> f32;
+            pub safe fn sinhf(n: f32) -> f32;
+            pub safe fn tanf(n: f32) -> f32;
+            pub safe fn tanhf(n: f32) -> f32;
+        }
+    }
 }
 
 // On AIX, we don't have lgammaf_r only the f64 version, so we can
@@ -69,49 +112,3 @@ unsafe extern "C" {
 pub fn lgammaf_r(n: f32, s: &mut i32) -> f32 {
     lgamma_r(n.into(), s) as f32
 }
-
-// On 32-bit x86 MSVC these functions aren't defined, so we just define shims
-// which promote everything to f64, perform the calculation, and then demote
-// back to f32. While not precisely correct should be "correct enough" for now.
-cfg_if::cfg_if! {
-if #[cfg(all(target_os = "windows", target_env = "msvc", target_arch = "x86"))] {
-    #[inline]
-    pub fn acosf(n: f32) -> f32 {
-        f64::acos(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn asinf(n: f32) -> f32 {
-        f64::asin(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn atan2f(n: f32, b: f32) -> f32 {
-        f64::atan2(n as f64, b as f64) as f32
-    }
-
-    #[inline]
-    pub fn atanf(n: f32) -> f32 {
-        f64::atan(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn coshf(n: f32) -> f32 {
-        f64::cosh(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn sinhf(n: f32) -> f32 {
-        f64::sinh(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn tanf(n: f32) -> f32 {
-        f64::tan(n as f64) as f32
-    }
-
-    #[inline]
-    pub fn tanhf(n: f32) -> f32 {
-        f64::tanh(n as f64) as f32
-    }
-}}

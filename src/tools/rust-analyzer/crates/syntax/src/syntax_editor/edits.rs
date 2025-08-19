@@ -1,7 +1,8 @@
 //! Structural editing for ast using `SyntaxEditor`
 
 use crate::{
-    Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
+    AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
+    algo::neighbor,
     ast::{
         self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make,
         syntax_factory::SyntaxFactory,
@@ -91,6 +92,42 @@ fn get_or_insert_comma_after(editor: &mut SyntaxEditor, syntax: &SyntaxNode) -> 
     }
 }
 
+impl ast::AssocItemList {
+    /// Adds a new associated item after all of the existing associated items.
+    ///
+    /// Attention! This function does align the first line of `item` with respect to `self`,
+    /// but it does _not_ change indentation of other lines (if any).
+    pub fn add_items(&self, editor: &mut SyntaxEditor, items: Vec<ast::AssocItem>) {
+        let (indent, position, whitespace) = match self.assoc_items().last() {
+            Some(last_item) => (
+                IndentLevel::from_node(last_item.syntax()),
+                Position::after(last_item.syntax()),
+                "\n\n",
+            ),
+            None => match self.l_curly_token() {
+                Some(l_curly) => {
+                    normalize_ws_between_braces(editor, self.syntax());
+                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
+                }
+                None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
+            },
+        };
+
+        let elements: Vec<SyntaxElement> = items
+            .into_iter()
+            .enumerate()
+            .flat_map(|(i, item)| {
+                let whitespace = if i != 0 { "\n\n" } else { whitespace };
+                vec![
+                    make::tokens::whitespace(&format!("{whitespace}{indent}")).into(),
+                    item.syntax().clone().into(),
+                ]
+            })
+            .collect();
+        editor.insert_all(position, elements);
+    }
+}
+
 impl ast::VariantList {
     pub fn add_variant(&self, editor: &mut SyntaxEditor, variant: &ast::Variant) {
         let make = SyntaxFactory::without_mappings();
@@ -113,6 +150,23 @@ impl ast::VariantList {
             make.token(T![,]).into(),
         ];
         editor.insert_all(position, elements);
+    }
+}
+
+impl ast::Fn {
+    pub fn replace_or_insert_body(&self, editor: &mut SyntaxEditor, body: ast::BlockExpr) {
+        if let Some(old_body) = self.body() {
+            editor.replace(old_body.syntax(), body.syntax());
+        } else {
+            let single_space = make::tokens::single_space();
+            let elements = vec![single_space.into(), body.syntax().clone().into()];
+
+            if let Some(semicolon) = self.semicolon_token() {
+                editor.replace_with_many(semicolon, elements);
+            } else {
+                editor.insert_all(Position::last_child_of(self.syntax()), elements);
+            }
+        }
     }
 }
 
@@ -141,6 +195,62 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
         _ => (),
     }
     Some(())
+}
+
+pub trait Removable: AstNode {
+    fn remove(&self, editor: &mut SyntaxEditor);
+}
+
+impl Removable for ast::TypeBoundList {
+    fn remove(&self, editor: &mut SyntaxEditor) {
+        match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
+            Some(colon) => editor.delete_all(colon..=self.syntax().clone().into()),
+            None => editor.delete(self.syntax()),
+        }
+    }
+}
+
+impl Removable for ast::Use {
+    fn remove(&self, editor: &mut SyntaxEditor) {
+        let make = SyntaxFactory::without_mappings();
+
+        let next_ws = self
+            .syntax()
+            .next_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(next_ws) = next_ws {
+            let ws_text = next_ws.syntax().text();
+            if let Some(rest) = ws_text.strip_prefix('\n') {
+                if rest.is_empty() {
+                    editor.delete(next_ws.syntax());
+                } else {
+                    editor.replace(next_ws.syntax(), make.whitespace(rest));
+                }
+            }
+        }
+
+        editor.delete(self.syntax());
+    }
+}
+
+impl Removable for ast::UseTree {
+    fn remove(&self, editor: &mut SyntaxEditor) {
+        for dir in [Direction::Next, Direction::Prev] {
+            if let Some(next_use_tree) = neighbor(self, dir) {
+                let separators = self
+                    .syntax()
+                    .siblings_with_tokens(dir)
+                    .skip(1)
+                    .take_while(|it| it.as_node() != Some(next_use_tree.syntax()));
+                for sep in separators {
+                    editor.delete(sep);
+                }
+                break;
+            }
+        }
+        editor.delete(self.syntax());
+    }
 }
 
 #[cfg(test)]

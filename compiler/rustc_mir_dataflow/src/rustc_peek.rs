@@ -39,23 +39,23 @@ pub fn sanity_check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
-        let flow_inits =
-            MaybeInitializedPlaces::new(tcx, body, &move_data).iterate_to_fixpoint(tcx, body, None);
-
-        sanity_check_via_rustc_peek(tcx, flow_inits.into_results_cursor(body));
+        let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+            .iterate_to_fixpoint(tcx, body, None)
+            .into_results_cursor(body);
+        sanity_check_via_rustc_peek(tcx, flow_inits);
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
         let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &move_data)
-            .iterate_to_fixpoint(tcx, body, None);
-
-        sanity_check_via_rustc_peek(tcx, flow_uninits.into_results_cursor(body));
+            .iterate_to_fixpoint(tcx, body, None)
+            .into_results_cursor(body);
+        sanity_check_via_rustc_peek(tcx, flow_uninits);
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
-        let flow_liveness = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None);
-
-        sanity_check_via_rustc_peek(tcx, flow_liveness.into_results_cursor(body));
+        let flow_liveness =
+            MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None).into_results_cursor(body);
+        sanity_check_via_rustc_peek(tcx, flow_liveness);
     }
 
     if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
@@ -135,12 +135,11 @@ fn value_assigned_to_local<'a, 'tcx>(
     stmt: &'a mir::Statement<'tcx>,
     local: Local,
 ) -> Option<&'a mir::Rvalue<'tcx>> {
-    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-        if let Some(l) = place.as_local() {
-            if local == l {
-                return Some(&*rvalue);
-            }
-        }
+    if let mir::StatementKind::Assign(box (place, rvalue)) = &stmt.kind
+        && let Some(l) = place.as_local()
+        && local == l
+    {
+        return Some(&*rvalue);
     }
 
     None
@@ -178,31 +177,30 @@ impl PeekCall {
         let span = terminator.source_info.span;
         if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
             &terminator.kind
+            && let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind()
         {
-            if let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind() {
-                if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
-                    return None;
-                }
+            if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
+                return None;
+            }
 
-                assert_eq!(fn_args.len(), 1);
-                let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
-                let arg = match &args[0].node {
-                    Operand::Copy(place) | Operand::Move(place) => {
-                        if let Some(local) = place.as_local() {
-                            local
-                        } else {
-                            tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
-                            return None;
-                        }
-                    }
-                    _ => {
+            assert_eq!(fn_args.len(), 1);
+            let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
+            let arg = match &args[0].node {
+                Operand::Copy(place) | Operand::Move(place) => {
+                    if let Some(local) = place.as_local() {
+                        local
+                    } else {
                         tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
                         return None;
                     }
-                };
+                }
+                _ => {
+                    tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
+                    return None;
+                }
+            };
 
-                return Some(PeekCall { arg, kind, span });
-            }
+            return Some(PeekCall { arg, kind, span });
         }
 
         None

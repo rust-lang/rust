@@ -160,7 +160,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty::Binder::dummy(trait_ref),
         );
-        if !self.infcx.predicate_may_hold(&obligation) {
+        if !self.infcx.next_trait_solver() && !self.infcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }
@@ -184,17 +184,17 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             self.param_env,
             ty,
         ) else {
-            // We shouldn't have errors here, except for evaluate/fulfill mismatches,
-            // but that's not a reason for an ICE (`predicate_may_hold` is conservative
-            // by design).
-            // FIXME(-Znext-solver): This *actually* shouldn't happen then.
+            // We shouldn't have errors here in the old solver, except for
+            // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             return None;
         };
         let errors = ocx.select_where_possible();
         if !errors.is_empty() {
-            // This shouldn't happen, except for evaluate/fulfill mismatches,
-            // but that's not a reason for an ICE (`predicate_may_hold` is conservative
-            // by design).
+            if self.infcx.next_trait_solver() {
+                unreachable!();
+            }
+            // We shouldn't have errors here in the old solver, except for
+            // evaluate/fulfill mismatches, but that's not a reason for an ICE.
             debug!(?errors, "encountered errors while fulfilling");
             return None;
         }

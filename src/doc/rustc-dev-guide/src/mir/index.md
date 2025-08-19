@@ -1,7 +1,5 @@
 # The MIR (Mid-level IR)
 
-<!-- toc -->
-
 MIR is Rust's _Mid-level Intermediate Representation_. It is
 constructed from [HIR](../hir.html). MIR was introduced in
 [RFC 1211]. It is a radically simplified form of Rust that is used for

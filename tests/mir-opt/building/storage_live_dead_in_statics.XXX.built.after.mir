@@ -198,3 +198,7 @@ static XXX: &Foo = {
         return;
     }
 }
+
+ALLOC0 (size: 2, align: 1) {
+    68 69                                           │ hi
+}

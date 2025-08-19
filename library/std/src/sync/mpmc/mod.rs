@@ -187,7 +187,7 @@ use crate::time::{Duration, Instant};
 ///     sender.send(expensive_computation()).unwrap();
 /// });
 ///
-/// // Do some useful work for awhile
+/// // Do some useful work for a while
 ///
 /// // Let's see what that answer was
 /// println!("{:?}", receiver.recv().unwrap());

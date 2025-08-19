@@ -1,5 +1,6 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note, span_lint_and_then};
+use clippy_utils::higher::has_let_expr;
 use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::{InteriorMut, needs_ordered_drop};
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -11,7 +12,7 @@ use clippy_utils::{
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind, intravisit};
+use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Node, Stmt, StmtKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
@@ -189,24 +190,13 @@ impl<'tcx> LateLintPass<'tcx> for CopyAndPaste<'tcx> {
     }
 }
 
-/// Checks if the given expression is a let chain.
-fn contains_let(e: &Expr<'_>) -> bool {
-    match e.kind {
-        ExprKind::Let(..) => true,
-        ExprKind::Binary(op, lhs, rhs) if op.node == BinOpKind::And => {
-            matches!(lhs.kind, ExprKind::Let(..)) || contains_let(rhs)
-        },
-        _ => false,
-    }
-}
-
 fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&Block<'_>]) -> bool {
     let mut eq = SpanlessEq::new(cx);
     blocks
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).is_none_or(|e| !contains_let(e)) {
+            if eq.eq_block(lhs, rhs) && !has_let_expr(conds[i]) && conds.get(i + 1).is_none_or(|e| !has_let_expr(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -245,9 +235,9 @@ fn lint_branches_sharing_code<'tcx>(
         let cond_snippet = reindent_multiline(&snippet(cx, cond_span, "_"), false, None);
         let cond_indent = indent_of(cx, cond_span);
         let moved_snippet = reindent_multiline(&snippet(cx, span, "_"), true, None);
-        let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
+        let suggestion = moved_snippet + "\n" + &cond_snippet + "{";
         let suggestion = reindent_multiline(&suggestion, true, cond_indent);
-        (replace_span, suggestion.to_string())
+        (replace_span, suggestion)
     });
     let end_suggestion = res.end_span(last_block, sm).map(|span| {
         let moved_snipped = reindent_multiline(&snippet(cx, span, "_"), true, None);
@@ -258,12 +248,12 @@ fn lint_branches_sharing_code<'tcx>(
         let span = span.with_hi(last_block.span.hi());
         // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
-            .map_range(cx, |src, range| {
+            .map_range(cx, |_, src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
                     .then_some(range.start - 4..range.end)
             })
             .map_or(span, |range| range.with_ctxt(span.ctxt()));
-        (span, suggestion.to_string())
+        (span, suggestion.clone())
     });
 
     let (span, msg, end_span) = match (&start_suggestion, &end_suggestion) {
@@ -295,7 +285,7 @@ fn lint_branches_sharing_code<'tcx>(
                 sugg,
                 Applicability::Unspecified,
             );
-            if !cx.typeck_results().expr_ty(expr).is_unit() {
+            if is_expr_parent_assignment(cx, expr) || !cx.typeck_results().expr_ty(expr).is_unit() {
                 diag.note("the end suggestion probably needs some adjustments to use the expression result correctly");
             }
         }
@@ -425,7 +415,9 @@ fn scan_block_for_eq<'tcx>(
             modifies_any_local(cx, stmt, &cond_locals)
                 || !eq_stmts(stmt, blocks, |b| b.stmts.get(i), &mut eq, &mut moved_locals)
         })
-        .map_or(block.stmts.len(), |(i, _)| i);
+        .map_or(block.stmts.len(), |(i, stmt)| {
+            adjust_by_closest_callsite(i, stmt, block.stmts[..i].iter().enumerate().rev())
+        });
 
     if local_needs_ordered_drop {
         return BlockEq {
@@ -467,7 +459,9 @@ fn scan_block_for_eq<'tcx>(
                     .is_none_or(|s| hash != hash_stmt(cx, s))
             })
         })
-        .map_or(block.stmts.len() - start_end_eq, |(i, _)| i);
+        .map_or(block.stmts.len() - start_end_eq, |(i, stmt)| {
+            adjust_by_closest_callsite(i, stmt, (0..i).rev().zip(block.stmts[(block.stmts.len() - i)..].iter()))
+        });
 
     let moved_locals_at_start = moved_locals.len();
     let mut i = end_search_start;
@@ -522,6 +516,49 @@ fn scan_block_for_eq<'tcx>(
     }
 }
 
+/// Adjusts the index for which the statements begin to differ to the closest macro callsite. This
+/// avoids giving suggestions that requires splitting a macro call in half, when only a part of the
+/// macro expansion is equal.
+///
+/// For example, for the following macro:
+/// ```rust,ignore
+/// macro_rules! foo {
+///    ($x:expr) => {
+///        let y = 42;
+///        $x;
+///    };
+/// }
+/// ```
+/// If the macro is called like this:
+/// ```rust,ignore
+/// if false {
+///    let z = 42;
+///    foo!(println!("Hello"));
+/// } else {
+///    let z = 42;
+///    foo!(println!("World"));
+/// }
+/// ```
+/// Although the expanded `let y = 42;` is equal, the macro call should not be included in the
+/// suggestion.
+fn adjust_by_closest_callsite<'tcx>(
+    i: usize,
+    stmt: &'tcx Stmt<'tcx>,
+    mut iter: impl Iterator<Item = (usize, &'tcx Stmt<'tcx>)>,
+) -> usize {
+    let Some((_, first)) = iter.next() else {
+        return 0;
+    };
+
+    // If it is already at the boundary of a macro call, then just return.
+    if first.span.source_callsite() != stmt.span.source_callsite() {
+        return i;
+    }
+
+    iter.find(|(_, stmt)| stmt.span.source_callsite() != first.span.source_callsite())
+        .map_or(0, |(i, _)| i + 1)
+}
+
 fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbol)], if_expr: &Expr<'_>) -> bool {
     get_enclosing_block(cx, if_expr.hir_id).is_some_and(|block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
@@ -567,7 +604,7 @@ fn method_caller_is_mutable<'tcx>(
 
 /// Implementation of `IFS_SAME_COND`.
 fn lint_same_cond<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_mut: &mut InteriorMut<'tcx>) {
-    for (i, j) in search_same(
+    for group in search_same(
         conds,
         |e| hash_expr(cx, e),
         |lhs, rhs| {
@@ -584,14 +621,8 @@ fn lint_same_cond<'tcx>(cx: &LateContext<'tcx>, conds: &[&Expr<'_>], interior_mu
             }
         },
     ) {
-        span_lint_and_note(
-            cx,
-            IFS_SAME_COND,
-            j.span,
-            "this `if` has the same condition as a previous `if`",
-            Some(i.span),
-            "same as this",
-        );
+        let spans: Vec<_> = group.into_iter().map(|expr| expr.span).collect();
+        span_lint(cx, IFS_SAME_COND, spans, "these `if` branches have the same condition");
     }
 }
 
@@ -609,14 +640,27 @@ fn lint_same_fns_in_if_cond(cx: &LateContext<'_>, conds: &[&Expr<'_>]) {
         SpanlessEq::new(cx).eq_expr(lhs, rhs)
     };
 
-    for (i, j) in search_same(conds, |e| hash_expr(cx, e), eq) {
-        span_lint_and_note(
+    for group in search_same(conds, |e| hash_expr(cx, e), eq) {
+        let spans: Vec<_> = group.into_iter().map(|expr| expr.span).collect();
+        span_lint(
             cx,
             SAME_FUNCTIONS_IN_IF_CONDITION,
-            j.span,
-            "this `if` has the same function call as a previous `if`",
-            Some(i.span),
-            "same as this",
+            spans,
+            "these `if` branches have the same function call",
         );
     }
+}
+
+fn is_expr_parent_assignment(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let parent = cx.tcx.parent_hir_node(expr.hir_id);
+    if let Node::LetStmt(LetStmt { init: Some(e), .. })
+    | Node::Expr(Expr {
+        kind: ExprKind::Assign(_, e, _),
+        ..
+    }) = parent
+    {
+        return e.hir_id == expr.hir_id;
+    }
+
+    false
 }

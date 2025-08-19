@@ -25,7 +25,7 @@ use crate::{
     infer::normalize,
 };
 
-use super::{MirBody, MirLowerError, Operand, Rvalue, StatementKind, TerminatorKind};
+use super::{MirBody, MirLowerError, Operand, OperandKind, Rvalue, StatementKind, TerminatorKind};
 
 macro_rules! not_supported {
     ($it: expr) => {
@@ -170,8 +170,8 @@ impl Filler<'_> {
     }
 
     fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError> {
-        match op {
-            Operand::Constant(c) => {
+        match &mut op.kind {
+            OperandKind::Constant(c) => {
                 match &c.data(Interner).value {
                     chalk_ir::ConstValue::BoundVar(b) => {
                         let resolved = self
@@ -215,7 +215,7 @@ impl Filler<'_> {
                 }
                 self.fill_const(c)?;
             }
-            Operand::Copy(_) | Operand::Move(_) | Operand::Static(_) => (),
+            OperandKind::Copy(_) | OperandKind::Move(_) | OperandKind::Static(_) => (),
         }
         Ok(())
     }

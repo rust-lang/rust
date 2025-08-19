@@ -183,7 +183,7 @@ mod current;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use current::current;
-pub(crate) use current::{current_id, current_or_unnamed, drop_current};
+pub(crate) use current::{current_id, current_or_unnamed, current_os_id, drop_current};
 use current::{set_current, try_with_current};
 
 mod spawnhook;
@@ -595,7 +595,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe { imp::Thread::new(stack_size, main)? },
+            native: unsafe { imp::Thread::new(stack_size, my_thread.name(), main)? },
             thread: my_thread,
             packet: my_packet,
         })
@@ -897,8 +897,31 @@ pub fn sleep(dur: Duration) {
 ///
 /// # Platform-specific behavior
 ///
-/// This function uses [`sleep`] internally, see its platform-specific behavior.
+/// In most cases this function will call an OS specific function. Where that
+/// is not supported [`sleep`] is used. Those platforms are referred to as other
+/// in the table below.
 ///
+/// # Underlying System calls
+///
+/// The following system calls are [currently] being used:
+///
+/// |  Platform |               System call                                            |
+/// |-----------|----------------------------------------------------------------------|
+/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
+/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
+/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Fuchsia   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
+///
+/// [currently]: crate::io#platform-specific-behavior
+/// [clock_nanosleep]: https://linux.die.net/man/3/clock_nanosleep
+///
+/// **Disclaimer:** These system calls might change over time.
 ///
 /// # Examples
 ///
@@ -923,9 +946,9 @@ pub fn sleep(dur: Duration) {
 /// }
 /// ```
 ///
-/// A slow api we must not call too fast and which takes a few
+/// A slow API we must not call too fast and which takes a few
 /// tries before succeeding. By using `sleep_until` the time the
-/// api call takes does not influence when we retry or when we give up
+/// API call takes does not influence when we retry or when we give up
 ///
 /// ```no_run
 /// #![feature(thread_sleep_until)]
@@ -960,11 +983,7 @@ pub fn sleep(dur: Duration) {
 /// ```
 #[unstable(feature = "thread_sleep_until", issue = "113752")]
 pub fn sleep_until(deadline: Instant) {
-    let now = Instant::now();
-
-    if let Some(delay) = deadline.checked_duration_since(now) {
-        sleep(delay);
-    }
+    imp::Thread::sleep_until(deadline)
 }
 
 /// Used to ensure that `park` and `park_timeout` do not unwind, as that can
@@ -1193,8 +1212,8 @@ impl ThreadId {
             panic!("failed to generate unique thread ID: bitspace exhausted")
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_has_atomic = "64")] {
+        cfg_select! {
+            target_has_atomic = "64" => {
                 use crate::sync::atomic::{Atomic, AtomicU64};
 
                 static COUNTER: Atomic<u64> = AtomicU64::new(0);
@@ -1210,7 +1229,8 @@ impl ThreadId {
                         Err(id) => last = id,
                     }
                 }
-            } else {
+            }
+            _ => {
                 use crate::sync::{Mutex, PoisonError};
 
                 static COUNTER: Mutex<u64> = Mutex::new(0);
@@ -1299,8 +1319,8 @@ use thread_name_string::ThreadNameString;
 /// Note however that this also means that the name reported in pre-main functions
 /// will be incorrect, but that's just something we have to live with.
 pub(crate) mod main_thread {
-    cfg_if::cfg_if! {
-        if #[cfg(target_has_atomic = "64")] {
+    cfg_select! {
+        target_has_atomic = "64" => {
             use super::ThreadId;
             use crate::sync::atomic::{Atomic, AtomicU64};
             use crate::sync::atomic::Ordering::Relaxed;
@@ -1316,7 +1336,8 @@ pub(crate) mod main_thread {
             pub(crate) unsafe fn set(id: ThreadId) {
                 MAIN.store(id.as_u64().get(), Relaxed)
             }
-        } else {
+        }
+        _ => {
             use super::ThreadId;
             use crate::mem::MaybeUninit;
             use crate::sync::atomic::{Atomic, AtomicBool};
@@ -1380,6 +1401,11 @@ where
 }
 
 /// The internal representation of a `Thread` handle
+///
+/// We explicitly set the alignment for our guarantee in Thread::into_raw. This
+/// allows applications to stuff extra metadata bits into the alignment, which
+/// can be rather useful when working with atomics.
+#[repr(align(8))]
 struct Inner {
     name: Option<ThreadNameString>,
     id: ThreadId,
@@ -1563,7 +1589,8 @@ impl Thread {
     /// Consumes the `Thread`, returning a raw pointer.
     ///
     /// To avoid a memory leak the pointer must be converted
-    /// back into a `Thread` using [`Thread::from_raw`].
+    /// back into a `Thread` using [`Thread::from_raw`]. The pointer is
+    /// guaranteed to be aligned to at least 8 bytes.
     ///
     /// # Examples
     ///
@@ -1676,7 +1703,7 @@ impl fmt::Debug for Thread {
 /// [`Result`]: crate::result::Result
 /// [`std::panic::resume_unwind`]: crate::panic::resume_unwind
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
 // This packet is used to communicate the return value between the spawned
@@ -1993,6 +2020,9 @@ fn _assert_sync_and_send() {
 ///   which may take time on systems with large numbers of mountpoints.
 ///   (This does not apply to cgroup v2, or to processes not in a
 ///   cgroup.)
+/// - It does not attempt to take `ulimit` into account. If there is a limit set on the number of
+///   threads, `available_parallelism` cannot know how much of that limit a Rust program should
+///   take, or know in a reliable and race-free way how much of that limit is already taken.
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM

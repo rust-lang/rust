@@ -34,11 +34,13 @@ impl From<Documentation> for String {
 
 pub trait HasDocs: HasAttrs {
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation>;
+    fn docs_with_rangemap(self, db: &dyn HirDatabase) -> Option<(Documentation, DocsRangeMap)>;
     fn resolve_doc_path(
         self,
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<hir::Namespace>,
+        is_inner_doc: bool,
     ) -> Option<hir::DocLinkDef>;
 }
 /// A struct to map text ranges from [`Documentation`] back to TextRanges in the syntax tree.
@@ -53,7 +55,7 @@ pub struct DocsRangeMap {
 
 impl DocsRangeMap {
     /// Maps a [`TextRange`] relative to the documentation string back to its AST range
-    pub fn map(&self, range: TextRange) -> Option<InFile<TextRange>> {
+    pub fn map(&self, range: TextRange) -> Option<(InFile<TextRange>, AttrId)> {
         let found = self.mapping.binary_search_by(|(probe, ..)| probe.ordering(range)).ok()?;
         let (line_docs_range, idx, original_line_src_range) = self.mapping[found];
         if !line_docs_range.contains_range(range) {
@@ -71,7 +73,7 @@ impl DocsRangeMap {
                     text_range.end() + original_line_src_range.start() + relative_range.start(),
                     string.syntax().text_range().len().min(range.len()),
                 );
-                Some(InFile { file_id, value: range })
+                Some((InFile { file_id, value: range }, idx))
             }
             Either::Right(comment) => {
                 let text_range = comment.syntax().text_range();
@@ -82,9 +84,21 @@ impl DocsRangeMap {
                         + relative_range.start(),
                     text_range.len().min(range.len()),
                 );
-                Some(InFile { file_id, value: range })
+                Some((InFile { file_id, value: range }, idx))
             }
         }
+    }
+
+    pub fn shift_docstring_line_range(self, offset: TextSize) -> DocsRangeMap {
+        let mapping = self
+            .mapping
+            .into_iter()
+            .map(|(buf_offset, id, base_offset)| {
+                let buf_offset = buf_offset.checked_add(offset).unwrap();
+                (buf_offset, id, base_offset)
+            })
+            .collect_vec();
+        DocsRangeMap { source_map: self.source_map, mapping }
     }
 }
 
@@ -161,13 +175,20 @@ macro_rules! impl_has_docs {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 docs_from_attrs(&self.attrs(db)).map(Documentation)
             }
+            fn docs_with_rangemap(
+                self,
+                db: &dyn HirDatabase,
+            ) -> Option<(Documentation, DocsRangeMap)> {
+                docs_with_rangemap(db, &self.attrs(db))
+            }
             fn resolve_doc_path(
                 self,
                 db: &dyn HirDatabase,
                 link: &str,
-                ns: Option<hir::Namespace>
+                ns: Option<hir::Namespace>,
+                is_inner_doc: bool,
             ) -> Option<hir::DocLinkDef> {
-                resolve_doc_path_on(db, self, link, ns)
+                resolve_doc_path_on(db, self, link, ns, is_inner_doc)
             }
         }
     )*};
@@ -184,13 +205,21 @@ macro_rules! impl_has_docs_enum {
             fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
                 hir::$enum::$variant(self).docs(db)
             }
+
+            fn docs_with_rangemap(
+                self,
+                db: &dyn HirDatabase,
+            ) -> Option<(Documentation, DocsRangeMap)> {
+                hir::$enum::$variant(self).docs_with_rangemap(db)
+            }
             fn resolve_doc_path(
                 self,
                 db: &dyn HirDatabase,
                 link: &str,
-                ns: Option<hir::Namespace>
+                ns: Option<hir::Namespace>,
+                is_inner_doc: bool,
             ) -> Option<hir::DocLinkDef> {
-                hir::$enum::$variant(self).resolve_doc_path(db, link, ns)
+                hir::$enum::$variant(self).resolve_doc_path(db, link, ns, is_inner_doc)
             }
         }
     )*};
@@ -207,16 +236,25 @@ impl HasDocs for hir::AssocItem {
         }
     }
 
+    fn docs_with_rangemap(self, db: &dyn HirDatabase) -> Option<(Documentation, DocsRangeMap)> {
+        match self {
+            hir::AssocItem::Function(it) => it.docs_with_rangemap(db),
+            hir::AssocItem::Const(it) => it.docs_with_rangemap(db),
+            hir::AssocItem::TypeAlias(it) => it.docs_with_rangemap(db),
+        }
+    }
+
     fn resolve_doc_path(
         self,
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<hir::Namespace>,
+        is_inner_doc: bool,
     ) -> Option<hir::DocLinkDef> {
         match self {
-            hir::AssocItem::Function(it) => it.resolve_doc_path(db, link, ns),
-            hir::AssocItem::Const(it) => it.resolve_doc_path(db, link, ns),
-            hir::AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns),
+            hir::AssocItem::Function(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
+            hir::AssocItem::Const(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
+            hir::AssocItem::TypeAlias(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         }
     }
 }
@@ -238,13 +276,36 @@ impl HasDocs for hir::ExternCrateDecl {
         }
         .map(Documentation::new)
     }
+
+    fn docs_with_rangemap(self, db: &dyn HirDatabase) -> Option<(Documentation, DocsRangeMap)> {
+        let crate_docs = docs_with_rangemap(db, &self.resolved_crate(db)?.root_module().attrs(db));
+        let decl_docs = docs_with_rangemap(db, &self.attrs(db));
+        match (decl_docs, crate_docs) {
+            (None, None) => None,
+            (Some(decl_docs), None) => Some(decl_docs),
+            (None, Some(crate_docs)) => Some(crate_docs),
+            (
+                Some((Documentation(mut decl_docs), mut decl_range_map)),
+                Some((Documentation(crate_docs), crate_range_map)),
+            ) => {
+                decl_docs.push('\n');
+                decl_docs.push('\n');
+                let offset = TextSize::new(decl_docs.len() as u32);
+                decl_docs += &crate_docs;
+                let crate_range_map = crate_range_map.shift_docstring_line_range(offset);
+                decl_range_map.mapping.extend(crate_range_map.mapping);
+                Some((Documentation(decl_docs), decl_range_map))
+            }
+        }
+    }
     fn resolve_doc_path(
         self,
         db: &dyn HirDatabase,
         link: &str,
         ns: Option<hir::Namespace>,
+        is_inner_doc: bool,
     ) -> Option<hir::DocLinkDef> {
-        resolve_doc_path_on(db, self, link, ns)
+        resolve_doc_path_on(db, self, link, ns, is_inner_doc)
     }
 }
 

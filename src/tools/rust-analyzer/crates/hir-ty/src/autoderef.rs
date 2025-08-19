@@ -197,20 +197,19 @@ pub(crate) fn deref_by_trait(
         // effectively bump the MSRV of rust-analyzer to 1.84 due to 1.83 and below lacking the
         // blanked impl on `Deref`.
         #[expect(clippy::overly_complex_bool_expr)]
-        if use_receiver_trait && false {
-            if let Some(receiver) =
-                db.lang_item(table.trait_env.krate, LangItem::Receiver).and_then(|l| l.as_trait())
-            {
-                return Some(receiver);
-            }
+        if use_receiver_trait
+            && false
+            && let Some(receiver) = LangItem::Receiver.resolve_trait(db, table.trait_env.krate)
+        {
+            return Some(receiver);
         }
         // Old rustc versions might not have `Receiver` trait.
         // Fallback to `Deref` if they don't
-        db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())
+        LangItem::Deref.resolve_trait(db, table.trait_env.krate)
     };
     let trait_id = trait_id()?;
     let target =
-        db.trait_items(trait_id).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
+        trait_id.trait_items(db).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
 
     let projection = {
         let b = TyBuilder::subst_for_def(db, trait_id, None);

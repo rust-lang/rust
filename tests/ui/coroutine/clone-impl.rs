@@ -38,39 +38,41 @@ fn test2() {
     check_clone(&gen_copy_1);
 }
 
-fn test3() {
+fn test3_upvars() {
     let clonable_0: Vec<u32> = Vec::new();
     let gen_clone_0 = #[coroutine]
     move || {
-        let v = vec!['a'];
         yield;
-        drop(v);
         drop(clonable_0);
     };
     check_copy(&gen_clone_0);
     //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
-    //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
     check_clone(&gen_clone_0);
+}
+
+fn test3_witness() {
+    let gen_clone_1 = #[coroutine]
+    move || {
+        let v = vec!['a'];
+        yield;
+        drop(v);
+    };
+    check_copy(&gen_clone_1);
+    //~^ ERROR the trait bound `Vec<char>: Copy` is not satisfied
+    check_clone(&gen_clone_1);
 }
 
 fn test4() {
     let clonable_1: Vec<u32> = Vec::new();
     let gen_clone_1 = #[coroutine]
     move || {
-        let v = vec!['a'];
-        /*
-        let n = NonClone;
-        drop(n);
-        */
         yield;
         let n = NonClone;
         drop(n);
-        drop(v);
         drop(clonable_1);
     };
     check_copy(&gen_clone_1);
     //~^ ERROR the trait bound `Vec<u32>: Copy` is not satisfied
-    //~| ERROR the trait bound `Vec<char>: Copy` is not satisfied
     check_clone(&gen_clone_1);
 }
 

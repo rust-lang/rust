@@ -115,48 +115,6 @@ impl MirPhase {
             MirPhase::Runtime(runtime_phase) => (3, 1 + runtime_phase as usize),
         }
     }
-
-    /// Parses a `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
-    pub fn parse(dialect: String, phase: Option<String>) -> Self {
-        match &*dialect.to_ascii_lowercase() {
-            "built" => {
-                assert!(phase.is_none(), "Cannot specify a phase for `Built` MIR");
-                MirPhase::Built
-            }
-            "analysis" => Self::Analysis(AnalysisPhase::parse(phase)),
-            "runtime" => Self::Runtime(RuntimePhase::parse(phase)),
-            _ => bug!("Unknown MIR dialect: '{}'", dialect),
-        }
-    }
-}
-
-impl AnalysisPhase {
-    pub fn parse(phase: Option<String>) -> Self {
-        let Some(phase) = phase else {
-            return Self::Initial;
-        };
-
-        match &*phase.to_ascii_lowercase() {
-            "initial" => Self::Initial,
-            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            _ => bug!("Unknown analysis phase: '{}'", phase),
-        }
-    }
-}
-
-impl RuntimePhase {
-    pub fn parse(phase: Option<String>) -> Self {
-        let Some(phase) = phase else {
-            return Self::Initial;
-        };
-
-        match &*phase.to_ascii_lowercase() {
-            "initial" => Self::Initial,
-            "post_cleanup" | "post-cleanup" | "postcleanup" => Self::PostCleanup,
-            "optimized" => Self::Optimized,
-            _ => bug!("Unknown runtime phase: '{}'", phase),
-        }
-    }
 }
 
 /// Where a specific `mir::Body` comes from.
@@ -262,7 +220,7 @@ pub struct Body<'tcx> {
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
 
-    /// How many passses we have executed since starting the current phase. Used for debug output.
+    /// How many passes we have executed since starting the current phase. Used for debug output.
     pub pass_count: usize,
 
     pub source: MirSource<'tcx>,
@@ -1017,7 +975,8 @@ pub struct LocalDecl<'tcx> {
     /// ```
     /// fn foo(x: &str) {
     ///     #[allow(unused_mut)]
-    ///     let mut x: u32 = { // <- one unused mut
+    ///     let mut x: u32 = {
+    ///         //^ one unused mut
     ///         let mut y: u32 = x.parse().unwrap();
     ///         y + 2
     ///     };
@@ -1336,6 +1295,7 @@ impl BasicBlock {
 ///
 /// See [`BasicBlock`] for documentation on what basic blocks are at a high level.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[non_exhaustive]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
@@ -1359,7 +1319,15 @@ pub struct BasicBlockData<'tcx> {
 
 impl<'tcx> BasicBlockData<'tcx> {
     pub fn new(terminator: Option<Terminator<'tcx>>, is_cleanup: bool) -> BasicBlockData<'tcx> {
-        BasicBlockData { statements: vec![], terminator, is_cleanup }
+        BasicBlockData::new_stmts(Vec::new(), terminator, is_cleanup)
+    }
+
+    pub fn new_stmts(
+        statements: Vec<Statement<'tcx>>,
+        terminator: Option<Terminator<'tcx>>,
+        is_cleanup: bool,
+    ) -> BasicBlockData<'tcx> {
+        BasicBlockData { statements, terminator, is_cleanup }
     }
 
     /// Accessor for terminator.

@@ -1,0 +1,25 @@
+error: implementation of `AsyncFnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-16.rs:18:5
+   |
+LL | /     assert_send(async {
+LL | |         commit_if_ok(&mut ctxt, async |_| todo!()).await;
+LL | |     });
+   | |______^ implementation of `AsyncFnOnce` is not general enough
+   |
+   = note: `{async closure@$DIR/higher-ranked-auto-trait-16.rs:19:33: 19:42}` must implement `AsyncFnOnce<(&mut Ctxt<'1>,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `AsyncFnOnce<(&mut Ctxt<'_>,)>`
+
+error: implementation of `AsyncFnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-16.rs:18:5
+   |
+LL | /     assert_send(async {
+LL | |         commit_if_ok(&mut ctxt, async |_| todo!()).await;
+LL | |     });
+   | |______^ implementation of `AsyncFnOnce` is not general enough
+   |
+   = note: `{async closure@$DIR/higher-ranked-auto-trait-16.rs:19:33: 19:42}` must implement `AsyncFnOnce<(&mut Ctxt<'1>,)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `AsyncFnOnce<(&mut Ctxt<'_>,)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

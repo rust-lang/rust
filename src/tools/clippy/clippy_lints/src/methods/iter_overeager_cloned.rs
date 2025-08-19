@@ -8,7 +8,7 @@ use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, Pl
 use rustc_lint::LateContext;
 use rustc_middle::mir::{FakeReadCause, Mutability};
 use rustc_middle::ty::{self, BorrowKind};
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 
 use super::ITER_OVEREAGER_CLONED;
 use crate::redundant_clone::REDUNDANT_CLONE;
@@ -26,7 +26,7 @@ pub(super) enum Op<'a> {
     // later `.cloned()`
     // and add `&` to the parameter of closure parameter
     // e.g. `find` `filter`
-    FixClosure(&'a str, &'a Expr<'a>),
+    FixClosure(Symbol, &'a Expr<'a>),
 
     // later `.cloned()`
     // e.g. `skip` `take`
@@ -44,9 +44,9 @@ pub(super) fn check<'tcx>(
     let typeck = cx.typeck_results();
     if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(method_id) = typeck.type_dependent_def_id(expr.hir_id)
-        && cx.tcx.trait_of_item(method_id) == Some(iter_id)
+        && cx.tcx.trait_of_assoc(method_id) == Some(iter_id)
         && let Some(method_id) = typeck.type_dependent_def_id(cloned_call.hir_id)
-        && cx.tcx.trait_of_item(method_id) == Some(iter_id)
+        && cx.tcx.trait_of_assoc(method_id) == Some(iter_id)
         && let cloned_recv_ty = typeck.expr_ty_adjusted(cloned_recv)
         && let Some(iter_assoc_ty) = cx.get_associated_type(cloned_recv_ty, iter_id, sym::Item)
         && matches!(*iter_assoc_ty.kind(), ty::Ref(_, ty, _) if !is_copy(cx, ty))

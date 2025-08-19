@@ -11,15 +11,15 @@ TyKind::Ref(
 
 There are three separate ways we represent usages of generic parameters:
 - [`TyKind::Param`]/[`ConstKind::Param`]/[`RegionKind::EarlyParam`] for early bound generic parameters (note: all type and const parameters are considered early bound, see the [chapter on early vs late bound parameters][ch_early_late_bound] for more information)
-- [`TyKind::Bound`]/[`ConstKind::Bound`]/[`RegionKind::Bound`] for references to parameters introduced via higher ranked bounds or higher ranked types i.e. `for<'a> fn(&'a u32)` or `for<'a> T: Trait<'a>`. This will be discussed in the [chapter on `Binder`s][ch_binders].
-- [`RegionKind::LateParam`] for late bound lifetime parameters, `LateParam` will be discussed in the [chapter on instantiating `Binder`s][ch_instantiating_binders].
+- [`TyKind::Bound`]/[`ConstKind::Bound`]/[`RegionKind::Bound`] for references to parameters introduced via higher ranked bounds or higher ranked types i.e. `for<'a> fn(&'a u32)` or `for<'a> T: Trait<'a>`. This is discussed in the [chapter on `Binder`s][ch_binders].
+- [`RegionKind::LateParam`] for late bound lifetime parameters, `LateParam` is discussed in the [chapter on instantiating `Binder`s][ch_instantiating_binders].
 
-This chapter will only cover `TyKind::Param` `ConstKind::Param` and `RegionKind::EarlyParam`.
+This chapter only covers `TyKind::Param` `ConstKind::Param` and `RegionKind::EarlyParam`.
 
 ## Ty/Const Parameters
 
-As `TyKind::Param` and `ConstKind::Param` are implemented identically this section will only refer to `TyKind::Param` for simplicity. However
-you should keep in mind that everything here also is true of `ConstKind::Param`
+As `TyKind::Param` and `ConstKind::Param` are implemented identically this section only refers to `TyKind::Param` for simplicity.
+However you should keep in mind that everything here also is true of `ConstKind::Param`
 
 Each `TyKind::Param` contains two things: the name of the parameter and an index.
 
@@ -83,7 +83,7 @@ fn foo<'a, 'b, T: 'a>(one: T, two: &'a &'b u32) -> &'b u32 {
 }
 ```
 
-`RegionKind::LateParam` will be discussed more in the chapter on [instantiating binders][ch_instantiating_binders].
+`RegionKind::LateParam` is discussed more in the chapter on [instantiating binders][ch_instantiating_binders].
 
 [ch_early_late_bound]: ../early_late_parameters.md
 [ch_binders]: ./binders.md

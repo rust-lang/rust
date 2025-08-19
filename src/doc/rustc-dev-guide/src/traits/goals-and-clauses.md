@@ -1,7 +1,5 @@
 # Goals and clauses
 
-<!-- toc -->
-
 In logic programming terms, a **goal** is something that you must
 prove and a **clause** is something that you know is true. As
 described in the [lowering to logic](./lowering-to-logic.html)

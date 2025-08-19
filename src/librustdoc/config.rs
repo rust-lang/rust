@@ -9,7 +9,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OptionsTargetModifiers, UnstableOptions, get_cmd_lint_options, nightly_options,
+    OptionsTargetModifiers, Sysroot, UnstableOptions, get_cmd_lint_options, nightly_options,
     parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
@@ -103,9 +103,7 @@ pub(crate) struct Options {
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
-    pub(crate) sysroot: PathBuf,
-    /// Has the same value as `sysroot` except is `None` when the user didn't pass `---sysroot`.
-    pub(crate) maybe_sysroot: Option<PathBuf>,
+    pub(crate) sysroot: Sysroot,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
     /// Whether to ask rustc to describe the lints it knows.
@@ -174,7 +172,10 @@ pub(crate) struct Options {
     pub(crate) expanded_args: Vec<String>,
 
     /// Arguments to be used when compiling doctests.
-    pub(crate) doctest_compilation_args: Vec<String>,
+    pub(crate) doctest_build_args: Vec<String>,
+
+    /// Target modifiers.
+    pub(crate) target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
 }
 
 impl fmt::Debug for Options {
@@ -201,7 +202,6 @@ impl fmt::Debug for Options {
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("sysroot", &self.sysroot)
-            .field("maybe_sysroot", &self.maybe_sysroot)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
             .field("lint_cap", &self.lint_cap)
@@ -380,7 +380,7 @@ impl Options {
         early_dcx: &mut EarlyDiagCtxt,
         matches: &getopts::Matches,
         args: Vec<String>,
-    ) -> Option<(InputMode, Options, RenderOptions)> {
+    ) -> Option<(InputMode, Options, RenderOptions, Vec<PathBuf>)> {
         // Check for unstable options.
         nightly_options::check_nightly_options(early_dcx, matches, &opts());
 
@@ -643,10 +643,13 @@ impl Options {
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
-        if let Some(ref p) = extension_css
-            && !p.is_file()
-        {
-            dcx.fatal("option --extend-css argument must be a file");
+        let mut loaded_paths = Vec::new();
+
+        if let Some(ref p) = extension_css {
+            loaded_paths.push(p.clone());
+            if !p.is_file() {
+                dcx.fatal("option --extend-css argument must be a file");
+            }
         }
 
         let mut themes = Vec::new();
@@ -690,6 +693,7 @@ impl Options {
                     ))
                     .emit();
                 }
+                loaded_paths.push(theme_file.clone());
                 themes.push(StylePath { path: theme_file });
             }
         }
@@ -708,6 +712,7 @@ impl Options {
             &mut id_map,
             edition,
             &None,
+            &mut loaded_paths,
         ) else {
             dcx.fatal("`ExternalHtml::load` failed");
         };
@@ -725,16 +730,14 @@ impl Options {
         }
 
         let target = parse_target_triple(early_dcx, matches);
-        let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-
-        let sysroot = rustc_session::filesearch::materialize_sysroot(maybe_sysroot.clone());
+        let sysroot = Sysroot::new(matches.opt_str("sysroot").map(PathBuf::from));
 
         let libs = matches
             .opt_strs("L")
             .iter()
             .map(|s| {
                 SearchPath::from_cli_opt(
-                    &sysroot,
+                    sysroot.path(),
                     &target,
                     early_dcx,
                     s,
@@ -802,7 +805,7 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
-        let doctest_compilation_args = matches.opt_strs("doctest-compilation-args");
+        let doctest_build_args = matches.opt_strs("doctest-build-arg");
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
@@ -827,7 +830,6 @@ impl Options {
             target,
             edition,
             sysroot,
-            maybe_sysroot,
             lint_opts,
             describe_lints,
             lint_cap,
@@ -851,7 +853,8 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             expanded_args: args,
-            doctest_compilation_args,
+            doctest_build_args,
+            target_modifiers,
         };
         let render_options = RenderOptions {
             output,
@@ -887,7 +890,7 @@ impl Options {
             parts_out_dir,
             disable_minification,
         };
-        Some((input, options, render_options))
+        Some((input, options, render_options, loaded_paths))
     }
 }
 

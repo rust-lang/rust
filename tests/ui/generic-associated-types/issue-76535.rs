@@ -33,6 +33,5 @@ impl SuperTrait for SuperStruct {
 fn main() {
     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
       //~^ ERROR missing generics for associated type
-      //~^^ ERROR the trait
       //~| ERROR the trait
 }

@@ -12,7 +12,7 @@ impl !Sync for Args {}
 
 impl Args {
     #[inline]
-    pub(super) fn new(args: Vec<OsString>) -> Self {
+    pub fn new(args: Vec<OsString>) -> Self {
         Args { iter: args.into_iter() }
     }
 }
@@ -49,8 +49,8 @@ impl Iterator for Args {
     }
 
     #[inline]
-    fn last(mut self) -> Option<OsString> {
-        self.iter.next_back()
+    fn last(self) -> Option<OsString> {
+        self.iter.last()
     }
 
     #[inline]

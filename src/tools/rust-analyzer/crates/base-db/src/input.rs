@@ -6,6 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
+use std::error::Error;
 use std::hash::BuildHasherDefault;
 use std::{fmt, mem, ops};
 
@@ -14,15 +15,65 @@ use dashmap::DashMap;
 use dashmap::mapref::entry::Entry;
 use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 use span::Edition;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
-use crate::{CrateWorkspaceData, EditionedFileId, RootQueryDb};
+use crate::{CrateWorkspaceData, EditionedFileId, FxIndexSet, RootQueryDb};
 
-pub type ProcMacroPaths = FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), String>>;
+pub type ProcMacroPaths =
+    FxHashMap<CrateBuilderId, Result<(String, AbsPathBuf), ProcMacroLoadingError>>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ProcMacroLoadingError {
+    Disabled,
+    FailedToBuild,
+    ExpectedProcMacroArtifact,
+    MissingDylibPath,
+    NotYetBuilt,
+    NoProcMacros,
+    ProcMacroSrvError(Box<str>),
+}
+impl ProcMacroLoadingError {
+    pub fn is_hard_error(&self) -> bool {
+        match self {
+            ProcMacroLoadingError::Disabled | ProcMacroLoadingError::NotYetBuilt => false,
+            ProcMacroLoadingError::ExpectedProcMacroArtifact
+            | ProcMacroLoadingError::FailedToBuild
+            | ProcMacroLoadingError::MissingDylibPath
+            | ProcMacroLoadingError::NoProcMacros
+            | ProcMacroLoadingError::ProcMacroSrvError(_) => true,
+        }
+    }
+}
+
+impl Error for ProcMacroLoadingError {}
+impl fmt::Display for ProcMacroLoadingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProcMacroLoadingError::ExpectedProcMacroArtifact => {
+                write!(f, "proc-macro crate did not build proc-macro artifact")
+            }
+            ProcMacroLoadingError::Disabled => write!(f, "proc-macro expansion is disabled"),
+            ProcMacroLoadingError::FailedToBuild => write!(f, "proc-macro failed to build"),
+            ProcMacroLoadingError::MissingDylibPath => {
+                write!(
+                    f,
+                    "proc-macro crate built but the dylib path is missing, this indicates a problem with your build system."
+                )
+            }
+            ProcMacroLoadingError::NotYetBuilt => write!(f, "proc-macro not yet built"),
+            ProcMacroLoadingError::NoProcMacros => {
+                write!(f, "proc macro library has no proc macros")
+            }
+            ProcMacroLoadingError::ProcMacroSrvError(msg) => {
+                write!(f, "proc macro server error: {msg}")
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourceRootId(pub u32);
@@ -392,22 +443,22 @@ impl BuiltDependency {
 
 pub type CratesIdMap = FxHashMap<CrateBuilderId, Crate>;
 
-#[salsa::input]
-#[derive(Debug)]
+#[salsa_macros::input]
+#[derive(Debug, PartialOrd, Ord)]
 pub struct Crate {
-    #[return_ref]
+    #[returns(ref)]
     pub data: BuiltCrateData,
     /// Crate data that is not needed for analysis.
     ///
     /// This is split into a separate field to increase incrementality.
-    #[return_ref]
+    #[returns(ref)]
     pub extra_data: ExtraCrateData,
     // This is in `Arc` because it is shared for all crates in a workspace.
-    #[return_ref]
+    #[returns(ref)]
     pub workspace_data: Arc<CrateWorkspaceData>,
-    #[return_ref]
+    #[returns(ref)]
     pub cfg_options: CfgOptions,
-    #[return_ref]
+    #[returns(ref)]
     pub env: Env,
 }
 
@@ -474,7 +525,9 @@ impl CrateGraphBuilder {
     }
 
     pub fn set_in_db(self, db: &mut dyn RootQueryDb) -> CratesIdMap {
-        let mut all_crates = Vec::with_capacity(self.arena.len());
+        // For some reason in some repositories we have duplicate crates, so we use a set and not `Vec`.
+        // We use an `IndexSet` because the list needs to be topologically sorted.
+        let mut all_crates = FxIndexSet::with_capacity_and_hasher(self.arena.len(), FxBuildHasher);
         let mut visited = FxHashMap::default();
         let mut visited_root_files = FxHashSet::default();
 
@@ -494,9 +547,11 @@ impl CrateGraphBuilder {
             );
         }
 
-        if **old_all_crates != *all_crates {
+        if old_all_crates.len() != all_crates.len()
+            || old_all_crates.iter().any(|&krate| !all_crates.contains(&krate))
+        {
             db.set_all_crates_with_durability(
-                Arc::new(all_crates.into_boxed_slice()),
+                Arc::new(Vec::from_iter(all_crates).into_boxed_slice()),
                 Durability::MEDIUM,
             );
         }
@@ -509,7 +564,7 @@ impl CrateGraphBuilder {
             crates_map: &CratesMap,
             visited: &mut FxHashMap<CrateBuilderId, Crate>,
             visited_root_files: &mut FxHashSet<FileId>,
-            all_crates: &mut Vec<Crate>,
+            all_crates: &mut FxIndexSet<Crate>,
             source: CrateBuilderId,
         ) -> Crate {
             if let Some(&crate_id) = visited.get(&source) {
@@ -597,7 +652,7 @@ impl CrateGraphBuilder {
                     input
                 }
             };
-            all_crates.push(crate_input);
+            all_crates.insert(crate_input);
             visited.insert(source, crate_input);
             crate_input
         }

@@ -1,0 +1,70 @@
+error[E0432]: unresolved import `X`
+  --> $DIR/underscore-bindings-disambiguators.rs:24:5
+   |
+LL | use X as Y;
+   |     -^^^^^
+   |     |
+   |     no `X` in the root
+   |     help: a similar name exists in the module: `_`
+
+error[E0432]: unresolved import `Z`
+  --> $DIR/underscore-bindings-disambiguators.rs:25:5
+   |
+LL | use Z as W;
+   |     -^^^^^
+   |     |
+   |     no `Z` in the root
+   |     help: a similar name exists in the module: `_`
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:18:19
+   |
+LL |     const _: () = todo!();
+   |                   ^^^^^^^ evaluation of `impls::_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:19:19
+   |
+LL |     const _: () = todo!();
+   |                   ^^^^^^^ evaluation of `impls::_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:20:19
+   |
+LL |     const _: () = todo!();
+   |                   ^^^^^^^ evaluation of `impls::_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:21:19
+   |
+LL |     const _: () = todo!();
+   |                   ^^^^^^^ evaluation of `impls::_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:22:19
+   |
+LL |     const _: () = todo!();
+   |                   ^^^^^^^ evaluation of `impls::_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation panicked: not yet implemented
+  --> $DIR/underscore-bindings-disambiguators.rs:27:15
+   |
+LL | const _: () = todo!();
+   |               ^^^^^^^ evaluation of `_` failed here
+   |
+   = note: this error originates in the macro `todo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0080, E0432.
+For more information about an error, try `rustc --explain E0080`.

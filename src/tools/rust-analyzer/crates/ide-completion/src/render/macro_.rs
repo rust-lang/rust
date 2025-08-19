@@ -12,7 +12,7 @@ use crate::{
 
 pub(crate) fn render_macro(
     ctx: RenderContext<'_>,
-    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx,
+    PathCompletionCtx { kind, has_macro_bang, has_call_parens, .. }: &PathCompletionCtx<'_>,
 
     name: hir::Name,
     macro_: hir::Macro,

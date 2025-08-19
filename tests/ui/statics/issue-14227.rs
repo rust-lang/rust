@@ -3,6 +3,6 @@ extern "C" {
 }
 static CRASH: u32 = symbol;
 //~^ ERROR use of extern static is unsafe and requires
-//~| ERROR could not evaluate static initializer
+//~| ERROR cannot access extern static `symbol`
 
 fn main() {}

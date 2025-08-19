@@ -31,5 +31,11 @@ error: `0 as *mut _` detected
 LL |     foo(0 as *const _, 0 as *mut _);
    |                        ^^^^^^^^^^^ help: try: `std::ptr::null_mut()`
 
-error: aborting due to 5 previous errors
+error: `0 as *const _` detected
+  --> tests/ui/zero_ptr.rs:24:27
+   |
+LL |     let _: *const usize = 0 as *const _;
+   |                           ^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+
+error: aborting due to 6 previous errors
 

@@ -5,7 +5,7 @@
 
 pub const _: () = {
     assert!((const || true)());
-    //~^ ERROR cannot call non-const closure in constants
+    //~^ ERROR }: [const] Fn()` is not satisfied
 };
 
 fn main() {}

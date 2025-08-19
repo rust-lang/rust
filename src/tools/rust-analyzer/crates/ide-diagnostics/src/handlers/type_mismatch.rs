@@ -20,7 +20,7 @@ use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_dis
 //
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
-pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
+pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Diagnostic {
     let display_range = adjusted_display_range(ctx, d.expr_or_pat, &|node| {
         let Either::Left(expr) = node else { return None };
         let salient_token_range = match expr {
@@ -39,7 +39,7 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         cov_mark::hit!(type_mismatch_range_adjustment);
         Some(salient_token_range)
     });
-    let mut diag = Diagnostic::new(
+    Diagnostic::new(
         DiagnosticCode::RustcHardError("E0308"),
         format!(
             "expected {}, found {}",
@@ -52,14 +52,10 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
         ),
         display_range,
     )
-    .with_fixes(fixes(ctx, d));
-    if diag.fixes.is_none() {
-        diag.experimental = true;
-    }
-    diag
+    .with_fixes(fixes(ctx, d))
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch<'_>) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
     if let Some(expr_ptr) = d.expr_or_pat.value.cast::<ast::Expr>() {
@@ -76,7 +72,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
 
 fn add_reference(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
+    d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
@@ -98,7 +94,7 @@ fn add_reference(
 
 fn add_missing_ok_or_some(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
+    d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
@@ -188,14 +184,14 @@ fn add_missing_ok_or_some(
 
 fn remove_unnecessary_wrapper(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
+    d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
     let db = ctx.sema.db;
     let root = db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let expr = ctx.sema.original_ast_node(expr.clone())?;
+    let expr = ctx.sema.original_ast_node(expr)?;
 
     let Expr::CallExpr(call_expr) = expr else {
         return None;
@@ -271,7 +267,7 @@ fn remove_unnecessary_wrapper(
 
 fn remove_semicolon(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
+    d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
@@ -301,15 +297,14 @@ fn remove_semicolon(
 
 fn str_ref_to_owned(
     ctx: &DiagnosticsContext<'_>,
-    d: &hir::TypeMismatch,
+    d: &hir::TypeMismatch<'_>,
     expr_ptr: &InFile<AstPtr<ast::Expr>>,
     acc: &mut Vec<Assist>,
 ) -> Option<()> {
     let expected = d.expected.display(ctx.sema.db, ctx.display_target);
-    let actual = d.actual.display(ctx.sema.db, ctx.display_target);
-
     // FIXME do this properly
-    if expected.to_string() != "String" || actual.to_string() != "&str" {
+    let is_applicable = d.actual.strip_reference().is_str() && expected.to_string() == "String";
+    if !is_applicable {
         return None;
     }
 
@@ -1242,6 +1237,20 @@ fn foo(v: &Enum) {
     let <() as Trait>::Assoc::Variant = v;
 }
     "#,
+        );
+    }
+
+    #[test]
+    fn regression_19844() {
+        check_diagnostics(
+            r#"
+fn main() {
+    struct S {}
+    enum E { V() }
+    let E::V() = &S {};
+     // ^^^^^^ error: expected S, found E
+}
+"#,
         );
     }
 }

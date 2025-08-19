@@ -1,0 +1,22 @@
+error: invalid preceding whitespace for frontmatter close
+  --> $DIR/multifrontmatter-2.rs:2:1
+   |
+LL |  ---
+   | ^^^^
+   |
+note: frontmatter close should not be preceded by whitespace
+  --> $DIR/multifrontmatter-2.rs:2:1
+   |
+LL |  ---
+   | ^
+
+error: expected item, found `-`
+  --> $DIR/multifrontmatter-2.rs:5:2
+   |
+LL |  ---
+   |  ^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 2 previous errors
+

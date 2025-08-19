@@ -1,3 +1,4 @@
+use std::marker::PointeeSized;
 use std::ptr::Alignment;
 
 /// Returns the ABI-required minimum alignment of a type in bytes.
@@ -17,7 +18,7 @@ pub const fn align_of<T: ?Sized + Aligned>() -> Alignment {
 /// example `[T]` has alignment of `T`.
 ///
 /// [`align_of::<Self>()`]: align_of
-pub unsafe trait Aligned {
+pub unsafe trait Aligned: PointeeSized {
     /// Alignment of `Self`.
     const ALIGN: Alignment;
 }

@@ -114,13 +114,18 @@ impl<'a> Parser<'a> {
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
+        let span = if let Some(ref default) = default {
+            const_span.to(default.value.span)
+        } else {
+            const_span.to(ty.span)
+        };
 
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty, kw_span: const_span, default },
+            kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
         })
@@ -137,6 +142,11 @@ impl<'a> Parser<'a> {
 
         // Parse optional const generics default value.
         let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
+        let span = if let Some(ref default) = default {
+            mistyped_const_ident.span.to(default.value.span)
+        } else {
+            mistyped_const_ident.span.to(ty.span)
+        };
 
         self.dcx()
             .struct_span_err(
@@ -156,7 +166,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: preceding_attrs,
             bounds: Vec::new(),
-            kind: GenericParamKind::Const { ty, kw_span: mistyped_const_ident.span, default },
+            kind: GenericParamKind::Const { ty, span, default },
             is_placeholder: false,
             colon_span: None,
         })
@@ -298,9 +308,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an experimental fn contract
     /// (`contract_requires(WWW) contract_ensures(ZZZ)`)
-    pub(super) fn parse_contract(
-        &mut self,
-    ) -> PResult<'a, Option<rustc_ast::ptr::P<ast::FnContract>>> {
+    pub(super) fn parse_contract(&mut self) -> PResult<'a, Option<Box<ast::FnContract>>> {
         let requires = if self.eat_keyword_noexpect(exp!(ContractRequires).kw) {
             self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let precond = self.parse_expr()?;
@@ -318,7 +326,7 @@ impl<'a> Parser<'a> {
         if requires.is_none() && ensures.is_none() {
             Ok(None)
         } else {
-            Ok(Some(rustc_ast::ptr::P(ast::FnContract { requires, ensures })))
+            Ok(Some(Box::new(ast::FnContract { requires, ensures })))
         }
     }
 
@@ -353,6 +361,20 @@ impl<'a> Parser<'a> {
         if !self.eat_keyword(exp!(Where)) {
             return Ok((where_clause, None));
         }
+
+        if self.eat_noexpect(&token::Colon) {
+            let colon_span = self.prev_token.span;
+            self.dcx()
+                .struct_span_err(colon_span, "unexpected colon after `where`")
+                .with_span_suggestion_short(
+                    colon_span,
+                    "remove the colon",
+                    "",
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
+
         where_clause.has_where_token = true;
         let where_lo = self.prev_token.span;
 

@@ -21,6 +21,10 @@ mod ok {
     #[test]
     fn asm_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_expr.rs"); }
     #[test]
+    fn asm_kinds() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_kinds.rs"); }
+    #[test]
+    fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
+    #[test]
     fn assoc_const_eq() {
         run_and_expect_no_errors("test_data/parser/inline/ok/assoc_const_eq.rs");
     }
@@ -80,6 +84,10 @@ mod ok {
     fn call_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/call_expr.rs"); }
     #[test]
     fn cast_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/cast_expr.rs"); }
+    #[test]
+    fn closure_binder() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/closure_binder.rs");
+    }
     #[test]
     fn closure_body_underscore_assignment() {
         run_and_expect_no_errors(
@@ -245,6 +253,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/fn_pointer_unnamed_arg.rs");
     }
     #[test]
+    fn for_binder_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/for_binder_bound.rs");
+    }
+    #[test]
     fn for_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/for_expr.rs"); }
     #[test]
     fn for_range_from() {
@@ -291,6 +303,8 @@ mod ok {
     fn generic_param_list() {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_list.rs");
     }
+    #[test]
+    fn global_asm() { run_and_expect_no_errors("test_data/parser/inline/ok/global_asm.rs"); }
     #[test]
     fn half_open_range_pat() {
         run_and_expect_no_errors("test_data/parser/inline/ok/half_open_range_pat.rs");
@@ -391,6 +405,10 @@ mod ok {
     fn match_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/match_expr.rs"); }
     #[test]
     fn match_guard() { run_and_expect_no_errors("test_data/parser/inline/ok/match_guard.rs"); }
+    #[test]
+    fn maybe_const_trait_bound() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/maybe_const_trait_bound.rs");
+    }
     #[test]
     fn metas() { run_and_expect_no_errors("test_data/parser/inline/ok/metas.rs"); }
     #[test]
@@ -868,6 +886,14 @@ mod err {
     #[test]
     fn tuple_pat_leading_comma() {
         run_and_expect_errors("test_data/parser/inline/err/tuple_pat_leading_comma.rs");
+    }
+    #[test]
+    fn type_bounds_macro_call_recovery() {
+        run_and_expect_errors("test_data/parser/inline/err/type_bounds_macro_call_recovery.rs");
+    }
+    #[test]
+    fn type_in_array_recover() {
+        run_and_expect_errors("test_data/parser/inline/err/type_in_array_recover.rs");
     }
     #[test]
     fn unsafe_block_in_mod() {

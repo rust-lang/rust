@@ -52,7 +52,7 @@ impl flags::PrimeCaches {
             elapsed.memory.allocated.megabytes() as u64
         );
 
-        let threads = if self.parallel { num_cpus::get() } else { 1 };
+        let threads = self.num_threads.unwrap_or_else(num_cpus::get_physical);
         ide_db::prime_caches::parallel_prime_caches(&db, threads, &|_| ());
 
         let elapsed = stop_watch.elapsed();

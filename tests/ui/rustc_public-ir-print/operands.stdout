@@ -1,0 +1,506 @@
+// WARNING: This is highly experimental output it's intended for rustc_public developers only.
+// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
+fn operands(_1: u8) -> () {
+    let mut _0: ();
+    let  _2: [u8; 10];
+    let mut _3: u8;
+    let  _4: u8;
+    let  _5: usize;
+    let mut _6: bool;
+    let  _7: u8;
+    let  _8: usize;
+    let mut _9: (usize, bool);
+    let mut _10: bool;
+    let  _11: ();
+    let mut _12: (&u8, &u8);
+    let mut _13: &u8;
+    let mut _14: &u8;
+    let  _15: &u8;
+    let  _16: &u8;
+    let mut _17: bool;
+    let mut _18: u8;
+    let mut _19: u8;
+    let mut _20: !;
+    let  _21: core::panicking::AssertKind;
+    let  _22: !;
+    let mut _23: core::panicking::AssertKind;
+    let mut _24: &u8;
+    let  _25: &u8;
+    let mut _26: &u8;
+    let  _27: &u8;
+    let mut _28: Option<Arguments<'_>>;
+    let  _29: &u8;
+    let  _30: u8;
+    let  _31: ();
+    let mut _32: (&u8, &u8);
+    let mut _33: &u8;
+    let mut _34: &u8;
+    let  _35: &u8;
+    let  _36: &u8;
+    let mut _37: bool;
+    let mut _38: u8;
+    let mut _39: u8;
+    let mut _40: !;
+    let  _41: core::panicking::AssertKind;
+    let  _42: !;
+    let mut _43: core::panicking::AssertKind;
+    let mut _44: &u8;
+    let  _45: &u8;
+    let mut _46: &u8;
+    let  _47: &u8;
+    let mut _48: Option<Arguments<'_>>;
+    let  _49: (u8, u8);
+    let mut _50: u8;
+    let mut _51: u8;
+    let  _52: u8;
+    let  _53: u8;
+    let  _54: ();
+    let mut _55: (&u8, &u8);
+    let mut _56: &u8;
+    let mut _57: &u8;
+    let  _58: &u8;
+    let  _59: &u8;
+    let mut _60: bool;
+    let mut _61: u8;
+    let mut _62: u8;
+    let mut _63: !;
+    let  _64: core::panicking::AssertKind;
+    let  _65: !;
+    let mut _66: core::panicking::AssertKind;
+    let mut _67: &u8;
+    let  _68: &u8;
+    let mut _69: &u8;
+    let  _70: &u8;
+    let mut _71: Option<Arguments<'_>>;
+    let  _72: usize;
+    let mut _73: &[u8];
+    let mut _74: &[u8; 10];
+    let  _75: usize;
+    let mut _76: &usize;
+    let  _77: &usize;
+    let  _78: ();
+    let mut _79: (&usize, &usize);
+    let mut _80: &usize;
+    let mut _81: &usize;
+    let  _82: &usize;
+    let  _83: &usize;
+    let mut _84: bool;
+    let mut _85: usize;
+    let mut _86: usize;
+    let mut _87: !;
+    let  _88: core::panicking::AssertKind;
+    let  _89: !;
+    let mut _90: core::panicking::AssertKind;
+    let mut _91: &usize;
+    let  _92: &usize;
+    let mut _93: &usize;
+    let  _94: &usize;
+    let mut _95: Option<Arguments<'_>>;
+    debug val => _1;
+    debug array => _2;
+    debug first => _4;
+    debug last => _7;
+    debug left_val => _15;
+    debug right_val => _16;
+    debug kind => _21;
+    debug reference => _29;
+    debug dereferenced => _30;
+    debug left_val => _35;
+    debug right_val => _36;
+    debug kind => _41;
+    debug tuple => _49;
+    debug first_again => _52;
+    debug first_again_again => _53;
+    debug left_val => _58;
+    debug right_val => _59;
+    debug kind => _64;
+    debug length => _72;
+    debug size_of => _75;
+    debug left_val => _82;
+    debug right_val => _83;
+    debug kind => _88;
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = _1;
+        _2 = [move _3; 10];
+        StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = 0_usize;
+        _6 = Lt(_5, 10_usize);
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", 10_usize, _5) -> [success: bb1, unwind unreachable];
+    }
+    bb1: {
+        _4 = _2[_5];
+        StorageDead(_5);
+        StorageLive(_7);
+        StorageLive(_8);
+        _9 = CheckedSub(10_usize, 1_usize);
+        assert(!move (_9.1: bool), "attempt to compute `{} - {}`, which would overflow", 10_usize, 1_usize) -> [success: bb2, unwind unreachable];
+    }
+    bb2: {
+        _8 = move (_9.0: usize);
+        _10 = Lt(_8, 10_usize);
+        assert(move _10, "index out of bounds: the length is {} but the index is {}", 10_usize, _8) -> [success: bb3, unwind unreachable];
+    }
+    bb3: {
+        _7 = _2[_8];
+        StorageDead(_8);
+        StorageLive(_11);
+        StorageLive(_12);
+        StorageLive(_13);
+        _13 = &_4;
+        StorageLive(_14);
+        _14 = &_7;
+        _12 = (move _13, move _14);
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageLive(_15);
+        _15 = (_12.0: &u8);
+        StorageLive(_16);
+        _16 = (_12.1: &u8);
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = (*_15);
+        StorageLive(_19);
+        _19 = (*_16);
+        _17 = Eq(move _18, move _19);
+        switchInt(move _17) -> [0: bb5, otherwise: bb4];
+    }
+    bb4: {
+        StorageDead(_19);
+        StorageDead(_18);
+        _11 = ();
+        StorageDead(_17);
+        StorageDead(_16);
+        StorageDead(_15);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageLive(_29);
+        _29 = &_4;
+        StorageLive(_30);
+        _30 = (*_29);
+        StorageLive(_31);
+        StorageLive(_32);
+        StorageLive(_33);
+        _33 = &_30;
+        StorageLive(_34);
+        _34 = &_4;
+        _32 = (move _33, move _34);
+        StorageDead(_34);
+        StorageDead(_33);
+        StorageLive(_35);
+        _35 = (_32.0: &u8);
+        StorageLive(_36);
+        _36 = (_32.1: &u8);
+        StorageLive(_37);
+        StorageLive(_38);
+        _38 = (*_35);
+        StorageLive(_39);
+        _39 = (*_36);
+        _37 = Eq(move _38, move _39);
+        switchInt(move _37) -> [0: bb7, otherwise: bb6];
+    }
+    bb5: {
+        StorageDead(_19);
+        StorageDead(_18);
+        StorageLive(_21);
+        _21 = core::panicking::AssertKind::Eq;
+        StorageLive(_22);
+        StorageLive(_23);
+        _23 = move _21;
+        StorageLive(_24);
+        StorageLive(_25);
+        _25 = &(*_15);
+        _24 = &(*_25);
+        StorageLive(_26);
+        StorageLive(_27);
+        _27 = &(*_16);
+        _26 = &(*_27);
+        StorageLive(_28);
+        _28 = std::option::Option::None;
+        _22 = core::panicking::assert_failed::<u8, u8>(move _23, move _24, move _26, move _28) -> unwind unreachable;
+    }
+    bb6: {
+        StorageDead(_39);
+        StorageDead(_38);
+        _31 = ();
+        StorageDead(_37);
+        StorageDead(_36);
+        StorageDead(_35);
+        StorageDead(_32);
+        StorageDead(_31);
+        StorageLive(_49);
+        StorageLive(_50);
+        _50 = _4;
+        StorageLive(_51);
+        _51 = _7;
+        _49 = (move _50, move _51);
+        StorageDead(_51);
+        StorageDead(_50);
+        StorageLive(_52);
+        _52 = (_49.0: u8);
+        StorageLive(_53);
+        _53 = (_49.0: u8);
+        StorageLive(_54);
+        StorageLive(_55);
+        StorageLive(_56);
+        _56 = &_52;
+        StorageLive(_57);
+        _57 = &_53;
+        _55 = (move _56, move _57);
+        StorageDead(_57);
+        StorageDead(_56);
+        StorageLive(_58);
+        _58 = (_55.0: &u8);
+        StorageLive(_59);
+        _59 = (_55.1: &u8);
+        StorageLive(_60);
+        StorageLive(_61);
+        _61 = (*_58);
+        StorageLive(_62);
+        _62 = (*_59);
+        _60 = Eq(move _61, move _62);
+        switchInt(move _60) -> [0: bb9, otherwise: bb8];
+    }
+    bb7: {
+        StorageDead(_39);
+        StorageDead(_38);
+        StorageLive(_41);
+        _41 = core::panicking::AssertKind::Eq;
+        StorageLive(_42);
+        StorageLive(_43);
+        _43 = move _41;
+        StorageLive(_44);
+        StorageLive(_45);
+        _45 = &(*_35);
+        _44 = &(*_45);
+        StorageLive(_46);
+        StorageLive(_47);
+        _47 = &(*_36);
+        _46 = &(*_47);
+        StorageLive(_48);
+        _48 = std::option::Option::None;
+        _42 = core::panicking::assert_failed::<u8, u8>(move _43, move _44, move _46, move _48) -> unwind unreachable;
+    }
+    bb8: {
+        StorageDead(_62);
+        StorageDead(_61);
+        _54 = ();
+        StorageDead(_60);
+        StorageDead(_59);
+        StorageDead(_58);
+        StorageDead(_55);
+        StorageDead(_54);
+        StorageLive(_72);
+        StorageLive(_73);
+        StorageLive(_74);
+        _74 = &_2;
+        _73 = move _74 as &[u8];
+        StorageDead(_74);
+        _72 = core::slice::<impl [u8]>::len(move _73) -> [return: bb10, unwind unreachable];
+    }
+    bb9: {
+        StorageDead(_62);
+        StorageDead(_61);
+        StorageLive(_64);
+        _64 = core::panicking::AssertKind::Eq;
+        StorageLive(_65);
+        StorageLive(_66);
+        _66 = move _64;
+        StorageLive(_67);
+        StorageLive(_68);
+        _68 = &(*_58);
+        _67 = &(*_68);
+        StorageLive(_69);
+        StorageLive(_70);
+        _70 = &(*_59);
+        _69 = &(*_70);
+        StorageLive(_71);
+        _71 = std::option::Option::None;
+        _65 = core::panicking::assert_failed::<u8, u8>(move _66, move _67, move _69, move _71) -> unwind unreachable;
+    }
+    bb10: {
+        StorageDead(_73);
+        StorageLive(_75);
+        StorageLive(_76);
+        StorageLive(_77);
+        _77 = &_72;
+        _76 = &(*_77);
+        _75 = std::mem::size_of_val::<usize>(move _76) -> [return: bb11, unwind unreachable];
+    }
+    bb11: {
+        StorageDead(_76);
+        StorageDead(_77);
+        StorageLive(_78);
+        StorageLive(_79);
+        StorageLive(_80);
+        _80 = &_72;
+        StorageLive(_81);
+        _81 = &_75;
+        _79 = (move _80, move _81);
+        StorageDead(_81);
+        StorageDead(_80);
+        StorageLive(_82);
+        _82 = (_79.0: &usize);
+        StorageLive(_83);
+        _83 = (_79.1: &usize);
+        StorageLive(_84);
+        StorageLive(_85);
+        _85 = (*_82);
+        StorageLive(_86);
+        _86 = (*_83);
+        _84 = Eq(move _85, move _86);
+        switchInt(move _84) -> [0: bb13, otherwise: bb12];
+    }
+    bb12: {
+        StorageDead(_86);
+        StorageDead(_85);
+        _78 = ();
+        StorageDead(_84);
+        StorageDead(_83);
+        StorageDead(_82);
+        StorageDead(_79);
+        StorageDead(_78);
+        _0 = ();
+        StorageDead(_75);
+        StorageDead(_72);
+        StorageDead(_53);
+        StorageDead(_52);
+        StorageDead(_49);
+        StorageDead(_30);
+        StorageDead(_29);
+        StorageDead(_7);
+        StorageDead(_4);
+        StorageDead(_2);
+        return;
+    }
+    bb13: {
+        StorageDead(_86);
+        StorageDead(_85);
+        StorageLive(_88);
+        _88 = core::panicking::AssertKind::Eq;
+        StorageLive(_89);
+        StorageLive(_90);
+        _90 = move _88;
+        StorageLive(_91);
+        StorageLive(_92);
+        _92 = &(*_82);
+        _91 = &(*_92);
+        StorageLive(_93);
+        StorageLive(_94);
+        _94 = &(*_83);
+        _93 = &(*_94);
+        StorageLive(_95);
+        _95 = std::option::Option::None;
+        _89 = core::panicking::assert_failed::<usize, usize>(move _90, move _91, move _93, move _95) -> unwind unreachable;
+    }
+}
+fn operands::{constant#0}() -> usize {
+    let mut _0: usize;
+    bb0: {
+        _0 = 10_usize;
+        return;
+    }
+}
+fn more_operands() -> [Ctors; 3] {
+    let mut _0: [Ctors; 3];
+    let  _1: Dummy;
+    let  _2: Ctors;
+    let  _3: Ctors;
+    let mut _4: Dummy;
+    let  _5: Ctors;
+    let mut _6: Ctors;
+    let mut _7: Ctors;
+    let mut _8: Ctors;
+    debug dummy => _1;
+    debug unit => _2;
+    debug struct_like => _3;
+    debug tup_like => _5;
+    bb0: {
+        StorageLive(_1);
+        _1 = Dummy('a', core::num::<impl i32>::MIN);
+        StorageLive(_2);
+        _2 = Ctors::Unit;
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = move _1;
+        _3 = Ctors::StructLike(move _4);
+        StorageDead(_4);
+        StorageLive(_5);
+        _5 = Ctors::TupLike(false);
+        StorageLive(_6);
+        _6 = move _2;
+        StorageLive(_7);
+        _7 = move _3;
+        StorageLive(_8);
+        _8 = move _5;
+        _0 = [move _6, move _7, move _8];
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
+    }
+}
+fn more_operands::{constant#0}() -> usize {
+    let mut _0: usize;
+    bb0: {
+        _0 = 3_usize;
+        return;
+    }
+}
+fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:47:5: 47:19} {
+    let mut _0: {closure@$DIR/operands.rs:47:5: 47:19};
+    debug x => _1;
+    debug z => _2;
+    bb0: {
+        _0 = {closure@$DIR/operands.rs:47:5: 47:19}(_1, _2);
+        return;
+    }
+}
+fn closures::{closure#0}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -> bool {
+    let mut _0: bool;
+    let mut _3: bool;
+    let mut _4: bool;
+    let mut _5: bool;
+    debug y => _2;
+    debug x => (_1.0: bool);
+    debug z => (_1.1: bool);
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = (_1.0: bool);
+        StorageLive(_5);
+        _5 = _2;
+        _3 = BitXor(move _4, move _5);
+        switchInt(move _3) -> [0: bb2, otherwise: bb1];
+    }
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = true;
+        goto -> bb3;
+    }
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
+        _0 = (_1.1: bool);
+        goto -> bb3;
+    }
+    bb3: {
+        StorageDead(_3);
+        return;
+    }
+}
+fn Ctors::TupLike(_1: bool) -> Ctors {
+    let mut _0: Ctors;
+    bb0: {
+        _0 = Ctors::TupLike(move _1);
+        return;
+    }
+}

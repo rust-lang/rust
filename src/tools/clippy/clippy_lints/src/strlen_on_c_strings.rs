@@ -1,13 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::match_libc_symbol;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::is_expr_unsafe;
+use clippy_utils::{match_libc_symbol, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, LangItem, Node, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -44,7 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             && let ExprKind::Call(func, [recv]) = expr.kind
             && let ExprKind::Path(path) = &func.kind
             && let Some(did) = cx.qpath_res(path, func.hir_id).opt_def_id()
-            && match_libc_symbol(cx, did, "strlen")
+            && match_libc_symbol(cx, did, sym::strlen)
             && let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind
             && !recv.span.from_expansion()
             && path.ident.name == sym::as_ptr

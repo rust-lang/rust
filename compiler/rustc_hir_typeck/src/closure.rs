@@ -142,13 +142,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         Ty::new_adt(
                             tcx,
-                            tcx.adt_def(
-                                tcx.require_lang_item(hir::LangItem::Poll, Some(expr_span)),
-                            ),
+                            tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, expr_span)),
                             tcx.mk_args(&[Ty::new_adt(
                                 tcx,
                                 tcx.adt_def(
-                                    tcx.require_lang_item(hir::LangItem::Option, Some(expr_span)),
+                                    tcx.require_lang_item(hir::LangItem::Option, expr_span),
                                 ),
                                 tcx.mk_args(&[yield_ty.into()]),
                             )
@@ -162,17 +160,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
-
-                // In the new solver, we can just instantiate this eagerly
-                // with the witness. This will ensure that goals that don't need
-                // to stall on interior types will get processed eagerly.
-                let interior = if self.next_trait_solver() {
-                    Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args)
-                } else {
-                    self.next_ty_var(expr_span)
-                };
-
-                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
@@ -193,7 +180,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         resume_ty,
                         yield_ty,
                         return_ty: liberated_sig.output(),
-                        witness: interior,
                         tupled_upvars_ty,
                     },
                 );
@@ -204,19 +190,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
             hir::ClosureKind::CoroutineClosure(kind) => {
-                // async closures always return the type ascribed after the `->` (if present),
-                // and yield `()`.
                 let (bound_return_ty, bound_yield_ty) = match kind {
+                    hir::CoroutineDesugaring::Gen => {
+                        // `iter!` closures always return unit and yield the `Iterator::Item` type
+                        // that we have to infer.
+                        (tcx.types.unit, self.infcx.next_ty_var(expr_span))
+                    }
                     hir::CoroutineDesugaring::Async => {
+                        // async closures always return the type ascribed after the `->` (if present),
+                        // and yield `()`.
                         (bound_sig.skip_binder().output(), tcx.types.unit)
                     }
-                    hir::CoroutineDesugaring::Gen | hir::CoroutineDesugaring::AsyncGen => {
-                        todo!("`gen` and `async gen` closures not supported yet")
+                    hir::CoroutineDesugaring::AsyncGen => {
+                        todo!("`async gen` closures not supported yet")
                     }
                 };
                 // Compute all of the variables that will be used to populate the coroutine.
                 let resume_ty = self.next_ty_var(expr_span);
-                let interior = self.next_ty_var(expr_span);
 
                 let closure_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_closure_kind(tcx, kind),
@@ -249,7 +239,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                         tupled_upvars_ty,
                         coroutine_captures_by_ref_ty,
-                        coroutine_witness_ty: interior,
                     },
                 );
 
@@ -465,7 +454,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Some(trait_def_id) = trait_def_id {
                 let found_kind = match closure_kind {
-                    hir::ClosureKind::Closure => self.tcx.fn_trait_kind_from_def_id(trait_def_id),
+                    hir::ClosureKind::Closure
+                    // FIXME(iter_macro): Someday we'll probably want iterator closures instead of
+                    // just using Fn* for iterators.
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
+                        self.tcx.fn_trait_kind_from_def_id(trait_def_id)
+                    }
                     hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => self
                         .tcx
                         .async_fn_trait_kind_from_def_id(trait_def_id)
@@ -1080,15 +1074,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Check that this is a projection from the `Future` trait.
         let trait_def_id = predicate.projection_term.trait_def_id(self.tcx);
-        let future_trait = self.tcx.require_lang_item(LangItem::Future, Some(cause_span));
-        if trait_def_id != future_trait {
+        if !self.tcx.is_lang_item(trait_def_id, LangItem::Future) {
             debug!("deduce_future_output_from_projection: not a future");
             return None;
         }
 
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
-        let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
+        let output_assoc_item = self.tcx.associated_item_def_ids(trait_def_id)[0];
         if output_assoc_item != predicate.projection_term.def_id {
             span_bug!(
                 cause_span,

@@ -37,6 +37,15 @@ diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
 index bf2b6d59f88..d5ccce03bbf 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
+@@ -300,8 +300,6 @@ impl_atomic_primitive!(AtomicI32(i32), size("32"), align(4));
+ impl_atomic_primitive!(AtomicU32(u32), size("32"), align(4));
+ impl_atomic_primitive!(AtomicI64(i64), size("64"), align(8));
+ impl_atomic_primitive!(AtomicU64(u64), size("64"), align(8));
+-impl_atomic_primitive!(AtomicI128(i128), size("128"), align(16));
+-impl_atomic_primitive!(AtomicU128(u128), size("128"), align(16));
+ 
+ #[cfg(target_pointer_width = "16")]
+ impl_atomic_primitive!(AtomicIsize(isize), size("ptr"), align(2));
 @@ -3585,44 +3585,6 @@ pub const fn as_ptr(&self) -> *mut $int_type {
      8,
      u64 AtomicU64

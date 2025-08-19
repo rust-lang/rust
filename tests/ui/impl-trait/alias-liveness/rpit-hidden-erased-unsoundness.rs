@@ -1,3 +1,6 @@
+//@revisions: edition2015 edition2024
+//@[edition2015] edition:2015
+//@[edition2024] edition:2024
 // This test should never pass!
 
 #![feature(type_alias_impl_trait)]
@@ -14,11 +17,12 @@ fn step1<'a, 'b: 'a>() -> impl Sized + Captures<'b> + 'a {
 
 fn step2<'a, 'b: 'a>() -> impl Sized + 'a {
     step1::<'a, 'b>()
-    //~^ ERROR hidden type for `impl Sized + 'a` captures lifetime that does not appear in bounds
+    //[edition2015]~^ ERROR hidden type for `impl Sized + 'a` captures lifetime that does not appear in bounds
 }
 
 fn step3<'a, 'b: 'a>() -> impl Send + 'a {
     step2::<'a, 'b>()
+    //[edition2024]~^ ERROR lifetime may not live long enough
     // This should not be Send unless `'b: 'static`
 }
 

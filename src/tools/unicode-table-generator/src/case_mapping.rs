@@ -9,7 +9,7 @@ const INDEX_MASK: u32 = 1 << 22;
 pub(crate) fn generate_case_mapping(data: &UnicodeData) -> String {
     let mut file = String::new();
 
-    write!(file, "const INDEX_MASK: u32 = 0x{:x};", INDEX_MASK).unwrap();
+    write!(file, "const INDEX_MASK: u32 = 0x{INDEX_MASK:x};").unwrap();
     file.push_str("\n\n");
     file.push_str(HEADER.trim_start());
     file.push('\n');

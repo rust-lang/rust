@@ -171,12 +171,10 @@ fn main() {
     }
 }
 
-// Trigger on naked fns too, even though they can't be inlined, reusing a
-// label or LTO can cause labels to break
+// Don't trigger on naked functions.
 #[unsafe(naked)]
 pub extern "C" fn foo() -> i32 {
     naked_asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1)
-    //~^ ERROR avoid using named labels
 }
 
 // Make sure that non-naked attributes *do* still let the lint happen
@@ -190,7 +188,18 @@ pub extern "C" fn bar() {
 pub extern "C" fn aaa() {
     fn _local() {}
 
-    naked_asm!(".Laaa: nop; ret;") //~ ERROR avoid using named labels
+    naked_asm!(".Laaa: nop; ret;")
+}
+
+#[unsafe(naked)]
+pub extern "C" fn bbb<'a>(a: &'a u32) {
+    naked_asm!(".Lbbb: nop; ret;")
+}
+
+#[unsafe(naked)]
+pub extern "C" fn ccc<T>(a: &T) {
+    naked_asm!(".Lccc: nop; ret;")
+    //~^ ERROR avoid using named labels
 }
 
 pub fn normal() {
@@ -200,7 +209,7 @@ pub fn normal() {
     pub extern "C" fn bbb() {
         fn _very_local() {}
 
-        naked_asm!(".Lbbb: nop; ret;") //~ ERROR avoid using named labels
+        naked_asm!(".Lbbb: nop; ret;")
     }
 
     fn _local2() {}
@@ -230,3 +239,10 @@ fn closures() {
 
 // Don't trigger on global asm
 global_asm!("aaaaaaaa: nop");
+
+trait Foo {
+    #[unsafe(naked)]
+    extern "C" fn bbb<'a>(a: &'a u32) {
+        naked_asm!(".Lbbb: nop; ret;") //~ ERROR avoid using named labels
+    }
+}

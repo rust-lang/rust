@@ -69,13 +69,12 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     let mut impl_parent: Option<ast::Impl> = None;
     let mut impl_child_count: usize = 0;
-    if let Some(parent_assoc_list) = node.parent() {
-        if let Some(parent_impl) = parent_assoc_list.parent() {
-            if let Some(impl_) = ast::Impl::cast(parent_impl) {
-                impl_child_count = parent_assoc_list.children().count();
-                impl_parent = Some(impl_);
-            }
-        }
+    if let Some(parent_assoc_list) = node.parent()
+        && let Some(parent_impl) = parent_assoc_list.parent()
+        && let Some(impl_) = ast::Impl::cast(parent_impl)
+    {
+        impl_child_count = parent_assoc_list.children().count();
+        impl_parent = Some(impl_);
     }
 
     let mut curr_parent_module: Option<ast::Module> = None;
@@ -436,10 +435,10 @@ impl Module {
                     }
                 })
                 .for_each(|(node, def)| {
-                    if node_set.insert(node.to_string()) {
-                        if let Some(import) = self.process_def_in_sel(def, &node, &module, ctx) {
-                            check_intersection_and_push(&mut imports_to_remove, import);
-                        }
+                    if node_set.insert(node.to_string())
+                        && let Some(import) = self.process_def_in_sel(def, &node, &module, ctx)
+                    {
+                        check_intersection_and_push(&mut imports_to_remove, import);
                     }
                 })
         }
@@ -542,15 +541,16 @@ impl Module {
                     import_path_to_be_removed = Some(text_range);
                 }
 
-                if def_in_mod && def_out_sel {
-                    if let Some(first_path_in_use_tree) = use_tree_str.last() {
-                        let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
-                        if !first_path_in_use_tree_str.contains("super")
-                            && !first_path_in_use_tree_str.contains("crate")
-                        {
-                            let super_path = make::ext::ident_path("super");
-                            use_tree_str.push(super_path);
-                        }
+                if def_in_mod
+                    && def_out_sel
+                    && let Some(first_path_in_use_tree) = use_tree_str.last()
+                {
+                    let first_path_in_use_tree_str = first_path_in_use_tree.to_string();
+                    if !first_path_in_use_tree_str.contains("super")
+                        && !first_path_in_use_tree_str.contains("crate")
+                    {
+                        let super_path = make::ext::ident_path("super");
+                        use_tree_str.push(super_path);
                     }
                 }
 
@@ -563,12 +563,11 @@ impl Module {
         if let Some(mut use_tree_paths) = use_tree_paths {
             use_tree_paths.reverse();
 
-            if uses_exist_out_sel || !uses_exist_in_sel || !def_in_mod || !def_out_sel {
-                if let Some(first_path_in_use_tree) = use_tree_paths.first() {
-                    if first_path_in_use_tree.to_string().contains("super") {
-                        use_tree_paths.insert(0, make::ext::ident_path("super"));
-                    }
-                }
+            if (uses_exist_out_sel || !uses_exist_in_sel || !def_in_mod || !def_out_sel)
+                && let Some(first_path_in_use_tree) = use_tree_paths.first()
+                && first_path_in_use_tree.to_string().contains("super")
+            {
+                use_tree_paths.insert(0, make::ext::ident_path("super"));
             }
 
             let is_item = matches!(
@@ -691,11 +690,9 @@ fn check_def_in_mod_and_out_sel(
                 _ => source.file_id.original_file(ctx.db()).file_id(ctx.db()) == curr_file_id,
             };
 
-            if have_same_parent {
-                if let ModuleSource::Module(module_) = source.value {
-                    let in_sel = !selection_range.contains_range(module_.syntax().text_range());
-                    return (have_same_parent, in_sel);
-                }
+            if have_same_parent && let ModuleSource::Module(module_) = source.value {
+                let in_sel = !selection_range.contains_range(module_.syntax().text_range());
+                return (have_same_parent, in_sel);
             }
 
             return (have_same_parent, false);
@@ -772,12 +769,12 @@ fn get_use_tree_paths_from_path(
         .filter(|x| x.to_string() != path.to_string())
         .filter_map(ast::UseTree::cast)
         .find_map(|use_tree| {
-            if let Some(upper_tree_path) = use_tree.path() {
-                if upper_tree_path.to_string() != path.to_string() {
-                    use_tree_str.push(upper_tree_path.clone());
-                    get_use_tree_paths_from_path(upper_tree_path, use_tree_str);
-                    return Some(use_tree);
-                }
+            if let Some(upper_tree_path) = use_tree.path()
+                && upper_tree_path.to_string() != path.to_string()
+            {
+                use_tree_str.push(upper_tree_path.clone());
+                get_use_tree_paths_from_path(upper_tree_path, use_tree_str);
+                return Some(use_tree);
             }
             None
         })?;
@@ -786,11 +783,11 @@ fn get_use_tree_paths_from_path(
 }
 
 fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax::SyntaxElement>) {
-    if vis.is_none() {
-        if let Some(node_or_token) = node_or_token_opt {
-            let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
-            ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
-        }
+    if vis.is_none()
+        && let Some(node_or_token) = node_or_token_opt
+    {
+        let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
+        ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
     }
 }
 

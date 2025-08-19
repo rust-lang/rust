@@ -79,6 +79,7 @@ impl Foo {
     pub fn warning2() {}
 }
 
+/// <a href="#implementations"><code id="trait-impl-link-in-summary">A collapsible trait impl with a link</code></a>
 impl AsRef<str> for Foo {
     fn as_ref(&self) -> &str {
         "hello"
@@ -764,5 +765,19 @@ pub mod impls_indent {
     impl Context {
         /// bla
         pub fn bar() {}
+    }
+}
+
+pub mod tooltips {
+    pub struct X;
+
+    impl X {
+        pub fn bar() -> Vec<u8> {
+            Vec::new()
+        }
+    }
+
+    pub fn bar() -> Vec<u8> {
+        Vec::new()
     }
 }

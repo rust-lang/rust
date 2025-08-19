@@ -1,0 +1,278 @@
+error: expected a version literal
+  --> $DIR/syntax.rs:11:15
+   |
+LL | #[cfg(version(42))]
+   |               ^^
+
+error: expected a version literal
+  --> $DIR/syntax.rs:15:15
+   |
+LL | #[cfg(version(1.20))]
+   |               ^^^^
+
+error: expected a version literal
+  --> $DIR/syntax.rs:19:15
+   |
+LL | #[cfg(version(false))]
+   |               ^^^^^
+
+error: expected single version literal
+  --> $DIR/syntax.rs:23:14
+   |
+LL | #[cfg(version("1.43", "1.44", "1.45"))]
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:51:15
+   |
+LL | #[cfg(version("foo"))]
+   |               ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:55:15
+   |
+LL | #[cfg(version("1.20.0-stable"))]
+   |               ^^^^^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:78:15
+   |
+LL | #[cfg(version("1"))]
+   |               ^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:82:15
+   |
+LL | #[cfg(version("0"))]
+   |               ^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:86:15
+   |
+LL | #[cfg(version(".7"))]
+   |               ^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:95:15
+   |
+LL | #[cfg(version("-1"))]
+   |               ^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:101:15
+   |
+LL | #[cfg(version("65536"))]
+   |               ^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:105:15
+   |
+LL | #[cfg(version("1.65536.0"))]
+   |               ^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:109:15
+   |
+LL | #[cfg(version("1.0.65536"))]
+   |               ^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:113:15
+   |
+LL | #[cfg(version("65536.0.65536"))]
+   |               ^^^^^^^^^^^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:125:26
+   |
+LL |     assert!(cfg!(version("foo")));
+   |                          ^^^^^
+
+warning: unknown version literal format, assuming it refers to a future version
+  --> $DIR/syntax.rs:127:26
+   |
+LL |     assert!(cfg!(version("1.20.0-stable")));
+   |                          ^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition name: `version`
+  --> $DIR/syntax.rs:30:7
+   |
+LL | #[cfg(version = "1.43")]
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.43"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+help: there is a similar config predicate: `version("..")`
+   |
+LL - #[cfg(version = "1.43")]
+LL + #[cfg(version("1.43"))]
+   |
+
+warning: unexpected `cfg` condition name: `version`
+  --> $DIR/syntax.rs:130:18
+   |
+LL |     assert!(cfg!(version = "1.43"));
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.43"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+help: there is a similar config predicate: `version("..")`
+   |
+LL -     assert!(cfg!(version = "1.43"));
+LL +     assert!(cfg!(version("1.43")));
+   |
+
+error[E0425]: cannot find function `key_value_form` in this scope
+  --> $DIR/syntax.rs:139:5
+   |
+LL |     key_value_form();
+   |     ^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:32:4
+   |
+LL | #[cfg(version = "1.43")]
+   |       ---------------- the item is gated behind the `1.43` feature
+LL |
+LL | fn key_value_form() {}
+   |    ^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `not_numbers_or_periods` in this scope
+  --> $DIR/syntax.rs:143:5
+   |
+LL |     not_numbers_or_periods();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:53:4
+   |
+LL | #[cfg(version("foo"))]
+   |              ------- the item is gated here
+LL |
+LL | fn not_numbers_or_periods() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `complex_semver_with_metadata` in this scope
+  --> $DIR/syntax.rs:144:5
+   |
+LL |     complex_semver_with_metadata();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:57:4
+   |
+LL | #[cfg(version("1.20.0-stable"))]
+   |              ----------------- the item is gated here
+LL |
+LL | fn complex_semver_with_metadata() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `invalid_major_only` in this scope
+  --> $DIR/syntax.rs:145:5
+   |
+LL |     invalid_major_only();
+   |     ^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:80:4
+   |
+LL | #[cfg(version("1"))]
+   |              ----- the item is gated here
+LL |
+LL | fn invalid_major_only() {}
+   |    ^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `invalid_major_only_zero` in this scope
+  --> $DIR/syntax.rs:146:5
+   |
+LL |     invalid_major_only_zero();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:84:4
+   |
+LL | #[cfg(version("0"))]
+   |              ----- the item is gated here
+LL |
+LL | fn invalid_major_only_zero() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `invalid_major_only_negative` in this scope
+  --> $DIR/syntax.rs:147:5
+   |
+LL |     invalid_major_only_negative();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:97:4
+   |
+LL | #[cfg(version("-1"))]
+   |              ------ the item is gated here
+LL |
+LL | fn invalid_major_only_negative() {}
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `exceed_u16_major` in this scope
+  --> $DIR/syntax.rs:148:5
+   |
+LL |     exceed_u16_major();
+   |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:103:4
+   |
+LL | #[cfg(version("65536"))]
+   |              --------- the item is gated here
+LL |
+LL | fn exceed_u16_major() {}
+   |    ^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `exceed_u16_minor` in this scope
+  --> $DIR/syntax.rs:149:5
+   |
+LL |     exceed_u16_minor();
+   |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:107:4
+   |
+LL | #[cfg(version("1.65536.0"))]
+   |              ------------- the item is gated here
+LL |
+LL | fn exceed_u16_minor() {}
+   |    ^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `exceed_u16_patch` in this scope
+  --> $DIR/syntax.rs:150:5
+   |
+LL |     exceed_u16_patch();
+   |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:111:4
+   |
+LL | #[cfg(version("1.0.65536"))]
+   |              ------------- the item is gated here
+LL |
+LL | fn exceed_u16_patch() {}
+   |    ^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find function `exceed_u16_mixed` in this scope
+  --> $DIR/syntax.rs:151:5
+   |
+LL |     exceed_u16_mixed();
+   |     ^^^^^^^^^^^^^^^^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/syntax.rs:115:4
+   |
+LL | #[cfg(version("65536.0.65536"))]
+   |              ----------------- the item is gated here
+LL |
+LL | fn exceed_u16_mixed() {}
+   |    ^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors; 14 warnings emitted
+
+For more information about this error, try `rustc --explain E0425`.

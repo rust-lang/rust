@@ -89,8 +89,8 @@ use options::RunStrategy;
 use test_result::*;
 use time::TestExecTime;
 
-// Process exit code to be used to indicate test failures.
-const ERROR_EXIT_CODE: i32 = 101;
+/// Process exit code to be used to indicate test failures.
+pub const ERROR_EXIT_CODE: i32 = 101;
 
 const SECONDARY_TEST_INVOKER_VAR: &str = "__RUST_TEST_INVOKE";
 const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS";
@@ -98,6 +98,15 @@ const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS"
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
+    test_main_with_exit_callback(args, tests, options, || {})
+}
+
+pub fn test_main_with_exit_callback<F: FnOnce()>(
+    args: &[String],
+    tests: Vec<TestDescAndFn>,
+    options: Option<Options>,
+    exit_callback: F,
+) {
     let mut opts = match cli::parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -151,6 +160,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
         let res = console::run_tests_console(&opts, tests);
         // Prevent Valgrind from reporting reachable blocks in users' unit tests.
         drop(panic::take_hook());
+        exit_callback();
         match res {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),
@@ -232,6 +242,21 @@ fn make_owned_test(test: &&TestDescAndFn) -> TestDescAndFn {
         StaticBenchFn(f) => TestDescAndFn { testfn: StaticBenchFn(f), desc: test.desc.clone() },
         _ => panic!("non-static tests passed to test::test_main_static"),
     }
+}
+
+/// Public API used by rustdoc to display the `total` and `compilation` times in the expected
+/// format.
+pub fn print_merged_doctests_times(args: &[String], total_time: f64, compilation_time: f64) {
+    let opts = match cli::parse_opts(args) {
+        Some(Ok(o)) => o,
+        Some(Err(msg)) => {
+            eprintln!("error: {msg}");
+            process::exit(ERROR_EXIT_CODE);
+        }
+        None => return,
+    };
+    let mut formatter = console::get_formatter(&opts, 0);
+    formatter.write_merged_doctests_times(total_time, compilation_time).unwrap();
 }
 
 /// Invoked when unit tests terminate. Returns `Result::Err` if the test is

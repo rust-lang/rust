@@ -1,0 +1,24 @@
+warning: the feature `async_drop` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/foreign-fundamental.rs:3:12
+   |
+LL | #![feature(async_drop)]
+   |            ^^^^^^^^^^
+   |
+   = note: see issue #126482 <https://github.com/rust-lang/rust/issues/126482> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0120]: the `AsyncDrop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/foreign-fundamental.rs:11:20
+   |
+LL | impl AsyncDrop for &Foo {
+   |                    ^^^^ must be a struct, enum, or union in the current crate
+
+error[E0120]: the `AsyncDrop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/foreign-fundamental.rs:16:20
+   |
+LL | impl AsyncDrop for Pin<Foo> {
+   |                    ^^^^^^^^ must be a struct, enum, or union in the current crate
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0120`.

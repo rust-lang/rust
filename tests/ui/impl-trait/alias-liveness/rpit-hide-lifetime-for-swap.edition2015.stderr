@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl Swap + 'a` captures lifetime that does not appear in bounds
+  --> $DIR/rpit-hide-lifetime-for-swap.rs:20:5
+   |
+LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a {
+   |             --                                            -------------- opaque type defined here
+   |             |
+   |             hidden type `Rc<RefCell<&'b T>>` captures the lifetime `'b` as defined here
+LL |     x
+   |     ^
+   |
+help: add a `use<...>` bound to explicitly capture `'b`
+   |
+LL | fn hide<'a, 'b: 'a, T: 'static>(x: Rc<RefCell<&'b T>>) -> impl Swap + 'a + use<'a, 'b, T> {
+   |                                                                          ++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

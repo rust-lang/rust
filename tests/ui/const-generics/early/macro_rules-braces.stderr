@@ -26,7 +26,7 @@ error: generic parameters may not be used in const operations
 LL |     let _: foo!({{ N }});
    |                    ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -35,7 +35,7 @@ error: generic parameters may not be used in const operations
 LL |     let _: bar!({ N });
    |                   ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -44,7 +44,7 @@ error: generic parameters may not be used in const operations
 LL |     let _: baz!({{ N }});
    |                    ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
@@ -53,7 +53,7 @@ error: generic parameters may not be used in const operations
 LL |     let _: biz!({ N });
    |                   ^ cannot perform const operation using `N`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `N`
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: aborting due to 6 previous errors

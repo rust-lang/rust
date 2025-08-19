@@ -10,6 +10,11 @@ LL |         y.into_iter();
    |         |
    |         move occurs because `y` has type `Vec<String>`, which does not implement the `Copy` trait
    |
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:5:28
+   |
+LL | fn call<F>(f: F) where F : Fn() {
+   |                            ^^^^
 note: `into_iter` takes ownership of the receiver `self`, which moves `y`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior

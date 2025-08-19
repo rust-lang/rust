@@ -1,6 +1,10 @@
 // Regression test for #87549.
 //@ incremental
 
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ revisions: nll polonius
+//@ [polonius] compile-flags: -Zpolonius=next
+
 pub struct Table<T, const N: usize>([Option<T>; N]);
 
 impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
@@ -10,7 +14,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
 
     fn into_iter(self) -> Self::IntoIter {
         //~^ ERROR `&'a T` is not an iterator
-        //~| ERROR `&T` is not an iterator
+        //[nll]~| ERROR `&T` is not an iterator
         unimplemented!()
     }
 }

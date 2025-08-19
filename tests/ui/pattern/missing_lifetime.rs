@@ -20,6 +20,6 @@ enum Other {
 
 fn main() {
     match Other::Other1(Foo::Baz) {
-        ::Other::Other2(::Foo::Bar(..)) => {}
+        crate::Other::Other2(crate::Foo::Bar(..)) => {}
     }
 }

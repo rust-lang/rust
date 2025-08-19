@@ -28,6 +28,7 @@ impl Greeter1 for FixedGreeter<'_> {
 struct Greetings(pub Vec<String>);
 
 impl Greetings {
+    #[expect(mismatched_lifetime_syntaxes)]
     pub fn get(&self, i: usize) -> BoxedGreeter {
         (Box::new(FixedGreeter(&self.0[i])), Box::new(FixedGreeter(&self.0[i])))
         //~^ ERROR lifetime may not live long enough

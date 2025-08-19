@@ -5,24 +5,29 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
-pub mod legacy_protocol {
-    pub mod json;
-    pub mod msg;
-}
+pub mod legacy_protocol;
 mod process;
 
 use paths::{AbsPath, AbsPathBuf};
-use span::Span;
+use span::{ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, Span};
 use std::{fmt, io, sync::Arc, time::SystemTime};
 
-use crate::{
-    legacy_protocol::msg::{
-        ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, HAS_GLOBAL_SPANS, PanicMessage,
-        RUST_ANALYZER_SPAN_SUPPORT, Request, Response, SpanDataIndexMap,
-        deserialize_span_data_index_map, flat::serialize_span_data_index_map,
-    },
-    process::ProcMacroServerProcess,
-};
+use crate::process::ProcMacroServerProcess;
+
+/// The versions of the server protocol
+pub mod version {
+    pub const NO_VERSION_CHECK_VERSION: u32 = 0;
+    pub const VERSION_CHECK_VERSION: u32 = 1;
+    pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
+    pub const HAS_GLOBAL_SPANS: u32 = 3;
+    pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
+    /// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
+    pub const EXTENDED_LEAF_DATA: u32 = 5;
+    pub const HASHED_AST_ID: u32 = 6;
+
+    /// Current API version of the proc-macro protocol.
+    pub const CURRENT_API_VERSION: u32 = HASHED_AST_ID;
+}
 
 /// Represents different kinds of procedural macros that can be expanded by the external server.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, serde_derive::Serialize, serde_derive::Deserialize)]
@@ -161,6 +166,38 @@ impl ProcMacro {
         self.kind
     }
 
+    fn needs_fixup_change(&self) -> bool {
+        let version = self.process.version();
+        (version::RUST_ANALYZER_SPAN_SUPPORT..version::HASHED_AST_ID).contains(&version)
+    }
+
+    /// On some server versions, the fixup ast id is different than ours. So change it to match.
+    fn change_fixup_to_match_old_server(&self, tt: &mut tt::TopSubtree<Span>) {
+        const OLD_FIXUP_AST_ID: ErasedFileAstId = ErasedFileAstId::from_raw(!0 - 1);
+        let change_ast_id = |ast_id: &mut ErasedFileAstId| {
+            if *ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+                *ast_id = OLD_FIXUP_AST_ID;
+            } else if *ast_id == OLD_FIXUP_AST_ID {
+                // Swap between them, that means no collision plus the change can be reversed by doing itself.
+                *ast_id = FIXUP_ERASED_FILE_AST_ID_MARKER;
+            }
+        };
+
+        for tt in &mut tt.0 {
+            match tt {
+                tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident { span, .. }))
+                | tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { span, .. }))
+                | tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { span, .. })) => {
+                    change_ast_id(&mut span.anchor.ast_id);
+                }
+                tt::TokenTree::Subtree(subtree) => {
+                    change_ast_id(&mut subtree.delimiter.open.anchor.ast_id);
+                    change_ast_id(&mut subtree.delimiter.close.anchor.ast_id);
+                }
+            }
+        }
+    }
+
     /// Expands the procedural macro by sending an expansion request to the server.
     /// This includes span information and environmental context.
     pub fn expand(
@@ -172,50 +209,30 @@ impl ProcMacro {
         call_site: Span,
         mixed_site: Span,
         current_dir: String,
-    ) -> Result<Result<tt::TopSubtree<Span>, PanicMessage>, ServerError> {
-        let version = self.process.version();
+    ) -> Result<Result<tt::TopSubtree<Span>, String>, ServerError> {
+        let (mut subtree, mut attr) = (subtree, attr);
+        let (mut subtree_changed, mut attr_changed);
+        if self.needs_fixup_change() {
+            subtree_changed = tt::TopSubtree::from_subtree(subtree);
+            self.change_fixup_to_match_old_server(&mut subtree_changed);
+            subtree = subtree_changed.view();
 
-        let mut span_data_table = SpanDataIndexMap::default();
-        let def_site = span_data_table.insert_full(def_site).0;
-        let call_site = span_data_table.insert_full(call_site).0;
-        let mixed_site = span_data_table.insert_full(mixed_site).0;
-        let task = ExpandMacro {
-            data: ExpandMacroData {
-                macro_body: FlatTree::new(subtree, version, &mut span_data_table),
-                macro_name: self.name.to_string(),
-                attributes: attr
-                    .map(|subtree| FlatTree::new(subtree, version, &mut span_data_table)),
-                has_global_spans: ExpnGlobals {
-                    serialize: version >= HAS_GLOBAL_SPANS,
-                    def_site,
-                    call_site,
-                    mixed_site,
-                },
-                span_data_table: if version >= RUST_ANALYZER_SPAN_SUPPORT {
-                    serialize_span_data_index_map(&span_data_table)
-                } else {
-                    Vec::new()
-                },
-            },
-            lib: self.dylib_path.to_path_buf().into(),
-            env,
-            current_dir: Some(current_dir),
-        };
-
-        let response = self.process.send_task(Request::ExpandMacro(Box::new(task)))?;
-
-        match response {
-            Response::ExpandMacro(it) => {
-                Ok(it.map(|tree| FlatTree::to_subtree_resolved(tree, version, &span_data_table)))
+            if let Some(attr) = &mut attr {
+                attr_changed = tt::TopSubtree::from_subtree(*attr);
+                self.change_fixup_to_match_old_server(&mut attr_changed);
+                *attr = attr_changed.view();
             }
-            Response::ExpandMacroExtended(it) => Ok(it.map(|resp| {
-                FlatTree::to_subtree_resolved(
-                    resp.tree,
-                    version,
-                    &deserialize_span_data_index_map(&resp.span_data_table),
-                )
-            })),
-            _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
+
+        legacy_protocol::expand(
+            self,
+            subtree,
+            attr,
+            env,
+            def_site,
+            call_site,
+            mixed_site,
+            current_dir,
+        )
     }
 }

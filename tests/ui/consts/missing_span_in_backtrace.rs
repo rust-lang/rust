@@ -1,3 +1,5 @@
+//! Check what happens when the error occurs inside a std function that we can't print the span of.
+//@ ignore-backends: gcc
 //@ compile-flags: -Z ui-testing=no
 
 use std::{
@@ -6,15 +8,15 @@ use std::{
 };
 
 const X: () = {
-    let mut ptr1 = &1;
-    let mut ptr2 = &2;
+    let mut x1 = 1;
+    let mut x2 = 2;
 
     // Swap them, bytewise.
     unsafe {
-        ptr::swap_nonoverlapping( //~ ERROR evaluation of constant value failed
-            &mut ptr1 as *mut _ as *mut MaybeUninit<u8>,
-            &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-            mem::size_of::<&i32>(),
+        ptr::swap_nonoverlapping( //~ ERROR beyond the end of the allocation
+            &mut x1 as *mut _ as *mut MaybeUninit<u8>,
+            &mut x2 as *mut _ as *mut MaybeUninit<u8>,
+            10,
         );
     }
 };

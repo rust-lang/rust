@@ -1,5 +1,5 @@
 fn system(f: extern "system" fn(usize, ...)) {
-    //~^  ERROR using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+    //~^  ERROR unstable
 
     f(22, 44);
 }

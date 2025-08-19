@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Test output of const super trait errors in both stable and nightly.
 // We don't want to provide suggestions on stable that only make sense in nightly.
 
@@ -9,9 +11,7 @@ fn main() {
         .env("RUSTC_BOOTSTRAP", "-1")
         .cfg("feature_enabled")
         .run_fail()
-        .assert_stderr_not_contains(
-            "as `#[const_trait]` to allow it to have `const` implementations",
-        )
+        .assert_stderr_not_contains("as `const` to allow it to have `const` implementations")
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-stable-enabled.stderr")
@@ -27,7 +27,7 @@ fn main() {
         .ui_testing()
         .run_fail()
         .assert_stderr_not_contains("enable `#![feature(const_trait_impl)]` in your crate and mark")
-        .assert_stderr_contains("as `#[const_trait]` to allow it to have `const` implementations")
+        .assert_stderr_contains("as `const` to allow it to have `const` implementations")
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-nightly-enabled.stderr")
@@ -38,9 +38,7 @@ fn main() {
         .env("RUSTC_BOOTSTRAP", "-1")
         .run_fail()
         .assert_stderr_not_contains("enable `#![feature(const_trait_impl)]` in your crate and mark")
-        .assert_stderr_not_contains(
-            "as `#[const_trait]` to allow it to have `const` implementations",
-        )
+        .assert_stderr_not_contains("as `const` to allow it to have `const` implementations")
         .stderr_utf8();
     diff()
         .expected_file("const-super-trait-stable-disabled.stderr")

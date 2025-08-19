@@ -15,11 +15,13 @@ impl flags::UnresolvedReferences {
     pub fn run(self) -> anyhow::Result<()> {
         const STACK_SIZE: usize = 1024 * 1024 * 8;
 
-        let handle = stdx::thread::Builder::new(stdx::thread::ThreadIntent::LatencySensitive)
-            .name("BIG_STACK_THREAD".into())
-            .stack_size(STACK_SIZE)
-            .spawn(|| self.run_())
-            .unwrap();
+        let handle = stdx::thread::Builder::new(
+            stdx::thread::ThreadIntent::LatencySensitive,
+            "BIG_STACK_THREAD",
+        )
+        .stack_size(STACK_SIZE)
+        .spawn(|| self.run_())
+        .unwrap();
 
         handle.join()
     }
@@ -28,7 +30,7 @@ impl flags::UnresolvedReferences {
         let root =
             vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
         let config = crate::config::Config::new(
-            root.clone(),
+            root,
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,

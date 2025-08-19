@@ -1,4 +1,4 @@
-#![feature(rustc_private, array_windows, let_chains)]
+#![feature(rustc_private)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -12,6 +12,7 @@
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic
 )]
+#![deny(clippy::derive_deserialize_allowing_unknown)]
 
 extern crate rustc_data_structures;
 extern crate rustc_errors;

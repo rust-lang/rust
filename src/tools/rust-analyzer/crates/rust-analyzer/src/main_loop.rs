@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crossbeam_channel::{Receiver, select};
+use crossbeam_channel::{Receiver, never, select};
 use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
@@ -71,6 +71,7 @@ enum Event {
     Flycheck(FlycheckMessage),
     TestResult(CargoTestMessage),
     DiscoverProject(DiscoverProjectMessage),
+    FetchWorkspaces(FetchWorkspaceRequest),
 }
 
 impl fmt::Display for Event {
@@ -83,6 +84,7 @@ impl fmt::Display for Event {
             Event::QueuedTask(_) => write!(f, "Event::QueuedTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
+            Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
         }
     }
 }
@@ -150,6 +152,7 @@ impl fmt::Debug for Event {
             }
             _ => (),
         }
+
         match self {
             Event::Lsp(it) => fmt::Debug::fmt(it, f),
             Event::Task(it) => fmt::Debug::fmt(it, f),
@@ -158,6 +161,7 @@ impl fmt::Debug for Event {
             Event::Flycheck(it) => fmt::Debug::fmt(it, f),
             Event::TestResult(it) => fmt::Debug::fmt(it, f),
             Event::DiscoverProject(it) => fmt::Debug::fmt(it, f),
+            Event::FetchWorkspaces(it) => fmt::Debug::fmt(it, f),
         }
     }
 }
@@ -251,7 +255,7 @@ impl GlobalState {
     }
 
     fn next_event(
-        &self,
+        &mut self,
         inbox: &Receiver<lsp_server::Message>,
     ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
         // Make sure we reply to formatting requests ASAP so the editor doesn't block
@@ -283,6 +287,10 @@ impl GlobalState {
 
             recv(self.discover_receiver) -> task =>
                 task.map(Event::DiscoverProject),
+
+            recv(self.fetch_ws_receiver.as_ref().map_or(&never(), |(chan, _)| chan)) -> _instant => {
+                Ok(Event::FetchWorkspaces(self.fetch_ws_receiver.take().unwrap().1))
+            },
         }
         .map(Some)
     }
@@ -412,6 +420,9 @@ impl GlobalState {
                     self.handle_discover_msg(message);
                 }
             }
+            Event::FetchWorkspaces(req) => {
+                self.fetch_workspaces_queue.request_op("project structure change".to_owned(), req)
+            }
         }
         let event_handling_duration = loop_start.elapsed();
         let (state_changed, memdocs_added_or_removed) = if self.vfs_done {
@@ -490,14 +501,12 @@ impl GlobalState {
             }
         }
 
-        if self.config.cargo_autoreload_config(None)
-            || self.config.discover_workspace_config().is_some()
-        {
-            if let Some((cause, FetchWorkspaceRequest { path, force_crate_graph_reload })) =
+        if (self.config.cargo_autoreload_config(None)
+            || self.config.discover_workspace_config().is_some())
+            && let Some((cause, FetchWorkspaceRequest { path, force_crate_graph_reload })) =
                 self.fetch_workspaces_queue.should_start_op()
-            {
-                self.fetch_workspaces(cause, path, force_crate_graph_reload);
-            }
+        {
+            self.fetch_workspaces(cause, path, force_crate_graph_reload);
         }
 
         if !self.fetch_workspaces_queue.op_in_progress() {
@@ -754,28 +763,33 @@ impl GlobalState {
                 self.report_progress("Fetching", state, msg, None, None);
             }
             Task::DiscoverLinkedProjects(arg) => {
-                if let Some(cfg) = self.config.discover_workspace_config() {
-                    if !self.discover_workspace_queue.op_in_progress() {
-                        // the clone is unfortunately necessary to avoid a borrowck error when
-                        // `self.report_progress` is called later
-                        let title = &cfg.progress_label.clone();
-                        let command = cfg.command.clone();
-                        let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
+                if let Some(cfg) = self.config.discover_workspace_config()
+                    && !self.discover_workspace_queue.op_in_progress()
+                {
+                    // the clone is unfortunately necessary to avoid a borrowck error when
+                    // `self.report_progress` is called later
+                    let title = &cfg.progress_label.clone();
+                    let command = cfg.command.clone();
+                    let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
-                        self.report_progress(title, Progress::Begin, None, None, None);
-                        self.discover_workspace_queue
-                            .request_op("Discovering workspace".to_owned(), ());
-                        let _ = self.discover_workspace_queue.should_start_op();
+                    self.report_progress(title, Progress::Begin, None, None, None);
+                    self.discover_workspace_queue
+                        .request_op("Discovering workspace".to_owned(), ());
+                    let _ = self.discover_workspace_queue.should_start_op();
 
-                        let arg = match arg {
-                            DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
-                            DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
-                        };
+                    let arg = match arg {
+                        DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
+                        DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
+                    };
 
-                        let handle =
-                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
-                        self.discover_handle = Some(handle);
-                    }
+                    let handle = discover.spawn(
+                        arg,
+                        &std::env::current_dir()
+                            .expect("Failed to get cwd during project discovery"),
+                    );
+                    self.discover_handle = Some(handle.unwrap_or_else(|e| {
+                        panic!("Failed to spawn project discovery command: {e}")
+                    }));
                 }
             }
             Task::FetchBuildData(progress) => {
@@ -830,6 +844,7 @@ impl GlobalState {
         match message {
             vfs::loader::Message::Changed { files } | vfs::loader::Message::Loaded { files } => {
                 let _p = tracing::info_span!("GlobalState::handle_vfs_msg{changed/load}").entered();
+                self.debounce_workspace_fetch();
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);

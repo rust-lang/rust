@@ -1,8 +1,12 @@
-error: malformed `track_caller` attribute input
+error[E0565]: malformed `track_caller` attribute input
   --> $DIR/error-odd-syntax.rs:1:1
    |
 LL | #[track_caller(1)]
-   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[track_caller]`
+   | ^^^^^^^^^^^^^^---^
+   | |             |
+   | |             didn't expect any arguments here
+   | help: must be of the form: `#[track_caller]`
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0565`.

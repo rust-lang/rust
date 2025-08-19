@@ -1,32 +1,28 @@
 use std::path::PathBuf;
 
-use crate::{BuildStamp, Config, Flags};
+use tempfile::TempDir;
 
-fn temp_dir() -> PathBuf {
-    let config =
-        Config::parse(Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]));
-    config.tempdir()
-}
+use crate::{BuildStamp, Config, Flags};
 
 #[test]
 #[should_panic(expected = "prefix can not start or end with '.'")]
 fn test_with_invalid_prefix() {
-    let dir = temp_dir();
-    BuildStamp::new(&dir).with_prefix(".invalid");
+    let dir = TempDir::new().unwrap();
+    BuildStamp::new(dir.path()).with_prefix(".invalid");
 }
 
 #[test]
 #[should_panic(expected = "prefix can not start or end with '.'")]
 fn test_with_invalid_prefix2() {
-    let dir = temp_dir();
-    BuildStamp::new(&dir).with_prefix("invalid.");
+    let dir = TempDir::new().unwrap();
+    BuildStamp::new(dir.path()).with_prefix("invalid.");
 }
 
 #[test]
 fn test_is_up_to_date() {
-    let dir = temp_dir();
+    let dir = TempDir::new().unwrap();
 
-    let mut build_stamp = BuildStamp::new(&dir).add_stamp("v1.0.0");
+    let mut build_stamp = BuildStamp::new(dir.path()).add_stamp("v1.0.0");
     build_stamp.write().unwrap();
 
     assert!(
@@ -45,9 +41,9 @@ fn test_is_up_to_date() {
 
 #[test]
 fn test_with_prefix() {
-    let dir = temp_dir();
+    let dir = TempDir::new().unwrap();
 
-    let stamp = BuildStamp::new(&dir).add_stamp("v1.0.0");
+    let stamp = BuildStamp::new(dir.path()).add_stamp("v1.0.0");
     assert_eq!(stamp.path.file_name().unwrap(), ".stamp");
 
     let stamp = stamp.with_prefix("test");

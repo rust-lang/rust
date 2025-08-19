@@ -357,10 +357,10 @@ impl<'a, S: Copy> TokenTreesView<'a, S> {
     }
 
     pub fn try_into_subtree(self) -> Option<SubtreeView<'a, S>> {
-        if let Some(TokenTree::Subtree(subtree)) = self.0.first() {
-            if subtree.usize_len() == (self.0.len() - 1) {
-                return Some(SubtreeView::new(self.0));
-            }
+        if let Some(TokenTree::Subtree(subtree)) = self.0.first()
+            && subtree.usize_len() == (self.0.len() - 1)
+        {
+            return Some(SubtreeView::new(self.0));
         }
         None
     }
@@ -579,7 +579,7 @@ where
 {
     use rustc_lexer::LiteralKind;
 
-    let token = rustc_lexer::tokenize(text).next_tuple();
+    let token = rustc_lexer::tokenize(text, rustc_lexer::FrontmatterAllowed::No).next_tuple();
     let Some((rustc_lexer::Token {
         kind: rustc_lexer::TokenKind::Literal { kind, suffix_start },
         ..
@@ -728,9 +728,9 @@ fn print_debug_subtree<S: fmt::Debug>(
     };
 
     write!(f, "{align}SUBTREE {delim} ",)?;
-    write!(f, "{:#?}", open)?;
+    write!(f, "{open:#?}")?;
     write!(f, " ")?;
-    write!(f, "{:#?}", close)?;
+    write!(f, "{close:#?}")?;
     for child in iter {
         writeln!(f)?;
         print_debug_token(f, level + 1, child)?;
@@ -817,6 +817,58 @@ impl<S> fmt::Display for Ident<S> {
     }
 }
 
+impl<S> Literal<S> {
+    pub fn display_no_minus(&self) -> impl fmt::Display {
+        struct NoMinus<'a, S>(&'a Literal<S>);
+        impl<S> fmt::Display for NoMinus<'_, S> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let symbol =
+                    self.0.symbol.as_str().strip_prefix('-').unwrap_or(self.0.symbol.as_str());
+                match self.0.kind {
+                    LitKind::Byte => write!(f, "b'{symbol}'"),
+                    LitKind::Char => write!(f, "'{symbol}'"),
+                    LitKind::Integer | LitKind::Float | LitKind::Err(_) => write!(f, "{symbol}"),
+                    LitKind::Str => write!(f, "\"{symbol}\""),
+                    LitKind::ByteStr => write!(f, "b\"{symbol}\""),
+                    LitKind::CStr => write!(f, "c\"{symbol}\""),
+                    LitKind::StrRaw(num_of_hashes) => {
+                        let num_of_hashes = num_of_hashes as usize;
+                        write!(
+                            f,
+                            r#"r{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                            "",
+                            text = symbol
+                        )
+                    }
+                    LitKind::ByteStrRaw(num_of_hashes) => {
+                        let num_of_hashes = num_of_hashes as usize;
+                        write!(
+                            f,
+                            r#"br{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                            "",
+                            text = symbol
+                        )
+                    }
+                    LitKind::CStrRaw(num_of_hashes) => {
+                        let num_of_hashes = num_of_hashes as usize;
+                        write!(
+                            f,
+                            r#"cr{0:#<num_of_hashes$}"{text}"{0:#<num_of_hashes$}"#,
+                            "",
+                            text = symbol
+                        )
+                    }
+                }?;
+                if let Some(suffix) = &self.0.suffix {
+                    write!(f, "{suffix}")?;
+                }
+                Ok(())
+            }
+        }
+        NoMinus(self)
+    }
+}
+
 impl<S> fmt::Display for Literal<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
@@ -855,7 +907,7 @@ impl<S> fmt::Display for Literal<S> {
             }
         }?;
         if let Some(suffix) = &self.suffix {
-            write!(f, "{}", suffix)?;
+            write!(f, "{suffix}")?;
         }
         Ok(())
     }
@@ -976,10 +1028,10 @@ pub fn pretty<S>(mut tkns: &[TokenTree<S>]) -> String {
         tkns = rest;
         last = [last, tokentree_to_text(tkn, &mut tkns)].join(if last_to_joint { "" } else { " " });
         last_to_joint = false;
-        if let TokenTree::Leaf(Leaf::Punct(punct)) = tkn {
-            if punct.spacing == Spacing::Joint {
-                last_to_joint = true;
-            }
+        if let TokenTree::Leaf(Leaf::Punct(punct)) = tkn
+            && punct.spacing == Spacing::Joint
+        {
+            last_to_joint = true;
         }
     }
     last

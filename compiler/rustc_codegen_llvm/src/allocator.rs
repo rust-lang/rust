@@ -8,11 +8,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
+use smallvec::SmallVec;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, False, True, Type};
-use crate::{SimpleCx, attributes, debuginfo};
+use crate::llvm::{self, False, True, Type, Value};
+use crate::{SimpleCx, attributes, debuginfo, llvm_util};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -57,7 +58,7 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, &cx, &from_name, &to_name, &args, output, false);
+            create_wrapper_function(tcx, &cx, &from_name, Some(&to_name), &args, output, false);
         }
     }
 
@@ -66,26 +67,32 @@ pub(crate) unsafe fn codegen(
         tcx,
         &cx,
         &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
+        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
         &[usize, usize], // size, align
         None,
         true,
     );
 
     unsafe {
-        // __rust_alloc_error_handler_should_panic
-        let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
-        let ll_g = cx.declare_global(&name, i8);
-        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
-        let val = tcx.sess.opts.unstable_opts.oom.should_panic();
-        let llval = llvm::LLVMConstInt(i8, val as u64, False);
-        llvm::set_initializer(ll_g, llval);
+        // __rust_alloc_error_handler_should_panic_v2
+        create_const_value_function(
+            tcx,
+            &cx,
+            &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+            &i8,
+            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, False),
+        );
 
-        let name = mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE);
-        let ll_g = cx.declare_global(&name, i8);
-        llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
-        let llval = llvm::LLVMConstInt(i8, 0, False);
-        llvm::set_initializer(ll_g, llval);
+        // __rust_no_alloc_shim_is_unstable_v2
+        create_wrapper_function(
+            tcx,
+            &cx,
+            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+            None,
+            &[],
+            None,
+            false,
+        );
     }
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
@@ -95,11 +102,39 @@ pub(crate) unsafe fn codegen(
     }
 }
 
+fn create_const_value_function(
+    tcx: TyCtxt<'_>,
+    cx: &SimpleCx<'_>,
+    name: &str,
+    output: &Type,
+    value: &Value,
+) {
+    let ty = cx.type_func(&[], output);
+    let llfn = declare_simple_fn(
+        &cx,
+        name,
+        llvm::CallConv::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        ty,
+    );
+
+    attributes::apply_to_llfn(
+        llfn,
+        llvm::AttributePlace::Function,
+        &[llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx)],
+    );
+
+    let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
+    let mut bx = SBuilder::build(&cx, llbb);
+    bx.ret(value);
+}
+
 fn create_wrapper_function(
     tcx: TyCtxt<'_>,
     cx: &SimpleCx<'_>,
     from_name: &str,
-    to_name: &str,
+    to_name: Option<&str>,
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
@@ -113,6 +148,20 @@ fn create_wrapper_function(
         llvm::Visibility::from_generic(tcx.sess.default_visibility()),
         ty,
     );
+
+    let mut attrs = SmallVec::<[_; 2]>::new();
+
+    let target_cpu = llvm_util::target_cpu(tcx.sess);
+    let target_cpu_attr = llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu);
+
+    let tune_cpu_attr = llvm_util::tune_cpu(tcx.sess)
+        .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu));
+
+    attrs.push(target_cpu_attr);
+    attrs.extend(tune_cpu_attr);
+
+    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
+
     let no_return = if no_return {
         // -> ! DIFlagNoReturn
         let no_return = llvm::AttributeKind::NoReturn.create_attr(cx.llcx);
@@ -128,33 +177,38 @@ fn create_wrapper_function(
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
     }
 
-    let callee = declare_simple_fn(
-        &cx,
-        to_name,
-        llvm::CallConv::CCallConv,
-        llvm::UnnamedAddr::Global,
-        llvm::Visibility::Hidden,
-        ty,
-    );
-    if let Some(no_return) = no_return {
-        // -> ! DIFlagNoReturn
-        attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
-    }
-    llvm::set_visibility(callee, llvm::Visibility::Hidden);
-
     let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
-
     let mut bx = SBuilder::build(&cx, llbb);
-    let args = args
-        .iter()
-        .enumerate()
-        .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
-        .collect::<Vec<_>>();
-    let ret = bx.call(ty, callee, &args, None);
-    llvm::LLVMSetTailCall(ret, True);
-    if output.is_some() {
-        bx.ret(ret);
+
+    if let Some(to_name) = to_name {
+        let callee = declare_simple_fn(
+            &cx,
+            to_name,
+            llvm::CallConv::CCallConv,
+            llvm::UnnamedAddr::Global,
+            llvm::Visibility::Hidden,
+            ty,
+        );
+        if let Some(no_return) = no_return {
+            // -> ! DIFlagNoReturn
+            attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
+        }
+        llvm::set_visibility(callee, llvm::Visibility::Hidden);
+
+        let args = args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
+            .collect::<Vec<_>>();
+        let ret = bx.call(ty, callee, &args, None);
+        llvm::LLVMSetTailCall(ret, True);
+        if output.is_some() {
+            bx.ret(ret);
+        } else {
+            bx.ret_void()
+        }
     } else {
+        assert!(output.is_none());
         bx.ret_void()
     }
 }

@@ -13,6 +13,7 @@ use hir::Expr;
 use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
+use rustc_ast::UnsafeBinderCastKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -158,7 +159,7 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn resolve_vars_if_possible<T: TypeFoldable<TyCtxt<'tcx>>>(&self, t: T) -> T;
 
-    fn try_structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
+    fn structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
     fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error;
 
@@ -191,8 +192,8 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         self.infcx.resolve_vars_if_possible(t)
     }
 
-    fn try_structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        (**self).try_structurally_resolve_type(sp, ty)
+    fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        (**self).structurally_resolve_type(sp, ty)
     }
 
     fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error {
@@ -236,7 +237,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         self.0.maybe_typeck_results().expect("expected typeck results")
     }
 
-    fn try_structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         // FIXME: Maybe need to normalize here.
         ty
     }
@@ -776,7 +777,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         // Select just those fields of the `with`
         // expression that will actually be used
-        match self.cx.try_structurally_resolve_type(with_expr.span, with_place.place.ty()).kind() {
+        match self.cx.structurally_resolve_type(with_expr.span, with_place.place.ty()).kind() {
             ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
@@ -1176,7 +1177,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 /// two operations: a dereference to reach the array data and then an index to
 /// jump forward to the relevant item.
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
-    fn resolve_type_vars_or_bug(
+    fn expect_and_resolve_type(
         &self,
         id: HirId,
         ty: Option<Ty<'tcx>>,
@@ -1185,12 +1186,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             Some(ty) => {
                 let ty = self.cx.resolve_vars_if_possible(ty);
                 self.cx.error_reported_in_ty(ty)?;
-                if ty.is_ty_var() {
-                    debug!("resolve_type_vars_or_bug: infer var from {:?}", ty);
-                    Err(self.cx.report_bug(self.cx.tcx().hir_span(id), "encountered type variable"))
-                } else {
-                    Ok(ty)
-                }
+                Ok(ty)
             }
             None => {
                 // FIXME: We shouldn't be relying on the infcx being tainted.
@@ -1201,15 +1197,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     fn node_ty(&self, hir_id: HirId) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_bug(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
+        self.expect_and_resolve_type(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_bug(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
+        self.expect_and_resolve_type(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
     }
 
     fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_bug(
+        self.expect_and_resolve_type(
             expr.hir_id,
             self.cx.typeck_results().expr_ty_adjusted_opt(expr),
         )
@@ -1264,10 +1260,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
                     // So peel off one-level, turning the &T into T.
-                    match self
-                        .cx
-                        .try_structurally_resolve_type(pat.span, base_ty)
-                        .builtin_deref(false)
+                    match self.cx.structurally_resolve_type(pat.span, base_ty).builtin_deref(false)
                     {
                         Some(ty) => Ok(ty),
                         None => {
@@ -1401,10 +1394,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            // both type ascription and unsafe binder casts don't affect
-            // the place-ness of the subexpression.
+            // type ascription doesn't affect the place-ness of the subexpression.
             hir::ExprKind::Type(e, _) => self.cat_expr(e),
-            hir::ExprKind::UnsafeBinderCast(_, e, _) => self.cat_expr(e),
+
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, e, _) => {
+                let base = self.cat_expr(e)?;
+                Ok(self.cat_projection(
+                    expr.hir_id,
+                    base,
+                    expr_ty,
+                    ProjectionKind::UnwrapUnsafeBinder,
+                ))
+            }
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
@@ -1435,6 +1436,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::InlineAsm(..)
             | hir::ExprKind::OffsetOf(..)
+            | hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, ..)
             | hir::ExprKind::Err(_) => Ok(self.cat_rvalue(expr.hir_id, expr_ty)),
         }
     }
@@ -1513,10 +1515,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             if node_ty != place_ty
                 && self
                     .cx
-                    .try_structurally_resolve_type(
-                        self.cx.tcx().hir_span(base_place.hir_id),
-                        place_ty,
-                    )
+                    .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
                     .is_impl_trait()
             {
                 projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
@@ -1538,7 +1537,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let ty::Ref(region, _, mutbl) =
-            *self.cx.try_structurally_resolve_type(base.span, base_ty).kind()
+            *self.cx.structurally_resolve_type(base.span, base_ty).kind()
         else {
             span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
@@ -1556,7 +1555,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let base_curr_ty = base_place.place.ty();
         let deref_ty = match self
             .cx
-            .try_structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty)
+            .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), base_curr_ty)
             .builtin_deref(true)
         {
             Some(ty) => ty,
@@ -1584,7 +1583,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ) -> Result<VariantIdx, Cx::Error> {
         let res = self.cx.typeck_results().qpath_res(qpath, pat_hir_id);
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        let ty::Adt(adt_def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() else {
+        let ty::Adt(adt_def, _) = self.cx.structurally_resolve_type(span, ty).kind() else {
             return Err(self
                 .cx
                 .report_bug(span, "struct or tuple struct pattern not applied to an ADT"));
@@ -1616,7 +1615,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         span: Span,
     ) -> Result<usize, Cx::Error> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        match self.cx.try_structurally_resolve_type(span, ty).kind() {
+        match self.cx.structurally_resolve_type(span, ty).kind() {
             ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.cx
@@ -1631,7 +1630,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     /// Here `pat_hir_id` is the HirId of the pattern itself.
     fn total_fields_in_tuple(&self, pat_hir_id: HirId, span: Span) -> Result<usize, Cx::Error> {
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
-        match self.cx.try_structurally_resolve_type(span, ty).kind() {
+        match self.cx.structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
             _ => Err(self.cx.report_bug(span, "tuple pattern not applied to a tuple")),
         }
@@ -1820,7 +1819,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             PatKind::Slice(before, ref slice, after) => {
                 let Some(element_ty) = self
                     .cx
-                    .try_structurally_resolve_type(pat.span, place_with_id.place.ty())
+                    .structurally_resolve_type(pat.span, place_with_id.place.ty())
                     .builtin_index()
                 else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
@@ -1890,7 +1889,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        if let ty::Adt(def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() {
+        if let ty::Adt(def, _) = self.cx.structurally_resolve_type(span, ty).kind() {
             // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
             // to assume that more cases will be added to the variant in the future. This mean
             // that we should handle non-exhaustive SingleVariant the same way we would handle

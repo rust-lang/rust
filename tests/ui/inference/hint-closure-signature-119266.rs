@@ -3,7 +3,7 @@ fn main() {
     //~^ NOTE: the found closure
 
     let x: fn(i32) = x;
-    //~^ ERROR: 5:22: 5:23: mismatched types [E0308]
+    //~^ ERROR: mismatched types [E0308]
     //~| NOTE: incorrect number of function parameters
     //~| NOTE: expected due to this
     //~| NOTE: expected fn pointer `fn(i32)`

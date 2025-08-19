@@ -785,3 +785,31 @@ fn make_up_a_pointer<T>() -> *const T {
         "#]],
     )
 }
+
+#[test]
+fn diverging_destructuring_assignment() {
+    check_infer_with_mismatches(
+        r#"
+fn foo() {
+    let n = match 42 {
+        0 => _ = loop {},
+        _ => 0,
+    };
+}
+    "#,
+        expect![[r#"
+            9..84 '{     ...  }; }': ()
+            19..20 'n': i32
+            23..81 'match ...     }': i32
+            29..31 '42': i32
+            42..43 '0': i32
+            42..43 '0': i32
+            47..48 '_': !
+            47..58 '_ = loop {}': i32
+            51..58 'loop {}': !
+            56..58 '{}': ()
+            68..69 '_': i32
+            73..74 '0': i32
+        "#]],
+    );
+}

@@ -1,4 +1,4 @@
-error: `MutexGuard` held across a suspend point, but should not be
+error: `std::sync::MutexGuard` held across a suspend point, but should not be
   --> $DIR/mutex.rs:8:9
    |
 LL |     let _guard = m.lock().unwrap();

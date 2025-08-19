@@ -5,6 +5,7 @@
 // tidy-alphabetical-end
 
 mod codegen;
+mod coroutine_witnesses;
 mod dropck_outlives;
 mod evaluate_obligation;
 mod implied_outlives_bounds;
@@ -24,4 +25,5 @@ pub fn provide(p: &mut Providers) {
     normalize_erasing_regions::provide(p);
     type_op::provide(p);
     p.codegen_select_candidate = codegen::codegen_select_candidate;
+    p.coroutine_hidden_types = coroutine_witnesses::coroutine_hidden_types;
 }

@@ -9,7 +9,7 @@
 
 use run_make_support::{
     bin_name, cc, dynamic_lib_extension, dynamic_lib_name, filename_contains, has_extension,
-    has_prefix, has_suffix, is_msvc, msvc_import_dynamic_lib_name, path, run, rustc,
+    has_prefix, has_suffix, is_windows_msvc, msvc_import_dynamic_lib_name, path, run, rustc,
     shallow_find_files, target,
 };
 
@@ -19,7 +19,7 @@ fn main() {
     let sysroot = rustc().print("sysroot").run().stdout_utf8();
     let sysroot = sysroot.trim();
     let target_sysroot = path(sysroot).join("lib/rustlib").join(target()).join("lib");
-    if is_msvc() {
+    if is_windows_msvc() {
         let mut libs = shallow_find_files(&target_sysroot, |path| {
             has_prefix(path, "libstd-") && has_suffix(path, ".dll.lib")
         });

@@ -1,6 +1,7 @@
 //@ ignore-lldb
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // gdb-command:run
 
@@ -58,8 +59,6 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::Opt::{Empty, Val};
 use std::boxed::Box as B;

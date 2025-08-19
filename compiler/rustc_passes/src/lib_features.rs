@@ -4,9 +4,9 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_attr_parsing::{AttributeKind, StabilityLevel, StableSince};
-use rustc_hir::Attribute;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::{Attribute, StabilityLevel, StableSince};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};
@@ -40,11 +40,11 @@ impl<'tcx> LibFeatureCollector<'tcx> {
         };
 
         let feature_stability = match level {
-            StabilityLevel::Unstable { .. } => FeatureStability::Unstable,
+            StabilityLevel::Unstable { old_name, .. } => FeatureStability::Unstable { old_name },
             StabilityLevel::Stable { since, .. } => FeatureStability::AcceptedSince(match since {
                 StableSince::Version(v) => Symbol::intern(&v.to_string()),
                 StableSince::Current => sym::env_CFG_RELEASE,
-                StableSince::Err => return None,
+                StableSince::Err(_) => return None,
             }),
         };
 
@@ -71,7 +71,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     });
                 }
             }
-            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Unstable, _))) => {
+            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Unstable { .. }, _))) => {
                 self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
@@ -79,7 +79,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     prev_declared: "unstable",
                 });
             }
-            (FeatureStability::Unstable, Some((FeatureStability::AcceptedSince(_), _))) => {
+            (FeatureStability::Unstable { .. }, Some((FeatureStability::AcceptedSince(_), _))) => {
                 self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
@@ -88,7 +88,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                 });
             }
             // duplicate `unstable` feature is ok.
-            (FeatureStability::Unstable, Some((FeatureStability::Unstable, _))) => {}
+            (FeatureStability::Unstable { .. }, Some((FeatureStability::Unstable { .. }, _))) => {}
         }
     }
 }

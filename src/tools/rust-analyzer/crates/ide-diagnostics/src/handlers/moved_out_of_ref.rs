@@ -4,21 +4,39 @@ use hir::HirDisplay;
 // Diagnostic: moved-out-of-ref
 //
 // This diagnostic is triggered on moving non copy things out of references.
-pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOfRef) -> Diagnostic {
+pub(crate) fn moved_out_of_ref(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::MovedOutOfRef<'_>,
+) -> Diagnostic {
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0507"),
         format!("cannot move `{}` out of reference", d.ty.display(ctx.sema.db, ctx.display_target)),
         d.span,
     )
-    .experimental() // spans are broken, and I'm not sure how precise we can detect copy types
+    // spans are broken, and I'm not sure how precise we can detect copy types
 }
 
 #[cfg(test)]
 mod tests {
     use crate::tests::check_diagnostics;
 
-    // FIXME: spans are broken
+    #[test]
+    fn operand_field_span_respected() {
+        check_diagnostics(
+            r#"
+struct NotCopy;
+struct S {
+    field: NotCopy,
+}
+
+fn f(s: &S) -> S {
+    S { field: s.field }
+             //^^^^^^^ error: cannot move `NotCopy` out of reference
+}
+            "#,
+        );
+    }
 
     #[test]
     fn move_by_explicit_deref() {
@@ -85,7 +103,7 @@ fn consume<T>(_: X<T>) {
 fn main() {
     let a = &X(Y);
     consume(*a);
-  //^^^^^^^^^^^ error: cannot move `X<Y>` out of reference
+          //^^ error: cannot move `X<Y>` out of reference
     let a = &X(5);
     consume(*a);
 }
@@ -200,6 +218,43 @@ fn test() {
     let _x = (&(&mut (),)).0 as *const ();
 }
             "#,
+        )
+    }
+
+    #[test]
+    fn regression_18201() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+struct NotCopy;
+struct S(NotCopy);
+impl S {
+    fn f(&mut self) {
+        || {
+            if let ref mut _cb = self.0 {
+            }
+        };
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn regression_20155() {
+        check_diagnostics(
+            r#"
+//- minicore: copy, option
+struct Box(i32);
+fn test() {
+    let b = Some(Box(0));
+    || {
+        if let Some(b) = b {
+            let _move = b;
+        }
+    };
+}
+"#,
         )
     }
 }

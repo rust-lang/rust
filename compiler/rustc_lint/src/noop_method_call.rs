@@ -84,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             return;
         };
 
-        let Some(trait_id) = cx.tcx.trait_of_item(did) else { return };
+        let Some(trait_id) = cx.tcx.trait_of_assoc(did) else { return };
 
         let Some(trait_) = cx.tcx.get_diagnostic_name(trait_id) else { return };
 

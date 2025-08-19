@@ -49,7 +49,6 @@ impl HasStaticRootDefId for DummyMachine {
 
 impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
     interpret::compile_time_machine!(<'tcx>);
-    type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
 
     // We want to just eval random consts in the program, so `eval_mir_const` can fail.
@@ -90,7 +89,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _instance: ty::Instance<'tcx>,
         _abi: &FnAbi<'tcx, Ty<'tcx>>,
         _args: &[interpret::FnArg<'tcx, Self::Provenance>],
-        _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<(&'tcx Body<'tcx>, ty::Instance<'tcx>)>> {
@@ -108,7 +107,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[interpret::OpTy<'tcx, Self::Provenance>],
-        _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
+        _destination: &interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,
     ) -> interpret::InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
@@ -196,5 +195,10 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         _ecx: &'a mut InterpCx<'tcx, Self>,
     ) -> &'a mut Vec<interpret::Frame<'tcx, Self::Provenance, Self::FrameExtra>> {
         unimplemented!()
+    }
+
+    fn get_default_alloc_params(
+        &self,
+    ) -> <Self::Bytes as rustc_middle::mir::interpret::AllocBytes>::AllocParams {
     }
 }

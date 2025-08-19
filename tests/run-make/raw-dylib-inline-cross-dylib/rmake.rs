@@ -7,7 +7,7 @@
 
 //@ only-windows
 
-use run_make_support::{cc, diff, is_msvc, llvm_objdump, run, rustc};
+use run_make_support::{cc, diff, is_windows_msvc, llvm_objdump, run, rustc};
 
 fn main() {
     rustc()
@@ -31,7 +31,7 @@ fn main() {
         .assert_stdout_not_contains("inline_library_function")
         // Make sure we do find an import to the functions we expect to be imported.
         .assert_stdout_contains("library_function");
-    if is_msvc() {
+    if is_windows_msvc() {
         cc().arg("-c").out_exe("extern_1").input("extern_1.c").run();
         cc().arg("-c").out_exe("extern_2").input("extern_2.c").run();
         cc().input("extern_1.obj")

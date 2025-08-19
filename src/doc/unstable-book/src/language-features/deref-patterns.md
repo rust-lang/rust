@@ -60,20 +60,30 @@ Like [`box_patterns`], deref patterns may move out of boxes:
 # #![feature(deref_patterns)]
 # #![allow(incomplete_features)]
 struct NoCopy;
-// Match exhaustiveness analysis is not yet implemented.
-let deref!(x) = Box::new(NoCopy) else { unreachable!() };
+let deref!(x) = Box::new(NoCopy);
 drop::<NoCopy>(x);
 ```
 
-Additionally, when `deref_patterns` is enabled, string literal patterns may be written where `str`
-is expected. Likewise, byte string literal patterns may be written where `[u8]` or `[u8; _]` is
-expected. This lets them be used in `deref!(_)` patterns:
+Additionally, `deref_patterns` implements changes to string and byte string literal patterns,
+allowing then to be used in deref patterns:
 
 ```rust
 # #![feature(deref_patterns)]
 # #![allow(incomplete_features)]
-match ("test".to_string(), b"test".to_vec()) {
-    (deref!("test"), deref!(b"test")) => {}
+match ("test".to_string(), Box::from("test"), b"test".to_vec()) {
+    ("test", "test", b"test") => {}
+    _ => panic!(),
+}
+
+// This works through multiple layers of reference and smart pointer:
+match (&Box::new(&"test".to_string()), &&&"test") {
+    ("test", "test") => {}
+    _ => panic!(),
+}
+
+// `deref!("...")` syntax may also be used:
+match "test".to_string() {
+    deref!("test") => {}
     _ => panic!(),
 }
 
@@ -82,9 +92,15 @@ match *"test" {
     "test" => {}
     _ => panic!(),
 }
+match *b"test" {
+    b"test" => {}
+    _ => panic!(),
+}
+match *(b"test" as &[u8]) {
+    b"test" => {}
+    _ => panic!(),
+}
 ```
-
-Implicit deref pattern syntax is not yet supported for string or byte string literals.
 
 [`box_patterns`]: ./box-patterns.md
 [`string_deref_patterns`]: ./string-deref-patterns.md

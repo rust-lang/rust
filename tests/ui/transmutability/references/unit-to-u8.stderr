@@ -2,7 +2,7 @@ error[E0277]: `&Unit` cannot be safely transmuted into `&u8`
   --> $DIR/unit-to-u8.rs:22:52
    |
 LL |     assert::is_maybe_transmutable::<&'static Unit, &'static u8>();
-   |                                                    ^^^^^^^^^^^ the referent size of `&Unit` (0 bytes) is smaller than that of `&u8` (1 bytes)
+   |                                                    ^^^^^^^^^^^ the size of `Unit` (0 bytes) is smaller than that of `u8` (1 bytes)
    |
 note: required by a bound in `is_maybe_transmutable`
   --> $DIR/unit-to-u8.rs:9:14

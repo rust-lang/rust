@@ -4,7 +4,7 @@
 //! in [crate::completions::mod_].
 use expect_test::expect;
 
-use crate::tests::{check_edit, check_with_base_items};
+use crate::tests::{check, check_edit, check_with_base_items};
 
 #[test]
 fn target_type_or_trait_in_impl_block() {
@@ -305,6 +305,42 @@ fn bar() {
             sn macro_rules
             sn pd
             sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn expression_in_item_macro() {
+    check(
+        r#"
+fn foo() -> u8 { 0 }
+
+macro_rules! foo {
+    ($expr:expr) => {
+        const BAR: u8 = $expr;
+    };
+}
+
+foo!(f$0);
+    "#,
+        expect![[r#"
+            ct BAR                   u8
+            fn foo()         fn() -> u8
+            ma foo!(…) macro_rules! foo
+            bt u32                  u32
+            kw const
+            kw crate::
+            kw false
+            kw for
+            kw if
+            kw if let
+            kw loop
+            kw match
+            kw self::
+            kw true
+            kw unsafe
+            kw while
+            kw while let
         "#]],
     );
 }

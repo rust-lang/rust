@@ -1,3 +1,4 @@
+//@ edition: 2015
 //@ run-rustfix
 #![allow(non_snake_case)]
 mod A {

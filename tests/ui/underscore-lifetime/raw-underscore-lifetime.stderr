@@ -1,0 +1,8 @@
+error: `_` cannot be a raw lifetime
+  --> $DIR/raw-underscore-lifetime.rs:6:6
+   |
+LL | fn f<'r#_>(){}
+   |      ^^^^
+
+error: aborting due to 1 previous error
+

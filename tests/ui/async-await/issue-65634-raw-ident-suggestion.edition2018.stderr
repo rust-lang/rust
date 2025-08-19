@@ -1,16 +1,16 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/issue-65634-raw-ident-suggestion.rs:24:13
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:25:13
    |
 LL |     r#fn {}.r#struct();
    |             ^^^^^^^^ multiple `r#struct` found
    |
 note: candidate #1 is defined in an impl of the trait `r#async` for the type `r#fn`
-  --> $DIR/issue-65634-raw-ident-suggestion.rs:7:5
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:8:5
    |
 LL |     fn r#struct(&self) {
    |     ^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `r#await` for the type `r#fn`
-  --> $DIR/issue-65634-raw-ident-suggestion.rs:13:5
+  --> $DIR/issue-65634-raw-ident-suggestion.rs:14:5
    |
 LL |     fn r#struct(&self) {
    |     ^^^^^^^^^^^^^^^^^^

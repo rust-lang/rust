@@ -3,9 +3,11 @@
 //! This module contains the logic to extract doctests and output a JSON containing this
 //! information.
 
+use rustc_span::edition::Edition;
 use serde::Serialize;
 
-use super::{DocTestBuilder, ScrapedDocTest};
+use super::make::DocTestWrapResult;
+use super::{BuildDocTestBuilder, ScrapedDocTest};
 use crate::config::Options as RustdocOptions;
 use crate::html::markdown;
 
@@ -14,7 +16,7 @@ use crate::html::markdown;
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob into the `format_version` root field.
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-const FORMAT_VERSION: u32 = 1;
+const FORMAT_VERSION: u32 = 2;
 
 #[derive(Serialize)]
 pub(crate) struct ExtractedDocTests {
@@ -34,32 +36,75 @@ impl ExtractedDocTests {
         options: &RustdocOptions,
     ) {
         let edition = scraped_test.edition(options);
+        self.add_test_with_edition(scraped_test, opts, edition)
+    }
 
-        let ScrapedDocTest { filename, line, langstr, text, name } = scraped_test;
+    /// This method is used by unit tests to not have to provide a `RustdocOptions`.
+    pub(crate) fn add_test_with_edition(
+        &mut self,
+        scraped_test: ScrapedDocTest,
+        opts: &super::GlobalTestOptions,
+        edition: Edition,
+    ) {
+        let ScrapedDocTest { filename, line, langstr, text, name, global_crate_attrs, .. } =
+            scraped_test;
 
-        let doctest = DocTestBuilder::new(
-            &text,
-            Some(&opts.crate_name),
-            edition,
-            false,
-            None,
-            Some(&langstr),
-        );
-        let (full_test_code, size) = doctest.generate_unique_doctest(
+        let doctest = BuildDocTestBuilder::new(&text)
+            .crate_name(&opts.crate_name)
+            .global_crate_attrs(global_crate_attrs)
+            .edition(edition)
+            .lang_str(&langstr)
+            .build(None);
+        let (wrapped, _size) = doctest.generate_unique_doctest(
             &text,
             langstr.test_harness,
             opts,
             Some(&opts.crate_name),
         );
         self.doctests.push(ExtractedDocTest {
-            file: filename.prefer_remapped_unconditionaly().to_string(),
+            file: filename.prefer_remapped_unconditionally().to_string(),
             line,
             doctest_attributes: langstr.into(),
-            doctest_code: if size != 0 { Some(full_test_code) } else { None },
+            doctest_code: match wrapped {
+                DocTestWrapResult::Valid { crate_level_code, wrapper, code } => Some(DocTest {
+                    crate_level: crate_level_code,
+                    code,
+                    wrapper: wrapper.map(
+                        |super::make::WrapperInfo { before, after, returns_result, .. }| {
+                            WrapperInfo { before, after, returns_result }
+                        },
+                    ),
+                }),
+                DocTestWrapResult::SyntaxError { .. } => None,
+            },
             original_code: text,
             name,
         });
     }
+
+    #[cfg(test)]
+    pub(crate) fn doctests(&self) -> &[ExtractedDocTest] {
+        &self.doctests
+    }
+}
+
+#[derive(Serialize)]
+pub(crate) struct WrapperInfo {
+    before: String,
+    after: String,
+    returns_result: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct DocTest {
+    crate_level: String,
+    code: String,
+    /// This field can be `None` if one of the following conditions is true:
+    ///
+    /// * The doctest's codeblock has the `test_harness` attribute.
+    /// * The doctest has a `main` function.
+    /// * The doctest has the `![no_std]` attribute.
+    pub(crate) wrapper: Option<WrapperInfo>,
 }
 
 #[derive(Serialize)]
@@ -69,7 +114,7 @@ pub(crate) struct ExtractedDocTest {
     doctest_attributes: LangString,
     original_code: String,
     /// `None` if the code syntax is invalid.
-    doctest_code: Option<String>,
+    pub(crate) doctest_code: Option<DocTest>,
     name: String,
 }
 

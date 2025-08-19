@@ -2,6 +2,7 @@
 
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
 

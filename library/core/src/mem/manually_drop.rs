@@ -84,7 +84,7 @@ use crate::ptr;
 /// use std::mem::ManuallyDrop;
 ///
 /// pub struct BadOption<T> {
-///     // Invariant: Has been dropped iff `is_some` is false.
+///     // Invariant: Has been dropped if `is_some` is false.
 ///     value: ManuallyDrop<T>,
 ///     is_some: bool,
 /// }

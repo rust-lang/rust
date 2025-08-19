@@ -111,5 +111,16 @@ LL |   pub fn isolated_comment() {}
    |
    = help: if the empty lines are unintentional, remove them
 
-error: aborting due to 9 previous errors
+error: empty line after outer attribute
+  --> tests/ui/empty_line_after/outer_attribute.rs:121:5
+   |
+LL | /     #[repr(align(536870912))]
+LL | |
+   | |_^
+LL |       enum Aligned {
+   |       ------------ the attribute applies to this enum
+   |
+   = help: if the empty line is unintentional, remove it
+
+error: aborting due to 10 previous errors
 

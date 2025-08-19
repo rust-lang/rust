@@ -16,7 +16,7 @@ fn check(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<Vec<usize>> {
     let arms: Vec<_> =
         patterns.iter().map(|pat| MatchArm { pat, has_guard: false, arm_data: () }).collect();
     let report =
-        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, usize::MAX)
+        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, usize::MAX, false)
             .unwrap();
     report.arm_intersections.into_iter().map(|bitset| bitset.iter().collect()).collect()
 }

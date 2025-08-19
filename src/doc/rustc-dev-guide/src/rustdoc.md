@@ -9,8 +9,6 @@ For more details about how rustdoc works, see the
 
 [Rustdoc internals]: ./rustdoc-internals.md
 
-<!-- toc -->
-
 `rustdoc` uses `rustc` internals (and, of course, the standard library), so you
 will have to build the compiler and `std` once before you can build `rustdoc`.
 
@@ -67,43 +65,29 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 
 ## Code structure
 
-* All paths in this section are relative to `src/librustdoc` in the rust-lang/rust repository.
+All paths in this section are relative to `src/librustdoc/` in the rust-lang/rust repository.
+
 * Most of the HTML printing code is in `html/format.rs` and `html/render/mod.rs`.
-  It's in a bunch of `fmt::Display` implementations and supplementary
-  functions.
-* The types that got `Display` impls above are defined in `clean/mod.rs`, right
-  next to the custom `Clean` trait used to process them out of the rustc HIR.
+  It's in a bunch of functions returning `impl std::fmt::Display`.
+* The data types that get rendered by the functions mentioned above are defined in `clean/types.rs`.
+  The functions responsible for creating them from the `HIR` and the `rustc_middle::ty` IR
+  live in `clean/mod.rs`.
 * The bits specific to using rustdoc as a test harness are in
   `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
 * Frontend CSS and JavaScript are stored in `html/static/`.
+  * Re. JavaScript, type annotations are written using [TypeScript-flavored JSDoc]
+comments and an external `.d.ts` file.
+    This way, the code itself remains plain, valid JavaScript.
+    We only use `tsc` as a linter.
+
+[TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 
 ## Tests
 
-* Tests on search engine and index are located in `tests/rustdoc-js` and `tests/rustdoc-js-std`.
-  The format is specified
-  [in the search guide](rustdoc-internals/search.md#testing-the-search-engine).
-* Tests on the "UI" of rustdoc (the terminal output it produces when run) are in
-  `tests/rustdoc-ui`
-* Tests on the "GUI" of rustdoc (the HTML, JS, and CSS as rendered in a browser)
-  are in `tests/rustdoc-gui`. These use a [NodeJS tool called
-  browser-UI-test](https://github.com/GuillaumeGomez/browser-UI-test/) that uses
-  puppeteer to run tests in a headless browser and check rendering and
-  interactivity.  For information on how to write this form of test,
-  see [`tests/rustdoc-gui/README.md`][rustdoc-gui-readme]
-  as well as [the description of the `.goml` format][goml-script]
-* Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
-  comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
-  use tsc as a linter.
-* The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
-  where they're handled by the test runner of bootstrap and
-  the supplementary script `src/etc/htmldocck.py`.
-  [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
-
-[TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
-[rustdoc-gui-readme]: https://github.com/rust-lang/rust/blob/master/tests/rustdoc-gui/README.md
-[goml-script]: https://github.com/GuillaumeGomez/browser-UI-test/blob/master/goml-script.md
+`rustdoc`'s integration tests are split across several test suites.
+See [Rustdoc tests suites](tests/compiletest.md#rustdoc-test-suites) for more details.
 
 ## Constraints
 
@@ -115,6 +99,28 @@ Supporting local files (`file:///` URLs) brings some surprising restrictions.
 Certain browser features that require secure origins, like `localStorage` and
 Service Workers, don't work reliably. We can still use such features but we
 should make sure pages are still usable without them.
+
+Rustdoc [does not type-check function bodies][platform-specific docs].
+This works by [overriding the built-in queries for typeck][override queries],
+by [silencing name resolution errors], and by [not resolving opaque types].
+This comes with several caveats: in particular, rustdoc *cannot* run any parts of the compiler that
+require type-checking bodies; for example it cannot generate `.rlib` files or run most lints.
+We want to move away from this model eventually, but we need some alternative for
+[the people using it][async-std]; see [various][zulip stop accepting broken code]
+[previous][rustdoc meeting 2024-07-08] [zulip][compiler meeting 2023-01-26] [discussion][notriddle rfc].
+For examples of code that breaks if this hack is removed, see
+[`tests/rustdoc-ui/error-in-impl-trait`].
+
+[platform-specific docs]: https://doc.rust-lang.org/rustdoc/advanced-features.html#interactions-between-platform-specific-docs
+[override queries]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/src/librustdoc/core.rs#L299-L323
+[silencing name resolution errors]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/rustc_resolve/src/late.rs#L4517
+[not resolving opaque types]: https://github.com/rust-lang/rust/blob/52bf0cf795dfecc8b929ebb1c1e2545c3f41d4c9/compiler/rustc_hir_analysis/src/check/check.rs#L188-L194
+[async-std]: https://github.com/rust-lang/rust/issues/75100
+[rustdoc meeting 2024-07-08]: https://rust-lang.zulipchat.com/#narrow/channel/393423-t-rustdoc.2Fmeetings/topic/meeting.202024-07-08/near/449969836
+[compiler meeting 2023-01-26]: https://rust-lang.zulipchat.com/#narrow/channel/238009-t-compiler.2Fmeetings/topic/.5Bweekly.5D.202023-01-26/near/323755789
+[zulip stop accepting broken code]: https://rust-lang.zulipchat.com/#narrow/stream/266220-rustdoc/topic/stop.20accepting.20broken.20code
+[notriddle rfc]: https://rust-lang.zulipchat.com/#narrow/channel/266220-t-rustdoc/topic/Pre-RFC.3A.20stop.20accepting.20broken.20code
+[`tests/rustdoc-ui/error-in-impl-trait`]: https://github.com/rust-lang/rust/tree/163cb4ea3f0ae3bc7921cc259a08a7bf92e73ee6/tests/rustdoc-ui/error-in-impl-trait
 
 ## Multiple runs, same output directory
 

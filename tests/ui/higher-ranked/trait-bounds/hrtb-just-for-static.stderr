@@ -15,7 +15,7 @@ LL | fn give_some<'a>() {
 LL |     want_hrtb::<&'a u32>()
    |     ^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
    |
-note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
   --> $DIR/hrtb-just-for-static.rs:9:15
    |
 LL |     where T : for<'a> Foo<&'a isize>

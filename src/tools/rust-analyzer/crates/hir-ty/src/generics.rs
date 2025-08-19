@@ -60,7 +60,16 @@ impl Generics {
     }
 
     pub(crate) fn where_predicates(&self) -> impl Iterator<Item = &WherePredicate> {
-        self.params.where_predicates()
+        self.params.where_predicates().iter()
+    }
+
+    pub(crate) fn has_no_predicates(&self) -> bool {
+        self.params.has_no_predicates()
+            && self.parent_generics.as_ref().is_none_or(|g| g.params.has_no_predicates())
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.params.is_empty() && self.parent_generics.as_ref().is_none_or(|g| g.params.is_empty())
     }
 
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
@@ -229,7 +238,7 @@ impl Generics {
     }
 
     /// Returns a Substitution that replaces each parameter by itself (i.e. `Ty::Param`).
-    pub(crate) fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
+    pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
             self.iter_id().map(|id| match id {

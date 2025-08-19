@@ -2,17 +2,23 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/E0261.rs:1:12
    |
 LL | fn foo(x: &'a str) { }
-   |       -    ^^ undeclared lifetime
-   |       |
-   |       help: consider introducing lifetime `'a` here: `<'a>`
+   |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn foo<'a>(x: &'a str) { }
+   |       ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/E0261.rs:5:9
    |
-LL | struct Foo {
-   |           - help: consider introducing lifetime `'a` here: `<'a>`
 LL |     x: &'a str,
    |         ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct Foo<'a> {
+   |           ++++
 
 error: aborting due to 2 previous errors
 

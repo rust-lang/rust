@@ -1,7 +1,5 @@
 # Dataflow Analysis
 
-<!-- toc -->
-
 If you work on the MIR, you will frequently come across various flavors of
 [dataflow analysis][wiki]. `rustc` uses dataflow to find uninitialized
 variables, determine what variables are live across a generator `yield`
@@ -148,8 +146,7 @@ whereas this code uses [`ResultsCursor`]:
 
 ```rust,ignore
 let mut results = MyAnalysis::new()
-    .into_engine(tcx, body, def_id)
-    .iterate_to_fixpoint()
+    .iterate_to_fixpoint(tcx, body, None);
     .into_results_cursor(body);
 
 // Inspect the fixpoint state immediately before each `Drop` terminator.

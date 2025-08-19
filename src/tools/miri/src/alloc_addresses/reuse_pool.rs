@@ -4,6 +4,7 @@ use rand::Rng;
 use rustc_abi::{Align, Size};
 
 use crate::concurrency::VClock;
+use crate::helpers::ToUsize as _;
 use crate::{MemoryKind, MiriConfig, ThreadId};
 
 const MAX_POOL_SIZE: usize = 64;
@@ -20,7 +21,7 @@ pub struct ReusePool {
     /// allocations as address-size pairs, the list must be sorted by the size and then the thread ID.
     ///
     /// Each of these maps has at most MAX_POOL_SIZE elements, and since alignment is limited to
-    /// less than 64 different possible value, that bounds the overall size of the pool.
+    /// less than 64 different possible values, that bounds the overall size of the pool.
     ///
     /// We also store the ID and the data-race clock of the thread that donated this pool element,
     /// to ensure synchronization with the thread that picks up this address.
@@ -36,8 +37,17 @@ impl ReusePool {
         }
     }
 
+    /// Call this when we are using up a lot of the address space: if memory reuse is enabled at all,
+    /// this will bump the intra-thread reuse rate to 100% so that we can keep running this program as
+    /// long as possible.
+    pub fn address_space_shortage(&mut self) {
+        if self.address_reuse_rate > 0.0 {
+            self.address_reuse_rate = 1.0;
+        }
+    }
+
     fn subpool(&mut self, align: Align) -> &mut Vec<(u64, Size, ThreadId, VClock)> {
-        let pool_idx: usize = align.bytes().trailing_zeros().try_into().unwrap();
+        let pool_idx: usize = align.bytes().trailing_zeros().to_usize();
         if self.pool.len() <= pool_idx {
             self.pool.resize(pool_idx + 1, Vec::new());
         }
@@ -55,9 +65,7 @@ impl ReusePool {
         clock: impl FnOnce() -> VClock,
     ) {
         // Let's see if we even want to remember this address.
-        // We don't remember stack addresses: there's a lot of them (so the perf impact is big),
-        // and we only want to reuse stack slots within the same thread or else we'll add a lot of
-        // undesired synchronization.
+        // We don't remember stack addresses since there's so many of them (so the perf impact is big).
         if kind == MemoryKind::Stack || !rng.random_bool(self.address_reuse_rate) {
             return;
         }
@@ -121,7 +129,7 @@ impl ReusePool {
         let idx = rng.random_range(begin..end);
         // Remove it from the pool and return.
         let (chosen_addr, chosen_size, chosen_thread, clock) = subpool.remove(idx);
-        debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);
+        debug_assert!(chosen_size >= size && chosen_addr.is_multiple_of(align.bytes()));
         debug_assert!(cross_thread_reuse || chosen_thread == thread);
         // No synchronization needed if we reused from the current thread.
         Some((chosen_addr, if chosen_thread == thread { None } else { Some(clock) }))

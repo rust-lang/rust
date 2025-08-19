@@ -3,7 +3,9 @@ use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, Toke
 use rustc_ast_pretty::pprust::token_to_string;
 use rustc_errors::Diag;
 
-use super::diagnostics::{report_suspicious_mismatch_block, same_indentation_level};
+use super::diagnostics::{
+    report_missing_open_delim, report_suspicious_mismatch_block, same_indentation_level,
+};
 use super::{Lexer, UnmatchedDelim};
 
 impl<'psess, 'src> Lexer<'psess, 'src> {
@@ -47,45 +49,6 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 buf.push(TokenTree::Token(this_tok, this_spacing));
             }
         }
-    }
-
-    fn eof_err(&mut self) -> Diag<'psess> {
-        let msg = "this file contains an unclosed delimiter";
-        let mut err = self.dcx().struct_span_err(self.token.span, msg);
-
-        let unclosed_delimiter_show_limit = 5;
-        let len = usize::min(unclosed_delimiter_show_limit, self.diag_info.open_delimiters.len());
-        for &(_, span) in &self.diag_info.open_delimiters[..len] {
-            err.span_label(span, "unclosed delimiter");
-            self.diag_info.unmatched_delims.push(UnmatchedDelim {
-                found_delim: None,
-                found_span: self.token.span,
-                unclosed_span: Some(span),
-                candidate_span: None,
-            });
-        }
-
-        if let Some((_, span)) = self.diag_info.open_delimiters.get(unclosed_delimiter_show_limit)
-            && self.diag_info.open_delimiters.len() >= unclosed_delimiter_show_limit + 2
-        {
-            err.span_label(
-                *span,
-                format!(
-                    "another {} unclosed delimiters begin from here",
-                    self.diag_info.open_delimiters.len() - unclosed_delimiter_show_limit
-                ),
-            );
-        }
-
-        if let Some((delim, _)) = self.diag_info.open_delimiters.last() {
-            report_suspicious_mismatch_block(
-                &mut err,
-                &self.diag_info,
-                self.psess.source_map(),
-                *delim,
-            )
-        }
-        err
     }
 
     fn lex_token_tree_open_delim(
@@ -204,13 +167,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             } else if let Some(glued) = self.token.glue(&next_tok) {
                 self.token = glued;
             } else {
-                let this_spacing = if next_tok.is_punct() {
-                    Spacing::Joint
-                } else if next_tok == token::Eof {
-                    Spacing::Alone
-                } else {
-                    Spacing::JointHidden
-                };
+                let this_spacing = self.calculate_spacing(&next_tok);
                 break (this_spacing, next_tok);
             }
         };
@@ -221,21 +178,62 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     // Cut-down version of `bump` used when the token kind is known in advance.
     fn bump_minimal(&mut self) -> Spacing {
         let (next_tok, is_next_tok_preceded_by_whitespace) = self.next_token_from_cursor();
-
         let this_spacing = if is_next_tok_preceded_by_whitespace {
             Spacing::Alone
         } else {
-            if next_tok.is_punct() {
-                Spacing::Joint
-            } else if next_tok == token::Eof {
-                Spacing::Alone
-            } else {
-                Spacing::JointHidden
-            }
+            self.calculate_spacing(&next_tok)
         };
-
         self.token = next_tok;
         this_spacing
+    }
+
+    fn calculate_spacing(&self, next_tok: &Token) -> Spacing {
+        if next_tok.is_punct() {
+            Spacing::Joint
+        } else if *next_tok == token::Eof {
+            Spacing::Alone
+        } else {
+            Spacing::JointHidden
+        }
+    }
+
+    fn eof_err(&mut self) -> Diag<'psess> {
+        const UNCLOSED_DELIMITER_SHOW_LIMIT: usize = 5;
+        let msg = "this file contains an unclosed delimiter";
+        let mut err = self.dcx().struct_span_err(self.token.span, msg);
+
+        let len = usize::min(UNCLOSED_DELIMITER_SHOW_LIMIT, self.diag_info.open_delimiters.len());
+        for &(_, span) in &self.diag_info.open_delimiters[..len] {
+            err.span_label(span, "unclosed delimiter");
+            self.diag_info.unmatched_delims.push(UnmatchedDelim {
+                found_delim: None,
+                found_span: self.token.span,
+                unclosed_span: Some(span),
+                candidate_span: None,
+            });
+        }
+
+        if let Some((_, span)) = self.diag_info.open_delimiters.get(UNCLOSED_DELIMITER_SHOW_LIMIT)
+            && self.diag_info.open_delimiters.len() >= UNCLOSED_DELIMITER_SHOW_LIMIT + 2
+        {
+            err.span_label(
+                *span,
+                format!(
+                    "another {} unclosed delimiters begin from here",
+                    self.diag_info.open_delimiters.len() - UNCLOSED_DELIMITER_SHOW_LIMIT
+                ),
+            );
+        }
+
+        if let Some((delim, _)) = self.diag_info.open_delimiters.last() {
+            report_suspicious_mismatch_block(
+                &mut err,
+                &self.diag_info,
+                self.psess.source_map(),
+                *delim,
+            )
+        }
+        err
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> Diag<'psess> {
@@ -244,7 +242,16 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let msg = format!("unexpected closing delimiter: `{token_str}`");
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
-        report_suspicious_mismatch_block(&mut err, &self.diag_info, self.psess.source_map(), delim);
+        // if there is no missing open delim, report suspicious mismatch block
+        if !report_missing_open_delim(&mut err, &mut self.diag_info.unmatched_delims) {
+            report_suspicious_mismatch_block(
+                &mut err,
+                &self.diag_info,
+                self.psess.source_map(),
+                delim,
+            );
+        }
+
         err.span_label(self.token.span, "unexpected closing delimiter");
         err
     }

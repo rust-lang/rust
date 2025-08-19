@@ -4,12 +4,12 @@
 
 #![warn(unused_attributes)]
 #[no_mangle]
-//~^ WARN `#[unsafe(no_mangle)]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
+//~^ WARN `#[no_mangle]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
 #[export_name = "foo"]
 pub fn bar() {}
 
 #[unsafe(no_mangle)]
-//~^ WARN `#[unsafe(no_mangle)]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
+//~^ WARN `#[no_mangle]` attribute may not be used in combination with `#[export_name]` [unused_attributes]
 #[export_name = "baz"]
 pub fn bak() {}
 

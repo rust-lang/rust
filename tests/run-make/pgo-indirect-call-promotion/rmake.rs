@@ -14,11 +14,17 @@ use run_make_support::{llvm_filecheck, llvm_profdata, rfs, run, rustc};
 
 fn main() {
     // We don't compile `opaque` with either optimizations or instrumentation.
-    rustc().input("opaque.rs").run();
+    rustc().input("opaque.rs").codegen_source_order().run();
     // Compile the test program with instrumentation
     rfs::create_dir("prof_data_dir");
-    rustc().input("interesting.rs").profile_generate("prof_data_dir").opt().codegen_units(1).run();
-    rustc().input("main.rs").profile_generate("prof_data_dir").opt().run();
+    rustc()
+        .input("interesting.rs")
+        .profile_generate("prof_data_dir")
+        .opt()
+        .codegen_units(1)
+        .codegen_source_order()
+        .run();
+    rustc().input("main.rs").profile_generate("prof_data_dir").opt().codegen_source_order().run();
     // The argument below generates to the expected branch weights
     run("main");
     llvm_profdata().merge().output("prof_data_dir/merged.profdata").input("prof_data_dir").run();
@@ -28,6 +34,7 @@ fn main() {
         .opt()
         .codegen_units(1)
         .emit("llvm-ir")
+        .codegen_source_order()
         .run();
     llvm_filecheck()
         .patterns("filecheck-patterns.txt")

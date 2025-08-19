@@ -3,8 +3,8 @@
 | User Type Annotations
 | 0: user_ty: Canonical { value: Ty(*mut Test), max_universe: U0, variables: [] }, span: $DIR/receiver_ptr_mutability.rs:15:14: 15:23, inferred_ty: *mut Test
 | 1: user_ty: Canonical { value: Ty(*mut Test), max_universe: U0, variables: [] }, span: $DIR/receiver_ptr_mutability.rs:15:14: 15:23, inferred_ty: *mut Test
-| 2: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/receiver_ptr_mutability.rs:19:18: 19:31, inferred_ty: &&&&*mut Test
-| 3: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }, CanonicalVarInfo { kind: Region(U0) }] }, span: $DIR/receiver_ptr_mutability.rs:19:18: 19:31, inferred_ty: &&&&*mut Test
+| 2: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [Region(U0), Region(U0), Region(U0), Region(U0)] }, span: $DIR/receiver_ptr_mutability.rs:19:18: 19:31, inferred_ty: &&&&*mut Test
+| 3: user_ty: Canonical { value: Ty(&&&&*mut Test), max_universe: U0, variables: [Region(U0), Region(U0), Region(U0), Region(U0)] }, span: $DIR/receiver_ptr_mutability.rs:19:18: 19:31, inferred_ty: &&&&*mut Test
 |
 fn main() -> () {
     let mut _0: ();

@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             endian: Endian::Little,
-            c_int_width: "32".into(),
+            c_int_width: 32,
             families: cvs!["unix"],
             os: "espidf".into(),
             env: "newlib".into(),

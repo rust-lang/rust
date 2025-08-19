@@ -281,23 +281,15 @@ fn on_test_event(
     Ok(())
 }
 
-/// A simple console test runner.
-/// Runs provided tests reporting process and results to the stdout.
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
+pub(crate) fn get_formatter(opts: &TestOpts, max_name_len: usize) -> Box<dyn OutputFormatter> {
     let output = match term::stdout() {
         None => OutputLocation::Raw(io::stdout()),
         Some(t) => OutputLocation::Pretty(t),
     };
 
-    let max_name_len = tests
-        .iter()
-        .max_by_key(|t| len_if_padded(t))
-        .map(|t| t.desc.name.as_slice().len())
-        .unwrap_or(0);
-
     let is_multithreaded = opts.test_threads.unwrap_or_else(get_concurrency) > 1;
 
-    let mut out: Box<dyn OutputFormatter> = match opts.format {
+    match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
             output,
             opts.use_color(),
@@ -310,7 +302,19 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
         OutputFormat::Json => Box::new(JsonFormatter::new(output)),
         OutputFormat::Junit => Box::new(JunitFormatter::new(output)),
-    };
+    }
+}
+
+/// A simple console test runner.
+/// Runs provided tests reporting process and results to the stdout.
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
+    let max_name_len = tests
+        .iter()
+        .max_by_key(|t| len_if_padded(t))
+        .map(|t| t.desc.name.as_slice().len())
+        .unwrap_or(0);
+
+    let mut out = get_formatter(opts, max_name_len);
     let mut st = ConsoleTestState::new(opts)?;
 
     // Prevent the usage of `Instant` in some cases:

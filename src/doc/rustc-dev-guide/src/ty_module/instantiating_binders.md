@@ -77,7 +77,7 @@ This end result is incorrect as we had two separate binders introducing their ow
 
 While in theory we could make this work it would be quite involved and more complex than the current setup, we would have to:
 - "rewrite" bound variables to have a higher `DebruijnIndex` whenever instantiating a `Binder`/`EarlyBinder` with a `Bound` ty/const/region 
-- When inferring an inference variable to a bound var, if that bound var is from a binder enterred after creating the infer var, we would have to lower the `DebruijnIndex` of the var.
+- When inferring an inference variable to a bound var, if that bound var is from a binder entered after creating the infer var, we would have to lower the `DebruijnIndex` of the var.
 - Separately track what binder an inference variable was created inside of, also what the innermost binder it can name parameters from (currently we only have to track the latter)
 - When resolving inference variables rewrite any bound variables according to the current binder depth of the infcx
 - Maybe more (while writing this list items kept getting added so it seems naive to think this is exhaustive)
@@ -105,7 +105,8 @@ the `RePlaceholder` for the `'b` parameter is in a higher universe to track the 
 
 ## Instantiating with `ReLateParam`
 
-As discussed in a previous chapter, `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`. `ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters of functions/closures while inside of them. Its actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
+As discussed in [the chapter about representing types][representing-types], `RegionKind` has two variants for representing generic parameters, `ReLateParam` and `ReEarlyParam`.
+`ReLateParam` is conceptually a `Placeholder` that is always in the root universe (`U0`). It is used when instantiating late bound parameters of functions/closures while inside of them. Its actual representation is relatively different from both `ReEarlyParam` and `RePlaceholder`:
 - A `DefId` for the item that introduced the late bound generic parameter
 - A [`BoundRegionKind`] which either specifies the `DefId` of the generic parameter and its name (via a `Symbol`), or that this placeholder is representing the anonymous lifetime of a `Fn`/`FnMut` closure's self borrow. There is also a variant for `BrAnon` but this is not used for `ReLateParam`.
 
@@ -133,6 +134,7 @@ Generally whenever we have a `Binder` for late bound parameters on a function/cl
 As a concrete example, accessing the signature of a function we are type checking will be represented as `EarlyBinder<Binder<FnSig>>`. As we are already "inside" of these binders, we would call `instantiate_identity` followed by `liberate_late_bound_regions`.
 
 [`liberate_late_bound_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.liberate_late_bound_regions
+[representing-types]: param_ty_const_regions.md
 [`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html
 [`enter_forall`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/struct.InferCtxt.html#method.enter_forall
 [ch_placeholders_universes]: ../borrow_check/region_inference/placeholders_and_universes.md

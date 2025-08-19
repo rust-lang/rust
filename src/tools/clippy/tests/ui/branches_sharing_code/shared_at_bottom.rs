@@ -239,3 +239,64 @@ fn fp_if_let_issue7054() {
 }
 
 fn main() {}
+
+mod issue14873 {
+    fn foo() -> i32 {
+        todo!()
+    }
+
+    macro_rules! qux {
+        ($a:ident, $b:ident, $condition:expr) => {
+            if $condition {
+                "."
+            } else {
+                ""
+            };
+            $a = foo();
+            $b = foo();
+        };
+    }
+
+    fn share_on_bottom() {
+        let mut a = 0;
+        let mut b = 0;
+        if false {
+            qux!(a, b, a == b);
+        } else {
+            qux!(a, b, a != b);
+        };
+
+        if false {
+            qux!(a, b, a == b);
+            let y = 1;
+        } else {
+            qux!(a, b, a != b);
+            let y = 1;
+            //~^ branches_sharing_code
+        }
+    }
+}
+
+fn issue15004() {
+    let a = 12u32;
+    let b = 13u32;
+    let mut c = 8u32;
+
+    let mut result = if b > a {
+        c += 1;
+        0
+    } else {
+        c += 2;
+        0
+        //~^ branches_sharing_code
+    };
+
+    result = if b > a {
+        c += 1;
+        1
+    } else {
+        c += 2;
+        1
+        //~^ branches_sharing_code
+    };
+}

@@ -1,7 +1,6 @@
-//@revisions: stack tree tree_uniq
+//@revisions: stack tree
 //@compile-flags: -Zmiri-strict-provenance
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@[tree_uniq]compile-flags: -Zmiri-tree-borrows -Zmiri-unique-is-unique
 #![feature(iter_advance_by, iter_next_chunk)]
 
 // Gather all references from a mutable iterator and make sure Miri notices if

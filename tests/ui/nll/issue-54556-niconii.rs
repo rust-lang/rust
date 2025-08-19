@@ -18,7 +18,7 @@ impl Drop for Mutex { fn drop(&mut self) { println!("Mutex::drop"); } }
 impl<'a> Drop for MutexGuard<'a> { fn drop(&mut self) { println!("MutexGuard::drop");  } }
 
 impl Mutex {
-    fn lock(&self) -> Result<MutexGuard, ()> { Ok(MutexGuard(self)) }
+    fn lock(&self) -> Result<MutexGuard<'_>, ()> { Ok(MutexGuard(self)) }
 }
 
 fn main() {

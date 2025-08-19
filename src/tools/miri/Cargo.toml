@@ -6,7 +6,7 @@ name = "miri"
 repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
 default-run = "miri"
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = true     # we have unit tests
@@ -27,6 +27,7 @@ chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "6"
 bitflags = "2.6"
+serde_json = { version = "1.0", optional = true }
 
 # Copied from `compiler/rustc/Cargo.toml`.
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
@@ -37,19 +38,23 @@ features = ['unprefixed_malloc_on_supported_platforms']
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-libffi = "4.0.0"
-libloading = "0.8"
+# native-lib dependencies
+libffi = { version = "4.0.0", optional = true }
+libloading = { version = "0.8", optional = true }
+serde = { version = "1.0.219", features = ["derive"], optional = true }
 
-[target.'cfg(target_family = "windows")'.dependencies]
-windows-sys = { version = "0.59", features = [
-    "Win32_Foundation",
-    "Win32_System_IO",
-    "Win32_Storage_FileSystem",
-] }
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.30.1", features = ["mman", "ptrace", "signal"], optional = true }
+ipc-channel = { version = "0.20.0", optional = true }
+capstone = { version = "0.13", optional = true }
+
+# FIXME(genmc,macos): Add `target_os = "macos"` once https://github.com/dtolnay/cxx/issues/1535 is fixed.
+[target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
+genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
 [dev-dependencies]
-ui_test = "0.29.1"
-colored = "2"
+ui_test = "0.30.2"
+colored = "3"
 rustc_version = "0.4"
 regex = "1.5.5"
 tempfile = "3"
@@ -64,13 +69,15 @@ name = "ui"
 harness = false
 
 [features]
-default = ["stack-cache"]
+default = ["stack-cache", "native-lib"]
+genmc = ["dep:genmc-sys"] # this enables a GPL dependency!
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
+tracing = ["serde_json"]
+native-lib = ["dep:libffi", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = ['cfg(bootstrap)']
 
 # Be aware that this file is inside a workspace when used via the
 # submodule in the rustc repo. That means there are many cargo features

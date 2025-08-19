@@ -66,9 +66,11 @@ fn t1() {}
 #[non_exhaustive] //~ ERROR unused attribute
 pub struct X;
 
+trait Trait {}
+
 #[automatically_derived]
 #[automatically_derived] //~ ERROR unused attribute
-impl X {}
+impl Trait for X {}
 
 #[inline(always)]
 #[inline(never)] //~ ERROR unused attribute
@@ -101,5 +103,11 @@ pub fn no_mangle_test() {}
 #[used]
 #[used] //~ ERROR unused attribute
 static FOO: u32 = 0;
+
+#[link_section = ".text"]
+//~^ ERROR unused attribute
+//~| WARN this was previously accepted
+#[link_section = ".bss"]
+pub extern "C" fn example() {}
 
 fn main() {}

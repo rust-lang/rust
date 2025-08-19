@@ -5,8 +5,9 @@ use std::ops::Bound;
 use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
@@ -201,9 +202,14 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     /// Handle closures/coroutines/inline-consts, which is unsafecked with their parent body.
     fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
-            // Runs all other queries that depend on THIR.
+            // Run all other queries that depend on THIR.
             self.tcx.ensure_done().mir_built(def);
-            let inner_thir = &inner_thir.steal();
+            let inner_thir = if self.tcx.sess.opts.unstable_opts.no_steal_thir {
+                &inner_thir.borrow()
+            } else {
+                // We don't have other use for the THIR. Steal it to reduce memory usage.
+                &inner_thir.steal()
+            };
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
             let mut inner_visitor = UnsafetyVisitor {
@@ -460,10 +466,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Break { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
             | ExprKind::Let { .. }
             | ExprKind::Match { .. }
             | ExprKind::Box { .. }
@@ -1148,15 +1156,21 @@ impl UnsafeOpKind {
 
 pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     // Closures and inline consts are handled by their owner, if it has a body
+    assert!(!tcx.is_typeck_child(def.to_def_id()));
     // Also, don't safety check custom MIR
-    if tcx.is_typeck_child(def.to_def_id()) || tcx.has_attr(def, sym::custom_mir) {
+    if find_attr!(tcx.get_all_attrs(def), AttributeKind::CustomMir(..) => ()).is_some() {
         return;
     }
 
     let Ok((thir, expr)) = tcx.thir_body(def) else { return };
     // Runs all other queries that depend on THIR.
     tcx.ensure_done().mir_built(def);
-    let thir = &thir.steal();
+    let thir = if tcx.sess.opts.unstable_opts.no_steal_thir {
+        &thir.borrow()
+    } else {
+        // We don't have other use for the THIR. Steal it to reduce memory usage.
+        &thir.steal()
+    };
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir_fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {

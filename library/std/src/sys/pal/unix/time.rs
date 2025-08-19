@@ -38,15 +38,18 @@ impl SystemTime {
         SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
     }
 
-    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.t.sub_timespec(&other.t)
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_add_duration(other)? })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
         Some(SystemTime { t: self.t.checked_sub_duration(other)? })
     }
 }
@@ -133,8 +136,15 @@ impl Timespec {
         Timespec::new(t.tv_sec as i64, t.tv_nsec as i64).unwrap()
     }
 
-    pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
-        if self >= other {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+        // FIXME: const PartialOrd
+        let mut cmp = self.tv_sec - other.tv_sec;
+        if cmp == 0 {
+            cmp = self.tv_nsec.as_inner() as i64 - other.tv_nsec.as_inner() as i64;
+        }
+
+        if cmp >= 0 {
             // NOTE(eddyb) two aspects of this `if`-`else` are required for LLVM
             // to optimize it into a branchless form (see also #75545):
             //
@@ -169,7 +179,8 @@ impl Timespec {
         }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_add_unsigned(other.as_secs())?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
@@ -179,10 +190,11 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
+        Some(unsafe { Timespec::new_unchecked(secs, nsec as i64) })
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
+    #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
+    pub const fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = self.tv_sec.checked_sub_unsigned(other.as_secs())?;
 
         // Similar to above, nanos can't overflow.
@@ -191,7 +203,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(unsafe { Timespec::new_unchecked(secs, nsec.into()) })
+        Some(unsafe { Timespec::new_unchecked(secs, nsec as i64) })
     }
 
     #[allow(dead_code)]
@@ -261,6 +273,10 @@ pub struct Instant {
 }
 
 impl Instant {
+    #[cfg(target_vendor = "apple")]
+    pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
+    #[cfg(not(target_vendor = "apple"))]
+    pub(crate) const CLOCK_ID: libc::clockid_t = libc::CLOCK_MONOTONIC;
     pub fn now() -> Instant {
         // https://www.manpagez.com/man/3/clock_gettime/
         //
@@ -273,11 +289,7 @@ impl Instant {
         //
         // Instant on macos was historically implemented using mach_absolute_time;
         // we preserve this value domain out of an abundance of caution.
-        #[cfg(target_vendor = "apple")]
-        const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
-        #[cfg(not(target_vendor = "apple"))]
-        const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
-        Instant { t: Timespec::now(clock_id) }
+        Instant { t: Timespec::now(Self::CLOCK_ID) }
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -290,6 +302,14 @@ impl Instant {
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant { t: self.t.checked_sub_duration(other)? })
+    }
+
+    #[cfg_attr(
+        not(target_os = "linux"),
+        allow(unused, reason = "needed by the `sleep_until` on some unix platforms")
+    )]
+    pub(crate) fn into_timespec(self) -> Timespec {
+        self.t
     }
 }
 

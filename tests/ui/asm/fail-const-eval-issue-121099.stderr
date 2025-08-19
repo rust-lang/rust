@@ -1,14 +1,14 @@
-error[E0080]: evaluation of `{global_asm#0}::{constant#0}` failed
+error[E0080]: attempt to shift left by `500_i32`, which would overflow
   --> $DIR/fail-const-eval-issue-121099.rs:8:31
    |
 LL | global_asm!("/* {} */", const 1 << 500);
-   |                               ^^^^^^^^ attempt to shift left by `500_i32`, which would overflow
+   |                               ^^^^^^^^ evaluation of `{global_asm#0}::{constant#0}` failed here
 
-error[E0080]: evaluation of `{global_asm#1}::{constant#0}` failed
+error[E0080]: attempt to divide `1_i32` by zero
   --> $DIR/fail-const-eval-issue-121099.rs:10:31
    |
 LL | global_asm!("/* {} */", const 1 / 0);
-   |                               ^^^^^ attempt to divide `1_i32` by zero
+   |                               ^^^^^ evaluation of `{global_asm#1}::{constant#0}` failed here
 
 error: aborting due to 2 previous errors
 

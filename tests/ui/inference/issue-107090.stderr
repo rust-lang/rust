@@ -33,15 +33,23 @@ error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/issue-107090.rs:11:47
    |
 LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |      -                                        ^^ undeclared lifetime
-   |      |
-   |      help: consider introducing lifetime `'b` here: `'b,`
+   |                                               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | impl<'b, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |      +++
 
 error[E0261]: use of undeclared lifetime name `'out`
   --> $DIR/issue-107090.rs:11:67
    |
 LL | impl<'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
-   |      - help: consider introducing lifetime `'out` here: `'out,`   ^^^^ undeclared lifetime
+   |                                                                   ^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'out` here
+   |
+LL | impl<'out, 'long: 'short, 'short, T> Convert<'long, 'b> for Foo<'short, 'out, T> {
+   |      +++++
 
 error[E0261]: use of undeclared lifetime name `'out`
   --> $DIR/issue-107090.rs:14:49
@@ -62,9 +70,12 @@ error[E0261]: use of undeclared lifetime name `'short`
   --> $DIR/issue-107090.rs:20:68
    |
 LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
-   |           -                                                        ^^^^^^ undeclared lifetime
-   |           |
-   |           help: consider introducing lifetime `'short` here: `'short,`
+   |                                                                    ^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'short` here
+   |
+LL | fn badboi<'short, 'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ Foo<'short, 'out, T>) -> &'out T {
+   |           +++++++
 
 error: aborting due to 6 previous errors
 

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::is_normalizable;
-use clippy_utils::{expr_or_init, match_def_path, path_def_id, paths, std_or_core};
+use clippy_utils::{expr_or_init, is_path_diagnostic_item, std_or_core, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, GenericArg, Mutability, QPath, Ty, TyKind};
@@ -47,15 +46,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: 
 fn is_expr_const_aligned(cx: &LateContext<'_>, expr: &Expr<'_>, to: &Ty<'_>) -> bool {
     match expr.kind {
         ExprKind::Call(fun, _) => is_align_of_call(cx, fun, to),
-        ExprKind::Lit(lit) => is_literal_aligned(cx, lit, to),
+        ExprKind::Lit(lit) => is_literal_aligned(cx, &lit, to),
         _ => false,
     }
 }
 
 fn is_align_of_call(cx: &LateContext<'_>, fun: &Expr<'_>, to: &Ty<'_>) -> bool {
     if let ExprKind::Path(QPath::Resolved(_, path)) = fun.kind
-        && let Some(fun_id) = path_def_id(cx, fun)
-        && match_def_path(cx, fun_id, &paths::ALIGN_OF)
+        && is_path_diagnostic_item(cx, fun, sym::mem_align_of)
         && let Some(args) = path.segments.last().and_then(|seg| seg.args)
         && let [GenericArg::Type(generic_ty)] = args.args
     {
@@ -71,12 +69,10 @@ fn is_literal_aligned(cx: &LateContext<'_>, lit: &Spanned<LitKind>, to: &Ty<'_>)
         return false;
     }
     let to_mid_ty = cx.typeck_results().node_type(to.hir_id);
-    is_normalizable(cx, cx.param_env, to_mid_ty)
-        && cx
-            .tcx
-            .layout_of(cx.typing_env().as_query_input(to_mid_ty))
-            .is_ok_and(|layout| {
-                let align = u128::from(layout.align.abi.bytes());
-                u128::from(val) <= align
-            })
+    cx.tcx
+        .layout_of(cx.typing_env().as_query_input(to_mid_ty))
+        .is_ok_and(|layout| {
+            let align = u128::from(layout.align.abi.bytes());
+            u128::from(val) <= align
+        })
 }

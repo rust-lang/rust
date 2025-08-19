@@ -43,7 +43,7 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = table.db.enum_variants(id);
+                let enum_data = id.enum_variants(table.db);
                 if enum_data.is_payload_free(table.db) { Some(Self::Int(Int::CEnum)) } else { None }
             }
             TyKind::Raw(m, ty) => Some(Self::Ptr(ty.clone(), *m)),
@@ -233,26 +233,25 @@ impl CastCheck {
         F: FnMut(ExprId, Vec<Adjustment>),
     {
         // Mutability order is opposite to rustc. `Mut < Not`
-        if m_expr <= m_cast {
-            if let TyKind::Array(ety, _) = t_expr.kind(Interner) {
-                // Coerce to a raw pointer so that we generate RawPtr in MIR.
-                let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
-                if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes)
-                {
-                    apply_adjustments(self.source_expr, adj);
-                } else {
-                    never!(
-                        "could not cast from reference to array to pointer to array ({:?} to {:?})",
-                        self.expr_ty,
-                        array_ptr_type
-                    );
-                }
+        if m_expr <= m_cast
+            && let TyKind::Array(ety, _) = t_expr.kind(Interner)
+        {
+            // Coerce to a raw pointer so that we generate RawPtr in MIR.
+            let array_ptr_type = TyKind::Raw(m_expr, t_expr.clone()).intern(Interner);
+            if let Ok((adj, _)) = table.coerce(&self.expr_ty, &array_ptr_type, CoerceNever::Yes) {
+                apply_adjustments(self.source_expr, adj);
+            } else {
+                never!(
+                    "could not cast from reference to array to pointer to array ({:?} to {:?})",
+                    self.expr_ty,
+                    array_ptr_type
+                );
+            }
 
-                // This is a less strict condition than rustc's `demand_eqtype`,
-                // but false negative is better than false positive
-                if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
-                    return Ok(());
-                }
+            // This is a less strict condition than rustc's `demand_eqtype`,
+            // but false negative is better than false positive
+            if table.coerce(ety, t_cast, CoerceNever::Yes).is_ok() {
+                return Ok(());
             }
         }
 
@@ -382,7 +381,7 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
                 return Err(());
             };
 
-            let struct_data = table.db.variant_fields(id.into());
+            let struct_data = id.fields(table.db);
             if let Some((last_field, _)) = struct_data.fields().iter().last() {
                 let last_field_ty =
                     table.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);

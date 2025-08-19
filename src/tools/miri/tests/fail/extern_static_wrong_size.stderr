@@ -2,7 +2,7 @@ error: unsupported operation: extern static `environ` has been declared as `exte
   --> tests/fail/extern_static_wrong_size.rs:LL:CC
    |
 LL |     let _val = unsafe { environ };
-   |                         ^^^^^^^ extern static `environ` has been declared as `extern_static_wrong_size::environ` with a size of 1 bytes and alignment of 1 bytes, but Miri emulates it via an extern static shim with a size of N bytes and alignment of N bytes
+   |                         ^^^^^^^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

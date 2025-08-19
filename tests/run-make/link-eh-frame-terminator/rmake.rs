@@ -9,6 +9,7 @@
 //@ ignore-32bit
 // Reason: the usage of a large array in the test causes an out-of-memory
 // error on 32 bit systems.
+//@ ignore-cross-compile
 
 use run_make_support::{bin_name, llvm_objdump, run, rustc};
 

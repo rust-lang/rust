@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::env;
 use std::error::Report;
+use std::sync::Arc;
 
-pub use rustc_error_messages::FluentArgs;
+pub use rustc_error_messages::{FluentArgs, LazyFallbackBundle};
 use tracing::{debug, trace};
 
 use crate::error::{TranslateError, TranslateErrorKind};
@@ -28,19 +29,33 @@ pub fn to_fluent_args<'iter>(iter: impl Iterator<Item = DiagArg<'iter>>) -> Flue
     args
 }
 
-pub trait Translate {
-    /// Return `FluentBundle` with localized diagnostics for the locale requested by the user. If no
-    /// language was requested by the user then this will be `None` and `fallback_fluent_bundle`
-    /// should be used.
-    fn fluent_bundle(&self) -> Option<&FluentBundle>;
-
+#[derive(Clone)]
+pub struct Translator {
+    /// Localized diagnostics for the locale requested by the user. If no language was requested by
+    /// the user then this will be `None` and `fallback_fluent_bundle` should be used.
+    pub fluent_bundle: Option<Arc<FluentBundle>>,
     /// Return `FluentBundle` with localized diagnostics for the default locale of the compiler.
     /// Used when the user has not requested a specific language or when a localized diagnostic is
     /// unavailable for the requested locale.
-    fn fallback_fluent_bundle(&self) -> &FluentBundle;
+    pub fallback_fluent_bundle: LazyFallbackBundle,
+}
+
+impl Translator {
+    pub fn with_fallback_bundle(
+        resources: Vec<&'static str>,
+        with_directionality_markers: bool,
+    ) -> Translator {
+        Translator {
+            fluent_bundle: None,
+            fallback_fluent_bundle: crate::fallback_fluent_bundle(
+                resources,
+                with_directionality_markers,
+            ),
+        }
+    }
 
     /// Convert `DiagMessage`s to a string, performing translation if necessary.
-    fn translate_messages(
+    pub fn translate_messages(
         &self,
         messages: &[(DiagMessage, Style)],
         args: &FluentArgs<'_>,
@@ -54,7 +69,7 @@ pub trait Translate {
     }
 
     /// Convert a `DiagMessage` to a string, performing translation if necessary.
-    fn translate_message<'a>(
+    pub fn translate_message<'a>(
         &'a self,
         message: &'a DiagMessage,
         args: &'a FluentArgs<'_>,
@@ -91,7 +106,7 @@ pub trait Translate {
             };
 
         try {
-            match self.fluent_bundle().map(|b| translate_with_bundle(b)) {
+            match self.fluent_bundle.as_ref().map(|b| translate_with_bundle(b)) {
                 // The primary bundle was present and translation succeeded
                 Some(Ok(t)) => t,
 
@@ -102,7 +117,7 @@ pub trait Translate {
                     primary @ TranslateError::One {
                         kind: TranslateErrorKind::MessageMissing, ..
                     },
-                )) => translate_with_bundle(self.fallback_fluent_bundle())
+                )) => translate_with_bundle(&self.fallback_fluent_bundle)
                     .map_err(|fallback| primary.and(fallback))?,
 
                 // Always yeet out for errors on debug (unless
@@ -118,11 +133,11 @@ pub trait Translate {
 
                 // ..otherwise, for end users, an error about this wouldn't be useful or actionable, so
                 // just hide it and try with the fallback bundle.
-                Some(Err(primary)) => translate_with_bundle(self.fallback_fluent_bundle())
+                Some(Err(primary)) => translate_with_bundle(&self.fallback_fluent_bundle)
                     .map_err(|fallback| primary.and(fallback))?,
 
                 // The primary bundle is missing, proceed to the fallback bundle
-                None => translate_with_bundle(self.fallback_fluent_bundle())
+                None => translate_with_bundle(&self.fallback_fluent_bundle)
                     .map_err(|fallback| TranslateError::primary(identifier, args).and(fallback))?,
             }
         }

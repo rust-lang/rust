@@ -318,6 +318,15 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
         // visited before `local`, and we just have to copy the representing local.
         let head = copies[rhs];
 
+        // When propagating from `head` to `local` we need to ensure that changes to the address
+        // are not observable, so at most one the locals involved can be borrowed. Additionally, we
+        // need to ensure that the definition of `head` dominates all uses of `local`. When `local`
+        // is borrowed, there might exist an indirect use of `local` that isn't dominated by the
+        // definition, so we have to reject copy propagation.
+        if ssa.borrowed_locals().contains(local) {
+            continue;
+        }
+
         if local == RETURN_PLACE {
             // `_0` is special, we cannot rename it. Instead, rename the class of `rhs` to
             // `RETURN_PLACE`. This is only possible if the class head is a temporary, not an

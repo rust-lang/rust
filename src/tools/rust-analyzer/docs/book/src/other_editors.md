@@ -364,30 +364,6 @@ binary](./rust_analyzer_binary.html).
 There are multiple rust-analyzer extensions for Visual Studio 2022 on
 Windows:
 
-### rust-analyzer.vs
-
-(License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-International)
-
-[Visual Studio
-Marketplace](https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer)
-
-[GitHub](https://github.com/kitamstudios/rust-analyzer/)
-
-Support for Rust development in the Visual Studio IDE is enabled by the
-[rust-analyzer](https://marketplace.visualstudio.com/items?itemName=kitamstudios.RustAnalyzer)
-package. Either click on the download link or install from IDE’s
-extension manager. For now [Visual Studio
-2022](https://visualstudio.microsoft.com/downloads/) is required. All
-editions are supported viz. Community, Professional & Enterprise. The
-package aims to provide 0-friction installation and therefore comes
-loaded with most things required including rust-analyzer binary. If
-anything it needs is missing, appropriate errors / warnings will guide
-the user. E.g. cargo.exe needs to be in path and the package will tell
-you as much. This package is under rapid active development. So if you
-encounter any issues please file it at
-[rust-analyzer.vs](https://github.com/kitamstudios/rust-analyzer/).
-
 ### VS RustAnalyzer
 
 (License: GPL)

@@ -17,13 +17,13 @@ const fn const_main() {
         unstable_intrinsic::size_of_val(&x);
         //~^ERROR: unstable library feature `unstable`
         //~|ERROR: not yet stable as a const intrinsic
-        unstable_intrinsic::min_align_of_val(&x);
+        unstable_intrinsic::align_of_val(&x);
         //~^ERROR: unstable library feature `unstable`
         //~|ERROR: not yet stable as a const intrinsic
 
         size_of_val(&x);
         //~^ERROR: cannot use `#[feature(local)]`
-        min_align_of_val(&x);
+        align_of_val(&x);
         //~^ERROR: cannot use `#[feature(local)]`
     }
 }
@@ -35,7 +35,7 @@ pub const unsafe fn size_of_val<T>(x: *const T) -> usize;
 #[unstable(feature = "local", issue = "42")]
 #[rustc_const_unstable(feature = "local", issue = "42")]
 #[rustc_intrinsic]
-pub const unsafe fn min_align_of_val<T>(x: *const T) -> usize;
+pub const unsafe fn align_of_val<T>(x: *const T) -> usize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]

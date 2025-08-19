@@ -6,13 +6,11 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 ar_archive_writer = "0.4.2"
-arrayvec = { version = "0.7", default-features = false }
 bitflags = "2.4.1"
 bstr = "1.11.3"
-# Pinned so `cargo update` bumps don't cause breakage. Please also update the
-# `cc` in `rustc_llvm` if you update the `cc` here.
+# `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
+# per crate", so if you change this, you need to also change it in `rustc_llvm`.
 cc = "=1.2.16"
-either = "1.5.0"
 itertools = "0.12"
 pathdiff = "0.2.0"
 regex = "1.4"
@@ -28,6 +26,7 @@ rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_middle = { path = "../rustc_middle" }
@@ -53,10 +52,10 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.36.2"
+version = "0.37.0"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.59.0"
+version = "0.61.0"
 features = ["Win32_Globalization"]

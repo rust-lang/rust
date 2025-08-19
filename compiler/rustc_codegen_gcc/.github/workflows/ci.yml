@@ -12,6 +12,8 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
+  # For the run-make tests.
+  LLVM_BIN_DIR: /usr/bin
 
 jobs:
   build:
@@ -48,7 +50,7 @@ jobs:
 
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
-      run: sudo apt-get install ninja-build ripgrep llvm-14-tools
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
     - name: Install rustfmt & clippy
       run: rustup component add rustfmt clippy
@@ -61,11 +63,15 @@ jobs:
           sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
+    # Some run-make tests fail if we use our forked GCC because it doesn't
+    # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
+    # libstdc++.
+    - name: Set default GCC to gcc-14
+      run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
+
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
 
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
@@ -76,12 +82,22 @@ jobs:
         #path: rust
         #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
+    - name: Prepare
+      run: ./y.sh prepare --only-libcore
+
+    - name: Check formatting
+      run: ./y.sh fmt --check
+
+    - name: clippy
+      run: |
+        cargo clippy --all-targets -- -D warnings
+        cargo clippy --all-targets --no-default-features -- -D warnings
+        cargo clippy --manifest-path build_system/Cargo.toml --all-targets -- -D warnings
+
     - name: Build
       run: |
-        ./y.sh prepare --only-libcore
         ./y.sh build --sysroot
-        ./y.sh test --mini-tests
-        cargo test
+        ./y.sh test --cargo-tests
 
     - name: Run y.sh cargo build
       run: |
@@ -101,19 +117,18 @@ jobs:
       run: |
         ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }}
 
-    - name: Check formatting
-      run: ./y.sh fmt --check
-
-    - name: clippy
-      run: |
-        cargo clippy --all-targets -- -D warnings
-        cargo clippy --all-targets --features master -- -D warnings
-
   duplicates:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: python tools/check_intrinsics_duplicates.py
+
+  spell_check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.32.0
+      - uses: streetsidesoftware/cspell-action@v7
 
   build_system:
     runs-on: ubuntu-24.04

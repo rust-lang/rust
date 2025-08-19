@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered $HEX, but exp
   --> tests/fail/validity/invalid_char.rs:LL:CC
    |
 LL |     let _val = match unsafe { std::mem::transmute::<i32, char>(-1) } {
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered $HEX, but expected a valid unicode scalar value (in `0..=$HEX` but not in `$HEX..=$HEX`)
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

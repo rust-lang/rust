@@ -5,7 +5,7 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, Def, Dfa, Ref, Tree, dfa, union};
+use crate::layout::{self, Def, Dfa, Reference, Tree, dfa, union};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -41,7 +41,10 @@ mod rustc {
         /// This method begins by converting `src` and `dst` from `Ty`s to `Tree`s,
         /// then computes an answer using those trees.
         #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-        pub(crate) fn answer(self) -> Answer<<TyCtxt<'tcx> as QueryContext>::Ref> {
+        pub(crate) fn answer(
+            self,
+        ) -> Answer<<TyCtxt<'tcx> as QueryContext>::Region, <TyCtxt<'tcx> as QueryContext>::Type>
+        {
             let Self { src, dst, assume, context } = self;
 
             let layout_cx = LayoutCx::new(context, TypingEnv::fully_monomorphized());
@@ -67,7 +70,11 @@ mod rustc {
     }
 }
 
-impl<C> MaybeTransmutableQuery<Tree<<C as QueryContext>::Def, <C as QueryContext>::Ref>, C>
+impl<C>
+    MaybeTransmutableQuery<
+        Tree<<C as QueryContext>::Def, <C as QueryContext>::Region, <C as QueryContext>::Type>,
+        C,
+    >
 where
     C: QueryContext,
 {
@@ -77,7 +84,7 @@ where
     /// then converts `src` and `dst` to `Dfa`s, and computes an answer using those DFAs.
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
+    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         let Self { src, dst, assume, context } = self;
 
         // Unconditionally remove all `Def` nodes from `src`, without pruning away the
@@ -130,12 +137,12 @@ where
     }
 }
 
-impl<C> MaybeTransmutableQuery<Dfa<<C as QueryContext>::Ref>, C>
+impl<C> MaybeTransmutableQuery<Dfa<<C as QueryContext>::Region, <C as QueryContext>::Type>, C>
 where
     C: QueryContext,
 {
     /// Answers whether a `Dfa` is transmutable into another `Dfa`.
-    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
+    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         self.answer_memo(&mut Map::default(), self.src.start, self.dst.start)
     }
 
@@ -143,10 +150,13 @@ where
     #[instrument(level = "debug", skip(self))]
     fn answer_memo(
         &self,
-        cache: &mut Map<(dfa::State, dfa::State), Answer<<C as QueryContext>::Ref>>,
+        cache: &mut Map<
+            (dfa::State, dfa::State),
+            Answer<<C as QueryContext>::Region, <C as QueryContext>::Type>,
+        >,
         src_state: dfa::State,
         dst_state: dfa::State,
-    ) -> Answer<<C as QueryContext>::Ref> {
+    ) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         if let Some(answer) = cache.get(&(src_state, dst_state)) {
             answer.clone()
         } else {
@@ -160,10 +170,13 @@ where
 
     fn answer_impl(
         &self,
-        cache: &mut Map<(dfa::State, dfa::State), Answer<<C as QueryContext>::Ref>>,
+        cache: &mut Map<
+            (dfa::State, dfa::State),
+            Answer<<C as QueryContext>::Region, <C as QueryContext>::Type>,
+        >,
         src_state: dfa::State,
         dst_state: dfa::State,
-    ) -> Answer<<C as QueryContext>::Ref> {
+    ) -> Answer<<C as QueryContext>::Region, <C as QueryContext>::Type> {
         debug!(?src_state, ?dst_state);
         debug!(src = ?self.src);
         debug!(dst = ?self.dst);
@@ -247,27 +260,51 @@ where
                     // ...there exists a reference transition out of `dst_state`...
                     Quantifier::ThereExists.apply(self.dst.refs_from(dst_state).map(
                         |(dst_ref, dst_state_prime)| {
-                            if !src_ref.is_mutable() && dst_ref.is_mutable() {
+                            if !src_ref.is_mut && dst_ref.is_mut {
                                 Answer::No(Reason::DstIsMoreUnique)
                             } else if !self.assume.alignment
-                                && src_ref.min_align() < dst_ref.min_align()
+                                && src_ref.referent_align < dst_ref.referent_align
                             {
                                 Answer::No(Reason::DstHasStricterAlignment {
-                                    src_min_align: src_ref.min_align(),
-                                    dst_min_align: dst_ref.min_align(),
+                                    src_min_align: src_ref.referent_align,
+                                    dst_min_align: dst_ref.referent_align,
                                 })
-                            } else if dst_ref.size() > src_ref.size() {
-                                Answer::No(Reason::DstRefIsTooBig { src: src_ref, dst: dst_ref })
+                            } else if dst_ref.referent_size > src_ref.referent_size {
+                                Answer::No(Reason::DstRefIsTooBig {
+                                    src: src_ref.referent,
+                                    src_size: src_ref.referent_size,
+                                    dst: dst_ref.referent,
+                                    dst_size: dst_ref.referent_size,
+                                })
                             } else {
-                                // ...such that `src` is transmutable into `dst`, if
-                                // `src_ref` is transmutability into `dst_ref`.
-                                and(
-                                    Answer::If(Condition::IfTransmutable {
-                                        src: src_ref,
-                                        dst: dst_ref,
-                                    }),
-                                    self.answer_memo(cache, src_state_prime, dst_state_prime),
-                                )
+                                let mut conditions = Vec::with_capacity(4);
+                                let mut is_transmutable =
+                                    |src: Reference<_, _>, dst: Reference<_, _>| {
+                                        conditions.push(Condition::Transmutable {
+                                            src: src.referent,
+                                            dst: dst.referent,
+                                        });
+                                        if !self.assume.lifetimes {
+                                            conditions.push(Condition::Outlives {
+                                                long: src.region,
+                                                short: dst.region,
+                                            });
+                                        }
+                                    };
+
+                                is_transmutable(src_ref, dst_ref);
+
+                                if dst_ref.is_mut {
+                                    is_transmutable(dst_ref, src_ref);
+                                } else {
+                                    conditions.push(Condition::Immutable { ty: dst_ref.referent });
+                                }
+
+                                Answer::If(Condition::IfAll(conditions)).and(self.answer_memo(
+                                    cache,
+                                    src_state_prime,
+                                    dst_state_prime,
+                                ))
                             }
                         },
                     ))
@@ -275,67 +312,65 @@ where
             );
 
             if self.assume.validity {
-                or(bytes_answer, refs_answer)
+                bytes_answer.or(refs_answer)
             } else {
-                and(bytes_answer, refs_answer)
+                bytes_answer.and(refs_answer)
             }
         }
     }
 }
 
-fn and<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
-where
-    R: PartialEq,
-{
-    match (lhs, rhs) {
-        // If both are errors, then we should return the more specific one
-        (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
-        | (Answer::No(reason), Answer::No(_))
-        // If either is an error, return it
-        | (Answer::No(reason), _) | (_, Answer::No(reason)) => Answer::No(reason),
-        // If only one side has a condition, pass it along
-        | (Answer::Yes, other) | (other, Answer::Yes) => other,
-        // If both sides have IfAll conditions, merge them
-        (Answer::If(Condition::IfAll(mut lhs)), Answer::If(Condition::IfAll(ref mut rhs))) => {
-            lhs.append(rhs);
-            Answer::If(Condition::IfAll(lhs))
+impl<R, T> Answer<R, T> {
+    fn and(self, rhs: Answer<R, T>) -> Answer<R, T> {
+        let lhs = self;
+        match (lhs, rhs) {
+            // If both are errors, then we should return the more specific one
+            (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
+            | (Answer::No(reason), Answer::No(_))
+            // If either is an error, return it
+            | (Answer::No(reason), _) | (_, Answer::No(reason)) => Answer::No(reason),
+            // If only one side has a condition, pass it along
+            | (Answer::Yes, other) | (other, Answer::Yes) => other,
+            // If both sides have IfAll conditions, merge them
+            (Answer::If(Condition::IfAll(mut lhs)), Answer::If(Condition::IfAll(ref mut rhs))) => {
+                lhs.append(rhs);
+                Answer::If(Condition::IfAll(lhs))
+            }
+            // If only one side is an IfAll, add the other Condition to it
+            (Answer::If(cond), Answer::If(Condition::IfAll(mut conds)))
+            | (Answer::If(Condition::IfAll(mut conds)), Answer::If(cond)) => {
+                conds.push(cond);
+                Answer::If(Condition::IfAll(conds))
+            }
+            // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
+            (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAll(vec![lhs, rhs])),
         }
-        // If only one side is an IfAll, add the other Condition to it
-        (Answer::If(cond), Answer::If(Condition::IfAll(mut conds)))
-        | (Answer::If(Condition::IfAll(mut conds)), Answer::If(cond)) => {
-            conds.push(cond);
-            Answer::If(Condition::IfAll(conds))
-        }
-        // Otherwise, both lhs and rhs conditions can be combined in a parent IfAll
-        (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAll(vec![lhs, rhs])),
     }
-}
 
-fn or<R>(lhs: Answer<R>, rhs: Answer<R>) -> Answer<R>
-where
-    R: PartialEq,
-{
-    match (lhs, rhs) {
-        // If both are errors, then we should return the more specific one
-        (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
-        | (Answer::No(reason), Answer::No(_)) => Answer::No(reason),
-        // Otherwise, errors can be ignored for the rest of the pattern matching
-        (Answer::No(_), other) | (other, Answer::No(_)) => or(other, Answer::Yes),
-        // If only one side has a condition, pass it along
-        (Answer::Yes, other) | (other, Answer::Yes) => other,
-        // If both sides have IfAny conditions, merge them
-        (Answer::If(Condition::IfAny(mut lhs)), Answer::If(Condition::IfAny(ref mut rhs))) => {
-            lhs.append(rhs);
-            Answer::If(Condition::IfAny(lhs))
+    fn or(self, rhs: Answer<R, T>) -> Answer<R, T> {
+        let lhs = self;
+        match (lhs, rhs) {
+            // If both are errors, then we should return the more specific one
+            (Answer::No(Reason::DstIsBitIncompatible), Answer::No(reason))
+            | (Answer::No(reason), Answer::No(_)) => Answer::No(reason),
+            // Otherwise, errors can be ignored for the rest of the pattern matching
+            (Answer::No(_), other) | (other, Answer::No(_)) => other.or(Answer::Yes),
+            // If only one side has a condition, pass it along
+            (Answer::Yes, other) | (other, Answer::Yes) => other,
+            // If both sides have IfAny conditions, merge them
+            (Answer::If(Condition::IfAny(mut lhs)), Answer::If(Condition::IfAny(ref mut rhs))) => {
+                lhs.append(rhs);
+                Answer::If(Condition::IfAny(lhs))
+            }
+            // If only one side is an IfAny, add the other Condition to it
+            (Answer::If(cond), Answer::If(Condition::IfAny(mut conds)))
+            | (Answer::If(Condition::IfAny(mut conds)), Answer::If(cond)) => {
+                conds.push(cond);
+                Answer::If(Condition::IfAny(conds))
+            }
+            // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
+            (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAny(vec![lhs, rhs])),
         }
-        // If only one side is an IfAny, add the other Condition to it
-        (Answer::If(cond), Answer::If(Condition::IfAny(mut conds)))
-        | (Answer::If(Condition::IfAny(mut conds)), Answer::If(cond)) => {
-            conds.push(cond);
-            Answer::If(Condition::IfAny(conds))
-        }
-        // Otherwise, both lhs and rhs conditions can be combined in a parent IfAny
-        (Answer::If(lhs), Answer::If(rhs)) => Answer::If(Condition::IfAny(vec![lhs, rhs])),
     }
 }
 
@@ -345,24 +380,25 @@ enum Quantifier {
 }
 
 impl Quantifier {
-    fn apply<R, I>(&self, iter: I) -> Answer<R>
+    fn apply<R, T, I>(&self, iter: I) -> Answer<R, T>
     where
-        R: layout::Ref,
-        I: IntoIterator<Item = Answer<R>>,
+        R: layout::Region,
+        T: layout::Type,
+        I: IntoIterator<Item = Answer<R, T>>,
     {
         use std::ops::ControlFlow::{Break, Continue};
 
         let (init, try_fold_f): (_, fn(_, _) -> _) = match self {
             Self::ThereExists => {
-                (Answer::No(Reason::DstIsBitIncompatible), |accum: Answer<R>, next| {
-                    match or(accum, next) {
-                        Answer::Yes => Break(Answer::Yes),
-                        maybe => Continue(maybe),
-                    }
+                (Answer::No(Reason::DstIsBitIncompatible), |accum: Answer<R, T>, next| match accum
+                    .or(next)
+                {
+                    Answer::Yes => Break(Answer::Yes),
+                    maybe => Continue(maybe),
                 })
             }
-            Self::ForAll => (Answer::Yes, |accum: Answer<R>, next| {
-                let answer = and(accum, next);
+            Self::ForAll => (Answer::Yes, |accum: Answer<R, T>, next| {
+                let answer = accum.and(next);
                 match answer {
                     Answer::No(_) => Break(answer),
                     maybe => Continue(maybe),

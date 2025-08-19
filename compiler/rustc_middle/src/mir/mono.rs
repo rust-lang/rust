@@ -1,8 +1,7 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -10,8 +9,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
+use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
-use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
@@ -142,17 +141,15 @@ impl<'tcx> MonoItem<'tcx> {
         };
 
         // Similarly, the executable entrypoint must be instantiated exactly once.
-        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
-            if instance.def_id() == entry_def_id {
-                return InstantiationMode::GloballyShared { may_conflict: false };
-            }
+        if tcx.is_entrypoint(instance.def_id()) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
         // If the function is #[naked] or contains any other attribute that requires exactly-once
         // instantiation:
         // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
-        if codegen_fn_attrs.contains_extern_indicator()
+        let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
+        if codegen_fn_attrs.contains_extern_indicator(tcx, instance.def.def_id())
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
         {
             return InstantiationMode::GloballyShared { may_conflict: false };
@@ -218,7 +215,7 @@ impl<'tcx> MonoItem<'tcx> {
         // functions the same as those that unconditionally get LocalCopy codegen. It's only when
         // we get here that we can at least not codegen a #[inline(never)] generic function in all
         // of our CGUs.
-        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+        if let InlineAttr::Never = codegen_fn_attrs.inline
             && self.is_generic_fn()
         {
             return InstantiationMode::GloballyShared { may_conflict: true };
@@ -233,14 +230,13 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
-        let def_id = match *self {
-            MonoItem::Fn(ref instance) => instance.def_id(),
-            MonoItem::Static(def_id) => def_id,
+        let instance_kind = match *self {
+            MonoItem::Fn(ref instance) => instance.def,
+            MonoItem::Static(def_id) => InstanceKind::Item(def_id),
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
-        codegen_fn_attrs.linkage
+        tcx.codegen_instance_attrs(instance_kind).linkage
     }
 
     /// Returns `true` if this instance is instantiable - whether it has no unsatisfied
@@ -318,7 +314,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(instance) => write!(f, "fn {instance}"),
             MonoItem::Static(def_id) => {
-                write!(f, "static {}", Instance::new(def_id, GenericArgs::empty()))
+                write!(f, "static {}", Instance::new_raw(def_id, GenericArgs::empty()))
             }
             MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
         }
@@ -339,7 +335,6 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
-    pub autodiff_items: &'tcx [AutoDiffItem],
 }
 
 #[derive(Debug, HashStable)]
@@ -369,22 +364,6 @@ pub struct MonoItemData {
 
     /// A cached copy of the result of `MonoItem::size_estimate`.
     pub size_estimate: usize,
-}
-
-/// Specifies the linkage type for a `MonoItem`.
-///
-/// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
-pub enum Linkage {
-    External,
-    AvailableExternally,
-    LinkOnceAny,
-    LinkOnceODR,
-    WeakAny,
-    WeakODR,
-    Internal,
-    ExternalWeak,
-    Common,
 }
 
 /// Specifies the symbol visibility with regards to dynamic linking.
@@ -468,6 +447,29 @@ impl<'tcx> CodegenUnit<'tcx> {
         hash.as_u128().to_base_fixed_len(CASE_INSENSITIVE)
     }
 
+    pub fn shorten_name(human_readable_name: &str) -> Cow<'_, str> {
+        // Set a limit a somewhat below the common platform limits for file names.
+        const MAX_CGU_NAME_LENGTH: usize = 200;
+        const TRUNCATED_NAME_PREFIX: &str = "-trunc-";
+        if human_readable_name.len() > MAX_CGU_NAME_LENGTH {
+            let mangled_name = Self::mangle_name(human_readable_name);
+            // Determine a safe byte offset to truncate the name to
+            let truncate_to = human_readable_name.floor_char_boundary(
+                MAX_CGU_NAME_LENGTH - TRUNCATED_NAME_PREFIX.len() - mangled_name.len(),
+            );
+            format!(
+                "{}{}{}",
+                &human_readable_name[..truncate_to],
+                TRUNCATED_NAME_PREFIX,
+                mangled_name
+            )
+            .into()
+        } else {
+            // If the name is short enough, we can just return it as is.
+            human_readable_name.into()
+        }
+    }
+
     pub fn compute_size_estimate(&mut self) {
         // The size of a codegen unit as the sum of the sizes of the items
         // within it.
@@ -505,44 +507,50 @@ impl<'tcx> CodegenUnit<'tcx> {
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(MonoItem<'tcx>, MonoItemData)> {
         // The codegen tests rely on items being process in the same order as
-        // they appear in the file, so for local items, we sort by node_id first
+        // they appear in the file, so for local items, we sort by span first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<Span>, SymbolName<'tcx>);
 
+        // We only want to take HirIds of user-defines instances into account.
+        // The others don't matter for the codegen tests and can even make item
+        // order unstable.
+        fn local_item_id<'tcx>(item: MonoItem<'tcx>) -> Option<DefId> {
+            match item {
+                MonoItem::Fn(ref instance) => match instance.def {
+                    InstanceKind::Item(def) => def.as_local().map(|_| def),
+                    InstanceKind::VTableShim(..)
+                    | InstanceKind::ReifyShim(..)
+                    | InstanceKind::Intrinsic(..)
+                    | InstanceKind::FnPtrShim(..)
+                    | InstanceKind::Virtual(..)
+                    | InstanceKind::ClosureOnceShim { .. }
+                    | InstanceKind::ConstructCoroutineInClosureShim { .. }
+                    | InstanceKind::DropGlue(..)
+                    | InstanceKind::CloneShim(..)
+                    | InstanceKind::ThreadLocalShim(..)
+                    | InstanceKind::FnPtrAddrShim(..)
+                    | InstanceKind::AsyncDropGlue(..)
+                    | InstanceKind::FutureDropPollShim(..)
+                    | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                },
+                MonoItem::Static(def_id) => def_id.as_local().map(|_| def_id),
+                MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.to_def_id()),
+            }
+        }
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
-                match item {
-                    MonoItem::Fn(ref instance) => {
-                        match instance.def {
-                            // We only want to take HirIds of user-defined
-                            // instances into account. The others don't matter for
-                            // the codegen tests and can even make item order
-                            // unstable.
-                            InstanceKind::Item(def) => def.as_local().map(Idx::index),
-                            InstanceKind::VTableShim(..)
-                            | InstanceKind::ReifyShim(..)
-                            | InstanceKind::Intrinsic(..)
-                            | InstanceKind::FnPtrShim(..)
-                            | InstanceKind::Virtual(..)
-                            | InstanceKind::ClosureOnceShim { .. }
-                            | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::DropGlue(..)
-                            | InstanceKind::CloneShim(..)
-                            | InstanceKind::ThreadLocalShim(..)
-                            | InstanceKind::FnPtrAddrShim(..)
-                            | InstanceKind::AsyncDropGlue(..)
-                            | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
-                        }
-                    }
-                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
-                },
+                local_item_id(item)
+                    .map(|def_id| tcx.def_span(def_id).find_ancestor_not_from_macro())
+                    .flatten(),
                 item.symbol_name(tcx),
             )
         }
 
         let mut items: Vec<_> = self.items().iter().map(|(&i, &data)| (i, data)).collect();
+        if !tcx.sess.opts.unstable_opts.codegen_source_order {
+            // It's already deterministic, so we can just use it.
+            return items;
+        }
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
     }
@@ -604,7 +612,7 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
         if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
-            cgu_name
+            Symbol::intern(&CodegenUnit::shorten_name(cgu_name.as_str()))
         } else {
             Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
         }

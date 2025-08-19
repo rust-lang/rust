@@ -5,7 +5,7 @@
 
 pub struct Wrapper;
 pub static MAGIC_FFI_REF: &'static Wrapper = unsafe {
-//~^ERROR: it is undefined behavior to use this value
+    //~^ ERROR: dangling reference
     std::mem::transmute(&{
         let y = 42;
         y

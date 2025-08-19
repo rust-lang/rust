@@ -63,8 +63,9 @@ fn rustc_print_cfg(
 ) -> anyhow::Result<String> {
     const RUSTC_ARGS: [&str; 2] = ["--print", "cfg"];
     let (sysroot, current_dir) = match config {
-        QueryConfig::Cargo(sysroot, cargo_toml) => {
+        QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
+            cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
@@ -109,7 +110,7 @@ mod tests {
         let sysroot = Sysroot::empty();
         let manifest_path =
             ManifestPath::try_from(AbsPathBuf::assert(Utf8PathBuf::from(manifest_path))).unwrap();
-        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path);
+        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path, &None);
         assert_ne!(get(cfg, None, &FxHashMap::default()), vec![]);
     }
 

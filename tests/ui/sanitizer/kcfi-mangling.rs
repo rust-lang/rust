@@ -4,6 +4,7 @@
 //@ no-prefer-dynamic
 //@ compile-flags: -C panic=abort -Zsanitizer=kcfi -C symbol-mangling-version=v0
 //@ build-pass
+//@ ignore-backends: gcc
 
 trait Foo {
     fn foo(&self);

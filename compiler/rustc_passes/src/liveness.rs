@@ -87,16 +87,17 @@ use std::rc::Rc;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet};
+use rustc_hir::{Expr, HirId, HirIdMap, HirIdSet, find_attr};
 use rustc_index::IndexVec;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
-use rustc_span::{BytePos, Span, Symbol, sym};
+use rustc_span::{BytePos, Span, Symbol};
 use tracing::{debug, instrument};
 
 use self::LiveNodeKind::*;
@@ -122,7 +123,6 @@ enum LiveNodeKind {
     VarDefNode(Span, HirId),
     ClosureNode,
     ExitNode,
-    ErrNode,
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
@@ -133,7 +133,6 @@ fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
         VarDefNode(s, _) => format!("Var def node [{}]", sm.span_to_diagnostic_string(s)),
         ClosureNode => "Closure node".to_owned(),
         ExitNode => "Exit node".to_owned(),
-        ErrNode => "Error node".to_owned(),
     }
 }
 
@@ -141,13 +140,13 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Don't run unused pass for #[derive()]
     let parent = tcx.local_parent(def_id);
     if let DefKind::Impl { .. } = tcx.def_kind(parent)
-        && tcx.has_attr(parent, sym::automatically_derived)
+        && find_attr!(tcx.get_all_attrs(parent), AttributeKind::AutomaticallyDerived(..))
     {
         return;
     }
 
     // Don't run unused pass for #[naked]
-    if tcx.has_attr(def_id.to_def_id(), sym::naked) {
+    if find_attr!(tcx.get_all_attrs(def_id.to_def_id()), AttributeKind::Naked(..)) {
         return;
     }
 
@@ -492,6 +491,9 @@ struct Liveness<'a, 'tcx> {
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn new(ir: &'a mut IrMaps<'tcx>, body_owner: LocalDefId) -> Liveness<'a, 'tcx> {
         let typeck_results = ir.tcx.typeck(body_owner);
+        // Liveness linting runs after building the THIR. We make several assumptions based on
+        // typeck succeeding, e.g. that breaks and continues are well-formed.
+        assert!(typeck_results.tainted_by_errors.is_none());
         // FIXME(#132279): we're in a body here.
         let typing_env = ty::TypingEnv::non_body_analysis(ir.tcx, body_owner);
         let closure_min_captures = typeck_results.closure_min_captures.get(&body_owner);
@@ -976,8 +978,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // Now that we know the label we're going to,
                 // look it up in the continue loop nodes table
                 self.cont_ln.get(&sc).cloned().unwrap_or_else(|| {
-                    self.ir.tcx.dcx().span_delayed_bug(expr.span, "continue to unknown label");
-                    self.ir.add_live_node(ErrNode)
+                    // Liveness linting happens after building the THIR. Bad labels should already
+                    // have been caught.
+                    span_bug!(expr.span, "continue to unknown label");
                 })
             }
 
@@ -1741,6 +1744,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .map(|(_, pat_span, _)| *pat_span)
                             .collect::<Vec<_>>(),
                         errors::UnusedVarTryIgnore {
+                            name: name.clone(),
                             sugg: errors::UnusedVarTryIgnoreSugg {
                                 shorthands,
                                 non_shorthands,

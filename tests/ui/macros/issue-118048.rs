@@ -6,5 +6,6 @@ macro_rules! foo {
 
 foo!(_);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+//~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
 fn main() {}

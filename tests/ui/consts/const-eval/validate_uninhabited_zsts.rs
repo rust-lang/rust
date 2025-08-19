@@ -15,10 +15,10 @@ pub mod empty {
 }
 
 const FOO: [empty::Empty; 3] = [foo(); 3];
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR value of the never type
 
 const BAR: [empty::Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR value of uninhabited type
 
 fn main() {
     FOO;

@@ -26,6 +26,19 @@ impl ConstInt {
     }
 }
 
+/// An enum to represent the compiler-side view of `intrinsics::AtomicOrdering`.
+/// This lives here because there's a method in this file that needs it and it is entirely unclear
+/// where else to put this...
+#[derive(Debug, Copy, Clone)]
+pub enum AtomicOrdering {
+    // These values must match `intrinsics::AtomicOrdering`!
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
+
 impl std::fmt::Debug for ConstInt {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self { int, signed, is_ptr_sized_integral } = *self;
@@ -239,7 +252,7 @@ impl ScalarInt {
 
     #[inline]
     pub fn try_from_target_usize(i: impl Into<u128>, tcx: TyCtxt<'_>) -> Option<Self> {
-        Self::try_from_uint(i, tcx.data_layout.pointer_size)
+        Self::try_from_uint(i, tcx.data_layout.pointer_size())
     }
 
     /// Try to convert this ScalarInt to the raw underlying bits.
@@ -315,7 +328,26 @@ impl ScalarInt {
 
     #[inline]
     pub fn to_target_usize(&self, tcx: TyCtxt<'_>) -> u64 {
-        self.to_uint(tcx.data_layout.pointer_size).try_into().unwrap()
+        self.to_uint(tcx.data_layout.pointer_size()).try_into().unwrap()
+    }
+
+    #[inline]
+    pub fn to_atomic_ordering(self) -> AtomicOrdering {
+        use AtomicOrdering::*;
+        let val = self.to_u32();
+        if val == Relaxed as u32 {
+            Relaxed
+        } else if val == Release as u32 {
+            Release
+        } else if val == Acquire as u32 {
+            Acquire
+        } else if val == AcqRel as u32 {
+            AcqRel
+        } else if val == SeqCst as u32 {
+            SeqCst
+        } else {
+            panic!("not a valid atomic ordering")
+        }
     }
 
     /// Converts the `ScalarInt` to `bool`.
@@ -370,7 +402,7 @@ impl ScalarInt {
 
     #[inline]
     pub fn to_target_isize(&self, tcx: TyCtxt<'_>) -> i64 {
-        self.to_int(tcx.data_layout.pointer_size).try_into().unwrap()
+        self.to_int(tcx.data_layout.pointer_size()).try_into().unwrap()
     }
 
     #[inline]
@@ -422,9 +454,9 @@ macro_rules! from_scalar_int_for_x {
             impl From<ScalarInt> for $ty {
                 #[inline]
                 fn from(int: ScalarInt) -> Self {
-                    // The `unwrap` cannot fail because to_bits (if it succeeds)
+                    // The `unwrap` cannot fail because to_uint (if it succeeds)
                     // is guaranteed to return a value that fits into the size.
-                    int.to_bits(Size::from_bytes(size_of::<$ty>()))
+                    int.to_uint(Size::from_bytes(size_of::<$ty>()))
                        .try_into().unwrap()
                 }
             }
@@ -447,6 +479,49 @@ impl From<char> for ScalarInt {
     #[inline]
     fn from(c: char) -> Self {
         (c as u32).into()
+    }
+}
+
+macro_rules! from_x_for_scalar_int_signed {
+    ($($ty:ty),*) => {
+        $(
+            impl From<$ty> for ScalarInt {
+                #[inline]
+                fn from(u: $ty) -> Self {
+                    Self {
+                        data: u128::from(u.cast_unsigned()), // go via the unsigned type of the same size
+                        size: NonZero::new(size_of::<$ty>() as u8).unwrap(),
+                    }
+                }
+            }
+        )*
+    }
+}
+
+macro_rules! from_scalar_int_for_x_signed {
+    ($($ty:ty),*) => {
+        $(
+            impl From<ScalarInt> for $ty {
+                #[inline]
+                fn from(int: ScalarInt) -> Self {
+                    // The `unwrap` cannot fail because to_int (if it succeeds)
+                    // is guaranteed to return a value that fits into the size.
+                    int.to_int(Size::from_bytes(size_of::<$ty>()))
+                       .try_into().unwrap()
+                }
+            }
+        )*
+    }
+}
+
+from_x_for_scalar_int_signed!(i8, i16, i32, i64, i128);
+from_scalar_int_for_x_signed!(i8, i16, i32, i64, i128);
+
+impl From<std::cmp::Ordering> for ScalarInt {
+    #[inline]
+    fn from(c: std::cmp::Ordering) -> Self {
+        // Here we rely on `cmp::Ordering` having the same values in host and target!
+        ScalarInt::from(c as i8)
     }
 }
 

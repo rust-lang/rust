@@ -6,7 +6,7 @@
 //! for pivot selection. Using this as a fallback ensures O(n) worst case running time with
 //! better performance than one would get using heapsort as fallback.
 
-use crate::cfg_match;
+use crate::cfg_select;
 use crate::mem::{self, SizedTypeProperties};
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
@@ -42,7 +42,7 @@ where
         let min_idx = min_index(v, &mut is_less).unwrap();
         v.swap(min_idx, index);
     } else {
-        cfg_match! {
+        cfg_select! {
             feature = "optimize_for_size" => {
                 median_of_medians(v, &mut is_less, index);
             }
@@ -101,8 +101,7 @@ fn partition_at_index_loop<'a, T, F>(
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
         // This case is usually hit when the slice contains many duplicate elements.
         if let Some(p) = ancestor_pivot {
-            // SAFETY: choose_pivot promises to return a valid pivot position.
-            let pivot = unsafe { v.get_unchecked(pivot_pos) };
+            let pivot = &v[pivot_pos];
 
             if !is_less(p, pivot) {
                 let num_lt = partition(v, pivot_pos, &mut |a, b| !is_less(b, a));

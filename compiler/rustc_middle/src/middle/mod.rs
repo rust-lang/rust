@@ -12,7 +12,7 @@ pub mod lib_features {
     #[derive(HashStable, TyEncodable, TyDecodable)]
     pub enum FeatureStability {
         AcceptedSince(Symbol),
-        Unstable,
+        Unstable { old_name: Option<Symbol> },
     }
 
     #[derive(HashStable, Debug, Default)]

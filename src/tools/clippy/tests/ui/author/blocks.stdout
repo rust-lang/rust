@@ -14,8 +14,6 @@ if let ExprKind::Block(block, None) = expr.kind
     && name1.as_str() == "_t"
     && let StmtKind::Semi(e) = block.stmts[2].kind
     && let ExprKind::Unary(UnOp::Neg, inner) = e.kind
-    && let ExprKind::Path(ref qpath) = inner.kind
-    && match_qpath(qpath, &["x"])
     && block.expr.is_none()
 {
     // report your lint here
@@ -25,18 +23,14 @@ if let ExprKind::Block(block, None) = expr.kind
     && let StmtKind::Let(local) = block.stmts[0].kind
     && let Some(init) = local.init
     && let ExprKind::Call(func, args) = init.kind
-    && let ExprKind::Path(ref qpath) = func.kind
-    && match_qpath(qpath, &["String", "new"])
+    && is_path_diagnostic_item(cx, func, sym::string_new)
     && args.is_empty()
     && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "expr"
     && let Some(trailing_expr) = block.expr
     && let ExprKind::Call(func1, args1) = trailing_expr.kind
-    && let ExprKind::Path(ref qpath1) = func1.kind
-    && match_qpath(qpath1, &["drop"])
+    && is_path_diagnostic_item(cx, func1, sym::mem_drop)
     && args1.len() == 1
-    && let ExprKind::Path(ref qpath2) = args1[0].kind
-    && match_qpath(qpath2, &["expr"])
 {
     // report your lint here
 }

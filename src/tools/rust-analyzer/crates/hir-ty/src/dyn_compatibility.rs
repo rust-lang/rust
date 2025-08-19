@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    lang_item::LangItem, signatures::TraitFlags,
+    AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
+    TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -101,7 +101,7 @@ where
 
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     for (_, assoc_item) in &trait_data.items {
         dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
     }
@@ -122,9 +122,9 @@ pub fn dyn_compatibility_of_trait_query(
     res
 }
 
-fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
+pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
-    let Some(sized) = db.lang_item(krate, LangItem::Sized).and_then(|l| l.as_trait()) else {
+    let Some(sized) = LangItem::Sized.resolve_trait(db, krate) else {
         return false;
     };
 
@@ -136,16 +136,15 @@ fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool 
     let predicates = predicates.iter().map(|p| p.skip_binders().skip_binders().clone());
     elaborate_clause_supertraits(db, predicates).any(|pred| match pred {
         WhereClause::Implemented(trait_ref) => {
-            if from_chalk_trait_id(trait_ref.trait_id) == sized {
-                if let TyKind::BoundVar(it) =
+            if from_chalk_trait_id(trait_ref.trait_id) == sized
+                && let TyKind::BoundVar(it) =
                     *trait_ref.self_type_parameter(Interner).kind(Interner)
-                {
-                    // Since `generic_predicates` is `Binder<Binder<..>>`, the `DebrujinIndex` of
-                    // self-parameter is `1`
-                    return it
-                        .index_if_bound_at(DebruijnIndex::ONE)
-                        .is_some_and(|idx| idx == trait_self_param_idx);
-                }
+            {
+                // Since `generic_predicates` is `Binder<Binder<..>>`, the `DebrujinIndex` of
+                // self-parameter is `1`
+                return it
+                    .index_if_bound_at(DebruijnIndex::ONE)
+                    .is_some_and(|idx| idx == trait_self_param_idx);
             }
             false
         }
@@ -164,7 +163,7 @@ fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
 
 // Same as the above, `predicates_reference_self`
 fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    let trait_data = db.trait_items(trait_);
+    let trait_data = trait_.trait_items(db);
     trait_data
         .items
         .iter()
@@ -343,7 +342,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = db.crate_def_map(trait_.krate(db));
+            let def_map = CrateRootModuleId::from(trait_.krate(db)).def_map(db);
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
@@ -401,10 +400,10 @@ where
         cb(MethodViolationCode::ReferencesSelfOutput)?;
     }
 
-    if !func_data.is_async() {
-        if let Some(mvc) = contains_illegal_impl_trait_in_trait(db, &sig) {
-            cb(mvc)?;
-        }
+    if !func_data.is_async()
+        && let Some(mvc) = contains_illegal_impl_trait_in_trait(db, &sig)
+    {
+        cb(mvc)?;
     }
 
     let generic_params = db.generic_params(func.into());
@@ -491,8 +490,8 @@ fn receiver_is_dispatchable(
 
     let krate = func.module(db).krate();
     let traits = (
-        db.lang_item(krate, LangItem::Unsize).and_then(|it| it.as_trait()),
-        db.lang_item(krate, LangItem::DispatchFromDyn).and_then(|it| it.as_trait()),
+        LangItem::Unsize.resolve_trait(db, krate),
+        LangItem::DispatchFromDyn.resolve_trait(db, krate),
     );
     let (Some(unsize_did), Some(dispatch_from_dyn_did)) = traits else {
         return false;
@@ -515,7 +514,7 @@ fn receiver_is_dispatchable(
         trait_id: to_chalk_trait_id(trait_),
         substitution: Substitution::from_iter(
             Interner,
-            std::iter::once(unsized_self_ty.clone().cast(Interner))
+            std::iter::once(unsized_self_ty.cast(Interner))
                 .chain(placeholder_subst.iter(Interner).skip(1).cloned()),
         ),
     });

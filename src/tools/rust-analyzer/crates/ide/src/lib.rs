@@ -62,7 +62,7 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{ChangeWithProcMacros, EditionedFileId, sym};
+use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
 use ide_db::{
     FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
@@ -123,9 +123,9 @@ pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
     CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
 };
-pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
     FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
+    assists::ExprFillDefaultMode,
     base_db::{Crate, CrateGraphBuilder, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
@@ -134,8 +134,9 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
+    text_edit::{Indel, TextEdit},
 };
-pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
@@ -181,7 +182,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis { db: self.db.snapshot() }
+        Analysis { db: self.db.clone() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -298,7 +299,7 @@ impl Analysis {
 
     /// Gets the text of the source file.
     pub fn file_text(&self, file_id: FileId) -> Cancellable<Arc<str>> {
-        self.with_db(|db| SourceDatabase::file_text(db, file_id).text(db))
+        self.with_db(|db| SourceDatabase::file_text(db, file_id).text(db).clone())
     }
 
     /// Gets the syntax tree of the file.
@@ -408,7 +409,7 @@ impl Analysis {
         self.with_db(|db| typing::on_enter(db, position))
     }
 
-    pub const SUPPORTED_TRIGGER_CHARS: &'static str = typing::TRIGGER_CHARS;
+    pub const SUPPORTED_TRIGGER_CHARS: &[char] = typing::TRIGGER_CHARS;
 
     /// Returns an edit which should be applied after a character was typed.
     ///
@@ -420,7 +421,7 @@ impl Analysis {
         char_typed: char,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
-        if !typing::TRIGGER_CHARS.contains(char_typed) {
+        if !typing::TRIGGER_CHARS.contains(&char_typed) {
             return Ok(None);
         }
 
@@ -513,7 +514,6 @@ impl Analysis {
         self.with_db(|db| goto_type_definition::goto_type_definition(db, position))
     }
 
-    /// Finds all usages of the reference at point.
     pub fn find_all_refs(
         &self,
         position: FilePosition,
@@ -626,7 +626,7 @@ impl Analysis {
 
     /// Returns true if this crate has `no_std` or `no_core` specified.
     pub fn is_crate_no_std(&self, crate_id: Crate) -> Cancellable<bool> {
-        self.with_db(|db| hir::db::DefDatabase::crate_def_map(db, crate_id).is_no_std())
+        self.with_db(|db| crate_def_map(db, crate_id).is_no_std())
     }
 
     /// Returns the root file of the given crate.
@@ -863,7 +863,7 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        let snap = self.db.snapshot();
+        let snap = self.db.clone();
         Cancelled::catch(|| f(&snap))
     }
 }

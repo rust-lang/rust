@@ -7,7 +7,7 @@ trait Foo<T>: Sized {
 
 impl Foo<usize> for () {
     fn bar(i: i32, t: usize, s: &()) -> (usize, i32) {
-        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+        //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated functions
         //~| ERROR type annotations needed
         (1, 2)
     }

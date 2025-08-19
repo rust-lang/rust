@@ -1,21 +1,18 @@
-error[E0518]: attribute should be applied to function or closure
+error: `#[inline]` attribute cannot be used on constants
   --> $DIR/multiple-invalid.rs:4:1
    |
 LL | #[inline]
    | ^^^^^^^^^
-...
-LL | const FOO: u8 = 0;
-   | ------------------ not a function or closure
+   |
+   = help: `#[inline]` can only be applied to functions
 
-error: attribute should be applied to a function definition
+error: `#[target_feature]` attribute cannot be used on constants
   --> $DIR/multiple-invalid.rs:6:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-LL |
-LL | const FOO: u8 = 0;
-   | ------------------ not a function definition
+   |
+   = help: `#[target_feature]` can only be applied to functions
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0518`.

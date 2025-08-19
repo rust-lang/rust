@@ -178,9 +178,7 @@ pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
         panic!("Not implemented. Accidentally called on anonymous node?")
     }
 
-    fn to_debug_str(&self, _: Tcx) -> String {
-        format!("{self:?}")
-    }
+    fn to_debug_str(&self, tcx: Tcx) -> String;
 
     /// This method tries to recover the query key from the given `DepNode`,
     /// something which is needed when forcing `DepNode`s during red-green
@@ -210,8 +208,11 @@ where
     }
 
     #[inline(always)]
-    default fn to_debug_str(&self, _: Tcx) -> String {
-        format!("{:?}", *self)
+    default fn to_debug_str(&self, tcx: Tcx) -> String {
+        // Make sure to print dep node params with reduced queries since printing
+        // may themselves call queries, which may lead to (possibly untracked!)
+        // query cycles.
+        tcx.with_reduced_queries(|| format!("{self:?}"))
     }
 
     #[inline(always)]

@@ -9,7 +9,7 @@ use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::unstable::heapsort;
-use crate::{cfg_match, intrinsics, ptr};
+use crate::{cfg_select, intrinsics, ptr};
 
 /// Sorts `v` recursively.
 ///
@@ -48,8 +48,7 @@ pub(crate) fn quicksort<'a, T, F>(
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
         // This case is usually hit when the slice contains many duplicate elements.
         if let Some(p) = ancestor_pivot {
-            // SAFETY: We assume choose_pivot yields an in-bounds position.
-            if !is_less(p, unsafe { v.get_unchecked(pivot_pos) }) {
+            if !is_less(p, &v[pivot_pos]) {
                 let num_lt = partition(v, pivot_pos, &mut |a, b| !is_less(b, a));
 
                 // Continue sorting elements greater than the pivot. We know that `num_lt` contains
@@ -142,7 +141,7 @@ const fn inst_partition<T, F: FnMut(&T, &T) -> bool>() -> fn(&mut [T], &T, &mut 
     if size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
         // Specialize for types that are relatively cheap to copy, where branchless optimizations
         // have large leverage e.g. `u64` and `String`.
-        cfg_match! {
+        cfg_select! {
             feature = "optimize_for_size" => {
                 partition_lomuto_branchless_simple::<T, F>
             }

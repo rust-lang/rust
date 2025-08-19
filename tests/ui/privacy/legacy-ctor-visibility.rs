@@ -4,7 +4,7 @@ mod m {
     pub struct S(u8);
 
     mod n {
-        use S;
+        use crate::S;
         fn f() {
             S(10);
             //~^ ERROR expected function, tuple struct or tuple variant, found struct `S`

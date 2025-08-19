@@ -2,7 +2,7 @@ error: Undefined Behavior: arithmetic overflow in `unchecked_sub`
   --> tests/fail/intrinsics/unchecked_sub2.rs:LL:CC
    |
 LL |     let _val = unsafe { 30000i16.unchecked_sub(-7000) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ arithmetic overflow in `unchecked_sub`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

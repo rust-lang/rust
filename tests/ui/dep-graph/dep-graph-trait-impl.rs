@@ -14,7 +14,7 @@ pub trait Foo: Sized {
 }
 
 mod x {
-    use Foo;
+    use crate::Foo;
 
     #[rustc_if_this_changed]
     impl Foo for char { }
@@ -23,7 +23,7 @@ mod x {
 }
 
 mod y {
-    use Foo;
+    use crate::Foo;
 
     #[rustc_then_this_would_need(typeck)] //~ ERROR OK
     pub fn with_char() {
@@ -49,7 +49,7 @@ mod y {
 }
 
 mod z {
-    use y;
+    use crate::y;
 
     // These are expected to yield errors, because changes to `x`
     // affect the BODY of `y`, but not its signature.

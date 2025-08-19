@@ -42,7 +42,7 @@ impl<'tcx> CFG<'tcx> {
     ) {
         self.push(
             block,
-            Statement { source_info, kind: StatementKind::Assign(Box::new((place, rvalue))) },
+            Statement::new(source_info, StatementKind::Assign(Box::new((place, rvalue)))),
         );
     }
 
@@ -88,7 +88,7 @@ impl<'tcx> CFG<'tcx> {
         place: Place<'tcx>,
     ) {
         let kind = StatementKind::FakeRead(Box::new((cause, place)));
-        let stmt = Statement { source_info, kind };
+        let stmt = Statement::new(source_info, kind);
         self.push(block, stmt);
     }
 
@@ -99,7 +99,7 @@ impl<'tcx> CFG<'tcx> {
         place: Place<'tcx>,
     ) {
         let kind = StatementKind::PlaceMention(Box::new(place));
-        let stmt = Statement { source_info, kind };
+        let stmt = Statement::new(source_info, kind);
         self.push(block, stmt);
     }
 
@@ -110,7 +110,7 @@ impl<'tcx> CFG<'tcx> {
     /// syntax (e.g. `continue` or `if !`) that would otherwise not appear in MIR.
     pub(crate) fn push_coverage_span_marker(&mut self, block: BasicBlock, source_info: SourceInfo) {
         let kind = StatementKind::Coverage(coverage::CoverageKind::SpanMarker);
-        let stmt = Statement { source_info, kind };
+        let stmt = Statement::new(source_info, kind);
         self.push(block, stmt);
     }
 

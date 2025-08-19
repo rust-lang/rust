@@ -15,6 +15,7 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 default = ["nightly"]
 nightly = [
     "dep:rustc_data_structures",
@@ -22,3 +23,4 @@ nightly = [
     "rustc_index/nightly",
     "rustc_type_ir/nightly",
 ]
+# tidy-alphabetical-end

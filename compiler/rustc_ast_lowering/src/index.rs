@@ -164,11 +164,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
-            if let ItemKind::Struct(_, struct_def, _) = &i.kind {
+            if let ItemKind::Struct(_, _, struct_def) = &i.kind
                 // If this is a tuple or unit-like struct, register the constructor.
-                if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
-                    this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
-                }
+                && let Some(ctor_hir_id) = struct_def.ctor_hir_id()
+            {
+                this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
             }
             intravisit::walk_item(this, i);
         });
@@ -311,7 +311,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         );
 
         self.with_parent(const_arg.hir_id, |this| {
-            intravisit::walk_ambig_const_arg(this, const_arg);
+            intravisit::walk_const_arg(this, const_arg);
         });
     }
 
@@ -381,28 +381,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         })
     }
 
-    fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
-        // Do not visit the duplicate information in TraitItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let TraitItemRef { id, ident: _, kind: _, span: _ } = *ii;
-
-        self.visit_nested_trait_item(id);
+    fn visit_trait_item_ref(&mut self, id: &'hir TraitItemId) {
+        self.visit_nested_trait_item(*id);
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
-        // Do not visit the duplicate information in ImplItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let ImplItemRef { id, ident: _, kind: _, span: _, trait_item_def_id: _ } = *ii;
-
-        self.visit_nested_impl_item(id);
+    fn visit_impl_item_ref(&mut self, id: &'hir ImplItemId) {
+        self.visit_nested_impl_item(*id);
     }
 
-    fn visit_foreign_item_ref(&mut self, fi: &'hir ForeignItemRef) {
-        // Do not visit the duplicate information in ForeignItemRef. We want to
-        // map the actual nodes, not the duplicate ones in the *Ref.
-        let ForeignItemRef { id, ident: _, span: _ } = *fi;
-
-        self.visit_nested_foreign_item(id);
+    fn visit_foreign_item_ref(&mut self, id: &'hir ForeignItemId) {
+        self.visit_nested_foreign_item(*id);
     }
 
     fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {

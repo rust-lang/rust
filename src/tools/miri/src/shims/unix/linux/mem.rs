@@ -22,8 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         // old_address must be a multiple of the page size
-        #[expect(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
-        if old_address.addr().bytes() % this.machine.page_size != 0 || new_size == 0 {
+        if !old_address.addr().bytes().is_multiple_of(this.machine.page_size) || new_size == 0 {
             this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
         }

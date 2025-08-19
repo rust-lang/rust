@@ -1,7 +1,7 @@
 use super::EXPLICIT_INTO_ITER_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_trait_method;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -76,7 +76,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
     };
 
     let mut applicability = Applicability::MachineApplicable;
-    let object = snippet_with_applicability(cx, self_arg.span, "_", &mut applicability);
+    let object = snippet_with_context(cx, self_arg.span, call_expr.span.ctxt(), "_", &mut applicability).0;
     span_lint_and_sugg(
         cx,
         EXPLICIT_INTO_ITER_LOOP,

@@ -24,8 +24,8 @@ impl flags::Codegen {
                 grammar::generate(self.check);
                 assists_doc_tests::generate(self.check);
                 parser_inline_tests::generate(self.check);
-                feature_docs::generate(self.check)
-                // diagnostics_docs::generate(self.check) doesn't generate any tests
+                feature_docs::generate(self.check);
+                diagnostics_docs::generate(self.check);
                 // lints::generate(self.check) Updating clones the rust repo, so don't run it unless
                 // explicitly asked for
             }
@@ -173,11 +173,11 @@ fn add_preamble(cg: CodegenType, mut text: String) -> String {
 #[allow(clippy::print_stderr)]
 fn ensure_file_contents(cg: CodegenType, file: &Path, contents: &str, check: bool) -> bool {
     let contents = normalize_newlines(contents);
-    if let Ok(old_contents) = fs::read_to_string(file) {
-        if normalize_newlines(&old_contents) == contents {
-            // File is already up to date.
-            return false;
-        }
+    if let Ok(old_contents) = fs::read_to_string(file)
+        && normalize_newlines(&old_contents) == contents
+    {
+        // File is already up to date.
+        return false;
     }
 
     let display_path = file.strip_prefix(project_root()).unwrap_or(file);

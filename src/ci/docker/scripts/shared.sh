@@ -40,3 +40,37 @@ function retry {
     }
   done
 }
+
+download_tar_and_extract_into_dir() {
+  local url="$1"
+  local sum="$2"
+  local dir="$3"
+  local file=$(mktemp -u)
+
+  while :; do
+    if [[ -f "$file" ]]; then
+      if ! h="$(sha256sum "$file" | awk '{ print $1 }')"; then
+        printf 'ERROR: reading hash\n' >&2
+        exit 1
+      fi
+
+      if [[ "$h" == "$sum" ]]; then
+        break
+      fi
+
+      printf 'WARNING: hash mismatch: %s != expected %s\n' "$h" "$sum" >&2
+      rm -f "$file"
+    fi
+
+    printf 'Downloading: %s\n' "$url"
+    if ! curl -f -L -o "$file" "$url"; then
+       rm -f "$file"
+      sleep 1
+    fi
+  done
+
+  mkdir -p "$dir"
+  cd "$dir"
+  tar -xf "$file"
+  rm -f "$file"
+}

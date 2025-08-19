@@ -1,12 +1,14 @@
 use rustc_ast::visit::{visit_opt, walk_list};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, LangItem, TyKind, find_attr};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::{Span, sym};
 
-use crate::lints::DanglingPointersFromTemporaries;
+use crate::lints::{DanglingPointersFromLocals, DanglingPointersFromTemporaries};
 use crate::{LateContext, LateLintPass};
 
 declare_lint! {
@@ -41,6 +43,36 @@ declare_lint! {
     "detects getting a pointer from a temporary"
 }
 
+declare_lint! {
+    /// The `dangling_pointers_from_locals` lint detects getting a pointer to data
+    /// of a local that will be dropped at the end of the function.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn f() -> *const u8 {
+    ///     let x = 0;
+    ///     &x // returns a dangling ptr to `x`
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Returning a pointer from a local value will not prolong its lifetime,
+    /// which means that the value can be dropped and the allocation freed
+    /// while the pointer still exists, making the pointer dangling.
+    /// This is not an error (as far as the type system is concerned)
+    /// but probably is not what the user intended either.
+    ///
+    /// If you need stronger guarantees, consider using references instead,
+    /// as they are statically verified by the borrow-checker to never dangle.
+    pub DANGLING_POINTERS_FROM_LOCALS,
+    Warn,
+    "detects returning a pointer from a local variable"
+}
+
 /// FIXME: false negatives (i.e. the lint is not emitted when it should be)
 /// 1. Ways to get a temporary that are not recognized:
 ///    - `owning_temporary.field`
@@ -52,20 +84,123 @@ declare_lint! {
 #[derive(Clone, Copy, Default)]
 pub(crate) struct DanglingPointers;
 
-impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES]);
+impl_lint_pass!(DanglingPointers => [DANGLING_POINTERS_FROM_TEMPORARIES, DANGLING_POINTERS_FROM_LOCALS]);
 
 // This skips over const blocks, but they cannot use or return a dangling pointer anyways.
 impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: FnKind<'tcx>,
-        _: &'tcx FnDecl<'tcx>,
+        fn_kind: FnKind<'tcx>,
+        fn_decl: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         _: Span,
-        _: LocalDefId,
+        def_id: LocalDefId,
     ) {
-        DanglingPointerSearcher { cx, inside_call_args: false }.visit_body(body)
+        DanglingPointerSearcher { cx, inside_call_args: false }.visit_body(body);
+
+        if let FnRetTy::Return(ret_ty) = &fn_decl.output
+            && let TyKind::Ptr(_) = ret_ty.kind
+        {
+            // get the return type of the function or closure
+            let ty = match cx.tcx.type_of(def_id).instantiate_identity().kind() {
+                ty::FnDef(..) => cx.tcx.fn_sig(def_id).instantiate_identity(),
+                ty::Closure(_, args) => args.as_closure().sig(),
+                _ => return,
+            };
+            let ty = ty.output();
+
+            // this type is only used for layout computation and pretty-printing, neither of them rely on regions
+            let ty = cx.tcx.instantiate_bound_regions_with_erased(ty);
+
+            // verify that we have a pointer type
+            let inner_ty = match ty.kind() {
+                ty::RawPtr(inner_ty, _) => *inner_ty,
+                _ => return,
+            };
+
+            if cx
+                .tcx
+                .layout_of(cx.typing_env().as_query_input(inner_ty))
+                .is_ok_and(|layout| !layout.is_1zst())
+            {
+                let dcx = &DanglingPointerLocalContext {
+                    body: def_id,
+                    fn_ret: ty,
+                    fn_ret_span: ret_ty.span,
+                    fn_ret_inner: inner_ty,
+                    fn_kind: match fn_kind {
+                        FnKind::ItemFn(..) => "function",
+                        FnKind::Method(..) => "method",
+                        FnKind::Closure => "closure",
+                    },
+                };
+
+                // look for `return`s
+                DanglingPointerReturnSearcher { cx, dcx }.visit_body(body);
+
+                // analyze implicit return expression
+                if let ExprKind::Block(block, None) = &body.value.kind
+                    && let innermost_block = block.innermost_block()
+                    && let Some(expr) = innermost_block.expr
+                {
+                    lint_addr_of_local(cx, dcx, expr);
+                }
+            }
+        }
+    }
+}
+
+struct DanglingPointerLocalContext<'tcx> {
+    body: LocalDefId,
+    fn_ret: Ty<'tcx>,
+    fn_ret_span: Span,
+    fn_ret_inner: Ty<'tcx>,
+    fn_kind: &'static str,
+}
+
+struct DanglingPointerReturnSearcher<'lcx, 'tcx> {
+    cx: &'lcx LateContext<'tcx>,
+    dcx: &'lcx DanglingPointerLocalContext<'tcx>,
+}
+
+impl<'tcx> Visitor<'tcx> for DanglingPointerReturnSearcher<'_, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> Self::Result {
+        if let ExprKind::Ret(Some(expr)) = expr.kind {
+            lint_addr_of_local(self.cx, self.dcx, expr);
+        }
+        walk_expr(self, expr)
+    }
+}
+
+/// Look for `&<path_to_local_in_same_body>` pattern and emit lint for it
+fn lint_addr_of_local<'a>(
+    cx: &LateContext<'a>,
+    dcx: &DanglingPointerLocalContext<'a>,
+    expr: &'a Expr<'a>,
+) {
+    // peel casts as they do not interest us here, we want the inner expression.
+    let (inner, _) = super::utils::peel_casts(cx, expr);
+
+    if let ExprKind::AddrOf(_, _, inner_of) = inner.kind
+        && let ExprKind::Path(ref qpath) = inner_of.peel_blocks().kind
+        && let Res::Local(from) = cx.qpath_res(qpath, inner_of.hir_id)
+        && cx.tcx.hir_enclosing_body_owner(from) == dcx.body
+    {
+        cx.tcx.emit_node_span_lint(
+            DANGLING_POINTERS_FROM_LOCALS,
+            expr.hir_id,
+            expr.span,
+            DanglingPointersFromLocals {
+                ret_ty: dcx.fn_ret,
+                ret_ty_span: dcx.fn_ret_span,
+                fn_kind: dcx.fn_kind,
+                local_var: cx.tcx.hir_span(from),
+                local_var_name: cx.tcx.hir_ident(from),
+                local_var_ty: dcx.fn_ret_inner,
+                created_at: (expr.hir_id != inner.hir_id).then_some(inner.span),
+            },
+        );
     }
 }
 
@@ -133,7 +268,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let ty = cx.typeck_results().expr_ty(receiver)
         && owns_allocation(cx.tcx, ty)
         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && cx.tcx.has_attr(fn_id, sym::rustc_as_ptr)
+        && find_attr!(cx.tcx.get_all_attrs(fn_id), AttributeKind::AsPtr(_))
     {
         // FIXME: use `emit_node_lint` when `#[primary_span]` is added.
         cx.tcx.emit_node_span_lint(

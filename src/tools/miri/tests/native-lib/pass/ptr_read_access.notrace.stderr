@@ -1,0 +1,18 @@
+warning: sharing memory with a native function called via FFI
+  --> tests/native-lib/pass/ptr_read_access.rs:LL:CC
+   |
+LL |     unsafe { print_pointer(&x) };
+   |              ^^^^^^^^^^^^^^^^^ sharing memory with a native function
+   |
+   = help: when memory is shared with a native function call, Miri stops tracking initialization and provenance for that memory
+   = help: in particular, Miri assumes that the native call initializes all memory it has access to
+   = help: Miri also assumes that any part of this memory may be a pointer that is permitted to point to arbitrary exposed memory
+   = help: what this means is that Miri will easily miss Undefined Behavior related to incorrect usage of this shared memory, so you should not take a clean Miri run as a signal that your FFI code is UB-free
+   = note: BACKTRACE:
+   = note: inside `test_access_pointer` at tests/native-lib/pass/ptr_read_access.rs:LL:CC
+note: inside `main`
+  --> tests/native-lib/pass/ptr_read_access.rs:LL:CC
+   |
+LL |     test_access_pointer();
+   |     ^^^^^^^^^^^^^^^^^^^^^
+

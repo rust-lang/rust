@@ -4,6 +4,7 @@ error[E0557]: feature has been removed
 LL | #![feature(no_coverage)]
    |            ^^^^^^^^^^^ feature has been removed
    |
+   = note: removed in 1.74.0; see <https://github.com/rust-lang/rust/pull/114656> for more information
    = note: renamed to `coverage_attribute`
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature

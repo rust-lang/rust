@@ -1,6 +1,22 @@
 # How to build and run the compiler
 
-<!-- toc -->
+<div class="warning">
+
+For `profile = "library"` users, or users who use `download-rustc = true | "if-unchanged"`, please be advised that
+the `./x test library/std` flow where `download-rustc` is active (i.e. no compiler changes) is currently broken.
+This is tracked in <https://github.com/rust-lang/rust/issues/142505>. Only the `./x test` flow is affected in this
+case, `./x {check,build} library/std` should still work.
+
+In the short-term, you may need to disable `download-rustc` for `./x test library/std`. This can be done either by:
+
+1. `./x test library/std --set rust.download-rustc=false`
+2. Or set `rust.download-rustc=false` in `bootstrap.toml`.
+
+Unfortunately that will require building the stage 1 compiler. The bootstrap team is working on this, but
+implementing a maintainable fix is taking some time.
+
+</div>
+
 
 The compiler is built using a tool called `x.py`. You will need to
 have Python installed to run it.
@@ -217,7 +233,6 @@ probably the best "go to" command for building a local compiler:
 This may *look* like it only builds the standard library, but that is not the case.
 What this command does is the following:
 
-- Build `std` using the stage0 compiler
 - Build `rustc` using the stage0 compiler
   - This produces the stage1 compiler
 - Build `std` using the stage1 compiler
@@ -241,8 +256,7 @@ build. The **full** `rustc` build (what you get with `./x build
 --stage 2 compiler/rustc`) has quite a few more steps:
 
 - Build `rustc` with the stage1 compiler.
-  - The resulting compiler here is called the "stage2" compiler.
-- Build `std` with stage2 compiler.
+  - The resulting compiler here is called the "stage2" compiler, which uses stage1 std from the previous command.
 - Build `librustdoc` and a bunch of other things with the stage2 compiler.
 
 You almost never need to do this.
@@ -250,14 +264,14 @@ You almost never need to do this.
 ### Build specific components
 
 If you are working on the standard library, you probably don't need to build
-the compiler unless you are planning to use a recently added nightly feature.
-Instead, you can just build using the bootstrap compiler.
+every other default component. Instead, you can build a specific component by
+providing its name, like this:
 
 ```bash
-./x build --stage 0 library
+./x build --stage 1 library
 ```
 
-If you choose the `library` profile when running `x setup`, you can omit `--stage 0` (it's the
+If you choose the `library` profile when running `x setup`, you can omit `--stage 1` (it's the
 default).
 
 ## Creating a rustup toolchain
@@ -271,7 +285,6 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
-rustup toolchain link stage0 build/host/stage0-sysroot # beta compiler + stage0 std
 rustup toolchain link stage1 build/host/stage1
 rustup toolchain link stage2 build/host/stage2
 ```

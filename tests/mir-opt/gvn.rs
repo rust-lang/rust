@@ -533,10 +533,10 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
 fn slices() {
     // CHECK-LABEL: fn slices(
     // CHECK: {{_.*}} = const "
-    // CHECK-NOT: {{_.*}} = const "
-    let s = "my favourite slice"; // This is a `Const::Slice` in MIR.
+    // CHECK: {{_.*}} = const "
+    let s = "my favourite slice";
     opaque(s);
-    let t = s; // This should be the same pointer, so cannot be a `Const::Slice`.
+    let t = s; // This should be the same pointer.
     opaque(t);
     assert_eq!(s.as_ptr(), t.as_ptr());
     let u = unsafe { transmute::<&str, &[u8]>(s) };
@@ -556,12 +556,12 @@ fn duplicate_slice() -> (bool, bool) {
         let d: &str;
         {
             // CHECK: [[a:_.*]] = (const "a",);
-            // CHECK: [[au:_.*]] = copy ([[a]].0: &str) as u128 (Transmute);
+            // CHECK: [[au:_.*]] = const "a" as u128 (Transmute);
             let a = ("a",);
             Call(au = transmute::<_, u128>(a.0), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
-            // CHECK: [[c:_.*]] = identity::<&str>(copy ([[a]].0: &str))
+            // CHECK: [[c:_.*]] = identity::<&str>(const "a")
             Call(c = identity(a.0), ReturnTo(bb2), UnwindContinue())
         }
         bb2 = {
@@ -569,15 +569,13 @@ fn duplicate_slice() -> (bool, bool) {
             Call(cu = transmute::<_, u128>(c), ReturnTo(bb3), UnwindContinue())
         }
         bb3 = {
-            // This slice is different from `a.0`. Hence `bu` is not `au`.
             // CHECK: [[b:_.*]] = const "a";
-            // CHECK: [[bu:_.*]] = copy [[b]] as u128 (Transmute);
+            // CHECK: [[bu:_.*]] = copy [[au]];
             let b = "a";
             Call(bu = transmute::<_, u128>(b), ReturnTo(bb4), UnwindContinue())
         }
         bb4 = {
-            // This returns a copy of `b`, which is not `a`.
-            // CHECK: [[d:_.*]] = identity::<&str>(copy [[b]])
+            // CHECK: [[d:_.*]] = identity::<&str>(const "a")
             Call(d = identity(b), ReturnTo(bb5), UnwindContinue())
         }
         bb5 = {
@@ -585,8 +583,7 @@ fn duplicate_slice() -> (bool, bool) {
             Call(du = transmute::<_, u128>(d), ReturnTo(bb6), UnwindContinue())
         }
         bb6 = {
-            // `direct` must not fold to `true`, as `indirect` will not.
-            // CHECK: = Eq(copy [[au]], copy [[bu]]);
+            // CHECK: = const true;
             // CHECK: = Eq(copy [[cu]], copy [[du]]);
             let direct = au == bu;
             let indirect = cu == du;
@@ -869,7 +866,7 @@ fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, 
 
             // Metadata usize -> (), do not optimize.
             // CHECK: [[T:_.+]] = copy _1 as
-            // CHECK-NEXT: PtrMetadata(copy [[T]])
+            // CHECK-NEXT: const ();
             let t1 = CastPtrToPtr::<_, *const T>(ps);
             let m1 = PtrMetadata(t1);
 
@@ -1055,6 +1052,26 @@ fn remove_casts_must_change_both_sides(mut_a: &*mut u8, mut_b: *mut u8) -> bool 
     }
 }
 
+/// Verify that we do not references to non-existing locals when dereferencing projections.
+fn dereference_indexing(array: [u8; 2], index: usize) {
+    // CHECK-LABEL: fn dereference_indexing(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug i => [[i:_.*]];
+
+    let a = {
+        // CHECK: [[i]] = Add(copy _2, const 1_usize);
+        let i = index + 1;
+        // CHECK: [[a]] = &_1[[[i]]];
+        &array[i]
+    };
+
+    // CHECK-NOT: [{{.*}}]
+    // CHECK: [[tmp:_.*]] = copy (*[[a]]);
+    // CHECK: opaque::<u8>(move [[tmp]])
+    opaque(*a);
+}
+
+// CHECK-LABEL: fn main(
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -1082,6 +1099,7 @@ fn main() {
     slice_const_length(&[1]);
     meta_of_ref_to_slice(&42);
     slice_from_raw_parts_as_ptr(&123, 456);
+    dereference_indexing([129, 14], 5);
 }
 
 #[inline(never)]
@@ -1141,3 +1159,4 @@ enum Never {}
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
 // EMIT_MIR gvn.transmute_then_cast_pointer.GVN.diff
 // EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff
+// EMIT_MIR gvn.dereference_indexing.GVN.diff

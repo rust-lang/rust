@@ -10,7 +10,7 @@ LL |         let _t = t.0;
 LL | }
    | - in Rust 2018, `t` is dropped here, but in Rust 2021, only `t.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 note: the lint level is defined here
   --> $DIR/precise.rs:3:9
    |
@@ -44,7 +44,7 @@ LL | }
    | in Rust 2018, `u` is dropped here, but in Rust 2021, only `u.0.1` will be dropped here as part of the closure
    | in Rust 2018, `u` is dropped here, but in Rust 2021, only `u.1.0` will be dropped here as part of the closure
    |
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
 help: add a dummy let to cause `u` to be fully captured
    |
 LL ~     let c = || {

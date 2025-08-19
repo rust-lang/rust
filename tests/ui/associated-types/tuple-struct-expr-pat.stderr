@@ -1,0 +1,97 @@
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:10:36
+   |
+LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^-- help: use struct expression instead: `{}`
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:10:9
+   |
+LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+   |         ^^^^^^^^^^^^^^^^^^^^^^-- help: use struct pattern instead: `{}`
+   |
+   = note: can't use a type alias as tuple pattern
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:13:38
+   |
+LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+help: use struct expression instead
+   |
+LL -     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+LL +     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc { 0: 0 };
+   |
+
+error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:13:9
+   |
+LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as tuple pattern
+help: use struct pattern instead
+   |
+LL -     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+LL +     let <T<1> as Trait>::Assoc { 0: _a } = <T<1> as Trait>::Assoc(0);
+   |
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:16:42
+   |
+LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+help: use struct expression instead
+   |
+LL -     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+LL +     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc { 0: 0, 1: 1 };
+   |
+
+error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:16:9
+   |
+LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as tuple pattern
+help: use struct pattern instead
+   |
+LL -     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+LL +     let <T<2> as Trait>::Assoc { 0: _a, 1: _b } = <T<2> as Trait>::Assoc(0, 1);
+   |
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:19:62
+   |
+LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+help: use struct expression instead
+   |
+LL -     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+LL +     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc { 0: 0, 1: 1, 2: 2 };
+   |
+
+error[E0575]: expected tuple struct or tuple variant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:19:9
+   |
+LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as tuple pattern
+help: use struct pattern instead
+   |
+LL -     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+LL +     let <T<3> as Trait>::Assoc { 0: ref _a, 1: ref mut _b, 2: mut _c } = <T<3> as Trait>::Assoc(0, 1, 2);
+   |
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0575`.

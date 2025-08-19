@@ -4,6 +4,7 @@
 use std::{
     env, fmt,
     ops::AddAssign,
+    panic::{AssertUnwindSafe, catch_unwind},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -135,34 +136,30 @@ impl flags::AnalysisStats {
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
             for file_id in source_root.iter() {
-                if let Some(p) = source_root.path_for_file(&file_id) {
-                    if let Some((_, Some("rs"))) = p.name_and_extension() {
-                        // measure workspace/project code
-                        if !source_root.is_library || self.with_deps {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                if let Some(p) = source_root.path_for_file(&file_id)
+                    && let Some((_, Some("rs"))) = p.name_and_extension()
+                {
+                    // measure workspace/project code
+                    if !source_root.is_library || self.with_deps {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            workspace_loc += length;
-                            workspace_item_trees += 1;
-                            workspace_item_stats += item_stats;
-                        } else {
-                            let length = db.file_text(file_id).text(db).lines().count();
-                            let item_stats = db
-                                .file_item_tree(
-                                    EditionedFileId::current_edition(db, file_id).into(),
-                                )
-                                .item_tree_stats()
-                                .into();
+                        workspace_loc += length;
+                        workspace_item_trees += 1;
+                        workspace_item_stats += item_stats;
+                    } else {
+                        let length = db.file_text(file_id).text(db).lines().count();
+                        let item_stats = db
+                            .file_item_tree(EditionedFileId::current_edition(db, file_id).into())
+                            .item_tree_stats()
+                            .into();
 
-                            dep_loc += length;
-                            dep_item_trees += 1;
-                            dep_item_stats += item_stats;
-                        }
+                        dep_loc += length;
+                        dep_item_trees += 1;
+                        dep_item_stats += item_stats;
                     }
                 }
             }
@@ -175,7 +172,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
-        eprintln!("  dependency item stats: {}", dep_item_stats);
+        eprintln!("  dependency item stats: {dep_item_stats}");
 
         // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
         // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
@@ -295,7 +292,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(workspace_loc),
             UsizeWithUnderscore(workspace_item_trees),
         );
-        eprintln!("    usages: {}", workspace_item_stats);
+        eprintln!("    usages: {workspace_item_stats}");
 
         eprintln!("  Dependencies:");
         eprintln!(
@@ -303,7 +300,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
-        eprintln!("    declarations: {}", dep_item_stats);
+        eprintln!("    declarations: {dep_item_stats}");
 
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
@@ -531,7 +528,7 @@ impl flags::AnalysisStats {
                 }
 
                 let todo = syntax::ast::make::ext::expr_todo().to_string();
-                let mut formatter = |_: &hir::Type| todo.clone();
+                let mut formatter = |_: &hir::Type<'_>| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
                     let generated = term
@@ -559,29 +556,35 @@ impl flags::AnalysisStats {
                         std::fs::write(path, txt).unwrap();
 
                         let res = ws.run_build_scripts(&cargo_config, &|_| ()).unwrap();
-                        if let Some(err) = res.error() {
-                            if err.contains("error: could not compile") {
-                                if let Some(mut err_idx) = err.find("error[E") {
-                                    err_idx += 7;
-                                    let err_code = &err[err_idx..err_idx + 4];
-                                    match err_code {
-                                        "0282" | "0283" => continue, // Byproduct of testing method
-                                        "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
-                                        // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
-                                        // Generated code is valid in case traits are imported
-                                        "0599" if err.contains("the following trait is implemented but not in scope") => continue,
-                                        _ => (),
+                        if let Some(err) = res.error()
+                            && err.contains("error: could not compile")
+                        {
+                            if let Some(mut err_idx) = err.find("error[E") {
+                                err_idx += 7;
+                                let err_code = &err[err_idx..err_idx + 4];
+                                match err_code {
+                                    "0282" | "0283" => continue, // Byproduct of testing method
+                                    "0277" | "0308" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                    // FIXME: In some rare cases `AssocItem::container_or_implemented_trait` returns `None` for trait methods.
+                                    // Generated code is valid in case traits are imported
+                                    "0599"
+                                        if err.contains(
+                                            "the following trait is implemented but not in scope",
+                                        ) =>
+                                    {
+                                        continue;
                                     }
-                                    bar.println(err);
-                                    bar.println(generated);
-                                    acc.error_codes
-                                        .entry(err_code.to_owned())
-                                        .and_modify(|n| *n += 1)
-                                        .or_insert(1);
-                                } else {
-                                    acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error: \n{err}"));
+                                    _ => (),
                                 }
+                                bar.println(err);
+                                bar.println(generated);
+                                acc.error_codes
+                                    .entry(err_code.to_owned())
+                                    .and_modify(|n| *n += 1)
+                                    .or_insert(1);
+                            } else {
+                                acc.syntax_errors += 1;
+                                bar.println(format!("Syntax error: \n{err}"));
                             }
                         }
                     }
@@ -655,22 +658,26 @@ impl flags::AnalysisStats {
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
-        for &body in bodies {
-            if matches!(body, DefWithBody::Variant(_)) {
+        for &body_id in bodies {
+            if matches!(body_id, DefWithBody::Variant(_)) {
                 continue;
             }
+            let module = body_id.module(db);
+            if !self.should_process(db, body_id, module) {
+                continue;
+            }
+
             all += 1;
-            let Err(e) = db.mir_body(body.into()) else {
+            let Err(e) = db.mir_body(body_id.into()) else {
                 continue;
             };
             if verbosity.is_spammy() {
-                let full_name = body
-                    .module(db)
+                let full_name = module
                     .path_to_root(db)
                     .into_iter()
                     .rev()
                     .filter_map(|it| it.name(db))
-                    .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
+                    .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
                 bar.println(format!("Mir body for {full_name} failed due {e:?}"));
@@ -701,10 +708,9 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
-            let snap = db.snapshot();
             bodies
                 .par_iter()
-                .map_with(snap, |snap, &body| {
+                .map_with(db.clone(), |snap, &body| {
                     snap.body(body.into());
                     snap.infer(body.into());
                 })
@@ -722,33 +728,16 @@ impl flags::AnalysisStats {
         let mut num_pats_unknown = 0;
         let mut num_pats_partially_unknown = 0;
         let mut num_pat_type_mismatches = 0;
+        let mut panics = 0;
         for &body_id in bodies {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
             let display_target = module.krate().to_display_target(db);
-            let full_name = move || {
-                module
-                    .krate()
-                    .display_name(db)
-                    .map(|it| it.canonical_name().as_str().to_owned())
-                    .into_iter()
-                    .chain(
-                        module
-                            .path_to_root(db)
-                            .into_iter()
-                            .filter_map(|it| it.name(db))
-                            .rev()
-                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db, Edition::LATEST).to_string()),
-                    )
-                    .join("::")
-            };
-            if let Some(only_name) = self.only.as_deref() {
-                if name.display(db, Edition::LATEST).to_string() != only_name
-                    && full_name() != only_name
-                {
-                    continue;
-                }
+            if let Some(only_name) = self.only.as_deref()
+                && name.display(db, Edition::LATEST).to_string() != only_name
+                && full_name(db, body_id, module) != only_name
+            {
+                continue;
             }
             let msg = move || {
                 if verbosity.is_verbose() {
@@ -762,12 +751,17 @@ impl flags::AnalysisStats {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
-                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, body_id, module),
+                            path,
+                            syntax_range
+                        )
                     } else {
-                        format!("processing: {}", full_name())
+                        format!("processing: {}", full_name(db, body_id, module))
                     }
                 } else {
-                    format!("processing: {}", full_name())
+                    format!("processing: {}", full_name(db, body_id, module))
                 }
             };
             if verbosity.is_spammy() {
@@ -775,14 +769,29 @@ impl flags::AnalysisStats {
             }
             bar.set_message(msg);
             let body = db.body(body_id.into());
-            let inference_result = db.infer(body_id.into());
+            let inference_result = catch_unwind(AssertUnwindSafe(|| db.infer(body_id.into())));
+            let inference_result = match inference_result {
+                Ok(inference_result) => inference_result,
+                Err(p) => {
+                    if let Some(s) = p.downcast_ref::<&str>() {
+                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
+                    } else if let Some(s) = p.downcast_ref::<String>() {
+                        eprintln!("infer panicked for {}: {}", full_name(db, body_id, module), s);
+                    } else {
+                        eprintln!("infer panicked for {}", full_name(db, body_id, module));
+                    }
+                    panics += 1;
+                    bar.inc(1);
+                    continue;
+                }
+            };
             // This query is LRU'd, so actually calling it will skew the timing results.
             let sm = || db.body_with_source_map(body_id.into()).1;
 
             // region:expressions
             let (previous_exprs, previous_unknown, previous_partially_unknown) =
                 (num_exprs, num_exprs_unknown, num_exprs_partially_unknown);
-            for (expr_id, _) in body.exprs.iter() {
+            for (expr_id, _) in body.exprs() {
                 let ty = &inference_result[expr_id];
                 num_exprs += 1;
                 let unknown_or_partial = if ty.is_unknown() {
@@ -876,7 +885,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} exprs, {} unknown, {} partial",
-                    full_name(),
+                    full_name(db, body_id, module),
                     num_exprs - previous_exprs,
                     num_exprs_unknown - previous_unknown,
                     num_exprs_partially_unknown - previous_partially_unknown
@@ -887,7 +896,7 @@ impl flags::AnalysisStats {
             // region:patterns
             let (previous_pats, previous_unknown, previous_partially_unknown) =
                 (num_pats, num_pats_unknown, num_pats_partially_unknown);
-            for (pat_id, _) in body.pats.iter() {
+            for (pat_id, _) in body.pats() {
                 let ty = &inference_result[pat_id];
                 num_pats += 1;
                 let unknown_or_partial = if ty.is_unknown() {
@@ -979,7 +988,7 @@ impl flags::AnalysisStats {
             if verbosity.is_spammy() {
                 bar.println(format!(
                     "In {}: {} pats, {} unknown, {} partial",
-                    full_name(),
+                    full_name(db, body_id, module),
                     num_pats - previous_pats,
                     num_pats_unknown - previous_unknown,
                     num_pats_partially_unknown - previous_partially_unknown
@@ -1009,6 +1018,7 @@ impl flags::AnalysisStats {
             percentage(num_pats_partially_unknown, num_pats),
             num_pat_type_mismatches
         );
+        eprintln!("  panics: {panics}");
         eprintln!("{:<20} {}", "Inference:", inference_time);
         report_metric("unknown type", num_exprs_unknown, "#");
         report_metric("type mismatches", num_expr_type_mismatches, "#");
@@ -1034,34 +1044,8 @@ impl flags::AnalysisStats {
         bar.tick();
         for &body_id in bodies {
             let module = body_id.module(db);
-            let full_name = move || {
-                module
-                    .krate()
-                    .display_name(db)
-                    .map(|it| it.canonical_name().as_str().to_owned())
-                    .into_iter()
-                    .chain(
-                        module
-                            .path_to_root(db)
-                            .into_iter()
-                            .filter_map(|it| it.name(db))
-                            .rev()
-                            .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
-                            .map(|it| it.display(db, Edition::LATEST).to_string()),
-                    )
-                    .join("::")
-            };
-            if let Some(only_name) = self.only.as_deref() {
-                if body_id
-                    .name(db)
-                    .unwrap_or_else(Name::missing)
-                    .display(db, Edition::LATEST)
-                    .to_string()
-                    != only_name
-                    && full_name() != only_name
-                {
-                    continue;
-                }
+            if !self.should_process(db, body_id, module) {
+                continue;
             }
             let msg = move || {
                 if verbosity.is_verbose() {
@@ -1075,12 +1059,17 @@ impl flags::AnalysisStats {
                         let original_file = src.file_id.original_file(db);
                         let path = vfs.file_path(original_file.file_id(db));
                         let syntax_range = src.text_range();
-                        format!("processing: {} ({} {:?})", full_name(), path, syntax_range)
+                        format!(
+                            "processing: {} ({} {:?})",
+                            full_name(db, body_id, module),
+                            path,
+                            syntax_range
+                        )
                     } else {
-                        format!("processing: {}", full_name())
+                        format!("processing: {}", full_name(db, body_id, module))
                     }
                 } else {
-                    format!("processing: {}", full_name())
+                    format!("processing: {}", full_name(db, body_id, module))
                 }
             };
             if verbosity.is_spammy() {
@@ -1190,9 +1179,40 @@ impl flags::AnalysisStats {
         eprintln!("{:<20} {} ({} files)", "IDE:", ide_time, file_ids.len());
     }
 
+    fn should_process(&self, db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> bool {
+        if let Some(only_name) = self.only.as_deref() {
+            let name = body_id.name(db).unwrap_or_else(Name::missing);
+
+            if name.display(db, Edition::LATEST).to_string() != only_name
+                && full_name(db, body_id, module) != only_name
+            {
+                return false;
+            }
+        }
+        true
+    }
+
     fn stop_watch(&self) -> StopWatch {
         StopWatch::start()
     }
+}
+
+fn full_name(db: &RootDatabase, body_id: DefWithBody, module: hir::Module) -> String {
+    module
+        .krate()
+        .display_name(db)
+        .map(|it| it.canonical_name().as_str().to_owned())
+        .into_iter()
+        .chain(
+            module
+                .path_to_root(db)
+                .into_iter()
+                .filter_map(|it| it.name(db))
+                .rev()
+                .chain(Some(body_id.name(db).unwrap_or_else(Name::missing)))
+                .map(|it| it.display(db, Edition::LATEST).to_string()),
+        )
+        .join("::")
 }
 
 fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: ExprId) -> String {
@@ -1294,7 +1314,7 @@ impl fmt::Display for UsizeWithUnderscore {
         let num_str = self.0.to_string();
 
         if num_str.len() <= 3 {
-            return write!(f, "{}", num_str);
+            return write!(f, "{num_str}");
         }
 
         let mut result = String::new();
@@ -1307,7 +1327,7 @@ impl fmt::Display for UsizeWithUnderscore {
         }
 
         let result = result.chars().rev().collect::<String>();
-        write!(f, "{}", result)
+        write!(f, "{result}")
     }
 }
 

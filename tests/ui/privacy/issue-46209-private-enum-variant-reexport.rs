@@ -26,7 +26,7 @@ mod rank {
         Full,
     }
 
-    pub(in rank) enum PettyOfficer {
+    pub(in crate::rank) enum PettyOfficer {
         SecondClass,
         FirstClass,
         Chief,

@@ -86,7 +86,7 @@ impl ModDir {
                 let dir_path = if root_dir_owner {
                     DirPath::empty()
                 } else {
-                    DirPath::new(format!("{}/", name))
+                    DirPath::new(format!("{name}/"))
                 };
                 if let Some(mod_dir) = self.child(dir_path, !root_dir_owner) {
                     return Ok((

@@ -1,8 +1,9 @@
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
@@ -16,7 +17,7 @@ use crate::{base, llvm};
 
 impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
-        &self,
+        &mut self,
         def_id: DefId,
         linkage: Linkage,
         visibility: Visibility,
@@ -44,7 +45,7 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     }
 
     fn predefine_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         linkage: Linkage,
         visibility: Visibility,
@@ -55,8 +56,8 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
-        let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
-        base::set_link_section(lldecl, attrs);
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        base::set_link_section(lldecl, &attrs);
         if (linkage == Linkage::LinkOnceODR || linkage == Linkage::WeakODR)
             && self.tcx.sess.target.supports_comdat()
         {
@@ -131,8 +132,8 @@ impl CodegenCx<'_, '_> {
         }
 
         // Thread-local variables generally don't support copy relocations.
-        let is_thread_local_var = unsafe { llvm::LLVMIsAGlobalVariable(llval) }
-            .is_some_and(|v| unsafe { llvm::LLVMIsThreadLocal(v) } == llvm::True);
+        let is_thread_local_var = llvm::LLVMIsAGlobalVariable(llval)
+            .is_some_and(|v| llvm::LLVMIsThreadLocal(v) == llvm::True);
         if is_thread_local_var {
             return false;
         }

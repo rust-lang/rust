@@ -2,7 +2,7 @@ warning: unused extern crate
   --> $DIR/edition-extern-crate-allowed.rs:7:1
    |
 LL | extern crate edition_extern_crate_allowed;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove it
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
    |
 note: the lint level is defined here
   --> $DIR/edition-extern-crate-allowed.rs:5:9
@@ -10,6 +10,10 @@ note: the lint level is defined here
 LL | #![warn(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[warn(unused_extern_crates)]` implied by `#[warn(rust_2018_idioms)]`
+help: remove the unused `extern crate`
+   |
+LL - extern crate edition_extern_crate_allowed;
+   |
 
 warning: 1 warning emitted
 

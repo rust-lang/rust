@@ -46,6 +46,7 @@ mod uint_macros; // import uint_impl!
 mod error;
 mod int_log10;
 mod int_sqrt;
+pub(crate) mod libm;
 mod nonzero;
 mod overflow_panic;
 mod saturating;
@@ -490,6 +491,26 @@ impl u8 {
     #[inline]
     pub const fn as_ascii(&self) -> Option<ascii::Char> {
         ascii::Char::from_u8(*self)
+    }
+
+    /// Converts this byte to an [ASCII character](ascii::Char), without
+    /// checking whether or not it's valid.
+    ///
+    /// # Safety
+    ///
+    /// This byte must be valid ASCII, or else this is UB.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
+        assert_unsafe_precondition!(
+            check_library_ub,
+            "as_ascii_unchecked requires that the byte is valid ASCII",
+            (it: &u8 = self) => it.is_ascii()
+        );
+
+        // SAFETY: the caller promised that this byte is ASCII.
+        unsafe { ascii::Char::from_u8_unchecked(*self) }
     }
 
     /// Makes a copy of the value in its ASCII upper case equivalent.
@@ -1032,7 +1053,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    ///
     /// assert_eq!("0", b'0'.escape_ascii().to_string());
     /// assert_eq!("\\t", b'\t'.escape_ascii().to_string());
     /// assert_eq!("\\r", b'\r'.escape_ascii().to_string());
@@ -1358,7 +1378,8 @@ const fn from_ascii_radix_panic(radix: u32) -> ! {
 macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $int_ty {
+        #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+        impl const FromStr for $int_ty {
             type Err = ParseIntError;
 
             /// Parses an integer from a string slice with decimal digits.
@@ -1379,7 +1400,6 @@ macro_rules! from_str_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
             /// ```
             /// use std::str::FromStr;
             ///
@@ -1425,7 +1445,6 @@ macro_rules! from_str_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
             /// ```
             #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str_radix(\"A\", 16), Ok(10));")]
             /// ```
@@ -1458,7 +1477,6 @@ macro_rules! from_str_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
             /// ```
             /// #![feature(int_from_ascii)]
             ///
@@ -1503,7 +1521,6 @@ macro_rules! from_str_int_impl {
             ///
             /// # Examples
             ///
-            /// Basic usage:
             /// ```
             /// #![feature(int_from_ascii)]
             ///

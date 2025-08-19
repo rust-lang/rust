@@ -4,10 +4,11 @@
 use std::io;
 use std::io::ErrorKind;
 
+use rand::Rng;
 use rustc_abi::Size;
 
-use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileDescription;
+use crate::shims::sig::check_min_vararg_count;
 use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
 use crate::*;
@@ -141,6 +142,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let f_getfd = this.eval_libc_i32("F_GETFD");
         let f_dupfd = this.eval_libc_i32("F_DUPFD");
         let f_dupfd_cloexec = this.eval_libc_i32("F_DUPFD_CLOEXEC");
+        let f_getfl = this.eval_libc_i32("F_GETFL");
+        let f_setfl = this.eval_libc_i32("F_SETFL");
 
         // We only support getting the flags for a descriptor.
         match cmd {
@@ -174,6 +177,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     this.set_last_error_and_return_i32(LibcError("EBADF"))
                 }
+            }
+            cmd if cmd == f_getfl => {
+                // Check if this is a valid open file descriptor.
+                let Some(fd) = this.machine.fds.get(fd_num) else {
+                    return this.set_last_error_and_return_i32(LibcError("EBADF"));
+                };
+
+                fd.get_flags(this)
+            }
+            cmd if cmd == f_setfl => {
+                // Check if this is a valid open file descriptor.
+                let Some(fd) = this.machine.fds.get(fd_num) else {
+                    return this.set_last_error_and_return_i32(LibcError("EBADF"));
+                };
+
+                let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
+                let flag = this.read_scalar(flag)?.to_i32()?;
+
+                fd.set_flags(flag, this)
             }
             cmd if this.tcx.sess.target.os == "macos"
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
@@ -242,9 +264,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
+        // Non-deterministically decide to further reduce the count, simulating a partial read (but
+        // never to 0, that has different behavior).
+        let count =
+            if fd.nondet_short_accesses() && count >= 2 && this.machine.rng.get_mut().random() {
+                count / 2
+            } else {
+                count
+            };
+
         trace!("read: FD mapped to {fd:?}");
         // We want to read at most `count` bytes. We are sure that `count` is not negative
-        // because it was a target's `usize`. Also we are sure that its smaller than
+        // because it was a target's `usize`. Also we are sure that it's smaller than
         // `usize::MAX` because it is bounded by the host's `isize`.
 
         let finish = {
@@ -306,6 +337,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
+
+        // Non-deterministically decide to further reduce the count, simulating a partial write (but
+        // never to 0, that has different behavior).
+        let count =
+            if fd.nondet_short_accesses() && count >= 2 && this.machine.rng.get_mut().random() {
+                count / 2
+            } else {
+                count
+            };
 
         let finish = {
             let dest = dest.clone();

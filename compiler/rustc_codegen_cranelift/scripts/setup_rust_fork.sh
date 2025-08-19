@@ -33,6 +33,7 @@ rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true
+compiletest-allow-stage0 = true
 
 [rust]
 download-rustc = false
@@ -43,7 +44,7 @@ verbose-tests = false
 # disabled bootstrap will crash trying to copy llvm tools for the bootstrap
 # compiler.
 llvm-tools = false
-std-features = ["panic-unwind", "compiler-builtins-no-f16-f128"]
+std-features = ["panic-unwind"]
 
 EOF
 

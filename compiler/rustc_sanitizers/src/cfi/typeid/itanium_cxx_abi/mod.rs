@@ -4,10 +4,11 @@
 //! For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 //! see design document in the tracking issue #89653.
 
+use rustc_abi::CanonAbi;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
-use rustc_target::callconv::{Conv, FnAbi, PassMode};
+use rustc_target::callconv::{FnAbi, PassMode};
 use tracing::instrument;
 
 mod encode;
@@ -45,7 +46,7 @@ pub fn typeid_for_fnabi<'tcx>(
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("typeid_for_fnabi: invalid option(s) `{:?}`", options.bits()));
     match fn_abi.conv {
-        Conv::C => {
+        CanonAbi::C => {
             encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
         }
         _ => {

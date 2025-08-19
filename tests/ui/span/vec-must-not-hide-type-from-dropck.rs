@@ -31,7 +31,7 @@ mod s {
 }
 
 mod id {
-    use s;
+    use crate::s;
 
     /// Id represents a globally unique identifier (global across the
     /// current process, that is). When dropped, it automatically

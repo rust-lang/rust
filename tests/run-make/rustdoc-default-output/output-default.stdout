@@ -188,8 +188,9 @@ Options:
                         from provided path. Only use with --merge=finalize
         --html-no-source 
                         Disable HTML source code pages generation
-        --doctest-compilation-args add arguments to be used when compiling doctests
-                        
+        --doctest-build-arg ARG
+                        One argument (of possibly many) to be used when
+                        compiling doctests
         --disable-minification 
                         disable the minification of CSS/JS files
                         (perma-unstable, do not use with cached files)

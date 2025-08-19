@@ -58,8 +58,8 @@
    LL|       |    }
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _const =
    LL|       |        const
    LL|       |        {
@@ -68,8 +68,8 @@
    LL|       |        ;
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _async =
    LL|       |        async
    LL|      0|        {
@@ -78,11 +78,11 @@
    LL|       |        ;
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    // This tests the edge case of a const block nested inside an "anon const",
-   LL|      1|    // such as the length of an array literal. Handling this case requires
-   LL|      1|    // `nested_filter::OnlyBodies` or equivalent.
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    // This tests the edge case of a const block nested inside an "anon const",
+   LL|       |    // such as the length of an array literal. Handling this case requires
+   LL|       |    // `nested_filter::OnlyBodies` or equivalent.
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _const_block_inside_anon_const =
    LL|       |        [
    LL|       |            0

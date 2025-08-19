@@ -5,6 +5,7 @@ mod tests;
 
 use core::ffi::c_void;
 
+use super::env::{CommandEnv, CommandEnvs};
 use crate::collections::BTreeMap;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
@@ -24,7 +25,6 @@ use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
 use crate::sys_common::IntoInner;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{cmp, env, fmt, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +155,9 @@ pub struct Command {
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
     force_quotes_enabled: bool,
+    startupinfo_fullscreen: bool,
+    startupinfo_untrusted_source: bool,
+    startupinfo_force_feedback: Option<bool>,
 }
 
 pub enum Stdio {
@@ -186,6 +189,9 @@ impl Command {
             stdout: None,
             stderr: None,
             force_quotes_enabled: false,
+            startupinfo_fullscreen: false,
+            startupinfo_untrusted_source: false,
+            startupinfo_force_feedback: None,
         }
     }
 
@@ -220,6 +226,18 @@ impl Command {
 
     pub fn raw_arg(&mut self, command_str_to_append: &OsStr) {
         self.args.push(Arg::Raw(command_str_to_append.to_os_string()))
+    }
+
+    pub fn startupinfo_fullscreen(&mut self, enabled: bool) {
+        self.startupinfo_fullscreen = enabled;
+    }
+
+    pub fn startupinfo_untrusted_source(&mut self, enabled: bool) {
+        self.startupinfo_untrusted_source = enabled;
+    }
+
+    pub fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) {
+        self.startupinfo_force_feedback = enabled;
     }
 
     pub fn get_program(&self) -> &OsStr {
@@ -343,6 +361,24 @@ impl Command {
             si.wShowWindow = cmd_show;
         }
 
+        if self.startupinfo_fullscreen {
+            si.dwFlags |= c::STARTF_RUNFULLSCREEN;
+        }
+
+        if self.startupinfo_untrusted_source {
+            si.dwFlags |= c::STARTF_UNTRUSTEDSOURCE;
+        }
+
+        match self.startupinfo_force_feedback {
+            Some(true) => {
+                si.dwFlags |= c::STARTF_FORCEONFEEDBACK;
+            }
+            Some(false) => {
+                si.dwFlags |= c::STARTF_FORCEOFFFEEDBACK;
+            }
+            None => {}
+        }
+
         let si_ptr: *mut c::STARTUPINFOW;
 
         let mut si_ex;
@@ -388,11 +424,6 @@ impl Command {
                 pipes,
             ))
         }
-    }
-
-    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
-        crate::sys_common::process::wait_with_output(proc, pipes)
     }
 }
 
@@ -592,16 +623,10 @@ impl Stdio {
             // permissions as well as the ability to be inherited to child
             // processes (as this is about to be inherited).
             Stdio::Null => {
-                let size = size_of::<c::SECURITY_ATTRIBUTES>();
-                let mut sa = c::SECURITY_ATTRIBUTES {
-                    nLength: size as u32,
-                    lpSecurityDescriptor: ptr::null_mut(),
-                    bInheritHandle: 1,
-                };
                 let mut opts = OpenOptions::new();
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
-                opts.security_attributes(&mut sa);
+                opts.inherit_handle(true);
                 File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
             }
         }

@@ -230,5 +230,17 @@ LL -         print!("{}", dbg!(s));
 LL +         print!("{}", s);
    |
 
-error: aborting due to 19 previous errors
+error: the `dbg!` macro is intended as a debugging tool
+  --> tests/ui/dbg_macro/dbg_macro.rs:138:36
+   |
+LL |         takes_async_fn(async |val| dbg!(val));
+   |                                    ^^^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL -         takes_async_fn(async |val| dbg!(val));
+LL +         takes_async_fn(async |val| val);
+   |
+
+error: aborting due to 20 previous errors
 

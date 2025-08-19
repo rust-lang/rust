@@ -1,27 +1,22 @@
+// tidy-alphabetical-start
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
 )]
-#![feature(rustc_private)]
+#![feature(ascii_char)]
+#![feature(ascii_char_variants)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
 #![feature(format_args_nl)]
 #![feature(if_let_guard)]
-#![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
-#![feature(never_type)]
 #![feature(round_char_boundary)]
+#![feature(rustc_private)]
 #![feature(test)]
-#![feature(type_alias_impl_trait)]
-#![feature(type_ascription)]
-#![recursion_limit = "256"]
 #![warn(rustc::internal)]
-#![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
-#![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::untranslatable_diagnostic)]
+// tidy-alphabetical-end
 
 extern crate thin_vec;
 
@@ -73,9 +68,11 @@ extern crate tikv_jemalloc_sys as jemalloc_sys;
 
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
+use std::path::Path;
 use std::process;
 
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
@@ -654,9 +651,9 @@ fn opts() -> Vec<RustcOptGroup> {
             Unstable,
             Multi,
             "",
-            "doctest-compilation-args",
-            "",
-            "add arguments to be used when compiling doctests",
+            "doctest-build-arg",
+            "One argument (of possibly many) to be used when compiling doctests",
+            "ARG",
         ),
         opt(
             Unstable,
@@ -801,7 +798,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (input, options, render_options) =
+    let (input, options, render_options, loaded_paths) =
         match config::Options::from_matches(early_dcx, &matches, args) {
             Some(opts) => opts,
             None => return,
@@ -872,6 +869,12 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
 
+        // Register the loaded external files in the source map so they show up in depinfo.
+        // We can't load them via the source map because it gets created after we process the options.
+        for external_path in &loaded_paths {
+            let _ = sess.source_map().load_file(external_path);
+        }
+
         if sess.opts.describe_lints {
             rustc_driver::describe_lints(sess, registered_lints);
             return;
@@ -904,6 +907,10 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 rustc_interface::passes::write_dep_info(tcx);
             }
 
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
+
             if run_check {
                 // Since we're in "check" mode, no need to generate anything beyond this point.
                 return;
@@ -922,4 +929,17 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
             }
         })
     })
+}
+
+fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
+    let hash = tcxt.crate_hash(LOCAL_CRATE);
+    let crate_name = tcxt.crate_name(LOCAL_CRATE);
+    let metrics_file_name = format!("unstable_feature_usage_metrics-{crate_name}-{hash}.json");
+    let metrics_path = metrics_dir.join(metrics_file_name);
+    if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
+        // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
+        // default metrics" to only produce a warning when metrics are enabled by default and emit
+        // an error only when the user manually enables metrics
+        tcxt.dcx().err(format!("cannot emit feature usage metrics: {error}"));
+    }
 }

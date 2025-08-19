@@ -8,8 +8,7 @@ use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::WHITESPACE,
     T,
-    ast::{self, make},
-    ted,
+    ast::{self, make, syntax_factory::SyntaxFactory},
 };
 
 // Assist: extract_expressions_from_format_string
@@ -58,8 +57,6 @@ pub(crate) fn extract_expressions_from_format_string(
         "Extract format expressions",
         tt.syntax().text_range(),
         |edit| {
-            let tt = edit.make_mut(tt);
-
             // Extract existing arguments in macro
             let tokens = tt.token_trees_and_tokens().collect_vec();
 
@@ -131,8 +128,10 @@ pub(crate) fn extract_expressions_from_format_string(
             }
 
             // Insert new args
-            let new_tt = make::token_tree(tt_delimiter, new_tt_bits).clone_for_update();
-            ted::replace(tt.syntax(), new_tt.syntax());
+            let make = SyntaxFactory::with_mappings();
+            let new_tt = make.token_tree(tt_delimiter, new_tt_bits);
+            let mut editor = edit.make_editor(tt.syntax());
+            editor.replace(tt.syntax(), new_tt.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
                 // Add placeholder snippets over placeholder args
@@ -145,15 +144,19 @@ pub(crate) fn extract_expressions_from_format_string(
                     };
 
                     if stdx::always!(placeholder.kind() == T![_]) {
-                        edit.add_placeholder_snippet_token(cap, placeholder);
+                        let annotation = edit.make_placeholder_snippet(cap);
+                        editor.add_annotation(placeholder, annotation);
                     }
                 }
 
                 // Add the final tabstop after the format literal
                 if let Some(NodeOrToken::Token(literal)) = new_tt.token_trees_and_tokens().nth(1) {
-                    edit.add_tabstop_after_token(cap, literal);
+                    let annotation = edit.make_tabstop_after(cap);
+                    editor.add_annotation(literal, annotation);
                 }
             }
+            editor.add_mappings(make.finish_with_mappings());
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
 

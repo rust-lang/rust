@@ -2,7 +2,7 @@ error: Undefined Behavior: constructing invalid value: encountered an unaligned 
   --> tests/fail/unaligned_pointers/unaligned_ref_addr_of.rs:LL:CC
    |
 LL |         let _x = unsafe { &*x };
-   |                           ^^^ constructing invalid value: encountered an unaligned reference (required ALIGN byte alignment but found ALIGN)
+   |                           ^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

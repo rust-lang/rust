@@ -1,9 +1,12 @@
 //@ ignore-lldb
 
+//@ ignore-aarch64-pc-windows-msvc: Arm64 Windows cdb doesn't support JavaScript extensions.
+
 // GDB changed the way that it formatted Foreign types
 //@ min-gdb-version: 9.2
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ==================================================================================
 
@@ -17,7 +20,7 @@
 // gdb-check:type = type_names::GenericStruct<type_names::mod1::Struct2, type_names::mod1::mod2::Struct3>
 
 // gdb-command:whatis generic_struct2
-// gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "fastcall" fn(isize) -> usize>
+// gdb-check:type = type_names::GenericStruct<type_names::Struct1, extern "system" fn(isize) -> usize>
 
 // gdb-command:whatis mod_struct
 // gdb-check:type = type_names::mod1::Struct2
@@ -269,8 +272,6 @@
 // cdb-check:struct type_names::mod1::extern$0::ForeignType2 * foreign2 = [...]
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(extern_types)]
 
 use std::marker::PhantomData;
@@ -377,7 +378,7 @@ fn main() {
     let simple_struct = Struct1;
     let generic_struct1: GenericStruct<mod1::Struct2, mod1::mod2::Struct3> =
         GenericStruct(PhantomData);
-    let generic_struct2: GenericStruct<Struct1, extern "fastcall" fn(isize) -> usize> =
+    let generic_struct2: GenericStruct<Struct1, extern "system" fn(isize) -> usize> =
         GenericStruct(PhantomData);
     let mod_struct = mod1::Struct2;
 

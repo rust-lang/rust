@@ -1,4 +1,4 @@
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
@@ -32,7 +32,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
         let typing_env = body.typing_env(tcx);
         loop {
             debug!(?excluded);
-            let escaping = escaping_locals(tcx, typing_env, &excluded, body);
+            let escaping = escaping_locals(tcx, &excluded, body);
             debug!(?escaping);
             let replacements = compute_flattening(tcx, typing_env, body, escaping);
             debug!(?replacements);
@@ -64,7 +64,6 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 ///   client code.
 fn escaping_locals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
     excluded: &DenseBitSet<Local>,
     body: &Body<'tcx>,
 ) -> DenseBitSet<Local> {
@@ -72,31 +71,16 @@ fn escaping_locals<'tcx>(
         if ty.is_union() || ty.is_enum() {
             return true;
         }
-        if let ty::Adt(def, _args) = ty.kind() {
-            if def.repr().simd() {
-                // Exclude #[repr(simd)] types so that they are not de-optimized into an array
-                return true;
-            }
-            if tcx.is_lang_item(def.did(), LangItem::DynMetadata) {
-                // codegen wants to see the `DynMetadata<T>`,
-                // not the inner reference-to-opaque-type.
-                return true;
-            }
-            // We already excluded unions and enums, so this ADT must have one variant
-            let variant = def.variant(FIRST_VARIANT);
-            if variant.fields.len() > 1 {
-                // If this has more than one field, it cannot be a wrapper that only provides a
-                // niche, so we do not want to automatically exclude it.
-                return false;
-            }
-            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
-                // We can't get the layout
-                return true;
-            };
-            if layout.layout.largest_niche().is_some() {
-                // This type has a niche
-                return true;
-            }
+        if let ty::Adt(def, _args) = ty.kind()
+            && (def.repr().simd() || tcx.is_lang_item(def.did(), LangItem::DynMetadata))
+        {
+            // Exclude #[repr(simd)] types so that they are not de-optimized into an array
+            // (MCP#838 banned projections into SIMD types, but if the value is unused
+            // this pass sees "all the uses are of the fields" and expands it.)
+
+            // codegen wants to see the `DynMetadata<T>`,
+            // not the inner reference-to-opaque-type.
+            return true;
         }
         // Default for non-ADTs
         false

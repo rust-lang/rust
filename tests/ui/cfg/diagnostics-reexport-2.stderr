@@ -1,0 +1,78 @@
+error[E0433]: failed to resolve: could not find `gated` in `reexport`
+  --> $DIR/diagnostics-reexport-2.rs:42:15
+   |
+LL |     reexport::gated::foo();
+   |               ^^^^^ could not find `gated` in `reexport`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport-2.rs:10:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod gated {
+   |             ^^^^^
+
+error[E0433]: failed to resolve: could not find `gated` in `reexport2`
+  --> $DIR/diagnostics-reexport-2.rs:46:16
+   |
+LL |     reexport2::gated::foo();
+   |                ^^^^^ could not find `gated` in `reexport2`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport-2.rs:10:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod gated {
+   |             ^^^^^
+
+error[E0433]: failed to resolve: could not find `gated` in `reexport30`
+  --> $DIR/diagnostics-reexport-2.rs:50:17
+   |
+LL |     reexport30::gated::foo();
+   |                 ^^^^^ could not find `gated` in `reexport30`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport-2.rs:10:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod gated {
+   |             ^^^^^
+
+error[E0433]: failed to resolve: could not find `gated` in `reexport31`
+  --> $DIR/diagnostics-reexport-2.rs:54:17
+   |
+LL |     reexport31::gated::foo();
+   |                 ^^^^^ could not find `gated` in `reexport31`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport-2.rs:10:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod gated {
+   |             ^^^^^
+
+error[E0433]: failed to resolve: could not find `gated` in `reexport32`
+  --> $DIR/diagnostics-reexport-2.rs:58:17
+   |
+LL |     reexport32::gated::foo();
+   |                 ^^^^^ could not find `gated` in `reexport32`
+   |
+note: found an item that was configured out
+  --> $DIR/diagnostics-reexport-2.rs:10:13
+   |
+LL |     #[cfg(false)]
+   |           ----- the item is gated here
+...
+LL |     pub mod gated {
+   |             ^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

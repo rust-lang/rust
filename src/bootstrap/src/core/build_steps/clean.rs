@@ -129,7 +129,7 @@ fn clean_specific_stage(build: &Build, stage: u32) {
 
         for entry in entries {
             let entry = t!(entry);
-            let stage_prefix = format!("stage{}", stage);
+            let stage_prefix = format!("stage{}", stage + 1);
 
             // if current entry is not related with the target stage, continue
             if !entry.file_name().to_str().unwrap_or("").contains(&stage_prefix) {
@@ -181,7 +181,7 @@ fn rm_rf(path: &Path) {
             panic!("failed to get metadata for file {}: {}", path.display(), e);
         }
         Ok(metadata) => {
-            if metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+            if !metadata.file_type().is_dir() {
                 do_op(path, "remove file", |p| match fs::remove_file(p) {
                     #[cfg(windows)]
                     Err(e)

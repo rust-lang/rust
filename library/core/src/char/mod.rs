@@ -44,7 +44,7 @@ pub use self::methods::{encode_utf8_raw, encode_utf8_raw_unchecked}; // perma-un
 use crate::ascii;
 pub(crate) use self::methods::EscapeDebugExtArgs;
 use crate::error::Error;
-use crate::escape;
+use crate::escape::{AlwaysEscaped, EscapeIterInner, MaybeEscaped};
 use crate::fmt::{self, Write};
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
@@ -161,12 +161,12 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
 /// [`escape_unicode`]: char::escape_unicode
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct EscapeUnicode(escape::EscapeIterInner<10>);
+pub struct EscapeUnicode(EscapeIterInner<10, AlwaysEscaped>);
 
 impl EscapeUnicode {
     #[inline]
     const fn new(c: char) -> Self {
-        Self(escape::EscapeIterInner::unicode(c))
+        Self(EscapeIterInner::unicode(c))
     }
 }
 
@@ -215,7 +215,7 @@ impl FusedIterator for EscapeUnicode {}
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeUnicode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0.as_str())
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -227,22 +227,22 @@ impl fmt::Display for EscapeUnicode {
 /// [`escape_default`]: char::escape_default
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct EscapeDefault(escape::EscapeIterInner<10>);
+pub struct EscapeDefault(EscapeIterInner<10, AlwaysEscaped>);
 
 impl EscapeDefault {
     #[inline]
     const fn printable(c: ascii::Char) -> Self {
-        Self(escape::EscapeIterInner::ascii(c.to_u8()))
+        Self(EscapeIterInner::ascii(c.to_u8()))
     }
 
     #[inline]
     const fn backslash(c: ascii::Char) -> Self {
-        Self(escape::EscapeIterInner::backslash(c))
+        Self(EscapeIterInner::backslash(c))
     }
 
     #[inline]
     const fn unicode(c: char) -> Self {
-        Self(escape::EscapeIterInner::unicode(c))
+        Self(EscapeIterInner::unicode(c))
     }
 }
 
@@ -290,8 +290,9 @@ impl FusedIterator for EscapeDefault {}
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for EscapeDefault {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.0.as_str())
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -303,37 +304,22 @@ impl fmt::Display for EscapeDefault {
 /// [`escape_debug`]: char::escape_debug
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 #[derive(Clone, Debug)]
-pub struct EscapeDebug(EscapeDebugInner);
-
-#[derive(Clone, Debug)]
-// Note: It’s possible to manually encode the EscapeDebugInner inside of
-// EscapeIterInner (e.g. with alive=254..255 indicating that data[0..4] holds
-// a char) which would likely result in a more optimised code.  For now we use
-// the option easier to implement.
-enum EscapeDebugInner {
-    Bytes(escape::EscapeIterInner<10>),
-    Char(char),
-}
+pub struct EscapeDebug(EscapeIterInner<10, MaybeEscaped>);
 
 impl EscapeDebug {
     #[inline]
     const fn printable(chr: char) -> Self {
-        Self(EscapeDebugInner::Char(chr))
+        Self(EscapeIterInner::printable(chr))
     }
 
     #[inline]
     const fn backslash(c: ascii::Char) -> Self {
-        Self(EscapeDebugInner::Bytes(escape::EscapeIterInner::backslash(c)))
+        Self(EscapeIterInner::backslash(c))
     }
 
     #[inline]
     const fn unicode(c: char) -> Self {
-        Self(EscapeDebugInner::Bytes(escape::EscapeIterInner::unicode(c)))
-    }
-
-    #[inline]
-    fn clear(&mut self) {
-        self.0 = EscapeDebugInner::Bytes(escape::EscapeIterInner::empty());
+        Self(EscapeIterInner::unicode(c))
     }
 }
 
@@ -343,13 +329,7 @@ impl Iterator for EscapeDebug {
 
     #[inline]
     fn next(&mut self) -> Option<char> {
-        match self.0 {
-            EscapeDebugInner::Bytes(ref mut bytes) => bytes.next().map(char::from),
-            EscapeDebugInner::Char(chr) => {
-                self.clear();
-                Some(chr)
-            }
-        }
+        self.0.next()
     }
 
     #[inline]
@@ -367,10 +347,7 @@ impl Iterator for EscapeDebug {
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl ExactSizeIterator for EscapeDebug {
     fn len(&self) -> usize {
-        match &self.0 {
-            EscapeDebugInner::Bytes(bytes) => bytes.len(),
-            EscapeDebugInner::Char(_) => 1,
-        }
+        self.0.len()
     }
 }
 
@@ -379,11 +356,9 @@ impl FusedIterator for EscapeDebug {}
 
 #[stable(feature = "char_escape_debug", since = "1.20.0")]
 impl fmt::Display for EscapeDebug {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.0 {
-            EscapeDebugInner::Bytes(bytes) => f.write_str(bytes.as_str()),
-            EscapeDebugInner::Char(chr) => f.write_char(*chr),
-        }
+        fmt::Display::fmt(&self.0, f)
     }
 }
 
@@ -480,6 +455,7 @@ macro_rules! casemappingiter_impls {
 
         #[stable(feature = "char_struct_display", since = "1.16.0")]
         impl fmt::Display for $ITER_NAME {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Display::fmt(&self.0, f)
             }

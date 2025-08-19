@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When two instances of rustc are invoked in parallel, they
 // can conflict on their temporary files and overwrite each others',
 // leading to unsuccessful compilation. The -Z temps-dir flag adds

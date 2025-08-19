@@ -101,12 +101,12 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 variant = Some(*idx);
                 continue;
             }
+            ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
             // These do not affect anything, they just make sure we know the right type.
             ProjectionElem::OpaqueCast(_) | ProjectionElem::Subtype(..) => continue,
             ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::UnwrapUnsafeBinder(_) => {
+            | ProjectionElem::Subslice { .. } => {
                 // We don't capture array-access projections.
                 // We can stop here as arrays are captured completely.
                 break;
@@ -239,6 +239,9 @@ fn strip_prefix<'tcx>(
             }
             HirProjectionKind::OpaqueCast => {
                 assert_matches!(iter.next(), Some(ProjectionElem::OpaqueCast(..)));
+            }
+            HirProjectionKind::UnwrapUnsafeBinder => {
+                assert_matches!(iter.next(), Some(ProjectionElem::UnwrapUnsafeBinder(..)));
             }
             HirProjectionKind::Index | HirProjectionKind::Subslice => {
                 bug!("unexpected projection kind: {:?}", projection);
@@ -486,16 +489,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let place = place_builder.to_place(this);
                     this.cfg.push(
                         block,
-                        Statement {
-                            source_info: ty_source_info,
-                            kind: StatementKind::AscribeUserType(
+                        Statement::new(
+                            ty_source_info,
+                            StatementKind::AscribeUserType(
                                 Box::new((
                                     place,
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
                                 )),
                                 Variance::Invariant,
                             ),
-                        },
+                        ),
                     );
                 }
                 block.and(place_builder)
@@ -515,16 +518,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         });
                     this.cfg.push(
                         block,
-                        Statement {
-                            source_info: ty_source_info,
-                            kind: StatementKind::AscribeUserType(
+                        Statement::new(
+                            ty_source_info,
+                            StatementKind::AscribeUserType(
                                 Box::new((
                                     Place::from(temp),
                                     UserTypeProjection { base: annotation_index, projs: vec![] },
                                 )),
                                 Variance::Invariant,
                             ),
-                        },
+                        ),
                     );
                 }
                 block.and(PlaceBuilder::from(temp))
@@ -562,12 +565,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
             | ExprKind::Loop { .. }
+            | ExprKind::LoopMatch { .. }
             | ExprKind::Block { .. }
             | ExprKind::Let { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. }
             | ExprKind::Literal { .. }

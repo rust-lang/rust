@@ -22,7 +22,7 @@ impl SymbolExportLevel {
 }
 
 /// Kind of exported symbols.
-#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Encodable, Decodable, HashStable, Hash)]
 pub enum SymbolExportKind {
     Text,
     Data,
@@ -31,11 +31,17 @@ pub enum SymbolExportKind {
 
 /// The `SymbolExportInfo` of a symbols specifies symbol-related information
 /// that is relevant to code generation and linking.
+///
+/// The difference between `used` and `rustc_std_internal_symbol` is that the
+/// former is exported by LTO while the latter isn't.
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub struct SymbolExportInfo {
     pub level: SymbolExportLevel,
     pub kind: SymbolExportKind,
+    /// Was the symbol marked as `#[used(compiler)]` or `#[used(linker)]`?
     pub used: bool,
+    /// Was the symbol marked as `#[rustc_std_internal_symbol]`?
+    pub rustc_std_internal_symbol: bool,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
@@ -56,7 +62,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
         match *self {
             ExportedSymbol::NonGeneric(def_id) => tcx.symbol_name(ty::Instance::mono(tcx, def_id)),
             ExportedSymbol::Generic(def_id, args) => {
-                tcx.symbol_name(ty::Instance::new(def_id, args))
+                tcx.symbol_name(ty::Instance::new_raw(def_id, args))
             }
             ExportedSymbol::DropGlue(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))

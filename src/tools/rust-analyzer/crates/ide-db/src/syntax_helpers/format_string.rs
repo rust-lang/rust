@@ -230,11 +230,11 @@ pub fn lex_format_specifiers(
                 skip_char_and_emit(&mut chars, FormatSpecifier::Close, &mut callback);
             }
             continue;
-        } else if let '}' = first_char {
-            if let Some((_, '}')) = chars.peek() {
-                // Escaped format specifier, `}}`
-                read_escaped_format_specifier(&mut chars, &mut callback);
-            }
+        } else if let '}' = first_char
+            && let Some((_, '}')) = chars.peek()
+        {
+            // Escaped format specifier, `}}`
+            read_escaped_format_specifier(&mut chars, &mut callback);
         }
     }
 

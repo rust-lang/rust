@@ -5,7 +5,7 @@ LL | #![derive(Clone, Copy)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | use std::ptr::addr_of;
-   |               ------- the inner attribute doesn't annotate this `use` import
+   |               ------- the inner attribute doesn't annotate this import
    |
 help: perhaps you meant to use an outer attribute
    |

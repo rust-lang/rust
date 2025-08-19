@@ -270,43 +270,59 @@ pub(super) fn elf_os_abi(sess: &Session) -> u8 {
 
 pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
     match architecture {
-        Architecture::Mips => {
-            let arch = match sess.target.options.cpu.as_ref() {
-                "mips1" => elf::EF_MIPS_ARCH_1,
-                "mips2" => elf::EF_MIPS_ARCH_2,
+        Architecture::Mips | Architecture::Mips64 | Architecture::Mips64_N32 => {
+            // "N32" indicates an "ILP32" data model on a 64-bit MIPS CPU
+            // like SPARC's "v8+", x86_64's "x32", or the watchOS "arm64_32".
+            let is_32bit = architecture == Architecture::Mips;
+            let mut e_flags = match sess.target.options.cpu.as_ref() {
+                "mips1" if is_32bit => elf::EF_MIPS_ARCH_1,
+                "mips2" if is_32bit => elf::EF_MIPS_ARCH_2,
                 "mips3" => elf::EF_MIPS_ARCH_3,
                 "mips4" => elf::EF_MIPS_ARCH_4,
                 "mips5" => elf::EF_MIPS_ARCH_5,
-                s if s.contains("r6") => elf::EF_MIPS_ARCH_32R6,
-                _ => elf::EF_MIPS_ARCH_32R2,
+                "mips32r2" if is_32bit => elf::EF_MIPS_ARCH_32R2,
+                "mips32r6" if is_32bit => elf::EF_MIPS_ARCH_32R6,
+                "mips64r2" if !is_32bit => elf::EF_MIPS_ARCH_64R2,
+                "mips64r6" if !is_32bit => elf::EF_MIPS_ARCH_64R6,
+                s if s.starts_with("mips32") && !is_32bit => {
+                    sess.dcx().fatal(format!("invalid CPU `{}` for 64-bit MIPS target", s))
+                }
+                s if s.starts_with("mips64") && is_32bit => {
+                    sess.dcx().fatal(format!("invalid CPU `{}` for 32-bit MIPS target", s))
+                }
+                _ if is_32bit => elf::EF_MIPS_ARCH_32R2,
+                _ => elf::EF_MIPS_ARCH_64R2,
             };
 
-            let mut e_flags = elf::EF_MIPS_CPIC | arch;
-
-            // If the ABI is explicitly given, use it or default to O32.
-            match sess.target.options.llvm_abiname.to_lowercase().as_str() {
-                "n32" => e_flags |= elf::EF_MIPS_ABI2,
-                "o32" => e_flags |= elf::EF_MIPS_ABI_O32,
-                _ => e_flags |= elf::EF_MIPS_ABI_O32,
+            // If the ABI is explicitly given, use it, or default to O32 on 32-bit MIPS,
+            // which is the only "true" 32-bit option that LLVM supports.
+            match sess.target.options.llvm_abiname.as_ref() {
+                "o32" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
+                "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
+                "n64" if !is_32bit => {}
+                "" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
+                "" => sess.dcx().fatal("LLVM ABI must be specified for 64-bit MIPS targets"),
+                s if is_32bit => {
+                    sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 32-bit MIPS target", s))
+                }
+                s => sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 64-bit MIPS target", s)),
             };
 
             if sess.target.options.relocation_model != RelocModel::Static {
-                e_flags |= elf::EF_MIPS_PIC;
+                // PIC means position-independent code. CPIC means "calls PIC".
+                // CPIC was mutually exclusive with PIC according to
+                // the SVR4 MIPS ABI https://refspecs.linuxfoundation.org/elf/mipsabi.pdf
+                // and should have only appeared on static objects with dynamically calls.
+                // At some point someone (GCC?) decided to set CPIC even for PIC.
+                // Nowadays various things expect both set on the same object file
+                // and may even error if you mix CPIC and non-CPIC object files,
+                // despite that being the entire point of the CPIC ABI extension!
+                // As we are in Rome, we do as the Romans do.
+                e_flags |= elf::EF_MIPS_PIC | elf::EF_MIPS_CPIC;
             }
             if sess.target.options.cpu.contains("r6") {
                 e_flags |= elf::EF_MIPS_NAN2008;
             }
-            e_flags
-        }
-        Architecture::Mips64 => {
-            // copied from `mips64el-linux-gnuabi64-gcc foo.c -c`
-            let e_flags = elf::EF_MIPS_CPIC
-                | elf::EF_MIPS_PIC
-                | if sess.target.options.cpu.contains("r6") {
-                    elf::EF_MIPS_ARCH_64R6 | elf::EF_MIPS_NAN2008
-                } else {
-                    elf::EF_MIPS_ARCH_64R2
-                };
             e_flags
         }
         Architecture::Riscv32 | Architecture::Riscv64 => {
@@ -332,7 +348,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 
             e_flags
         }
-        Architecture::LoongArch64 => {
+        Architecture::LoongArch32 | Architecture::LoongArch64 => {
             // Source: https://github.com/loongson/la-abi-specs/blob/release/laelf.adoc#e_flags-identifies-abi-type-and-version
             let mut e_flags: u32 = elf::EF_LARCH_OBJABI_V1;
 
@@ -362,6 +378,24 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
                 _ => elf::EF_CSKY_ABIV1,
             };
             e_flags
+        }
+        Architecture::PowerPc64 => {
+            const EF_PPC64_ABI_UNKNOWN: u32 = 0;
+            const EF_PPC64_ABI_ELF_V1: u32 = 1;
+            const EF_PPC64_ABI_ELF_V2: u32 = 2;
+
+            match sess.target.options.llvm_abiname.as_ref() {
+                // If the flags do not correctly indicate the ABI,
+                // linkers such as ld.lld assume that the ppc64 object files are always ELFv2
+                // which leads to broken binaries if ELFv1 is used for the object files.
+                "elfv1" => EF_PPC64_ABI_ELF_V1,
+                "elfv2" => EF_PPC64_ABI_ELF_V2,
+                "" if sess.target.options.binary_format.to_object() == BinaryFormat::Elf => {
+                    bug!("No ABI specified for this PPC64 ELF target");
+                }
+                // Fall back
+                _ => EF_PPC64_ABI_UNKNOWN,
+            }
         }
         _ => 0,
     }

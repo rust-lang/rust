@@ -23,11 +23,29 @@
 /// }
 /// ```
 ///
+/// You can pass an optional second parameter which should be a function that is passed
+/// `&mut self` just before the command is executed.
+///
 /// [`Command`]: crate::command::Command
 /// [`CompletedProcess`]: crate::command::CompletedProcess
 macro_rules! impl_common_helpers {
     ($wrapper: ident) => {
+        $crate::macros::impl_common_helpers!($wrapper, |_| {});
+    };
+    ($wrapper: ident, $before_exec: expr) => {
         impl $wrapper {
+            /// In very rare circumstances, you may need a e.g. `bare_rustc()` or `bare_rustdoc()`
+            /// with host runtime libs configured, but want the underlying raw
+            /// [`std::process::Command`] (e.g. for manipulating pipes or whatever). This function
+            /// will consume the command wrapper and extract the underlying
+            /// [`std::process::Command`].
+            ///
+            /// Caution: this will mean that you can no longer use the convenience methods on the
+            /// command wrapper. Use as a last resort.
+            pub fn into_raw_command(self) -> ::std::process::Command {
+                self.cmd.into_raw_command()
+            }
+
             /// Specify an environment variable.
             pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
             where
@@ -118,12 +136,14 @@ macro_rules! impl_common_helpers {
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run()
             }
 
             /// Run the constructed command and assert that it does not successfully run.
             #[track_caller]
             pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run_fail()
             }
 
@@ -133,6 +153,7 @@ macro_rules! impl_common_helpers {
             /// whenever possible.
             #[track_caller]
             pub fn run_unchecked(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run_unchecked()
             }
 

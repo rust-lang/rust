@@ -140,6 +140,14 @@ pub(super) fn unexpected_cfg_name(
 
     let code_sugg = if is_feature_cfg && is_from_cargo {
         lints::unexpected_cfg_name::CodeSuggestion::DefineFeatures
+    // Suggest correct `version("..")` predicate syntax
+    } else if let Some((_value, value_span)) = value
+        && name == sym::version
+    {
+        lints::unexpected_cfg_name::CodeSuggestion::VersionSyntax {
+            between_name_and_value: name_span.between(value_span),
+            after_value: value_span.shrink_to_hi(),
+        }
     // Suggest the most probable if we found one
     } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
         is_feature_cfg |= best_match == sym::feature;

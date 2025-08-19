@@ -236,7 +236,7 @@ impl<I> QueryLatch<I> {
             // If this detects a deadlock and the deadlock handler wants to resume this thread
             // we have to be in the `wait` call. This is ensured by the deadlock handler
             // getting the self.info lock.
-            rayon_core::mark_blocked();
+            rustc_thread_pool::mark_blocked();
             let proxy = qcx.jobserver_proxy();
             proxy.release_thread();
             waiter.condvar.wait(&mut info);
@@ -251,9 +251,9 @@ impl<I> QueryLatch<I> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         info.complete = true;
-        let registry = rayon_core::Registry::current();
+        let registry = rustc_thread_pool::Registry::current();
         for waiter in info.waiters.drain(..) {
-            rayon_core::mark_unblocked(&registry);
+            rustc_thread_pool::mark_unblocked(&registry);
             waiter.condvar.notify_one();
         }
     }
@@ -289,10 +289,10 @@ where
     F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
 {
     // Visit the parent query which is a non-resumable waiter since it's on the same stack
-    if let Some(parent) = query.parent(query_map) {
-        if let Some(cycle) = visit(query.span(query_map), parent) {
-            return Some(cycle);
-        }
+    if let Some(parent) = query.parent(query_map)
+        && let Some(cycle) = visit(query.span(query_map), parent)
+    {
+        return Some(cycle);
     }
 
     // Visit the explicit waiters which use condvars and are resumable
@@ -507,9 +507,13 @@ fn remove_cycle<I: Clone>(
 /// all active queries for cycles before finally resuming all the waiters at once.
 pub fn break_query_cycles<I: Clone + Debug>(
     query_map: QueryMap<I>,
-    registry: &rayon_core::Registry,
+    registry: &rustc_thread_pool::Registry,
 ) {
     let mut wakelist = Vec::new();
+    // It is OK per the comments:
+    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798854932
+    // - https://github.com/rust-lang/rust/pull/131200#issuecomment-2798866392
+    #[allow(rustc::potential_query_instability)]
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
     let mut found_cycle = false;
@@ -539,7 +543,7 @@ pub fn break_query_cycles<I: Clone + Debug>(
     // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
     // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
     for _ in 0..wakelist.len() {
-        rayon_core::mark_unblocked(registry);
+        rustc_thread_pool::mark_unblocked(registry);
     }
 
     for waiter in wakelist.into_iter() {

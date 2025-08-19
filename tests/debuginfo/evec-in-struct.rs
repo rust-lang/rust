@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -38,8 +39,6 @@
 // lldb-check:[...] { x = { [0] = 22 [1] = 23 } y = { [0] = 24 [1] = 25 } }
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 struct NoPadding1 {
     x: [u32; 3],

@@ -1,5 +1,5 @@
 error[E0158]: constant pattern cannot depend on generic parameters
-  --> $DIR/issue-73976-polymorphic.rs:20:37
+  --> $DIR/issue-73976-polymorphic.rs:19:37
    |
 LL | impl<T: 'static> GetTypeId<T> {
    | -----------------------------
@@ -12,7 +12,7 @@ LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
    |                                     ^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
 
 error[E0158]: constant pattern cannot depend on generic parameters
-  --> $DIR/issue-73976-polymorphic.rs:31:42
+  --> $DIR/issue-73976-polymorphic.rs:30:42
    |
 LL | impl<T: 'static> GetTypeNameLen<T> {
    | ----------------------------------

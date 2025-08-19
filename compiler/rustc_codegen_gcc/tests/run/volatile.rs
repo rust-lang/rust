@@ -5,13 +5,14 @@
 
 use std::mem::MaybeUninit;
 
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Struct {
     pointer: *const (),
     func: unsafe fn(*const ()),
 }
 
-fn func(ptr: *const ()) {
+fn func(_ptr: *const ()) {
 }
 
 fn main() {

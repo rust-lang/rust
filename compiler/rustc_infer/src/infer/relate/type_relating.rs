@@ -3,9 +3,8 @@ use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys}
 use rustc_middle::ty::relate::{
     Relate, RelateResult, TypeRelation, relate_args_invariantly, relate_args_with_variances,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TyVar};
+use rustc_middle::ty::{self, DelayedSet, Ty, TyCtxt, TyVar};
 use rustc_span::Span;
-use rustc_type_ir::data_structures::DelayedSet;
 use tracing::{debug, instrument};
 
 use crate::infer::BoundRegionConversionTime::HigherRankedType;

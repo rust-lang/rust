@@ -1,5 +1,5 @@
 //@revisions: extern_block definition both
-//@normalize-stderr-test: "unsafe \{ libc::abort\(\) \}|crate::intrinsics::abort\(\);" -> "ABORT();"
+//@normalize-stderr-test: "\|.*::abort\(\).*" -> "| ABORT()"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""

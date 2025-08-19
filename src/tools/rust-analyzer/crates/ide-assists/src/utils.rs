@@ -1,5 +1,7 @@
 //! Assorted functions shared by several assists.
 
+use std::slice;
+
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
@@ -8,6 +10,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
+    assists::ExprFillDefaultMode,
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
@@ -20,14 +23,17 @@ use syntax::{
     ast::{
         self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
-        edit_in_place::{AttrsOwnerEdit, Indent, Removable},
+        edit_in_place::AttrsOwnerEdit,
         make,
         syntax_factory::SyntaxFactory,
     },
-    ted,
+    syntax_editor::{Removable, SyntaxEditor},
 };
 
-use crate::assist_context::{AssistContext, SourceChangeBuilder};
+use crate::{
+    AssistConfig,
+    assist_context::{AssistContext, SourceChangeBuilder},
+};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
@@ -124,10 +130,10 @@ pub fn filter_assoc_items(
             if ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
                 && assoc_item.attrs(sema.db).has_doc_hidden()
             {
-                if let hir::AssocItem::Function(f) = assoc_item {
-                    if !f.has_body(sema.db) {
-                        return true;
-                    }
+                if let hir::AssocItem::Function(f) = assoc_item
+                    && !f.has_body(sema.db)
+                {
+                    return true;
                 }
                 return false;
             }
@@ -172,70 +178,80 @@ pub fn filter_assoc_items(
 /// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
 /// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
 /// inserted.
+#[must_use]
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
+    config: &AssistConfig,
     original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
     impl_: &ast::Impl,
     target_scope: &hir::SemanticsScope<'_>,
-) -> ast::AssocItem {
+) -> Vec<ast::AssocItem> {
     let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
-    let items = original_items.iter().map(|InFile { file_id, value: original_item }| {
-        let cloned_item = {
-            if let Some(macro_file) = file_id.macro_file() {
-                let span_map = sema.db.expansion_span_map(macro_file);
-                let item_prettified = prettify_macro_expansion(
-                    sema.db,
-                    original_item.syntax().clone(),
-                    &span_map,
-                    target_scope.krate().into(),
-                );
-                if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
-                    return formatted;
-                } else {
-                    stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+    original_items
+        .iter()
+        .map(|InFile { file_id, value: original_item }| {
+            let mut cloned_item = {
+                if let Some(macro_file) = file_id.macro_file() {
+                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let item_prettified = prettify_macro_expansion(
+                        sema.db,
+                        original_item.syntax().clone(),
+                        &span_map,
+                        target_scope.krate().into(),
+                    );
+                    if let Some(formatted) = ast::AssocItem::cast(item_prettified) {
+                        return formatted;
+                    } else {
+                        stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+                    }
                 }
+                original_item
             }
-            original_item.clone_for_update()
-        };
+            .reset_indent();
 
-        if let Some(source_scope) = sema.scope(original_item.syntax()) {
-            // FIXME: Paths in nested macros are not handled well. See
-            // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
-            let transform =
-                PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
-            transform.apply(cloned_item.syntax());
-        }
-        cloned_item.remove_attrs_and_docs();
-        cloned_item.reindent_to(new_indent_level);
-        cloned_item
-    });
-
-    let assoc_item_list = impl_.get_or_create_assoc_item_list();
-
-    let mut first_item = None;
-    for item in items {
-        first_item.get_or_insert_with(|| item.clone());
-        match &item {
+            if let Some(source_scope) = sema.scope(original_item.syntax()) {
+                // FIXME: Paths in nested macros are not handled well. See
+                // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
+                let transform =
+                    PathTransform::trait_impl(target_scope, &source_scope, trait_, impl_.clone());
+                cloned_item = ast::AssocItem::cast(transform.apply(cloned_item.syntax())).unwrap();
+            }
+            cloned_item.remove_attrs_and_docs();
+            cloned_item
+        })
+        .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let body = AstNodeEdit::indent(
-                    &make::block_expr(None, Some(make::ext::expr_todo())),
-                    new_indent_level,
+                let fn_ = fn_.clone_subtree();
+                let new_body = &make::block_expr(
+                    None,
+                    Some(match config.expr_fill_default {
+                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                    }),
                 );
-                ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
+                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
+                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
+                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                let new_fn_ = fn_editor.finish().new_root().clone();
+                ast::AssocItem::cast(new_fn_)
             }
             ast::AssocItem::TypeAlias(type_alias) => {
+                let type_alias = type_alias.clone_subtree();
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    type_bound_list.remove()
+                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
+                    type_bound_list.remove(&mut type_alias_editor);
+                    let type_alias = type_alias_editor.finish().new_root().clone();
+                    ast::AssocItem::cast(type_alias)
+                } else {
+                    Some(ast::AssocItem::TypeAlias(type_alias))
                 }
             }
-            _ => {}
-        }
-
-        assoc_item_list.add_item(item)
-    }
-
-    first_item.unwrap()
+            item => Some(item),
+        })
+        .map(|item| AstNodeEdit::indent(&item, new_indent_level))
+        .collect()
 }
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -320,7 +336,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
 fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
     match expr {
         ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_for_update();
+            let bin = bin.clone_subtree();
             let op_token = bin.op_token()?;
             let rev_token = match op_token.kind() {
                 T![==] => T![!=],
@@ -336,8 +352,9 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                     );
                 }
             };
-            ted::replace(op_token, make::token(rev_token));
-            Some(bin.into())
+            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
+            bin_editor.replace(op_token, make::token(rev_token));
+            ast::Expr::cast(bin_editor.finish().new_root().clone())
         }
         ast::Expr::MethodCallExpr(mce) => {
             let receiver = mce.receiver()?;
@@ -393,7 +410,7 @@ pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &
 }
 
 fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
-    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo<'_>| {
         ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
     })
 }
@@ -502,10 +519,10 @@ pub(crate) fn find_struct_impl(
         if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
-    if let Some(ref impl_blk) = block {
-        if has_any_fn(impl_blk, names) {
-            return None;
-        }
+    if let Some(ref impl_blk) = block
+        && has_any_fn(impl_blk, names)
+    {
+        return None;
     }
 
     Some(block)
@@ -514,12 +531,11 @@ pub(crate) fn find_struct_impl(
 fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     if let Some(il) = imp.assoc_item_list() {
         for item in il.assoc_items() {
-            if let ast::AssocItem::Fn(f) = item {
-                if let Some(name) = f.name() {
-                    if names.iter().any(|n| n.eq_ignore_ascii_case(&name.text())) {
-                        return true;
-                    }
-                }
+            if let ast::AssocItem::Fn(f) = item
+                && let Some(name) = f.name()
+                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+            {
+                return true;
             }
         }
     }
@@ -553,6 +569,7 @@ pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 // FIXME: migrate remaining uses to `generate_trait_impl`
+#[allow(dead_code)]
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
     generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
@@ -580,12 +597,10 @@ fn generate_impl_text_inner(
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = trait_text {
@@ -596,17 +611,16 @@ fn generate_impl_text_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -652,16 +666,23 @@ fn generate_impl_text_inner(
 
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
+pub(crate) fn generate_impl_with_item(
+    adt: &ast::Adt,
+    body: Option<ast::AssocItemList>,
+) -> ast::Impl {
+    generate_impl_inner(false, adt, None, true, body)
+}
+
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
-    generate_impl_inner(adt, None, true)
+    generate_impl_inner(false, adt, None, true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), true)
+pub(crate) fn generate_trait_impl(is_unsafe: bool, adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
+    generate_impl_inner(is_unsafe, adt, Some(trait_), true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
@@ -669,24 +690,24 @@ pub(crate) fn generate_trait_impl(adt: &ast::Adt, trait_: ast::Type) -> ast::Imp
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
 pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(adt, Some(trait_), false)
+    generate_impl_inner(false, adt, Some(trait_), false, None)
 }
 
 fn generate_impl_inner(
+    is_unsafe: bool,
     adt: &ast::Adt,
     trait_: Option<ast::Type>,
     trait_is_transitive: bool,
+    body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
     // Ensure lifetime params are before type & const params
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
-            match param {
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
                 ast::TypeOrConstParam::Type(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
                     let mut bounds =
                         param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = &trait_ {
@@ -697,17 +718,16 @@ fn generate_impl_inner(
                         }
                     };
                     // `{ty_param}: {bounds}`
-                    let param =
-                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
                     ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
-                    let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
-                    param.remove_default();
+                    let param = make::const_param(param.name()?, param.ty()?);
                     ast::GenericParam::ConstParam(param)
                 }
-            }
+            };
+            Some(param)
         });
 
         make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
@@ -718,7 +738,7 @@ fn generate_impl_inner(
 
     let impl_ = match trait_ {
         Some(trait_) => make::impl_trait(
-            false,
+            is_unsafe,
             None,
             None,
             generic_params,
@@ -728,21 +748,28 @@ fn generate_impl_inner(
             ty,
             None,
             adt.where_clause(),
-            None,
+            body,
         ),
-        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), None),
+        None => make::impl_(generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update();
 
     // Copy any cfg attrs from the original adt
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
-    for attr in cfg_attrs {
-        impl_.add_attr(attr.clone_for_update());
-    }
+    add_cfg_attrs_to(adt, &impl_);
 
     impl_
+}
+
+pub(crate) fn add_cfg_attrs_to<T, U>(from: &T, to: &U)
+where
+    T: HasAttrs,
+    U: AttrsOwnerEdit,
+{
+    let cfg_attrs =
+        from.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    for attr in cfg_attrs {
+        to.add_attr(attr.clone_for_update());
+    }
 }
 
 pub(crate) fn add_method_to_adt(
@@ -768,9 +795,9 @@ pub(crate) fn add_method_to_adt(
 }
 
 #[derive(Debug)]
-pub(crate) struct ReferenceConversion {
+pub(crate) struct ReferenceConversion<'db> {
     conversion: ReferenceConversionType,
-    ty: hir::Type,
+    ty: hir::Type<'db>,
     impls_deref: bool,
 }
 
@@ -790,10 +817,10 @@ enum ReferenceConversionType {
     Result,
 }
 
-impl ReferenceConversion {
+impl<'db> ReferenceConversion<'db> {
     pub(crate) fn convert_type(
         &self,
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         display_target: DisplayTarget,
     ) -> ast::Type {
         let ty = match self.conversion {
@@ -866,11 +893,11 @@ impl ReferenceConversion {
 // FIXME: It should return a new hir::Type, but currently constructing new types is too cumbersome
 //        and all users of this function operate on string type names, so they can do the conversion
 //        itself themselves.
-pub(crate) fn convert_reference_type(
-    ty: hir::Type,
-    db: &RootDatabase,
-    famous_defs: &FamousDefs<'_, '_>,
-) -> Option<ReferenceConversion> {
+pub(crate) fn convert_reference_type<'db>(
+    ty: hir::Type<'db>,
+    db: &'db RootDatabase,
+    famous_defs: &FamousDefs<'_, 'db>,
+) -> Option<ReferenceConversion<'db>> {
     handle_copy(&ty, db)
         .or_else(|| handle_as_ref_str(&ty, db, famous_defs))
         .or_else(|| handle_as_ref_slice(&ty, db, famous_defs))
@@ -880,56 +907,60 @@ pub(crate) fn convert_reference_type(
         .map(|(conversion, impls_deref)| ReferenceConversion { ty, conversion, impls_deref })
 }
 
-fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
+fn could_deref_to_target(ty: &hir::Type<'_>, target: &hir::Type<'_>, db: &dyn HirDatabase) -> bool {
     let ty_ref = ty.add_reference(hir::Mutability::Shared);
     let target_ref = target.add_reference(hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 
-fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<(ReferenceConversionType, bool)> {
+fn handle_copy(
+    ty: &hir::Type<'_>,
+    db: &dyn HirDatabase,
+) -> Option<(ReferenceConversionType, bool)> {
     ty.is_copy(db).then_some((ReferenceConversionType::Copy, true))
 }
 
 fn handle_as_ref_str(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let str_type = hir::BuiltinType::str().ty(db);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type.clone()])
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&str_type))
         .then_some((ReferenceConversionType::AsRefStr, could_deref_to_target(ty, &str_type, db)))
 }
 
 fn handle_as_ref_slice(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
     let slice_type = hir::Type::new_slice(type_argument);
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type.clone()]).then_some((
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&slice_type)).then_some((
         ReferenceConversionType::AsRefSlice,
         could_deref_to_target(ty, &slice_type, db),
     ))
 }
 
 fn handle_dereferenced(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
     let type_argument = ty.type_arguments().next()?;
 
-    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument.clone()]).then_some((
-        ReferenceConversionType::Dereferenced,
-        could_deref_to_target(ty, &type_argument, db),
-    ))
+    ty.impls_trait(db, famous_defs.core_convert_AsRef()?, slice::from_ref(&type_argument))
+        .then_some((
+            ReferenceConversionType::Dereferenced,
+            could_deref_to_target(ty, &type_argument, db),
+        ))
 }
 
 fn handle_option_as_ref(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -941,7 +972,7 @@ fn handle_option_as_ref(
 }
 
 fn handle_result_as_ref(
-    ty: &hir::Type,
+    ty: &hir::Type<'_>,
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs<'_, '_>,
 ) -> Option<(ReferenceConversionType, bool)> {
@@ -994,12 +1025,12 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
-        if let Some(ast::Pat::IdentPat(pat)) = param.pat() {
-            if let Some(name) = pat.name() {
-                let name = name.to_string();
-                let expr = make::expr_path(make::ext::ident_path(&name));
-                args.push(expr);
-            }
+        if let Some(ast::Pat::IdentPat(pat)) = param.pat()
+            && let Some(name) = pat.name()
+        {
+            let name = name.to_string();
+            let expr = make::expr_path(make::ext::ident_path(&name));
+            args.push(expr);
         }
     }
     make::arg_list(args)
@@ -1111,12 +1142,11 @@ pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bo
         };
         match expr {
             ast::Expr::CallExpr(call) => {
-                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr() {
-                    if let Some(PathResolution::Def(ModuleDef::Function(func))) =
+                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr()
+                    && let Some(PathResolution::Def(ModuleDef::Function(func))) =
                         path_expr.path().and_then(|path| sema.resolve_path(&path))
-                    {
-                        is_const &= func.is_const(sema.db);
-                    }
+                {
+                    is_const &= func.is_const(sema.db);
                 }
             }
             ast::Expr::MethodCallExpr(call) => {

@@ -1,6 +1,6 @@
 #![warn(clippy::manual_flatten)]
 #![allow(clippy::useless_vec, clippy::uninlined_format_args)]
-//@no-rustfix
+
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
     let x = vec![Some(1), Some(2), Some(3)];
@@ -121,6 +121,50 @@ fn main() {
     // Using manual flatten should not trigger the lint
     for n in vec![Some(1), Some(2), Some(3)].iter().flatten() {
         println!("{}", n);
+    }
+
+    // Using nested `Some` pattern should not trigger the lint
+    for n in vec![Some((1, Some(2)))] {
+        if let Some((_, Some(n))) = n {
+            println!("{}", n);
+        }
+    }
+
+    macro_rules! inner {
+        ($id:ident / $new:pat => $action:expr) => {
+            if let Some($new) = $id {
+                $action;
+            }
+        };
+    }
+
+    // Usage of `if let` expression with macro should not trigger lint
+    for ab in [Some((1, 2)), Some((3, 4))] {
+        inner!(ab / (c, d) => println!("{c}-{d}"));
+    }
+
+    macro_rules! args {
+        ($($arg:expr),*) => {
+            vec![$(Some($arg)),*]
+        };
+    }
+
+    // Usage of `if let` expression with macro should not trigger lint
+    for n in args!(1, 2, 3) {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
+    }
+
+    // This should trigger the lint, but the applicability is `MaybeIncorrect`
+    let z = vec![Some(1), Some(2), Some(3)];
+    for n in z {
+        //~^ manual_flatten
+
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
+        // foo
     }
 
     run_unformatted_tests();

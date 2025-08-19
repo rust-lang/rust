@@ -1,0 +1,536 @@
+error: fn_abi_of(i8) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: i8,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I8,
+                                       true,
+                                   ),
+                                   valid_range: 0..=255,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: 71776123356184577,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: Sext,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: i8,
+                   layout: Layout {
+                       size: Size(1 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   true,
+                               ),
+                               valid_range: 0..=255,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 71776123356184577,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: Sext,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:13:1
+   |
+LL | pub extern "sysv64" fn i8(x: i8) -> i8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(u8) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u8,
+                       layout: Layout {
+                           size: Size(1 bytes),
+                           align: AbiAlign {
+                               abi: Align(1 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I8,
+                                       false,
+                                   ),
+                                   valid_range: 0..=255,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(1 bytes),
+                           randomization_seed: 71776127651151873,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: Zext,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: u8,
+                   layout: Layout {
+                       size: Size(1 bytes),
+                       align: AbiAlign {
+                           abi: Align(1 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=255,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 71776127651151873,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: Zext,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:19:1
+   |
+LL | pub extern "sysv64" fn u8(x: u8) -> u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(i16) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: i16,
+                       layout: Layout {
+                           size: Size(2 bytes),
+                           align: AbiAlign {
+                               abi: Align(2 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I16,
+                                       true,
+                                   ),
+                                   valid_range: 0..=65535,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(2 bytes),
+                           randomization_seed: 18446462603027808258,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: Sext,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: i16,
+                   layout: Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I16,
+                                   true,
+                               ),
+                               valid_range: 0..=65535,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 18446462603027808258,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: Sext,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:25:1
+   |
+LL | pub extern "sysv64" fn i16(x: i16) -> i16 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(u16) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u16,
+                       layout: Layout {
+                           size: Size(2 bytes),
+                           align: AbiAlign {
+                               abi: Align(2 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I16,
+                                       false,
+                                   ),
+                                   valid_range: 0..=65535,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(2 bytes),
+                           randomization_seed: 18446462607322775554,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: Zext,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: u16,
+                   layout: Layout {
+                       size: Size(2 bytes),
+                       align: AbiAlign {
+                           abi: Align(2 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I16,
+                                   false,
+                               ),
+                               valid_range: 0..=65535,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(2 bytes),
+                       randomization_seed: 18446462607322775554,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: Zext,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:31:1
+   |
+LL | pub extern "sysv64" fn u16(x: u16) -> u16 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(i32) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: i32,
+                       layout: Layout {
+                           size: Size(4 bytes),
+                           align: AbiAlign {
+                               abi: Align(4 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I32,
+                                       true,
+                                   ),
+                                   valid_range: 0..=4294967295,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(4 bytes),
+                           randomization_seed: 18446462603027873795,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: i32,
+                   layout: Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(4 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   true,
+                               ),
+                               valid_range: 0..=4294967295,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: 18446462603027873795,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: None,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:37:1
+   |
+LL | pub extern "sysv64" fn i32(x: i32) -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: fn_abi_of(u32) = FnAbi {
+           args: [
+               ArgAbi {
+                   layout: TyAndLayout {
+                       ty: u32,
+                       layout: Layout {
+                           size: Size(4 bytes),
+                           align: AbiAlign {
+                               abi: Align(4 bytes),
+                           },
+                           backend_repr: Scalar(
+                               Initialized {
+                                   value: Int(
+                                       I32,
+                                       false,
+                                   ),
+                                   valid_range: 0..=4294967295,
+                               },
+                           ),
+                           fields: Primitive,
+                           largest_niche: None,
+                           uninhabited: false,
+                           variants: Single {
+                               index: 0,
+                           },
+                           max_repr_align: None,
+                           unadjusted_abi_align: Align(4 bytes),
+                           randomization_seed: 18446462607322841091,
+                       },
+                   },
+                   mode: Direct(
+                       ArgAttributes {
+                           regular: NoUndef,
+                           arg_ext: None,
+                           pointee_size: Size(0 bytes),
+                           pointee_align: None,
+                       },
+                   ),
+               },
+           ],
+           ret: ArgAbi {
+               layout: TyAndLayout {
+                   ty: u32,
+                   layout: Layout {
+                       size: Size(4 bytes),
+                       align: AbiAlign {
+                           abi: Align(4 bytes),
+                       },
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 0..=4294967295,
+                           },
+                       ),
+                       fields: Primitive,
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: 18446462607322841091,
+                   },
+               },
+               mode: Direct(
+                   ArgAttributes {
+                       regular: NoUndef,
+                       arg_ext: None,
+                       pointee_size: Size(0 bytes),
+                       pointee_align: None,
+                   },
+               ),
+           },
+           c_variadic: false,
+           fixed_count: 1,
+           conv: X86(
+               SysV64,
+           ),
+           can_unwind: false,
+       }
+  --> $DIR/x86-64-sysv64-arg-ext.rs:43:1
+   |
+LL | pub extern "sysv64" fn u32(x: u32) -> u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

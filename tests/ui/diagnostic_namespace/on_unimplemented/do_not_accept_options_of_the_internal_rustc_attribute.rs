@@ -3,7 +3,7 @@
 //@ reference: attributes.diagnostic.on_unimplemented.syntax
 //@ reference: attributes.diagnostic.on_unimplemented.invalid-formats
 #[diagnostic::on_unimplemented(
-    on(_Self = "&str"),
+    on(Self = "&str"),
     //~^WARN malformed `on_unimplemented` attribute
     //~|WARN malformed `on_unimplemented` attribute
     message = "trait has `{Self}` and `{T}` as params",
@@ -41,7 +41,7 @@ impl Bar for i32 {}
     //~|WARN there is no parameter `integral` on trait `Baz`
     //~|WARN there is no parameter `integer` on trait `Baz`
     //~|WARN there is no parameter `integer` on trait `Baz`
-    label = "{float}{_Self}{crate_local}{Trait}{ItemContext}"
+    label = "{float}{_Self}{crate_local}{Trait}{ItemContext}{This}"
     //~^WARN there is no parameter `float` on trait `Baz`
     //~|WARN there is no parameter `float` on trait `Baz`
     //~|WARN there is no parameter `_Self` on trait `Baz`
@@ -52,6 +52,8 @@ impl Bar for i32 {}
     //~|WARN there is no parameter `Trait` on trait `Baz`
     //~|WARN there is no parameter `ItemContext` on trait `Baz`
     //~|WARN there is no parameter `ItemContext` on trait `Baz`
+    //~|WARN there is no parameter `This` on trait `Baz`
+    //~|WARN there is no parameter `This` on trait `Baz`
 )]
 trait Baz {}
 

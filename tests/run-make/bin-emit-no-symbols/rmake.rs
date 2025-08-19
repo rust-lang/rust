@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When setting the crate type as a "bin" (in app.rs),
 // this could cause a bug where some symbols would not be
 // emitted in the object files. This has been fixed, and

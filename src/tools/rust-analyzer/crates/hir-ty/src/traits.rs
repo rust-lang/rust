@@ -8,10 +8,7 @@ use chalk_recursive::Cache;
 use chalk_solve::{Solver, logging_db::LoggingRustIrDatabase, rust_ir};
 
 use base_db::Crate;
-use hir_def::{
-    BlockId, TraitId,
-    lang_item::{LangItem, LangItemTarget},
-};
+use hir_def::{BlockId, TraitId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use span::Edition;
@@ -128,11 +125,10 @@ pub(crate) fn trait_solve_query(
         alias: AliasTy::Projection(projection_ty),
         ..
     }))) = &goal.value.goal.data(Interner)
+        && let TyKind::BoundVar(_) = projection_ty.self_type_parameter(db).kind(Interner)
     {
-        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(db).kind(Interner) {
-            // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
-            return Some(Solution::Ambig(Guidance::Unknown));
-        }
+        // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
+        return Some(Solution::Ambig(Guidance::Unknown));
     }
 
     // Chalk see `UnevaluatedConst` as a unique concrete value, but we see it as an alias for another const. So
@@ -292,10 +288,11 @@ impl FnTrait {
     }
 
     pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
-        let target = db.lang_item(krate, self.lang_item())?;
-        match target {
-            LangItemTarget::Trait(t) => Some(t),
-            _ => None,
-        }
+        self.lang_item().resolve_trait(db, krate)
+    }
+
+    #[inline]
+    pub(crate) fn is_async(self) -> bool {
+        matches!(self, FnTrait::AsyncFn | FnTrait::AsyncFnMut | FnTrait::AsyncFnOnce)
     }
 }

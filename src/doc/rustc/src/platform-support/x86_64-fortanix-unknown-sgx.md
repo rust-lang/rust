@@ -11,7 +11,7 @@ based on the ABI defined by Fortanix for the [Enclave Development Platform
 
 [@jethrogb](https://github.com/jethrogb)
 [@raoulstrackx](https://github.com/raoulstrackx)
-[@mzohreva](https://github.com/mzohreva)
+[@aditijannu](https://github.com/aditijannu)
 
 Further contacts:
 

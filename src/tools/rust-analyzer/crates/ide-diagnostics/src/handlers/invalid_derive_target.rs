@@ -15,6 +15,7 @@ pub(crate) fn invalid_derive_target(
         "`derive` may only be applied to `struct`s, `enum`s and `union`s",
         display_range,
     )
+    .stable()
 }
 
 #[cfg(test)]

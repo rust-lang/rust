@@ -13,7 +13,7 @@ use crate::{
 pub(crate) fn complete_use_path(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx @ PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx,
+    path_ctx @ PathCompletionCtx { qualified, use_tree_parent, .. }: &PathCompletionCtx<'_>,
     name_ref: &Option<ast::NameRef>,
 ) {
     match qualified {
@@ -54,12 +54,10 @@ pub(crate) fn complete_use_path(
                     for (name, def) in module_scope {
                         if let (Some(attrs), Some(defining_crate)) =
                             (def.attrs(ctx.db), def.krate(ctx.db))
+                            && (!ctx.check_stability(Some(&attrs))
+                                || ctx.is_doc_hidden(&attrs, defining_crate))
                         {
-                            if !ctx.check_stability(Some(&attrs))
-                                || ctx.is_doc_hidden(&attrs, defining_crate)
-                            {
-                                continue;
-                            }
+                            continue;
                         }
                         let is_name_already_imported =
                             already_imported_names.contains(name.as_str());

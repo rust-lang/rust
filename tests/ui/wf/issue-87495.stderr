@@ -13,6 +13,11 @@ LL | trait T {
 LL |     const CONST: (bool, dyn T);
    |           ^^^^^ ...because it contains this associated `const`
    = help: consider moving `CONST` to another trait
+help: you might have meant to use `Self` to refer to the implementing type
+   |
+LL -     const CONST: (bool, dyn T);
+LL +     const CONST: (bool, Self);
+   |
 
 error: aborting due to 1 previous error
 

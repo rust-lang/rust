@@ -51,8 +51,8 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
                 buf,
                 "Crate: {}\n",
                 match display_name {
-                    Some(it) => format!("{it}({:?})", crate_id),
-                    None => format!("{:?}", crate_id),
+                    Some(it) => format!("{it}({crate_id:?})"),
+                    None => format!("{crate_id:?}"),
                 }
             );
             format_to!(buf, "    Root module file id: {}\n", root_file_id.index());

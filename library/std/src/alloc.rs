@@ -349,10 +349,10 @@ fn default_alloc_error_hook(layout: Layout) {
         // This symbol is emitted by rustc next to __rust_alloc_error_handler.
         // Its value depends on the -Zoom={panic,abort} compiler option.
         #[rustc_std_internal_symbol]
-        static __rust_alloc_error_handler_should_panic: u8;
+        fn __rust_alloc_error_handler_should_panic_v2() -> u8;
     }
 
-    if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
+    if unsafe { __rust_alloc_error_handler_should_panic_v2() != 0 } {
         panic!("memory allocation of {} bytes failed", layout.size());
     } else {
         // This is the default path taken on OOM, and the only path taken on stable with std.

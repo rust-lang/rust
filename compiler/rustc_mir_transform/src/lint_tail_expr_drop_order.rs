@@ -235,8 +235,9 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     // When we encounter a DROP of some place P we only care
     // about the drop if `P` may be initialized.
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
-    let maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data);
-    let mut maybe_init = maybe_init.iterate_to_fixpoint(tcx, body, None).into_results_cursor(body);
+    let mut maybe_init = MaybeInitializedPlaces::new(tcx, body, &move_data)
+        .iterate_to_fixpoint(tcx, body, None)
+        .into_results_cursor(body);
     let mut block_drop_value_info =
         IndexVec::from_elem_n(MovePathIndexAtBlock::Unknown, body.basic_blocks.len());
     for (&block, candidates) in &bid_per_block {
@@ -515,8 +516,12 @@ struct LocalLabel<'a> {
 /// A custom `Subdiagnostic` implementation so that the notes are delivered in a specific order
 impl Subdiagnostic for LocalLabel<'_> {
     fn add_to_diag<G: rustc_errors::EmissionGuarantee>(self, diag: &mut rustc_errors::Diag<'_, G>) {
+        // Because parent uses this field , we need to remove it delay before adding it.
+        diag.remove_arg("name");
         diag.arg("name", self.name);
+        diag.remove_arg("is_generated_name");
         diag.arg("is_generated_name", self.is_generated_name);
+        diag.remove_arg("is_dropped_first_edition_2024");
         diag.arg("is_dropped_first_edition_2024", self.is_dropped_first_edition_2024);
         let msg = diag.eagerly_translate(crate::fluent_generated::mir_transform_tail_expr_local);
         diag.span_label(self.span, msg);

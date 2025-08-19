@@ -1,3 +1,4 @@
+//@ ignore-cross-compile
 // Test that `-Awarnings` suppresses warnings for unstable APIs.
 
 use run_make_support::rustc;

@@ -1,4 +1,4 @@
-error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+error[E0658]: C-variadic functions with the "efiapi" calling convention are unstable
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:3:14
    |
 LL | fn efiapi(f: extern "efiapi" fn(usize, ...)) {
@@ -8,7 +8,7 @@ LL | fn efiapi(f: extern "efiapi" fn(usize, ...)) {
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+error[E0658]: C-variadic functions with the "sysv64" calling convention are unstable
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:7:12
    |
 LL | fn sysv(f: extern "sysv64" fn(usize, ...)) {
@@ -18,7 +18,7 @@ LL | fn sysv(f: extern "sysv64" fn(usize, ...)) {
    = help: add `#![feature(extended_varargs_abi_support)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: using calling conventions other than `C` or `cdecl` for varargs functions is unstable
+error[E0658]: C-variadic functions with the "win64" calling convention are unstable
   --> $DIR/feature-gate-extended_varargs_abi_support.rs:11:11
    |
 LL | fn win(f: extern "win64" fn(usize, ...)) {

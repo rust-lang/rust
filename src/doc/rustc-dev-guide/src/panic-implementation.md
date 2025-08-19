@@ -1,7 +1,5 @@
 # Panicking in Rust
 
-<!-- toc -->
-
 ## Step 1: Invocation of the `panic!` macro.
 
 There are actually two panic macros - one defined in `core`, and one defined in `std`.

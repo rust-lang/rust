@@ -15,7 +15,7 @@ trait Foo {
 }
 impl<T> const Foo for T
 where
-    T: ~const Bar,
+    T: [const] Bar,
 {
     default fn method(&self) {}
 }
@@ -27,7 +27,7 @@ impl<T> Foo for (T,) {
     }
 }
 
-const fn dispatch<T: ~const Bar + Copy>(t: T) {
+const fn dispatch<T: [const] Bar + Copy>(t: T) {
     t.method();
 }
 

@@ -43,8 +43,17 @@ macro_rules! verbose_print {
     };
 }
 
-pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut bool) {
+pub fn check(
+    root_path: &Path,
+    search_paths: &[&Path],
+    verbose: bool,
+    ci_info: &crate::CiInfo,
+    bad: &mut bool,
+) {
     let mut errors = Vec::new();
+
+    // Check that no error code explanation was removed.
+    check_removed_error_code_explanation(ci_info, bad);
 
     // Stage 1: create list
     let error_codes = extract_error_codes(root_path, &mut errors);
@@ -68,6 +77,27 @@ pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut 
     }
 }
 
+fn check_removed_error_code_explanation(ci_info: &crate::CiInfo, bad: &mut bool) {
+    let Some(base_commit) = &ci_info.base_commit else {
+        eprintln!("Skipping error code explanation removal check");
+        return;
+    };
+    let Some(diff) = crate::git_diff(base_commit, "--name-status") else {
+        *bad = true;
+        eprintln!("removed error code explanation tidy check: Failed to run git diff");
+        return;
+    };
+    if diff.lines().any(|line| {
+        line.starts_with('D') && line.contains("compiler/rustc_error_codes/src/error_codes/")
+    }) {
+        *bad = true;
+        eprintln!("tidy check error: Error code explanations should never be removed!");
+        eprintln!("Take a look at E0001 to see how to handle it.");
+        return;
+    }
+    println!("No error code explanation was removed!");
+}
+
 /// Stage 1: Parses a list of error codes from `error_codes.rs`.
 fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String> {
     let path = root_path.join(Path::new(ERROR_CODES_PATH));
@@ -89,8 +119,7 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
             let Some(split_line) = split_line else {
                 errors.push(format!(
                     "{path}:{line_index}: Expected a line with the format `Eabcd: abcd, \
-                    but got \"{}\" without a `:` delimiter",
-                    line,
+                    but got \"{line}\" without a `:` delimiter",
                 ));
                 continue;
             };
@@ -99,10 +128,8 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
 
             // If this is a duplicate of another error code, emit a fatal error.
             if error_codes.contains(&err_code) {
-                errors.push(format!(
-                    "{path}:{line_index}: Found duplicate error code: `{}`",
-                    err_code
-                ));
+                errors
+                    .push(format!("{path}:{line_index}: Found duplicate error code: `{err_code}`"));
                 continue;
             }
 
@@ -115,8 +142,7 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
             let Some(rest) = rest else {
                 errors.push(format!(
                     "{path}:{line_index}: Expected a line with the format `Eabcd: abcd, \
-                    but got \"{}\" without a `,` delimiter",
-                    line,
+                    but got \"{line}\" without a `,` delimiter",
                 ));
                 continue;
             };
@@ -179,7 +205,7 @@ fn check_error_codes_docs(
         }
 
         let (found_code_example, found_proper_doctest, emit_ignore_warning, no_longer_emitted) =
-            check_explanation_has_doctest(&contents, &err_code);
+            check_explanation_has_doctest(contents, err_code);
 
         if emit_ignore_warning {
             verbose_print!(
@@ -202,7 +228,7 @@ fn check_error_codes_docs(
             return;
         }
 
-        let test_ignored = IGNORE_DOCTEST_CHECK.contains(&&err_code);
+        let test_ignored = IGNORE_DOCTEST_CHECK.contains(&err_code);
 
         // Check that the explanation has a doctest, and if it shouldn't, that it doesn't
         if !found_proper_doctest && !test_ignored {
@@ -270,7 +296,7 @@ fn check_error_codes_tests(
     let tests_path = root_path.join(Path::new(ERROR_TESTS_PATH));
 
     for code in error_codes {
-        let test_path = tests_path.join(format!("{}.stderr", code));
+        let test_path = tests_path.join(format!("{code}.stderr"));
 
         if !test_path.exists() && !IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
             verbose_print!(
@@ -358,7 +384,7 @@ fn check_error_codes_used(
 
                     if !error_codes.contains(&error_code) {
                         // This error code isn't properly defined, we must error.
-                        errors.push(format!("Error code `{}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/lib.rs`.", error_code));
+                        errors.push(format!("Error code `{error_code}` is used in the compiler but not defined and documented in `compiler/rustc_error_codes/src/lib.rs`."));
                         continue;
                     }
 

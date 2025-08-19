@@ -81,10 +81,10 @@ fn try_extend_selection(
             if token.text_range() != range {
                 return Some(token.text_range());
             }
-            if let Some(comment) = ast::Comment::cast(token.clone()) {
-                if let Some(range) = extend_comments(comment) {
-                    return Some(range);
-                }
+            if let Some(comment) = ast::Comment::cast(token.clone())
+                && let Some(range) = extend_comments(comment)
+            {
+                return Some(range);
             }
             token.parent()?
         }
@@ -92,12 +92,11 @@ fn try_extend_selection(
     };
 
     // if we are in single token_tree, we maybe live in macro or attr
-    if node.kind() == TOKEN_TREE {
-        if let Some(macro_call) = node.ancestors().find_map(ast::MacroCall::cast) {
-            if let Some(range) = extend_tokens_from_range(sema, macro_call, range) {
-                return Some(range);
-            }
-        }
+    if node.kind() == TOKEN_TREE
+        && let Some(macro_call) = node.ancestors().find_map(ast::MacroCall::cast)
+        && let Some(range) = extend_tokens_from_range(sema, macro_call, range)
+    {
+        return Some(range);
     }
 
     if node.text_range() != range {
@@ -106,10 +105,10 @@ fn try_extend_selection(
 
     let node = shallowest_node(&node);
 
-    if node.parent().is_some_and(|n| list_kinds.contains(&n.kind())) {
-        if let Some(range) = extend_list_item(&node) {
-            return Some(range);
-        }
+    if node.parent().is_some_and(|n| list_kinds.contains(&n.kind()))
+        && let Some(range) = extend_list_item(&node)
+    {
+        return Some(range);
     }
 
     node.parent().map(|it| it.text_range())
@@ -221,19 +220,20 @@ fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange 
     let prefix = TextRange::new(ws.text_range().start(), offset) - ws.text_range().start();
     let ws_suffix = &ws_text[suffix];
     let ws_prefix = &ws_text[prefix];
-    if ws_text.contains('\n') && !ws_suffix.contains('\n') {
-        if let Some(node) = ws.next_sibling_or_token() {
-            let start = match ws_prefix.rfind('\n') {
-                Some(idx) => ws.text_range().start() + TextSize::from((idx + 1) as u32),
-                None => node.text_range().start(),
-            };
-            let end = if root.text().char_at(node.text_range().end()) == Some('\n') {
-                node.text_range().end() + TextSize::of('\n')
-            } else {
-                node.text_range().end()
-            };
-            return TextRange::new(start, end);
-        }
+    if ws_text.contains('\n')
+        && !ws_suffix.contains('\n')
+        && let Some(node) = ws.next_sibling_or_token()
+    {
+        let start = match ws_prefix.rfind('\n') {
+            Some(idx) => ws.text_range().start() + TextSize::from((idx + 1) as u32),
+            None => node.text_range().start(),
+        };
+        let end = if root.text().char_at(node.text_range().end()) == Some('\n') {
+            node.text_range().end() + TextSize::of('\n')
+        } else {
+            node.text_range().end()
+        };
+        return TextRange::new(start, end);
     }
     ws.text_range()
 }

@@ -8,14 +8,14 @@ LL |     collider::foo();
 note: `foo` could refer to the function imported here
   --> $DIR/E0659.rs:10:13
    |
-LL |     pub use moon::*;
-   |             ^^^^^^^
+LL |     pub use crate::moon::*;
+   |             ^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
   --> $DIR/E0659.rs:11:13
    |
-LL |     pub use earth::*;
-   |             ^^^^^^^^
+LL |     pub use crate::earth::*;
+   |             ^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 
 error: aborting due to 1 previous error

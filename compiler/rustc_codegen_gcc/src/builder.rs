@@ -12,7 +12,7 @@ use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
-    AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -26,14 +26,15 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
+use crate::errors;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
 
@@ -75,7 +76,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let load_ordering = match order {
             // TODO(antoyo): does this make sense?
-            AtomicOrdering::AcquireRelease | AtomicOrdering::Release => AtomicOrdering::Acquire,
+            AtomicOrdering::AcqRel | AtomicOrdering::Release => AtomicOrdering::Acquire,
             _ => order,
         };
         let previous_value =
@@ -520,8 +521,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block
     }
 
-    fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
-        let func = cx.rvalue_as_function(func);
+    fn append_block(_: &'a CodegenCx<'gcc, 'tcx>, func: Function<'gcc>, name: &str) -> Block<'gcc> {
         func.new_block(name)
     }
 
@@ -539,15 +539,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ret(&mut self, mut value: RValue<'gcc>) {
-        if self.structs_as_pointer.borrow().contains(&value) {
-            // NOTE: hack to workaround a limitation of the rustc API: see comment on
-            // CodegenCx.structs_as_pointer
-            value = value.dereference(self.location).to_rvalue();
-        }
         let expected_return_type = self.current_func().get_return_type();
-        if !expected_return_type.is_compatible_with(value.get_type()) {
-            // NOTE: due to opaque pointers now being used, we need to cast here.
-            value = self.context.new_cast(self.location, value, expected_return_type);
+        let value_type = value.get_type();
+        if !expected_return_type.is_compatible_with(value_type) {
+            // NOTE: due to opaque pointers now being used, we need to (bit)cast here.
+            if self.is_native_int_type(value_type) && self.is_native_int_type(expected_return_type)
+            {
+                value = self.context.new_cast(self.location, value, expected_return_type);
+            } else {
+                value = self.context.new_bitcast(self.location, value, expected_return_type);
+            }
         }
         self.llbb().end_with_return(self.location, value);
     }
@@ -568,11 +569,28 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
-        for (on_val, dest) in cases {
-            let on_val = self.const_uint_big(typ, on_val);
-            gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+        // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
+        // Currently, libgccjit can't directly create 128 bit integers.
+        // Since switch cases must be values, and casts are not constant, we can't use 128 bit switch cases.
+        // In such a case, we will simply fall back to an if-ladder.
+        // This *may* be slower than a native switch, but a slow working solution is better than none at all.
+        if typ.is_i128(self) || typ.is_u128(self) {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                let is_case =
+                    self.context.new_comparison(self.location, ComparisonOp::Equals, value, on_val);
+                let next_block = self.current_func().new_block("case");
+                self.block.end_with_conditional(self.location, is_case, dest, next_block);
+                self.block = next_block;
+            }
+            self.block.end_with_jump(self.location, default_block);
+        } else {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+            }
+            self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
         }
-        self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
     }
 
     #[cfg(feature = "master")]
@@ -684,7 +702,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let a = self.gcc_int_cast(a, a_type);
         let b_type = b.get_type().to_unsigned(self);
         let b = self.gcc_int_cast(b, b_type);
-        a / b
+        self.gcc_udiv(a, b)
     }
 
     fn sdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -696,8 +714,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
-        let b = self.context.new_cast(self.location, b, typ);
-        a / b
+        let b = self.gcc_int_cast(b, typ);
+        self.gcc_sdiv(a, b)
     }
 
     fn fdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
@@ -748,7 +766,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         #[cfg(feature = "master")]
         match self.cx.type_kind(a_type) {
-            TypeKind::Half | TypeKind::Float => {
+            TypeKind::Half => {
+                let fmodf = self.context.get_builtin_function("fmodf");
+                let f32_type = self.type_f32();
+                let a = self.context.new_cast(self.location, a, f32_type);
+                let b = self.context.new_cast(self.location, b, f32_type);
+                let result = self.context.new_call(self.location, fmodf, &[a, b]);
+                return self.context.new_cast(self.location, result, a_type);
+            }
+            TypeKind::Float => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 return self.context.new_call(self.location, fmodf, &[a, b]);
             }
@@ -757,8 +783,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
             TypeKind::FP128 => {
-                let fmodl = self.context.get_builtin_function("fmodl");
-                return self.context.new_call(self.location, fmodl, &[a, b]);
+                // TODO(antoyo): use get_simple_function_f128_2args.
+                let f128_type = self.type_f128();
+                let fmodf128 = self.context.new_function(
+                    None,
+                    gccjit::FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.context.new_parameter(None, f128_type, "a"),
+                        self.context.new_parameter(None, f128_type, "b"),
+                    ],
+                    "fmodf128",
+                    false,
+                );
+                return self.context.new_call(self.location, fmodf128, &[a, b]);
             }
             _ => (),
         }
@@ -880,7 +918,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn checked_binop(
         &mut self,
         oop: OverflowOp,
-        typ: Ty<'_>,
+        typ: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
     ) -> (Self::Value, Self::Value) {
@@ -895,24 +933,39 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
-    fn dynamic_alloca(&mut self, _len: RValue<'gcc>, _align: Align) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
         let block = self.llbb();
         let function = block.get_function();
+        // NOTE(FractalFir): In some cases, we *should* skip the call to get_aligned.
+        // For example, calling `get_aligned` on a i8 is pointless(since it can only be 1 aligned)
+        // Calling get_aligned on a `u128`/`i128` causes the attribute to become "stacked"
+        //
+        // From GCCs perspective:
+        // __int128_t  __attribute__((aligned(16)))  __attribute__((aligned(16)))
+        // and:
+        // __int128_t  __attribute__((aligned(16)))
+        // are 2 distinct, incompatible types.
+        //
+        // So, we skip the call to `get_aligned` in such a case. *Ideally*, we could do this for all the types,
+        // but the GCC APIs to facilitate this just aren't quite there yet.
+
+        // This checks that we only skip `get_aligned` on 128 bit ints if they have the correct alignment.
+        // Otherwise, this may be an under-aligned load, so we will still call get_aligned.
+        let mut can_skip_align = (pointee_ty == self.cx.u128_type
+            || pointee_ty == self.cx.i128_type)
+            && align == self.int128_align;
+        // We can skip the call to `get_aligned` for byte-sized types with alignment of 1.
+        can_skip_align = can_skip_align
+            || (pointee_ty == self.cx.u8_type || pointee_ty == self.cx.i8_type)
+                && align.bytes() == 1;
+        // Skip the call to `get_aligned` when possible.
+        let aligned_type =
+            if can_skip_align { pointee_ty } else { pointee_ty.get_aligned(align.bytes()) };
+
+        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // FIXME(antoyo): this check that we don't call get_aligned() a second time on a type.
-        // Ideally, we shouldn't need to do this check.
-        let aligned_type = if pointee_ty == self.cx.u128_type || pointee_ty == self.cx.i128_type {
-            pointee_ty
-        } else {
-            pointee_ty.get_aligned(align.bytes())
-        };
-        let ptr = self.context.new_cast(self.location, ptr, aligned_type.make_pointer());
         let deref = ptr.dereference(self.location).to_rvalue();
         let loaded_value = function.new_local(
             self.location,
@@ -925,7 +978,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
         let ptr = self.context.new_cast(self.location, ptr, ty.make_volatile().make_pointer());
-        ptr.dereference(self.location).to_rvalue()
+        // (FractalFir): We insert a local here, to ensure this volatile load can't move across
+        // blocks.
+        let local = self.current_func().new_local(self.location, ty, "volatile_tmp");
+        self.block.add_assignment(self.location, local, ptr.dereference(self.location).to_rvalue());
+        local.to_rvalue()
     }
 
     fn atomic_load(
@@ -993,13 +1050,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
-                let llptr = if i == 0 {
+                let ptr = if i == 0 {
                     place.val.llval
                 } else {
                     self.inbounds_ptradd(place.val.llval, self.const_usize(b_offset.bytes()))
                 };
                 let llty = place.layout.scalar_pair_element_gcc_type(self, i);
-                let load = self.load(llty, llptr, align);
+                let load = self.load(llty, ptr, align);
                 scalar_load_metadata(self, load, scalar);
                 if scalar.is_bool() { self.trunc(load, self.type_i1()) } else { load }
             };
@@ -1228,11 +1285,19 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn intcast(
         &mut self,
-        value: RValue<'gcc>,
+        mut value: RValue<'gcc>,
         dest_typ: Type<'gcc>,
-        _is_signed: bool,
+        is_signed: bool,
     ) -> RValue<'gcc> {
-        // NOTE: is_signed is for value, not dest_typ.
+        let value_type = value.get_type();
+        if is_signed && !value_type.is_signed(self.cx) {
+            let signed_type = value_type.to_signed(self.cx);
+            value = self.gcc_int_cast(value, signed_type);
+        } else if !is_signed && value_type.is_signed(self.cx) {
+            let unsigned_type = value_type.to_unsigned(self.cx);
+            value = self.gcc_int_cast(value, unsigned_type);
+        }
+
         self.gcc_int_cast(value, dest_typ)
     }
 
@@ -1447,16 +1512,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             element.get_address(self.location)
         } else if value_type.dyncast_vector().is_some() {
             panic!();
-        } else if let Some(pointer_type) = value_type.get_pointee() {
-            if let Some(struct_type) = pointer_type.is_struct() {
-                // NOTE: hack to workaround a limitation of the rustc API: see comment on
-                // CodegenCx.structs_as_pointer
-                aggregate_value
-                    .dereference_field(self.location, struct_type.get_field(idx as i32))
-                    .to_rvalue()
-            } else {
-                panic!("Unexpected type {:?}", value_type);
-            }
         } else if let Some(struct_type) = value_type.is_struct() {
             aggregate_value
                 .access_field(self.location, struct_type.get_field(idx as i32))
@@ -1476,21 +1531,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         assert_eq!(idx as usize as u64, idx);
         let value_type = aggregate_value.get_type();
 
+        let new_val = self.current_func().new_local(None, value_type, "aggregate_value");
+        self.block.add_assignment(None, new_val, aggregate_value);
+
         let lvalue = if value_type.dyncast_array().is_some() {
             let index = self
                 .context
                 .new_rvalue_from_long(self.u64_type, i64::try_from(idx).expect("i64::try_from"));
-            self.context.new_array_access(self.location, aggregate_value, index)
+            self.context.new_array_access(self.location, new_val, index)
         } else if value_type.dyncast_vector().is_some() {
             panic!();
-        } else if let Some(pointer_type) = value_type.get_pointee() {
-            if let Some(struct_type) = pointer_type.is_struct() {
-                // NOTE: hack to workaround a limitation of the rustc API: see comment on
-                // CodegenCx.structs_as_pointer
-                aggregate_value.dereference_field(self.location, struct_type.get_field(idx as i32))
-            } else {
-                panic!("Unexpected type {:?}", value_type);
-            }
+        } else if let Some(struct_type) = value_type.is_struct() {
+            new_val.access_field(None, struct_type.get_field(idx as i32))
         } else {
             panic!("Unexpected type {:?}", value_type);
         };
@@ -1507,19 +1559,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.llbb().add_assignment(self.location, lvalue, value);
 
-        aggregate_value
+        new_val.to_rvalue()
     }
 
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+    fn set_personality_fn(&mut self, _personality: Function<'gcc>) {
         #[cfg(feature = "master")]
-        {
-            let personality = self.rvalue_as_function(_personality);
-            self.current_func().set_personality_function(personality);
-        }
+        self.current_func().set_personality_function(_personality);
     }
 
     #[cfg(feature = "master")]
-    fn cleanup_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         self.set_personality_fn(pers_fn);
 
         // NOTE: insert the current block in a variable so that a later call to invoke knows to
@@ -1540,7 +1589,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     #[cfg(not(feature = "master"))]
-    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
             .current_func()
             .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
@@ -1550,9 +1599,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         (value1, value2)
     }
 
-    fn filter_landing_pad(&mut self, pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+    fn filter_landing_pad(&mut self, pers_fn: Function<'gcc>) {
         // TODO(antoyo): generate the correct landing pad
-        self.cleanup_landing_pad(pers_fn)
+        self.cleanup_landing_pad(pers_fn);
     }
 
     #[cfg(feature = "master")]
@@ -1622,6 +1671,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         dst: RValue<'gcc>,
         src: RValue<'gcc>,
         order: AtomicOrdering,
+        ret_ptr: bool,
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
         let name = match op {
@@ -1649,6 +1699,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let atomic_function = self.context.get_builtin_function(name);
         let order = self.context.new_rvalue_from_int(self.i32_type, order.to_gcc());
 
+        // FIXME: If `ret_ptr` is true and `src` is an integer, we should really tell GCC
+        // that this is a pointer operation that needs to preserve provenance -- but like LLVM,
+        // GCC does not currently seems to support that.
         let void_ptr_type = self.context.new_type::<*mut ()>();
         let volatile_void_ptr_type = void_ptr_type.make_volatile();
         let dst = self.context.new_cast(self.location, dst, volatile_void_ptr_type);
@@ -1656,7 +1709,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let new_src_type = atomic_function.get_param(1).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, new_src_type);
         let res = self.context.new_call(self.location, atomic_function, &[dst, src, order]);
-        self.context.new_cast(self.location, res, src.get_type())
+        let res_type = if ret_ptr { void_ptr_type } else { src.get_type() };
+        self.context.new_cast(self.location, res, res_type)
     }
 
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope) {
@@ -1706,6 +1760,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             // TODO(bjorn3): Apply function attributes
         }
         call
+    }
+
+    fn tail_call(
+        &mut self,
+        _llty: Self::Type,
+        _fn_attrs: Option<&CodegenFnAttrs>,
+        _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        _llfn: Self::Value,
+        _args: &[Self::Value],
+        _funclet: Option<&Self::Funclet>,
+        _instance: Option<Instance<'tcx>>,
+    ) {
+        // FIXME: implement support for explicit tail calls like rustc_codegen_llvm.
+        self.tcx.dcx().emit_fatal(errors::ExplicitTailCallsUnsupported);
     }
 
     fn zext(&mut self, value: RValue<'gcc>, dest_typ: Type<'gcc>) -> RValue<'gcc> {
@@ -2377,12 +2445,6 @@ impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
     }
 }
 
-impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.cx.wasm_c_abi_opt()
-    }
-}
-
 impl<'tcx> HasX86AbiOpt for Builder<'_, '_, 'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
         self.cx.x86_abi_opt()
@@ -2454,12 +2516,11 @@ impl ToGccOrdering for AtomicOrdering {
         use MemOrdering::*;
 
         let ordering = match self {
-            AtomicOrdering::Unordered => __ATOMIC_RELAXED,
             AtomicOrdering::Relaxed => __ATOMIC_RELAXED, // TODO(antoyo): check if that's the same.
             AtomicOrdering::Acquire => __ATOMIC_ACQUIRE,
             AtomicOrdering::Release => __ATOMIC_RELEASE,
-            AtomicOrdering::AcquireRelease => __ATOMIC_ACQ_REL,
-            AtomicOrdering::SequentiallyConsistent => __ATOMIC_SEQ_CST,
+            AtomicOrdering::AcqRel => __ATOMIC_ACQ_REL,
+            AtomicOrdering::SeqCst => __ATOMIC_SEQ_CST,
         };
         ordering as i32
     }

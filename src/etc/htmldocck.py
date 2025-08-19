@@ -2,120 +2,8 @@
 # -*- coding: utf-8 -*-
 
 r"""
-htmldocck.py is a custom checker script for Rustdoc HTML outputs.
-
-# How and why?
-
-The principle is simple: This script receives a path to generated HTML
-documentation and a "template" script, which has a series of check
-commands like `@has` or `@matches`. Each command is used to check if
-some pattern is present or not present in the particular file or in
-a particular node of the HTML tree. In many cases, the template script
-happens to be the source code given to rustdoc.
-
-While it indeed is possible to test in smaller portions, it has been
-hard to construct tests in this fashion and major rendering errors were
-discovered much later. This script is designed to make black-box and
-regression testing of Rustdoc easy. This does not preclude the needs for
-unit testing, but can be used to complement related tests by quickly
-showing the expected renderings.
-
-In order to avoid one-off dependencies for this task, this script uses
-a reasonably working HTML parser and the existing XPath implementation
-from Python's standard library. Hopefully, we won't render
-non-well-formed HTML.
-
-# Commands
-
-Commands start with an `@` followed by a command name (letters and
-hyphens), and zero or more arguments separated by one or more whitespace
-characters and optionally delimited with single or double quotes. The `@`
-mark cannot be preceded by a non-whitespace character. Other lines
-(including every text up to the first `@`) are ignored, but it is
-recommended to avoid the use of `@` in the template file.
-
-There are a number of supported commands:
-
-* `@has PATH` checks for the existence of the given file.
-
-  `PATH` is relative to the output directory. It can be given as `-`
-  which repeats the most recently used `PATH`.
-
-* `@hasraw PATH PATTERN` and `@matchesraw PATH PATTERN` checks
-  for the occurrence of the given pattern `PATTERN` in the specified file.
-  Only one occurrence of the pattern is enough.
-
-  For `@hasraw`, `PATTERN` is a whitespace-normalized (every consecutive
-  whitespace being replaced by one single space character) string.
-  The entire file is also whitespace-normalized including newlines.
-
-  For `@matchesraw`, `PATTERN` is a Python-supported regular expression.
-  The file remains intact but the regexp is matched without the `MULTILINE`
-  and `IGNORECASE` options. You can still use a prefix `(?m)` or `(?i)`
-  to override them, and `\A` and `\Z` for definitely matching
-  the beginning and end of the file.
-
-  (The same distinction goes to other variants of these commands.)
-
-* `@has PATH XPATH PATTERN` and `@matches PATH XPATH PATTERN` checks for
-  the presence of the given XPath `XPATH` in the specified HTML file,
-  and also the occurrence of the given pattern `PATTERN` in the matching
-  node or attribute. Only one occurrence of the pattern in the match
-  is enough.
-
-  `PATH` should be a valid and well-formed HTML file. It does *not*
-  accept arbitrary HTML5; it should have matching open and close tags
-  and correct entity references at least.
-
-  `XPATH` is an XPath expression to match. The XPath is fairly limited:
-  `tag`, `*`, `.`, `//`, `..`, `[@attr]`, `[@attr='value']`, `[tag]`,
-  `[POS]` (element located in given `POS`), `[last()-POS]`, `text()`
-  and `@attr` (both as the last segment) are supported. Some examples:
-
-  - `//pre` or `.//pre` matches any element with a name `pre`.
-  - `//a[@href]` matches any element with an `href` attribute.
-  - `//*[@class="impl"]//code` matches any element with a name `code`,
-    which is an ancestor of some element which `class` attr is `impl`.
-  - `//h1[@class="fqn"]/span[1]/a[last()]/@class` matches a value of
-    `class` attribute in the last `a` element (can be followed by more
-    elements that are not `a`) inside the first `span` in the `h1` with
-    a class of `fqn`. Note that there cannot be any additional elements
-    between them due to the use of `/` instead of `//`.
-
-  Do not try to use non-absolute paths, it won't work due to the flawed
-  ElementTree implementation. The script rejects them.
-
-  For the text matches (i.e. paths not ending with `@attr`), any
-  subelements are flattened into one string; this is handy for ignoring
-  highlights for example. If you want to simply check for the presence of
-  a given node or attribute, use an empty string (`""`) as a `PATTERN`.
-
-* `@count PATH XPATH COUNT` checks for the occurrence of the given XPath
-  in the specified file. The number of occurrences must match the given
-  count.
-
-* `@count PATH XPATH TEXT COUNT` checks for the occurrence of the given XPath
-  with the given text in the specified file. The number of occurrences must
-  match the given count.
-
-* `@snapshot NAME PATH XPATH` creates a snapshot test named NAME.
-  A snapshot test captures a subtree of the DOM, at the location
-  determined by the XPath, and compares it to a pre-recorded value
-  in a file. The file's name is the test's name with the `.rs` extension
-  replaced with `.NAME.html`, where NAME is the snapshot's name.
-
-  htmldocck supports the `--bless` option to accept the current subtree
-  as expected, saving it to the file determined by the snapshot's name.
-  compiletest's `--bless` flag is forwarded to htmldocck.
-
-* `@has-dir PATH` checks for the existence of the given directory.
-
-* `@files FOLDER_PATH [ENTRIES]`, checks that `FOLDER_PATH` contains exactly
-  `[ENTRIES]`.
-
-All conditions can be negated with `!`. `@!has foo/type.NoSuch.html`
-checks if the given file does not exist, for example.
-
+For documentation and usage instructions, please see
+https://rustc-dev-guide.rust-lang.org/rustdoc-internals/rustdoc-test-suite.html
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
@@ -127,6 +15,7 @@ import os.path
 import re
 import shlex
 from collections import namedtuple
+from pathlib import Path
 
 try:
     from html.parser import HTMLParser
@@ -259,48 +148,17 @@ def concat_multi_lines(f):
         print_err(lineno, line, "Trailing backslash at the end of the file")
 
 
-def get_known_directive_names():
-    def filter_line(line):
-        line = line.strip()
-        return line.startswith('"') and (line.endswith('",') or line.endswith('"'))
-
-    # Equivalent to `src/tools/compiletest/src/header.rs` constant of the same name.
-    with open(
-        os.path.join(
-            # We go back to `src`.
-            os.path.dirname(os.path.dirname(__file__)),
-            "tools/compiletest/src/directive-list.rs",
-        ),
-        "r",
-        encoding="utf8",
-    ) as fd:
-        content = fd.read()
-        return [
-            line.strip().replace('",', "").replace('"', "")
-            for line in content.split("\n")
-            if filter_line(line)
-        ]
-
-
-# To prevent duplicating the list of commmands between `compiletest` and `htmldocck`, we put
-# it into a common file which is included in rust code and parsed here.
-# FIXME: This setup is temporary until we figure out how to improve this situation.
-#        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
-KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
-
 LINE_PATTERN = re.compile(
     r"""
     //@\s+
-    (?P<negated>!?)(?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
-    (?P<args>.*)$
+    (?P<negated>!?)(?P<cmd>.+?)
+    (?:[\s:](?P<args>.*))?$
 """,
     re.X | re.UNICODE,
 )
 
 DEPRECATED_LINE_PATTERN = re.compile(
-    r"""
-    //\s+@
-""",
+    r"//\s+@",
     re.X | re.UNICODE,
 )
 
@@ -321,12 +179,7 @@ def get_commands(template):
 
             cmd = m.group("cmd")
             negated = m.group("negated") == "!"
-            if not negated and cmd in KNOWN_DIRECTIVE_NAMES:
-                continue
-            args = m.group("args")
-            if args and not args[:1].isspace():
-                print_err(lineno, line, "Invalid template syntax")
-                continue
+            args = m.group("args") or ""
             try:
                 args = shlex.split(args)
             except UnicodeEncodeError:
@@ -390,6 +243,11 @@ class CachedFiles(object):
             return self.last_path
 
     def get_absolute_path(self, path):
+        if "*" in path:
+            paths = list(Path(self.root).glob(path))
+            if len(paths) != 1:
+                raise FailedCheck("glob path does not resolve to one file")
+            path = str(paths[0])
         return os.path.join(self.root, path)
 
     def get_file(self, path):
@@ -676,10 +534,14 @@ def check_command(c, cache):
             # hasraw/matchesraw <path> <pat> = string test
             elif len(c.args) == 2 and "raw" in c.cmd:
                 cerr = "`PATTERN` did not match"
+                if c.negated:
+                    cerr = "`PATTERN` unexpectedly matched"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             # has/matches <path> <pat> <match> = XML tree test
             elif len(c.args) == 3 and "raw" not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
+                if c.negated:
+                    cerr = "`XPATH PATTERN` unexpectedly matched"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
@@ -744,14 +606,11 @@ def check_command(c, cache):
             else:
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == "valid-html":
-            raise InvalidCheck("Unimplemented valid-html")
-
-        elif c.cmd == "valid-links":
-            raise InvalidCheck("Unimplemented valid-links")
-
         else:
-            raise InvalidCheck("Unrecognized {}".format(c.cmd))
+            # Ignore unknown directives as they might be compiletest directives
+            # since they share the same `//@` prefix by convention. In any case,
+            # compiletest rejects unknown directives for us.
+            return
 
         if ret == c.negated:
             raise FailedCheck(cerr)

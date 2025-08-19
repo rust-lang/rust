@@ -15,6 +15,8 @@ error[E0557]: feature has been removed
    |
 LL | #![feature(test_removed_feature)]
    |            ^^^^^^^^^^^^^^^^^^^^ feature has been removed
+   |
+   = note: removed in 1.0.0
 
 error: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:6:1

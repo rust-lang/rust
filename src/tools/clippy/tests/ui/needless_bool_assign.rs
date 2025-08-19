@@ -45,3 +45,16 @@ fn main() {
         b = true;
     }
 }
+
+fn issue15063(x: bool, y: bool) {
+    let mut z = false;
+
+    if x && y {
+        todo!()
+    } else if x || y {
+        z = true;
+    } else {
+        z = false;
+    }
+    //~^^^^^ needless_bool_assign
+}

@@ -33,8 +33,8 @@ mod b {
 
 mod c {
     // Test that `foo` is not re-exported.
-    use b::a::foo::S; //~ ERROR `foo`
-    use b::b::foo::S as T; //~ ERROR `foo`
+    use crate::b::a::foo::S; //~ ERROR `foo`
+    use crate::b::b::foo::S as T; //~ ERROR `foo`
 }
 
 fn main() {}

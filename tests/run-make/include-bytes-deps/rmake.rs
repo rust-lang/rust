@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // include_bytes! and include_str! in `main.rs`
 // should register the included file as of #24423,
 // and this test checks that this is still the case.

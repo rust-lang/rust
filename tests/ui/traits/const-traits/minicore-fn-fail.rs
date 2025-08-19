@@ -8,14 +8,14 @@
 extern crate minicore;
 use minicore::*;
 
-const fn call_indirect<T: ~const Fn()>(t: &T) { t() }
+const fn call_indirect<T: [const] Fn()>(t: &T) { t() }
 
 #[const_trait]
 trait Foo {}
 impl Foo for () {}
-const fn foo<T: ~const Foo>() {}
+const fn foo<T: [const] Foo>() {}
 
 const fn test() {
     call_indirect(&foo::<()>);
-    //~^ ERROR the trait bound `(): ~const Foo` is not satisfied
+    //~^ ERROR the trait bound `(): [const] Foo` is not satisfied
 }

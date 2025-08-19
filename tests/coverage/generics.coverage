@@ -44,18 +44,18 @@
    LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let mut firecracker = Firework { strength: 1 };
    LL|      1|    firecracker.set_strength(2);
-   LL|      1|
+   LL|       |
    LL|      1|    let mut tnt = Firework { strength: 100.1 };
    LL|      1|    tnt.set_strength(200.1);
    LL|      1|    tnt.set_strength(300.3);
-   LL|      1|
+   LL|       |
    LL|      1|    if true {
    LL|      1|        println!("Exiting with error...");
    LL|      1|        return Err(1);
    LL|      0|    }
-   LL|      0|
+   LL|       |
    LL|      0|    let _ = Firework { strength: 1000 };
-   LL|      0|
+   LL|       |
    LL|      0|    Ok(())
    LL|      1|}
    LL|       |

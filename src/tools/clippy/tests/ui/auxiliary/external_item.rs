@@ -4,4 +4,4 @@ impl _ExternalStruct {
     pub fn _foo(self) {}
 }
 
-pub fn _exernal_foo() {}
+pub fn _external_foo() {}

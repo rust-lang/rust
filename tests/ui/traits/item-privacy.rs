@@ -15,9 +15,9 @@ mod method {
         fn c(&self) { }
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 mod assoc_const {
@@ -33,9 +33,9 @@ mod assoc_const {
         const C: u8 = 0;
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 mod assoc_ty {
@@ -51,9 +51,9 @@ mod assoc_ty {
         type C = u8;
     }
 
-    impl A for ::S {}
-    impl B for ::S {}
-    impl C for ::S {}
+    impl A for crate::S {}
+    impl B for crate::S {}
+    impl C for crate::S {}
 }
 
 fn check_method() {
@@ -99,9 +99,7 @@ fn check_assoc_const() {
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     <dyn C>::A;
-    //~^ ERROR associated constant `A` is private
-    //~| ERROR the trait `assoc_const::C` is not dyn compatible
-    //~| ERROR the trait `assoc_const::C` is not dyn compatible
+    //~^ ERROR the trait `assoc_const::C` is not dyn compatible
     <dyn C>::B;
     //~^ ERROR the trait `assoc_const::C` is not dyn compatible
     C::C; // OK

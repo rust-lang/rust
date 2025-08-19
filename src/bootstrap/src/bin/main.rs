@@ -5,22 +5,27 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::fs::{self, OpenOptions};
-use std::io::{self, BufRead, BufReader, IsTerminal, Write};
+use std::fs::{self, OpenOptions, TryLockError};
+use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
+use std::path::Path;
 use std::str::FromStr;
+use std::time::Instant;
 use std::{env, process};
 
 use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, Subcommand, debug,
     find_recent_config_change_ids, human_readable_changes, t,
 };
-#[cfg(feature = "tracing")]
-use tracing::instrument;
 
-#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
+fn is_tracing_enabled() -> bool {
+    cfg!(feature = "tracing")
+}
+
 fn main() {
     #[cfg(feature = "tracing")]
-    let _guard = setup_tracing();
+    let guard = bootstrap::setup_tracing("BOOTSTRAP_TRACING");
+
+    let _start_time = Instant::now();
 
     let args = env::args().skip(1).collect::<Vec<_>>();
 
@@ -34,38 +39,34 @@ fn main() {
     let config = Config::parse(flags);
 
     let mut build_lock;
-    let _build_lock_guard;
 
     if !config.bypass_bootstrap_lock {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = fs::read_to_string(&lock_path);
-
-        build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
+        build_lock = t!(fs::OpenOptions::new()
+            .read(true)
             .write(true)
-            .truncate(true)
             .create(true)
-            .open(&lock_path)));
-        _build_lock_guard = match build_lock.try_write() {
-            Ok(mut lock) => {
-                t!(lock.write(process::id().to_string().as_ref()));
-                lock
+            .truncate(false)
+            .open(&lock_path));
+        t!(build_lock.try_lock().or_else(|e| {
+            if let TryLockError::Error(e) = e {
+                return Err(e);
             }
-            err => {
-                drop(err);
-                // #135972: We can reach this point when the lock has been taken,
-                // but the locker has not yet written its PID to the file
-                if let Some(pid) = pid.ok().filter(|pid| !pid.is_empty()) {
-                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
-                } else {
-                    println!("WARNING: build directory locked, waiting for lock");
-                }
-                let mut lock = t!(build_lock.write());
-                t!(lock.write(process::id().to_string().as_ref()));
-                lock
+            let mut pid = String::new();
+            t!(build_lock.read_to_string(&mut pid));
+            // #135972: We can reach this point when the lock has been taken,
+            // but the locker has not yet written its PID to the file
+            if !pid.is_empty() {
+                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+            } else {
+                println!("WARNING: build directory locked, waiting for lock");
             }
-        };
+            build_lock.lock()
+        }));
+        t!(build_lock.set_len(0));
+        t!(build_lock.write_all(process::id().to_string().as_bytes()));
     }
 
     // check_version warnings are not printed during setup, or during CI
@@ -95,8 +96,38 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    let tracing_enabled = is_tracing_enabled();
+
+    // Prepare a directory for tracing output
+    // Also store a symlink named "latest" to point to the latest tracing directory.
+    let tracing_dir = out_dir.join("bootstrap-trace").join(std::process::id().to_string());
+    let latest_trace_dir = tracing_dir.parent().unwrap().join("latest");
+    if tracing_enabled {
+        let _ = std::fs::remove_dir_all(&tracing_dir);
+        std::fs::create_dir_all(&tracing_dir).unwrap();
+
+        #[cfg(windows)]
+        let _ = std::fs::remove_dir(&latest_trace_dir);
+        #[cfg(not(windows))]
+        let _ = std::fs::remove_file(&latest_trace_dir);
+
+        #[cfg(not(windows))]
+        fn symlink_dir_inner(original: &Path, link: &Path) -> io::Result<()> {
+            use std::os::unix::fs;
+            fs::symlink(original, link)
+        }
+
+        #[cfg(windows)]
+        fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
+            junction::create(target, junction)
+        }
+
+        t!(symlink_dir_inner(&tracing_dir, &latest_trace_dir));
+    }
+
     debug!("creating new build based on config");
-    Build::new(config).build();
+    let mut build = Build::new(config);
+    build.build();
 
     if suggest_setup {
         println!("WARNING: you have not made a `bootstrap.toml`");
@@ -147,6 +178,14 @@ fn main() {
             t!(file.write_all(lines.join("\n").as_bytes()));
         }
     }
+
+    #[cfg(feature = "tracing")]
+    {
+        build.report_summary(&tracing_dir.join("command-stats.txt"), _start_time);
+        build.report_step_graph(&tracing_dir);
+        guard.copy_to_dir(&tracing_dir);
+        eprintln!("Tracing/profiling output has been written to {}", latest_trace_dir.display());
+    }
 }
 
 fn check_version(config: &Config) -> Option<String> {
@@ -163,7 +202,7 @@ fn check_version(config: &Config) -> Option<String> {
             msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
             msg.push_str("NOTE: to silence this warning, ");
             msg.push_str(&format!(
-                "add `change-id = {latest_change_id}` or change-id = \"ignore\" at the top of `bootstrap.toml`"
+                "add `change-id = {latest_change_id}` or `change-id = \"ignore\"` at the top of `bootstrap.toml`"
             ));
             return Some(msg);
         }
@@ -195,7 +234,7 @@ fn check_version(config: &Config) -> Option<String> {
 
     msg.push_str("NOTE: to silence this warning, ");
     msg.push_str(&format!(
-        "update `bootstrap.toml` to use `change-id = {latest_change_id}` or change-id = \"ignore\" instead"
+        "update `bootstrap.toml` to use `change-id = {latest_change_id}` or `change-id = \"ignore\"` instead"
     ));
 
     if io::stdout().is_terminal() {
@@ -203,38 +242,4 @@ fn check_version(config: &Config) -> Option<String> {
     }
 
     Some(msg)
-}
-
-// # Note on `tracing` usage in bootstrap
-//
-// Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
-// usages in bootstrap need to be also gated behind the `tracing` feature:
-//
-// - `tracing` macros with log levels (`trace!`, `debug!`, `warn!`, `info`, `error`) should not be
-//   used *directly*. You should use the wrapped `tracing` macros which gate the actual invocations
-//   behind `feature = "tracing"`.
-// - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
-//   "tracing", instrument(..))]`.
-#[cfg(feature = "tracing")]
-fn setup_tracing() -> impl Drop {
-    use tracing_subscriber::EnvFilter;
-    use tracing_subscriber::layer::SubscriberExt;
-
-    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
-    // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
-    let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
-
-    let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
-
-    // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
-    if !env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1") {
-        chrome_layer = chrome_layer.writer(io::sink());
-    }
-
-    let (chrome_layer, _guard) = chrome_layer.build();
-
-    let registry = tracing_subscriber::registry().with(filter).with(layer).with(chrome_layer);
-
-    tracing::subscriber::set_global_default(registry).unwrap();
-    _guard
 }

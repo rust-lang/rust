@@ -9,7 +9,7 @@ use crate::{self as ty, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -46,9 +46,18 @@ pub enum ClauseKind<I: Interner> {
     /// corresponding trait clause; this just enforces the *constness* of that
     /// implementation.
     HostEffect(ty::HostEffectPredicate<I>),
+
+    /// Support marking impl as unstable.
+    UnstableFeature(
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        I::Symbol,
+    ),
 }
 
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+impl<I: Interner> Eq for ClauseKind<I> {}
+
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -102,6 +111,8 @@ pub enum PredicateKind<I: Interner> {
     AliasRelate(I::Term, I::Term, AliasRelationDirection),
 }
 
+impl<I: Interner> Eq for PredicateKind<I> {}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
 #[cfg_attr(
     feature = "nightly",
@@ -133,6 +144,9 @@ impl<I: Interner> fmt::Debug for ClauseKind<I> {
             ClauseKind::WellFormed(data) => write!(f, "WellFormed({data:?})"),
             ClauseKind::ConstEvaluatable(ct) => {
                 write!(f, "ConstEvaluatable({ct:?})")
+            }
+            ClauseKind::UnstableFeature(feature_name) => {
+                write!(f, "UnstableFeature({feature_name:?})")
             }
         }
     }

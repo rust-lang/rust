@@ -1,14 +1,9 @@
-error: concrete type differs from previous defining opaque type use
+error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-tait-conflicting-defn.rs:25:22
    |
 LL | fn make_option2() -> Option<TestImpl> {
-   |                      ^^^^^^^^^^^^^^^^ expected `A`, got `B<TestImpl>`
-   |
-note: previous use here
-  --> $DIR/recursive-tait-conflicting-defn.rs:20:18
-   |
-LL | pub fn test() -> TestImpl {
-   |                  ^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0720`.

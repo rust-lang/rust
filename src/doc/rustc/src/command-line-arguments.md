@@ -418,22 +418,15 @@ This flag takes a number that specifies the width of the terminal in characters.
 Formatting of diagnostics will take the width into consideration to make them better fit on the screen.
 
 <a id="option-remap-path-prefix"></a>
-## `--remap-path-prefix`: remap source names in output
+## `--remap-path-prefix`: remap source paths in output
 
 Remap source path prefixes in all output, including compiler diagnostics,
-debug information, macro expansions, etc. It takes a value of the form
-`FROM=TO` where a path prefix equal to `FROM` is rewritten to the value `TO`.
-The `FROM` may itself contain an `=` symbol, but the `TO` value may not. This
-flag may be specified multiple times.
+debug information, macro expansions, etc. It takes a value of the form `FROM=TO`
+where a path prefix equal to `FROM` is rewritten to the value `TO`. This flag may be
+specified multiple times.
 
-This is useful for normalizing build products, for example by removing the
-current directory out of pathnames emitted into the object files. The
-replacement is purely textual, with no consideration of the current system's
-pathname syntax. For example `--remap-path-prefix foo=bar` will match
-`foo/lib.rs` but not `./foo/lib.rs`.
-
-When multiple remappings are given and several of them match, the **last**
-matching one is applied.
+Refer to the [Remap source paths](remap-source-paths.md) section of this book for
+further details and explanation.
 
 <a id="option-json"></a>
 ## `--json`: configure json messages printed by the compiler
@@ -470,6 +463,9 @@ to customize the output:
 
 - `future-incompat` - includes a JSON message that contains a report if the
   crate contains any code that may fail to compile in the future.
+
+- `timings` - output a JSON message when a certain compilation "section"
+  (such as frontend analysis, code generation, linking) begins or ends.
 
 Note that it is invalid to combine the `--json` argument with the
 [`--color`](#option-color) argument, and it is required to combine `--json`

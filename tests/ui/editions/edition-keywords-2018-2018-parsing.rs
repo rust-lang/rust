@@ -36,8 +36,6 @@ pub fn check_async() {
     if local_passes_tt!(r#async) == 1 {} // OK
     module::async(); //~ ERROR expected identifier, found keyword `async`
     module::r#async(); // OK
-
-    let _recovery_witness: () = 0; //~ ERROR mismatched types
 }
 
 //~? ERROR macro expansion ends with an incomplete expression

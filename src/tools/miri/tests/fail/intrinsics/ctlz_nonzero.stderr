@@ -2,7 +2,7 @@ error: Undefined Behavior: `ctlz_nonzero` called on 0
   --> tests/fail/intrinsics/ctlz_nonzero.rs:LL:CC
    |
 LL |         ctlz_nonzero(0u8);
-   |         ^^^^^^^^^^^^^^^^^ `ctlz_nonzero` called on 0
+   |         ^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -1,7 +1,7 @@
 //@ revisions: rpass cfail
 
 enum A {
-    //[cfail]~^ ERROR 3:1: 3:7: recursive types `A` and `C` have infinite size [E0072]
+    //[cfail]~^ ERROR recursive types `A` and `C` have infinite size [E0072]
     B(C),
 }
 

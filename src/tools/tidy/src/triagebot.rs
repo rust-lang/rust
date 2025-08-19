@@ -6,8 +6,11 @@ use toml::Value;
 
 pub fn check(path: &Path, bad: &mut bool) {
     let triagebot_path = path.join("triagebot.toml");
+
+    // This check is mostly to catch broken path filters *within* `triagebot.toml`, and not enforce
+    // the existence of `triagebot.toml` itself (which is more obvious), as distribution tarballs
+    // will not include non-essential bits like `triagebot.toml`.
     if !triagebot_path.exists() {
-        tidy_error!(bad, "triagebot.toml file not found");
         return;
     }
 

@@ -1,4 +1,5 @@
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -45,9 +46,6 @@
 // lldb-check:[...] 20
 // lldb-command:continue
 
-
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 fn a_function(x: bool, y: bool) {
     zzz(); // #break

@@ -1,0 +1,19 @@
+warning: unnecessary parentheses around `return` value
+  --> $DIR/ufcs-return-unused-parens.rs:13:12
+   |
+LL |     return (<T as ToString>::to_string(&arg));
+   |            ^                                ^
+   |
+note: the lint level is defined here
+  --> $DIR/ufcs-return-unused-parens.rs:10:9
+   |
+LL | #![warn(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     return (<T as ToString>::to_string(&arg));
+LL +     return <T as ToString>::to_string(&arg);
+   |
+
+warning: 1 warning emitted
+

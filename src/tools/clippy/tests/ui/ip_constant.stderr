@@ -1,0 +1,398 @@
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:8:13
+   |
+LL |     let _ = Ipv4Addr::new(127, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::ip-constant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ip_constant)]`
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(127, 0, 0, 1);
+LL +     let _ = Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:10:13
+   |
+LL |     let _ = Ipv4Addr::new(255, 255, 255, 255);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(255, 255, 255, 255);
+LL +     let _ = Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:12:13
+   |
+LL |     let _ = Ipv4Addr::new(0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(0, 0, 0, 0);
+LL +     let _ = Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:16:13
+   |
+LL |     let _ = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+LL +     let _ = Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:18:13
+   |
+LL |     let _ = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+LL +     let _ = Ipv6Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:24:13
+   |
+LL |     let _ = net::Ipv4Addr::new(127, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = net::Ipv4Addr::new(127, 0, 0, 1);
+LL +     let _ = net::Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:26:13
+   |
+LL |     let _ = net::Ipv4Addr::new(255, 255, 255, 255);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = net::Ipv4Addr::new(255, 255, 255, 255);
+LL +     let _ = net::Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:28:13
+   |
+LL |     let _ = net::Ipv4Addr::new(0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = net::Ipv4Addr::new(0, 0, 0, 0);
+LL +     let _ = net::Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:31:13
+   |
+LL |     let _ = net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+LL +     let _ = net::Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:33:13
+   |
+LL |     let _ = net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+LL +     let _ = net::Ipv6Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:38:13
+   |
+LL |     let _ = std::net::Ipv4Addr::new(127, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = std::net::Ipv4Addr::new(127, 0, 0, 1);
+LL +     let _ = std::net::Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:40:13
+   |
+LL |     let _ = std::net::Ipv4Addr::new(255, 255, 255, 255);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = std::net::Ipv4Addr::new(255, 255, 255, 255);
+LL +     let _ = std::net::Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:42:13
+   |
+LL |     let _ = std::net::Ipv4Addr::new(0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = std::net::Ipv4Addr::new(0, 0, 0, 0);
+LL +     let _ = std::net::Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:45:13
+   |
+LL |     let _ = std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
+LL +     let _ = std::net::Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:47:13
+   |
+LL |     let _ = std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0);
+LL +     let _ = std::net::Ipv6Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:52:13
+   |
+LL |     let _ = (std::net::Ipv4Addr::new(127, 0, 0, 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = (std::net::Ipv4Addr::new(127, 0, 0, 1));
+LL +     let _ = std::net::Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:54:13
+   |
+LL |     let _ = (std::net::Ipv4Addr::new(255, 255, 255, 255));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = (std::net::Ipv4Addr::new(255, 255, 255, 255));
+LL +     let _ = std::net::Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:56:13
+   |
+LL |     let _ = (std::net::Ipv4Addr::new(0, 0, 0, 0));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = (std::net::Ipv4Addr::new(0, 0, 0, 0));
+LL +     let _ = std::net::Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:59:13
+   |
+LL |     let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+LL +     let _ = std::net::Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:61:13
+   |
+LL |     let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = (std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+LL +     let _ = std::net::Ipv6Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:75:13
+   |
+LL |     let _ = Ipv4Addr::new(CONST_U8_127, CONST_U8_0, CONST_U8_0, CONST_U8_1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(CONST_U8_127, CONST_U8_0, CONST_U8_0, CONST_U8_1);
+LL +     let _ = Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:77:13
+   |
+LL |     let _ = Ipv4Addr::new(CONST_U8_255, CONST_U8_255, CONST_U8_255, CONST_U8_255);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(CONST_U8_255, CONST_U8_255, CONST_U8_255, CONST_U8_255);
+LL +     let _ = Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:79:13
+   |
+LL |     let _ = Ipv4Addr::new(CONST_U8_0, CONST_U8_0, CONST_U8_0, CONST_U8_0);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(CONST_U8_0, CONST_U8_0, CONST_U8_0, CONST_U8_0);
+LL +     let _ = Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:83:13
+   |
+LL |       let _ = Ipv6Addr::new(
+   |  _____________^
+LL | |
+LL | |         CONST_U16_0,
+LL | |         CONST_U16_0,
+...  |
+LL | |         CONST_U16_1,
+LL | |     );
+   | |_____^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(
+LL -
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_1,
+LL -     );
+LL +     let _ = Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:95:13
+   |
+LL |       let _ = Ipv6Addr::new(
+   |  _____________^
+LL | |
+LL | |         CONST_U16_0,
+LL | |         CONST_U16_0,
+...  |
+LL | |         CONST_U16_0,
+LL | |     );
+   | |_____^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(
+LL -
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -         CONST_U16_0,
+LL -     );
+LL +     let _ = Ipv6Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:110:13
+   |
+LL |     let _ = Ipv4Addr::new(126 + 1, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(126 + 1, 0, 0, 1);
+LL +     let _ = Ipv4Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:112:13
+   |
+LL |     let _ = Ipv4Addr::new(254 + CONST_U8_1, 255, { 255 - CONST_U8_0 }, CONST_U8_255);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(254 + CONST_U8_1, 255, { 255 - CONST_U8_0 }, CONST_U8_255);
+LL +     let _ = Ipv4Addr::BROADCAST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:114:13
+   |
+LL |     let _ = Ipv4Addr::new(0, CONST_U8_255 - 255, 0, { 1 + 0 - 1 });
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv4Addr::new(0, CONST_U8_255 - 255, 0, { 1 + 0 - 1 });
+LL +     let _ = Ipv4Addr::UNSPECIFIED;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:118:13
+   |
+LL |     let _ = Ipv6Addr::new(0 + CONST_U16_0, 0, 0, 0, 0, 0, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(0 + CONST_U16_0, 0, 0, 0, 0, 0, 0, 1);
+LL +     let _ = Ipv6Addr::LOCALHOST;
+   |
+
+error: hand-coded well-known IP address
+  --> tests/ui/ip_constant.rs:120:13
+   |
+LL |     let _ = Ipv6Addr::new(0 + 0, 0, 0, 0, 0, { 2 - 1 - CONST_U16_1 }, 0, 1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use
+   |
+LL -     let _ = Ipv6Addr::new(0 + 0, 0, 0, 0, 0, { 2 - 1 - CONST_U16_1 }, 0, 1);
+LL +     let _ = Ipv6Addr::LOCALHOST;
+   |
+
+error: aborting due to 30 previous errors
+

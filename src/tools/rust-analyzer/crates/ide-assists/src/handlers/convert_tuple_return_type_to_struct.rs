@@ -265,10 +265,10 @@ fn replace_body_return_values(body: ast::Expr, struct_name: &str) {
 
     let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
     walk_expr(&body, &mut |expr| {
-        if let ast::Expr::ReturnExpr(ret_expr) = expr {
-            if let Some(ret_expr_arg) = &ret_expr.expr() {
-                for_each_tail_expr(ret_expr_arg, tail_cb);
-            }
+        if let ast::Expr::ReturnExpr(ret_expr) = expr
+            && let Some(ret_expr_arg) = &ret_expr.expr()
+        {
+            for_each_tail_expr(ret_expr_arg, tail_cb);
         }
     });
     for_each_tail_expr(&body, tail_cb);

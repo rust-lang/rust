@@ -5,17 +5,17 @@ LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required for `ConstDropImplWithBounds<NonTrivialDrop>` to implement `const Drop`
-  --> $DIR/const-drop-fail-2.rs:25:25
+  --> $DIR/const-drop-fail-2.rs:25:26
    |
-LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
-   |         --------        ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<T: [const] A> const Drop for ConstDropImplWithBounds<T> {
+   |         ---------        ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |
    |         unsatisfied trait bound introduced here
 note: required by a bound in `check`
   --> $DIR/const-drop-fail-2.rs:21:19
    |
-LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                   ^^^^^^^^^^^^^^^ required by this bound in `check`
+LL | const fn check<T: [const] Destruct>(_: T) {}
+   |                   ^^^^^^^^^^^^^^^^ required by this bound in `check`
 
 error: aborting due to 1 previous error
 

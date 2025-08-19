@@ -129,7 +129,8 @@ pub fn exec(mut cmd: Command) -> ! {
     // On non-Unix imitate POSIX exec as closely as we can
     #[cfg(not(unix))]
     {
-        let exit_status = cmd.status().expect("failed to run command");
+        let exit_status =
+            cmd.status().unwrap_or_else(|err| panic!("failed to run `{cmd:?}`:\n{err}"));
         std::process::exit(exit_status.code().unwrap_or(-1))
     }
     // On Unix targets, actually exec.
@@ -138,8 +139,8 @@ pub fn exec(mut cmd: Command) -> ! {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        let error = cmd.exec();
-        panic!("failed to run command: {error}")
+        let err = cmd.exec();
+        panic!("failed to run `{cmd:?}`:\n{err}")
     }
 }
 

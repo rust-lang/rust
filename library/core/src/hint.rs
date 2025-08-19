@@ -98,7 +98,7 @@ use crate::{intrinsics, ub_checks};
 #[inline]
 #[stable(feature = "unreachable", since = "1.27.0")]
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
-#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[track_caller]
 pub const unsafe fn unreachable_unchecked() -> ! {
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
@@ -231,7 +231,7 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 ///
 /// # Examples
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::atomic::{AtomicBool, Ordering};
 /// use std::sync::Arc;
 /// use std::{hint, thread};
@@ -319,6 +319,10 @@ pub fn spin_loop() {
 /// identity function. As such, it **must not be relied upon to control critical program behavior.**
 /// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
+///
+/// This limitation is not specific to `black_box`; there is no mechanism in the entire Rust
+/// language that can provide the guarantees required for constant-time cryptography.
+/// (There is also no such mechanism in LLVM, so the same is true for every other LLVM-based compiler.)
 ///
 /// </div>
 ///
@@ -645,8 +649,6 @@ pub const fn must_use<T>(value: T) -> T {
 ///     }
 /// }
 /// ```
-///
-///
 #[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
@@ -778,7 +780,7 @@ pub const fn cold_path() {
 /// # assert_eq!(bucket_one.len() + bucket_two.len(), 1);
 /// ```
 #[inline(always)]
-#[stable(feature = "select_unpredictable", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "select_unpredictable", since = "1.88.0")]
 pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.

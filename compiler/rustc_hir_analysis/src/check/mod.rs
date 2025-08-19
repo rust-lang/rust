@@ -72,10 +72,11 @@ pub mod wfcheck;
 
 use std::num::NonZero;
 
-pub use check::{check_abi, check_abi_fn_ptr};
-use rustc_abi::{ExternAbi, VariantIdx};
+pub use check::{check_abi, check_custom_abi};
+use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
@@ -99,8 +100,8 @@ use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
 use crate::{errors, require_c_abi_if_c_variadic};
 
-pub fn provide(providers: &mut Providers) {
-    wfcheck::provide(providers);
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
+pub(super) fn provide(providers: &mut Providers) {
     *providers = Providers {
         adt_destructor,
         adt_async_destructor,
@@ -108,12 +109,22 @@ pub fn provide(providers: &mut Providers) {
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,
+        check_type_wf: wfcheck::check_type_wf,
+        check_well_formed: wfcheck::check_well_formed,
         ..*providers
     };
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id, always_applicable::check_drop_impl)
+    let dtor = tcx.calculate_dtor(def_id, always_applicable::check_drop_impl);
+    if dtor.is_none() && tcx.features().async_drop() {
+        if let Some(async_dtor) = adt_async_destructor(tcx, def_id) {
+            // When type has AsyncDrop impl, but doesn't have Drop impl, generate error
+            let span = tcx.def_span(async_dtor.impl_did);
+            tcx.dcx().emit_err(errors::AsyncDropWithoutSyncDrop { span });
+        }
+    }
+    dtor
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
@@ -302,9 +313,7 @@ fn default_body_is_unstable(
         reason: reason_str,
     });
 
-    let inject_span = item_did
-        .as_local()
-        .and_then(|id| tcx.crate_level_attribute_injection_span(tcx.local_def_id_to_hir_id(id)));
+    let inject_span = item_did.is_local().then(|| tcx.crate_level_attribute_injection_span());
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,
@@ -331,7 +340,7 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if !tcx.is_default_trait(def_id) {
+                if !tcx.is_default_trait(def_id) && !tcx.is_lang_item(def_id, LangItem::Sized) {
                     // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
@@ -484,7 +493,7 @@ fn suggestion_signature<'tcx>(
     let args = ty::GenericArgs::identity_for_item(tcx, assoc.def_id).rebase_onto(
         tcx,
         assoc.container_id(tcx),
-        impl_trait_ref.with_self_ty(tcx, tcx.types.self_param).args,
+        impl_trait_ref.with_replaced_self_ty(tcx, tcx.types.self_param).args,
     );
 
     match assoc.kind {

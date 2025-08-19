@@ -984,3 +984,17 @@ fn main<'a, T: Foo + Bar + Baz>(
         |e| matches!(e, MirEvalError::MirLowerError(_, MirLowerError::GenericArgNotProvided(..))),
     );
 }
+
+#[test]
+fn format_args_pass() {
+    check_pass(
+        r#"
+//- minicore: fmt
+fn main() {
+    let x1 = format_args!("");
+    let x2 = format_args!("{}", x1);
+    let x3 = format_args!("{} {}", x1, x2);
+}
+"#,
+    );
+}

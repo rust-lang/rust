@@ -89,12 +89,6 @@ pub extern "C" fn boxed_trait(p: Box<dyn Trait>) { }
 pub extern "C" fn char_type(p: char) { }
 //~^ ERROR uses type `char`
 
-pub extern "C" fn i128_type(p: i128) { }
-//~^ ERROR uses type `i128`
-
-pub extern "C" fn u128_type(p: u128) { }
-//~^ ERROR uses type `u128`
-
 pub extern "C" fn tuple_type(p: (i32, i32)) { }
 //~^ ERROR uses type `(i32, i32)`
 
@@ -119,9 +113,6 @@ pub extern "C" fn fn_type2(p: fn()) { }
 //~^ ERROR uses type `fn()`
 
 pub extern "C" fn fn_contained(p: RustBadRet) { }
-
-pub extern "C" fn transparent_i128(p: TransparentI128) { }
-//~^ ERROR: uses type `i128`
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
 //~^ ERROR: uses type `str`
@@ -160,6 +151,12 @@ pub extern "C" fn good17(p: TransparentCustomZst) { }
 
 #[allow(improper_ctypes_definitions)]
 pub extern "C" fn good18(_: &String) { }
+
+pub extern "C" fn good_i128_type(p: i128) { }
+
+pub extern "C" fn good_u128_type(p: u128) { }
+
+pub extern "C" fn good_transparent_i128(p: TransparentI128) { }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub extern "C" fn good1(size: *const c_int) { }

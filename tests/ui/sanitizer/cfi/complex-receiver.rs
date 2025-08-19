@@ -5,6 +5,7 @@
 //@ revisions: cfi kcfi
 // FIXME(#122848) Remove only-linux once OSX CFI binaries work
 //@ only-linux
+//@ ignore-backends: gcc
 //@ [cfi] needs-sanitizer-cfi
 //@ [kcfi] needs-sanitizer-kcfi
 //@ compile-flags: -C target-feature=-crt-static

@@ -1,15 +1,15 @@
 use std::fmt;
+use std::ops::Range;
 
 use errors::*;
-use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::TraitRefPrintSugared;
+use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{
-    Alignment, Argument, Count, FormatSpec, InnerSpan, ParseError, ParseMode, Parser,
-    Piece as RpfPiece, Position,
+    Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
-use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_FORMAT_LITERALS;
 use rustc_span::def_id::DefId;
-use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
+use rustc_span::{InnerSpan, Span, Symbol, kw, sym};
 
 /// Like [std::fmt::Arguments] this is a string that has been parsed into "pieces",
 /// either as string pieces or dynamic arguments.
@@ -19,7 +19,7 @@ pub struct FormatString {
     input: Symbol,
     span: Span,
     pieces: Vec<Piece>,
-    /// The formatting string was parsed succesfully but with warnings
+    /// The formatting string was parsed successfully but with warnings
     pub warnings: Vec<FormatWarning>,
 }
 
@@ -69,7 +69,7 @@ impl FormatWarning {
                 let this = tcx.item_ident(item_def_id);
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         UnknownFormatParameterForOnUnimplementedAttr {
@@ -82,7 +82,7 @@ impl FormatWarning {
             FormatWarning::PositionalArgument { span, .. } => {
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         DisallowedPositionalArgument,
@@ -92,7 +92,7 @@ impl FormatWarning {
             FormatWarning::InvalidSpecifier { span, .. } => {
                 if let Some(item_def_id) = item_def_id.as_local() {
                     tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                         tcx.local_def_id_to_hir_id(item_def_id),
                         span,
                         InvalidFormatSpecifier,
@@ -159,32 +159,32 @@ impl FormatString {
 
     pub fn parse<'tcx>(
         input: Symbol,
+        snippet: Option<String>,
         span: Span,
         ctx: &Ctx<'tcx>,
-    ) -> Result<Self, Vec<ParseError>> {
+    ) -> Result<Self, ParseError> {
         let s = input.as_str();
-        let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
-        let mut pieces = Vec::new();
+        let mut parser = Parser::new(s, None, snippet, false, ParseMode::Diagnostic);
+        let pieces: Vec<_> = parser.by_ref().collect();
+
+        if let Some(err) = parser.errors.into_iter().next() {
+            return Err(err);
+        }
         let mut warnings = Vec::new();
 
-        for piece in &mut parser {
-            match piece {
-                RpfPiece::Lit(lit) => {
-                    pieces.push(Piece::Lit(lit.into()));
-                }
+        let pieces = pieces
+            .into_iter()
+            .map(|piece| match piece {
+                RpfPiece::Lit(lit) => Piece::Lit(lit.into()),
                 RpfPiece::NextArgument(arg) => {
-                    warn_on_format_spec(arg.format, &mut warnings, span);
-                    let arg = parse_arg(&arg, ctx, &mut warnings, span);
-                    pieces.push(Piece::Arg(arg));
+                    warn_on_format_spec(&arg.format, &mut warnings, span, parser.is_source_literal);
+                    let arg = parse_arg(&arg, ctx, &mut warnings, span, parser.is_source_literal);
+                    Piece::Arg(arg)
                 }
-            }
-        }
+            })
+            .collect();
 
-        if parser.errors.is_empty() {
-            Ok(FormatString { input, pieces, span, warnings })
-        } else {
-            Err(parser.errors)
-        }
+        Ok(FormatString { input, pieces, span, warnings })
     }
 
     pub fn format(&self, args: &FormatArgs<'_>) -> String {
@@ -228,51 +228,20 @@ fn parse_arg<'tcx>(
     ctx: &Ctx<'tcx>,
     warnings: &mut Vec<FormatWarning>,
     input_span: Span,
+    is_source_literal: bool,
 ) -> FormatArg {
     let (Ctx::RustcOnUnimplemented { tcx, trait_def_id }
     | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = ctx;
-    let trait_name = tcx.item_ident(*trait_def_id);
-    let generics = tcx.generics_of(trait_def_id);
-    let span = slice_span(input_span, arg.position_span);
+
+    let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
 
     match arg.position {
         // Something like "hello {name}"
         Position::ArgumentNamed(name) => match (ctx, Symbol::intern(name)) {
-            // accepted, but deprecated
-            (Ctx::RustcOnUnimplemented { .. }, sym::_Self) => {
-                warnings
-                    .push(FormatWarning::FutureIncompat { span, help: String::from("use {Self}") });
-                FormatArg::SelfUpper
-            }
-            (
-                Ctx::RustcOnUnimplemented { .. },
-                sym::from_desugaring
-                | sym::crate_local
-                | sym::direct
-                | sym::cause
-                | sym::float
-                | sym::integer_
-                | sym::integral,
-            ) => {
-                warnings.push(FormatWarning::FutureIncompat {
-                    span,
-                    help: String::from("don't use this in a format string"),
-                });
-                FormatArg::AsIs(String::new())
-            }
-
             // Only `#[rustc_on_unimplemented]` can use these
             (Ctx::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
             (Ctx::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
             (Ctx::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
-            // `{ThisTraitsName}`. Some attrs in std use this, but I'd like to change it to the more general `{This}`
-            // because that'll be simpler to parse and extend in the future
-            (Ctx::RustcOnUnimplemented { .. }, name) if name == trait_name.name => {
-                warnings
-                    .push(FormatWarning::FutureIncompat { span, help: String::from("use {This}") });
-                FormatArg::This
-            }
-
             // Any attribute can use these
             (
                 Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
@@ -281,7 +250,10 @@ fn parse_arg<'tcx>(
             (
                 Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
                 generic_param,
-            ) if generics.own_params.iter().any(|param| param.name == generic_param) => {
+            ) if tcx.generics_of(trait_def_id).own_params.iter().any(|param| {
+                !matches!(param.kind, GenericParamDefKind::Lifetime) && param.name == generic_param
+            }) =>
+            {
                 FormatArg::GenericParam { generic_param }
             }
 
@@ -311,41 +283,24 @@ fn parse_arg<'tcx>(
 
 /// `#[rustc_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
 /// with specifiers, so emit a warning if they are used.
-fn warn_on_format_spec(spec: FormatSpec<'_>, warnings: &mut Vec<FormatWarning>, input_span: Span) {
-    if !matches!(
-        spec,
-        FormatSpec {
-            fill: None,
-            fill_span: None,
-            align: Alignment::AlignUnknown,
-            sign: None,
-            alternate: false,
-            zero_pad: false,
-            debug_hex: None,
-            precision: Count::CountImplied,
-            precision_span: None,
-            width: Count::CountImplied,
-            width_span: None,
-            ty: _,
-            ty_span: _,
-        },
-    ) {
-        let span = spec.ty_span.map(|inner| slice_span(input_span, inner)).unwrap_or(input_span);
+fn warn_on_format_spec(
+    spec: &FormatSpec<'_>,
+    warnings: &mut Vec<FormatWarning>,
+    input_span: Span,
+    is_source_literal: bool,
+) {
+    if spec.ty != "" {
+        let span = spec
+            .ty_span
+            .as_ref()
+            .map(|inner| slice_span(input_span, inner.clone(), is_source_literal))
+            .unwrap_or(input_span);
         warnings.push(FormatWarning::InvalidSpecifier { span, name: spec.ty.into() })
     }
 }
 
-/// Helper function because `Span` and `rustc_parse_format::InnerSpan` don't know about each other
-fn slice_span(input: Span, inner: InnerSpan) -> Span {
-    let InnerSpan { start, end } = inner;
-    let span = input.data();
-
-    Span::new(
-        span.lo + BytePos::from_usize(start),
-        span.lo + BytePos::from_usize(end),
-        span.ctxt,
-        span.parent,
-    )
+fn slice_span(input: Span, Range { start, end }: Range<usize>, is_source_literal: bool) -> Span {
+    if is_source_literal { input.from_inner(InnerSpan { start, end }) } else { input }
 }
 
 pub mod errors {
@@ -376,39 +331,4 @@ pub mod errors {
     #[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
     #[help]
     pub struct MissingOptionsForOnUnimplementedAttr;
-
-    #[derive(LintDiagnostic)]
-    #[diag(trait_selection_ignored_diagnostic_option)]
-    pub struct IgnoredDiagnosticOption {
-        pub option_name: &'static str,
-        #[label]
-        pub span: Span,
-        #[label(trait_selection_other_label)]
-        pub prev_span: Span,
-    }
-
-    impl IgnoredDiagnosticOption {
-        pub fn maybe_emit_warning<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            item_def_id: DefId,
-            new: Option<Span>,
-            old: Option<Span>,
-            option_name: &'static str,
-        ) {
-            if let (Some(new_item), Some(old_item)) = (new, old) {
-                if let Some(item_def_id) = item_def_id.as_local() {
-                    tcx.emit_node_span_lint(
-                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        tcx.local_def_id_to_hir_id(item_def_id),
-                        new_item,
-                        IgnoredDiagnosticOption {
-                            span: new_item,
-                            prev_span: old_item,
-                            option_name,
-                        },
-                    );
-                }
-            }
-        }
-    }
 }

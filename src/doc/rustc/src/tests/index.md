@@ -164,7 +164,7 @@ Sets the number of threads to use for running tests in parallel. By default,
 uses the amount of concurrency available on the hardware as indicated by
 [`available_parallelism`].
 
-This can also be specified with the `RUST_TEST_THREADS` environment variable.
+Deprecated: this can also be specified with the `RUST_TEST_THREADS` environment variable.
 
 #### `--force-run-in-process`
 
@@ -186,7 +186,7 @@ docs](../../unstable-book/compiler-flags/report-time.html) for more information.
 
 Runs the tests in random order, as opposed to the default alphabetical order.
 
-This may also be specified by setting the `RUST_TEST_SHUFFLE` environment
+Deprecated: this may also be specified by setting the `RUST_TEST_SHUFFLE` environment
 variable to anything but `0`.
 
 The random number generator seed that is output can be passed to
@@ -209,7 +209,7 @@ the tests in the same order both times.
 _SEED_ is any 64-bit unsigned integer, for example, one produced by
 [`--shuffle`](#--shuffle).
 
-This can also be specified with the `RUST_TEST_SHUFFLE_SEED` environment
+Deprecated: this can also be specified with the `RUST_TEST_SHUFFLE_SEED` environment
 variable.
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
@@ -231,7 +231,7 @@ Does not capture the stdout and stderr of the test, and allows tests to print
 to the console. Usually the output is captured, and only displayed if the test
 fails.
 
-This may also be specified by setting the `RUST_TEST_NOCAPTURE` environment
+Deprecated: this may also be specified by setting the `RUST_TEST_NOCAPTURE` environment
 variable to anything but `0`.
 
 `--nocapture` is a deprecated alias for `--no-capture`.

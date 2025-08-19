@@ -51,10 +51,10 @@ fn render(
         .detail(detail)
         .set_relevance(ctx.completion_relevance());
 
-    if let Some(actm) = type_alias.as_assoc_item(db) {
-        if let Some(trt) = actm.container_or_implemented_trait(db) {
-            item.trait_name(trt.name(db).display_no_db(ctx.completion.edition).to_smolstr());
-        }
+    if let Some(actm) = type_alias.as_assoc_item(db)
+        && let Some(trt) = actm.container_or_implemented_trait(db)
+    {
+        item.trait_name(trt.name(db).display_no_db(ctx.completion.edition).to_smolstr());
     }
     item.insert_text(escaped_name);
 

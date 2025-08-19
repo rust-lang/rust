@@ -16,8 +16,6 @@ pub(crate) fn trait_impl_orphan(
             .to_owned(),
         InFile::new(d.file_id, d.impl_.into()),
     )
-    // Not yet checked for false positives
-    .experimental()
 }
 
 #[cfg(test)]

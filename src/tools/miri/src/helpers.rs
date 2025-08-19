@@ -13,12 +13,11 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
-use rustc_middle::ty::{self, Binder, FloatTy, FnSig, IntTy, Ty, TyCtxt, UintTy};
+use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -33,6 +32,8 @@ pub enum AccessKind {
 ///
 /// A `None` namespace indicates we are looking for a module.
 fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>) -> Option<DefId> {
+    let _trace = enter_trace_span!("try_resolve_did", ?path);
+
     /// Yield all children of the given item, that have the given name.
     fn find_children<'tcx: 'a, 'a>(
         tcx: TyCtxt<'tcx>,
@@ -133,9 +134,9 @@ pub fn iter_exported_symbols<'tcx>(
     for def_id in crate_items.definitions() {
         let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-            codegen_attrs.contains_extern_indicator()
+            codegen_attrs.contains_extern_indicator(tcx, def_id.into())
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
         if exported {
@@ -162,7 +163,7 @@ pub fn iter_exported_symbols<'tcx>(
 
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
-        for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
+        for &(symbol, _export_info) in tcx.exported_non_generic_symbols(cnum) {
             if let ExportedSymbol::NonGeneric(def_id) = symbol {
                 f(cnum, def_id)?;
             }
@@ -326,7 +327,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<P>> {
         let this = self.eval_context_ref();
         let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+        for (idx, field) in adt.non_enum_variant().fields.iter_enumerated() {
             if field.name.as_str() == name {
                 return interp_ok(Some(this.project_field(base, idx)?));
             }
@@ -376,6 +377,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         for (idx, &val) in values.iter().enumerate() {
+            let idx = FieldIdx::from_usize(idx);
             let field = this.project_field(dest, idx)?;
             this.write_int(val, &field)?;
         }
@@ -436,14 +438,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// For now, arguments must be scalars (so that the caller does not have to know the layout).
     ///
     /// If you do not provide a return place, a dangling zero-sized place will be created
-    /// for your convenience.
+    /// for your convenience. This is only valid if the return type is `()`.
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
         caller_abi: ExternAbi,
         args: &[ImmTy<'tcx>],
         dest: Option<&MPlaceTy<'tcx>>,
-        stack_pop: StackPopCleanup,
+        cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -451,7 +453,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mir = this.load_mir(f.def, None)?;
         let dest = match dest {
             Some(dest) => dest.clone(),
-            None => MPlaceTy::fake_alloc_zst(this.layout_of(mir.return_ty())?),
+            None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
         // Construct a function pointer type representing the caller perspective.
@@ -464,14 +466,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
         let caller_fn_abi = this.fn_abi_of_fn_ptr(ty::Binder::dummy(sig), ty::List::empty())?;
 
+        // This will also show proper errors if there is any ABI mismatch.
         this.init_stack_frame(
             f,
             mir,
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
             /*with_caller_location*/ false,
-            &dest,
-            stack_pop,
+            &dest.into(),
+            cont,
         )
     }
 
@@ -488,7 +491,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(
             size,
-            this.size_and_align_of_mplace(place)?
+            this.size_and_align_of_val(place)?
                 .map(|(size, _)| size)
                 .unwrap_or_else(|| place.layout.size)
         );
@@ -529,7 +532,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     trace!("unsafe_cell_action on {:?}", place.ptr());
                     // We need a size to go on.
                     let unsafe_cell_size = this
-                        .size_and_align_of_mplace(place)?
+                        .size_and_align_of_val(place)?
                         .map(|(size, _)| size)
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size);
@@ -593,10 +596,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     interp_ok(())
                 } else if matches!(v.layout.fields, FieldsShape::Union(..)) {
                     // A (non-frozen) union. We fall back to whatever the type says.
-                    (self.unsafe_cell_action)(v)
-                } else if matches!(v.layout.ty.kind(), ty::Dynamic(_, _, ty::DynStar)) {
-                    // This needs to read the vtable pointer to proceed type-driven, but we don't
-                    // want to reentrantly read from memory here.
                     (self.unsafe_cell_action)(v)
                 } else {
                     // We want to not actually read from memory for this visit. So, before
@@ -763,10 +762,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `EINVAL` in this case.
     fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
         let this = self.eval_context_mut();
-        let seconds_place = this.project_field(tp, 0)?;
+        let seconds_place = this.project_field(tp, FieldIdx::ZERO)?;
         let seconds_scalar = this.read_scalar(&seconds_place)?;
         let seconds = seconds_scalar.to_target_isize(this)?;
-        let nanoseconds_place = this.project_field(tp, 1)?;
+        let nanoseconds_place = this.project_field(tp, FieldIdx::ONE)?;
         let nanoseconds_scalar = this.read_scalar(&nanoseconds_place)?;
         let nanoseconds = nanoseconds_scalar.to_target_isize(this)?;
 
@@ -932,18 +931,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
-    /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
-        if fn_abi.conv != exp_abi {
-            throw_ub_format!(
-                "calling a function with ABI {:?} using caller ABI {:?}",
-                exp_abi,
-                fn_abi.conv
-            );
-        }
-        interp_ok(())
-    }
-
     fn frame_in_std(&self) -> bool {
         let this = self.eval_context_ref();
         let frame = this.frame();
@@ -965,161 +952,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let crate_name = crate_name.as_str();
         // On miri-test-libstd, the name of the crate is different.
         crate_name == "std" || crate_name == "std_miri_test"
-    }
-
-    fn check_abi_and_shim_symbol_clash(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
-        link_name: Symbol,
-    ) -> InterpResult<'tcx, ()> {
-        self.check_abi(abi, exp_abi)?;
-        if let Some((body, instance)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
-            // If compiler-builtins is providing the symbol, then don't treat it as a clash.
-            // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
-            // performance. Note that this means we won't catch any undefined behavior in
-            // compiler-builtins when running other crates, but Miri can still be run on
-            // compiler-builtins itself (or any crate that uses it as a normal dependency)
-            if self.eval_context_ref().tcx.is_compiler_builtins(instance.def_id().krate) {
-                return interp_ok(());
-            }
-
-            throw_machine_stop!(TerminationInfo::SymbolShimClashing {
-                link_name,
-                span: body.span.data(),
-            })
-        }
-        interp_ok(())
-    }
-
-    fn check_shim<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-
-        if abi.c_variadic {
-            throw_ub_format!(
-                "calling a non-variadic function with a variadic caller-side signature"
-            );
-        }
-        if let Ok(ops) = args.try_into() {
-            return interp_ok(ops);
-        }
-        throw_ub_format!(
-            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
-            args.len(),
-            N
-        )
-    }
-
-    /// Check that the given `caller_fn_abi` matches the expected ABI described by
-    /// `callee_abi`, `callee_input_tys`, `callee_output_ty`, and then returns the list of
-    /// arguments.
-    fn check_shim_abi<'a, const N: usize>(
-        &mut self,
-        link_name: Symbol,
-        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        callee_abi: ExternAbi,
-        callee_input_tys: [Ty<'tcx>; N],
-        callee_output_ty: Ty<'tcx>,
-        caller_args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        let this = self.eval_context_mut();
-        let mut inputs_and_output = callee_input_tys.to_vec();
-        inputs_and_output.push(callee_output_ty);
-        let fn_sig_binder = Binder::dummy(FnSig {
-            inputs_and_output: this.machine.tcx.mk_type_list(&inputs_and_output),
-            c_variadic: false,
-            // This does not matter for the ABI.
-            safety: Safety::Safe,
-            abi: callee_abi,
-        });
-        let callee_fn_abi = this.fn_abi_of_fn_ptr(fn_sig_binder, Default::default())?;
-
-        this.check_abi_and_shim_symbol_clash(caller_fn_abi, callee_fn_abi.conv, link_name)?;
-
-        if caller_fn_abi.c_variadic {
-            throw_ub_format!(
-                "ABI mismatch: calling a non-variadic function with a variadic caller-side signature"
-            );
-        }
-
-        if callee_fn_abi.fixed_count != caller_fn_abi.fixed_count {
-            throw_ub_format!(
-                "ABI mismatch: expected {} arguments, found {} arguments ",
-                callee_fn_abi.fixed_count,
-                caller_fn_abi.fixed_count
-            );
-        }
-
-        if callee_fn_abi.can_unwind && !caller_fn_abi.can_unwind {
-            throw_ub_format!(
-                "ABI mismatch: callee may unwind, but caller-side signature prohibits unwinding",
-            );
-        }
-
-        if !this.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
-            throw_ub!(AbiMismatchReturn {
-                caller_ty: caller_fn_abi.ret.layout.ty,
-                callee_ty: callee_fn_abi.ret.layout.ty
-            });
-        }
-
-        if let Some(index) = caller_fn_abi
-            .args
-            .iter()
-            .zip(callee_fn_abi.args.iter())
-            .map(|(caller_arg, callee_arg)| this.check_argument_compat(caller_arg, callee_arg))
-            .collect::<InterpResult<'tcx, Vec<bool>>>()?
-            .into_iter()
-            .position(|b| !b)
-        {
-            throw_ub!(AbiMismatchArgument {
-                caller_ty: caller_fn_abi.args[index].layout.ty,
-                callee_ty: callee_fn_abi.args[index].layout.ty
-            });
-        }
-
-        if let Ok(ops) = caller_args.try_into() {
-            return interp_ok(ops);
-        }
-        unreachable!()
-    }
-
-    /// Check shim for variadic function.
-    /// Returns a tuple that consisting of an array of fixed args, and a slice of varargs.
-    fn check_shim_variadic<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: Conv,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, (&'a [OpTy<'tcx>; N], &'a [OpTy<'tcx>])>
-    where
-        &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
-    {
-        self.check_abi_and_shim_symbol_clash(abi, exp_abi, link_name)?;
-
-        if !abi.c_variadic {
-            throw_ub_format!(
-                "calling a variadic function with a non-variadic caller-side signature"
-            );
-        }
-        if abi.fixed_count != u32::try_from(N).unwrap() {
-            throw_ub_format!(
-                "incorrect number of fixed arguments for variadic function `{}`: got {}, expected {N}",
-                link_name.as_str(),
-                abi.fixed_count
-            )
-        }
-        if let Some(args) = args.split_first_chunk() {
-            return interp_ok(args);
-        }
-        panic!("mismatch between signature and `args` slice");
     }
 
     /// Mark a machine allocation that was just created as immutable.
@@ -1235,8 +1067,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    /// Lookup an array of immediates stored as a linker section of name `name`.
-    fn lookup_link_section(&mut self, name: &str) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
+    /// Lookup an array of immediates from any linker sections matching the provided predicate.
+    fn lookup_link_section(
+        &mut self,
+        include_name: impl Fn(&str) -> bool,
+    ) -> InterpResult<'tcx, Vec<ImmTy<'tcx>>> {
         let this = self.eval_context_mut();
         let tcx = this.tcx.tcx;
 
@@ -1247,15 +1082,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(link_section) = attrs.link_section else {
                 return interp_ok(());
             };
-            if link_section.as_str() == name {
+            if include_name(link_section.as_str()) {
                 let instance = ty::Instance::mono(tcx, def_id);
                 let const_val = this.eval_global(instance).unwrap_or_else(|err| {
                     panic!(
                         "failed to evaluate static in required link_section: {def_id:?}\n{err:?}"
                     )
                 });
-                let val = this.read_immediate(&const_val)?;
-                array.push(val);
+                match const_val.layout.ty.kind() {
+                    ty::FnPtr(..) => {
+                        array.push(this.read_immediate(&const_val)?);
+                    }
+                    ty::Array(elem_ty, _) if matches!(elem_ty.kind(), ty::FnPtr(..)) => {
+                        let mut elems = this.project_array_fields(&const_val)?;
+                        while let Some((_idx, elem)) = elems.next(this)? {
+                            array.push(this.read_immediate(&elem)?);
+                        }
+                    }
+                    _ =>
+                        throw_unsup_format!(
+                            "only function pointers and arrays of function pointers are supported in well-known linker sections"
+                        ),
+                }
             }
             interp_ok(())
         })?;
@@ -1312,40 +1160,6 @@ impl<'tcx> MiriMachine<'tcx> {
         (def_id.is_local() || self.local_crates.contains(&def_id.krate))
             && !frame.instance().def.requires_caller_location(self.tcx)
     }
-}
-
-/// Check that the number of args is what we expect.
-pub fn check_intrinsic_arg_count<'a, 'tcx, const N: usize>(
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
-where
-    &'a [OpTy<'tcx>; N]: TryFrom<&'a [OpTy<'tcx>]>,
-{
-    if let Ok(ops) = args.try_into() {
-        return interp_ok(ops);
-    }
-    throw_ub_format!(
-        "incorrect number of arguments for intrinsic: got {}, expected {}",
-        args.len(),
-        N
-    )
-}
-
-/// Check that the number of varargs is at least the minimum what we expect.
-/// Fixed args should not be included.
-/// Use `check_vararg_fixed_arg_count` to extract the varargs slice from full function arguments.
-pub fn check_min_vararg_count<'a, 'tcx, const N: usize>(
-    name: &'a str,
-    args: &'a [OpTy<'tcx>],
-) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-    if let Some((ops, _)) = args.split_first_chunk() {
-        return interp_ok(ops);
-    }
-    throw_ub_format!(
-        "not enough variadic arguments for `{name}`: got {}, expected at least {}",
-        args.len(),
-        N
-    )
 }
 
 pub fn isolation_abort_error<'tcx>(name: &str) -> InterpResult<'tcx> {
@@ -1408,4 +1222,39 @@ pub(crate) fn windows_check_buffer_size((success, len): (bool, u64)) -> u32 {
         // required to hold the string and its terminating null character.
         u32::try_from(len).unwrap()
     }
+}
+
+/// We don't support 16-bit systems, so let's have ergonomic conversion from `u32` to `usize`.
+pub trait ToUsize {
+    fn to_usize(self) -> usize;
+}
+
+impl ToUsize for u32 {
+    fn to_usize(self) -> usize {
+        self.try_into().unwrap()
+    }
+}
+
+/// Similarly, a maximum address size of `u64` is assumed widely here, so let's have ergonomic
+/// converion from `usize` to `u64`.
+pub trait ToU64 {
+    fn to_u64(self) -> u64;
+}
+
+impl ToU64 for usize {
+    fn to_u64(self) -> u64 {
+        self.try_into().unwrap()
+    }
+}
+
+/// Enters a [tracing::info_span] only if the "tracing" feature is enabled, otherwise does nothing.
+/// This calls [rustc_const_eval::enter_trace_span] with [MiriMachine] as the first argument, which
+/// will in turn call [MiriMachine::enter_trace_span], which takes care of determining at compile
+/// time whether to trace or not (and supposedly the call is compiled out if tracing is disabled).
+/// Look at [rustc_const_eval::enter_trace_span] for complete documentation, examples and tips.
+#[macro_export]
+macro_rules! enter_trace_span {
+    ($($tt:tt)*) => {
+        rustc_const_eval::enter_trace_span!($crate::MiriMachine<'static>, $($tt)*)
+    };
 }

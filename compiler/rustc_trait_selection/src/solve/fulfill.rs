@@ -10,10 +10,15 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
+    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypingMode,
 };
-use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::delegate::SolverDelegate as _;
+use rustc_next_trait_solver::solve::{
+    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _,
+};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 use tracing::instrument;
 
 use self::derive_errors::*;
@@ -23,6 +28,10 @@ use super::inspect::{self, ProofTreeInferCtxtExt};
 use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
+
+// FIXME: Do we need to use a `ThinVec` here?
+type PendingObligations<'tcx> =
+    ThinVec<(PredicateObligation<'tcx>, Option<GoalStalledOn<TyCtxt<'tcx>>>)>;
 
 /// A trait engine using the new trait solver.
 ///
@@ -53,13 +62,17 @@ struct ObligationStorage<'tcx> {
     /// We cannot eagerly return these as error so we instead store them here
     /// to avoid recomputing them each time `select_where_possible` is called.
     /// This also allows us to return the correct `FulfillmentError` for them.
-    overflowed: PredicateObligations<'tcx>,
-    pending: PredicateObligations<'tcx>,
+    overflowed: Vec<PredicateObligation<'tcx>>,
+    pending: PendingObligations<'tcx>,
 }
 
 impl<'tcx> ObligationStorage<'tcx> {
-    fn register(&mut self, obligation: PredicateObligation<'tcx>) {
-        self.pending.push(obligation);
+    fn register(
+        &mut self,
+        obligation: PredicateObligation<'tcx>,
+        stalled_on: Option<GoalStalledOn<TyCtxt<'tcx>>>,
+    ) {
+        self.pending.push((obligation, stalled_on));
     }
 
     fn has_pending_obligations(&self) -> bool {
@@ -67,7 +80,8 @@ impl<'tcx> ObligationStorage<'tcx> {
     }
 
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
-        let mut obligations = self.pending.clone();
+        let mut obligations: PredicateObligations<'tcx> =
+            self.pending.iter().map(|(o, _)| o.clone()).collect();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
@@ -75,8 +89,9 @@ impl<'tcx> ObligationStorage<'tcx> {
     fn drain_pending(
         &mut self,
         cond: impl Fn(&PredicateObligation<'tcx>) -> bool,
-    ) -> PredicateObligations<'tcx> {
-        let (unstalled, pending) = mem::take(&mut self.pending).into_iter().partition(cond);
+    ) -> PendingObligations<'tcx> {
+        let (unstalled, pending) =
+            mem::take(&mut self.pending).into_iter().partition(|(o, _)| cond(o));
         self.pending = pending;
         unstalled
     }
@@ -89,13 +104,18 @@ impl<'tcx> ObligationStorage<'tcx> {
             // we were to do another step of `select_where_possible`, which goals would
             // change.
             // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
-            self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
-                let goal = o.as_goal();
-                let result = <&SolverDelegate<'tcx>>::from(infcx)
-                    .evaluate_root_goal(goal, GenerateProofTree::No, o.cause.span)
-                    .0;
-                matches!(result, Ok((HasChanged::Yes, _)))
-            }));
+            self.overflowed.extend(
+                ExtractIf::new(&mut self.pending, |(o, stalled_on)| {
+                    let goal = o.as_goal();
+                    let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
+                        goal,
+                        o.cause.span,
+                        stalled_on.take(),
+                    );
+                    matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
+                })
+                .map(|(o, _)| o),
+            );
         })
     }
 }
@@ -118,11 +138,11 @@ impl<'tcx, E: 'tcx> FulfillmentCtxt<'tcx, E> {
         &self,
         infcx: &InferCtxt<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-        result: &Result<(HasChanged, Certainty), NoSolution>,
+        result: &Result<GoalEvaluation<TyCtxt<'tcx>>, NoSolution>,
     ) {
         if let Some(inspector) = infcx.obligation_inspector.get() {
             let result = match result {
-                Ok((_, c)) => Ok(*c),
+                Ok(GoalEvaluation { certainty, .. }) => Ok(*certainty),
                 Err(NoSolution) => Err(NoSolution),
             };
             (inspector)(infcx, &obligation, result);
@@ -141,14 +161,14 @@ where
         obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        self.obligations.register(obligation);
+        self.obligations.register(obligation, None);
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         self.obligations
             .pending
             .drain(..)
-            .map(|obligation| NextSolverError::Ambiguity(obligation))
+            .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
             .chain(
                 self.obligations
                     .overflowed
@@ -163,8 +183,8 @@ where
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
         loop {
-            let mut has_changed = false;
-            for mut obligation in self.obligations.drain_pending(|_| true) {
+            let mut any_changed = false;
+            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_| true) {
                 if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
                     self.obligations.on_fulfillment_overflow(infcx);
                     // Only return true errors that we have accumulated while processing.
@@ -172,11 +192,28 @@ where
                 }
 
                 let goal = obligation.as_goal();
-                let result = <&SolverDelegate<'tcx>>::from(infcx)
-                    .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
-                    .0;
+                let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+                if let Some(certainty) =
+                    delegate.compute_goal_fast_path(goal, obligation.cause.span)
+                {
+                    match certainty {
+                        // This fast path doesn't depend on region identity so it doesn't
+                        // matter if the goal contains inference variables or not, so we
+                        // don't need to call `push_hir_typeck_potentially_region_dependent_goal`
+                        // here.
+                        //
+                        // Only goals proven via the trait solver should be region dependent.
+                        Certainty::Yes => {}
+                        Certainty::Maybe(_) => {
+                            self.obligations.register(obligation, None);
+                        }
+                    }
+                    continue;
+                }
+
+                let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let (changed, certainty) = match result {
+                let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
@@ -187,7 +224,11 @@ where
                     }
                 };
 
-                if changed == HasChanged::Yes {
+                // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
+                // in the next iteration. This does not resolve the inference variables
+                // constrained by evaluating the goal.
+                obligation.predicate = goal.predicate;
+                if has_changed == HasChanged::Yes {
                     // We increment the recursion depth here to track the number of times
                     // this goal has resulted in inference progress. This doesn't precisely
                     // model the way that we track recursion depth in the old solver due
@@ -195,16 +236,31 @@ where
                     // approximation and should only result in fulfillment overflow in
                     // pathological cases.
                     obligation.recursion_depth += 1;
-                    has_changed = true;
+                    any_changed = true;
                 }
 
                 match certainty {
-                    Certainty::Yes => {}
-                    Certainty::Maybe(_) => self.obligations.register(obligation),
+                    Certainty::Yes => {
+                        // Goals may depend on structural identity. Region uniquification at the
+                        // start of MIR borrowck may cause things to no longer be so, potentially
+                        // causing an ICE.
+                        //
+                        // While we uniquify root goals in HIR this does not handle cases where
+                        // regions are hidden inside of a type or const inference variable.
+                        //
+                        // FIXME(-Znext-solver): This does not handle inference variables hidden
+                        // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
+                        // storage, we can also rely on structural identity of `?x` even if we
+                        // later uniquify it in MIR borrowck.
+                        if infcx.in_hir_typeck && obligation.has_non_region_infer() {
+                            infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
+                        }
+                    }
+                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
                 }
             }
 
-            if !has_changed {
+            if !any_changed {
                 break;
             }
         }
@@ -224,7 +280,7 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let stalled_generators = match infcx.typing_mode() {
+        let stalled_coroutines = match infcx.typing_mode() {
             TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
@@ -234,24 +290,28 @@ where
             | TypingMode::PostAnalysis => return Default::default(),
         };
 
-        if stalled_generators.is_empty() {
+        if stalled_coroutines.is_empty() {
             return Default::default();
         }
 
-        self.obligations.drain_pending(|obl| {
-            infcx.probe(|_| {
-                infcx
-                    .visit_proof_tree(
-                        obl.as_goal(),
-                        &mut StalledOnCoroutines {
-                            stalled_generators,
-                            span: obl.cause.span,
-                            cache: Default::default(),
-                        },
-                    )
-                    .is_break()
+        self.obligations
+            .drain_pending(|obl| {
+                infcx.probe(|_| {
+                    infcx
+                        .visit_proof_tree(
+                            obl.as_goal(),
+                            &mut StalledOnCoroutines {
+                                stalled_coroutines,
+                                span: obl.cause.span,
+                                cache: Default::default(),
+                            },
+                        )
+                        .is_break()
+                })
             })
-        })
+            .into_iter()
+            .map(|(o, _)| o)
+            .collect()
     }
 }
 
@@ -263,10 +323,10 @@ where
 ///
 /// This function can be also return false positives, which will lead to poor diagnostics
 /// so we want to keep this visitor *precise* too.
-struct StalledOnCoroutines<'tcx> {
-    stalled_generators: &'tcx ty::List<LocalDefId>,
-    span: Span,
-    cache: DelayedSet<Ty<'tcx>>,
+pub struct StalledOnCoroutines<'tcx> {
+    pub stalled_coroutines: &'tcx ty::List<LocalDefId>,
+    pub span: Span,
+    pub cache: DelayedSet<Ty<'tcx>>,
 }
 
 impl<'tcx> inspect::ProofTreeVisitor<'tcx> for StalledOnCoroutines<'tcx> {
@@ -295,13 +355,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
             return ControlFlow::Continue(());
         }
 
-        if let ty::CoroutineWitness(def_id, _) = *ty.kind()
-            && def_id.as_local().is_some_and(|def_id| self.stalled_generators.contains(&def_id))
+        if let ty::Coroutine(def_id, _) = *ty.kind()
+            && def_id.as_local().is_some_and(|def_id| self.stalled_coroutines.contains(&def_id))
         {
-            return ControlFlow::Break(());
+            ControlFlow::Break(())
+        } else if ty.has_coroutines() {
+            ty.super_visit_with(self)
+        } else {
+            ControlFlow::Continue(())
         }
-
-        ty.super_visit_with(self)
     }
 }
 

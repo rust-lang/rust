@@ -1,0 +1,150 @@
+error[E0433]: failed to resolve: could not find `DocAliasX` in `n`
+  --> $DIR/use-doc-alias-name.rs:52:11
+   |
+LL |     m::n::DocAliasX::y::S6;
+   |           ^^^^^^^^^ could not find `DocAliasX` in `n`
+   |
+help: `x` has a name defined in the doc alias attribute as `DocAliasX`
+   |
+LL -     m::n::DocAliasX::y::S6;
+LL +     m::n::x::y::S6;
+   |
+
+error[E0425]: cannot find value `LocalDocAliasS` in this scope
+  --> $DIR/use-doc-alias-name.rs:13:5
+   |
+LL |     LocalDocAliasS; // don't show help in local crate
+   |     ^^^^^^^^^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `DocAliasS1` in this scope
+  --> $DIR/use-doc-alias-name.rs:16:5
+   |
+LL |     DocAliasS1;
+   |     ^^^^^^^^^^
+   |
+help: `S1` has a name defined in the doc alias attribute as `DocAliasS1`
+   |
+LL -     DocAliasS1;
+LL +     S1;
+   |
+
+error[E0425]: cannot find value `DocAliasS2` in this scope
+  --> $DIR/use-doc-alias-name.rs:20:5
+   |
+LL |     DocAliasS2;
+   |     ^^^^^^^^^^
+   |
+help: `S2` has a name defined in the doc alias attribute as `DocAliasS2`
+   |
+LL -     DocAliasS2;
+LL +     S2;
+   |
+
+error[E0425]: cannot find value `DocAliasS3` in this scope
+  --> $DIR/use-doc-alias-name.rs:24:5
+   |
+LL |     DocAliasS3;
+   |     ^^^^^^^^^^
+   |
+help: `S2` has a name defined in the doc alias attribute as `DocAliasS3`
+   |
+LL -     DocAliasS3;
+LL +     S2;
+   |
+
+error[E0425]: cannot find value `DocAliasS4` in this scope
+  --> $DIR/use-doc-alias-name.rs:28:5
+   |
+LL |     DocAliasS4;
+   |     ^^^^^^^^^^
+   |
+help: `S2` has a name defined in the doc alias attribute as `DocAliasS4`
+   |
+LL -     DocAliasS4;
+LL +     S2;
+   |
+
+error[E0425]: cannot find value `DocAliasS5` in module `m`
+  --> $DIR/use-doc-alias-name.rs:40:8
+   |
+LL |     m::DocAliasS5;
+   |        ^^^^^^^^^^
+   |
+help: `S5` has a name defined in the doc alias attribute as `DocAliasS5`
+   |
+LL -     m::DocAliasS5;
+LL +     m::S5;
+   |
+
+error[E0425]: cannot find value `DocAliasS1` in crate `use_doc_alias_name_extern`
+  --> $DIR/use-doc-alias-name.rs:48:32
+   |
+LL |     use_doc_alias_name_extern::DocAliasS1;
+   |                                ^^^^^^^^^^
+   |
+help: `S1` has a name defined in the doc alias attribute as `DocAliasS1`
+   |
+LL -     use_doc_alias_name_extern::DocAliasS1;
+LL +     use_doc_alias_name_extern::S1;
+   |
+
+error[E0425]: cannot find value `DocAliasS6` in module `m::n::x::y`
+  --> $DIR/use-doc-alias-name.rs:56:17
+   |
+LL |     m::n::x::y::DocAliasS6;
+   |                 ^^^^^^^^^^
+   |
+help: `S6` has a name defined in the doc alias attribute as `DocAliasS6`
+   |
+LL -     m::n::x::y::DocAliasS6;
+LL +     m::n::x::y::S6;
+   |
+
+error[E0425]: cannot find value `DocAliasS1` in this scope
+  --> $DIR/use-doc-alias-name.rs:63:9
+   |
+LL |         DocAliasS1;
+   |         ^^^^^^^^^^
+   |
+help: `S1` has a name defined in the doc alias attribute as `DocAliasS1`
+   |
+LL -         DocAliasS1;
+LL +         S1;
+   |
+
+error[E0425]: cannot find function `doc_alias_f1` in this scope
+  --> $DIR/use-doc-alias-name.rs:32:5
+   |
+LL |     doc_alias_f1();
+   |     ^^^^^^^^^^^^
+   |
+help: `f` has a name defined in the doc alias attribute as `doc_alias_f1`
+   |
+LL -     doc_alias_f1();
+LL +     f();
+   |
+
+error[E0425]: cannot find function `doc_alias_f2` in this scope
+  --> $DIR/use-doc-alias-name.rs:36:5
+   |
+LL |     doc_alias_f2();
+   |     ^^^^^^^^^^^^
+   |
+help: `f` has a name defined in the doc alias attribute as `doc_alias_f2`
+   |
+LL -     doc_alias_f2();
+LL +     f();
+   |
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `not_exist_module`
+  --> $DIR/use-doc-alias-name.rs:44:5
+   |
+LL |     not_exist_module::DocAliasS1;
+   |     ^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `not_exist_module`
+   |
+   = help: you might be missing a crate named `not_exist_module`
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

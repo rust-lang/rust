@@ -179,7 +179,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
     }
 
-    /// Checks the `#[define_opaque]` attributes on items and collectes opaques to define
+    /// Checks the `#[define_opaque]` attributes on items and collects opaques to define
     /// from the referenced types.
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_from_defines_attr(&mut self) {
@@ -223,7 +223,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             // Skips type aliases, as they are meant to be transparent.
             // FIXME(type_alias_impl_trait): can we require mentioning nested type aliases explicitly?
-            ty::Alias(ty::Free, alias_ty) if alias_ty.def_id.is_local() => {
+            ty::Alias(ty::Free, alias_ty) if let Some(def_id) = alias_ty.def_id.as_local() => {
+                if !self.seen.insert(def_id) {
+                    return;
+                }
                 self.tcx
                     .type_of(alias_ty.def_id)
                     .instantiate(self.tcx, alias_ty.args)
@@ -256,16 +259,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 return;
                             }
 
-                            let impl_args = alias_ty.args.rebase_onto(
+                            let alias_args = alias_ty.args.rebase_onto(
                                 self.tcx,
                                 impl_trait_ref.def_id,
                                 ty::GenericArgs::identity_for_item(self.tcx, parent),
                             );
 
-                            if self.tcx.check_args_compatible(assoc.def_id, impl_args) {
+                            if self.tcx.check_args_compatible(assoc.def_id, alias_args) {
                                 self.tcx
                                     .type_of(assoc.def_id)
-                                    .instantiate(self.tcx, impl_args)
+                                    .instantiate(self.tcx, alias_args)
                                     .visit_with(self);
                                 return;
                             } else {
@@ -321,7 +324,10 @@ fn opaque_types_defined_by<'tcx>(
             collector.collect_taits_declared_in_body();
         }
         // Closures and coroutines are type checked with their parent
-        DefKind::Closure | DefKind::InlineConst => {
+        // Note that we also support `SyntheticCoroutineBody` since we create
+        // a MIR body for the def kind, and some MIR passes (like promotion)
+        // may require doing analysis using its typing env.
+        DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
         DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}
@@ -343,8 +349,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::ForeignMod
         | DefKind::Field
         | DefKind::LifetimeParam
-        | DefKind::Impl { .. }
-        | DefKind::SyntheticCoroutineBody => {
+        | DefKind::Impl { .. } => {
             span_bug!(
                 tcx.def_span(item),
                 "`opaque_types_defined_by` not defined for {} `{item:?}`",

@@ -2,7 +2,7 @@
 //! faulty logic around `release_clock` that led to this code not reporting a data race.
 //~^^ERROR: deadlock
 //@ignore-target: windows # no libc socketpair on Windows
-//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-address-reuse-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 use std::thread;
 

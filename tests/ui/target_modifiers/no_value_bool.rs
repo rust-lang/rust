@@ -8,7 +8,7 @@
 //@ revisions: ok ok_explicit error error_explicit
 //@[ok] compile-flags: -Zreg-struct-return
 //@[ok_explicit] compile-flags: -Zreg-struct-return=true
-//@[error] compile-flags:
+// [error] no extra compile-flags
 //@[error_explicit] compile-flags: -Zreg-struct-return=false
 //@[ok] check-pass
 //@[ok_explicit] check-pass

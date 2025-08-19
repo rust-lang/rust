@@ -18,11 +18,11 @@ pub(crate) fn validate_cmse_abi<'tcx>(
     fn_sig: ty::PolyFnSig<'tcx>,
 ) {
     match abi {
-        ExternAbi::CCmseNonSecureCall => {
+        ExternAbi::CmseNonSecureCall => {
             let hir_node = tcx.hir_node(hir_id);
             let hir::Node::Ty(hir::Ty {
-                span: bare_fn_span,
-                kind: hir::TyKind::BareFn(bare_fn_ty),
+                span: fn_ptr_span,
+                kind: hir::TyKind::FnPtr(fn_ptr_ty),
                 ..
             }) = hir_node
             else {
@@ -35,10 +35,10 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                     _ => tcx.hir_span(hir_id),
                 };
                 struct_span_code_err!(
-                    tcx.dcx(),
+                    dcx,
                     span,
                     E0781,
-                    "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
+                    "the `\"cmse-nonsecure-call\"` ABI is only allowed on function pointers"
                 )
                 .emit();
                 return;
@@ -49,18 +49,18 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(Err(index)) => {
                     // fn(x: u32, u32, u32, u16, y: u16) -> u32,
                     //                           ^^^^^^
-                    let span = if let Some(ident) = bare_fn_ty.param_idents[index] {
-                        ident.span.to(bare_fn_ty.decl.inputs[index].span)
+                    let span = if let Some(ident) = fn_ptr_ty.param_idents[index] {
+                        ident.span.to(fn_ptr_ty.decl.inputs[index].span)
                     } else {
-                        bare_fn_ty.decl.inputs[index].span
+                        fn_ptr_ty.decl.inputs[index].span
                     }
-                    .to(bare_fn_ty.decl.inputs.last().unwrap().span);
-                    let plural = bare_fn_ty.param_idents.len() - index != 1;
+                    .to(fn_ptr_ty.decl.inputs.last().unwrap().span);
+                    let plural = fn_ptr_ty.param_idents.len() - index != 1;
                     dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseCallGeneric { span: *bare_fn_span });
+                        dcx.emit_err(errors::CmseCallGeneric { span: *fn_ptr_span });
                     }
                 }
             }
@@ -68,17 +68,17 @@ pub(crate) fn validate_cmse_abi<'tcx>(
             match is_valid_cmse_output(tcx, fn_sig) {
                 Ok(true) => {}
                 Ok(false) => {
-                    let span = bare_fn_ty.decl.output.span();
+                    let span = fn_ptr_ty.decl.output.span();
                     dcx.emit_err(errors::CmseOutputStackSpill { span, abi });
                 }
                 Err(layout_err) => {
                     if should_emit_generic_error(abi, layout_err) {
-                        dcx.emit_err(errors::CmseCallGeneric { span: *bare_fn_span });
+                        dcx.emit_err(errors::CmseCallGeneric { span: *fn_ptr_span });
                     }
                 }
             };
         }
-        ExternAbi::CCmseNonSecureEntry => {
+        ExternAbi::CmseNonSecureEntry => {
             let hir_node = tcx.hir_node(hir_id);
             let Some(hir::FnSig { decl, span: fn_sig_span, .. }) = hir_node.fn_sig() else {
                 // might happen when this ABI is used incorrectly. That will be handled elsewhere
@@ -203,11 +203,11 @@ fn should_emit_generic_error<'tcx>(abi: ExternAbi, layout_err: &'tcx LayoutError
     match layout_err {
         TooGeneric(ty) => {
             match abi {
-                ExternAbi::CCmseNonSecureCall => {
+                ExternAbi::CmseNonSecureCall => {
                     // prevent double reporting of this error
                     !ty.is_impl_trait()
                 }
-                ExternAbi::CCmseNonSecureEntry => true,
+                ExternAbi::CmseNonSecureEntry => true,
                 _ => bug!("invalid ABI: {abi}"),
             }
         }

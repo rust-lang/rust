@@ -1,4 +1,4 @@
-//@no-rustfix: overlapping suggestions
+#![allow(clippy::manual_range_patterns)]
 #![warn(clippy::match_same_arms)]
 
 pub enum Abc {
@@ -10,9 +10,17 @@ pub enum Abc {
 fn match_same_arms() {
     let _ = match Abc::A {
         Abc::A => 0,
-        //~^ match_same_arms
         Abc::B => 1,
         _ => 0,
+        //~^ match_same_arms
+    };
+
+    match 0 {
+        1 => 'a',
+        2 => 'b',
+        3 => 'b',
+        _ => 'b',
+        //~^ match_same_arms
     };
 
     match (1, 2, 3) {
@@ -24,8 +32,8 @@ fn match_same_arms() {
 
     let _ = match 42 {
         42 => 1,
-        51 => 1,
         //~^ match_same_arms
+        51 => 1,
         41 => 2,
         //~^ match_same_arms
         52 => 2,
@@ -34,11 +42,9 @@ fn match_same_arms() {
 
     let _ = match 42 {
         1 => 2,
+        //~^ match_same_arms
         2 => 2,
-        //~^ match_same_arms
-        //~| match_same_arms
         3 => 2,
-        //~^ match_same_arms
         4 => 3,
         _ => 0,
     };
@@ -55,8 +61,8 @@ mod issue4244 {
         pub fn name(&self) -> String {
             match self {
                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
-                CommandInfo::External { name, .. } => name.to_string(),
                 //~^ match_same_arms
+                CommandInfo::External { name, .. } => name.to_string(),
             }
         }
     }

@@ -72,8 +72,6 @@ pub struct NotEmptyTight;
 
 /// ## Heading
 ///
-/// - [x][] - Done
-//~^ ERROR: link reference defined in list item
-/// - [ ][] - Not Done
-//~^ ERROR: link reference defined in list item
+/// - [x] - Done
+/// - [ ] - Not Done
 pub struct GithubCheckboxes;

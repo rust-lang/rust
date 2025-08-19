@@ -108,8 +108,7 @@ impl GlobalState {
     /// edge users from being upset!
     pub(crate) fn poke_rust_analyzer_developer(&mut self, message: String) {
         let from_source_build = option_env!("POKE_RA_DEVS").is_some();
-        let profiling_enabled = std::env::var("RA_PROFILE").is_ok();
-        if from_source_build || profiling_enabled {
+        if from_source_build {
             self.show_and_log_error(message, None);
         }
     }

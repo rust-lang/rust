@@ -312,12 +312,8 @@ fn replace_usages(
                 }
 
                 // add imports across modules where needed
-                if let Some((import_scope, path)) = import_data {
-                    let scope = match import_scope {
-                        ImportScope::File(it) => ImportScope::File(edit.make_mut(it)),
-                        ImportScope::Module(it) => ImportScope::Module(edit.make_mut(it)),
-                        ImportScope::Block(it) => ImportScope::Block(edit.make_mut(it)),
-                    };
+                if let Some((scope, path)) = import_data {
+                    let scope = edit.make_import_scope_mut(scope);
                     delayed_mutations.push((scope, path));
                 }
             },

@@ -1,5 +1,3 @@
-use cfg_if::cfg_if;
-
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::Deref;
@@ -87,8 +85,8 @@ pub struct ReentrantLock<T: ?Sized> {
     data: T,
 }
 
-cfg_if!(
-    if #[cfg(target_has_atomic = "64")] {
+cfg_select!(
+    target_has_atomic = "64" => {
         use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
 
         struct Tid(Atomic<u64>);
@@ -110,7 +108,8 @@ cfg_if!(
                 self.0.store(value, Relaxed);
             }
         }
-    } else {
+    }
+    _ => {
         /// Returns the address of a TLS variable. This is guaranteed to
         /// be unique across all currently alive threads.
         fn tls_addr() -> usize {
@@ -136,7 +135,7 @@ cfg_if!(
             // we only ever read from the tid if `tls_addr` matches the current
             // TLS address. In that case, either the tid has been set by
             // the current thread, or by a thread that has terminated before
-            // the current thread was created. In either case, no further
+            // the current thread's `tls_addr` was allocated. In either case, no further
             // synchronization is needed (as per <https://github.com/rust-lang/miri/issues/3450>)
             tls_addr: Atomic<usize>,
             tid: UnsafeCell<u64>,
@@ -154,8 +153,12 @@ cfg_if!(
             // NOTE: This assumes that `owner` is the ID of the current
             // thread, and may spuriously return `false` if that's not the case.
             fn contains(&self, owner: ThreadId) -> bool {
+                // We must call `tls_addr()` *before* doing the load to ensure that if we reuse an
+                // earlier thread's address, the `tls_addr.load()` below happens-after everything
+                // that thread did.
+                let tls_addr = tls_addr();
                 // SAFETY: See the comments in the struct definition.
-                self.tls_addr.load(Ordering::Relaxed) == tls_addr()
+                self.tls_addr.load(Ordering::Relaxed) == tls_addr
                     && unsafe { *self.tid.get() } == owner.as_u64().get()
             }
 
@@ -343,6 +346,17 @@ impl<T: ?Sized> ReentrantLock<T> {
                 None
             }
         }
+    }
+
+    /// Returns a raw pointer to the underlying data.
+    ///
+    /// The returned pointer is always non-null and properly aligned, but it is
+    /// the user's responsibility to ensure that any reads through it are
+    /// properly synchronized to avoid data races, and that it is not read
+    /// through after the lock is dropped.
+    #[unstable(feature = "reentrant_lock_data_ptr", issue = "140368")]
+    pub fn data_ptr(&self) -> *const T {
+        &raw const self.data
     }
 
     unsafe fn increment_lock_count(&self) -> Option<()> {

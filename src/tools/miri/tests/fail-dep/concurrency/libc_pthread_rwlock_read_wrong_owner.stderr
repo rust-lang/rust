@@ -2,7 +2,7 @@ error: Undefined Behavior: unlocked an rwlock that was not locked by the active 
   --> tests/fail-dep/concurrency/libc_pthread_rwlock_read_wrong_owner.rs:LL:CC
    |
 LL | ...   assert_eq!(libc::pthread_rwlock_unlock(lock_copy.0.get() as *mut _), 0);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unlocked an rwlock that was not locked by the active thread
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

@@ -7,13 +7,5 @@ warning: unstable feature specified for `-Ctarget-feature`: `d`
    |
    = note: this feature is not stably supported; its behavior can change in the future
 
-warning: unstable feature specified for `-Ctarget-feature`: `f`
-   |
-   = note: this feature is not stably supported; its behavior can change in the future
-
-warning: unstable feature specified for `-Ctarget-feature`: `zicsr`
-   |
-   = note: this feature is not stably supported; its behavior can change in the future
-
-warning: 4 warnings emitted
+warning: 2 warnings emitted
 

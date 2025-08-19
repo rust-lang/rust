@@ -19,8 +19,8 @@ use rustc_ast::token::CommentKind;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
-    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
-    TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
+    ImplItem, ImplItemKind, TraitImplHeader, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path,
+    QPath, Safety, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -249,14 +249,14 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
-        ItemKind::Struct(_, VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(_, _, VariantData::Struct { .. }) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
-        ItemKind::Trait(_, Safety::Unsafe, ..)
+        ItemKind::Trait(_, _, Safety::Unsafe, ..)
         | ItemKind::Impl(Impl {
-            safety: Safety::Unsafe, ..
+            of_trait: Some(TraitImplHeader { safety: Safety::Unsafe, .. }), ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
-        ItemKind::Trait(IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
+        ItemKind::Trait(_, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
         _ => return (Pat::Str(""), Pat::Str("")),
@@ -372,17 +372,17 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
-        TyKind::BareFn(bare_fn) => (
-            if bare_fn.safety.is_unsafe() {
+        TyKind::FnPtr(fn_ptr) => (
+            if fn_ptr.safety.is_unsafe() {
                 Pat::Str("unsafe")
-            } else if bare_fn.abi != ExternAbi::Rust {
+            } else if fn_ptr.abi != ExternAbi::Rust {
                 Pat::Str("extern")
             } else {
                 Pat::MultiStr(&["fn", "extern"])
             },
-            match bare_fn.decl.output {
+            match fn_ptr.decl.output {
                 FnRetTy::DefaultReturn(_) => {
-                    if let [.., ty] = bare_fn.decl.inputs {
+                    if let [.., ty] = fn_ptr.decl.inputs {
                         ty_search_pat(ty).1
                     } else {
                         Pat::Str("(")

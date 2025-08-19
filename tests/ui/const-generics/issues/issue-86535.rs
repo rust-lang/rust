@@ -2,7 +2,7 @@
 #![feature(adt_const_params, unsized_const_params, generic_const_exprs)]
 #![allow(incomplete_features, unused_variables)]
 
-struct F<const S: &'static str>;
+struct F<const S: &'static str>; //~ WARN struct `F` is never constructed
 impl<const S: &'static str> X for F<{ S }> {
     const W: usize = 3;
 

@@ -27,7 +27,7 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_fn({llvtable:?}, {ty:?}, {self:?})");
 
         let llty = bx.fn_ptr_backend_type(fn_abi);
-        let ptr_size = bx.data_layout().pointer_size;
+        let ptr_size = bx.data_layout().pointer_size();
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
         load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, nonnull)
@@ -63,7 +63,7 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_int({:?}, {:?})", llvtable, self);
 
         let llty = bx.type_isize();
-        let ptr_size = bx.data_layout().pointer_size;
+        let ptr_size = bx.data_layout().pointer_size();
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
         load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, false)
@@ -77,7 +77,7 @@ fn dyn_trait_in_self<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<ty::ExistentialTraitRef<'tcx>> {
     for arg in ty.peel_refs().walk() {
-        if let GenericArgKind::Type(ty) = arg.unpack()
+        if let GenericArgKind::Type(ty) = arg.kind()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
             // FIXME(arbitrary_self_types): This is likely broken for receivers which
@@ -115,7 +115,7 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
     let vtable_const = cx.const_data_from_alloc(vtable_allocation);
-    let align = cx.data_layout().pointer_align.abi;
+    let align = cx.data_layout().pointer_align().abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
     cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
@@ -133,13 +133,14 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ty: Ty<'tcx>,
     nonnull: bool,
 ) -> Bx::Value {
-    let ptr_align = bx.data_layout().pointer_align.abi;
+    let ptr_align = bx.data_layout().pointer_align().abi;
 
     if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
         && bx.cx().sess().lto() == Lto::Fat
     {
         if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
-            let typeid = bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref)).unwrap();
+            let typeid =
+                bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref).as_bytes()).unwrap();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             return func;
         } else if nonnull {

@@ -1,11 +1,8 @@
 error: unused extern crate
   --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:12:1
    |
-LL | / #[cfg(not(FALSE))]
-LL | | extern crate edition_lint_paths;
-   | | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   | |________________________________|
-   |                                  help: remove it
+LL | extern crate edition_lint_paths;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unused
    |
 note: the lint level is defined here
   --> $DIR/issue-54400-unused-extern-crate-attr-span.rs:6:9
@@ -13,6 +10,11 @@ note: the lint level is defined here
 LL | #![deny(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(unused_extern_crates)]` implied by `#[deny(rust_2018_idioms)]`
+help: remove the unused `extern crate`
+   |
+LL - #[cfg(not(FALSE))]
+LL - extern crate edition_lint_paths;
+   |
 
 error: aborting due to 1 previous error
 

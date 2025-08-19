@@ -121,7 +121,7 @@ error[E0599]: no variant or associated item named `Empty3` found for enum `empty
   --> $DIR/empty-struct-braces-expr.rs:25:19
    |
 LL |     let xe3 = XE::Empty3;
-   |                   ^^^^^^ variant or associated item not found in `XE`
+   |                   ^^^^^^ variant or associated item not found in `empty_struct::XE`
    |
 help: there is a variant with a similar name
    |
@@ -132,7 +132,7 @@ error[E0599]: no variant or associated item named `Empty3` found for enum `empty
   --> $DIR/empty-struct-braces-expr.rs:26:19
    |
 LL |     let xe3 = XE::Empty3();
-   |                   ^^^^^^ variant or associated item not found in `XE`
+   |                   ^^^^^^ variant or associated item not found in `empty_struct::XE`
    |
 help: there is a variant with a similar name
    |

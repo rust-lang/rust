@@ -47,7 +47,7 @@ impl<'tcx> At<'_, 'tcx> {
     /// same goals in both a temporary and the shared context which negatively impacts
     /// performance as these don't share caching.
     ///
-    /// FIXME(-Znext-solver): For performance reasons, we currently reuse an existing
+    /// FIXME(-Znext-solver=no): For performance reasons, we currently reuse an existing
     /// fulfillment context in the old solver. Once we have removed the old solver, we
     /// can remove the `fulfill_cx` parameter on this function.
     fn deeply_normalize<T, E>(
@@ -224,7 +224,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             )
             .ok()
             .flatten()
-            .unwrap_or(proj.to_term(infcx.tcx));
+            .unwrap_or_else(|| proj.to_term(infcx.tcx));
 
             PlaceholderReplacer::replace_placeholders(
                 infcx,
@@ -299,12 +299,21 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
             );
         }
 
+        // We don't replace bound vars in the generic arguments of the free alias with
+        // placeholders. This doesn't cause any issues as instantiating parameters with
+        // bound variables is special-cased to rewrite the debruijn index to be higher
+        // whenever we fold through a binder.
+        //
+        // However, we do replace any escaping bound vars in the resulting goals with
+        // placeholders as the trait solver does not expect to encounter escaping bound
+        // vars in obligations.
+        //
+        // FIXME(lazy_type_alias): Check how much this actually matters for perf before
+        // stabilization. This is a bit weird and generally not how we handle binders in
+        // the compiler so ideally we'd do the same boundvar->placeholder->boundvar dance
+        // that other kinds of normalization do.
         let infcx = self.selcx.infcx;
         self.obligations.extend(
-            // FIXME(BoxyUwU):
-            // FIXME(lazy_type_alias):
-            // It seems suspicious to instantiate the predicates with arguments that might be bound vars,
-            // we might wind up instantiating one of these bound vars underneath a hrtb.
             infcx.tcx.predicates_of(free.def_id).instantiate_own(infcx.tcx, free.args).map(
                 |(mut predicate, span)| {
                     if free.has_escaping_bound_vars() {

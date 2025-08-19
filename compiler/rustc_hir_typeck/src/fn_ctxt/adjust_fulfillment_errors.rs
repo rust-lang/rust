@@ -17,6 +17,21 @@ enum ClauseFlavor {
     Const,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ParamTerm {
+    Ty(ty::ParamTy),
+    Const(ty::ParamConst),
+}
+
+impl ParamTerm {
+    fn index(self) -> usize {
+        match self {
+            ParamTerm::Ty(ty) => ty.index as usize,
+            ParamTerm::Const(ct) => ct.index as usize,
+        }
+    }
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn adjust_fulfillment_error_for_expr_obligation(
         &self,
@@ -77,17 +92,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => return false,
             };
 
-        let find_param_matching = |matches: &dyn Fn(ty::ParamTerm) -> bool| {
+        let find_param_matching = |matches: &dyn Fn(ParamTerm) -> bool| {
             predicate_args.iter().find_map(|arg| {
                 arg.walk().find_map(|arg| {
-                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                    if let ty::GenericArgKind::Type(ty) = arg.kind()
                         && let ty::Param(param_ty) = *ty.kind()
-                        && matches(ty::ParamTerm::Ty(param_ty))
+                        && matches(ParamTerm::Ty(param_ty))
                     {
                         Some(arg)
-                    } else if let ty::GenericArgKind::Const(ct) = arg.unpack()
+                    } else if let ty::GenericArgKind::Const(ct) = arg.kind()
                         && let ty::ConstKind::Param(param_ct) = ct.kind()
-                        && matches(ty::ParamTerm::Const(param_ct))
+                        && matches(ParamTerm::Const(param_ct))
                     {
                         Some(arg)
                     } else {
@@ -106,14 +121,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // from a trait or impl, for example.
         let mut fallback_param_to_point_at = find_param_matching(&|param_term| {
             self.tcx.parent(generics.param_at(param_term.index(), self.tcx).def_id) != def_id
-                && !matches!(param_term, ty::ParamTerm::Ty(ty) if ty.name == kw::SelfUpper)
+                && !matches!(param_term, ParamTerm::Ty(ty) if ty.name == kw::SelfUpper)
         });
         // Finally, the `Self` parameter is possibly the reason that the predicate
         // is unsatisfied. This is less likely to be true for methods, because
         // method probe means that we already kinda check that the predicates due
         // to the `Self` type are true.
         let mut self_param_to_point_at = find_param_matching(
-            &|param_term| matches!(param_term, ty::ParamTerm::Ty(ty) if ty.name == kw::SelfUpper),
+            &|param_term| matches!(param_term, ParamTerm::Ty(ty) if ty.name == kw::SelfUpper),
         );
 
         // Finally, for ambiguity-related errors, we actually want to look
@@ -184,9 +199,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true;
                 }
 
-                for param in [param_to_point_at, fallback_param_to_point_at, self_param_to_point_at]
-                    .into_iter()
-                    .flatten()
+                for param in [
+                    predicate_self_type_to_point_at,
+                    param_to_point_at,
+                    fallback_param_to_point_at,
+                    self_param_to_point_at,
+                ]
+                .into_iter()
+                .flatten()
                 {
                     if self.blame_specific_arg_if_possible(
                         error,
@@ -357,7 +377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         error: &mut traits::FulfillmentError<'tcx>,
         def_id: DefId,
-        param: ty::GenericArg<'tcx>,
+        arg: ty::GenericArg<'tcx>,
         qpath: &hir::QPath<'tcx>,
     ) -> bool {
         match qpath {
@@ -365,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for segment in path.segments.iter().rev() {
                     if let Res::Def(kind, def_id) = segment.res
                         && !matches!(kind, DefKind::Mod | DefKind::ForeignMod)
-                        && self.point_at_generic_if_possible(error, def_id, param, segment)
+                        && self.point_at_generic_if_possible(error, def_id, arg, segment)
                     {
                         return true;
                     }
@@ -373,7 +393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Handle `Self` param specifically, since it's separated in
                 // the path representation
                 if let Some(self_ty) = self_ty
-                    && let ty::GenericArgKind::Type(ty) = param.unpack()
+                    && let ty::GenericArgKind::Type(ty) = arg.kind()
                     && ty == self.tcx.types.self_param
                 {
                     error.obligation.cause.span = self_ty
@@ -384,12 +404,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             hir::QPath::TypeRelative(self_ty, segment) => {
-                if self.point_at_generic_if_possible(error, def_id, param, segment) {
+                if self.point_at_generic_if_possible(error, def_id, arg, segment) {
                     return true;
                 }
                 // Handle `Self` param specifically, since it's separated in
                 // the path representation
-                if let ty::GenericArgKind::Type(ty) = param.unpack()
+                if let ty::GenericArgKind::Type(ty) = arg.kind()
                     && ty == self.tcx.types.self_param
                 {
                     error.obligation.cause.span = self_ty
@@ -424,10 +444,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the args list does not, then we should chop off all of the lifetimes,
         // since they're all elided.
         let segment_args = segment.args().args;
-        if matches!(own_args[0].unpack(), ty::GenericArgKind::Lifetime(_))
+        if matches!(own_args[0].kind(), ty::GenericArgKind::Lifetime(_))
             && segment_args.first().is_some_and(|arg| arg.is_ty_or_const())
             && let Some(offset) = own_args.iter().position(|arg| {
-                matches!(arg.unpack(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_))
+                matches!(arg.kind(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Const(_))
             })
             && let Some(new_index) = index.checked_sub(offset)
         {
@@ -750,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(expr);
         }
 
-        let ty::GenericArgKind::Type(in_ty) = in_ty.unpack() else {
+        let ty::GenericArgKind::Type(in_ty) = in_ty.kind() else {
             return Err(expr);
         };
 
@@ -1045,7 +1065,7 @@ fn find_param_in_ty<'tcx>(
         if arg == param_to_point_at {
             return true;
         }
-        if let ty::GenericArgKind::Type(ty) = arg.unpack()
+        if let ty::GenericArgKind::Type(ty) = arg.kind()
             && let ty::Alias(ty::Projection | ty::Inherent, ..) = ty.kind()
         {
             // This logic may seem a bit strange, but typically when

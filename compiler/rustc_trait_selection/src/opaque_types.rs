@@ -13,6 +13,49 @@ use crate::errors::NonGenericOpaqueTypeParam;
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::ObligationCtxt;
 
+pub enum InvalidOpaqueTypeArgs<'tcx> {
+    AlreadyReported(ErrorGuaranteed),
+    NotAParam { opaque_type_key: OpaqueTypeKey<'tcx>, param_index: usize, span: Span },
+    DuplicateParam { opaque_type_key: OpaqueTypeKey<'tcx>, param_indices: Vec<usize>, span: Span },
+}
+impl From<ErrorGuaranteed> for InvalidOpaqueTypeArgs<'_> {
+    fn from(guar: ErrorGuaranteed) -> Self {
+        InvalidOpaqueTypeArgs::AlreadyReported(guar)
+    }
+}
+impl<'tcx> InvalidOpaqueTypeArgs<'tcx> {
+    pub fn report(self, infcx: &InferCtxt<'tcx>) -> ErrorGuaranteed {
+        let tcx = infcx.tcx;
+        match self {
+            InvalidOpaqueTypeArgs::AlreadyReported(guar) => guar,
+            InvalidOpaqueTypeArgs::NotAParam { opaque_type_key, param_index, span } => {
+                let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
+                let opaque_param = opaque_generics.param_at(param_index, tcx);
+                let kind = opaque_param.kind.descr();
+                infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
+                    arg: opaque_type_key.args[param_index],
+                    kind,
+                    span,
+                    param_span: tcx.def_span(opaque_param.def_id),
+                })
+            }
+            InvalidOpaqueTypeArgs::DuplicateParam { opaque_type_key, param_indices, span } => {
+                let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
+                let descr = opaque_generics.param_at(param_indices[0], tcx).kind.descr();
+                let spans: Vec<_> = param_indices
+                    .into_iter()
+                    .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
+                    .collect();
+                infcx
+                    .dcx()
+                    .struct_span_err(span, "non-defining opaque type use in defining scope")
+                    .with_span_note(spans, format!("{descr} used multiple times"))
+                    .emit()
+            }
+        }
+    }
+}
+
 /// Opaque type parameter validity check as documented in the [rustc-dev-guide chapter].
 ///
 /// [rustc-dev-guide chapter]:
@@ -22,27 +65,23 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
     defining_scope_kind: DefiningScopeKind,
-) -> Result<(), ErrorGuaranteed> {
+) -> Result<(), InvalidOpaqueTypeArgs<'tcx>> {
     let tcx = infcx.tcx;
-    let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
 
     // Avoid duplicate errors in case the opaque has already been malformed in
     // HIR typeck.
     if let DefiningScopeKind::MirBorrowck = defining_scope_kind {
-        if let Err(guar) = infcx
+        infcx
             .tcx
             .type_of_opaque_hir_typeck(opaque_type_key.def_id)
             .instantiate_identity()
-            .error_reported()
-        {
-            return Err(guar);
-        }
+            .error_reported()?;
     }
 
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
-        let arg_is_param = match arg.unpack() {
+        let arg_is_param = match arg.kind() {
             GenericArgKind::Lifetime(lt) => match defining_scope_kind {
                 DefiningScopeKind::HirTypeck => continue,
                 DefiningScopeKind::MirBorrowck => {
@@ -64,32 +103,18 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
             }
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
-            let opaque_param = opaque_generics.param_at(i, tcx);
-            let kind = opaque_param.kind.descr();
-
             opaque_env.param_is_error(i)?;
-
-            return Err(infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
-                arg,
-                kind,
-                span,
-                param_span: tcx.def_span(opaque_param.def_id),
-            }));
+            return Err(InvalidOpaqueTypeArgs::NotAParam { opaque_type_key, param_index: i, span });
         }
     }
 
-    for (_, indices) in seen_params {
-        if indices.len() > 1 {
-            let descr = opaque_generics.param_at(indices[0], tcx).kind.descr();
-            let spans: Vec<_> = indices
-                .into_iter()
-                .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
-                .collect();
-            return Err(infcx
-                .dcx()
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .with_span_note(spans, format!("{descr} used multiple times"))
-                .emit());
+    for (_, param_indices) in seen_params {
+        if param_indices.len() > 1 {
+            return Err(InvalidOpaqueTypeArgs::DuplicateParam {
+                opaque_type_key,
+                param_indices,
+                span,
+            });
         }
     }
 

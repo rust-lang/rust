@@ -65,9 +65,12 @@ error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/must_outlive_least_region_or_bound.rs:15:41
    |
 LL | fn foo<'a>(x: &i32) -> impl Copy + 'a { x }
-   |               ----                      ^ lifetime `'a` required
-   |               |
-   |               help: add explicit lifetime `'a` to the type of `x`: `&'a i32`
+   |                                         ^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `x`
+   |
+LL | fn foo<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |                ++
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:30:55

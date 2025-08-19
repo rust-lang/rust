@@ -122,12 +122,12 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         // directory which we set to the project workspace.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/general-environment-variables
         // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
-        if let Ok(path) = env::current_exe() {
-            if let Some(path) = path.parent() {
-                // SAFETY: This is safe because this is single-threaded.
-                unsafe {
-                    env::set_var("_NT_SYMBOL_PATH", path);
-                }
+        if let Ok(path) = env::current_exe()
+            && let Some(path) = path.parent()
+        {
+            // SAFETY: This is safe because this is single-threaded.
+            unsafe {
+                env::set_var("_NT_SYMBOL_PATH", path);
             }
         }
     }
@@ -182,10 +182,8 @@ fn with_extra_thread(
     thread_intent: stdx::thread::ThreadIntent,
     f: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
 ) -> anyhow::Result<()> {
-    let handle = stdx::thread::Builder::new(thread_intent)
-        .name(thread_name.into())
-        .stack_size(STACK_SIZE)
-        .spawn(f)?;
+    let handle =
+        stdx::thread::Builder::new(thread_intent, thread_name).stack_size(STACK_SIZE).spawn(f)?;
 
     handle.join()?;
 

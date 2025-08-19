@@ -13,8 +13,8 @@ fn message() -> &'static Regex {
     static_regex!(r#"(?m)^([a-zA-Z0-9_]+)\s*=\s*"#)
 }
 
-fn filter_fluent(path: &Path) -> bool {
-    if let Some(ext) = path.extension() { ext.to_str() != Some("ftl") } else { true }
+fn is_fluent(path: &Path) -> bool {
+    path.extension().is_some_and(|ext| ext == "flt")
 }
 
 fn check_alphabetic(
@@ -92,7 +92,7 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
     let mut all_defined_msgs = HashMap::new();
     walk(
         path,
-        |path, is_dir| filter_dirs(path) || (!is_dir && filter_fluent(path)),
+        |path, is_dir| filter_dirs(path) || (!is_dir && !is_fluent(path)),
         &mut |ent, contents| {
             if bless {
                 let sorted = sort_messages(
@@ -104,7 +104,7 @@ pub fn check(path: &Path, bless: bool, bad: &mut bool) {
                 if sorted != contents {
                     let mut f =
                         OpenOptions::new().write(true).truncate(true).open(ent.path()).unwrap();
-                    f.write(sorted.as_bytes()).unwrap();
+                    f.write_all(sorted.as_bytes()).unwrap();
                 }
             } else {
                 check_alphabetic(

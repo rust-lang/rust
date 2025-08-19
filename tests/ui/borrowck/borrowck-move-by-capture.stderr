@@ -2,17 +2,22 @@ error[E0507]: cannot move out of `bar`, a captured variable in an `FnMut` closur
   --> $DIR/borrowck-move-by-capture.rs:9:29
    |
 LL |     let bar: Box<_> = Box::new(3);
-   |         --- captured outer variable
+   |         ---  ------ move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
+   |         |
+   |         captured outer variable
 LL |     let _g = to_fn_mut(|| {
    |                        -- captured by this `FnMut` closure
 LL |         let _h = to_fn_once(move || -> isize { *bar });
-   |                             ^^^^^^^^^^^^^^^^   ----
-   |                             |                  |
-   |                             |                  variable moved due to use in closure
-   |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
+   |                             ^^^^^^^^^^^^^^^^   ---- variable moved due to use in closure
+   |                             |
    |                             `bar` is moved here
    |
-help: clone the value before moving it into the closure
+help: `Fn` and `FnMut` closures require captured values to be able to be consumed multiple times, but `FnOnce` closures may consume them only once
+  --> $DIR/borrowck-move-by-capture.rs:3:37
+   |
+LL | fn to_fn_mut<A:std::marker::Tuple,F:FnMut<A>>(f: F) -> F { f }
+   |                                     ^^^^^^^^
+help: consider cloning the value before moving it into the closure
    |
 LL ~         let value = bar.clone();
 LL ~         let _h = to_fn_once(move || -> isize { value });

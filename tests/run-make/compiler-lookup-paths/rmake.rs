@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Since #19941, rustc can accept specifications on its library search paths.
 // This test runs Rust programs with varied library dependencies, expecting them
 // to succeed or fail depending on the situation.

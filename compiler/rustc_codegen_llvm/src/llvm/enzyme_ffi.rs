@@ -1,11 +1,10 @@
-#![allow(non_camel_case_types)]
 #![expect(dead_code)]
 
 use libc::{c_char, c_uint};
 
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
-use crate::llvm::Bool;
+use crate::llvm::{Bool, Builder};
 
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
@@ -32,6 +31,14 @@ unsafe extern "C" {
         index: c_uint,
         kind: AttributeKind,
     );
+    pub(crate) fn LLVMRustPositionBefore<'a>(B: &'a Builder<'_>, I: &'a Value);
+    pub(crate) fn LLVMRustPositionAfter<'a>(B: &'a Builder<'_>, I: &'a Value);
+    pub(crate) fn LLVMRustGetFunctionCall(
+        F: &Value,
+        name: *const c_char,
+        NameLen: libc::size_t,
+    ) -> Option<&Value>;
+
 }
 
 unsafe extern "C" {
@@ -40,7 +47,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMDumpValue(V: &Value);
     pub(crate) fn LLVMGetFunctionCallConv(F: &Value) -> c_uint;
     pub(crate) fn LLVMGetReturnType(T: &Type) -> &Type;
-    pub(crate) fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
+    pub(crate) fn LLVMGetParams(Fnc: &Value, params: *mut &Value);
     pub(crate) fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
 }
 
@@ -57,14 +64,19 @@ pub(crate) use self::Enzyme_AD::*;
 
 #[cfg(llvm_enzyme)]
 pub(crate) mod Enzyme_AD {
+    use std::ffi::{CString, c_char};
+
     use libc::c_void;
+
     unsafe extern "C" {
         pub(crate) fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
+        pub(crate) fn EnzymeSetCLString(arg1: *mut ::std::os::raw::c_void, arg2: *const c_char);
     }
     unsafe extern "C" {
         static mut EnzymePrintPerf: c_void;
         static mut EnzymePrintActivity: c_void;
         static mut EnzymePrintType: c_void;
+        static mut EnzymeFunctionToAnalyze: c_void;
         static mut EnzymePrint: c_void;
         static mut EnzymeStrictAliasing: c_void;
         static mut looseTypeAnalysis: c_void;
@@ -84,6 +96,15 @@ pub(crate) mod Enzyme_AD {
     pub(crate) fn set_print_type(print: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintType), print as u8);
+        }
+    }
+    pub(crate) fn set_print_type_fun(fun_name: &str) {
+        let c_fun_name = CString::new(fun_name).unwrap();
+        unsafe {
+            EnzymeSetCLString(
+                std::ptr::addr_of_mut!(EnzymeFunctionToAnalyze),
+                c_fun_name.as_ptr() as *const c_char,
+            );
         }
     }
     pub(crate) fn set_print(print: bool) {
@@ -130,6 +151,9 @@ pub(crate) mod Fallback_AD {
         unimplemented!()
     }
     pub(crate) fn set_print_type(print: bool) {
+        unimplemented!()
+    }
+    pub(crate) fn set_print_type_fun(fun_name: &str) {
         unimplemented!()
     }
     pub(crate) fn set_print(print: bool) {

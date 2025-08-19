@@ -11,7 +11,7 @@ use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock};
+use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
@@ -124,19 +124,11 @@ impl<D: Deps> DepGraph<D> {
         prev_graph: Arc<SerializedDepGraph>,
         prev_work_products: WorkProductMap,
         encoder: FileEncoder,
-        record_graph: bool,
-        record_stats: bool,
     ) -> DepGraph<D> {
         let prev_graph_node_count = prev_graph.node_count();
 
-        let current = CurrentDepGraph::new(
-            session,
-            prev_graph_node_count,
-            encoder,
-            record_graph,
-            record_stats,
-            Arc::clone(&prev_graph),
-        );
+        let current =
+            CurrentDepGraph::new(session, prev_graph_node_count, encoder, Arc::clone(&prev_graph));
 
         let colors = DepNodeColorMap::new(prev_graph_node_count);
 
@@ -506,12 +498,12 @@ impl<D: Deps> DepGraph<D> {
 
                     #[cfg(debug_assertions)]
                     {
-                        if let Some(target) = task_deps.node {
-                            if let Some(ref forbidden_edge) = data.current.forbidden_edge {
-                                let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
-                                if forbidden_edge.test(&src, &target) {
-                                    panic!("forbidden edge {:?} -> {:?} created", src, target)
-                                }
+                        if let Some(target) = task_deps.node
+                            && let Some(ref forbidden_edge) = data.current.forbidden_edge
+                        {
+                            let src = forbidden_edge.index_to_node.lock()[&dep_node_index];
+                            if forbidden_edge.test(&src, &target) {
+                                panic!("forbidden edge {:?} -> {:?} created", src, target)
                             }
                         }
                     }
@@ -1052,17 +1044,8 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
-    pub fn print_incremental_info(&self) {
-        if let Some(data) = &self.data {
-            data.current.encoder.print_incremental_info(
-                data.current.total_read_count.load(Ordering::Relaxed),
-                data.current.total_duplicate_read_count.load(Ordering::Relaxed),
-            )
-        }
-    }
-
     pub fn finish_encoding(&self) -> FileEncodeResult {
-        if let Some(data) = &self.data { data.current.encoder.finish() } else { Ok(0) }
+        if let Some(data) = &self.data { data.current.encoder.finish(&data.current) } else { Ok(0) }
     }
 
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
@@ -1179,8 +1162,8 @@ pub(super) struct CurrentDepGraph<D: Deps> {
 
     /// These are simple counters that are for profiling and
     /// debugging and only active with `debug_assertions`.
-    total_read_count: AtomicU64,
-    total_duplicate_read_count: AtomicU64,
+    pub(super) total_read_count: AtomicU64,
+    pub(super) total_duplicate_read_count: AtomicU64,
 }
 
 impl<D: Deps> CurrentDepGraph<D> {
@@ -1188,8 +1171,6 @@ impl<D: Deps> CurrentDepGraph<D> {
         session: &Session,
         prev_graph_node_count: usize,
         encoder: FileEncoder,
-        record_graph: bool,
-        record_stats: bool,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
         let mut stable_hasher = StableHasher::new();
@@ -1211,14 +1192,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             session.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions);
 
         CurrentDepGraph {
-            encoder: GraphEncoder::new(
-                encoder,
-                prev_graph_node_count,
-                record_graph,
-                record_stats,
-                &session.prof,
-                previous,
-            ),
+            encoder: GraphEncoder::new(session, encoder, prev_graph_node_count, previous),
             anon_node_to_index: ShardedHashMap::with_capacity(
                 // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
                 new_node_count_estimate / sharded::shards(),
@@ -1345,6 +1319,7 @@ impl Default for TaskDeps {
 // array, using one u32 per entry.
 pub(super) struct DepNodeColorMap {
     values: IndexVec<SerializedDepNodeIndex, AtomicU32>,
+    sync: bool,
 }
 
 const COMPRESSED_NONE: u32 = u32::MAX;
@@ -1353,13 +1328,47 @@ const COMPRESSED_RED: u32 = u32::MAX - 1;
 impl DepNodeColorMap {
     fn new(size: usize) -> DepNodeColorMap {
         debug_assert!(COMPRESSED_RED > DepNodeIndex::MAX_AS_U32);
-        DepNodeColorMap { values: (0..size).map(|_| AtomicU32::new(COMPRESSED_NONE)).collect() }
+        DepNodeColorMap {
+            values: (0..size).map(|_| AtomicU32::new(COMPRESSED_NONE)).collect(),
+            sync: is_dyn_thread_safe(),
+        }
     }
 
     #[inline]
     pub(super) fn current(&self, index: SerializedDepNodeIndex) -> Option<DepNodeIndex> {
         let value = self.values[index].load(Ordering::Relaxed);
         if value <= DepNodeIndex::MAX_AS_U32 { Some(DepNodeIndex::from_u32(value)) } else { None }
+    }
+
+    /// This tries to atomically mark a node green and assign `index` as the new
+    /// index. This returns `Ok` if `index` gets assigned, otherwise it returns
+    /// the already allocated index in `Err`.
+    #[inline]
+    pub(super) fn try_mark_green(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+        index: DepNodeIndex,
+    ) -> Result<(), DepNodeIndex> {
+        let value = &self.values[prev_index];
+        if self.sync {
+            match value.compare_exchange(
+                COMPRESSED_NONE,
+                index.as_u32(),
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => Ok(()),
+                Err(v) => Err(DepNodeIndex::from_u32(v)),
+            }
+        } else {
+            let v = value.load(Ordering::Relaxed);
+            if v == COMPRESSED_NONE {
+                value.store(index.as_u32(), Ordering::Relaxed);
+                Ok(())
+            } else {
+                Err(DepNodeIndex::from_u32(v))
+            }
+        }
     }
 
     #[inline]
@@ -1424,6 +1433,8 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
         && let Some(nodes) = &data.current.nodes_in_current_session
     {
         // Try to find it among the nodes allocated so far in this session
+        // This is OK, there's only ever one node result possible so this is deterministic.
+        #[allow(rustc::potential_query_instability)]
         if let Some((node, _)) = nodes.lock().iter().find(|&(_, index)| *index == dep_node_index) {
             dep_node = Some(*node);
         }

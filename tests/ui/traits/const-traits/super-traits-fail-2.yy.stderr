@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `T: ~const Foo` is not satisfied
+error[E0277]: the trait bound `T: [const] Foo` is not satisfied
   --> $DIR/super-traits-fail-2.rs:20:7
    |
 LL |     x.a();

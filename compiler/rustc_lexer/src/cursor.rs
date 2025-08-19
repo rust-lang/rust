@@ -1,5 +1,10 @@
 use std::str::Chars;
 
+pub enum FrontmatterAllowed {
+    Yes,
+    No,
+}
+
 /// Peekable iterator over a char sequence.
 ///
 /// Next characters can be peeked via `first` method,
@@ -8,6 +13,7 @@ pub struct Cursor<'a> {
     len_remaining: usize,
     /// Iterator over chars. Slightly faster than a &str.
     chars: Chars<'a>,
+    pub(crate) frontmatter_allowed: FrontmatterAllowed,
     #[cfg(debug_assertions)]
     prev: char,
 }
@@ -15,10 +21,11 @@ pub struct Cursor<'a> {
 pub(crate) const EOF_CHAR: char = '\0';
 
 impl<'a> Cursor<'a> {
-    pub fn new(input: &'a str) -> Cursor<'a> {
+    pub fn new(input: &'a str, frontmatter_allowed: FrontmatterAllowed) -> Cursor<'a> {
         Cursor {
             len_remaining: input.len(),
             chars: input.chars(),
+            frontmatter_allowed,
             #[cfg(debug_assertions)]
             prev: EOF_CHAR,
         }
@@ -61,7 +68,7 @@ impl<'a> Cursor<'a> {
 
     /// Peeks the third symbol from the input stream without consuming it.
     pub fn third(&self) -> char {
-        // `.next()` optimizes better than `.nth(1)`
+        // `.next()` optimizes better than `.nth(2)`
         let mut iter = self.chars.clone();
         iter.next();
         iter.next();
@@ -93,6 +100,11 @@ impl<'a> Cursor<'a> {
         }
 
         Some(c)
+    }
+
+    /// Moves to a substring by a number of bytes.
+    pub(crate) fn bump_bytes(&mut self, n: usize) {
+        self.chars = self.as_str()[n..].chars();
     }
 
     /// Eats symbols while predicate returns true or until the end of file is reached.

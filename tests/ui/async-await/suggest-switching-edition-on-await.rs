@@ -1,3 +1,4 @@
+//@ edition:2015
 use std::pin::Pin;
 use std::future::Future;
 

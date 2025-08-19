@@ -128,3 +128,24 @@ fn should_not_lint() {
 }
 
 fn main() {}
+
+mod issue14734 {
+    fn let_desugar(rows: &[u8]) {
+        let mut v = vec![];
+        rows.iter().for_each(|x| _ = v.push(x));
+        //~^ needless_for_each
+    }
+
+    fn do_something(_: &u8, _: u8) {}
+
+    fn single_expr(rows: &[u8]) {
+        rows.iter().for_each(|x| do_something(x, 1u8));
+        //~^ needless_for_each
+    }
+}
+
+fn issue15256() {
+    let vec: Vec<i32> = Vec::new();
+    vec.iter().for_each(|v| println!("{v}"));
+    //~^ needless_for_each
+}

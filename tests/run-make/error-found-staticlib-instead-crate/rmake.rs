@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // When rustc is looking for a crate but is given a staticlib instead,
 // the error message should be helpful and indicate precisely the cause
 // of the compilation failure.

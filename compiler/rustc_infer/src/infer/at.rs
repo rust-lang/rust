@@ -71,6 +71,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             typing_mode: self.typing_mode,
             considering_regions: self.considering_regions,
+            in_hir_typeck: self.in_hir_typeck,
             skip_leak_check: self.skip_leak_check,
             inner: self.inner.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
@@ -95,6 +96,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tcx: self.tcx,
             typing_mode,
             considering_regions: self.considering_regions,
+            in_hir_typeck: self.in_hir_typeck,
             skip_leak_check: self.skip_leak_check,
             inner: self.inner.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
@@ -347,7 +349,7 @@ impl<'tcx> ToTrace<'tcx> for ty::GenericArg<'tcx> {
     fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: match (a.unpack(), b.unpack()) {
+            values: match (a.kind(), b.kind()) {
                 (GenericArgKind::Lifetime(a), GenericArgKind::Lifetime(b)) => {
                     ValuePairs::Regions(ExpectedFound::new(a, b))
                 }

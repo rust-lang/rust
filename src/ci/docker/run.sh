@@ -97,9 +97,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     docker --version
 
     REGISTRY=ghcr.io
-    # Hardcode username to reuse cache between auto and pr jobs
-    # FIXME: should be changed after move from rust-lang-ci
-    REGISTRY_USERNAME=rust-lang-ci
+    # Default to `rust-lang` to allow reusing the cache for local builds
+    REGISTRY_USERNAME=${GITHUB_REPOSITORY_OWNER:-rust-lang}
     # Tag used to push the final Docker image, so that it can be pulled by e.g. rustup
     IMAGE_TAG=${REGISTRY}/${REGISTRY_USERNAME}/rust-ci:${cksum}
     # Tag used to cache the Docker build
@@ -114,14 +113,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         "-f" "$dockerfile"
         "$context"
     )
-
-    # If the environment variable DOCKER_SCRIPT is defined,
-    # set the build argument SCRIPT_ARG to DOCKER_SCRIPT.
-    # In this way, we run the script defined in CI,
-    # instead of the one defined in the Dockerfile.
-    if [ -n "${DOCKER_SCRIPT+x}" ]; then
-      build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
-    fi
 
     GHCR_BUILDKIT_IMAGE="ghcr.io/rust-lang/buildkit:buildx-stable-1"
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
@@ -342,6 +333,10 @@ if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
   echo "Setting extra environment values for docker: $extra_env"
 fi
 
+if [ -n "${DOCKER_SCRIPT}" ]; then
+  extra_env="$extra_env --env SCRIPT=\"/scripts/${DOCKER_SCRIPT}\""
+fi
+
 docker \
   run \
   --workdir /checkout/obj \
@@ -362,7 +357,7 @@ docker \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
-  --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --env CI_JOB_NAME="${CI_JOB_NAME-$image}" \
   --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \

@@ -6,6 +6,7 @@ use std::{fmt, io, process::Command, time::Duration};
 use cargo_metadata::PackageId;
 use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
+use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
@@ -30,6 +31,7 @@ pub(crate) enum InvocationStrategy {
 pub(crate) struct CargoOptions {
     pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
+    pub(crate) set_test: bool,
     pub(crate) no_default_features: bool,
     pub(crate) all_features: bool,
     pub(crate) features: Vec<String>,
@@ -53,7 +55,13 @@ impl CargoOptions {
             cmd.args(["--target", target.as_str()]);
         }
         if self.all_targets {
-            cmd.arg("--all-targets");
+            if self.set_test {
+                cmd.arg("--all-targets");
+            } else {
+                // No --benches unfortunately, as this implies --tests (see https://github.com/rust-lang/cargo/issues/6454),
+                // and users setting `cfg.seTest = false` probably prefer disabling benches than enabling tests.
+                cmd.args(["--lib", "--bins", "--examples"]);
+            }
         }
         if self.all_features {
             cmd.arg("--all-features");
@@ -103,7 +111,18 @@ impl fmt::Display for FlycheckConfig {
         match self {
             FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
             FlycheckConfig::CustomCommand { command, args, .. } => {
-                write!(f, "{command} {}", args.join(" "))
+                // Don't show `my_custom_check --foo $saved_file` literally to the user, as it
+                // looks like we've forgotten to substitute $saved_file.
+                //
+                // Instead, show `my_custom_check --foo ...`. The
+                // actual path is often too long to be worth showing
+                // in the IDE (e.g. in the VS Code status bar).
+                let display_args = args
+                    .iter()
+                    .map(|arg| if arg == SAVED_FILE_PLACEHOLDER { "..." } else { arg })
+                    .collect::<Vec<_>>();
+
+                write!(f, "{command} {}", display_args.join(" "))
             }
         }
     }
@@ -133,10 +152,10 @@ impl FlycheckHandle {
         let actor =
             FlycheckActor::new(id, sender, config, sysroot_root, workspace_root, manifest_path);
         let (sender, receiver) = unbounded::<StateChange>();
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("Flycheck".to_owned())
-            .spawn(move || actor.run(receiver))
-            .expect("failed to spawn thread");
+        let thread =
+            stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, format!("Flycheck{id}"))
+                .spawn(move || actor.run(receiver))
+                .expect("failed to spawn thread");
         FlycheckHandle { id, sender, _thread: thread }
     }
 
@@ -379,7 +398,11 @@ impl FlycheckActor {
                             package_id = msg.package_id.repr,
                             "artifact received"
                         );
-                        self.report_progress(Progress::DidCheckCrate(msg.target.name));
+                        self.report_progress(Progress::DidCheckCrate(format!(
+                            "{} ({})",
+                            msg.target.name,
+                            msg.target.kind.iter().format_with(", ", |kind, f| f(&kind)),
+                        )));
                         let package_id = Arc::new(msg.package_id);
                         if self.diagnostics_cleared_for.insert(package_id.clone()) {
                             tracing::trace!(
@@ -469,7 +492,10 @@ impl FlycheckActor {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
                 let mut cmd =
                     toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
-                if let Some(sysroot_root) = &self.sysroot_root {
+                if let Some(sysroot_root) = &self.sysroot_root
+                    && !options.extra_env.contains_key("RUSTUP_TOOLCHAIN")
+                    && std::env::var_os("RUSTUP_TOOLCHAIN").is_none()
+                {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.arg(command);

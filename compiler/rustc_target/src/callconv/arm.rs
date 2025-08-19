@@ -1,6 +1,6 @@
-use rustc_abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::{ArmCall, CanonAbi, HasDataLayout, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, Conv, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{ArgAbi, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::HasTargetSpec;
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>) -> Option<Uniform>
@@ -90,7 +90,7 @@ where
     // If this is a target with a hard-float ABI, and the function is not explicitly
     // `extern "aapcs"`, then we must use the VFP registers for homogeneous aggregates.
     let vfp = cx.target_spec().llvm_target.ends_with("hf")
-        && fn_abi.conv != Conv::ArmAapcs
+        && fn_abi.conv != CanonAbi::Arm(ArmCall::Aapcs)
         && !fn_abi.c_variadic;
 
     if !fn_abi.ret.is_ignore() {

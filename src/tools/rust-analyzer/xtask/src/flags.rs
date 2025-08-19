@@ -4,6 +4,25 @@ use std::{fmt, str::FromStr};
 
 use crate::install::{ClientOpt, ProcMacroServerOpt, ServerOpt};
 
+#[derive(Debug, Clone)]
+pub enum PgoTrainingCrate {
+    // Use RA's own sources for PGO training
+    RustAnalyzer,
+    // Download a Rust crate from `https://github.com/{0}` and use it for PGO training.
+    GitHub(String),
+}
+
+impl FromStr for PgoTrainingCrate {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "rust-analyzer" => Ok(Self::RustAnalyzer),
+            url => Ok(Self::GitHub(url.to_owned())),
+        }
+    }
+}
+
 xflags::xflags! {
     src "./src/flags.rs"
 
@@ -29,26 +48,15 @@ xflags::xflags! {
 
             /// build in release with debug info set to 2.
             optional --dev-rel
+
+            /// Apply PGO optimizations
+            optional --pgo pgo: PgoTrainingCrate
         }
 
         cmd fuzz-tests {}
 
         cmd release {
             optional --dry-run
-        }
-
-        cmd rustc-pull {
-            /// rustc commit to pull.
-            optional --commit refspec: String
-        }
-
-        cmd rustc-push {
-            /// rust local path, e.g. `../rust-rust-analyzer`.
-            required --rust-path rust_path: String
-            /// rust fork name, e.g.  `matklad/rust`.
-            required --rust-fork rust_fork: String
-            /// branch name.
-            optional --branch branch: String
         }
 
         cmd dist {
@@ -99,8 +107,6 @@ pub enum XtaskCmd {
     Install(Install),
     FuzzTests(FuzzTests),
     Release(Release),
-    RustcPull(RustcPull),
-    RustcPush(RustcPush),
     Dist(Dist),
     PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
@@ -110,17 +116,15 @@ pub enum XtaskCmd {
 }
 
 #[derive(Debug)]
-pub struct Tidy {}
-
-#[derive(Debug)]
 pub struct Install {
     pub client: bool,
     pub code_bin: Option<String>,
     pub server: bool,
-    pub proc_macro_server: bool,
     pub mimalloc: bool,
     pub jemalloc: bool,
+    pub proc_macro_server: bool,
     pub dev_rel: bool,
+    pub pgo: Option<PgoTrainingCrate>,
 }
 
 #[derive(Debug)]
@@ -129,37 +133,6 @@ pub struct FuzzTests;
 #[derive(Debug)]
 pub struct Release {
     pub dry_run: bool,
-}
-
-#[derive(Debug)]
-pub struct RustcPull {
-    pub commit: Option<String>,
-}
-
-#[derive(Debug)]
-pub struct RustcPush {
-    pub rust_path: String,
-    pub rust_fork: String,
-    pub branch: Option<String>,
-}
-
-#[derive(Debug)]
-pub enum PgoTrainingCrate {
-    // Use RA's own sources for PGO training
-    RustAnalyzer,
-    // Download a Rust crate from `https://github.com/{0}` and use it for PGO training.
-    GitHub(String),
-}
-
-impl FromStr for PgoTrainingCrate {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "rust-analyzer" => Ok(Self::RustAnalyzer),
-            url => Ok(Self::GitHub(url.to_owned())),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -194,6 +167,9 @@ pub struct Codegen {
 
     pub check: bool,
 }
+
+#[derive(Debug)]
+pub struct Tidy;
 
 impl Xtask {
     #[allow(dead_code)]
@@ -324,7 +300,7 @@ impl Install {
         } else {
             Malloc::System
         };
-        Some(ServerOpt { malloc, dev_rel: self.dev_rel })
+        Some(ServerOpt { malloc, dev_rel: self.dev_rel, pgo: self.pgo.clone() })
     }
     pub(crate) fn proc_macro_server(&self) -> Option<ProcMacroServerOpt> {
         if !self.proc_macro_server {

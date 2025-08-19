@@ -4,10 +4,10 @@
 //@ compile-flags: -Zunpretty=expanded
 //@ edition: 2015
 #![feature(derive_coerce_pointee)]
-#[prelude_import]
-use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
 use std::marker::CoercePointee;
 
 pub trait MyTrait<T: ?Sized> {}

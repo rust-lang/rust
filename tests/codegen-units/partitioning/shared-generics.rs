@@ -2,7 +2,7 @@
 // NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
 //       prevent drop-glue from participating in share-generics.
 //@ incremental
-//@ compile-flags: -Zprint-mono-items=lazy -Zshare-generics=yes -Copt-level=0
+//@ compile-flags: -Zshare-generics=yes -Copt-level=0
 
 #![crate_type = "rlib"]
 

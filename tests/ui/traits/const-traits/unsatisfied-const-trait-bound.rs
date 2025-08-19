@@ -29,5 +29,5 @@ struct Container<const N: u32>;
 fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
 
 // FIXME(const_trait_impl): Instead of suggesting `+ const Trait`, suggest
-//                 changing `~const Trait` to `const Trait`.
-const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
+//                 changing `[const] Trait` to `const Trait`.
+const fn accept1<T: [const] Trait>(_: Container<{ T::make() }>) {}

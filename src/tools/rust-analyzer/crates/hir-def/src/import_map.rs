@@ -16,7 +16,7 @@ use crate::{
     AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
-    nameres::DefMap,
+    nameres::{DefMap, assoc::TraitItems, crate_def_map},
     visibility::Visibility,
 };
 
@@ -129,7 +129,7 @@ impl ImportMap {
     fn collect_import_map(db: &dyn DefDatabase, krate: Crate) -> ImportMapIndex {
         let _p = tracing::info_span!("collect_import_map").entered();
 
-        let def_map = db.crate_def_map(krate);
+        let def_map = crate_def_map(db, krate);
         let mut map = FxIndexMap::default();
 
         // We look only into modules that are public(ly reexported), starting with the crate root.
@@ -221,7 +221,7 @@ impl ImportMap {
         trait_import_info: &ImportInfo,
     ) {
         let _p = tracing::info_span!("collect_trait_assoc_items").entered();
-        for &(ref assoc_item_name, item) in &db.trait_items(tr).items {
+        for &(ref assoc_item_name, item) in &TraitItems::query(db, tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(f),
                 AssocItemId::ConstId(c) => ModuleDefId::from(c),
@@ -482,7 +482,7 @@ mod tests {
     use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
-    use crate::{ItemContainerId, Lookup, test_db::TestDB};
+    use crate::{ItemContainerId, Lookup, nameres::assoc::TraitItems, test_db::TestDB};
 
     use super::*;
 
@@ -580,7 +580,7 @@ mod tests {
 
         let trait_info = dependency_imports.import_info_for(ItemInNs::Types(trait_id.into()))?;
 
-        let trait_items = db.trait_items(trait_id);
+        let trait_items = TraitItems::query(db, trait_id);
         let (assoc_item_name, _) = trait_items
             .items
             .iter()

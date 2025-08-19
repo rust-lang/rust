@@ -151,10 +151,10 @@ impl NameGenerator {
     /// - If `ty` is an `impl Trait`, it will suggest the name of the first trait.
     ///
     /// If the suggested name conflicts with reserved keywords, it will return `None`.
-    pub fn for_type(
+    pub fn for_type<'db>(
         &mut self,
-        ty: &hir::Type,
-        db: &RootDatabase,
+        ty: &hir::Type<'db>,
+        db: &'db RootDatabase,
         edition: Edition,
     ) -> Option<SmolStr> {
         let name = name_of_type(ty, db, edition)?;
@@ -373,7 +373,11 @@ fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<Smo
     name_of_type(&ty, sema.db, edition)
 }
 
-fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<SmolStr> {
+fn name_of_type<'db>(
+    ty: &hir::Type<'db>,
+    db: &'db RootDatabase,
+    edition: Edition,
+) -> Option<SmolStr> {
     let name = if let Some(adt) = ty.as_adt() {
         let name = adt.name(db).display(db, edition).to_string();
 
@@ -407,7 +411,11 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<S
     normalize(&name)
 }
 
-fn sequence_name(inner_ty: Option<&hir::Type>, db: &RootDatabase, edition: Edition) -> SmolStr {
+fn sequence_name<'db>(
+    inner_ty: Option<&hir::Type<'db>>,
+    db: &'db RootDatabase,
+    edition: Edition,
+) -> SmolStr {
     let items_str = SmolStr::new_static("items");
     let Some(inner_ty) = inner_ty else {
         return items_str;

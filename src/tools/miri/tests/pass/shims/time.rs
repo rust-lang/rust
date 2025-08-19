@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-disable-isolation
+#![feature(thread_sleep_until)]
 
 use std::time::{Duration, Instant, SystemTime};
 
@@ -11,6 +12,14 @@ fn duration_sanity(diff: Duration) {
 fn test_sleep() {
     let before = Instant::now();
     std::thread::sleep(Duration::from_millis(100));
+    let after = Instant::now();
+    assert!((after - before).as_millis() >= 100);
+}
+
+fn test_sleep_until() {
+    let before = Instant::now();
+    let hunderd_millis_after_start = before + Duration::from_millis(100);
+    std::thread::sleep_until(hunderd_millis_after_start);
     let after = Instant::now();
     assert!((after - before).as_millis() >= 100);
 }
@@ -49,4 +58,5 @@ fn main() {
     duration_sanity(diff);
 
     test_sleep();
+    test_sleep_until();
 }

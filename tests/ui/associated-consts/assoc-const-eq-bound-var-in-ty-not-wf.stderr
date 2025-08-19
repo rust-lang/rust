@@ -13,10 +13,14 @@ LL |         K = { () }
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `Project` is not general enough
-  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:9:4
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:10:13
    |
-LL | fn take(
-   |    ^^^^ implementation of `Project` is not general enough
+LL |       _: impl Trait<
+   |  _____________^
+LL | |         <<for<'a> fn(&'a str) -> &'a str as Project>::Out as Discard>::Out,
+LL | |         K = { () }
+LL | |     >,
+   | |_____^ implementation of `Project` is not general enough
    |
    = note: `Project` would have to be implemented for the type `for<'a> fn(&'a str) -> &'a str`
    = note: ...but `Project` is actually implemented for the type `fn(&'0 str) -> &'0 str`, for some specific lifetime `'0`

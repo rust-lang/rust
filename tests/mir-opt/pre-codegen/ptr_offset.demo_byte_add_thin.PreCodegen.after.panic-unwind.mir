@@ -4,12 +4,12 @@ fn demo_byte_add_thin(_1: *const u32, _2: usize) -> *const u32 {
     debug p => _1;
     debug n => _2;
     let mut _0: *const u32;
-    scope 1 (inlined std::ptr::const_ptr::<impl *const u32>::byte_add) {
+    scope 1 (inlined #[track_caller] std::ptr::const_ptr::<impl *const u32>::byte_add) {
         let mut _3: *const u8;
         let mut _4: *const u8;
         scope 2 (inlined std::ptr::const_ptr::<impl *const u32>::cast::<u8>) {
         }
-        scope 3 (inlined std::ptr::const_ptr::<impl *const u8>::add) {
+        scope 3 (inlined #[track_caller] std::ptr::const_ptr::<impl *const u8>::add) {
         }
         scope 4 (inlined std::ptr::const_ptr::<impl *const u8>::with_metadata_of::<u32>) {
             scope 5 (inlined std::ptr::metadata::<u32>) {

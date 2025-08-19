@@ -25,5 +25,35 @@ error: deref on an immutable reference
 LL |         (&*s).foo();
    |         ^^^^^ help: if you would like to reborrow, try removing `&*`: `s`
 
-error: aborting due to 4 previous errors
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:137:21
+   |
+LL |         let mut x = &*x;
+   |                     ^^^ help: if you would like to reborrow, try removing `&*`: `x`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:143:21
+   |
+LL |         let ref x = &*x;
+   |                     ^^^ help: if you would like to reborrow, try removing `&*`: `x`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:148:25
+   |
+LL |         let ref mut x = &*std::convert::identity(x);
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `std::convert::identity(x)`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:160:25
+   |
+LL |         let ref mut x = &*s.clone().0;
+   |                         ^^^^^^^^^^^^^ help: if you would like to reborrow, try removing `&*`: `s.clone().0`
+
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:170:27
+   |
+LL |         let ref mut x = { &*y };
+   |                           ^^^ help: if you would like to reborrow, try removing `&*`: `y`
+
+error: aborting due to 9 previous errors
 

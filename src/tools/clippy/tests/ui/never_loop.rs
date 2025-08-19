@@ -466,3 +466,35 @@ fn main() {
     test13();
     test14();
 }
+
+fn issue15059() {
+    'a: for _ in 0..1 {
+        //~^ never_loop
+        break 'a;
+    }
+
+    let mut b = 1;
+    'a: for i in 0..1 {
+        //~^ never_loop
+        match i {
+            0 => {
+                b *= 2;
+                break 'a;
+            },
+            x => {
+                b += x;
+                break 'a;
+            },
+        }
+    }
+
+    #[allow(clippy::unused_unit)]
+    for v in 0..10 {
+        //~^ never_loop
+        break;
+        println!("{v}");
+        // This is comment and should be kept
+        println!("This is a comment");
+        ()
+    }
+}

@@ -4,10 +4,9 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Mutability, QPath, TyKind};
-use rustc_hir_pretty::qpath_to_string;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
 use super::PTR_AS_PTR;
 
@@ -74,7 +73,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
 
         let (help, final_suggestion) = if let Some(method) = omit_cast.corresponding_item() {
             // don't force absolute path
-            let method = qpath_to_string(&cx.tcx, method);
+            let method = snippet_with_applicability(cx, qpath_span_without_turbofish(method), "..", &mut app);
             ("try call directly", format!("{method}{turbofish}()"))
         } else {
             let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);
@@ -95,4 +94,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
             app,
         );
     }
+}
+
+fn qpath_span_without_turbofish(qpath: &QPath<'_>) -> Span {
+    if let QPath::Resolved(_, path) = qpath
+        && let [.., last_ident] = path.segments
+        && last_ident.args.is_some()
+    {
+        return qpath.span().shrink_to_lo().to(last_ident.ident.span);
+    }
+
+    qpath.span()
 }

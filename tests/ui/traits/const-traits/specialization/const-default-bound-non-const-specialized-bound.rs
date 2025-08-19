@@ -1,5 +1,5 @@
-// Tests that trait bounds on specializing trait impls must be `~const` if the
-// same bound is present on the default impl and is `~const` there.
+// Tests that trait bounds on specializing trait impls must be `[const]` if the
+// same bound is present on the default impl and is `[const]` there.
 //@ known-bug: #110395
 // FIXME(const_trait_impl) ^ should error
 
@@ -20,14 +20,14 @@ trait Bar {
 
 impl<T> const Bar for T
 where
-    T: ~const Foo,
+    T: [const] Foo,
 {
     default fn bar() {}
 }
 
 impl<T> Bar for T
 where
-    T: Foo, //FIXME ~ ERROR missing `~const` qualifier
+    T: Foo, //FIXME ~ ERROR missing `[const]` qualifier
     T: Specialize,
 {
     fn bar() {}
@@ -40,7 +40,7 @@ trait Baz {
 
 impl<T> const Baz for T
 where
-    T: ~const Foo,
+    T: [const] Foo,
 {
     default fn baz() {}
 }

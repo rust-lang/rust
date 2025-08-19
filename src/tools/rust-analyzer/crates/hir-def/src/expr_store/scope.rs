@@ -106,7 +106,9 @@ impl ExprScopes {
         let mut scopes = ExprScopes {
             scopes: Arena::default(),
             scope_entries: Arena::default(),
-            scope_by_expr: ArenaMap::with_capacity(body.exprs.len()),
+            scope_by_expr: ArenaMap::with_capacity(
+                body.expr_only.as_ref().map_or(0, |it| it.exprs.len()),
+            ),
         };
         let mut root = scopes.root_scope();
         if let Some(self_param) = body.self_param {
@@ -179,7 +181,7 @@ impl ExprScopes {
         binding: BindingId,
         hygiene: HygieneId,
     ) {
-        let Binding { name, .. } = &store.bindings[binding];
+        let Binding { name, .. } = &store[binding];
         let entry = self.scope_entries.alloc(ScopeEntry { name: name.clone(), binding, hygiene });
         self.scopes[scope].entries =
             IdxRange::new_inclusive(self.scopes[scope].entries.start()..=entry);
@@ -251,7 +253,7 @@ fn compute_expr_scopes(
     scope: &mut ScopeId,
 ) {
     let make_label =
-        |label: &Option<LabelId>| label.map(|label| (label, store.labels[label].name.clone()));
+        |label: &Option<LabelId>| label.map(|label| (label, store[label].name.clone()));
 
     let compute_expr_scopes = |scopes: &mut ExprScopes, expr: ExprId, scope: &mut ScopeId| {
         compute_expr_scopes(expr, store, scopes, scope)
@@ -324,11 +326,13 @@ mod tests {
     use test_fixture::WithFixture;
     use test_utils::{assert_eq_text, extract_offset};
 
-    use crate::{FunctionId, ModuleDefId, db::DefDatabase, test_db::TestDB};
+    use crate::{
+        FunctionId, ModuleDefId, db::DefDatabase, nameres::crate_def_map, test_db::TestDB,
+    };
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
         let krate = db.test_crate();
-        let crate_def_map = db.crate_def_map(krate);
+        let crate_def_map = crate_def_map(db, krate);
 
         let module = crate_def_map.modules_for_file(db, file_id).next().unwrap();
         let (_, def) = crate_def_map[module].scope.entries().next().unwrap();
@@ -532,9 +536,8 @@ fn foo() {
         };
 
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
-        let pat_src = source_map
-            .pat_syntax(*source_map.binding_definitions[&resolved.binding()].first().unwrap())
-            .unwrap();
+        let pat_src =
+            source_map.pat_syntax(source_map.patterns_for_binding(resolved.binding())[0]).unwrap();
 
         let local_name = pat_src.value.syntax_node_ptr().to_node(file.syntax());
         assert_eq!(local_name.text_range(), expected_name.syntax().text_range());

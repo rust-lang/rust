@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // A typo in rustc caused generic symbol names to be non-deterministic -
 // that is, it was possible to compile the same file twice with no changes
 // and get outputs with different symbol names.

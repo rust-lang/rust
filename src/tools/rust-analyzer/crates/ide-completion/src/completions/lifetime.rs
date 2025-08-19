@@ -116,13 +116,13 @@ fn foo<'lifetime>(foo: &'a$0) {}
         check(
             r#"
 struct Foo;
-impl<'impl> Foo {
+impl<'r#impl> Foo {
     fn foo<'func>(&'a$0 self) {}
 }
 "#,
             expect![[r#"
                 lt 'func
-                lt 'impl
+                lt 'r#impl
                 lt 'static
             "#]],
         );

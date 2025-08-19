@@ -1,6 +1,5 @@
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_hir::def_path_hash_map::{Config as HashMapConfig, DefPathHashMap};
-use rustc_middle::parameterized_over_tcx;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::def_id::{DefIndex, DefPathHash};
 
@@ -9,10 +8,6 @@ use crate::rmeta::{DecodeContext, EncodeContext};
 pub(crate) enum DefPathHashMapRef<'tcx> {
     OwnedFromMetadata(odht::HashTable<HashMapConfig, OwnedSlice>),
     BorrowedFromTcx(&'tcx DefPathHashMap),
-}
-
-parameterized_over_tcx! {
-    DefPathHashMapRef,
 }
 
 impl DefPathHashMapRef<'_> {

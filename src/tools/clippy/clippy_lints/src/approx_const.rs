@@ -2,8 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
-use rustc_attr_parsing::RustcVersion;
-use rustc_hir::{HirId, Lit};
+use rustc_hir::{HirId, Lit, RustcVersion};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, symbol};
@@ -74,7 +73,7 @@ impl ApproxConstant {
 }
 
 impl LateLintPass<'_> for ApproxConstant {
-    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: &Lit, _negated: bool) {
+    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: Lit, _negated: bool) {
         match lit.node {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
                 FloatTy::F16 => self.check_known_consts(cx, lit.span, s, "f16"),
@@ -92,9 +91,11 @@ impl LateLintPass<'_> for ApproxConstant {
 impl ApproxConstant {
     fn check_known_consts(&self, cx: &LateContext<'_>, span: Span, s: symbol::Symbol, module: &str) {
         let s = s.as_str();
-        if s.parse::<f64>().is_ok() {
+        if let Ok(maybe_constant) = s.parse::<f64>() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, s, min_digits) && msrv.is_none_or(|msrv| self.msrv.meets(cx, msrv)) {
+                if is_approx_const(constant, s, maybe_constant, min_digits)
+                    && msrv.is_none_or(|msrv| self.msrv.meets(cx, msrv))
+                {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,
@@ -112,18 +113,35 @@ impl ApproxConstant {
 
 impl_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
+fn count_digits_after_dot(input: &str) -> usize {
+    input
+        .char_indices()
+        .find(|(_, ch)| *ch == '.')
+        .map_or(0, |(i, _)| input.len() - i - 1)
+}
+
 /// Returns `false` if the number of significant figures in `value` are
 /// less than `min_digits`; otherwise, returns true if `value` is equal
-/// to `constant`, rounded to the number of digits present in `value`.
+/// to `constant`, rounded to the number of significant digits present in `value`.
 #[must_use]
-fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
+fn is_approx_const(constant: f64, value: &str, f_value: f64, min_digits: usize) -> bool {
     if value.len() <= min_digits {
+        // The value is not precise enough
         false
-    } else if constant.to_string().starts_with(value) {
-        // The value is a truncated constant
+    } else if f_value.to_string().len() > min_digits && constant.to_string().starts_with(&f_value.to_string()) {
+        // The value represents the same value
         true
     } else {
-        let round_const = format!("{constant:.*}", value.len() - 2);
+        // The value is a truncated constant
+
+        // Print constant with numeric formatting (`0`), with the length of `value` as minimum width
+        // (`value_len$`), and with the same precision as `value` (`.value_prec$`).
+        // See https://doc.rust-lang.org/std/fmt/index.html.
+        let round_const = format!(
+            "{constant:0value_len$.value_prec$}",
+            value_len = value.len(),
+            value_prec = count_digits_after_dot(value)
+        );
         value == round_const
     }
 }

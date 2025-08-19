@@ -178,7 +178,7 @@ pub(crate) fn query_group_impl(
     let supertraits = &item_trait.supertraits;
 
     let db_attr: Attribute = parse_quote! {
-        #[salsa::db]
+        #[salsa_macros::db]
     };
     item_trait.attrs.push(db_attr);
 
@@ -210,7 +210,7 @@ pub(crate) fn query_group_impl(
                 .into_iter()
                 .filter(|fn_arg| matches!(fn_arg, FnArg::Typed(_)))
                 .map(|fn_arg| match fn_arg {
-                    FnArg::Typed(pat_type) => pat_type.clone(),
+                    FnArg::Typed(pat_type) => pat_type,
                     FnArg::Receiver(_) => unreachable!("this should have been filtered out"),
                 })
                 .collect::<Vec<syn::PatType>>();
@@ -278,15 +278,15 @@ pub(crate) fn query_group_impl(
                 return Err(syn::Error::new(signature.span(), "Queries must have a return type"));
             };
 
-            if let syn::Type::Path(ref ty_path) = *return_ty {
-                if matches!(query_kind, QueryKind::Input) {
-                    let field = InputStructField {
-                        name: method_name.to_token_stream(),
-                        ty: ty_path.path.to_token_stream(),
-                    };
+            if let syn::Type::Path(ref ty_path) = *return_ty
+                && matches!(query_kind, QueryKind::Input)
+            {
+                let field = InputStructField {
+                    name: method_name.to_token_stream(),
+                    ty: ty_path.path.to_token_stream(),
+                };
 
-                    input_struct_fields.push(field);
-                }
+                input_struct_fields.push(field);
             }
 
             if let Some(block) = &mut method.default {
@@ -407,7 +407,7 @@ pub(crate) fn query_group_impl(
         .collect::<Vec<proc_macro2::TokenStream>>();
 
     let input_struct = quote! {
-        #[salsa::input]
+        #[salsa_macros::input]
         pub(crate) struct #input_struct_name {
             #(#fields),*
         }
@@ -418,7 +418,7 @@ pub(crate) fn query_group_impl(
 
     let create_data_method = quote! {
         #[allow(non_snake_case)]
-        #[salsa::tracked]
+        #[salsa_macros::tracked]
         fn #create_data_ident(db: &dyn #trait_name_ident) -> #input_struct_name {
             #input_struct_name::new(db, #(#field_params),*)
         }
@@ -443,7 +443,7 @@ pub(crate) fn query_group_impl(
     item_trait.items.append(&mut lookup_signatures);
 
     let trait_impl = quote! {
-        #[salsa::db]
+        #[salsa_macros::db]
         impl<DB> #trait_name_ident for DB
         where
             DB: #supertraits,

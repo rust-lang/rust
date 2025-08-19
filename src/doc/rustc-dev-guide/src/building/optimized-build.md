@@ -1,7 +1,5 @@
 # Optimized build of the compiler
 
-<!-- toc -->
-
 There are multiple additional build configuration options and techniques that can be used to compile a
 build of `rustc` that is as optimized as possible (for example when building `rustc` for a Linux
 distribution). The status of these configuration options for various Rust targets is tracked [here].
@@ -120,7 +118,7 @@ Here is an example of how can `opt-dist` be used locally (outside of CI):
     ```
 3. Run the tool with the `local` mode and provide necessary parameters:
     ```bash
-    ./build/host/stage0-tools-bin/opt-dist local \
+    ./build/host/stage1-tools-bin/opt-dist local \
       --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"
       --checkout-dir <path>    \ # path to rust checkout, e.g. "."
       --llvm-dir <path>        \ # path to built LLVM toolchain, e.g. "/foo/bar/llvm/install"

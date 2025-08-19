@@ -1,37 +1,34 @@
 //! Defines database & queries for name resolution.
 use base_db::{Crate, RootQueryDb, SourceDatabase};
 use either::Either;
-use hir_expand::{EditionedFileId, HirFileId, MacroCallId, MacroDefId, db::ExpandDatabase};
+use hir_expand::{
+    EditionedFileId, HirFileId, InFile, Lookup, MacroCallId, MacroDefId, MacroDefKind,
+    db::ExpandDatabase,
+};
 use intern::sym;
 use la_arena::ArenaMap;
 use syntax::{AstPtr, ast};
-use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
-    AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, EnumVariantId,
-    EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
-    FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId,
-    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId,
-    StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    AssocItemId, AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc,
+    EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc,
+    FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalFieldId, Macro2Id, Macro2Loc,
+    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ProcMacroId,
+    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId,
+    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
     attr::{Attrs, AttrsWithOwner},
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, scope::ExprScopes,
     },
     hir::generics::GenericParams,
     import_map::ImportMap,
-    item_tree::{AttrOwner, ItemTree},
-    lang_item::{self, LangItem, LangItemTarget, LangItems},
-    nameres::{
-        DefMap, LocalDefMap,
-        assoc::{ImplItems, TraitItems},
-        diagnostics::DefDiagnostics,
-    },
+    item_tree::{ItemTree, file_item_tree_query},
+    lang_item::{self, LangItem},
+    nameres::crate_def_map,
     signatures::{
-        ConstSignature, EnumSignature, EnumVariants, FunctionSignature, ImplSignature,
-        InactiveEnumVariantCode, StaticSignature, StructSignature, TraitAliasSignature,
-        TraitSignature, TypeAliasSignature, UnionSignature, VariantFields,
+        ConstSignature, EnumSignature, FunctionSignature, ImplSignature, StaticSignature,
+        StructSignature, TraitAliasSignature, TraitSignature, TypeAliasSignature, UnionSignature,
     },
     tt,
     visibility::{self, Visibility},
@@ -92,7 +89,7 @@ pub trait InternDatabase: RootQueryDb {
 
     #[salsa::interned]
     fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
-    // // endregion: items
+    // endregion: items
 
     #[salsa::interned]
     fn intern_block(&self, loc: BlockLoc) -> BlockId;
@@ -105,63 +102,15 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     fn expand_proc_attr_macros(&self) -> bool;
 
     /// Computes an [`ItemTree`] for the given file or macro expansion.
-    #[salsa::invoke(ItemTree::file_item_tree_query)]
-    fn file_item_tree(&self, file_id: HirFileId) -> Arc<ItemTree>;
-
-    #[salsa::invoke(ItemTree::block_item_tree_query)]
-    fn block_item_tree(&self, block_id: BlockId) -> Arc<ItemTree>;
-
-    #[salsa::invoke(DefMap::crate_local_def_map_query)]
-    fn crate_local_def_map(&self, krate: Crate) -> (Arc<DefMap>, Arc<LocalDefMap>);
-
-    #[salsa::invoke(DefMap::crate_def_map_query)]
-    fn crate_def_map(&self, krate: Crate) -> Arc<DefMap>;
-
-    /// Computes the block-level `DefMap`.
-    #[salsa::invoke(DefMap::block_def_map_query)]
-    fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
+    #[salsa::invoke(file_item_tree_query)]
+    #[salsa::transparent]
+    fn file_item_tree(&self, file_id: HirFileId) -> &ItemTree;
 
     /// Turns a MacroId into a MacroDefId, describing the macro's definition post name resolution.
     #[salsa::invoke(macro_def)]
     fn macro_def(&self, m: MacroId) -> MacroDefId;
 
     // region:data
-
-    #[salsa::invoke(VariantFields::query)]
-    fn variant_fields_with_source_map(
-        &self,
-        id: VariantId,
-    ) -> (Arc<VariantFields>, Arc<ExpressionStoreSourceMap>);
-
-    #[salsa::tracked]
-    fn enum_variants(&self, id: EnumId) -> Arc<EnumVariants> {
-        self.enum_variants_with_diagnostics(id).0
-    }
-
-    #[salsa::invoke(EnumVariants::enum_variants_query)]
-    fn enum_variants_with_diagnostics(
-        &self,
-        id: EnumId,
-    ) -> (Arc<EnumVariants>, Option<Arc<ThinVec<InactiveEnumVariantCode>>>);
-
-    #[salsa::transparent]
-    #[salsa::invoke(ImplItems::impl_items_query)]
-    fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
-
-    #[salsa::invoke(ImplItems::impl_items_with_diagnostics_query)]
-    fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
-
-    #[salsa::transparent]
-    #[salsa::invoke(TraitItems::trait_items_query)]
-    fn trait_items(&self, e: TraitId) -> Arc<TraitItems>;
-
-    #[salsa::invoke(TraitItems::trait_items_with_diagnostics_query)]
-    fn trait_items_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitItems>, DefDiagnostics);
-
-    #[salsa::tracked]
-    fn variant_fields(&self, id: VariantId) -> Arc<VariantFields> {
-        self.variant_fields_with_source_map(id).0
-    }
 
     #[salsa::tracked]
     fn trait_signature(&self, trait_: TraitId) -> Arc<TraitSignature> {
@@ -325,9 +274,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
 
     // endregion:attrs
 
-    #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: Crate, item: LangItem) -> Option<LangItemTarget>;
-
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
@@ -336,21 +282,10 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
-    // FIXME: unify function_visibility and const_visibility?
-
-    #[salsa::invoke(visibility::function_visibility_query)]
-    fn function_visibility(&self, def: FunctionId) -> Visibility;
-
-    #[salsa::invoke(visibility::const_visibility_query)]
-    fn const_visibility(&self, def: ConstId) -> Visibility;
-
-    #[salsa::invoke(visibility::type_alias_visibility_query)]
-    fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
+    #[salsa::invoke(visibility::assoc_visibility_query)]
+    fn assoc_visibility(&self, def: AssocItemId) -> Visibility;
 
     // endregion:visibilities
-
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: Crate) -> Option<Arc<LangItems>>;
 
     #[salsa::invoke(crate::lang_item::notable_traits_in_deps)]
     fn notable_traits_in_deps(&self, krate: Crate) -> Arc<[Arc<[TraitId]>]>;
@@ -369,7 +304,7 @@ fn include_macro_invoc(
     db: &dyn DefDatabase,
     krate: Crate,
 ) -> Arc<[(MacroCallId, EditionedFileId)]> {
-    db.crate_def_map(krate)
+    crate_def_map(db, krate)
         .modules
         .values()
         .flat_map(|m| m.scope.iter_macro_invoc())
@@ -384,7 +319,7 @@ fn include_macro_invoc(
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
     let file = crate_id.data(db).root_file_id(db);
     let item_tree = db.file_item_tree(file.into());
-    let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
+    let attrs = item_tree.top_level_raw_attrs();
     for attr in &**attrs {
         match attr.path().as_ident() {
             Some(ident) if *ident == sym::no_std => return true,
@@ -415,10 +350,6 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
 }
 
 fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
-    use hir_expand::InFile;
-
-    use crate::{Lookup, MacroDefKind, MacroExpander};
-
     let kind = |expander, file_id, m| {
         let in_file = InFile::new(file_id, m);
         match expander {
@@ -434,11 +365,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
         MacroId::Macro2Id(it) => {
             let loc: Macro2Loc = it.lookup(db);
 
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
+                kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
                 edition: loc.edition,
@@ -447,11 +376,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
         MacroId::MacroRulesId(it) => {
             let loc: MacroRulesLoc = it.lookup(db);
 
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
+                kind: kind(loc.expander, loc.id.file_id, loc.id.value.upcast()),
                 local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
                 allow_internal_unsafe: loc
                     .flags
@@ -462,15 +389,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
         MacroId::ProcMacroId(it) => {
             let loc = it.lookup(db);
 
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
             MacroDefId {
                 krate: loc.container.krate,
-                kind: MacroDefKind::ProcMacro(
-                    InFile::new(loc.id.file_id(), makro.ast_id),
-                    loc.expander,
-                    loc.kind,
-                ),
+                kind: MacroDefKind::ProcMacro(loc.id, loc.expander, loc.kind),
                 local_inner: false,
                 allow_internal_unsafe: false,
                 edition: loc.edition,

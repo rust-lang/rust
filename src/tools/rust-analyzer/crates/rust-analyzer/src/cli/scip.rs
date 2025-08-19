@@ -25,7 +25,7 @@ impl flags::Scip {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
 
-        let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
+        let no_progress = &|s| eprintln!("rust-analyzer: Loading {s}");
         let root =
             vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
 
@@ -265,10 +265,10 @@ impl flags::Scip {
         };
 
         if !duplicate_symbol_errors.is_empty() {
-            eprintln!("{}", DUPLICATE_SYMBOLS_MESSAGE);
+            eprintln!("{DUPLICATE_SYMBOLS_MESSAGE}");
             for (source_location, symbol) in duplicate_symbol_errors {
-                eprintln!("{}", source_location);
-                eprintln!("  Duplicate symbol: {}", symbol);
+                eprintln!("{source_location}");
+                eprintln!("  Duplicate symbol: {symbol}");
                 eprintln!();
             }
         }

@@ -126,7 +126,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         .filter(|lint| {
             // Lints that show up in future-compat reports must always be run.
             let has_future_breakage =
-                lint.future_incompatible.is_some_and(|fut| fut.reason.has_future_breakage());
+                lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
             !has_future_breakage && !lint.eval_always
         })
         .filter(|lint| {
@@ -482,7 +482,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     let name = lint_name.as_str();
                     let suggestion = RenamedLintSuggestion::WithoutSpan { replace };
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint = RenamedLintFromCommandLine { name, suggestion, requested_level };
+                    let lint =
+                        RenamedLintFromCommandLine { name, replace, suggestion, requested_level };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::Removed(ref reason) => {
@@ -643,7 +644,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let sess = self.sess;
         for (attr_index, attr) in attrs.iter().enumerate() {
-            if attr.has_name(sym::automatically_derived) {
+            if attr.is_automatically_derived_attr() {
                 self.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),
                     LevelAndSource {
@@ -824,7 +825,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                 RenamedLintSuggestion::WithSpan { suggestion: sp, replace };
                             let name =
                                 tool_ident.map(|tool| format!("{tool}::{name}")).unwrap_or(name);
-                            let lint = RenamedLint { name: name.as_str(), suggestion };
+                            let lint = RenamedLint { name: name.as_str(), replace, suggestion };
                             self.emit_span_lint(RENAMED_AND_REMOVED_LINTS, sp.into(), lint);
                         }
 
@@ -932,6 +933,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         let feature = if let Some(feature) = lint_id.lint.feature_gate
             && !self.features.enabled(feature)
+            && !span.allows_unstable(feature)
         {
             // Lint is behind a feature that is not enabled; eventually return false.
             feature

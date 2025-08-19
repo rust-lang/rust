@@ -9,10 +9,16 @@ use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_span::Symbol;
 
 use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>, name: &str) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+    arg: &'tcx hir::Expr<'tcx>,
+    name: Symbol,
+) {
     if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
@@ -38,7 +44,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
         let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
-            if name == "filter_map"
+            if name == sym::filter_map
                 && let hir::ExprKind::Call(expr, args) = body.value.kind
                 && is_res_lang_ctor(cx, path_res(cx, expr), OptionSome)
                 && let hir::ExprKind::Path(_) = args[0].kind
@@ -51,7 +57,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 );
                 return;
             }
-            if name == "filter_map" {
+            if name == sym::filter_map {
                 "map(..)"
             } else {
                 "map(..).next()"
@@ -61,7 +67,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 ty::Adt(adt, subst)
                     if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
                 {
-                    if name == "filter_map" { "filter(..)" } else { "find(..)" }
+                    if name == sym::filter_map {
+                        "filter(..)"
+                    } else {
+                        "find(..)"
+                    }
                 },
                 _ => return,
             }
@@ -70,7 +80,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
         };
         span_lint(
             cx,
-            if name == "filter_map" {
+            if name == sym::filter_map {
                 UNNECESSARY_FILTER_MAP
             } else {
                 UNNECESSARY_FIND_MAP

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
-  --> $DIR/maybe-bounds-in-dyn-traits.rs:53:25
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:59:25
    |
 LL |     let _: &dyn Trait = &NonLeakS;
    |                         ^^^^^^^^^ the trait `Leak` is not implemented for `NonLeakS`
@@ -7,17 +7,38 @@ LL |     let _: &dyn Trait = &NonLeakS;
    = note: required for the cast from `&NonLeakS` to `&dyn Trait + Leak`
 
 error[E0277]: the trait bound `dyn Trait: Leak` is not satisfied
-  --> $DIR/maybe-bounds-in-dyn-traits.rs:58:7
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:64:7
    |
 LL |     x.leak_foo();
    |       ^^^^^^^^ the trait `Leak` is not implemented for `dyn Trait`
    |
 note: required by a bound in `Trait::leak_foo`
-  --> $DIR/maybe-bounds-in-dyn-traits.rs:45:5
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:51:5
    |
 LL |     fn leak_foo(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait::leak_foo`
 
-error: aborting due to 2 previous errors
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:68:25
+   |
+LL |     let _: dyn Trait + ?Leak<(), Undefined = ()>;
+   |                         ^^^^-------------------- help: remove the unnecessary generics
+   |                         |
+   |                         expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:44:12
+   |
+LL | auto trait Leak {}
+   |            ^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0220]: associated type `Undefined` not found for `Leak`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:68:34
+   |
+LL |     let _: dyn Trait + ?Leak<(), Undefined = ()>;
+   |                                  ^^^^^^^^^ associated type `Undefined` not found
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0220, E0277.
+For more information about an error, try `rustc --explain E0107`.

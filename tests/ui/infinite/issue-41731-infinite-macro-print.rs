@@ -5,7 +5,7 @@
 fn main() {
     macro_rules! stack {
         ($overflow:expr) => {
-            print!(stack!($overflow));
+            print!(stack!($overflow))
             //~^ ERROR recursion limit reached while expanding
             //~| ERROR format argument must be a string literal
         };

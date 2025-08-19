@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0.0 -Zmiri-disable-weak-memory-emulation
+//@compile-flags:-Zmiri-deterministic-concurrency
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 

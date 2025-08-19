@@ -22,7 +22,6 @@ use crate::{
 use chalk_ir::Mutability;
 use hir_def::signatures::StructFlags;
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
-use salsa::CycleRecoveryAction;
 use std::fmt;
 use std::ops::Not;
 use stdx::never;
@@ -55,14 +54,14 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
 
-pub(crate) fn variances_of_cycle_fn(
-    _db: &dyn HirDatabase,
-    _result: &Option<Arc<[Variance]>>,
-    _count: u32,
-    _def: GenericDefId,
-) -> CycleRecoveryAction<Option<Arc<[Variance]>>> {
-    CycleRecoveryAction::Iterate
-}
+// pub(crate) fn variances_of_cycle_fn(
+//     _db: &dyn HirDatabase,
+//     _result: &Option<Arc<[Variance]>>,
+//     _count: u32,
+//     _def: GenericDefId,
+// ) -> salsa::CycleRecoveryAction<Option<Arc<[Variance]>>> {
+//     salsa::CycleRecoveryAction::Iterate
+// }
 
 pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
@@ -214,7 +213,7 @@ impl Context<'_> {
                     AdtId::StructId(s) => add_constraints_from_variant(VariantId::StructId(s)),
                     AdtId::UnionId(u) => add_constraints_from_variant(VariantId::UnionId(u)),
                     AdtId::EnumId(e) => {
-                        db.enum_variants(e).variants.iter().for_each(|&(variant, _)| {
+                        e.enum_variants(db).variants.iter().for_each(|&(variant, _, _)| {
                             add_constraints_from_variant(VariantId::EnumVariantId(variant))
                         });
                     }
@@ -966,7 +965,7 @@ struct S3<T>(S<T, T>);
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: covariant, U: covariant, V: covariant]
+                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
             "#]],
         );
     }
@@ -985,7 +984,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
         let mut defs: Vec<GenericDefId> = Vec::new();
         let module = db.module_for_file_opt(file_id.file_id(&db)).unwrap();
         let def_map = module.def_map(&db);
-        crate::tests::visit_module(&db, &def_map, module.local_id, &mut |it| {
+        crate::tests::visit_module(&db, def_map, module.local_id, &mut |it| {
             defs.push(match it {
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::AdtId(it) => it.into(),

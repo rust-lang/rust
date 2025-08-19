@@ -12,7 +12,15 @@ fn panic(_: &PanicInfo) -> ! {
 }
 
 #[lang = "eh_personality"]
-fn eh() {}
+fn eh(
+    _version: i32,
+    _actions: i32,
+    _exception_class: u64,
+    _exception_object: *mut (),
+    _context: *mut (),
+) -> i32 {
+    loop {}
+}
 
 #[alloc_error_handler]
 fn oom(_: Layout) -> ! {

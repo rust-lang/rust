@@ -8,10 +8,8 @@ LL | trait Chromosome: Chromosome {
 note: cycle used when checking that `Chromosome` is well-formed
   --> $DIR/cycle-trait-supertrait-direct.rs:3:1
    |
-LL | / trait Chromosome: Chromosome {
-LL | |
-LL | | }
-   | |_^
+LL | trait Chromosome: Chromosome {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 1 previous error

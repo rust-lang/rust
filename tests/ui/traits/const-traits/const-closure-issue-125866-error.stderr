@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `impl FnMut(usize) -> u32 + Copy: [const] FnMut(usize)` is not satisfied
+  --> $DIR/const-closure-issue-125866-error.rs:8:22
+   |
+LL |         array[i] = f(i);
+   |                    - ^
+   |                    |
+   |                    required by a bound introduced by this call
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

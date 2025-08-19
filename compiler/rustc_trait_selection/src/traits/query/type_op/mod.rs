@@ -180,8 +180,9 @@ where
             span,
         )?;
         output.error_info = error_info;
-        if let Some(QueryRegionConstraints { outlives }) = output.constraints {
+        if let Some(QueryRegionConstraints { outlives, assumptions }) = output.constraints {
             region_constraints.outlives.extend(outlives.iter().cloned());
+            region_constraints.assumptions.extend(assumptions.iter().cloned());
         }
         output.constraints = if region_constraints.is_empty() {
             None

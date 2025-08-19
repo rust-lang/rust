@@ -33,6 +33,7 @@ pub(crate) fn trait_impl_incorrect_safety(
             },
         ),
     )
+    .stable()
 }
 
 #[cfg(test)]

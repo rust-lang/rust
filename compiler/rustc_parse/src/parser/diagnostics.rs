@@ -3,7 +3,6 @@ use std::ops::{Deref, DerefMut};
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
@@ -41,15 +40,17 @@ use crate::errors::{
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
     QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead, WrapType,
 };
+use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
 use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
-    let pat = P(Pat {
+    let pat = Box::new(Pat {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::NONE, ident, None),
         span: ident.span,
@@ -61,23 +62,23 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         id: ast::DUMMY_NODE_ID,
         pat,
         span: ident.span,
-        ty: P(ty),
+        ty: Box::new(ty),
         is_placeholder: false,
     }
 }
 
 pub(super) trait RecoverQPath: Sized + 'static {
     const PATH_STYLE: PathStyle = PathStyle::Expr;
-    fn to_ty(&self) -> Option<P<Ty>>;
-    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self;
+    fn to_ty(&self) -> Option<Box<Ty>>;
+    fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self;
 }
 
 impl RecoverQPath for Ty {
     const PATH_STYLE: PathStyle = PathStyle::Type;
-    fn to_ty(&self) -> Option<P<Ty>> {
-        Some(P(self.clone()))
+    fn to_ty(&self) -> Option<Box<Ty>> {
+        Some(Box::new(self.clone()))
     }
-    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: TyKind::Path(qself, path),
@@ -89,10 +90,10 @@ impl RecoverQPath for Ty {
 
 impl RecoverQPath for Pat {
     const PATH_STYLE: PathStyle = PathStyle::Pat;
-    fn to_ty(&self) -> Option<P<Ty>> {
+    fn to_ty(&self) -> Option<Box<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: PatKind::Path(qself, path),
@@ -103,10 +104,10 @@ impl RecoverQPath for Pat {
 }
 
 impl RecoverQPath for Expr {
-    fn to_ty(&self) -> Option<P<Ty>> {
+    fn to_ty(&self) -> Option<Box<Ty>> {
         self.to_ty()
     }
-    fn recovered(qself: Option<P<QSelf>>, path: ast::Path) -> Self {
+    fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
             span: path.span,
             kind: ExprKind::Path(qself, path),
@@ -497,7 +498,7 @@ impl<'a> Parser<'a> {
             // If the user is trying to write a ternary expression, recover it and
             // return an Err to prevent a cascade of irrelevant diagnostics.
             if self.prev_token == token::Question
-                && let Err(e) = self.maybe_recover_from_ternary_operator()
+                && let Err(e) = self.maybe_recover_from_ternary_operator(None)
             {
                 return Err(e);
             }
@@ -685,23 +686,34 @@ impl<'a> Parser<'a> {
         }
 
         if let token::DocComment(kind, style, _) = self.token.kind {
-            // We have something like `expr //!val` where the user likely meant `expr // !val`
-            let pos = self.token.span.lo() + BytePos(2);
-            let span = self.token.span.with_lo(pos).with_hi(pos);
-            err.span_suggestion_verbose(
-                span,
-                format!(
-                    "add a space before {} to write a regular comment",
-                    match (kind, style) {
-                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
-                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
-                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
-                    },
-                ),
-                " ".to_string(),
-                Applicability::MachineApplicable,
-            );
+            // This is to avoid suggesting converting a doc comment to a regular comment
+            // when missing a comma before the doc comment in lists (#142311):
+            //
+            // ```
+            // enum Foo{
+            //     A /// xxxxxxx
+            //     B,
+            // }
+            // ```
+            if !expected.contains(&TokenType::Comma) {
+                // We have something like `expr //!val` where the user likely meant `expr // !val`
+                let pos = self.token.span.lo() + BytePos(2);
+                let span = self.token.span.with_lo(pos).with_hi(pos);
+                err.span_suggestion_verbose(
+                    span,
+                    format!(
+                        "add a space before {} to write a regular comment",
+                        match (kind, style) {
+                            (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                            (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                            (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                        },
+                    ),
+                    " ".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         let sp = if self.token == token::Eof {
@@ -965,7 +977,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         s: BlockCheckMode,
         maybe_struct_name: token::Token,
-    ) -> Option<PResult<'a, P<Block>>> {
+    ) -> Option<PResult<'a, Box<Block>>> {
         if self.token.is_ident() && self.look_ahead(1, |t| t == &token::Colon) {
             // We might be having a struct literal where people forgot to include the path:
             // fn foo() -> Foo {
@@ -1030,7 +1042,7 @@ impl<'a> Parser<'a> {
         token: token::Token,
         lo: Span,
         decl_hi: Span,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
         let guar = match before.kind {
             token::OpenBrace if token.kind != token::OpenBrace => {
@@ -1248,7 +1260,7 @@ impl<'a> Parser<'a> {
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
         mut e: Diag<'a>,
-        expr: &mut P<Expr>,
+        expr: &mut Box<Expr>,
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
@@ -1431,7 +1443,7 @@ impl<'a> Parser<'a> {
         &mut self,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> PResult<'a, Option<P<Expr>>> {
+    ) -> PResult<'a, Option<Box<Expr>>> {
         debug_assert!(
             outer_op.node.is_comparison(),
             "check_no_chained_comparison: {:?} is not comparison",
@@ -1583,7 +1595,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: P<Ty>) -> P<Ty> {
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
         if self.token == token::Question {
             self.bump();
             let guar = self.dcx().emit_err(QuestionMarkInType {
@@ -1602,12 +1614,18 @@ impl<'a> Parser<'a> {
     /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
     /// to recover from it if `then` and `else` are valid expressions. Returns
     /// an err if this appears to be a ternary expression.
-    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> PResult<'a, ()> {
+    /// If we have the span of the condition, we can provide a better error span
+    /// and code suggestion.
+    pub(super) fn maybe_recover_from_ternary_operator(
+        &mut self,
+        cond: Option<Span>,
+    ) -> PResult<'a, ()> {
         if self.prev_token != token::Question {
             return PResult::Ok(());
         }
 
-        let lo = self.prev_token.span.lo();
+        let question = self.prev_token.span;
+        let lo = cond.unwrap_or(question).lo();
         let snapshot = self.create_snapshot_for_diagnostic();
 
         if match self.parse_expr() {
@@ -1620,11 +1638,20 @@ impl<'a> Parser<'a> {
             }
         } {
             if self.eat_noexpect(&token::Colon) {
+                let colon = self.prev_token.span;
                 match self.parse_expr() {
-                    Ok(_) => {
-                        return Err(self
-                            .dcx()
-                            .create_err(TernaryOperator { span: self.token.span.with_lo(lo) }));
+                    Ok(expr) => {
+                        let sugg = cond.map(|cond| TernaryOperatorSuggestion {
+                            before_cond: cond.shrink_to_lo(),
+                            question,
+                            colon,
+                            end: expr.span.shrink_to_hi(),
+                        });
+                        return Err(self.dcx().create_err(TernaryOperator {
+                            span: self.prev_token.span.with_lo(lo),
+                            sugg,
+                            no_sugg: sugg.is_none(),
+                        }));
                     }
                     Err(err) => {
                         err.cancel();
@@ -1650,7 +1677,7 @@ impl<'a> Parser<'a> {
                 let hi = self.prev_token.span.shrink_to_hi();
                 BadTypePlusSub::AddParen { suggestion: AddParen { lo, hi } }
             }
-            TyKind::Ptr(..) | TyKind::BareFn(..) => {
+            TyKind::Ptr(..) | TyKind::FnPtr(..) => {
                 BadTypePlusSub::ForgotParen { span: ty.span.to(self.prev_token.span) }
             }
             _ => BadTypePlusSub::ExpectPath { span: ty.span },
@@ -1663,10 +1690,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_prefix_increment(
         &mut self,
-        operand_expr: P<Expr>,
+        operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let standalone = if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr };
         let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
         self.recover_from_inc_dec(operand_expr, kind, op_span)
@@ -1674,10 +1701,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_increment(
         &mut self,
-        operand_expr: P<Expr>,
+        operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Inc,
@@ -1688,10 +1715,10 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_from_postfix_decrement(
         &mut self,
-        operand_expr: P<Expr>,
+        operand_expr: Box<Expr>,
         op_span: Span,
         start_stmt: bool,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let kind = IncDecRecovery {
             standalone: if start_stmt { IsStandalone::Standalone } else { IsStandalone::Subexpr },
             op: IncOrDec::Dec,
@@ -1702,10 +1729,10 @@ impl<'a> Parser<'a> {
 
     fn recover_from_inc_dec(
         &mut self,
-        base: P<Expr>,
+        base: Box<Expr>,
         kind: IncDecRecovery,
         op_span: Span,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let mut err = self.dcx().struct_span_err(
             op_span,
             format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
@@ -1806,8 +1833,8 @@ impl<'a> Parser<'a> {
     /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
     pub(super) fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
-        base: P<T>,
-    ) -> PResult<'a, P<T>> {
+        base: Box<T>,
+    ) -> PResult<'a, Box<T>> {
         if !self.may_recover() {
             return Ok(base);
         }
@@ -1826,8 +1853,8 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
-        ty: P<Ty>,
-    ) -> PResult<'a, P<T>> {
+        ty: Box<Ty>,
+    ) -> PResult<'a, Box<T>> {
         self.expect(exp!(PathSep))?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
@@ -1840,7 +1867,7 @@ impl<'a> Parser<'a> {
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
-        Ok(P(T::recovered(Some(P(QSelf { ty, path_span, position: 0 })), path)))
+        Ok(Box::new(T::recovered(Some(Box::new(QSelf { ty, path_span, position: 0 })), path)))
     }
 
     /// This function gets called in places where a semicolon is NOT expected and if there's a
@@ -1943,7 +1970,7 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_incorrect_await_syntax(
         &mut self,
         await_sp: Span,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
@@ -1955,7 +1982,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
+    fn recover_await_macro(&mut self) -> PResult<'a, (Span, Box<Expr>, bool)> {
         self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
@@ -1963,7 +1990,7 @@ impl<'a> Parser<'a> {
         Ok((self.prev_token.span, expr, false))
     }
 
-    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
+    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, Box<Expr>, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenBrace {
             // Handle `await { <expr> }`.
@@ -2025,7 +2052,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, Box<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenParen); //check for (
@@ -2097,7 +2124,7 @@ impl<'a> Parser<'a> {
         close: ExpTokenPair<'_>,
         lo: Span,
         err: Diag<'a>,
-    ) -> P<Expr> {
+    ) -> Box<Expr> {
         let guar = err.emit();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(open, close, ConsumeClosingDelim::Yes);
@@ -2217,9 +2244,10 @@ impl<'a> Parser<'a> {
     pub(super) fn parameter_without_type(
         &mut self,
         err: &mut Diag<'_>,
-        pat: P<ast::Pat>,
+        pat: Box<ast::Pat>,
         require_name: bool,
         first_param: bool,
+        fn_parse_mode: &crate::parser::item::FnParseMode,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
@@ -2242,7 +2270,14 @@ impl<'a> Parser<'a> {
                 || self.token == token::Lt
                 || self.token == token::CloseParen)
         {
-            let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
+            let maybe_emit_anon_params_note = |this: &mut Self, err: &mut Diag<'_>| {
+                let ed = this.token.span.with_neighbor(this.prev_token.span).edition();
+                if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
+                    && (fn_parse_mode.req_name)(ed)
+                {
+                    err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");
+                }
+            };
 
             let (ident, self_sugg, param_sugg, type_sugg, self_span, param_span, type_span) =
                 match pat.kind {
@@ -2257,23 +2292,18 @@ impl<'a> Parser<'a> {
                     ),
                     // Also catches `fn foo(&a)`.
                     PatKind::Ref(ref inner_pat, mutab)
-                        if matches!(inner_pat.clone().into_inner().kind, PatKind::Ident(..)) =>
+                        if let PatKind::Ident(_, ident, _) = inner_pat.clone().kind =>
                     {
-                        match inner_pat.clone().into_inner().kind {
-                            PatKind::Ident(_, ident, _) => {
-                                let mutab = mutab.prefix_str();
-                                (
-                                    ident,
-                                    "self: ",
-                                    format!("{ident}: &{mutab}TypeName"),
-                                    "_: ",
-                                    pat.span.shrink_to_lo(),
-                                    pat.span,
-                                    pat.span.shrink_to_lo(),
-                                )
-                            }
-                            _ => unreachable!(),
-                        }
+                        let mutab = mutab.prefix_str();
+                        (
+                            ident,
+                            "self: ",
+                            format!("{ident}: &{mutab}TypeName"),
+                            "_: ",
+                            pat.span.shrink_to_lo(),
+                            pat.span,
+                            pat.span.shrink_to_lo(),
+                        )
                     }
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
@@ -2284,7 +2314,7 @@ impl<'a> Parser<'a> {
                                 "_: ".to_string(),
                                 Applicability::MachineApplicable,
                             );
-                            err.note(rfc_note);
+                            maybe_emit_anon_params_note(self, err);
                         }
 
                         return None;
@@ -2292,7 +2322,13 @@ impl<'a> Parser<'a> {
                 };
 
             // `fn foo(a, b) {}`, `fn foo(a<x>, b<y>) {}` or `fn foo(usize, usize) {}`
-            if first_param {
+            if first_param
+                // Only when the fn is a method, we emit this suggestion.
+                && matches!(
+                    fn_parse_mode.context,
+                    FnContext::Trait | FnContext::Impl
+                )
+            {
                 err.span_suggestion_verbose(
                     self_span,
                     "if this is a `self` type, give it a parameter name",
@@ -2316,7 +2352,7 @@ impl<'a> Parser<'a> {
                 type_sugg,
                 Applicability::MachineApplicable,
             );
-            err.note(rfc_note);
+            maybe_emit_anon_params_note(self, err);
 
             // Don't attempt to recover by using the `X` in `X<Y>` as the parameter name.
             return if self.token == token::Lt { None } else { Some(ident) };
@@ -2324,7 +2360,7 @@ impl<'a> Parser<'a> {
         None
     }
 
-    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
+    pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (Box<ast::Pat>, Box<ast::Ty>)> {
         let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
@@ -2332,8 +2368,12 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat =
-            P(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID, tokens: None });
+        let pat = Box::new(Pat {
+            kind: PatKind::Wild,
+            span: pat.span,
+            id: ast::DUMMY_NODE_ID,
+            tokens: None,
+        });
         Ok((pat, ty))
     }
 
@@ -2484,7 +2524,7 @@ impl<'a> Parser<'a> {
     /// - Single-segment paths (i.e. standalone generic const parameters).
     /// All other expressions that can be parsed will emit an error suggesting the expression be
     /// wrapped in braces.
-    pub(super) fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, P<Expr>> {
+    pub(super) fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
         let start = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         let (expr, _) =
@@ -2666,7 +2706,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn recover_unbraced_const_arg_that_can_begin_ty(
         &mut self,
         mut snapshot: SnapshotParser<'a>,
-    ) -> Option<P<ast::Expr>> {
+    ) -> Option<Box<ast::Expr>> {
         match (|| {
             let attrs = self.parse_outer_attributes()?;
             snapshot.parse_expr_res(Restrictions::CONST_EXPR, attrs)
@@ -2702,14 +2742,14 @@ impl<'a> Parser<'a> {
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
     pub(crate) fn maybe_recover_colon_colon_in_pat_typo(
         &mut self,
-        mut first_pat: P<Pat>,
+        mut first_pat: Box<Pat>,
         expected: Option<Expected>,
-    ) -> P<Pat> {
+    ) -> Box<Pat> {
         if token::Colon != self.token.kind {
             return first_pat;
         }
         if !matches!(first_pat.kind, PatKind::Ident(_, _, None) | PatKind::Path(..))
-            || !self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+            || !self.look_ahead(1, |token| token.is_non_reserved_ident())
         {
             let mut snapshot_type = self.create_snapshot_for_diagnostic();
             snapshot_type.bump(); // `:`

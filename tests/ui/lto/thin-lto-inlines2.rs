@@ -4,6 +4,7 @@
 //@ aux-build:thin-lto-inlines-aux.rs
 //@ no-prefer-dynamic
 //@ ignore-emscripten can't inspect instructions on emscripten
+//@ ignore-backends: gcc
 
 // We want to assert here that ThinLTO will inline across codegen units. There's
 // not really a great way to do that in general so we sort of hack around it by

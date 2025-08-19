@@ -31,6 +31,15 @@ LL |     let a = u.x;
    |             --- value moved here
 LL |     let b = u.y;
    |             ^^^ value used here after move
+   |
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:43:1
+   |
+LL | union U {
+   | ^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = u.x;
+   |             --- you could clone this value
 
 error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x`)
   --> $DIR/union-borrow-move-parent-sibling.rs:67:13
@@ -73,6 +82,15 @@ LL |     let a = u.x;
    |             --- value moved here
 LL |     let b = u.y;
    |             ^^^ value used here after move
+   |
+note: if `U` implemented `Clone`, you could clone the value
+  --> $DIR/union-borrow-move-parent-sibling.rs:43:1
+   |
+LL | union U {
+   | ^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     let a = u.x;
+   |             --- you could clone this value
 
 error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `u.y`)
   --> $DIR/union-borrow-move-parent-sibling.rs:81:13

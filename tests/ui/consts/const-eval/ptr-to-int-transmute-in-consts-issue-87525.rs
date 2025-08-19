@@ -1,7 +1,9 @@
+#![deny(ptr_to_integer_transmute_in_consts)]
+
 const fn foo(ptr: *const u8) -> usize {
     unsafe {
         std::mem::transmute(ptr)
-        //~^ WARN pointers cannot be transmuted to integers
+        //~^ ERROR pointers cannot be transmuted to integers
     }
 }
 
@@ -11,7 +13,7 @@ trait Human {
         let ptr: *const usize = &value;
         unsafe {
             std::mem::transmute(ptr)
-            //~^ WARN pointers cannot be transmuted to integers
+            //~^ ERROR pointers cannot be transmuted to integers
         }
     };
 
@@ -28,7 +30,7 @@ impl<T> Type<T> {
         let ptr: *const usize = &value;
         unsafe {
             std::mem::transmute(ptr)
-            //~^ WARN pointers cannot be transmuted to integers
+            //~^ ERROR pointers cannot be transmuted to integers
         }
     };
 
@@ -38,9 +40,7 @@ impl<T> Type<T> {
 }
 
 fn control(ptr: *const u8) -> usize {
-    unsafe {
-        std::mem::transmute(ptr)
-    }
+    unsafe { std::mem::transmute(ptr) }
 }
 
 struct ControlStruct;
@@ -49,22 +49,15 @@ impl ControlStruct {
     fn new() -> usize {
         let value = 10;
         let ptr: *const i32 = &value;
-        unsafe {
-            std::mem::transmute(ptr)
-        }
+        unsafe { std::mem::transmute(ptr) }
     }
 }
-
 
 const fn zoom(ptr: *const u8) -> usize {
     unsafe {
         std::mem::transmute(ptr)
-        //~^ WARN pointers cannot be transmuted to integers
+        //~^ ERROR pointers cannot be transmuted to integers
     }
 }
 
-fn main() {
-    const a: u8 = 10;
-    const value: usize = zoom(&a);
-    //~^ ERROR evaluation of constant value failed
-}
+fn main() {}

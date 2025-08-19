@@ -4,7 +4,6 @@
 //! of MIR building, and only after this pass we think of the program has having the
 //! normal MIR semantics.
 
-use rustc_hir::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
@@ -28,7 +27,6 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         // References and Boxes (`noalias` sources)
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
-        ty::Adt(adt, _) if tcx.is_lang_item(adt.did(), LangItem::PtrUnique) => true,
         // Compound types: recurse
         ty::Array(ty, _) | ty::Slice(ty) => {
             // This does not branch so we keep the depth the same.
@@ -81,9 +79,11 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
             // Emit their retags.
             basic_blocks[START_BLOCK].statements.splice(
                 0..0,
-                places.map(|(place, source_info)| Statement {
-                    source_info,
-                    kind: StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
+                places.map(|(place, source_info)| {
+                    Statement::new(
+                        source_info,
+                        StatementKind::Retag(RetagKind::FnEntry, Box::new(place)),
+                    )
                 }),
             );
         }
@@ -113,10 +113,10 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
         for (source_info, dest_place, dest_block) in returns {
             basic_blocks[dest_block].statements.insert(
                 0,
-                Statement {
+                Statement::new(
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
-                },
+                    StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
+                ),
             );
         }
 
@@ -174,10 +174,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(
                     i + 1,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::Retag(retag_kind, Box::new(place)),
-                    },
+                    Statement::new(source_info, StatementKind::Retag(retag_kind, Box::new(place))),
                 );
             }
         }

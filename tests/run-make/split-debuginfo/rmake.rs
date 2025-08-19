@@ -61,8 +61,8 @@ use std::collections::BTreeSet;
 
 use run_make_support::rustc::Rustc;
 use run_make_support::{
-    cwd, has_extension, is_darwin, is_msvc, is_windows, llvm_dwarfdump, run_in_tmpdir, rustc,
-    shallow_find_directories, shallow_find_files, uname,
+    cwd, has_extension, is_darwin, is_windows, is_windows_msvc, llvm_dwarfdump, run_in_tmpdir,
+    rustc, shallow_find_directories, shallow_find_files, uname,
 };
 
 /// `-C debuginfo`. See <https://doc.rust-lang.org/rustc/codegen-options/index.html#debuginfo>.
@@ -1296,7 +1296,7 @@ fn main() {
     // identify which combination isn't exercised with a 6-layers nested for loop iterating through
     // each of the cli flag enum variants.
 
-    if is_msvc() {
+    if is_windows_msvc() {
         // FIXME: the windows-msvc test coverage is sparse at best.
 
         windows_msvc_tests::split_debuginfo(SplitDebuginfo::Off, DebuginfoLevel::Unspecified);

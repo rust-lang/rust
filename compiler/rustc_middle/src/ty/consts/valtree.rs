@@ -2,10 +2,12 @@ use std::fmt;
 use std::ops::Deref;
 
 use rustc_data_structures::intern::Interned;
+use rustc_hir::def::Namespace;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 
 use super::ScalarInt;
-use crate::mir::interpret::Scalar;
+use crate::mir::interpret::{ErrorHandled, Scalar};
+use crate::ty::print::{FmtPrinter, PrettyPrinter};
 use crate::ty::{self, Ty, TyCtxt};
 
 /// This datastructure is used to represent the value of constants used in the type system.
@@ -124,9 +126,17 @@ impl fmt::Debug for ValTree<'_> {
     }
 }
 
+/// `Ok(Err(ty))` indicates the constant was fine, but the valtree couldn't be constructed
+/// because the value contains something of type `ty` that is not valtree-compatible.
+/// The caller can then show an appropriate error; the query does not have the
+/// necessary context to give good user-facing errors for this case.
+pub type ConstToValTreeResult<'tcx> = Result<Result<ValTree<'tcx>, Ty<'tcx>>, ErrorHandled>;
+
 /// A type-level constant value.
 ///
 /// Represents a typed, fully evaluated constant.
+/// Note that this is also used by pattern elaboration to represent values which cannot occur in types,
+/// such as raw pointers and floats.
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Value<'tcx> {
@@ -195,5 +205,16 @@ impl<'tcx> rustc_type_ir::inherent::ValueConst<TyCtxt<'tcx>> for Value<'tcx> {
 
     fn valtree(self) -> ValTree<'tcx> {
         self.valtree
+    }
+}
+
+impl<'tcx> fmt::Display for Value<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(move |tcx| {
+            let cv = tcx.lift(*self).unwrap();
+            let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
+            p.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
+            f.write_str(&p.into_buffer())
+        })
     }
 }

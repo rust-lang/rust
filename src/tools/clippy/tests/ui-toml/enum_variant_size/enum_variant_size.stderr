@@ -12,7 +12,7 @@ LL | | }
    |
    = note: `-D clippy::large-enum-variant` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
-help: consider boxing the large fields to reduce the total size of the enum
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
    |
 LL -     B([u8; 501]),
 LL +     B(Box<[u8; 501]>),

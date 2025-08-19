@@ -1,16 +1,3 @@
-warning: type `Priv` is more private than the item `Leak`
-  --> $DIR/projections.rs:3:5
-   |
-LL |     pub type Leak = Priv;
-   |     ^^^^^^^^^^^^^ type alias `Leak` is reachable at visibility `pub(crate)`
-   |
-note: but type `Priv` is only usable at visibility `pub(self)`
-  --> $DIR/projections.rs:2:5
-   |
-LL |     struct Priv;
-   |     ^^^^^^^^^^^
-   = note: `#[warn(private_interfaces)]` on by default
-
 error[E0446]: private type `Priv` in public interface
   --> $DIR/projections.rs:24:5
    |
@@ -28,6 +15,19 @@ LL |     struct Priv;
 ...
 LL |     type A<T: Trait> = T::A<m::Leak>;
    |     ^^^^^^^^^^^^^^^^ can't leak private type
+
+warning: type `Priv` is more private than the item `Leak`
+  --> $DIR/projections.rs:3:5
+   |
+LL |     pub type Leak = Priv;
+   |     ^^^^^^^^^^^^^ type alias `Leak` is reachable at visibility `pub(crate)`
+   |
+note: but type `Priv` is only usable at visibility `pub(self)`
+  --> $DIR/projections.rs:2:5
+   |
+LL |     struct Priv;
+   |     ^^^^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
 
 error: type `Priv` is private
   --> $DIR/projections.rs:14:15

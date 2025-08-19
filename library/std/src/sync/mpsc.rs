@@ -509,7 +509,7 @@ pub enum TrySendError<T> {
 ///     sender.send(expensive_computation()).unwrap();
 /// });
 ///
-/// // Do some useful work for awhile
+/// // Do some useful work for a while
 ///
 /// // Let's see what that answer was
 /// println!("{:?}", receiver.recv().unwrap());
@@ -697,14 +697,14 @@ impl<T> SyncSender<T> {
     /// let sync_sender2 = sync_sender.clone();
     ///
     /// // First thread owns sync_sender
-    /// thread::spawn(move || {
+    /// let handle1 = thread::spawn(move || {
     ///     sync_sender.send(1).unwrap();
     ///     sync_sender.send(2).unwrap();
     ///     // Thread blocked
     /// });
     ///
     /// // Second thread owns sync_sender2
-    /// thread::spawn(move || {
+    /// let handle2 = thread::spawn(move || {
     ///     // This will return an error and send
     ///     // no message if the buffer is full
     ///     let _ = sync_sender2.try_send(3);
@@ -722,6 +722,10 @@ impl<T> SyncSender<T> {
     ///     Ok(msg) => println!("message {msg} received"),
     ///     Err(_) => println!("the third message was never sent"),
     /// }
+    ///
+    /// // Wait for threads to complete
+    /// handle1.join().unwrap();
+    /// handle2.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {

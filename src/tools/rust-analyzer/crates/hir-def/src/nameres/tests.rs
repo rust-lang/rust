@@ -7,20 +7,25 @@ mod primitives;
 use base_db::RootQueryDb;
 use expect_test::{Expect, expect};
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
-use crate::{db::DefDatabase, nameres::DefMap, test_db::TestDB};
+use crate::{
+    nameres::{DefMap, crate_def_map},
+    test_db::TestDB,
+};
 
-fn compute_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Arc<DefMap> {
+fn compute_crate_def_map(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    cb: impl FnOnce(&DefMap),
+) {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
-    db.crate_def_map(krate)
+    cb(crate_def_map(&db, krate));
 }
 
 fn render_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
-    db.crate_def_map(krate).dump(&db)
+    crate_def_map(&db, krate).dump(&db)
 }
 
 fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {

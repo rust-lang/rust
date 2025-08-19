@@ -64,9 +64,8 @@
 +                             let mut _45: &mut std::future::Ready<()>;
 +                             let mut _46: &mut std::pin::Pin<&mut std::future::Ready<()>>;
 +                             scope 14 (inlined <Pin<&mut std::future::Ready<()>> as DerefMut>::deref_mut) {
-+                                 let mut _47: std::pin::Pin<&mut std::future::Ready<()>>;
 +                                 scope 15 (inlined Pin::<&mut std::future::Ready<()>>::as_mut) {
-+                                     let mut _48: &mut &mut std::future::Ready<()>;
++                                     let mut _47: &mut &mut std::future::Ready<()>;
 +                                     scope 16 (inlined Pin::<&mut std::future::Ready<()>>::new_unchecked) {
 +                                     }
 +                                     scope 18 (inlined <&mut std::future::Ready<()> as DerefMut>::deref_mut) {
@@ -76,15 +75,15 @@
 +                                 }
 +                             }
 +                             scope 19 (inlined Option::<()>::take) {
-+                                 let mut _49: std::option::Option<()>;
++                                 let mut _48: std::option::Option<()>;
 +                                 scope 20 (inlined std::mem::replace::<Option<()>>) {
 +                                     scope 21 {
 +                                     }
 +                                 }
 +                             }
 +                             scope 22 (inlined #[track_caller] Option::<()>::expect) {
-+                                 let mut _50: isize;
-+                                 let mut _51: !;
++                                 let mut _49: isize;
++                                 let mut _50: !;
 +                                 scope 23 {
 +                                 }
 +                             }
@@ -229,29 +228,26 @@
 +         StorageDead(_24);
 +         StorageLive(_45);
 +         StorageLive(_46);
-+         StorageLive(_51);
++         StorageLive(_50);
 +         StorageLive(_42);
 +         StorageLive(_43);
 +         StorageLive(_44);
 +         _46 = &mut _19;
 +         StorageLive(_47);
-+         StorageLive(_48);
-+         _48 = &mut (_19.0: &mut std::future::Ready<()>);
++         _47 = &mut (_19.0: &mut std::future::Ready<()>);
 +         _45 = copy (_19.0: &mut std::future::Ready<()>);
-+         StorageDead(_48);
-+         _47 = Pin::<&mut std::future::Ready<()>> { pointer: copy _45 };
 +         StorageDead(_47);
 +         _44 = &mut ((*_45).0: std::option::Option<()>);
-+         StorageLive(_49);
-+         _49 = Option::<()>::None;
++         StorageLive(_48);
++         _48 = Option::<()>::None;
 +         _43 = copy ((*_45).0: std::option::Option<()>);
-+         ((*_45).0: std::option::Option<()>) = copy _49;
-+         StorageDead(_49);
++         ((*_45).0: std::option::Option<()>) = copy _48;
++         StorageDead(_48);
 +         StorageDead(_44);
-+         StorageLive(_50);
-+         _50 = discriminant(_43);
-+         switchInt(move _50) -> [0: bb11, 1: bb12, otherwise: bb5];
-+     }
++         StorageLive(_49);
++         _49 = discriminant(_43);
++         switchInt(move _49) -> [0: bb11, 1: bb12, otherwise: bb5];
+      }
 + 
 +     bb5: {
 +         unreachable;
@@ -313,22 +309,27 @@
 +     }
 + 
 +     bb11: {
-+         _51 = option::expect_failed(const "`Ready` polled after completion") -> unwind unreachable;
++         _50 = option::expect_failed(const "`Ready` polled after completion") -> unwind unreachable;
 +     }
 + 
 +     bb12: {
 +         _42 = move ((_43 as Some).0: ());
-+         StorageDead(_50);
++         StorageDead(_49);
 +         StorageDead(_43);
 +         _18 = Poll::<()>::Ready(move _42);
 +         StorageDead(_42);
-+         StorageDead(_51);
++         StorageDead(_50);
 +         StorageDead(_46);
 +         StorageDead(_45);
 +         StorageDead(_22);
 +         StorageDead(_19);
 +         _25 = discriminant(_18);
 +         switchInt(move _25) -> [0: bb7, 1: bb6, otherwise: bb5];
-      }
++     }
++ }
++ 
++ ALLOC0 (size: 31, align: 1) {
++     0x00 │ 60 52 65 61 64 79 60 20 70 6f 6c 6c 65 64 20 61 │ `Ready` polled a
++     0x10 │ 66 74 65 72 20 63 6f 6d 70 6c 65 74 69 6f 6e    │ fter completion
   }
   

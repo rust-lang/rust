@@ -51,3 +51,9 @@
       }
   }
   
+  ALLOC0 (size: 40, align: 1) {
+      0x00 │ 69 6e 74 65 72 6e 61 6c 20 65 72 72 6f 72 3a 20 │ internal error: 
+      0x10 │ 65 6e 74 65 72 65 64 20 75 6e 72 65 61 63 68 61 │ entered unreacha
+      0x20 │ 62 6c 65 20 63 6f 64 65                         │ ble code
+  }
+  

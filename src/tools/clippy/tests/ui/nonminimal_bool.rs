@@ -236,3 +236,21 @@ mod issue14404 {
         }
     }
 }
+
+fn dont_simplify_double_not_if_types_differ() {
+    struct S;
+
+    impl std::ops::Not for S {
+        type Output = bool;
+        fn not(self) -> bool {
+            true
+        }
+    }
+
+    // The lint must propose `if !!S`, not `if S`.
+    // FIXME: `bool_comparison` will propose to use `S == true`
+    // which is invalid.
+    if !S != true {}
+    //~^ nonminimal_bool
+    //~| bool_comparison
+}

@@ -116,4 +116,14 @@ second line
 ")]
 pub struct Args;
 
+mod issue_14980 {
+    //~v empty_line_after_outer_attr
+    #[repr(align(536870912))]
+
+    enum Aligned {
+        Zero = 0,
+        One = 1,
+    }
+}
+
 fn main() {}

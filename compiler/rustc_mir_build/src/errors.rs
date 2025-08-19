@@ -976,15 +976,6 @@ pub(crate) struct NonEmptyNeverPattern<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(mir_build_exceeds_mcdc_condition_limit)]
-pub(crate) struct MCDCExceedsConditionLimit {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) num_conditions: usize,
-    pub(crate) max_conditions: usize,
-}
-
-#[derive(Diagnostic)]
 #[diag(mir_build_pattern_not_covered, code = E0005)]
 pub(crate) struct PatternNotCovered<'s, 'tcx> {
     #[primary_span]
@@ -994,14 +985,15 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub(crate) uncovered: Uncovered,
     #[subdiagnostic]
     pub(crate) inform: Option<Inform>,
-    #[label(mir_build_confused)]
-    pub(crate) interpreted_as_const: Option<Span>,
     #[subdiagnostic]
-    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConst>,
+    pub(crate) interpreted_as_const: Option<InterpretedAsConst>,
+    #[subdiagnostic]
+    pub(crate) interpreted_as_const_sugg: Option<InterpretedAsConstSugg>,
     #[subdiagnostic]
     pub(crate) adt_defined_here: Option<AdtDefinedHere<'tcx>>,
     #[note(mir_build_privately_uninhabited)]
     pub(crate) witness_1_is_privately_uninhabited: bool,
+    pub(crate) witness_1: String,
     #[note(mir_build_pattern_ty)]
     pub(crate) _p: (),
     pub(crate) pattern_ty: Ty<'tcx>,
@@ -1015,6 +1007,14 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
 #[note(mir_build_inform_irrefutable)]
 #[note(mir_build_more_information)]
 pub(crate) struct Inform;
+
+#[derive(Subdiagnostic)]
+#[label(mir_build_confused)]
+pub(crate) struct InterpretedAsConst {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) variable: String,
+}
 
 pub(crate) struct AdtDefinedHere<'tcx> {
     pub(crate) adt_def_span: Span,
@@ -1046,7 +1046,7 @@ impl<'tcx> Subdiagnostic for AdtDefinedHere<'tcx> {
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
-pub(crate) struct InterpretedAsConst {
+pub(crate) struct InterpretedAsConstSugg {
     #[primary_span]
     pub(crate) span: Span,
     pub(crate) variable: String,
@@ -1148,4 +1148,112 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             diag.multipart_suggestion_verbose(msg, self.suggestion, applicability);
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_invalid_update)]
+pub(crate) struct LoopMatchInvalidUpdate {
+    #[primary_span]
+    pub lhs: Span,
+    #[label]
+    pub scrutinee: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_invalid_match)]
+#[note]
+pub(crate) struct LoopMatchInvalidMatch {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_unsupported_type)]
+#[note]
+pub(crate) struct LoopMatchUnsupportedType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_bad_statements)]
+pub(crate) struct LoopMatchBadStatements {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_bad_rhs)]
+pub(crate) struct LoopMatchBadRhs {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_missing_assignment)]
+pub(crate) struct LoopMatchMissingAssignment {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_loop_match_arm_with_guard)]
+pub(crate) struct LoopMatchArmWithGuard {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_not_const)]
+#[help]
+pub(crate) struct ConstContinueNotMonomorphicConst {
+    #[primary_span]
+    pub span: Span,
+
+    #[subdiagnostic]
+    pub reason: ConstContinueNotMonomorphicConstReason,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ConstContinueNotMonomorphicConstReason {
+    #[label(mir_build_const_continue_not_const_constant_parameter)]
+    ConstantParameter {
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(mir_build_const_continue_not_const_const_block)]
+    ConstBlock {
+        #[primary_span]
+        span: Span,
+    },
+
+    #[label(mir_build_const_continue_not_const_const_other)]
+    Other {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_bad_const)]
+pub(crate) struct ConstContinueBadConst {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_missing_label_or_value)]
+pub(crate) struct ConstContinueMissingLabelOrValue {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_const_continue_unknown_jump_target)]
+pub(crate) struct ConstContinueUnknownJumpTarget {
+    #[primary_span]
+    pub span: Span,
 }

@@ -5,16 +5,17 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant, ConstantSource, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol};
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
-    name: &str,
+    name: Symbol,
     recv: &'tcx Expr<'_>,
     arg: &'tcx Expr<'_>,
 ) {
@@ -47,10 +48,10 @@ pub(super) fn check<'tcx>(
     }
 }
 
-fn lint(cx: &LateContext<'_>, expr: &Expr<'_>, name: &str, lhs: Span, rhs: Span, order: Ordering) {
+fn lint(cx: &LateContext<'_>, expr: &Expr<'_>, name: Symbol, lhs: Span, rhs: Span, order: Ordering) {
     let cmp_str = if order.is_ge() { "smaller" } else { "greater" };
 
-    let suggested_value = if (name == "min" && order.is_ge()) || (name == "max" && order.is_le()) {
+    let suggested_value = if (name == sym::min && order.is_ge()) || (name == sym::max && order.is_le()) {
         snippet(cx, rhs, "..")
     } else {
         snippet(cx, lhs, "..")

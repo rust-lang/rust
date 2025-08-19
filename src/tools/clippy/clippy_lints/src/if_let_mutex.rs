@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{eq_expr_value, higher};
+use clippy_utils::{eq_expr_value, higher, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Diag;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::edition::Edition::Edition2024;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -94,7 +93,7 @@ fn mutex_lock_call<'tcx>(
     op_mutex: Option<&'tcx Expr<'_>>,
 ) -> ControlFlow<&'tcx Expr<'tcx>> {
     if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
-        && path.ident.as_str() == "lock"
+        && path.ident.name == sym::lock
         && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
         && is_type_diagnostic_item(cx, ty, sym::Mutex)
         && op_mutex.is_none_or(|op| eq_expr_value(cx, self_arg, op))

@@ -8,7 +8,7 @@ use crate::os::windows::io::{AsRawHandle, HandleOrNull};
 use crate::sys::handle::Handle;
 use crate::sys::{c, stack_overflow};
 use crate::sys_common::FromInner;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -20,7 +20,11 @@ pub struct Thread {
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
 
         // CreateThread rounds up values for the stack size to the nearest page size (at least 4kb).
@@ -106,6 +110,14 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn handle(&self) -> &Handle {
         &self.handle
     }
@@ -113,6 +125,14 @@ impl Thread {
     pub fn into_handle(self) -> Handle {
         self.handle
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    // SAFETY: FFI call with no preconditions.
+    let id: u32 = unsafe { c::GetCurrentThreadId() };
+
+    // A return value of 0 indicates failed lookup.
+    if id == 0 { None } else { Some(id.into()) }
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

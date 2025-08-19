@@ -105,20 +105,16 @@
 //! stored when entering a macro definition starting from the state in which the meta-variable is
 //! bound.
 
-use std::iter;
-
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
+use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
-use super::quoted::VALID_FRAGMENT_NAMES_MSG;
 use crate::errors;
 use crate::mbe::{KleeneToken, TokenTree};
 
@@ -192,29 +188,26 @@ struct MacroState<'a> {
     ops: SmallVec<[KleeneToken; 1]>,
 }
 
-/// Checks that meta-variables are used correctly in a macro definition.
+/// Checks that meta-variables are used correctly in one rule of a macro definition.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
 /// - `node_id` is used to emit lints
-/// - `span` is used when no spans are available
-/// - `lhses` and `rhses` should have the same length and represent the macro definition
+/// - `args`, `lhs`, and `rhs` represent the rule
 pub(super) fn check_meta_variables(
     psess: &ParseSess,
     node_id: NodeId,
-    span: Span,
-    lhses: &[TokenTree],
-    rhses: &[TokenTree],
+    args: Option<&TokenTree>,
+    lhs: &TokenTree,
+    rhs: &TokenTree,
 ) -> Result<(), ErrorGuaranteed> {
-    if lhses.len() != rhses.len() {
-        psess.dcx().span_bug(span, "length mismatch between LHSes and RHSes")
-    }
     let mut guar = None;
-    for (lhs, rhs) in iter::zip(lhses, rhses) {
-        let mut binders = Binders::default();
-        check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
-        check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
+    let mut binders = Binders::default();
+    if let Some(args) = args {
+        check_binders(psess, node_id, args, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
     }
+    check_binders(psess, node_id, lhs, &Stack::Empty, &mut binders, &Stack::Empty, &mut guar);
+    check_occurrences(psess, node_id, rhs, &Stack::Empty, &binders, &Stack::Empty, &mut guar);
     guar.map_or(Ok(()), Err)
 }
 
@@ -264,26 +257,7 @@ fn check_binders(
             }
         }
         // Similarly, this can only happen when checking a toplevel macro.
-        TokenTree::MetaVarDecl(span, name, kind) => {
-            if kind.is_none() && node_id != DUMMY_NODE_ID {
-                // FIXME: Report this as a hard error eventually and remove equivalent errors from
-                // `parse_tt_inner` and `nameize`. Until then the error may be reported twice, once
-                // as a hard error and then once as a buffered lint.
-                if span.edition() >= Edition::Edition2024 {
-                    psess.dcx().emit_err(errors::MissingFragmentSpecifier {
-                        span,
-                        add_span: span.shrink_to_hi(),
-                        valid: VALID_FRAGMENT_NAMES_MSG,
-                    });
-                } else {
-                    psess.buffer_lint(
-                        MISSING_FRAGMENT_SPECIFIER,
-                        span,
-                        node_id,
-                        BuiltinLintDiag::MissingFragmentSpecifier,
-                    );
-                }
-            }
+        TokenTree::MetaVarDecl { span, name, .. } => {
             if !macros.is_empty() {
                 psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
@@ -352,7 +326,7 @@ fn check_occurrences(
 ) {
     match *rhs {
         TokenTree::Token(..) => {}
-        TokenTree::MetaVarDecl(span, _name, _kind) => {
+        TokenTree::MetaVarDecl { span, .. } => {
             psess.dcx().span_bug(span, "unexpected MetaVarDecl in rhs")
         }
         TokenTree::MetaVar(span, name) => {
@@ -383,10 +357,10 @@ enum NestedMacroState {
     /// The token `macro_rules` was processed.
     MacroRules,
     /// The tokens `macro_rules!` were processed.
-    MacroRulesNot,
+    MacroRulesBang,
     /// The tokens `macro_rules!` followed by a name were processed. The name may be either directly
     /// an identifier or a meta-variable (that hopefully would be instantiated by an identifier).
-    MacroRulesNotName,
+    MacroRulesBangName,
     /// The keyword `macro` was processed.
     Macro,
     /// The keyword `macro` followed by a name was processed.
@@ -434,24 +408,24 @@ fn check_nested_occurrences(
                 NestedMacroState::MacroRules,
                 &TokenTree::Token(Token { kind: TokenKind::Bang, .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNot;
+                state = NestedMacroState::MacroRulesBang;
             }
             (
-                NestedMacroState::MacroRulesNot,
+                NestedMacroState::MacroRulesBang,
                 &TokenTree::Token(Token { kind: TokenKind::Ident(..), .. }),
             ) => {
-                state = NestedMacroState::MacroRulesNotName;
+                state = NestedMacroState::MacroRulesBangName;
             }
-            (NestedMacroState::MacroRulesNot, &TokenTree::MetaVar(..)) => {
-                state = NestedMacroState::MacroRulesNotName;
+            (NestedMacroState::MacroRulesBang, &TokenTree::MetaVar(..)) => {
+                state = NestedMacroState::MacroRulesBangName;
                 // We check that the meta-variable is correctly used.
                 check_occurrences(psess, node_id, tt, macros, binders, ops, guar);
             }
-            (NestedMacroState::MacroRulesNotName, TokenTree::Delimited(.., del))
+            (NestedMacroState::MacroRulesBangName, TokenTree::Delimited(.., del))
             | (NestedMacroState::MacroName, TokenTree::Delimited(.., del))
                 if del.delim == Delimiter::Brace =>
             {
-                let macro_rules = state == NestedMacroState::MacroRulesNotName;
+                let macro_rules = state == NestedMacroState::MacroRulesBangName;
                 state = NestedMacroState::Empty;
                 let rest =
                     check_nested_macro(psess, node_id, macro_rules, &del.tts, &nested_macros, guar);

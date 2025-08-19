@@ -1,28 +1,3 @@
-error[E0220]: associated type `Cursor` not found for `Lexer<T>` in the current scope
-  --> $DIR/issue-109299-1.rs:10:40
-   |
-LL | struct Lexer<T>(T);
-   | --------------- associated type `Cursor` not found for this struct
-...
-LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
-   |                                        ^^^^^^ associated item not found in `Lexer<T>`
-   |
-   = note: the associated type was found for
-           - `Lexer<i32>`
-
-error[E0220]: associated type `Cursor` not found for `Lexer<T>` in the current scope
-  --> $DIR/issue-109299-1.rs:10:40
-   |
-LL | struct Lexer<T>(T);
-   | --------------- associated type `Cursor` not found for this struct
-...
-LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
-   |                                        ^^^^^^ associated item not found in `Lexer<T>`
-   |
-   = note: the associated type was found for
-           - `Lexer<i32>`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 error: unconstrained opaque type
   --> $DIR/issue-109299-1.rs:10:10
    |
@@ -31,6 +6,5 @@ LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
    |
    = note: `X` must be used in combination with a concrete type within the same crate
 
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0220`.

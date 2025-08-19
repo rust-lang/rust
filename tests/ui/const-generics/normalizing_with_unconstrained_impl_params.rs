@@ -14,5 +14,6 @@ impl<'a, T: std::fmt::Debug, const N: usize> Iterator for ConstChunksExact<'a, T
     //~^ ERROR mismatched types [E0308]
     //~| ERROR the const parameter `N` is not constrained by the impl trait, self type, or predicates [E0207]
     type Item = &'a [T; N]; }
+    //~^ ERROR: `Item` specializes an item from a parent `impl`, but that item is not marked `default`
 
 fn main() {}

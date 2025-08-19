@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-deterministic-concurrency
 //@ignore-target: windows # No libc env support on Windows
 
 use std::{env, thread};

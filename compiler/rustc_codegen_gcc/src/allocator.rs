@@ -1,6 +1,6 @@
-use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute};
+use gccjit::FnAttribute;
+use gccjit::{Context, FunctionType, RValue, ToRValue, Type};
 use rustc_ast::expand::allocator::{
     ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
@@ -57,7 +57,7 @@ pub(crate) unsafe fn codegen(
             let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
             let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
-            create_wrapper_function(tcx, context, &from_name, &to_name, &types, output);
+            create_wrapper_function(tcx, context, &from_name, Some(&to_name), &types, output);
         }
     }
 
@@ -66,36 +66,62 @@ pub(crate) unsafe fn codegen(
         tcx,
         context,
         &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
-        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
+        Some(&mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind))),
         &[usize, usize],
         None,
     );
 
-    let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
-    let global = context.new_global(None, GlobalKind::Exported, i8, name);
-    #[cfg(feature = "master")]
-    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
-        tcx.sess.default_visibility(),
-    )));
-    let value = tcx.sess.opts.unstable_opts.oom.should_panic();
-    let value = context.new_rvalue_from_int(i8, value as i32);
-    global.global_set_initializer_rvalue(value);
+    create_const_value_function(
+        tcx,
+        context,
+        &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+        i8,
+        context.new_rvalue_from_int(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as i32),
+    );
 
-    let name = mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE);
-    let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    create_wrapper_function(
+        tcx,
+        context,
+        &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+        None,
+        &[],
+        None,
+    );
+}
+
+fn create_const_value_function(
+    tcx: TyCtxt<'_>,
+    context: &Context<'_>,
+    name: &str,
+    output: Type<'_>,
+    value: RValue<'_>,
+) {
+    let func = context.new_function(None, FunctionType::Exported, output, &[], name, false);
+
     #[cfg(feature = "master")]
-    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
-        tcx.sess.default_visibility(),
-    )));
-    let value = context.new_rvalue_from_int(i8, 0);
-    global.global_set_initializer_rvalue(value);
+    {
+        func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(
+            tcx.sess.default_visibility(),
+        )));
+
+        // FIXME(antoyo): cg_llvm sets AlwaysInline, but AlwaysInline is different in GCC and using
+        // it here will causes linking errors when using LTO.
+        func.add_attribute(FnAttribute::Inline);
+    }
+
+    if tcx.sess.must_emit_unwind_tables() {
+        // TODO(antoyo): emit unwind tables.
+    }
+
+    let block = func.new_block("entry");
+    block.end_with_return(None, value);
 }
 
 fn create_wrapper_function(
     tcx: TyCtxt<'_>,
     context: &Context<'_>,
     from_name: &str,
-    to_name: &str,
+    to_name: Option<&str>,
     types: &[Type<'_>],
     output: Option<Type<'_>>,
 ) {
@@ -124,34 +150,40 @@ fn create_wrapper_function(
         // TODO(antoyo): emit unwind tables.
     }
 
-    let args: Vec<_> = types
-        .iter()
-        .enumerate()
-        .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
-        .collect();
-    let callee = context.new_function(
-        None,
-        FunctionType::Extern,
-        output.unwrap_or(void),
-        &args,
-        to_name,
-        false,
-    );
-    #[cfg(feature = "master")]
-    callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
-
     let block = func.new_block("entry");
 
-    let args = args
-        .iter()
-        .enumerate()
-        .map(|(i, _)| func.get_param(i as i32).to_rvalue())
-        .collect::<Vec<_>>();
-    let ret = context.new_call(None, callee, &args);
-    //llvm::LLVMSetTailCall(ret, True);
-    if output.is_some() {
-        block.end_with_return(None, ret);
+    if let Some(to_name) = to_name {
+        let args: Vec<_> = types
+            .iter()
+            .enumerate()
+            .map(|(index, typ)| context.new_parameter(None, *typ, format!("param{}", index)))
+            .collect();
+        let callee = context.new_function(
+            None,
+            FunctionType::Extern,
+            output.unwrap_or(void),
+            &args,
+            to_name,
+            false,
+        );
+        #[cfg(feature = "master")]
+        callee.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+
+        let args = args
+            .iter()
+            .enumerate()
+            .map(|(i, _)| func.get_param(i as i32).to_rvalue())
+            .collect::<Vec<_>>();
+        let ret = context.new_call(None, callee, &args);
+        //llvm::LLVMSetTailCall(ret, True);
+        if output.is_some() {
+            block.end_with_return(None, ret);
+        } else {
+            block.add_eval(None, ret);
+            block.end_with_void_return(None);
+        }
     } else {
+        assert!(output.is_none());
         block.end_with_void_return(None);
     }
 

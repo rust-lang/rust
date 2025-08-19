@@ -127,7 +127,7 @@ fn check_fn_decl(cx: &LateContext<'_>, decl: &FnDecl<'_>, sp: Span, max: u64) {
 
 impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Struct(_, variant_data, _) = &item.kind
+        if let ItemKind::Struct(_, _, variant_data) = &item.kind
             && variant_data.fields().len() as u64 > self.max_struct_bools
             && has_n_bools(
                 variant_data.fields().iter().map(|field| field.ty),

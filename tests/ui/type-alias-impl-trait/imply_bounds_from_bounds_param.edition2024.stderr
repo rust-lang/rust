@@ -1,0 +1,91 @@
+error[E0499]: cannot borrow `z` as mutable more than once at a time
+  --> $DIR/imply_bounds_from_bounds_param.rs:36:27
+   |
+LL |     let mut thing = test(&mut z);
+   |                          ------ first mutable borrow occurs here
+LL |     let mut thing2 = test(&mut z);
+   |                           ^^^^^^ second mutable borrow occurs here
+LL |     thing.plus_one();
+   |     ----- first borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/imply_bounds_from_bounds_param.rs:35:21
+   |
+LL |     let mut thing = test(&mut z);
+   |                     ^^^^^^^^^^^^
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
+   |                                             +++++++
+
+error[E0502]: cannot borrow `z` as immutable because it is also borrowed as mutable
+  --> $DIR/imply_bounds_from_bounds_param.rs:38:5
+   |
+LL |     let mut thing = test(&mut z);
+   |                          ------ mutable borrow occurs here
+...
+LL |     assert_eq!(z, 43);
+   |     ^^^^^^^^^^^^^^^^^ immutable borrow occurs here
+...
+LL |     thing.plus_one();
+   |     ----- mutable borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/imply_bounds_from_bounds_param.rs:35:21
+   |
+LL |     let mut thing = test(&mut z);
+   |                     ^^^^^^^^^^^^
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
+   |                                             +++++++
+
+error[E0502]: cannot borrow `z` as immutable because it is also borrowed as mutable
+  --> $DIR/imply_bounds_from_bounds_param.rs:40:5
+   |
+LL |     let mut thing = test(&mut z);
+   |                          ------ mutable borrow occurs here
+...
+LL |     assert_eq!(z, 44);
+   |     ^^^^^^^^^^^^^^^^^ immutable borrow occurs here
+LL |     thing.plus_one();
+   |     ----- mutable borrow later used here
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/imply_bounds_from_bounds_param.rs:35:21
+   |
+LL |     let mut thing = test(&mut z);
+   |                     ^^^^^^^^^^^^
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
+   |                                             +++++++
+
+error[E0502]: cannot borrow `z` as immutable because it is also borrowed as mutable
+  --> $DIR/imply_bounds_from_bounds_param.rs:42:5
+   |
+LL |     let mut thing = test(&mut z);
+   |                          ------ mutable borrow occurs here
+...
+LL |     assert_eq!(z, 45);
+   |     ^^^^^^^^^^^^^^^^^ immutable borrow occurs here
+LL | }
+   | - mutable borrow might be used here, when `thing` is dropped and runs the destructor for type `impl PlusOne`
+   |
+note: this call may capture more lifetimes than intended, because Rust 2024 has adjusted the `impl Trait` lifetime capture rules
+  --> $DIR/imply_bounds_from_bounds_param.rs:35:21
+   |
+LL |     let mut thing = test(&mut z);
+   |                     ^^^^^^^^^^^^
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use the precise capturing `use<...>` syntax to make the captures explicit
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<> {
+   |                                             +++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0499, E0502.
+For more information about an error, try `rustc --explain E0499`.

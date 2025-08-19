@@ -5,7 +5,6 @@ use rustc_span::Span;
 
 use crate::error_reporting::TypeErrCtxt;
 use crate::infer::RegionResolutionError;
-use crate::infer::RegionResolutionError::*;
 
 mod different_lifetimes;
 pub mod find_anon_type;
@@ -83,8 +82,10 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
 
     pub(super) fn regions(&self) -> Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)> {
         match (&self.error, self.regions) {
-            (Some(ConcreteFailure(origin, sub, sup)), None) => Some((origin.span(), *sub, *sup)),
-            (Some(SubSupConflict(_, _, origin, sub, _, sup, _)), None) => {
+            (Some(RegionResolutionError::ConcreteFailure(origin, sub, sup)), None) => {
+                Some((origin.span(), *sub, *sup))
+            }
+            (Some(RegionResolutionError::SubSupConflict(_, _, origin, sub, _, sup, _)), None) => {
                 Some((origin.span(), *sub, *sup))
             }
             (None, Some((span, sub, sup))) => Some((span, sub, sup)),

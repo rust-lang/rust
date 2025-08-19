@@ -30,10 +30,10 @@ LL |     fn a(self: impl Receiver<Target=Self>) -> u32 {
    |                     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::a`
 help: consider borrowing here
    |
-LL |     &foo.a();
-   |     +
-LL |     &mut foo.a();
-   |     ++++
+LL |     (&foo).a();
+   |     ++   +
+LL |     (&mut foo).a();
+   |     +++++    +
 
 error[E0277]: the trait bound `Foo: Deref` is not satisfied
   --> $DIR/arbitrary_self_types_generic_over_receiver.rs:21:9
@@ -48,10 +48,10 @@ LL |     fn b(self: impl Deref<Target=Self>) -> u32 {
    |                     ^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::b`
 help: consider borrowing here
    |
-LL |     &foo.b();
-   |     +
-LL |     &mut foo.b();
-   |     ++++
+LL |     (&foo).b();
+   |     ++   +
+LL |     (&mut foo).b();
+   |     +++++    +
 
 error: aborting due to 4 previous errors
 

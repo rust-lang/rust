@@ -33,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                 let ltopt = if lt.is_anonymous() {
                     String::new()
                 } else {
-                    format!("{} ", lt.ident.as_str())
+                    format!("{} ", lt.ident)
                 };
 
                 if mut_ty.mutbl == Mutability::Mut {

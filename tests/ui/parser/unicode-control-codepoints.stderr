@@ -100,21 +100,6 @@ LL |     // if access_level != "us�e�r" { // Check if admin
    = note: `#[deny(text_direction_codepoint_in_comment)]` on by default
    = help: if their presence wasn't intentional, you can remove them
 
-error: unicode codepoint changing visible direction of text present in comment
-  --> $DIR/unicode-control-codepoints.rs:40:1
-   |
-LL | //"/*� } �if isAdmin� � begin admins only */"
-   | ^^^^^-^^^-^^^^^^^^^^-^-^^^^^^^^^^^^^^^^^^^^^^
-   | |    |   |          | |
-   | |    |   |          | '\u{2066}'
-   | |    |   |          '\u{2069}'
-   | |    |   '\u{2066}'
-   | |    '\u{202e}'
-   | this comment contains invisible unicode text flow control codepoints
-   |
-   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-   = help: if their presence wasn't intentional, you can remove them
-
 error: unicode codepoint changing visible direction of text present in literal
   --> $DIR/unicode-control-codepoints.rs:13:22
    |
@@ -207,14 +192,14 @@ LL -     let _ = cr#"�"#;
 LL +     let _ = cr#"\u{202e}"#;
    |
 
-error: unicode codepoint changing visible direction of text present in format string
+error: unicode codepoint changing visible direction of text present in literal
   --> $DIR/unicode-control-codepoints.rs:36:14
    |
 LL |     println!("{{�}}");
    |              ^^^-^^^
    |              |  |
    |              |  '\u{202e}'
-   |              this format string contains an invisible unicode text flow control codepoint
+   |              this literal contains an invisible unicode text flow control codepoint
    |
    = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
    = help: if their presence wasn't intentional, you can remove them
@@ -223,6 +208,21 @@ help: if you want to keep them but make them visible in your source code, you ca
 LL -     println!("{{�}}");
 LL +     println!("{{\u{202e}}}");
    |
+
+error: unicode codepoint changing visible direction of text present in comment
+  --> $DIR/unicode-control-codepoints.rs:40:1
+   |
+LL | //"/*� } �if isAdmin� � begin admins only */"
+   | ^^^^^-^^^-^^^^^^^^^^-^-^^^^^^^^^^^^^^^^^^^^^^
+   | |    |   |          | |
+   | |    |   |          | '\u{2066}'
+   | |    |   |          '\u{2069}'
+   | |    |   '\u{2066}'
+   | |    '\u{202e}'
+   | this comment contains invisible unicode text flow control codepoints
+   |
+   = note: these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+   = help: if their presence wasn't intentional, you can remove them
 
 error: unicode codepoint changing visible direction of text present in doc comment
   --> $DIR/unicode-control-codepoints.rs:43:1

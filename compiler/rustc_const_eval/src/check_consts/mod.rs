@@ -4,10 +4,10 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
-use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
@@ -83,7 +83,7 @@ pub fn rustc_allow_const_fn_unstable(
 ) -> bool {
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
 
-    find_attr!(attrs, AttributeKind::AllowConstFnUnstable(syms) if syms.contains(&feature_gate))
+    find_attr!(attrs, AttributeKind::AllowConstFnUnstable(syms, _) if syms.contains(&feature_gate))
 }
 
 /// Returns `true` if the given `def_id` (trait or function) is "safe to expose on stable".
@@ -94,7 +94,7 @@ pub fn rustc_allow_const_fn_unstable(
 /// world into two functions: those that are safe to expose on stable (and hence may not use
 /// unstable features, not even recursively), and those that are not.
 pub fn is_fn_or_trait_safe_to_expose_on_stable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // A default body in a `#[const_trait]` is const-stable when the trait is const-stable.
+    // A default body in a `const trait` is const-stable when the trait is const-stable.
     if tcx.is_const_default_method(def_id) {
         return is_fn_or_trait_safe_to_expose_on_stable(tcx, tcx.parent(def_id));
     }

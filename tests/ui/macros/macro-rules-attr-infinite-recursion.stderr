@@ -1,0 +1,14 @@
+error: recursion limit reached while expanding `#[attr]`
+  --> $DIR/macro-rules-attr-infinite-recursion.rs:6:9
+   |
+LL |         #[attr] $($body)*
+   |         ^^^^^^^
+...
+LL | #[attr]
+   | ------- in this attribute macro expansion
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`macro_rules_attr_infinite_recursion`)
+   = note: this error originates in the attribute macro `attr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,10 @@
+warning: trait `T` is never used
+  --> $DIR/empty-generic-brackets-equiv.rs:9:7
+   |
+LL | trait T<> {}
+   |       ^
+   |
+   = note: `#[warn(dead_code)]` on by default
+
+warning: 1 warning emitted
+

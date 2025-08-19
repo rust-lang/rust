@@ -1,5 +1,6 @@
 //! Random access inspection of the results of a dataflow analysis.
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::ops::{Deref, DerefMut};
 
@@ -9,38 +10,30 @@ use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
-/// Some `ResultsCursor`s want to own a `Results`, and some want to borrow a `Results`, either
-/// mutable or immutably. This type allows all of the above. It's similar to `Cow`.
-pub enum ResultsHandle<'a, 'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    BorrowedMut(&'a mut Results<'tcx, A>),
-    Owned(Results<'tcx, A>),
+/// Some `ResultsCursor`s want to own an `Analysis`, and some want to borrow an `Analysis`, either
+/// mutable or immutably. This type allows all of the above. It's similar to `Cow`, but `Cow`
+/// doesn't allow mutable borrowing.
+enum CowMut<'a, T> {
+    BorrowedMut(&'a mut T),
+    Owned(T),
 }
 
-impl<'tcx, A> Deref for ResultsHandle<'_, 'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    type Target = Results<'tcx, A>;
+impl<T> Deref for CowMut<'_, T> {
+    type Target = T;
 
-    fn deref(&self) -> &Results<'tcx, A> {
+    fn deref(&self) -> &T {
         match self {
-            ResultsHandle::BorrowedMut(borrowed) => borrowed,
-            ResultsHandle::Owned(owned) => owned,
+            CowMut::BorrowedMut(borrowed) => borrowed,
+            CowMut::Owned(owned) => owned,
         }
     }
 }
 
-impl<'tcx, A> DerefMut for ResultsHandle<'_, 'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    fn deref_mut(&mut self) -> &mut Results<'tcx, A> {
+impl<T> DerefMut for CowMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
         match self {
-            ResultsHandle::BorrowedMut(borrowed) => borrowed,
-            ResultsHandle::Owned(owned) => owned,
+            CowMut::BorrowedMut(borrowed) => borrowed,
+            CowMut::Owned(owned) => owned,
         }
     }
 }
@@ -60,7 +53,8 @@ where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: ResultsHandle<'mir, 'tcx, A>,
+    analysis: CowMut<'mir, A>,
+    results: Cow<'mir, Results<A::Domain>>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -88,11 +82,15 @@ where
         self.body
     }
 
-    /// Returns a new cursor that can inspect `results`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: ResultsHandle<'mir, 'tcx, A>) -> Self {
-        let bottom_value = results.analysis.bottom_value(body);
+    fn new(
+        body: &'mir mir::Body<'tcx>,
+        analysis: CowMut<'mir, A>,
+        results: Cow<'mir, Results<A::Domain>>,
+    ) -> Self {
+        let bottom_value = analysis.bottom_value(body);
         ResultsCursor {
             body,
+            analysis,
             results,
 
             // Initialize to the `bottom_value` and set `state_needs_reset` to tell the cursor that
@@ -107,6 +105,24 @@ where
         }
     }
 
+    /// Returns a new cursor that takes ownership of and inspects analysis results.
+    pub fn new_owning(
+        body: &'mir mir::Body<'tcx>,
+        analysis: A,
+        results: Results<A::Domain>,
+    ) -> Self {
+        Self::new(body, CowMut::Owned(analysis), Cow::Owned(results))
+    }
+
+    /// Returns a new cursor that borrows and inspects analysis results.
+    pub fn new_borrowing(
+        body: &'mir mir::Body<'tcx>,
+        analysis: &'mir mut A,
+        results: &'mir Results<A::Domain>,
+    ) -> Self {
+        Self::new(body, CowMut::BorrowedMut(analysis), Cow::Borrowed(results))
+    }
+
     /// Allows inspection of unreachable basic blocks even with `debug_assertions` enabled.
     #[cfg(test)]
     pub(crate) fn allow_unreachable(&mut self) {
@@ -116,7 +132,7 @@ where
 
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
-        &self.results.analysis
+        &self.analysis
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.
@@ -128,7 +144,7 @@ where
         #[cfg(debug_assertions)]
         assert!(self.reachable_blocks.contains(block));
 
-        self.state.clone_from(self.results.entry_set_for_block(block));
+        self.state.clone_from(&self.results[block]);
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
     }
@@ -220,7 +236,7 @@ where
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            &mut self.results.analysis,
+            &mut *self.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -236,7 +252,7 @@ where
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
     pub fn apply_custom_effect(&mut self, f: impl FnOnce(&mut A, &mut A::Domain)) {
-        f(&mut self.results.analysis, &mut self.state);
+        f(&mut self.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }

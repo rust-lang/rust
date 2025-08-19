@@ -329,7 +329,7 @@ macro_rules! mcexp {
 #[deprecated]
 fn obsolete() {}
 
-#[deprecated(note = "for awhile")]
+#[deprecated(note = "for a while")]
 fn very_obsolete() {}
 
 // region: Some region name
@@ -608,8 +608,8 @@ fn let_statements() {
                     StructureNode {
                         parent: None,
                         label: "very_obsolete",
-                        navigation_range: 511..524,
-                        node_range: 473..529,
+                        navigation_range: 512..525,
+                        node_range: 473..530,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -621,8 +621,8 @@ fn let_statements() {
                     StructureNode {
                         parent: None,
                         label: "Some region name",
-                        navigation_range: 531..558,
-                        node_range: 531..558,
+                        navigation_range: 532..559,
+                        node_range: 532..559,
                         kind: Region,
                         detail: None,
                         deprecated: false,
@@ -630,8 +630,8 @@ fn let_statements() {
                     StructureNode {
                         parent: None,
                         label: "m",
-                        navigation_range: 598..599,
-                        node_range: 573..636,
+                        navigation_range: 599..600,
+                        node_range: 574..637,
                         kind: SymbolKind(
                             Module,
                         ),
@@ -643,8 +643,8 @@ fn let_statements() {
                             22,
                         ),
                         label: "dontpanic",
-                        navigation_range: 573..593,
-                        node_range: 573..593,
+                        navigation_range: 574..594,
+                        node_range: 574..594,
                         kind: Region,
                         detail: None,
                         deprecated: false,
@@ -654,8 +654,8 @@ fn let_statements() {
                             22,
                         ),
                         label: "f",
-                        navigation_range: 605..606,
-                        node_range: 602..611,
+                        navigation_range: 606..607,
+                        node_range: 603..612,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -669,8 +669,8 @@ fn let_statements() {
                             22,
                         ),
                         label: "g",
-                        navigation_range: 628..629,
-                        node_range: 612..634,
+                        navigation_range: 629..630,
+                        node_range: 613..635,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -682,8 +682,8 @@ fn let_statements() {
                     StructureNode {
                         parent: None,
                         label: "extern \"C\"",
-                        navigation_range: 638..648,
-                        node_range: 638..651,
+                        navigation_range: 639..649,
+                        node_range: 639..652,
                         kind: ExternBlock,
                         detail: None,
                         deprecated: false,
@@ -691,8 +691,8 @@ fn let_statements() {
                     StructureNode {
                         parent: None,
                         label: "let_statements",
-                        navigation_range: 656..670,
-                        node_range: 653..813,
+                        navigation_range: 657..671,
+                        node_range: 654..814,
                         kind: SymbolKind(
                             Function,
                         ),
@@ -706,8 +706,8 @@ fn let_statements() {
                             27,
                         ),
                         label: "x",
-                        navigation_range: 683..684,
-                        node_range: 679..690,
+                        navigation_range: 684..685,
+                        node_range: 680..691,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -719,8 +719,8 @@ fn let_statements() {
                             27,
                         ),
                         label: "mut y",
-                        navigation_range: 699..704,
-                        node_range: 695..709,
+                        navigation_range: 700..705,
+                        node_range: 696..710,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -732,8 +732,8 @@ fn let_statements() {
                             27,
                         ),
                         label: "Foo { .. }",
-                        navigation_range: 718..740,
-                        node_range: 714..753,
+                        navigation_range: 719..741,
+                        node_range: 715..754,
                         kind: SymbolKind(
                             Local,
                         ),
@@ -745,8 +745,8 @@ fn let_statements() {
                             27,
                         ),
                         label: "_",
-                        navigation_range: 803..804,
-                        node_range: 799..811,
+                        navigation_range: 804..805,
+                        node_range: 800..812,
                         kind: SymbolKind(
                             Local,
                         ),

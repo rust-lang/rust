@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::command::Command;
-use crate::{env_var, is_msvc};
+use crate::{env_var, is_windows_msvc};
 
 /// Construct a new platform-specific C compiler invocation.
 ///
@@ -82,7 +82,7 @@ impl Cc {
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
         let mut path = std::path::PathBuf::from(name);
 
-        if is_msvc() {
+        if is_windows_msvc() {
             path.set_extension("exe");
             let fe_path = path.clone();
             path.set_extension("");
@@ -108,7 +108,7 @@ impl Cc {
     /// Optimize the output.
     /// Equivalent to `-O3` for GNU-compatible linkers or `-O2` for MSVC linkers.
     pub fn optimize(&mut self) -> &mut Self {
-        if is_msvc() {
+        if is_windows_msvc() {
             self.cmd.arg("-O2");
         } else {
             self.cmd.arg("-O3");

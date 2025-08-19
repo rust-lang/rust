@@ -6,18 +6,18 @@
 #![expect(incomplete_features)]
 
 fn unbox_1<T>(b: Box<T>) -> T {
-    let deref!(x) = b else { unreachable!() };
+    let deref!(x) = b;
     x
 }
 
 fn unbox_2<T>(b: Box<(T,)>) -> T {
-    let (x,) = b else { unreachable!() };
+    let (x,) = b;
     x
 }
 
 fn unbox_separately<T>(b: Box<(T, T)>) -> (T, T) {
-    let (x, _) = b else { unreachable!() };
-    let (_, y) = b else { unreachable!() };
+    let (x, _) = b;
+    let (_, y) = b;
     (x, y)
 }
 
@@ -31,7 +31,7 @@ fn main() {
 
     // test that borrowing from a box also works
     let mut b = "hi".to_owned().into_boxed_str();
-    let deref!(ref mut s) = b else { unreachable!() };
+    let deref!(ref mut s) = b;
     s.make_ascii_uppercase();
     assert_eq!(&*b, "HI");
 }

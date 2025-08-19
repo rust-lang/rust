@@ -161,7 +161,7 @@ fn path_has_args(p: &QPath<'_>) -> bool {
 ///   - `Copy` itself, or
 ///   - the only use of a mutable reference, or
 ///   - not a variable (created by a function call)
-#[expect(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, clippy::too_many_lines)]
 fn needless_borrow_count<'tcx>(
     cx: &LateContext<'tcx>,
     possible_borrowers: &mut Vec<(LocalDefId, PossibleBorrowerMap<'tcx, 'tcx>)>,
@@ -174,6 +174,7 @@ fn needless_borrow_count<'tcx>(
 ) -> usize {
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
+    let meta_sized_trait_def_id = cx.tcx.lang_items().meta_sized_trait();
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
@@ -209,6 +210,7 @@ fn needless_borrow_count<'tcx>(
         .all(|trait_def_id| {
             Some(trait_def_id) == destruct_trait_def_id
                 || Some(trait_def_id) == sized_trait_def_id
+                || Some(trait_def_id) == meta_sized_trait_def_id
                 || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
         })
     {
@@ -230,11 +232,11 @@ fn needless_borrow_count<'tcx>(
     let mut args_with_referent_ty = callee_args.to_vec();
 
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
-        if let ExprKind::Field(base, _) = &referent.kind {
-            let base_ty = cx.typeck_results().expr_ty(base);
-            if drop_trait_def_id.is_some_and(|id| implements_trait(cx, base_ty, id, &[])) {
-                return false;
-            }
+        if let ExprKind::Field(base, _) = &referent.kind
+            && let base_ty = cx.typeck_results().expr_ty(base)
+            && drop_trait_def_id.is_some_and(|id| implements_trait(cx, base_ty, id, &[]))
+        {
+            return false;
         }
 
         let referent_ty = cx.typeck_results().expr_ty(referent);
@@ -269,7 +271,7 @@ fn needless_borrow_count<'tcx>(
                     .tcx
                     .is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
-                && let GenericArgKind::Type(ty) = args_with_referent_ty[param_ty.index as usize].unpack()
+                && let GenericArgKind::Type(ty) = args_with_referent_ty[param_ty.index as usize].kind()
                 && ty.is_array()
                 && !msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR)
             {
@@ -415,7 +417,7 @@ fn replace_types<'tcx>(
                 {
                     let projection = projection_predicate
                         .projection_term
-                        .with_self_ty(cx.tcx, new_ty)
+                        .with_replaced_self_ty(cx.tcx, new_ty)
                         .expect_ty(cx.tcx)
                         .to_ty(cx.tcx);
 

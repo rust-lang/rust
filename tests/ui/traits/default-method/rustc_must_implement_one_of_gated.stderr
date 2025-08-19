@@ -1,11 +1,12 @@
-error[E0658]: the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete definition of a trait, it's currently in experimental form and should be changed before being exposed outside of the std
+error[E0658]: use of an internal attribute
   --> $DIR/rustc_must_implement_one_of_gated.rs:1:1
    |
 LL | #[rustc_must_implement_one_of(eq, neq)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: the `#[rustc_must_implement_one_of]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete definition of a trait. Its syntax and semantics are highly experimental and will be subject to change before stabilization
 
 error: aborting due to 1 previous error
 

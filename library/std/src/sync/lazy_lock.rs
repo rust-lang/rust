@@ -1,7 +1,7 @@
 use super::poison::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
-use crate::ops::Deref;
+use crate::ops::{Deref, DerefMut};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
@@ -24,6 +24,22 @@ union Data<T, F> {
 /// initialization routine is currently running.
 ///
 /// [`LazyCell`]: crate::cell::LazyCell
+///
+/// # Poisoning
+///
+/// If the initialization closure passed to [`LazyLock::new`] panics, the lock will be poisoned.
+/// Once the lock is poisoned, any threads that attempt to access this lock (via a dereference
+/// or via an explicit call to [`force()`]) will panic.
+///
+/// This concept is similar to that of poisoning in the [`std::sync::poison`] module. A key
+/// difference, however, is that poisoning in `LazyLock` is _unrecoverable_. All future accesses of
+/// the lock from other threads will panic, whereas a type in [`std::sync::poison`] like
+/// [`std::sync::poison::Mutex`] allows recovery via [`PoisonError::into_inner()`].
+///
+/// [`force()`]: LazyLock::force
+/// [`std::sync::poison`]: crate::sync::poison
+/// [`std::sync::poison::Mutex`]: crate::sync::poison::Mutex
+/// [`PoisonError::into_inner()`]: crate::sync::poison::PoisonError::into_inner
 ///
 /// # Examples
 ///
@@ -102,6 +118,10 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     ///
     /// Returns `Ok(value)` if `Lazy` is initialized and `Err(f)` otherwise.
     ///
+    /// # Panics
+    ///
+    /// Panics if the lock is poisoned.
+    ///
     /// # Examples
     ///
     /// ```
@@ -135,6 +155,15 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 
     /// Forces the evaluation of this lazy value and returns a mutable reference to
     /// the result.
+    ///
+    /// # Panics
+    ///
+    /// If the initialization closure panics (the one that is passed to the [`new()`] method), the
+    /// panic is propagated to the caller, and the lock becomes poisoned. This will cause all future
+    /// accesses of the lock (via [`force()`] or a dereference) to panic.
+    ///
+    /// [`new()`]: LazyLock::new
+    /// [`force()`]: LazyLock::force
     ///
     /// # Examples
     ///
@@ -193,6 +222,15 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// This method will block the calling thread if another initialization
     /// routine is currently running.
     ///
+    /// # Panics
+    ///
+    /// If the initialization closure panics (the one that is passed to the [`new()`] method), the
+    /// panic is propagated to the caller, and the lock becomes poisoned. This will cause all future
+    /// accesses of the lock (via [`force()`] or a dereference) to panic.
+    ///
+    /// [`new()`]: LazyLock::new
+    /// [`force()`]: LazyLock::force
+    ///
     /// # Examples
     ///
     /// ```
@@ -227,7 +265,8 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 }
 
 impl<T, F> LazyLock<T, F> {
-    /// Returns a mutable reference to the value if initialized, or `None` if not.
+    /// Returns a mutable reference to the value if initialized. Otherwise (if uninitialized or
+    /// poisoned), returns `None`.
     ///
     /// # Examples
     ///
@@ -256,7 +295,8 @@ impl<T, F> LazyLock<T, F> {
         }
     }
 
-    /// Returns a reference to the value if initialized, or `None` if not.
+    /// Returns a reference to the value if initialized. Otherwise (if uninitialized or poisoned),
+    /// returns `None`.
     ///
     /// # Examples
     ///
@@ -307,9 +347,33 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     /// This method will block the calling thread if another initialization
     /// routine is currently running.
     ///
+    /// # Panics
+    ///
+    /// If the initialization closure panics (the one that is passed to the [`new()`] method), the
+    /// panic is propagated to the caller, and the lock becomes poisoned. This will cause all future
+    /// accesses of the lock (via [`force()`] or a dereference) to panic.
+    ///
+    /// [`new()`]: LazyLock::new
+    /// [`force()`]: LazyLock::force
     #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
+    }
+}
+
+#[stable(feature = "lazy_deref_mut", since = "1.89.0")]
+impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
+    /// # Panics
+    ///
+    /// If the initialization closure panics (the one that is passed to the [`new()`] method), the
+    /// panic is propagated to the caller, and the lock becomes poisoned. This will cause all future
+    /// accesses of the lock (via [`force()`] or a dereference) to panic.
+    ///
+    /// [`new()`]: LazyLock::new
+    /// [`force()`]: LazyLock::force
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        LazyLock::force_mut(self)
     }
 }
 

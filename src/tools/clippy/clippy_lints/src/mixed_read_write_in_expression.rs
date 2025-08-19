@@ -171,14 +171,11 @@ impl<'tcx> Visitor<'tcx> for DivergenceVisitor<'_, 'tcx> {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
             ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
-                match typ.kind() {
-                    ty::FnDef(..) | ty::FnPtr(..) => {
-                        let sig = typ.fn_sig(self.cx.tcx);
-                        if self.cx.tcx.instantiate_bound_regions_with_erased(sig).output().kind() == &ty::Never {
-                            self.report_diverging_sub_expr(e);
-                        }
-                    },
-                    _ => {},
+                if typ.is_fn() {
+                    let sig = typ.fn_sig(self.cx.tcx);
+                    if self.cx.tcx.instantiate_bound_regions_with_erased(sig).output().kind() == &ty::Never {
+                        self.report_diverging_sub_expr(e);
+                    }
                 }
             },
             ExprKind::MethodCall(..) => {

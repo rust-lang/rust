@@ -36,6 +36,16 @@ macro_rules! gate_alt {
             feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
+    ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr, $notes: expr) => {{
+        if !$has_feature && !$span.allows_unstable($name) {
+            #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+            let mut diag = feature_err(&$visitor.sess, $name, $span, $explain);
+            for note in $notes {
+                diag.note(*note);
+            }
+            diag.emit();
+        }
+    }};
 }
 
 /// The case involving a multispan.
@@ -154,11 +164,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
         // Check feature gates for built-in attributes.
         if let Some(BuiltinAttribute {
-            gate: AttributeGate::Gated(_, name, descr, has_feature),
+            gate: AttributeGate::Gated { feature, message, check, notes, .. },
             ..
         }) = attr_info
         {
-            gate_alt!(self, has_feature(self.features), *name, attr.span, *descr);
+            gate_alt!(self, check(self.features), *feature, attr.span, *message, *notes);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
@@ -207,18 +217,18 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
-                if let &ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(ast::Impl { of_trait: Some(of_trait), .. }) => {
+                if let ast::ImplPolarity::Negative(span) = of_trait.polarity {
                     gate!(
                         &self,
                         negative_impls,
-                        span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
+                        span.to(of_trait.trait_ref.path.span),
                         "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
 
-                if let ast::Defaultness::Default(_) = defaultness {
+                if let ast::Defaultness::Default(_) = of_trait.defaultness {
                     gate!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
@@ -276,9 +286,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
         match &ty.kind {
-            ast::TyKind::BareFn(bare_fn_ty) => {
+            ast::TyKind::FnPtr(fn_ptr_ty) => {
                 // Function pointers cannot be `const`
-                self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
+                self.check_late_bound_lifetime_defs(&fn_ptr_ty.generic_params);
             }
             ast::TyKind::Never => {
                 gate!(&self, never_type, ty.span, "the `!` type is experimental");
@@ -459,7 +469,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "`if let` guards are experimental",
         "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
     );
-    gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
         async_trait_bounds,
         "`async` trait bounds are unstable",
@@ -477,11 +486,12 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         for span in spans {
             if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
                 && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
+                && (!visitor.features.yield_expr() && !span.allows_unstable(sym::yield_expr))
             {
                 #[allow(rustc::untranslatable_diagnostic)]
-                // Don't know which of the two features to include in the
-                // error message, so I am arbitrarily picking one.
-                feature_err(&visitor.sess, sym::coroutines, *span, "yield syntax is experimental")
+                // Emit yield_expr as the error, since that will be sufficient. You can think of it
+                // as coroutines and gen_blocks imply yield_expr.
+                feature_err(&visitor.sess, sym::yield_expr, *span, "yield syntax is experimental")
                     .emit();
             }
         }
@@ -494,7 +504,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(associated_const_equality, "associated const equality is incomplete");
     gate_all!(yeet_expr, "`do yeet` expression is experimental");
-    gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(ergonomic_clones, "ergonomic clones are experimental");
@@ -514,6 +523,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(contracts_internals, "contract internal machinery is for internal use only");
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(super_let, "`super let` is experimental");
+    gate_all!(frontmatter, "frontmatters are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -620,16 +630,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
         .iter()
         .filter(|(f1, f2)| features.enabled(*f1) && features.enabled(*f2))
     {
-        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1) {
-            if let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
-            {
-                let spans = vec![f1_span, f2_span];
-                sess.dcx().emit_err(errors::IncompatibleFeatures {
-                    spans,
-                    f1: f1_name,
-                    f2: f2_name,
-                });
-            }
+        if let Some((f1_name, f1_span)) = enabled_features.clone().find(|(name, _)| name == f1)
+            && let Some((f2_name, f2_span)) = enabled_features.clone().find(|(name, _)| name == f2)
+        {
+            let spans = vec![f1_span, f2_span];
+            sess.dcx().emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
         }
     }
 }

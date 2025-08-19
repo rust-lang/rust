@@ -2,9 +2,8 @@ error[E0277]: `Self` doesn't implement `std::fmt::Display`
   --> $DIR/defaults-unsound-62211-1.rs:24:96
    |
 LL |     type Output: Copy + Deref<Target = str> + AddAssign<&'static str> + From<Self> + Display = Self;
-   |                                                                                                ^^^^ `Self` cannot be formatted with the default formatter
+   |                                                                                                ^^^^ the trait `std::fmt::Display` is not implemented for `Self`
    |
-   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/defaults-unsound-62211-1.rs:24:86
    |

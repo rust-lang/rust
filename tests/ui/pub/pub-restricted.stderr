@@ -76,8 +76,8 @@ LL | pub (in xyz) fn xyz() {}
 error[E0742]: visibilities can only be restricted to ancestor modules
   --> $DIR/pub-restricted.rs:23:17
    |
-LL |         pub (in x) non_parent_invalid: usize,
-   |                 ^
+LL |         pub (in crate::x) non_parent_invalid: usize,
+   |                 ^^^^^^^^
 
 error: aborting due to 6 previous errors
 

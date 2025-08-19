@@ -4,7 +4,7 @@ error: keyword `use` is written in the wrong case
 LL | Use std::ptr::read;
    | ^^^
    |
-help: write it in the correct case (notice the capitalization difference)
+help: write it in the correct case (notice the capitalization)
    |
 LL - Use std::ptr::read;
 LL + use std::ptr::read;
@@ -28,7 +28,7 @@ error: keyword `fn` is written in the wrong case
 LL | async Fn _a() {}
    |       ^^
    |
-help: write it in the correct case (notice the capitalization difference)
+help: write it in the correct case (notice the capitalization)
    |
 LL - async Fn _a() {}
 LL + async fn _a() {}
@@ -40,7 +40,7 @@ error: keyword `fn` is written in the wrong case
 LL | Fn _b() {}
    | ^^
    |
-help: write it in the correct case (notice the capitalization difference)
+help: write it in the correct case (notice the capitalization)
    |
 LL - Fn _b() {}
 LL + fn _b() {}

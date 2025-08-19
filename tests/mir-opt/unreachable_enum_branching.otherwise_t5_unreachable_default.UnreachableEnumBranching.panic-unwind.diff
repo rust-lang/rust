@@ -68,3 +68,19 @@
       }
   }
   
+  ALLOC0 (size: 4, align: 1) {
+      42 28 54 29                                     │ B(T)
+  }
+  
+  ALLOC1 (size: 4, align: 1) {
+      41 28 54 29                                     │ A(T)
+  }
+  
+  ALLOC2 (size: 1, align: 1) {
+      44                                              │ D
+  }
+  
+  ALLOC3 (size: 1, align: 1) {
+      43                                              │ C
+  }
+  

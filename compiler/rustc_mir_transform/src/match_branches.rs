@@ -19,30 +19,32 @@ impl<'tcx> crate::MirPass<'tcx> for MatchBranchSimplification {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let typing_env = body.typing_env(tcx);
-        let mut should_cleanup = false;
-        for bb_idx in body.basic_blocks.indices() {
-            match &body.basic_blocks[bb_idx].terminator().kind {
+        let mut apply_patch = false;
+        let mut patch = MirPatch::new(body);
+        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
+            match &bb_data.terminator().kind {
                 TerminatorKind::SwitchInt {
                     discr: Operand::Copy(_) | Operand::Move(_),
                     targets,
                     ..
                     // We require that the possible target blocks don't contain this block.
-                } if !targets.all_targets().contains(&bb_idx) => {}
+                } if !targets.all_targets().contains(&bb) => {}
                 // Only optimize switch int statements
                 _ => continue,
             };
 
-            if SimplifyToIf.simplify(tcx, body, bb_idx, typing_env).is_some() {
-                should_cleanup = true;
+            if SimplifyToIf.simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
+                apply_patch = true;
                 continue;
             }
-            if SimplifyToExp::default().simplify(tcx, body, bb_idx, typing_env).is_some() {
-                should_cleanup = true;
+            if SimplifyToExp::default().simplify(tcx, body, &mut patch, bb, typing_env).is_some() {
+                apply_patch = true;
                 continue;
             }
         }
 
-        if should_cleanup {
+        if apply_patch {
+            patch.apply(body);
             simplify_cfg(tcx, body);
         }
     }
@@ -59,7 +61,8 @@ trait SimplifyMatch<'tcx> {
     fn simplify(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        body: &mut Body<'tcx>,
+        body: &Body<'tcx>,
+        patch: &mut MirPatch<'tcx>,
         switch_bb_idx: BasicBlock,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<()> {
@@ -73,8 +76,6 @@ trait SimplifyMatch<'tcx> {
         let discr_ty = discr.ty(body.local_decls(), tcx);
         self.can_simplify(tcx, targets, typing_env, bbs, discr_ty)?;
 
-        let mut patch = MirPatch::new(body);
-
         // Take ownership of items now that we know we can optimize.
         let discr = discr.clone();
 
@@ -87,19 +88,9 @@ trait SimplifyMatch<'tcx> {
         let parent_end = Location { block: switch_bb_idx, statement_index };
         patch.add_statement(parent_end, StatementKind::StorageLive(discr_local));
         patch.add_assign(parent_end, Place::from(discr_local), Rvalue::Use(discr));
-        self.new_stmts(
-            tcx,
-            targets,
-            typing_env,
-            &mut patch,
-            parent_end,
-            bbs,
-            discr_local,
-            discr_ty,
-        );
+        self.new_stmts(tcx, targets, typing_env, patch, parent_end, bbs, discr_local, discr_ty);
         patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));
         patch.patch_terminator(switch_bb_idx, bbs[first].terminator().kind.clone());
-        patch.apply(body);
         Some(())
     }
 
@@ -293,12 +284,14 @@ fn can_cast(
     let v = match src_layout.ty.kind() {
         ty::Uint(_) => from_scalar.to_uint(src_layout.size),
         ty::Int(_) => from_scalar.to_int(src_layout.size) as u128,
-        _ => unreachable!("invalid int"),
+        // We can also transform the values of other integer representations (such as char),
+        // although this may not be practical in real-world scenarios.
+        _ => return false,
     };
     let size = match *cast_ty.kind() {
         ty::Int(t) => Integer::from_int_ty(&tcx, t).size(),
         ty::Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
-        _ => unreachable!("invalid int"),
+        _ => return false,
     };
     let v = size.truncate(v);
     let cast_scalar = ScalarInt::try_from_uint(v, size).unwrap();

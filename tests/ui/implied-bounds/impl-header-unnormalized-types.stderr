@@ -1,8 +1,8 @@
 error[E0491]: in type `&'a &'b ()`, reference has a longer lifetime than the data it references
-  --> $DIR/impl-header-unnormalized-types.rs:15:18
+  --> $DIR/impl-header-unnormalized-types.rs:15:5
    |
 LL |     type Assoc = &'a &'b ();
-   |                  ^^^^^^^^^^
+   |     ^^^^^^^^^^
    |
 note: the pointer is valid for the lifetime `'a` as defined here
   --> $DIR/impl-header-unnormalized-types.rs:14:6

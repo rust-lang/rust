@@ -1,16 +1,48 @@
 //! The main loop of the proc-macro server.
 use std::io;
 
-use proc_macro_api::legacy_protocol::{
-    json::{read_json, write_json},
-    msg::{
-        self, CURRENT_API_VERSION, ExpandMacroData, ExpnGlobals, Message, SpanMode, TokenId,
-        deserialize_span_data_index_map, serialize_span_data_index_map,
+use proc_macro_api::{
+    legacy_protocol::{
+        json::{read_json, write_json},
+        msg::{
+            self, ExpandMacroData, ExpnGlobals, Message, SpanMode, SpanTransformer,
+            deserialize_span_data_index_map, serialize_span_data_index_map,
+        },
     },
+    version::CURRENT_API_VERSION,
 };
-use proc_macro_srv::EnvSnapshot;
+use proc_macro_srv::{EnvSnapshot, SpanId};
 
-pub(crate) fn run() -> io::Result<()> {
+use crate::ProtocolFormat;
+
+struct SpanTrans;
+
+impl SpanTransformer for SpanTrans {
+    type Table = ();
+    type Span = SpanId;
+    fn token_id_of(
+        _: &mut Self::Table,
+        span: Self::Span,
+    ) -> proc_macro_api::legacy_protocol::SpanId {
+        proc_macro_api::legacy_protocol::SpanId(span.0)
+    }
+    fn span_for_token_id(
+        _: &Self::Table,
+        id: proc_macro_api::legacy_protocol::SpanId,
+    ) -> Self::Span {
+        SpanId(id.0)
+    }
+}
+
+pub(crate) fn run(format: ProtocolFormat) -> io::Result<()> {
+    match format {
+        ProtocolFormat::Json => run_json(),
+        #[cfg(feature = "postcard")]
+        ProtocolFormat::Postcard => unimplemented!(),
+    }
+}
+
+fn run_json() -> io::Result<()> {
     fn macro_kind_to_api(kind: proc_macro_srv::ProcMacroKind) -> proc_macro_api::ProcMacroKind {
         match kind {
             proc_macro_srv::ProcMacroKind::CustomDerive => {
@@ -54,19 +86,20 @@ pub(crate) fn run() -> io::Result<()> {
                 } = *task;
                 match span_mode {
                     SpanMode::Id => msg::Response::ExpandMacro({
-                        let def_site = TokenId(def_site as u32);
-                        let call_site = TokenId(call_site as u32);
-                        let mixed_site = TokenId(mixed_site as u32);
+                        let def_site = SpanId(def_site as u32);
+                        let call_site = SpanId(call_site as u32);
+                        let mixed_site = SpanId(mixed_site as u32);
 
-                        let macro_body = macro_body.to_subtree_unresolved(CURRENT_API_VERSION);
-                        let attributes =
-                            attributes.map(|it| it.to_subtree_unresolved(CURRENT_API_VERSION));
+                        let macro_body =
+                            macro_body.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION);
+                        let attributes = attributes
+                            .map(|it| it.to_subtree_unresolved::<SpanTrans>(CURRENT_API_VERSION));
 
                         srv.expand(
                             lib,
-                            env,
+                            &env,
                             current_dir,
-                            macro_name,
+                            &macro_name,
                             macro_body,
                             attributes,
                             def_site,
@@ -74,8 +107,12 @@ pub(crate) fn run() -> io::Result<()> {
                             mixed_site,
                         )
                         .map(|it| {
-                            msg::FlatTree::new_raw(tt::SubtreeView::new(&it), CURRENT_API_VERSION)
+                            msg::FlatTree::new_raw::<SpanTrans>(
+                                tt::SubtreeView::new(&it),
+                                CURRENT_API_VERSION,
+                            )
                         })
+                        .map_err(|e| e.into_string().unwrap_or_default())
                         .map_err(msg::PanicMessage)
                     }),
                     SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended({
@@ -92,9 +129,9 @@ pub(crate) fn run() -> io::Result<()> {
                         });
                         srv.expand(
                             lib,
-                            env,
+                            &env,
                             current_dir,
-                            macro_name,
+                            &macro_name,
                             macro_body,
                             attributes,
                             def_site,
@@ -115,6 +152,7 @@ pub(crate) fn run() -> io::Result<()> {
                             tree,
                             span_data_table,
                         })
+                        .map_err(|e| e.into_string().unwrap_or_default())
                         .map_err(msg::PanicMessage)
                     }),
                 }

@@ -5,13 +5,13 @@
 struct Foo<'a>(&'a ());
 impl<'a> Foo<'a> {
     fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
-    //~^ WARNING elided lifetime has a name
+    //~^ WARNING eliding a lifetime that's named elsewhere is confusing
 }
 
 type Alias = Foo<'static>;
 impl Alias {
     fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
-    //~^ WARNING elided lifetime has a name
+    //~^ WARNING eliding a lifetime that's named elsewhere is confusing
 }
 
 fn main() {}

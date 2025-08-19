@@ -196,14 +196,6 @@ declare_rustdoc_lint! {
     "detects redundant explicit links in doc comments"
 }
 
-declare_rustdoc_lint! {
-    /// This compatibility lint checks for Markdown syntax that works in the old engine but not
-    /// the new one.
-    UNPORTABLE_MARKDOWN,
-    Warn,
-    "detects markdown that is interpreted differently in different parser"
-}
-
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -217,7 +209,6 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         MISSING_CRATE_LEVEL_DOCS,
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
-        UNPORTABLE_MARKDOWN,
     ]
 });
 
@@ -241,4 +232,5 @@ pub(crate) fn register_lints(_sess: &Session, lint_store: &mut LintStore) {
         .register_renamed("intra_doc_link_resolution_failure", "rustdoc::broken_intra_doc_links");
     lint_store.register_renamed("non_autolinks", "rustdoc::bare_urls");
     lint_store.register_renamed("rustdoc::non_autolinks", "rustdoc::bare_urls");
+    lint_store.register_removed("rustdoc::unportable_markdown", "old parser removed");
 }

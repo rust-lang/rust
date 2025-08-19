@@ -1,7 +1,7 @@
 #![allow(warnings)]
 
-pub fn fail(x: Option<&(Iterator<Item=()>+Send)>)
-            -> Option<&Iterator<Item=()>> {
+pub fn fail(x: Option<&(dyn Iterator<Item=()>+Send)>)
+            -> Option<&dyn Iterator<Item=()>> {
     // This call used to trigger an LLVM assertion because the return
     // slot had type "Option<&Iterator>"* instead of
     // "Option<&(Iterator+Send)>"* -- but this now yields a
@@ -13,8 +13,8 @@ pub fn fail(x: Option<&(Iterator<Item=()>+Send)>)
     inner(x) //~ ERROR mismatched types
 }
 
-pub fn inner(x: Option<&(Iterator<Item=()>+Send)>)
-             -> Option<&(Iterator<Item=()>+Send)> {
+pub fn inner(x: Option<&(dyn Iterator<Item=()>+Send)>)
+             -> Option<&(dyn Iterator<Item=()>+Send)> {
     x
 }
 

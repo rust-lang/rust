@@ -853,7 +853,7 @@ pub trait RangeBounds<T: ?Sized> {
     /// assert!( RangeBounds::is_empty(&(f32::NAN..5.0)));
     /// ```
     ///
-    /// But never empty is either side is unbounded:
+    /// But never empty if either side is unbounded:
     ///
     /// ```
     /// #![feature(range_bounds_is_empty)]
@@ -1141,6 +1141,12 @@ impl<'a, T: ?Sized + 'a> RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
     }
 }
 
+// This impl intentionally does not have `T: ?Sized`;
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of why.
+//
+/// If you need to use this implementation where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// i.e. replace `start..` with `(Bound::Included(start), Bound::Unbounded)`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeFrom<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1151,6 +1157,12 @@ impl<T> RangeBounds<T> for RangeFrom<&T> {
     }
 }
 
+// This impl intentionally does not have `T: ?Sized`;
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of why.
+//
+/// If you need to use this implementation where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// i.e. replace `..end` with `(Bound::Unbounded, Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeTo<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1161,6 +1173,12 @@ impl<T> RangeBounds<T> for RangeTo<&T> {
     }
 }
 
+// This impl intentionally does not have `T: ?Sized`;
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of why.
+//
+/// If you need to use this implementation where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// i.e. replace `start..end` with `(Bound::Included(start), Bound::Excluded(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for Range<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1171,6 +1189,12 @@ impl<T> RangeBounds<T> for Range<&T> {
     }
 }
 
+// This impl intentionally does not have `T: ?Sized`;
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of why.
+//
+/// If you need to use this implementation where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// i.e. replace `start..=end` with `(Bound::Included(start), Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1181,6 +1205,12 @@ impl<T> RangeBounds<T> for RangeInclusive<&T> {
     }
 }
 
+// This impl intentionally does not have `T: ?Sized`;
+// see https://github.com/rust-lang/rust/pull/61584 for discussion of why.
+//
+/// If you need to use this implementation where `T` is unsized,
+/// consider using the `RangeBounds` impl for a 2-tuple of [`Bound<&T>`][Bound],
+/// i.e. replace `..=end` with `(Bound::Unbounded, Bound::Included(end))`.
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeToInclusive<&T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -1211,7 +1241,7 @@ pub enum OneSidedRangeBound {
 /// Types that implement `OneSidedRange<T>` must return `Bound::Unbounded`
 /// from one of `RangeBounds::start_bound` or `RangeBounds::end_bound`.
 #[unstable(feature = "one_sided_range", issue = "69780")]
-pub trait OneSidedRange<T: ?Sized>: RangeBounds<T> {
+pub trait OneSidedRange<T>: RangeBounds<T> {
     /// An internal-only helper function for `split_off` and
     /// `split_off_mut` that returns the bound of the one-sided range.
     fn bound(self) -> (OneSidedRangeBound, T);

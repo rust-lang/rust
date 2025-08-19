@@ -20,6 +20,14 @@ type FT6 = for<'a> const async unsafe extern "C" fn();
 //~^ ERROR an `fn` pointer type cannot be `const`
 //~| ERROR an `fn` pointer type cannot be `async`
 
+// Tests with qualifiers in the wrong order
+type W1 = unsafe const fn();
+//~^ ERROR an `fn` pointer type cannot be `const`
+type W2 = unsafe async fn();
+//~^ ERROR an `fn` pointer type cannot be `async`
+type W3 = for<'a> unsafe const fn();
+//~^ ERROR an `fn` pointer type cannot be `const`
+
 fn main() {
     let _recovery_witness: () = 0; //~ ERROR mismatched types
 }

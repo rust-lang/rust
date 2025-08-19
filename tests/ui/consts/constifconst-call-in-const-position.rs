@@ -14,7 +14,7 @@ impl Tr for () {
     }
 }
 
-const fn foo<T: ~const Tr>() -> [u8; T::a()] {
+const fn foo<T: [const] Tr>() -> [u8; T::a()] {
     [0; T::a()]
 }
 

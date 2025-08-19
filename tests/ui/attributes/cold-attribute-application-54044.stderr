@@ -1,0 +1,25 @@
+error: `#[cold]` attribute cannot be used on structs
+  --> $DIR/cold-attribute-application-54044.rs:4:1
+   |
+LL | #[cold]
+   | ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[cold]` can only be applied to functions
+note: the lint level is defined here
+  --> $DIR/cold-attribute-application-54044.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `#[cold]` attribute cannot be used on expressions
+  --> $DIR/cold-attribute-application-54044.rs:10:5
+   |
+LL |     #[cold]
+   |     ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[cold]` can only be applied to functions
+
+error: aborting due to 2 previous errors
+

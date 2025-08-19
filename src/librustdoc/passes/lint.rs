@@ -6,7 +6,6 @@ mod check_code_block_syntax;
 mod html_tags;
 mod redundant_explicit_links;
 mod unescaped_backticks;
-mod unportable_markdown;
 
 use super::Pass;
 use crate::clean::*;
@@ -49,9 +48,6 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             }
             if may_have_block_comment_or_html {
                 html_tags::visit_item(self.cx, item, hir_id, &dox);
-                unportable_markdown::visit_item(self.cx, item, hir_id, &dox);
-            } else if may_have_link {
-                unportable_markdown::visit_item(self.cx, item, hir_id, &dox);
             }
         }
 

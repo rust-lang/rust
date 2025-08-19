@@ -1,7 +1,7 @@
 // Test that we do not suggest to add type annotations for unnamable types.
 
 #![crate_type="lib"]
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines, stmt_expr_attributes, const_async_blocks)]
 
 const A = 5;
 //~^ ERROR: missing type for `const` item

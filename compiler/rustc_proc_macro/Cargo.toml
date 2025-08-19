@@ -1,0 +1,25 @@
+# We need to use a separate crate including library/proc_macro as opposed to a
+# direct path dependency on library/proc_macro because doing the latter will
+# cause two copies of libproc_macro.rlib to end up in the sysroot, breaking
+# proc-macro crates. In addition it confuses the workspace_members function of
+# bootstrap.
+
+[package]
+name = "rustc_proc_macro"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+path = "../../library/proc_macro/src/lib.rs"
+test = false
+doctest = false
+
+[dependencies]
+# tidy-alphabetical-start
+rustc-literal-escaper = "0.0.5"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+rustc-dep-of-std = []
+# tidy-alphabetical-end

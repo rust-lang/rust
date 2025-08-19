@@ -73,19 +73,19 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
     }
 
     // completion.snippets -> completion.snippets.custom;
-    if let Some(Value::Object(obj)) = copy.pointer("/completion/snippets").cloned() {
-        if obj.len() != 1 || obj.get("custom").is_none() {
-            merge(
-                json,
-                json! {{
-                    "completion": {
-                        "snippets": {
-                            "custom": obj
-                        },
+    if let Some(Value::Object(obj)) = copy.pointer("/completion/snippets").cloned()
+        && (obj.len() != 1 || obj.get("custom").is_none())
+    {
+        merge(
+            json,
+            json! {{
+                "completion": {
+                    "snippets": {
+                        "custom": obj
                     },
-                }},
-            );
-        }
+                },
+            }},
+        );
     }
 
     // callInfo_full -> signatureInfo_detail, signatureInfo_documentation_enable

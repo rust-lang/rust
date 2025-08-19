@@ -34,9 +34,12 @@ pub(super) fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Sp
 
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
-fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDelim]) -> bool {
+pub(super) fn report_missing_open_delim(
+    err: &mut Diag<'_>,
+    unmatched_delims: &mut Vec<UnmatchedDelim>,
+) -> bool {
     let mut reported_missing_open = false;
-    for unmatch_brace in unmatched_delims.iter() {
+    unmatched_delims.retain(|unmatch_brace| {
         if let Some(delim) = unmatch_brace.found_delim
             && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
         {
@@ -45,13 +48,20 @@ fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDe
                 Delimiter::Bracket => "[",
                 _ => unreachable!(),
             };
+
+            if let Some(unclosed_span) = unmatch_brace.unclosed_span {
+                err.span_label(unclosed_span, "the nearest open delimiter");
+            }
             err.span_label(
                 unmatch_brace.found_span.shrink_to_lo(),
                 format!("missing open `{missed_open}` for this delimiter"),
             );
             reported_missing_open = true;
+            false
+        } else {
+            true
         }
-    }
+    });
     reported_missing_open
 }
 
@@ -61,10 +71,6 @@ pub(super) fn report_suspicious_mismatch_block(
     sm: &SourceMap,
     delim: Delimiter,
 ) {
-    if report_missing_open_delim(err, &diag_info.unmatched_delims) {
-        return;
-    }
-
     let mut matched_spans: Vec<(Span, bool)> = diag_info
         .matching_block_spans
         .iter()
@@ -120,23 +126,29 @@ pub(super) fn report_suspicious_mismatch_block(
     }
 }
 
-pub(crate) fn make_unclosed_delims_error(
-    unmatched: UnmatchedDelim,
-    psess: &ParseSess,
-) -> Option<Diag<'_>> {
-    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
-    // `unmatched_delims` only for error recovery in the `Parser`.
-    let found_delim = unmatched.found_delim?;
-    let mut spans = vec![unmatched.found_span];
-    if let Some(sp) = unmatched.unclosed_span {
-        spans.push(sp);
-    };
-    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
-        spans,
-        delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind()).to_string(),
-        unmatched: unmatched.found_span,
-        opening_candidate: unmatched.candidate_span,
-        unclosed: unmatched.unclosed_span,
-    });
-    Some(err)
+pub(crate) fn make_errors_for_mismatched_closing_delims<'psess>(
+    unmatcheds: &[UnmatchedDelim],
+    psess: &'psess ParseSess,
+) -> Vec<Diag<'psess>> {
+    unmatcheds
+        .iter()
+        .filter_map(|unmatched| {
+            // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
+            // `unmatched_delims` only for error recovery in the `Parser`.
+            let found_delim = unmatched.found_delim?;
+            let mut spans = vec![unmatched.found_span];
+            if let Some(sp) = unmatched.unclosed_span {
+                spans.push(sp);
+            };
+            let err = psess.dcx().create_err(MismatchedClosingDelimiter {
+                spans,
+                delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind())
+                    .to_string(),
+                unmatched: unmatched.found_span,
+                opening_candidate: unmatched.candidate_span,
+                unclosed: unmatched.unclosed_span,
+            });
+            Some(err)
+        })
+        .collect()
 }

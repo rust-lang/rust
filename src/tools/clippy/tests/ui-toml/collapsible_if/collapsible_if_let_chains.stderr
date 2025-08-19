@@ -1,5 +1,5 @@
 error: this `if` statement can be collapsed
-  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:5:5
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:4:5
    |
 LL | /     if let Some(a) = Some(3) {
 LL | |         // with comment
@@ -21,7 +21,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:13:5
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:12:5
    |
 LL | /     if let Some(a) = Some(3) {
 LL | |         // with comment
@@ -41,7 +41,7 @@ LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:21:5
+  --> tests/ui-toml/collapsible_if/collapsible_if_let_chains.rs:20:5
    |
 LL | /     if Some(3) == Some(4).map(|x| x - 1) {
 LL | |         // with comment

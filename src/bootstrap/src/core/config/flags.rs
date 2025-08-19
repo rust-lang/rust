@@ -6,13 +6,15 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+use clap_complete::Generator;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
 use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{Config, TargetSelectionList, target_selection_list};
+use crate::core::config::Config;
+use crate::core::config::target_selection::{TargetSelectionList, target_selection_list};
 use crate::{Build, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
@@ -58,7 +60,7 @@ pub struct Flags {
     pub build_dir: Option<PathBuf>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
-    /// build target of the stage0 compiler
+    /// host target of the stage0 compiler
     pub build: Option<String>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "HOST", value_parser = target_selection_list)]
@@ -79,6 +81,7 @@ pub struct Flags {
     /// include default paths in addition to the provided ones
     pub include_default_paths: bool,
 
+    /// rustc error format
     #[arg(global = true, value_hint = clap::ValueHint::Other, long)]
     pub rustc_error_format: Option<String>,
 
@@ -126,12 +129,12 @@ pub struct Flags {
     /// otherwise, use the default configured behaviour
     pub warnings: Warnings,
 
-    #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "FORMAT")]
-    /// rustc error format
-    pub error_format: Option<String>,
     #[arg(global = true, long)]
     /// use message-format=json
     pub json_output: bool,
+    #[arg(global = true, long)]
+    /// only build proc-macros and build scripts (for rust-analyzer)
+    pub compile_time_deps: bool,
 
     #[arg(global = true, long, value_name = "STYLE")]
     #[arg(value_enum, default_value_t = Color::Auto)]
@@ -182,6 +185,11 @@ pub struct Flags {
     /// Make bootstrap to behave as it's running on the CI environment or not.
     #[arg(global = true, long, value_name = "bool")]
     pub ci: Option<bool>,
+    /// Skip checking the standard library if `rust.download-rustc` isn't available.
+    /// This is mostly for RA as building the stage1 compiler to check the library tree
+    /// on each code change might be too much for some computers.
+    #[arg(global = true, long)]
+    pub skip_std_check_if_no_download_rustc: bool,
 }
 
 impl Flags {
@@ -203,7 +211,8 @@ impl Flags {
             HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
             println!("NOTE: updating submodules before printing available paths");
-            let config = Config::parse(Self::parse(&[String::from("build")]));
+            let flags = Self::parse(&[String::from("build")]);
+            let config = Config::parse(flags);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
@@ -232,7 +241,7 @@ fn normalize_args(args: &[String]) -> Vec<String> {
     it.collect()
 }
 
-#[derive(Debug, Clone, Default, clap::Subcommand)]
+#[derive(Debug, Clone, clap::Subcommand)]
 pub enum Subcommand {
     #[command(aliases = ["b"], long_about = "\n
     Arguments:
@@ -247,8 +256,11 @@ pub enum Subcommand {
             ./x.py build --stage 0
             ./x.py build ")]
     /// Compile either the compiler or libraries
-    #[default]
-    Build,
+    Build {
+        #[arg(long)]
+        /// Pass `--timings` to Cargo to get crate build timings
+        timings: bool,
+    },
     #[command(aliases = ["c"], long_about = "\n
     Arguments:
         This subcommand accepts a number of paths to directories to the crates
@@ -260,6 +272,9 @@ pub enum Subcommand {
         #[arg(long)]
         /// Check all targets
         all_targets: bool,
+        #[arg(long)]
+        /// Pass `--timings` to Cargo to get crate build timings
+        timings: bool,
     },
     /// Run Clippy (uses rustup/cargo-installed clippy binary)
     #[command(long_about = "\n
@@ -377,7 +392,10 @@ pub enum Subcommand {
         bless: bool,
         #[arg(long)]
         /// comma-separated list of other files types to check (accepts py, py:lint,
-        /// py:fmt, shell)
+        /// py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, spellcheck)
+        ///
+        /// Any argument can be prefixed with "auto:" to only run if
+        /// relevant files are modified (eg. "auto:py").
         extra_checks: Option<String>,
         #[arg(long)]
         /// rerun tests even if the inputs are unchanged
@@ -469,13 +487,6 @@ Arguments:
         #[arg(value_name = "<PROFILE>|hook|editor|link")]
         profile: Option<PathBuf>,
     },
-    /// Suggest a subset of tests to run, based on modified files
-    #[command(long_about = "\n")]
-    Suggest {
-        /// run suggested tests
-        #[arg(long)]
-        run: bool,
-    },
     /// Vendor dependencies
     Vendor {
         /// Additional `Cargo.toml` to sync and vendor
@@ -489,11 +500,17 @@ Arguments:
     Perf(PerfArgs),
 }
 
+impl Default for Subcommand {
+    fn default() -> Self {
+        Subcommand::Build { timings: false }
+    }
+}
+
 impl Subcommand {
     pub fn kind(&self) -> Kind {
         match self {
             Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build => Kind::Build,
+            Subcommand::Build { .. } => Kind::Build,
             Subcommand::Check { .. } => Kind::Check,
             Subcommand::Clippy { .. } => Kind::Clippy,
             Subcommand::Doc { .. } => Kind::Doc,
@@ -506,7 +523,6 @@ impl Subcommand {
             Subcommand::Install => Kind::Install,
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
-            Subcommand::Suggest { .. } => Kind::Suggest,
             Subcommand::Vendor { .. } => Kind::Vendor,
             Subcommand::Perf { .. } => Kind::Perf,
         }
@@ -622,6 +638,13 @@ impl Subcommand {
         }
     }
 
+    pub fn timings(&self) -> bool {
+        match *self {
+            Subcommand::Build { timings, .. } | Subcommand::Check { timings, .. } => timings,
+            _ => false,
+        }
+    }
+
     pub fn vendor_versioned_dirs(&self) -> bool {
         match *self {
             Subcommand::Vendor { versioned_dirs, .. } => versioned_dirs,
@@ -639,7 +662,7 @@ impl Subcommand {
 
 /// Returns the shell completion for a given shell, if the result differs from the current
 /// content of `path`. If `path` does not exist, always returns `Some`.
-pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Option<String> {
+pub fn get_completion(shell: &dyn Generator, path: &Path) -> Option<String> {
     let mut cmd = Flags::command();
     let current = if !path.exists() {
         String::new()
@@ -657,7 +680,12 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         .expect("file name should be UTF-8")
         .rsplit_once('.')
         .expect("file name should have an extension");
-    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
+
+    // We sort of replicate `clap_complete::generate` here, because we want to call it with
+    // `&dyn Generator`, but that function requires `G: Generator` instead.
+    cmd.set_bin_name(bin_name);
+    cmd.build();
+    shell.generate(&cmd, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }

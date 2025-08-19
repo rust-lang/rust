@@ -1,5 +1,6 @@
 //@ run-pass
 //@ needs-unwind
+//@ ignore-backends: gcc
 //@ revisions: default mir-opt
 //@[mir-opt] compile-flags: -Zmir-opt-level=4
 

@@ -185,3 +185,28 @@ mod issue_2496 {
         unimplemented!()
     }
 }
+
+fn needless_loop() {
+    use std::hint::black_box;
+    let x = [0; 64];
+    for i in 0..64 {
+        let y = [0; 64];
+
+        black_box(x[i]);
+        black_box(y[i]);
+    }
+
+    for i in 0..64 {
+        black_box(x[i]);
+        black_box([0; 64][i]);
+    }
+
+    for i in 0..64 {
+        black_box(x[i]);
+        black_box([1, 2, 3, 4, 5, 6, 7, 8][i]);
+    }
+
+    for i in 0..64 {
+        black_box([1, 2, 3, 4, 5, 6, 7, 8][i]);
+    }
+}

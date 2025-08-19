@@ -1,3 +1,4 @@
+//@ ignore-backends: gcc
 //@ run-pass
 //@ compile-flags:-C lto -C panic=abort
 //@ no-prefer-dynamic

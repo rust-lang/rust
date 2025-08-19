@@ -33,6 +33,7 @@ pub(crate) fn inactive_code(
         message,
         ctx.sema.diagnostics_display_range(d.node),
     )
+    .stable()
     .with_unused(true);
     Some(res)
 }

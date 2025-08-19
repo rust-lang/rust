@@ -6,5 +6,5 @@ mod option {
 }
 
 fn main() {
-    let _: option::O<()> = (); //~ ERROR 9:28: 9:30: mismatched types [E0308]
+    let _: option::O<()> = (); //~ ERROR mismatched types [E0308]
 }

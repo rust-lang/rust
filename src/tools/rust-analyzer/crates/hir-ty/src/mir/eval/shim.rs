@@ -5,8 +5,8 @@ use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
+    CrateRootModuleId,
     builtin_type::{BuiltinInt, BuiltinUint},
-    lang_item::LangItemTarget,
     resolver::HasResolver,
 };
 use hir_expand::name::Name;
@@ -65,9 +65,7 @@ impl Evaluator<'_> {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
                 None => match def.lookup(self.db).container {
                     hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db).id;
-                        id.item_tree(self.db)[id.value].abi.as_ref()
-                            == Some(&sym::rust_dash_intrinsic)
+                        block.abi(self.db) == Some(sym::rust_dash_intrinsic)
                     }
                     _ => false,
                 },
@@ -86,10 +84,7 @@ impl Evaluator<'_> {
             );
         }
         let is_extern_c = match def.lookup(self.db).container {
-            hir_def::ItemContainerId::ExternBlockId(block) => {
-                let id = block.lookup(self.db).id;
-                id.item_tree(self.db)[id.value].abi.as_ref() == Some(&sym::C)
-            }
+            hir_def::ItemContainerId::ExternBlockId(block) => block.abi(self.db) == Some(sym::C),
             _ => false,
         };
         if is_extern_c {
@@ -124,25 +119,25 @@ impl Evaluator<'_> {
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
-        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container {
-            if self.db.lang_attr(t.into()) == Some(LangItem::Clone) {
-                let [self_ty] = generic_args.as_slice(Interner) else {
-                    not_supported!("wrong generic arg count for clone");
-                };
-                let Some(self_ty) = self_ty.ty(Interner) else {
-                    not_supported!("wrong generic arg kind for clone");
-                };
-                // Clone has special impls for tuples and function pointers
-                if matches!(
-                    self_ty.kind(Interner),
-                    TyKind::Function(_) | TyKind::Tuple(..) | TyKind::Closure(..)
-                ) {
-                    self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
-                    return Ok(true);
-                }
-                // Return early to prevent caching clone as non special fn.
-                return Ok(false);
+        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container
+            && self.db.lang_attr(t.into()) == Some(LangItem::Clone)
+        {
+            let [self_ty] = generic_args.as_slice(Interner) else {
+                not_supported!("wrong generic arg count for clone");
+            };
+            let Some(self_ty) = self_ty.ty(Interner) else {
+                not_supported!("wrong generic arg kind for clone");
+            };
+            // Clone has special impls for tuples and function pointers
+            if matches!(
+                self_ty.kind(Interner),
+                TyKind::Function(_) | TyKind::Tuple(..) | TyKind::Closure(..)
+            ) {
+                self.exec_clone(def, args, self_ty.clone(), locals, destination, span)?;
+                return Ok(true);
             }
+            // Return early to prevent caching clone as non special fn.
+            return Ok(false);
         }
         self.not_special_fn_cache.borrow_mut().insert(def);
         Ok(false)
@@ -154,10 +149,10 @@ impl Evaluator<'_> {
     ) -> Result<Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
+            let resolver = CrateRootModuleId::from(self.crate_id).resolver(self.db);
 
-            let Some(hir_def::lang_item::LangItemTarget::Function(const_panic_fmt)) =
-                self.db.lang_item(resolver.krate(), LangItem::ConstPanicFmt)
+            let Some(const_panic_fmt) =
+                LangItem::ConstPanicFmt.resolve_function(self.db, resolver.krate())
             else {
                 not_supported!("const_panic_fmt lang item not found or not a function");
             };
@@ -764,7 +759,9 @@ impl Evaluator<'_> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
-            "min_align_of" | "pref_align_of" => {
+            // FIXME: `min_align_of` was renamed to `align_of` in Rust 1.89
+            // (https://github.com/rust-lang/rust/pull/142410)
+            "min_align_of" | "align_of" => {
                 let Some(ty) =
                     generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                 else {
@@ -796,17 +793,19 @@ impl Evaluator<'_> {
                     destination.write_from_bytes(self, &size.to_le_bytes())
                 }
             }
-            "min_align_of_val" => {
+            // FIXME: `min_align_of_val` was renamed to `align_of_val` in Rust 1.89
+            // (https://github.com/rust-lang/rust/pull/142410)
+            "min_align_of_val" | "align_of_val" => {
                 let Some(ty) =
                     generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
                 else {
                     return Err(MirEvalError::InternalError(
-                        "min_align_of_val generic arg is not provided".into(),
+                        "align_of_val generic arg is not provided".into(),
                     ));
                 };
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError(
-                        "min_align_of_val args are not provided".into(),
+                        "align_of_val args are not provided".into(),
                     ));
                 };
                 if let Some((_, align)) = self.size_align_of(ty, locals)? {
@@ -1121,7 +1120,7 @@ impl Evaluator<'_> {
                 // We don't call any drop glue yet, so there is nothing here
                 Ok(())
             }
-            "transmute" => {
+            "transmute" | "transmute_unchecked" => {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError(
                         "transmute arg is not provided".into(),
@@ -1257,24 +1256,22 @@ impl Evaluator<'_> {
                     let addr = tuple.interval.addr.offset(offset);
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
-                if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
-                    if let Some(def) = target.as_trait().and_then(|it| {
-                        self.db
-                            .trait_items(it)
-                            .method_by_name(&Name::new_symbol_root(sym::call_once))
-                    }) {
-                        self.exec_fn_trait(
-                            def,
-                            &args,
-                            // FIXME: wrong for manual impls of `FnOnce`
-                            Substitution::empty(Interner),
-                            locals,
-                            destination,
-                            None,
-                            span,
-                        )?;
-                        return Ok(true);
-                    }
+                if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id)
+                    && let Some(def) = target
+                        .trait_items(self.db)
+                        .method_by_name(&Name::new_symbol_root(sym::call_once))
+                {
+                    self.exec_fn_trait(
+                        def,
+                        &args,
+                        // FIXME: wrong for manual impls of `FnOnce`
+                        Substitution::empty(Interner),
+                        locals,
+                        destination,
+                        None,
+                        span,
+                    )?;
+                    return Ok(true);
                 }
                 not_supported!("FnOnce was not available for executing const_eval_select");
             }
@@ -1369,16 +1366,13 @@ impl Evaluator<'_> {
                         break;
                     }
                 }
-                if signed {
-                    if let Some((&l, &r)) = lhs.iter().zip(rhs).next_back() {
-                        if l != r {
-                            result = (l as i8).cmp(&(r as i8));
-                        }
-                    }
-                }
-                if let Some(LangItemTarget::EnumId(e)) =
-                    self.db.lang_item(self.crate_id, LangItem::Ordering)
+                if signed
+                    && let Some((&l, &r)) = lhs.iter().zip(rhs).next_back()
+                    && l != r
                 {
+                    result = (l as i8).cmp(&(r as i8));
+                }
+                if let Some(e) = LangItem::Ordering.resolve_enum(self.db, self.crate_id) {
                     let ty = self.db.ty(e.into());
                     let r = self
                         .compute_discriminant(ty.skip_binders().clone(), &[result as i8 as u8])?;

@@ -86,12 +86,11 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     e @ ast::Expr::CallExpr(_) => Some(e.clone()),
                     _ => None,
                 };
-                if let Some(ast::Expr::CallExpr(call)) = e {
-                    if let Some(arg_list) = call.arg_list() {
-                        if let Some(arg) = arg_list.args().next() {
-                            editor.replace(call.syntax(), arg.syntax());
-                        }
-                    }
+                if let Some(ast::Expr::CallExpr(call)) = e
+                    && let Some(arg_list) = call.arg_list()
+                    && let Some(arg) = arg_list.args().next()
+                {
+                    editor.replace(call.syntax(), arg.syntax());
                 }
             });
             let edit = editor.finish();
@@ -196,7 +195,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             // Wrap all tails in `Some(...)`
             let none_path = mapless_make.expr_path(mapless_make.ident_path("None"));
             let some_path = mapless_make.expr_path(mapless_make.ident_path("Some"));
-            for_each_tail_expr(&ast::Expr::BlockExpr(closure_body.clone()), &mut |e| {
+            for_each_tail_expr(&ast::Expr::BlockExpr(closure_body), &mut |e| {
                 let e = match e {
                     ast::Expr::BreakExpr(e) => e.expr(),
                     ast::Expr::ReturnExpr(e) => e.expr(),
@@ -228,8 +227,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                     closure_body,
                     Some(ast::ElseBranch::Block(make.block_expr(None, Some(none_path)))),
                 )
-                .indent(mcall.indent_level())
-                .clone_for_update();
+                .indent(mcall.indent_level());
             editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
 
             editor.add_mappings(make.finish_with_mappings());
@@ -277,12 +275,12 @@ fn is_invalid_body(
                 e @ ast::Expr::CallExpr(_) => Some(e.clone()),
                 _ => None,
             };
-            if let Some(ast::Expr::CallExpr(call)) = e {
-                if let Some(ast::Expr::PathExpr(p)) = call.expr() {
-                    let res = p.path().and_then(|p| sema.resolve_path(&p));
-                    if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
-                        return invalid |= v != some_variant;
-                    }
+            if let Some(ast::Expr::CallExpr(call)) = e
+                && let Some(ast::Expr::PathExpr(p)) = call.expr()
+            {
+                let res = p.path().and_then(|p| sema.resolve_path(&p));
+                if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
+                    return invalid |= v != some_variant;
                 }
             }
             invalid = true

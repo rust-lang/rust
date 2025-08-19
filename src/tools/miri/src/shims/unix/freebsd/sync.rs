@@ -2,6 +2,8 @@
 
 use core::time::Duration;
 
+use rustc_abi::FieldIdx;
+
 use crate::concurrency::sync::FutexRef;
 use crate::*;
 
@@ -214,38 +216,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Only flag allowed is UMTX_ABSTIME.
         let abs_time = this.eval_libc_u32("UMTX_ABSTIME");
 
-        let timespec_place = this.project_field(ut, 0)?;
+        let timespec_place = this.project_field(ut, FieldIdx::from_u32(0))?;
         // Inner `timespec` must still be valid.
         let duration = match this.read_timespec(&timespec_place)? {
             Some(dur) => dur,
             None => return interp_ok(None),
         };
 
-        let flags_place = this.project_field(ut, 1)?;
+        let flags_place = this.project_field(ut, FieldIdx::from_u32(1))?;
         let flags = this.read_scalar(&flags_place)?.to_u32()?;
         let abs_time_flag = flags == abs_time;
 
-        let clock_id_place = this.project_field(ut, 2)?;
-        let clock_id = this.read_scalar(&clock_id_place)?.to_i32()?;
-        let timeout_clock = this.translate_umtx_time_clock_id(clock_id)?;
+        let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
+        let clock_id = this.read_scalar(&clock_id_place)?;
+        let Some(timeout_clock) = this.parse_clockid(clock_id) else {
+            throw_unsup_format!("unsupported clock")
+        };
+        if timeout_clock == TimeoutClock::RealTime {
+            this.check_no_isolation("`_umtx_op` with `CLOCK_REALTIME`")?;
+        }
 
         interp_ok(Some(UmtxTime { timeout: duration, abs_time: abs_time_flag, timeout_clock }))
-    }
-
-    /// Translate raw FreeBSD clockid to a Miri TimeoutClock.
-    /// FIXME: share this code with the pthread and clock_gettime shims.
-    fn translate_umtx_time_clock_id(&mut self, raw_id: i32) -> InterpResult<'tcx, TimeoutClock> {
-        let this = self.eval_context_mut();
-
-        let timeout = if raw_id == this.eval_libc_i32("CLOCK_REALTIME") {
-            // RealTime clock can't be used in isolation mode.
-            this.check_no_isolation("`_umtx_op` with `CLOCK_REALTIME` timeout")?;
-            TimeoutClock::RealTime
-        } else if raw_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
-            TimeoutClock::Monotonic
-        } else {
-            throw_unsup_format!("unsupported clock id {raw_id}");
-        };
-        interp_ok(timeout)
     }
 }

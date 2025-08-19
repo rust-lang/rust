@@ -69,6 +69,15 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
 
         set_reuse(&mut ams.cgu_reuse_tracker);
 
+        if tcx.sess.opts.unstable_opts.print_mono_items
+            && let Some(data) = &ams.cgu_reuse_tracker.data
+        {
+            data.actual_reuse.items().all(|(cgu, reuse)| {
+                println!("CGU_REUSE {cgu} {reuse}");
+                true
+            });
+        }
+
         ams.cgu_reuse_tracker.check_expected_reuse(tcx.sess);
     });
 }

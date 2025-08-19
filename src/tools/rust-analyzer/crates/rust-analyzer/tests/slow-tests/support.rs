@@ -202,7 +202,7 @@ impl Project<'_> {
         }
 
         let mut config = Config::new(
-            tmp_dir_path.clone(),
+            tmp_dir_path,
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(
@@ -298,8 +298,7 @@ impl Server {
     ) -> Server {
         let (connection, client) = Connection::memory();
 
-        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("test server".to_owned())
+        let _thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "test server")
             .spawn(move || main_loop(config, connection).unwrap())
             .expect("failed to spawn a thread");
 

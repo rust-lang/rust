@@ -215,10 +215,10 @@ impl<V: Clone + HasBottom> State<V> {
         // If both places are tracked, we copy the value to the target.
         // If the target is tracked, but the source is not, we do nothing, as invalidation has
         // already been performed.
-        if let Some(target_value) = map.places[target].value_index {
-            if let Some(source_value) = map.places[source].value_index {
-                values.insert(target_value, values.get(source_value).clone());
-            }
+        if let Some(target_value) = map.places[target].value_index
+            && let Some(source_value) = map.places[source].value_index
+        {
+            values.insert(target_value, values.get(source_value).clone());
         }
         for target_child in map.children(target) {
             // Try to find corresponding child and recurse. Reasoning is similar as above.

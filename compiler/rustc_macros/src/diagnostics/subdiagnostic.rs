@@ -600,7 +600,12 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
 
             calls.extend(call);
         }
-
+        let store_args = quote! {
+            #diag.store_args();
+        };
+        let restore_args = quote! {
+            #diag.restore_args();
+        };
         let plain_args: TokenStream = self
             .variant
             .bindings()
@@ -610,12 +615,21 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
             .collect();
 
         let formatting_init = &self.formatting_init;
+
+        // For #[derive(Subdiagnostic)]
+        //
+        // - Store args of the main diagnostic for later restore.
+        // - Add args of subdiagnostic.
+        // - Generate the calls, such as note, label, etc.
+        // - Restore the arguments for allowing main and subdiagnostic share the same fields.
         Ok(quote! {
             #init
             #formatting_init
             #attr_args
+            #store_args
             #plain_args
             #calls
+            #restore_args
         })
     }
 }

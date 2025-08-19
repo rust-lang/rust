@@ -1,0 +1,325 @@
+DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean):
+params: [
+    Param {
+        ty: bool
+        ty_span: Some($DIR/thir-tree-loop-match.rs:7:23: 7:27 (#0))
+        self_kind: None
+        hir_id: Some(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).1))
+        param: Some( 
+            Pat: {
+                ty: bool
+                span: $DIR/thir-tree-loop-match.rs:7:12: 7:21 (#0)
+                kind: PatKind {
+                    Binding {
+                        name: "state"
+                        mode: BindingMode(No, Mut)
+                        var: LocalVarId(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).2))
+                        ty: bool
+                        is_primary: true
+                        subpattern: None
+                    }
+                }
+            }
+        )
+    }
+]
+body:
+    Expr {
+        ty: bool
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+        span: $DIR/thir-tree-loop-match.rs:7:37: 20:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(28)
+                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).28))
+                value:
+                    Expr {
+                        ty: bool
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                        span: $DIR/thir-tree-loop-match.rs:7:37: 20:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-loop-match.rs:7:37: 20:2 (#0)
+                                region_scope: Node(3)
+                                safety_mode: Safe
+                                stmts: []
+                                expr:
+                                    Expr {
+                                        ty: bool
+                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                        span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
+                                        kind: 
+                                            Scope {
+                                                region_scope: Node(4)
+                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).4))
+                                                value:
+                                                    Expr {
+                                                        ty: bool
+                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                        span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
+                                                        kind: 
+                                                            NeverToAny {
+                                                                source:
+                                                                    Expr {
+                                                                        ty: !
+                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(28)), backwards_incompatible: None }
+                                                                        span: $DIR/thir-tree-loop-match.rs:9:5: 19:6 (#0)
+                                                                        kind: 
+                                                                            LoopMatch {
+                                                                                state:
+                                                                                    Expr {
+                                                                                        ty: bool
+                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                        span: $DIR/thir-tree-loop-match.rs:10:9: 10:14 (#0)
+                                                                                        kind: 
+                                                                                            Scope {
+                                                                                                region_scope: Node(7)
+                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).7))
+                                                                                                value:
+                                                                                                    Expr {
+                                                                                                        ty: bool
+                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                        span: $DIR/thir-tree-loop-match.rs:10:9: 10:14 (#0)
+                                                                                                        kind: 
+                                                                                                            VarRef {
+                                                                                                                id: LocalVarId(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).2))
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                region_scope: Node(10)
+                                                                                match_data:
+                                                                                    LoopMatchMatchData {
+                                                                                        span: $DIR/thir-tree-loop-match.rs:11:13: 17:14 (#0)
+                                                                                        scrutinee:
+                                                                                            Expr {
+                                                                                                ty: bool
+                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                span: $DIR/thir-tree-loop-match.rs:11:19: 11:24 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(12)
+                                                                                                        lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).12))
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: bool
+                                                                                                                temp_lifetime: TempLifetime { temp_lifetime: Some(Node(5)), backwards_incompatible: None }
+                                                                                                                span: $DIR/thir-tree-loop-match.rs:11:19: 11:24 (#0)
+                                                                                                                kind: 
+                                                                                                                    VarRef {
+                                                                                                                        id: LocalVarId(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).2))
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                        arms: [
+                                                                                            Arm {
+                                                                                                pattern: 
+                                                                                                    Pat: {
+                                                                                                        ty: bool
+                                                                                                        span: $DIR/thir-tree-loop-match.rs:12:17: 12:21 (#0)
+                                                                                                        kind: PatKind {
+                                                                                                            Constant {
+                                                                                                                value: true
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                guard: None
+                                                                                                body: 
+                                                                                                    Expr {
+                                                                                                        ty: bool
+                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                        span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
+                                                                                                        kind: 
+                                                                                                            Scope {
+                                                                                                                region_scope: Node(17)
+                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).17))
+                                                                                                                value:
+                                                                                                                    Expr {
+                                                                                                                        ty: bool
+                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                                        span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
+                                                                                                                        kind: 
+                                                                                                                            NeverToAny {
+                                                                                                                                source:
+                                                                                                                                    Expr {
+                                                                                                                                        ty: !
+                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(16)), backwards_incompatible: None }
+                                                                                                                                        span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
+                                                                                                                                        kind: 
+                                                                                                                                            Block {
+                                                                                                                                                targeted_by_break: false
+                                                                                                                                                span: $DIR/thir-tree-loop-match.rs:12:25: 15:18 (#0)
+                                                                                                                                                region_scope: Node(18)
+                                                                                                                                                safety_mode: Safe
+                                                                                                                                                stmts: [
+                                                                                                                                                    Stmt {
+                                                                                                                                                        kind: Expr {
+                                                                                                                                                            scope: Node(21)
+                                                                                                                                                            expr:
+                                                                                                                                                                Expr {
+                                                                                                                                                                    ty: !
+                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                    span: $DIR/thir-tree-loop-match.rs:14:21: 14:37 (#0)
+                                                                                                                                                                    kind: 
+                                                                                                                                                                        Scope {
+                                                                                                                                                                            region_scope: Node(19)
+                                                                                                                                                                            lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).19))
+                                                                                                                                                                            value:
+                                                                                                                                                                                Expr {
+                                                                                                                                                                                    ty: !
+                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                    span: $DIR/thir-tree-loop-match.rs:14:21: 14:37 (#0)
+                                                                                                                                                                                    kind: 
+                                                                                                                                                                                        ConstContinue (
+                                                                                                                                                                                            label: Node(10)
+                                                                                                                                                                                            value:
+                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                    ty: bool
+                                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                                    span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0)
+                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                        Scope {
+                                                                                                                                                                                                            region_scope: Node(20)
+                                                                                                                                                                                                            lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).20))
+                                                                                                                                                                                                            value:
+                                                                                                                                                                                                                Expr {
+                                                                                                                                                                                                                    ty: bool
+                                                                                                                                                                                                                    temp_lifetime: TempLifetime { temp_lifetime: Some(Node(21)), backwards_incompatible: None }
+                                                                                                                                                                                                                    span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0)
+                                                                                                                                                                                                                    kind: 
+                                                                                                                                                                                                                        Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-loop-match.rs:14:32: 14:37 (#0) }, neg: false)
+
+                                                                                                                                                                                                                }
+                                                                                                                                                                                                        }
+                                                                                                                                                                                                }
+                                                                                                                                                                                        )
+                                                                                                                                                                                }
+                                                                                                                                                                        }
+                                                                                                                                                                }
+                                                                                                                                                        }
+                                                                                                                                                    }
+                                                                                                                                                ]
+                                                                                                                                                expr: []
+                                                                                                                                            }
+                                                                                                                                    }
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).16))
+                                                                                                scope: Node(16)
+                                                                                                span: $DIR/thir-tree-loop-match.rs:12:17: 15:18 (#0)
+                                                                                            }
+                                                                                            Arm {
+                                                                                                pattern: 
+                                                                                                    Pat: {
+                                                                                                        ty: bool
+                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:17: 16:22 (#0)
+                                                                                                        kind: PatKind {
+                                                                                                            Constant {
+                                                                                                                value: false
+                                                                                                            }
+                                                                                                        }
+                                                                                                    }
+                                                                                                guard: None
+                                                                                                body: 
+                                                                                                    Expr {
+                                                                                                        ty: bool
+                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
+                                                                                                        kind: 
+                                                                                                            Scope {
+                                                                                                                region_scope: Node(25)
+                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).25))
+                                                                                                                value:
+                                                                                                                    Expr {
+                                                                                                                        ty: bool
+                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
+                                                                                                                        kind: 
+                                                                                                                            NeverToAny {
+                                                                                                                                source:
+                                                                                                                                    Expr {
+                                                                                                                                        ty: !
+                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:26: 16:38 (#0)
+                                                                                                                                        kind: 
+                                                                                                                                            Return {
+                                                                                                                                                value:
+                                                                                                                                                    Expr {
+                                                                                                                                                        ty: bool
+                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
+                                                                                                                                                        kind: 
+                                                                                                                                                            Scope {
+                                                                                                                                                                region_scope: Node(26)
+                                                                                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).26))
+                                                                                                                                                                value:
+                                                                                                                                                                    Expr {
+                                                                                                                                                                        ty: bool
+                                                                                                                                                                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(24)), backwards_incompatible: None }
+                                                                                                                                                                        span: $DIR/thir-tree-loop-match.rs:16:33: 16:38 (#0)
+                                                                                                                                                                        kind: 
+                                                                                                                                                                            VarRef {
+                                                                                                                                                                                id: LocalVarId(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).2))
+                                                                                                                                                                            }
+                                                                                                                                                                    }
+                                                                                                                                                            }
+                                                                                                                                                    }
+                                                                                                                                            }
+                                                                                                                                    }
+                                                                                                                            }
+                                                                                                                    }
+                                                                                                            }
+                                                                                                    }
+                                                                                                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree_loop_match[3c53]::boolean).24))
+                                                                                                scope: Node(24)
+                                                                                                span: $DIR/thir-tree-loop-match.rs:16:17: 16:38 (#0)
+                                                                                            }
+                                                                                        ]
+                                                                                    }
+                                                                            }
+                                                                    }
+                                                            }
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+            }
+    }
+
+
+DefId(0:4 ~ thir_tree_loop_match[3c53]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+        span: $DIR/thir-tree-loop-match.rs:22:11: 22:13 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                lint_level: Explicit(HirId(DefId(0:4 ~ thir_tree_loop_match[3c53]::main).2))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                        span: $DIR/thir-tree-loop-match.rs:22:11: 22:13 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree-loop-match.rs:22:11: 22:13 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

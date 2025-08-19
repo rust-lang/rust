@@ -1,6 +1,7 @@
 //@ revisions: default error kill inherit
 //@ ignore-cross-compile because aux-bin does not yet support it
 //@ only-unix because SIGPIPE is a unix thing
+//@ ignore-backends: gcc
 //@ run-pass
 //@ aux-bin:assert-sigpipe-disposition.rs
 //@ aux-crate:sigpipe_utils=sigpipe-utils.rs

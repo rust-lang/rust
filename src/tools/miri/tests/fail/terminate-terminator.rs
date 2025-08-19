@@ -1,5 +1,5 @@
 //@compile-flags: -Zmir-opt-level=3 -Zinline-mir-hint-threshold=1000
-//@normalize-stderr-test: "unsafe \{ libc::abort\(\) \}|crate::intrinsics::abort\(\);" -> "ABORT();"
+//@normalize-stderr-test: "\|.*::abort\(\).*" -> "| ABORT()"
 //@normalize-stderr-test: "\| +\^+" -> "| ^"
 //@normalize-stderr-test: "\n +[0-9]+:[^\n]+" -> ""
 //@normalize-stderr-test: "\n +at [^\n]+" -> ""

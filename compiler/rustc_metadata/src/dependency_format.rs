@@ -88,45 +88,42 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         return IndexVec::new();
     }
 
-    let preferred_linkage = match ty {
-        // Generating a dylib without `-C prefer-dynamic` means that we're going
-        // to try to eagerly statically link all dependencies. This is normally
-        // done for end-product dylibs, not intermediate products.
-        //
-        // Treat cdylibs and staticlibs similarly. If `-C prefer-dynamic` is set,
-        // the caller may be code-size conscious, but without it, it makes sense
-        // to statically link a cdylib or staticlib. For staticlibs we use
-        // `-Z staticlib-prefer-dynamic` for now. This may be merged into
-        // `-C prefer-dynamic` in the future.
-        CrateType::Dylib | CrateType::Cdylib => {
-            if sess.opts.cg.prefer_dynamic {
-                Linkage::Dynamic
-            } else {
+    let preferred_linkage =
+        match ty {
+            // Generating a dylib without `-C prefer-dynamic` means that we're going
+            // to try to eagerly statically link all dependencies. This is normally
+            // done for end-product dylibs, not intermediate products.
+            //
+            // Treat cdylibs and staticlibs similarly. If `-C prefer-dynamic` is set,
+            // the caller may be code-size conscious, but without it, it makes sense
+            // to statically link a cdylib or staticlib. For staticlibs we use
+            // `-Z staticlib-prefer-dynamic` for now. This may be merged into
+            // `-C prefer-dynamic` in the future.
+            CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
+                if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
+            }
+            CrateType::Staticlib => {
+                if sess.opts.unstable_opts.staticlib_prefer_dynamic {
+                    Linkage::Dynamic
+                } else {
+                    Linkage::Static
+                }
+            }
+
+            // If the global prefer_dynamic switch is turned off, or the final
+            // executable will be statically linked, prefer static crate linkage.
+            CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) => {
                 Linkage::Static
             }
-        }
-        CrateType::Staticlib => {
-            if sess.opts.unstable_opts.staticlib_prefer_dynamic {
-                Linkage::Dynamic
-            } else {
-                Linkage::Static
-            }
-        }
+            CrateType::Executable => Linkage::Dynamic,
 
-        // If the global prefer_dynamic switch is turned off, or the final
-        // executable will be statically linked, prefer static crate linkage.
-        CrateType::Executable if !sess.opts.cg.prefer_dynamic || sess.crt_static(Some(ty)) => {
-            Linkage::Static
-        }
-        CrateType::Executable => Linkage::Dynamic,
+            // proc-macro crates are mostly cdylibs, but we also need metadata.
+            CrateType::ProcMacro => Linkage::Static,
 
-        // proc-macro crates are mostly cdylibs, but we also need metadata.
-        CrateType::ProcMacro => Linkage::Static,
-
-        // No linkage happens with rlibs, we just needed the metadata (which we
-        // got long ago), so don't bother with anything.
-        CrateType::Rlib => Linkage::NotLinked,
-    };
+            // No linkage happens with rlibs, we just needed the metadata (which we
+            // got long ago), so don't bother with anything.
+            CrateType::Rlib => Linkage::NotLinked,
+        };
 
     let mut unavailable_as_static = Vec::new();
 
@@ -165,7 +162,9 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
     let all_dylibs = || {
         tcx.crates(()).iter().filter(|&&cnum| {
-            !tcx.dep_kind(cnum).macros_only() && tcx.used_crate_source(cnum).dylib.is_some()
+            !tcx.dep_kind(cnum).macros_only()
+                && (tcx.used_crate_source(cnum).dylib.is_some()
+                    || tcx.used_crate_source(cnum).sdylib_interface.is_some())
         })
     };
 
@@ -273,7 +272,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         match *kind {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static if src.rlib.is_some() => continue,
-            Linkage::Dynamic if src.dylib.is_some() => continue,
+            Linkage::Dynamic if src.dylib.is_some() || src.sdylib_interface.is_some() => continue,
             kind => {
                 let kind = match kind {
                     Linkage::Static => "rlib",
@@ -315,7 +314,7 @@ fn add_library(
                     crate_name: tcx.crate_name(cnum),
                     non_static_deps: unavailable_as_static
                         .drain(..)
-                        .map(|cnum| NonStaticCrateDep { crate_name: tcx.crate_name(cnum) })
+                        .map(|cnum| NonStaticCrateDep { crate_name_: tcx.crate_name(cnum) })
                         .collect(),
                     rustc_driver_help: linking_to_rustc_driver.then_some(RustcDriverHelp),
                 });
@@ -371,15 +370,15 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
     Some(ret)
 }
 
-// Given a list of how to link upstream dependencies so far, ensure that an
-// injected dependency is activated. This will not do anything if one was
-// transitively included already (e.g., via a dylib or explicitly so).
-//
-// If an injected dependency was not found then we're guaranteed the
-// metadata::creader module has injected that dependency (not listed as
-// a required dependency) in one of the session's field. If this field is not
-// set then this compilation doesn't actually need the dependency and we can
-// also skip this step entirely.
+/// Given a list of how to link upstream dependencies so far, ensure that an
+/// injected dependency is activated. This will not do anything if one was
+/// transitively included already (e.g., via a dylib or explicitly so).
+///
+/// If an injected dependency was not found then we're guaranteed the
+/// metadata::creader module has injected that dependency (not listed as
+/// a required dependency) in one of the session's field. If this field is not
+/// set then this compilation doesn't actually need the dependency and we can
+/// also skip this step entirely.
 fn activate_injected_dep(
     injected: Option<CrateNum>,
     list: &mut DependencyList,

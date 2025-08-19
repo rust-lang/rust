@@ -2,6 +2,7 @@ use crate::consts::ConstEvalCtxt;
 use crate::macros::macro_backtrace;
 use crate::source::{SpanRange, SpanRangeExt, walk_span_to_context};
 use crate::tokenize_with_text;
+use rustc_ast::ast;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
@@ -9,10 +10,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
     ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeKind,
-    Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
-    TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
+    Node, Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
+    StructTailExpr, TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
-use rustc_lexer::{TokenKind, tokenize};
+use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Symbol, SyntaxContext, sym};
@@ -686,7 +687,7 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
             // `{}` => `()`
             ([], None)
                 if block.span.check_source_text(cx, |src| {
-                    tokenize(src)
+                    tokenize(src, FrontmatterAllowed::No)
                         .map(|t| t.kind)
                         .filter(|t| {
                             !matches!(
@@ -1004,8 +1005,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Match(e, arms, s) => {
-                self.hash_expr(e);
+            ExprKind::Match(scrutinee, arms, _) => {
+                self.hash_expr(scrutinee);
 
                 for arm in *arms {
                     self.hash_pat(arm.pat);
@@ -1014,8 +1015,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                     self.hash_expr(arm.body);
                 }
-
-                s.hash(&mut self.s);
             },
             ExprKind::MethodCall(path, receiver, args, _fn_span) => {
                 self.hash_name(path.ident.name);
@@ -1058,8 +1057,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Use(expr, _) => {
                 self.hash_expr(expr);
             },
-            ExprKind::Unary(lop, le) => {
-                std::mem::discriminant(lop).hash(&mut self.s);
+            ExprKind::Unary(l_op, le) => {
+                std::mem::discriminant(l_op).hash(&mut self.s);
                 self.hash_expr(le);
             },
             ExprKind::UnsafeBinderCast(kind, expr, ty) => {
@@ -1283,20 +1282,20 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::BareFn(bfn) => {
-                bfn.safety.hash(&mut self.s);
-                bfn.abi.hash(&mut self.s);
-                for arg in bfn.decl.inputs {
+            TyKind::FnPtr(fn_ptr) => {
+                fn_ptr.safety.hash(&mut self.s);
+                fn_ptr.abi.hash(&mut self.s);
+                for arg in fn_ptr.decl.inputs {
                     self.hash_ty(arg);
                 }
-                std::mem::discriminant(&bfn.decl.output).hash(&mut self.s);
-                match bfn.decl.output {
+                std::mem::discriminant(&fn_ptr.decl.output).hash(&mut self.s);
+                match fn_ptr.decl.output {
                     FnRetTy::DefaultReturn(_) => {},
                     FnRetTy::Return(ty) => {
                         self.hash_ty(ty);
                     },
                 }
-                bfn.decl.c_variadic.hash(&mut self.s);
+                fn_ptr.decl.c_variadic.hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
                 for ty in *ty_list {
@@ -1393,4 +1392,71 @@ fn eq_span_tokens(
         }
     }
     f(cx, left.into_range(), right.into_range(), pred)
+}
+
+/// Returns true if the expression contains ambiguous literals (unsuffixed float or int literals)
+/// that could be interpreted as either f32/f64 or i32/i64 depending on context.
+pub fn has_ambiguous_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Path(ref qpath) => {
+            if let Res::Local(hir_id) = cx.qpath_res(qpath, expr.hir_id)
+                && let Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id)
+                && local.ty.is_none()
+                && let Some(init) = local.init
+            {
+                return has_ambiguous_literal_in_expr(cx, init);
+            }
+            false
+        },
+        ExprKind::Lit(lit) => matches!(
+            lit.node,
+            ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) | ast::LitKind::Int(_, ast::LitIntType::Unsuffixed)
+        ),
+
+        ExprKind::Array(exprs) | ExprKind::Tup(exprs) => exprs.iter().any(|e| has_ambiguous_literal_in_expr(cx, e)),
+
+        ExprKind::Assign(lhs, rhs, _) | ExprKind::AssignOp(_, lhs, rhs) | ExprKind::Binary(_, lhs, rhs) => {
+            has_ambiguous_literal_in_expr(cx, lhs) || has_ambiguous_literal_in_expr(cx, rhs)
+        },
+
+        ExprKind::Unary(_, e)
+        | ExprKind::Cast(e, _)
+        | ExprKind::Type(e, _)
+        | ExprKind::DropTemps(e)
+        | ExprKind::AddrOf(_, _, e)
+        | ExprKind::Field(e, _)
+        | ExprKind::Index(e, _, _)
+        | ExprKind::Yield(e, _) => has_ambiguous_literal_in_expr(cx, e),
+
+        ExprKind::MethodCall(_, receiver, args, _) | ExprKind::Call(receiver, args) => {
+            has_ambiguous_literal_in_expr(cx, receiver) || args.iter().any(|e| has_ambiguous_literal_in_expr(cx, e))
+        },
+
+        ExprKind::Closure(Closure { body, .. }) => {
+            let body = cx.tcx.hir_body(*body);
+            let closure_expr = crate::peel_blocks(body.value);
+            has_ambiguous_literal_in_expr(cx, closure_expr)
+        },
+
+        ExprKind::Block(blk, _) => blk.expr.as_ref().is_some_and(|e| has_ambiguous_literal_in_expr(cx, e)),
+
+        ExprKind::If(cond, then_expr, else_expr) => {
+            has_ambiguous_literal_in_expr(cx, cond)
+                || has_ambiguous_literal_in_expr(cx, then_expr)
+                || else_expr.as_ref().is_some_and(|e| has_ambiguous_literal_in_expr(cx, e))
+        },
+
+        ExprKind::Match(scrutinee, arms, _) => {
+            has_ambiguous_literal_in_expr(cx, scrutinee)
+                || arms.iter().any(|arm| has_ambiguous_literal_in_expr(cx, arm.body))
+        },
+
+        ExprKind::Loop(body, ..) => body.expr.is_some_and(|e| has_ambiguous_literal_in_expr(cx, e)),
+
+        ExprKind::Ret(opt_expr) | ExprKind::Break(_, opt_expr) => {
+            opt_expr.as_ref().is_some_and(|e| has_ambiguous_literal_in_expr(cx, e))
+        },
+
+        _ => false,
+    }
 }

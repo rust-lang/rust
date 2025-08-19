@@ -105,11 +105,12 @@ impl HasAttrs for crate::Crate {
 /// Resolves the item `link` points to in the scope of `def`.
 pub fn resolve_doc_path_on(
     db: &dyn HirDatabase,
-    def: impl HasAttrs,
+    def: impl HasAttrs + Copy,
     link: &str,
     ns: Option<Namespace>,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
-    resolve_doc_path_on_(db, link, def.attr_id(), ns)
+    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner_doc)
 }
 
 fn resolve_doc_path_on_(
@@ -117,9 +118,18 @@ fn resolve_doc_path_on_(
     link: &str,
     attr_id: AttrDefId,
     ns: Option<Namespace>,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
-        AttrDefId::ModuleId(it) => it.resolver(db),
+        AttrDefId::ModuleId(it) => {
+            if is_inner_doc {
+                it.resolver(db)
+            } else if let Some(parent) = Module::from(it).parent(db) {
+                parent.id.resolver(db)
+            } else {
+                it.resolver(db)
+            }
+        }
         AttrDefId::FieldId(it) => it.parent.resolver(db),
         AttrDefId::AdtId(it) => it.resolver(db),
         AttrDefId::FunctionId(it) => it.resolver(db),
@@ -160,7 +170,7 @@ fn resolve_doc_path_on_(
 
 fn resolve_assoc_or_field(
     db: &dyn HirDatabase,
-    resolver: Resolver,
+    resolver: Resolver<'_>,
     path: ModPath,
     name: Name,
     ns: Option<Namespace>,
@@ -197,7 +207,7 @@ fn resolve_assoc_or_field(
             // Doc paths in this context may only resolve to an item of this trait
             // (i.e. no items of its supertraits), so we need to handle them here
             // independently of others.
-            return db.trait_items(id).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
+            return id.trait_items(db).items.iter().find(|it| it.0 == name).map(|(_, assoc_id)| {
                 let def = match *assoc_id {
                     AssocItemId::FunctionId(it) => ModuleDef::Function(it.into()),
                     AssocItemId::ConstId(it) => ModuleDef::Const(it.into()),
@@ -232,9 +242,9 @@ fn resolve_assoc_or_field(
     resolve_field(db, variant_def, name, ns)
 }
 
-fn resolve_assoc_item(
-    db: &dyn HirDatabase,
-    ty: &Type,
+fn resolve_assoc_item<'db>(
+    db: &'db dyn HirDatabase,
+    ty: &Type<'db>,
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
@@ -246,10 +256,10 @@ fn resolve_assoc_item(
     })
 }
 
-fn resolve_impl_trait_item(
-    db: &dyn HirDatabase,
-    resolver: Resolver,
-    ty: &Type,
+fn resolve_impl_trait_item<'db>(
+    db: &'db dyn HirDatabase,
+    resolver: Resolver<'_>,
+    ty: &Type<'db>,
     name: &Name,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {

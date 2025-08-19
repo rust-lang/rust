@@ -1,7 +1,5 @@
 # Compiletest
 
-<!-- toc -->
-
 ## Introduction
 
 `compiletest` is the main test harness of the Rust test suite. It allows test
@@ -29,7 +27,7 @@ on if or how to run the test, what behavior to expect, and more. See
 [directives](directives.md) and the test suite documentation below for more details
 on these annotations.
 
-See the [Adding new tests](adding.md) and [Best practies](best-practices.md)
+See the [Adding new tests](adding.md) and [Best practices](best-practices.md)
 chapters for a tutorial on creating a new test and advice on writing a good
 test, and the [Running tests](running.md) chapter on how to run the test suite.
 
@@ -56,6 +54,9 @@ incremental compilation. The various suites are defined in
 
 The following test suites are available, with links for more information:
 
+[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
+[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
+
 ### Compiler-specific test suites
 
 | Test suite                                | Purpose                                                                                                             |
@@ -65,12 +66,13 @@ The following test suites are available, with links for more information:
 | [`pretty`](#pretty-printer-tests)         | Check pretty printing                                                                                               |
 | [`incremental`](#incremental-tests)       | Check incremental compilation behavior                                                                              |
 | [`debuginfo`](#debuginfo-tests)           | Check debuginfo generation running debuggers                                                                        |
-| [`codegen`](#codegen-tests)               | Check code generation                                                                                               |
+| [`codegen-*`](#codegen-tests)             | Check code generation                                                                                               |
 | [`codegen-units`](#codegen-units-tests)   | Check codegen unit partitioning                                                                                     |
 | [`assembly`](#assembly-tests)             | Check assembly output                                                                                               |
 | [`mir-opt`](#mir-opt-tests)               | Check MIR generation and optimizations                                                                              |
 | [`coverage`](#coverage-tests)             | Check coverage instrumentation                                                                                      |
 | [`coverage-run-rustdoc`](#coverage-tests) | `coverage` tests that also run instrumented doctests                                                                |
+| [`crashes`](#crashes-tests)               | Check that the compiler ICEs/panics/crashes on certain inputs to catch accidental fixes                             |
 
 ### General purpose test suite
 
@@ -78,19 +80,23 @@ The following test suites are available, with links for more information:
 
 ### Rustdoc test suites
 
-See [Rustdoc tests](../rustdoc.md#tests) for more details.
+| Test suite                           | Purpose                                                                  |
+|--------------------------------------|--------------------------------------------------------------------------|
+| [`rustdoc`][rustdoc-html-tests]      | Check HTML output of `rustdoc`                                           |
+| [`rustdoc-gui`][rustdoc-gui-tests]   | Check `rustdoc`'s GUI using a web browser                                |
+| [`rustdoc-js`][rustdoc-js-tests]     | Check `rustdoc`'s search engine and index                                |
+| [`rustdoc-js-std`][rustdoc-js-tests] | Check `rustdoc`'s search engine and index on the std library docs        |
+| [`rustdoc-json`][rustdoc-json-tests] | Check JSON output of `rustdoc`                                           |
+| `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
-| Test suite       | Purpose                                                                  |
-|------------------|--------------------------------------------------------------------------|
-| `rustdoc`        | Check `rustdoc` generated files contain the expected documentation       |
-| `rustdoc-gui`    | Check `rustdoc`'s GUI using a web browser                                |
-| `rustdoc-js`     | Check `rustdoc` search is working as expected                            |
-| `rustdoc-js-std` | Check rustdoc search is working as expected specifically on the std docs |
-| `rustdoc-json`   | Check JSON output of `rustdoc`                                           |
-| `rustdoc-ui`     | Check terminal output of `rustdoc`                                       |
+Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
+These check rustdoc-related or -specific lints that (also) run as part of `rustc`, not (only) `rustdoc`.
+Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
 
-[`tests`]: https://github.com/rust-lang/rust/blob/master/tests
-[`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
+[rustdoc-html-tests]: ../rustdoc-internals/rustdoc-test-suite.md
+[rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
+[rustdoc-js-tests]: ../rustdoc-internals/search.md#testing-the-search-engine
+[rustdoc-json-tests]: ../rustdoc-internals/rustdoc-json-test-suite.md
 
 ### Pretty-printer tests
 
@@ -107,7 +113,7 @@ default behavior without any commands is to:
 2. Run `rustc -Zunpretty=normal` on the output of the previous step.
 3. The output of the previous two steps should be the same.
 4. Run `rustc -Zno-codegen` on the output to make sure that it can type check
-   (this is similar to running `cargo check`).
+   (similar to `cargo check`).
 
 If any of the commands above fail, then the test fails.
 
@@ -282,7 +288,7 @@ For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB com
 
 ### Codegen tests
 
-The tests in [`tests/codegen`] test LLVM code generation. They compile the test
+The tests in [`tests/codegen-llvm`] test LLVM code generation. They compile the test
 with the `--emit=llvm-ir` flag to emit LLVM IR. They then run the LLVM
 [FileCheck] tool. The test is annotated with various `// CHECK` comments to
 check the generated code. See the [FileCheck] documentation for a tutorial and
@@ -293,13 +299,13 @@ See also the [assembly tests](#assembly-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/codegen`]: https://github.com/rust-lang/rust/tree/master/tests/codegen
+[`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/codegen-llvm
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
 
 ### Assembly tests
 
-The tests in [`tests/assembly`] test LLVM assembly output. They compile the test
+The tests in [`tests/assembly-llvm`] test LLVM assembly output. They compile the test
 with the `--emit=asm` flag to emit a `.s` file with the assembly output. They
 then run the LLVM [FileCheck] tool.
 
@@ -316,7 +322,7 @@ See also the [codegen tests](#codegen-tests) for a similar set of tests.
 If you need to work with `#![no_std]` cross-compiling tests, consult the
 [`minicore` test auxiliary](./minicore.md) chapter.
 
-[`tests/assembly`]: https://github.com/rust-lang/rust/tree/master/tests/assembly
+[`tests/assembly-llvm`]: https://github.com/rust-lang/rust/tree/master/tests/assembly-llvm
 
 
 ### Codegen-units tests
@@ -325,12 +331,8 @@ The tests in [`tests/codegen-units`] test the
 [monomorphization](../backend/monomorph.md) collector and CGU partitioning.
 
 These tests work by running `rustc` with a flag to print the result of the
-monomorphization collection pass, and then special annotations in the file are
-used to compare against that.
-
-Each test should be annotated with the `//@
-compile-flags:-Zprint-mono-items=VAL` directive with the appropriate `VAL` to
-instruct `rustc` to print the monomorphization information.
+monomorphization collection pass, i.e., `-Zprint-mono-items`, and then special
+annotations in the file are used to compare against that.
 
 Then, the test should be annotated with comments of the form `//~ MONO_ITEM
 name` where `name` is the monomorphized string printed by rustc like `fn <u32 as
@@ -442,7 +444,9 @@ To work around this when working on a particular test, temporarily create a
 with these contents:
 
 <div class="warning">
+
 Be careful not to add this `Cargo.toml` or its `Cargo.lock` to your actual PR!
+
 </div>
 
 ```toml
@@ -550,10 +554,10 @@ only running the main `coverage` suite.
 
 [`tests/crashes`] serve as a collection of tests that are expected to cause the
 compiler to ICE, panic or crash in some other way, so that accidental fixes are
-tracked. This was formally done at <https://github.com/rust-lang/glacier> but
+tracked. Formerly, this was done at <https://github.com/rust-lang/glacier> but
 doing it inside the rust-lang/rust testsuite is more convenient.
 
-It is imperative that a test in the suite causes rustc to ICE, panic or crash
+It is imperative that a test in the suite causes rustc to ICE, panic, or
 crash in some other way. A test will "pass" if rustc exits with an exit status
 other than 1 or 0.
 
@@ -564,9 +568,12 @@ If you want to see verbose stdout/stderr, you need to set
 $ COMPILETEST_VERBOSE_CRASHES=1 ./x test tests/crashes/999999.rs --stage 1
 ```
 
-When adding crashes from <https://github.com/rust-lang/rust/issues>, the issue
-number should be noted in the file name (`12345.rs` should suffice) and also
-inside the file include a `//@ known-bug: #4321` directive.
+Anyone can add ["untracked" crashes] from the issue tracker. It's strongly
+recommended to include test cases from several issues in a single PR.
+When you do so, each issue number should be noted in the file name (`12345.rs`
+should suffice) and also inside the file by means of a `//@ known-bug: #12345`
+directive. Please [label][labeling] the relevant issues with `S-bug-has-test`
+afterwards.
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name. Please add a doc
@@ -589,6 +596,8 @@ a subset first. The issue numbers can be found in the file name or the `//@
 known-bug` directive inside the test file.
 
 [`tests/crashes`]: https://github.com/rust-lang/rust/tree/master/tests/crashes
+["untracked" crashes]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+state%3Aopen+label%3AI-ICE%2CI-crash+label%3AT-compiler+label%3AS-has-mcve+-label%3AS-bug-has-test
+[labeling]: https://forge.rust-lang.org/release/issue-triaging.html#applying-and-removing-labels
 
 ## Building auxiliary crates
 
@@ -618,7 +627,7 @@ file). The `-L` flag is used to find the extern crates.
 `aux-crate` is very similar to `aux-build`. However, it uses the `--extern` flag
 to link to the extern crate to make the crate be available as an extern prelude.
 That allows you to specify the additional syntax of the `--extern` flag, such as
-renaming a dependency. For example, `// aux-crate:foo=bar.rs` will compile
+renaming a dependency. For example, `//@ aux-crate:foo=bar.rs` will compile
 `auxiliary/bar.rs` and make it available under then name `foo` within the test.
 This is similar to how Cargo does dependency renaming.
 

@@ -5,9 +5,7 @@ use rustc_abi::{
     TyAndLayout,
 };
 
-use crate::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, Uniform,
-};
+use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
 use crate::spec::HasTargetSpec;
 
 #[derive(Clone, Debug)]
@@ -92,7 +90,7 @@ where
         _ => {}
     }
 
-    if (offset.bytes() % 4) != 0
+    if !offset.bytes().is_multiple_of(4)
         && matches!(scalar2.primitive(), Primitive::Float(Float::F32 | Float::F64))
     {
         offset += Size::from_bytes(4 - (offset.bytes() % 4));
@@ -183,7 +181,7 @@ where
                 // Structure { float, int, int } doesn't like to be handled like
                 // { float, long int }. Other way around it doesn't mind.
                 if data.last_offset < arg.layout.size
-                    && (data.last_offset.bytes() % 8) != 0
+                    && !data.last_offset.bytes().is_multiple_of(8)
                     && data.prefix_index < data.prefix.len()
                 {
                     data.prefix[data.prefix_index] = Some(Reg::i32());
@@ -192,21 +190,15 @@ where
                 }
 
                 let mut rest_size = arg.layout.size - data.last_offset;
-                if (rest_size.bytes() % 8) != 0 && data.prefix_index < data.prefix.len() {
+                if !rest_size.bytes().is_multiple_of(8) && data.prefix_index < data.prefix.len() {
                     data.prefix[data.prefix_index] = Some(Reg::i32());
                     rest_size = rest_size - Reg::i32().size;
                 }
 
-                arg.cast_to(CastTarget {
-                    prefix: data.prefix,
-                    rest: Uniform::new(Reg::i64(), rest_size),
-                    attrs: ArgAttributes {
-                        regular: data.arg_attribute,
-                        arg_ext: ArgExtension::None,
-                        pointee_size: Size::ZERO,
-                        pointee_align: None,
-                    },
-                });
+                arg.cast_to(
+                    CastTarget::prefixed(data.prefix, Uniform::new(Reg::i64(), rest_size))
+                        .with_attrs(data.arg_attribute.into()),
+                );
                 return;
             }
         }

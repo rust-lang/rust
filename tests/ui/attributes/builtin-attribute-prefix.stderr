@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `stable`
+  --> $DIR/builtin-attribute-prefix.rs:7:12
+   |
+LL | struct S(#[stable::skip] u8, u16, u32);
+   |            ^^^^^^ use of unresolved module or unlinked crate `stable`
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `must_use`
+  --> $DIR/builtin-attribute-prefix.rs:2:3
+   |
+LL | #[must_use::skip]
+   |   ^^^^^^^^ use of unresolved module or unlinked crate `must_use`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,19 +1,22 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
-    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
+    Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
 };
-use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, TypingMode};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt as _, TypingMode,
+};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::traits::{EvaluateConstErr, specialization_graph};
+use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -55,14 +58,112 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         (SolverDelegate(infcx), value, vars)
     }
 
+    fn compute_goal_fast_path(
+        &self,
+        goal: Goal<'tcx, ty::Predicate<'tcx>>,
+        span: Span,
+    ) -> Option<Certainty> {
+        if let Some(trait_pred) = goal.predicate.as_trait_clause() {
+            if self.shallow_resolve(trait_pred.self_ty().skip_binder()).is_ty_var()
+                // We don't do this fast path when opaques are defined since we may
+                // eventually use opaques to incompletely guide inference via ty var
+                // self types.
+                // FIXME: Properly consider opaques here.
+                && self.inner.borrow_mut().opaque_types().is_empty()
+            {
+                return Some(Certainty::AMBIGUOUS);
+            }
+
+            if trait_pred.polarity() == ty::PredicatePolarity::Positive {
+                match self.0.tcx.as_lang_item(trait_pred.def_id()) {
+                    Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
+                        let predicate = self.resolve_vars_if_possible(goal.predicate);
+                        if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                            return Some(Certainty::Yes);
+                        }
+                    }
+                    Some(LangItem::Copy | LangItem::Clone) => {
+                        let self_ty =
+                            self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
+                        // Unlike `Sized` traits, which always prefer the built-in impl,
+                        // `Copy`/`Clone` may be shadowed by a param-env candidate which
+                        // could force a lifetime error or guide inference. While that's
+                        // not generally desirable, it is observable, so for now let's
+                        // ignore this fast path for types that have regions or infer.
+                        if !self_ty
+                            .has_type_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_INFER)
+                            && self_ty.is_trivially_pure_clone_copy()
+                        {
+                            return Some(Certainty::Yes);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let pred = goal.predicate.kind();
+        match pred.no_bound_vars()? {
+            ty::PredicateKind::DynCompatible(def_id) if self.0.tcx.is_dyn_compatible(def_id) => {
+                Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(outlives)) => {
+                self.0.sub_regions(
+                    SubregionOrigin::RelateRegionParamBound(span, None),
+                    outlives.1,
+                    outlives.0,
+                );
+                Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
+                self.0.register_type_outlives_constraint(
+                    outlives.0,
+                    outlives.1,
+                    &ObligationCause::dummy_with_span(span),
+                );
+
+                Some(Certainty::Yes)
+            }
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, .. })
+            | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                if self.shallow_resolve(a).is_ty_var() && self.shallow_resolve(b).is_ty_var() {
+                    // FIXME: We also need to register a subtype relation between these vars
+                    // when those are added, and if they aren't in the same sub root then
+                    // we should mark this goal as `has_changed`.
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => {
+                if self.shallow_resolve_const(ct).is_ct_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                let arg = self.shallow_resolve_term(arg);
+                if arg.is_trivially_wf(self.tcx) {
+                    Some(Certainty::Yes)
+                } else if arg.is_infer() {
+                    Some(Certainty::AMBIGUOUS)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     fn fresh_var_for_kind_with_span(
         &self,
         arg: ty::GenericArg<'tcx>,
         span: Span,
     ) -> ty::GenericArg<'tcx> {
-        match arg.unpack() {
+        match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
-                self.next_region_var(RegionVariableOrigin::MiscVariable(span)).into()
+                self.next_region_var(RegionVariableOrigin::Misc(span)).into()
             }
             ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
             ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),
@@ -104,23 +205,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.0.clone_opaque_types_for_query_response()
-    }
-
-    fn make_deduplicated_outlives_constraints(
-        &self,
-    ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
+    fn make_deduplicated_outlives_constraints(&self) -> Vec<ty::ArgOutlivesPredicate<'tcx>> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
+        let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
         let region_constraints = self.0.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
-                self.tcx,
-                region_obligations
-                    .iter()
-                    .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category())),
+                region_obligations,
                 region_constraints,
+                region_assumptions,
             )
         });
 
@@ -146,23 +240,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn instantiate_canonical_var_with_infer(
         &self,
-        cv_info: CanonicalVarInfo<'tcx>,
+        kind: CanonicalVarKind<'tcx>,
         span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, cv_info, universe_map)
-    }
-
-    fn register_hidden_type_in_storage(
-        &self,
-        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: <Self::Interner as ty::Interner>::Ty,
-        span: <Self::Interner as ty::Interner>::Span,
-    ) -> Option<<Self::Interner as ty::Interner>::Ty> {
-        self.0.register_hidden_type_in_storage(
-            opaque_type_key,
-            ty::OpaqueHiddenType { span, ty: hidden_ty },
-        )
+        self.0.instantiate_canonical_var(span, kind, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
@@ -174,10 +256,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
-    }
-
-    fn reset_opaque_types(&self) {
-        let _ = self.take_opaque_types();
     }
 
     fn fetch_eligible_assoc_item(

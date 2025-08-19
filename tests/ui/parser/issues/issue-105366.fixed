@@ -1,5 +1,6 @@
 //@ run-rustfix
 
+#[allow(dead_code)]
 struct Foo;
 
 impl From<i32> for Foo {

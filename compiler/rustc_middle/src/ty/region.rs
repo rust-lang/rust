@@ -54,7 +54,7 @@ impl<'tcx> Region<'tcx> {
     ) -> Region<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
-            && let Some(inner) = tcx.lifetimes.re_late_bounds.get(debruijn.as_usize())
+            && let Some(inner) = tcx.lifetimes.anon_re_bounds.get(debruijn.as_usize())
             && let Some(re) = inner.get(var.as_usize()).copied()
         {
             re
@@ -148,6 +148,10 @@ impl<'tcx> rustc_type_ir::inherent::Region<TyCtxt<'tcx>> for Region<'tcx> {
         Region::new_bound(tcx, debruijn, ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon })
     }
 
+    fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderRegion) -> Self {
+        Region::new_placeholder(tcx, placeholder)
+    }
+
     fn new_static(tcx: TyCtxt<'tcx>) -> Self {
         tcx.lifetimes.re_static
     }
@@ -159,37 +163,33 @@ impl<'tcx> Region<'tcx> {
         *self.0.0
     }
 
-    pub fn get_name(self) -> Option<Symbol> {
-        if self.has_name() {
-            match self.kind() {
-                ty::ReEarlyParam(ebr) => Some(ebr.name),
-                ty::ReBound(_, br) => br.kind.get_name(),
-                ty::ReLateParam(fr) => fr.kind.get_name(),
-                ty::ReStatic => Some(kw::StaticLifetime),
-                ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
-                _ => None,
-            }
-        } else {
-            None
+    pub fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
+        match self.kind() {
+            ty::ReEarlyParam(ebr) => ebr.is_named().then_some(ebr.name),
+            ty::ReBound(_, br) => br.kind.get_name(tcx),
+            ty::ReLateParam(fr) => fr.kind.get_name(tcx),
+            ty::ReStatic => Some(kw::StaticLifetime),
+            ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(tcx),
+            _ => None,
         }
     }
 
-    pub fn get_name_or_anon(self) -> Symbol {
-        match self.get_name() {
+    pub fn get_name_or_anon(self, tcx: TyCtxt<'tcx>) -> Symbol {
+        match self.get_name(tcx) {
             Some(name) => name,
             None => sym::anon,
         }
     }
 
     /// Is this region named by the user?
-    pub fn has_name(self) -> bool {
+    pub fn is_named(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
-            ty::ReEarlyParam(ebr) => ebr.has_name(),
-            ty::ReBound(_, br) => br.kind.is_named(),
-            ty::ReLateParam(fr) => fr.kind.is_named(),
+            ty::ReEarlyParam(ebr) => ebr.is_named(),
+            ty::ReBound(_, br) => br.kind.is_named(tcx),
+            ty::ReLateParam(fr) => fr.kind.is_named(tcx),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
-            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
+            ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(tcx),
             ty::ReErased => false,
             ty::ReError(_) => false,
         }
@@ -309,7 +309,7 @@ impl<'tcx> Region<'tcx> {
                 Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
             }
             ty::ReLateParam(ty::LateParamRegion {
-                kind: ty::LateParamRegionKind::Named(def_id, _),
+                kind: ty::LateParamRegionKind::Named(def_id),
                 ..
             }) => Some(def_id),
             _ => None,
@@ -322,6 +322,14 @@ impl<'tcx> Region<'tcx> {
 pub struct EarlyParamRegion {
     pub index: u32,
     pub name: Symbol,
+}
+
+impl EarlyParamRegion {
+    /// Does this early bound region have a name? Early bound regions normally
+    /// always have names except when using anonymous lifetimes (`'_`).
+    pub fn is_named(&self) -> bool {
+        self.name != kw::UnderscoreLifetime
+    }
 }
 
 impl rustc_type_ir::inherent::ParamLike for EarlyParamRegion {
@@ -367,11 +375,13 @@ pub enum LateParamRegionKind {
     /// sake of diagnostics in `FnCtxt::sig_of_closure_with_expectation`.
     Anon(u32),
 
-    /// Named region parameters for functions (a in &'a T)
+    /// An anonymous region parameter with a `Symbol` name.
     ///
-    /// The `DefId` is needed to distinguish free regions in
-    /// the event of shadowing.
-    Named(DefId, Symbol),
+    /// Used to give late-bound regions names for things like pretty printing.
+    NamedAnon(u32, Symbol),
+
+    /// Late-bound regions that appear in the AST.
+    Named(DefId),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
@@ -382,32 +392,30 @@ impl LateParamRegionKind {
     pub fn from_bound(var: BoundVar, br: BoundRegionKind) -> LateParamRegionKind {
         match br {
             BoundRegionKind::Anon => LateParamRegionKind::Anon(var.as_u32()),
-            BoundRegionKind::Named(def_id, name) => LateParamRegionKind::Named(def_id, name),
+            BoundRegionKind::Named(def_id) => LateParamRegionKind::Named(def_id),
             BoundRegionKind::ClosureEnv => LateParamRegionKind::ClosureEnv,
+            BoundRegionKind::NamedAnon(name) => LateParamRegionKind::NamedAnon(var.as_u32(), name),
         }
     }
 
-    pub fn is_named(&self) -> bool {
+    pub fn is_named(&self, tcx: TyCtxt<'_>) -> bool {
+        self.get_name(tcx).is_some()
+    }
+
+    pub fn get_name(&self, tcx: TyCtxt<'_>) -> Option<Symbol> {
         match *self {
-            LateParamRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
-            _ => false,
-        }
-    }
-
-    pub fn get_name(&self) -> Option<Symbol> {
-        if self.is_named() {
-            match *self {
-                LateParamRegionKind::Named(_, name) => return Some(name),
-                _ => unreachable!(),
+            LateParamRegionKind::Named(def_id) => {
+                let name = tcx.item_name(def_id);
+                if name != kw::UnderscoreLifetime { Some(name) } else { None }
             }
+            LateParamRegionKind::NamedAnon(_, name) => Some(name),
+            _ => None,
         }
-
-        None
     }
 
     pub fn get_id(&self) -> Option<DefId> {
         match *self {
-            LateParamRegionKind::Named(id, _) => Some(id),
+            LateParamRegionKind::Named(id) => Some(id),
             _ => None,
         }
     }
@@ -419,11 +427,13 @@ pub enum BoundRegionKind {
     /// An anonymous region parameter for a given fn (&T)
     Anon,
 
-    /// Named region parameters for functions (a in &'a T)
+    /// An anonymous region parameter with a `Symbol` name.
     ///
-    /// The `DefId` is needed to distinguish free regions in
-    /// the event of shadowing.
-    Named(DefId, Symbol),
+    /// Used to give late-bound regions names for things like pretty printing.
+    NamedAnon(Symbol),
+
+    /// Late-bound regions that appear in the AST.
+    Named(DefId),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
@@ -452,36 +462,48 @@ impl core::fmt::Debug for BoundRegion {
         match self.kind {
             BoundRegionKind::Anon => write!(f, "{:?}", self.var),
             BoundRegionKind::ClosureEnv => write!(f, "{:?}.Env", self.var),
-            BoundRegionKind::Named(def, symbol) => {
-                write!(f, "{:?}.Named({:?}, {:?})", self.var, def, symbol)
+            BoundRegionKind::Named(def) => {
+                write!(f, "{:?}.Named({:?})", self.var, def)
+            }
+            BoundRegionKind::NamedAnon(symbol) => {
+                write!(f, "{:?}.NamedAnon({:?})", self.var, symbol)
             }
         }
     }
 }
 
 impl BoundRegionKind {
-    pub fn is_named(&self) -> bool {
-        match *self {
-            BoundRegionKind::Named(_, name) => name != kw::UnderscoreLifetime,
-            _ => false,
-        }
+    pub fn is_named(&self, tcx: TyCtxt<'_>) -> bool {
+        self.get_name(tcx).is_some()
     }
 
-    pub fn get_name(&self) -> Option<Symbol> {
-        if self.is_named() {
-            match *self {
-                BoundRegionKind::Named(_, name) => return Some(name),
-                _ => unreachable!(),
+    pub fn get_name(&self, tcx: TyCtxt<'_>) -> Option<Symbol> {
+        match *self {
+            BoundRegionKind::Named(def_id) => {
+                let name = tcx.item_name(def_id);
+                if name != kw::UnderscoreLifetime { Some(name) } else { None }
             }
+            BoundRegionKind::NamedAnon(name) => Some(name),
+            _ => None,
         }
-
-        None
     }
 
     pub fn get_id(&self) -> Option<DefId> {
         match *self {
-            BoundRegionKind::Named(id, _) => Some(id),
+            BoundRegionKind::Named(id) => Some(id),
             _ => None,
         }
     }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(RegionKind<'_>, 20);
+    static_assert_size!(ty::WithCachedTypeInfo<RegionKind<'_>>, 48);
+    // tidy-alphabetical-end
 }

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ normalize-stderr: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
@@ -7,19 +8,32 @@
 //@ normalize-stderr: "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
 // Some attributes are only computed for release builds:
 //@ compile-flags: -O
+//@ revisions: generic riscv64
+//@ [riscv64] compile-flags: --target riscv64gc-unknown-linux-gnu
+//@ [riscv64] needs-llvm-components: riscv
+//@ [generic] ignore-riscv64
 #![feature(rustc_attrs)]
 #![crate_type = "lib"]
+#![feature(no_core)]
+#![no_std]
+#![no_core]
+
+extern crate minicore;
+use minicore::*;
 
 struct S(u16);
 
 #[rustc_abi(debug)]
-fn test(_x: u8) -> bool { true } //~ ERROR: fn_abi
+fn test(_x: u8) -> bool {
+    //~^ ERROR: fn_abi
+    true
+}
 
 #[rustc_abi(debug)]
 type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 
 #[rustc_abi(debug)]
-fn test_generic<T>(_x: *const T) { } //~ ERROR: fn_abi
+fn test_generic<T>(_x: *const T) {} //~ ERROR: fn_abi
 
 #[rustc_abi(debug)]
 const C: () = (); //~ ERROR: can only be applied to
@@ -31,7 +45,7 @@ impl S {
 
 impl S {
     #[rustc_abi(debug)]
-    fn assoc_test(&self) { } //~ ERROR: fn_abi
+    fn assoc_test(&self) {} //~ ERROR: fn_abi
 }
 
 #[rustc_abi(assert_eq)]

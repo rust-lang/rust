@@ -78,3 +78,17 @@ fn swap8() {
     v[i1 + i2] = v[i2];
     v[i2] = tmp;
 }
+
+fn issue_14931() {
+    let mut v = [1, 2, 3, 4];
+
+    let mut i1 = 0;
+    for i2 in 0..4 {
+        let tmp = v[i1];
+        //~^ manual_swap
+        v[i1] = v[i2];
+        v[i2] = tmp;
+
+        i1 += 2;
+    }
+}

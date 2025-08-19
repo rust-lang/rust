@@ -1,10 +1,32 @@
 use std::sync::{Arc, Mutex};
 
-#[salsa::db]
-#[derive(Default, Clone)]
+#[salsa_macros::db]
+#[derive(Clone)]
 pub(crate) struct LoggerDb {
     storage: salsa::Storage<Self>,
     logger: Logger,
+}
+
+impl Default for LoggerDb {
+    fn default() -> Self {
+        let logger = Logger::default();
+        Self {
+            storage: salsa::Storage::new(Some(Box::new({
+                let logger = logger.clone();
+                move |event| match event.kind {
+                    salsa::EventKind::WillExecute { .. }
+                    | salsa::EventKind::WillCheckCancellation
+                    | salsa::EventKind::DidValidateMemoizedValue { .. }
+                    | salsa::EventKind::WillDiscardStaleOutput { .. }
+                    | salsa::EventKind::DidDiscard { .. } => {
+                        logger.logs.lock().unwrap().push(format!("salsa_event({:?})", event.kind));
+                    }
+                    _ => {}
+                }
+            }))),
+            logger,
+        }
+    }
 }
 
 #[derive(Default, Clone)]
@@ -12,22 +34,8 @@ struct Logger {
     logs: Arc<Mutex<Vec<String>>>,
 }
 
-#[salsa::db]
-impl salsa::Database for LoggerDb {
-    fn salsa_event(&self, event: &dyn Fn() -> salsa::Event) {
-        let event = event();
-        match event.kind {
-            salsa::EventKind::WillExecute { .. }
-            | salsa::EventKind::WillCheckCancellation
-            | salsa::EventKind::DidValidateMemoizedValue { .. }
-            | salsa::EventKind::WillDiscardStaleOutput { .. }
-            | salsa::EventKind::DidDiscard { .. } => {
-                self.push_log(format!("salsa_event({:?})", event.kind));
-            }
-            _ => {}
-        }
-    }
-}
+#[salsa_macros::db]
+impl salsa::Database for LoggerDb {}
 
 impl LoggerDb {
     /// Log an event from inside a tracked function.
@@ -40,7 +48,7 @@ impl LoggerDb {
     /// it is meant to be run from outside any tracked functions.
     pub(crate) fn assert_logs(&self, expected: expect_test::Expect) {
         let logs = std::mem::take(&mut *self.logger.logs.lock().unwrap());
-        expected.assert_eq(&format!("{:#?}", logs));
+        expected.assert_eq(&format!("{logs:#?}"));
     }
 }
 

@@ -10,7 +10,7 @@ use run_make_support::rustc;
 fn main() {
     rustc()
         .input("main.rs")
-        .arg("-Zlinker-features=+lld")
+        .arg("-Clinker-features=+lld")
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
         .link_arg("-Tscript.t")

@@ -2,18 +2,21 @@
 //!
 //! # Poisoning
 //!
-//! All synchronization objects in this module implement a strategy called "poisoning"
-//! where if a thread panics while holding the exclusive access granted by the primitive,
-//! the state of the primitive is set to "poisoned".
-//! This information is then propagated to all other threads
+//! All synchronization objects in this module implement a strategy called
+//! "poisoning" where a primitive becomes poisoned if it recognizes that some
+//! thread has panicked while holding the exclusive access granted by the
+//! primitive. This information is then propagated to all other threads
 //! to signify that the data protected by this primitive is likely tainted
 //! (some invariant is not being upheld).
 //!
-//! The specifics of how this "poisoned" state affects other threads
-//! depend on the primitive. See [#Overview] bellow.
+//! The specifics of how this "poisoned" state affects other threads and whether
+//! the panics are recognized reliably or on a best-effort basis depend on the
+//! primitive. See [Overview](#overview) below.
 //!
 //! For the alternative implementations that do not employ poisoning,
-//! see `std::sys::nonpoisoning`.
+//! see [`std::sync::nonpoison`].
+//!
+//! [`std::sync::nonpoison`]: crate::sync::nonpoison
 //!
 //! # Overview
 //!
@@ -34,14 +37,15 @@
 //! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
 //!   most one thread at a time is able to access some data.
 //!
-//!   [`Mutex::lock()`] returns a [`LockResult`],
-//!   providing a way to deal with the poisoned state.
-//!   See [`Mutex`'s documentation](Mutex#poisoning) for more.
+//!   Panicking while holding the lock typically poisons the mutex, but it is
+//!   not guaranteed to detect this condition in all circumstances.
+//!   [`Mutex::lock()`] returns a [`LockResult`], providing a way to deal with
+//!   the poisoned state. See [`Mutex`'s documentation](Mutex#poisoning) for more.
 //!
 //! - [`Once`]: A thread-safe way to run a piece of code only once.
 //!   Mostly useful for implementing one-time global initialization.
 //!
-//!   [`Once`] is poisoned if the piece of code passed to
+//!   [`Once`] is reliably poisoned if the piece of code passed to
 //!   [`Once::call_once()`] or [`Once::call_once_force()`] panics.
 //!   When in poisoned state, subsequent calls to [`Once::call_once()`] will panic too.
 //!   [`Once::call_once_force()`] can be used to clear the poisoned state.
@@ -51,12 +55,10 @@
 //!   writer at a time. In some cases, this can be more efficient than
 //!   a mutex.
 //!
-//!   This implementation, like [`Mutex`], will become poisoned on a panic.
+//!   This implementation, like [`Mutex`], usually becomes poisoned on a panic.
 //!   Note, however, that an `RwLock` may only be poisoned if a panic occurs
 //!   while it is locked exclusively (write mode). If a panic occurs in any reader,
 //!   then the lock will not be poisoned.
-
-// FIXME(sync_nonpoison) add links to sync::nonpoison to the doc comment above.
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::{Condvar, WaitTimeoutResult};

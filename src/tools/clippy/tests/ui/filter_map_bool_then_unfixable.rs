@@ -1,6 +1,5 @@
-#![allow(clippy::question_mark, unused)]
+#![allow(clippy::question_mark)]
 #![warn(clippy::filter_map_bool_then)]
-//@no-rustfix
 
 fn issue11617() {
     let mut x: Vec<usize> = vec![0; 10];

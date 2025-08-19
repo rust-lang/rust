@@ -1,3 +1,5 @@
+//@ ignore-cross-compile (needs to run doctest binary)
+
 use std::iter;
 use std::path::Path;
 

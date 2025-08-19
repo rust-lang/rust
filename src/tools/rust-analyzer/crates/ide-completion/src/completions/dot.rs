@@ -18,7 +18,7 @@ use crate::{
 pub(crate) fn complete_dot(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    dot_access: &DotAccess,
+    dot_access: &DotAccess<'_>,
 ) {
     let receiver_ty = match dot_access {
         DotAccess { receiver_ty: Some(receiver_ty), .. } => &receiver_ty.original,
@@ -130,8 +130,8 @@ pub(crate) fn complete_dot(
 pub(crate) fn complete_undotted_self(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
-    expr_ctx: &PathExprCtx,
+    path_ctx: &PathCompletionCtx<'_>,
+    expr_ctx: &PathExprCtx<'_>,
 ) {
     if !ctx.config.enable_self_on_the_fly {
         return;
@@ -198,9 +198,9 @@ pub(crate) fn complete_undotted_self(
 fn complete_fields(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    receiver: &hir::Type,
-    mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type),
-    mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type),
+    receiver: &hir::Type<'_>,
+    mut named_field: impl FnMut(&mut Completions, hir::Field, hir::Type<'_>),
+    mut tuple_index: impl FnMut(&mut Completions, usize, hir::Type<'_>),
     is_field_access: bool,
     is_method_access_with_parens: bool,
 ) {
@@ -230,7 +230,7 @@ fn complete_fields(
 
 fn complete_methods(
     ctx: &CompletionContext<'_>,
-    receiver: &hir::Type,
+    receiver: &hir::Type<'_>,
     traits_in_scope: &FxHashSet<hir::TraitId>,
     f: impl FnMut(hir::Function),
 ) {
@@ -258,12 +258,11 @@ fn complete_methods(
         fn on_trait_method(&mut self, func: hir::Function) -> ControlFlow<()> {
             // This needs to come before the `seen_methods` test, so that if we see the same method twice,
             // once as inherent and once not, we will include it.
-            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db) {
-                if self.ctx.exclude_traits.contains(&trait_)
-                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods
-                {
-                    return ControlFlow::Continue(());
-                }
+            if let ItemContainer::Trait(trait_) = func.container(self.ctx.db)
+                && (self.ctx.exclude_traits.contains(&trait_)
+                    || trait_.complete(self.ctx.db) == Complete::IgnoreMethods)
+            {
+                return ControlFlow::Continue(());
             }
 
             if func.self_param(self.ctx.db).is_some()

@@ -1,5 +1,5 @@
 //@ compile-flags: -Z track-diagnostics
-//@ error-pattern: created at
+//@ dont-require-annotations: NOTE
 
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.
@@ -11,7 +11,9 @@ pub trait Foo {
 }
 
 impl <T> Foo for T {
-    default fn bar() {} //~ ERROR specialization is unstable
+    default fn bar() {}
+    //~^ ERROR specialization is unstable
+    //~| NOTE created at
 }
 
 fn main() {}

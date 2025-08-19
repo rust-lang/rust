@@ -4,7 +4,6 @@
     "arch": "x86_64",
     "target-endian": "little",
     "target-pointer-width": "64",
-    "target-c-int-width": "32",
     "os": "ericos",
     "linker-flavor": "ld.lld",
     "linker": "rust-lld",

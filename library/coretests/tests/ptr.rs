@@ -653,7 +653,6 @@ fn thin_box() {
     //   if `{size,align}_of_for_meta<T: ?Sized>(T::Metadata)` are added.
     // * Constructing a `ThinBox` without consuming and deallocating a `Box`
     //   requires either the unstable `Unsize` marker trait,
-    //   or the unstable `unsized_locals` language feature,
     //   or taking `&dyn T` and restricting to `T: Copy`.
 
     use std::alloc::*;
@@ -937,22 +936,18 @@ fn test_const_swap_ptr() {
         assert!(*s1.0.ptr == 666);
         assert!(*s2.0.ptr == 1);
 
-        // Swap them back, again as an array.
+        // Swap them back, byte-for-byte
         unsafe {
             ptr::swap_nonoverlapping(
-                ptr::from_mut(&mut s1).cast::<T>(),
-                ptr::from_mut(&mut s2).cast::<T>(),
-                1,
+                ptr::from_mut(&mut s1).cast::<u8>(),
+                ptr::from_mut(&mut s2).cast::<u8>(),
+                size_of::<A>(),
             );
         }
 
         // Make sure they still work.
         assert!(*s1.0.ptr == 1);
         assert!(*s2.0.ptr == 666);
-
-        // This is where we'd swap again using a `u8` type and a `count` of `size_of::<T>()` if it
-        // were not for the limitation of `swap_nonoverlapping` around pointers crossing multiple
-        // elements.
     };
 }
 

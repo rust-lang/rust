@@ -200,11 +200,11 @@ fn msrv_1_33() {
     MyStruct.do_things();
 }
 
+// Linting inside macro expansion is no longer supported
 mod lint_inside_macro_expansion_bad {
     macro_rules! foo {
         () => {
             use std::any::Any;
-            //~^ unused_trait_names
             fn bar() {
                 "bar".type_id();
             }

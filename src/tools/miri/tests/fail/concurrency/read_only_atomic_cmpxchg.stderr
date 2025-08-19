@@ -3,8 +3,7 @@ error: Undefined Behavior: atomic store and read-modify-write operations cannot 
   --> tests/fail/concurrency/read_only_atomic_cmpxchg.rs:LL:CC
    |
 LL |     x.compare_exchange(1, 2, Ordering::Relaxed, Ordering::Relaxed).unwrap_err();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ atomic store and read-modify-write operations cannot be performed on read-only memory
-see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

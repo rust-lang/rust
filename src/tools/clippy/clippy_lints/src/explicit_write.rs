@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_expn_of, path_def_id};
+use clippy_utils::{is_expn_of, path_def_id, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::{ExpnId, sym};
+use rustc_span::ExpnId;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -72,9 +72,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             };
 
             // ordering is important here, since `writeln!` uses `write!` internally
-            let calling_macro = if is_expn_of(write_call.span, "writeln").is_some() {
+            let calling_macro = if is_expn_of(write_call.span, sym::writeln).is_some() {
                 Some("writeln")
-            } else if is_expn_of(write_call.span, "write").is_some() {
+            } else if is_expn_of(write_call.span, sym::write).is_some() {
                 Some("write")
             } else {
                 None

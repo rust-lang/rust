@@ -314,7 +314,8 @@ impl IntRange {
         IntRange { lo, hi }
     }
 
-    fn is_subrange(&self, other: &Self) -> bool {
+    #[inline]
+    pub fn is_subrange(&self, other: &Self) -> bool {
         other.lo <= self.lo && self.hi <= other.hi
     }
 
@@ -696,6 +697,10 @@ pub enum Constructor<Cx: PatCx> {
     F128Range(IeeeFloat<QuadS>, IeeeFloat<QuadS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
     Str(Cx::StrLit),
+    /// Deref patterns (enabled by the `deref_patterns` feature) provide a way of matching on a
+    /// smart pointer ADT through its pointee. They don't directly correspond to ADT constructors,
+    /// and currently are not supported alongside them. Carries the type of the pointee.
+    DerefPattern(Cx::Ty),
     /// Constants that must not be matched structurally. They are treated as black boxes for the
     /// purposes of exhaustiveness: we must not inspect them, and they don't count towards making a
     /// match exhaustive.
@@ -740,6 +745,7 @@ impl<Cx: PatCx> Clone for Constructor<Cx> {
             Constructor::F64Range(lo, hi, end) => Constructor::F64Range(*lo, *hi, *end),
             Constructor::F128Range(lo, hi, end) => Constructor::F128Range(*lo, *hi, *end),
             Constructor::Str(value) => Constructor::Str(value.clone()),
+            Constructor::DerefPattern(ty) => Constructor::DerefPattern(ty.clone()),
             Constructor::Opaque(inner) => Constructor::Opaque(inner.clone()),
             Constructor::Or => Constructor::Or,
             Constructor::Never => Constructor::Never,
@@ -856,6 +862,10 @@ impl<Cx: PatCx> Constructor<Cx> {
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
+            // Deref patterns only interact with other deref patterns. Prior to usefulness analysis,
+            // we ensure they don't appear alongside any other non-wild non-opaque constructors.
+            (DerefPattern(_), DerefPattern(_)) => true,
+
             // Opaque constructors don't interact with anything unless they come from the
             // syntactically identical pattern.
             (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
@@ -932,6 +942,7 @@ impl<Cx: PatCx> Constructor<Cx> {
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
             F128Range(lo, hi, end) => write!(f, "{lo}{end}{hi}")?,
             Str(value) => write!(f, "{value:?}")?,
+            DerefPattern(_) => write!(f, "deref!({:?})", fields.next().unwrap())?,
             Opaque(..) => write!(f, "<constant pattern>")?,
             Or => {
                 for pat in fields {
@@ -939,9 +950,7 @@ impl<Cx: PatCx> Constructor<Cx> {
                 }
             }
             Never => write!(f, "!")?,
-            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => {
-                write!(f, "_ : {:?}", ty)?
-            }
+            Wildcard | Missing | NonExhaustive | Hidden | PrivateUninhabited => write!(f, "_")?,
         }
         Ok(())
     }
@@ -1039,8 +1048,17 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
         let mut missing = Vec::new();
         // Constructors in `ctors`, except wildcards and opaques.
         let mut seen = Vec::new();
+        // If we see a deref pattern, it must be the only non-wildcard non-opaque constructor; we
+        // ensure this prior to analysis.
+        let mut deref_pat_present = false;
         for ctor in ctors.cloned() {
             match ctor {
+                DerefPattern(..) => {
+                    if !deref_pat_present {
+                        deref_pat_present = true;
+                        present.push(ctor);
+                    }
+                }
                 Opaque(..) => present.push(ctor),
                 Wildcard => {} // discard wildcards
                 _ => seen.push(ctor),
@@ -1048,6 +1066,9 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
         }
 
         match self {
+            _ if deref_pat_present => {
+                // Deref patterns are the only constructor; nothing is missing.
+            }
             ConstructorSet::Struct { empty } => {
                 if !seen.is_empty() {
                     present.push(Struct);
@@ -1109,15 +1130,15 @@ impl<Cx: PatCx> ConstructorSet<Cx> {
                         seen_false = true;
                     }
                 }
-                if seen_false {
-                    present.push(Bool(false));
-                } else {
-                    missing.push(Bool(false));
-                }
                 if seen_true {
                     present.push(Bool(true));
                 } else {
                     missing.push(Bool(true));
+                }
+                if seen_false {
+                    present.push(Bool(false));
+                } else {
+                    missing.push(Bool(false));
                 }
             }
             ConstructorSet::Integers { range_1, range_2 } => {

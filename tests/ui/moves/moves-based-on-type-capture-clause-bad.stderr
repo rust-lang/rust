@@ -1,5 +1,5 @@
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/moves-based-on-type-capture-clause-bad.rs:8:20
+  --> $DIR/moves-based-on-type-capture-clause-bad.rs:9:20
    |
 LL |     let x = "Hello world!".to_string();
    |         - move occurs because `x` has type `String`, which does not implement the `Copy` trait
@@ -12,6 +12,12 @@ LL |     println!("{}", x);
    |                    ^ value borrowed here after move
    |
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider cloning the value before moving it into the closure
+   |
+LL ~     let value = x.clone();
+LL ~     thread::spawn(move || {
+LL ~         println!("{}", value);
+   |
 
 error: aborting due to 1 previous error
 

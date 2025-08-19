@@ -25,6 +25,7 @@
    LL|      0|async fn foo() -> [bool; 10] { [false; 10] } // unused function; executor does not block on `h()`
    LL|       |
    LL|      1|pub async fn g(x: u8) {
+                                    ^0
    LL|      0|    match x {
    LL|      0|        y if e().await == y => (),
    LL|      0|        y if f().await == y => (),
@@ -33,8 +34,9 @@
    LL|      0|}
    LL|       |
    LL|      1|async fn h(x: usize) { // The function signature is counted when called, but the body is not
-   LL|      0|                       // executed (not awaited) so the open brace has a `0` count (at least when
-   LL|      0|                       // displayed with `llvm-cov show` in color-mode).
+                                   ^0
+   LL|       |                       // executed (not awaited) so the open brace has a `0` count (at least when
+   LL|       |                       // displayed with `llvm-cov show` in color-mode).
    LL|      0|    match x {
    LL|      0|        y if foo().await[y] => (),
    LL|      0|        _ => (),
@@ -42,9 +44,9 @@
    LL|      0|}
    LL|       |
    LL|      1|async fn i(x: u8) { // line coverage is 1, but there are 2 regions:
-   LL|      1|                    // (a) the function signature, counted when the function is called; and
-   LL|      1|                    // (b) the open brace for the function body, counted once when the body is
-   LL|      1|                    // executed asynchronously.
+   LL|       |                    // (a) the function signature, counted when the function is called; and
+   LL|       |                    // (b) the open brace for the function body, counted once when the body is
+   LL|       |                    // executed asynchronously.
    LL|      1|    match x {
    LL|      1|        y if c(x).await == y + 1 => { d().await; }
                       ^0                            ^0
@@ -91,7 +93,7 @@
    LL|      1|}
    LL|       |
    LL|      1|async fn m(x: u8) -> u8 { x - 1 }
-                                      ^0
+                                      ^0^0    ^0
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let _ = g(10);

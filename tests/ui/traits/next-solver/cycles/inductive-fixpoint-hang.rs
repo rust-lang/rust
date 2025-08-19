@@ -1,4 +1,6 @@
 //@ compile-flags: -Znext-solver
+#![feature(rustc_attrs)]
+#![rustc_no_implicit_bounds]
 
 // This currently hangs if we do not erase constraints from
 // overflow.
@@ -17,9 +19,9 @@
 // the solver to hang without hitting the recursion limit.
 trait Trait {}
 
-struct W<T: ?Sized>(*const T);
+struct W<T>(*const T);
 
-impl<T: ?Sized> Trait for W<W<T>>
+impl<T> Trait for W<W<T>>
 where
     W<T>: Trait,
     W<T>: Trait,

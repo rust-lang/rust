@@ -9,6 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(unknown_diagnostic_attributes)]` implied by `#[deny(unknown_or_malformed_diagnostic_attributes)]`
 
 error: aborting due to 1 previous error
 

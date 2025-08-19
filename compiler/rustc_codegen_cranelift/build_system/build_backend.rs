@@ -18,7 +18,7 @@ pub(crate) fn build_backend(
     let mut cmd = CG_CLIF.build(&bootstrap_host_compiler, dirs);
 
     let mut rustflags = rustflags_from_env("RUSTFLAGS");
-    rustflags.push("-Zallow-features=rustc_private".to_owned());
+    rustflags.push("-Zallow-features=rustc_private,f16,f128".to_owned());
     rustflags_to_cmd_env(&mut cmd, "RUSTFLAGS", &rustflags);
 
     if env::var("CG_CLIF_EXPENSIVE_CHECKS").is_ok() {

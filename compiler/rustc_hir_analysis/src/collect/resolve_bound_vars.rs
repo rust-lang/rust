@@ -14,6 +14,7 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
@@ -63,6 +64,7 @@ impl ResolvedArg {
 struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     rbv: &'a mut ResolveBoundVars,
+    disambiguator: &'a mut DisambiguatorState,
     scope: ScopeRef<'a>,
 }
 
@@ -220,6 +222,7 @@ enum BinderScopeType {
 
 type ScopeRef<'a> = &'a Scope<'a>;
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         resolve_bound_vars,
@@ -245,8 +248,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 #[instrument(level = "debug", skip(tcx))]
 fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBoundVars {
     let mut rbv = ResolveBoundVars::default();
-    let mut visitor =
-        BoundVarContext { tcx, rbv: &mut rbv, scope: &Scope::Root { opt_parent_item: None } };
+    let mut visitor = BoundVarContext {
+        tcx,
+        rbv: &mut rbv,
+        scope: &Scope::Root { opt_parent_item: None },
+        disambiguator: &mut DisambiguatorState::new(),
+    };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -272,19 +279,13 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
     rbv
 }
 
-fn late_arg_as_bound_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param: &GenericParam<'tcx>,
-) -> ty::BoundVariableKind {
+fn late_arg_as_bound_arg<'tcx>(param: &GenericParam<'tcx>) -> ty::BoundVariableKind {
     let def_id = param.def_id.to_def_id();
-    let name = tcx.item_name(def_id);
     match param.kind {
         GenericParamKind::Lifetime { .. } => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id, name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(def_id))
         }
-        GenericParamKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id, name))
-        }
+        GenericParamKind::Type { .. } => ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(def_id)),
         GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
     }
 }
@@ -295,10 +296,10 @@ fn late_arg_as_bound_arg<'tcx>(
 fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVariableKind {
     match param.kind {
         ty::GenericParamDefKind::Lifetime => {
-            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id, param.name))
+            ty::BoundVariableKind::Region(ty::BoundRegionKind::Named(param.def_id))
         }
         ty::GenericParamDefKind::Type { .. } => {
-            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id, param.name))
+            ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(param.def_id))
         }
         ty::GenericParamDefKind::Const { .. } => ty::BoundVariableKind::Const,
     }
@@ -379,7 +380,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
                 let arg = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
                 bound_vars.insert(param.def_id, arg);
-                late_arg_as_bound_arg(self.tcx, param)
+                late_arg_as_bound_arg(param)
             });
         binders.extend(binders_iter);
 
@@ -478,7 +479,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -515,9 +516,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
         let capture_all_in_scope_lifetimes = opaque_captures_all_in_scope_lifetimes(opaque);
         if capture_all_in_scope_lifetimes {
+            let tcx = self.tcx;
             let lifetime_ident = |def_id: LocalDefId| {
-                let name = self.tcx.item_name(def_id.to_def_id());
-                let span = self.tcx.def_span(def_id);
+                let name = tcx.item_name(def_id.to_def_id());
+                let span = tcx.def_span(def_id);
                 Ident::new(name, span)
             };
 
@@ -602,13 +604,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        match &item.kind {
-            hir::ItemKind::Impl(hir::Impl { of_trait, .. }) => {
-                if let Some(of_trait) = of_trait {
-                    self.record_late_bound_vars(of_trait.hir_ref_id, Vec::default());
-                }
-            }
-            _ => {}
+        if let hir::ItemKind::Impl(impl_) = item.kind
+            && let Some(of_trait) = impl_.of_trait
+        {
+            self.record_late_bound_vars(of_trait.trait_ref.hir_ref_id, Vec::default());
         }
         match item.kind {
             hir::ItemKind::Fn { generics, .. } => {
@@ -627,14 +626,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::TyAlias(_, _, generics)
-            | hir::ItemKind::Const(_, _, generics, _)
-            | hir::ItemKind::Enum(_, _, generics)
-            | hir::ItemKind::Struct(_, _, generics)
-            | hir::ItemKind::Union(_, _, generics)
-            | hir::ItemKind::Trait(_, _, _, generics, ..)
+            hir::ItemKind::TyAlias(_, generics, _)
+            | hir::ItemKind::Const(_, generics, _, _)
+            | hir::ItemKind::Enum(_, generics, _)
+            | hir::ItemKind::Struct(_, generics, _)
+            | hir::ItemKind::Union(_, generics, _)
+            | hir::ItemKind::Trait(_, _, _, _, generics, ..)
             | hir::ItemKind::TraitAlias(_, generics, ..)
-            | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
+            | hir::ItemKind::Impl(hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
                 self.visit_early(item.hir_id(), generics, |this| intravisit::walk_item(this, item));
             }
@@ -702,7 +701,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match ty.kind {
-            hir::TyKind::BareFn(c) => {
+            hir::TyKind::FnPtr(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
                     .generic_params
                     .iter()
@@ -710,7 +709,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     .map(|(late_bound_idx, param)| {
                         (
                             (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                            late_arg_as_bound_arg(self.tcx, param),
+                            late_arg_as_bound_arg(param),
                         )
                     })
                     .unzip();
@@ -726,8 +725,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // a FnPtr has no bounds, so everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -740,7 +738,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -756,8 +754,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     where_bound_origin: None,
                 };
                 self.with(scope, |this| {
-                    // a bare fn has no bounds, so everything
-                    // contained within is scoped within its binder.
+                    // everything within is scoped within its binder
                     intravisit::walk_ty(this, ty);
                 });
             }
@@ -949,7 +946,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         .map(|(late_bound_idx, param)| {
                             (
                                 (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
-                                late_arg_as_bound_arg(self.tcx, param),
+                                late_arg_as_bound_arg(param),
                             )
                         })
                         .unzip();
@@ -1091,8 +1088,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
-        let BoundVarContext { tcx, rbv, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope };
+        let BoundVarContext { tcx, rbv, disambiguator, .. } = self;
+        let mut this = BoundVarContext { tcx: *tcx, rbv, disambiguator, scope: &wrap_scope };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
@@ -1163,7 +1160,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 matches!(param.kind, GenericParamKind::Lifetime { .. })
                     && self.tcx.is_late_bound(param.hir_id)
             })
-            .map(|param| late_arg_as_bound_arg(self.tcx, param))
+            .map(|param| late_arg_as_bound_arg(param))
             .collect();
         self.record_late_bound_vars(hir_id, binders);
         let scope = Scope::Binder {
@@ -1417,7 +1414,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             hir::Node::OpaqueTy(_) => "higher-ranked lifetime from outer `impl Trait`",
             // Other items are fine.
             hir::Node::Item(_) | hir::Node::TraitItem(_) | hir::Node::ImplItem(_) => return Ok(()),
-            hir::Node::Ty(hir::Ty { kind: hir::TyKind::BareFn(_), .. }) => {
+            hir::Node::Ty(hir::Ty { kind: hir::TyKind::FnPtr(_), .. }) => {
                 "higher-ranked lifetime from function pointer"
             }
             hir::Node::Ty(hir::Ty { kind: hir::TyKind::TraitObject(..), .. }) => {
@@ -1446,7 +1443,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self, opaque_capture_scopes), ret)]
     fn remap_opaque_captures(
-        &self,
+        &mut self,
         opaque_capture_scopes: &Vec<(LocalDefId, &RefCell<FxIndexMap<ResolvedArg, LocalDefId>>)>,
         mut lifetime: ResolvedArg,
         ident: Ident,
@@ -1462,8 +1459,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed =
-                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
+                // `opaque_def_id` is unique to the `BoundVarContext` pass which is executed once
+                // per `resolve_bound_vars` query. This is the only location that creates
+                // `OpaqueLifetime` paths. `<opaque_def_id>::OpaqueLifetime(..)` is thus unique
+                // to this query and duplicates within the query are handled by `self.disambiguator`.
+                let feed = self.tcx.create_def(
+                    opaque_def_id,
+                    None,
+                    DefKind::LifetimeParam,
+                    Some(DefPathData::OpaqueLifetime(ident.name)),
+                    &mut self.disambiguator,
+                );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()
@@ -2097,7 +2103,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // If we have a self type alias (in an impl), try to resolve an
                     // associated item from one of the supertraits of the impl's trait.
                     Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. } => {
-                        let hir::ItemKind::Impl(hir::Impl { of_trait: Some(trait_ref), .. }) = self
+                        let hir::ItemKind::Impl(hir::Impl { of_trait: Some(of_trait), .. }) = self
                             .tcx
                             .hir_node_by_def_id(impl_def_id.expect_local())
                             .expect_item()
@@ -2105,7 +2111,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         else {
                             return;
                         };
-                        let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                        let Some(trait_def_id) = of_trait.trait_ref.trait_def_id() else {
                             return;
                         };
                         let Some((bound_vars, assoc_item)) = BoundVarContext::supertrait_hrtb_vars(
@@ -2161,84 +2167,80 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     /// Walk the generics of the item for a trait bound whose self type
     /// corresponds to the expected res, and return the trait def id.
     fn for_each_trait_bound_on_res(&self, expected_res: Res) -> impl Iterator<Item = DefId> {
-        std::iter::from_coroutine(
-            #[coroutine]
-            move || {
-                let mut scope = self.scope;
-                loop {
-                    let hir_id = match *scope {
-                        Scope::Binder { hir_id, .. } => Some(hir_id),
-                        Scope::Root { opt_parent_item: Some(parent_def_id) } => {
-                            Some(self.tcx.local_def_id_to_hir_id(parent_def_id))
-                        }
-                        Scope::Body { .. }
-                        | Scope::ObjectLifetimeDefault { .. }
-                        | Scope::Supertrait { .. }
-                        | Scope::TraitRefBoundary { .. }
-                        | Scope::LateBoundary { .. }
-                        | Scope::Opaque { .. }
-                        | Scope::Root { opt_parent_item: None } => None,
-                    };
+        gen move {
+            let mut scope = self.scope;
+            loop {
+                let hir_id = match *scope {
+                    Scope::Binder { hir_id, .. } => Some(hir_id),
+                    Scope::Root { opt_parent_item: Some(parent_def_id) } => {
+                        Some(self.tcx.local_def_id_to_hir_id(parent_def_id))
+                    }
+                    Scope::Body { .. }
+                    | Scope::ObjectLifetimeDefault { .. }
+                    | Scope::Supertrait { .. }
+                    | Scope::TraitRefBoundary { .. }
+                    | Scope::LateBoundary { .. }
+                    | Scope::Opaque { .. }
+                    | Scope::Root { opt_parent_item: None } => None,
+                };
 
-                    if let Some(hir_id) = hir_id {
-                        let node = self.tcx.hir_node(hir_id);
-                        // If this is a `Self` bound in a trait, yield the trait itself.
-                        // Specifically, we don't need to look at any supertraits since
-                        // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
-                        if let Res::SelfTyParam { trait_: _ } = expected_res
-                            && let hir::Node::Item(item) = node
-                            && let hir::ItemKind::Trait(..) = item.kind
-                        {
-                            // Yield the trait's def id. Supertraits will be
-                            // elaborated from that.
-                            yield item.owner_id.def_id.to_def_id();
-                        } else if let Some(generics) = node.generics() {
-                            for pred in generics.predicates {
-                                let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind
-                                else {
-                                    continue;
-                                };
-                                let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
-                                    pred.bounded_ty.kind
-                                else {
-                                    continue;
-                                };
-                                // Match the expected res.
-                                if bounded_path.res != expected_res {
-                                    continue;
-                                }
-                                for pred in pred.bounds {
-                                    match pred {
-                                        hir::GenericBound::Trait(poly_trait_ref) => {
-                                            if let Some(def_id) =
-                                                poly_trait_ref.trait_ref.trait_def_id()
-                                            {
-                                                yield def_id;
-                                            }
+                if let Some(hir_id) = hir_id {
+                    let node = self.tcx.hir_node(hir_id);
+                    // If this is a `Self` bound in a trait, yield the trait itself.
+                    // Specifically, we don't need to look at any supertraits since
+                    // we already do that in `BoundVarContext::supertrait_hrtb_vars`.
+                    if let Res::SelfTyParam { trait_: _ } = expected_res
+                        && let hir::Node::Item(item) = node
+                        && let hir::ItemKind::Trait(..) = item.kind
+                    {
+                        // Yield the trait's def id. Supertraits will be
+                        // elaborated from that.
+                        yield item.owner_id.def_id.to_def_id();
+                    } else if let Some(generics) = node.generics() {
+                        for pred in generics.predicates {
+                            let hir::WherePredicateKind::BoundPredicate(pred) = pred.kind else {
+                                continue;
+                            };
+                            let hir::TyKind::Path(hir::QPath::Resolved(None, bounded_path)) =
+                                pred.bounded_ty.kind
+                            else {
+                                continue;
+                            };
+                            // Match the expected res.
+                            if bounded_path.res != expected_res {
+                                continue;
+                            }
+                            for pred in pred.bounds {
+                                match pred {
+                                    hir::GenericBound::Trait(poly_trait_ref) => {
+                                        if let Some(def_id) =
+                                            poly_trait_ref.trait_ref.trait_def_id()
+                                        {
+                                            yield def_id;
                                         }
-                                        hir::GenericBound::Outlives(_)
-                                        | hir::GenericBound::Use(_, _) => {}
                                     }
+                                    hir::GenericBound::Outlives(_)
+                                    | hir::GenericBound::Use(_, _) => {}
                                 }
                             }
                         }
                     }
-
-                    match *scope {
-                        Scope::Binder { s, .. }
-                        | Scope::Body { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. }
-                        | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s }
-                        | Scope::LateBoundary { s, .. }
-                        | Scope::Opaque { s, .. } => {
-                            scope = s;
-                        }
-                        Scope::Root { .. } => break,
-                    }
                 }
-            },
-        )
+
+                match *scope {
+                    Scope::Binder { s, .. }
+                    | Scope::Body { s, .. }
+                    | Scope::ObjectLifetimeDefault { s, .. }
+                    | Scope::Supertrait { s, .. }
+                    | Scope::TraitRefBoundary { s }
+                    | Scope::LateBoundary { s, .. }
+                    | Scope::Opaque { s, .. } => {
+                        scope = s;
+                    }
+                    Scope::Root { .. } => break,
+                }
+            }
+        }
     }
 }
 
@@ -2490,7 +2492,7 @@ fn deny_non_region_late_bound(
             format!("late-bound {what} parameter not allowed on {where_}"),
         );
 
-        let guar = diag.emit_unless(!tcx.features().non_lifetime_binders() || !first);
+        let guar = diag.emit_unless_delay(!tcx.features().non_lifetime_binders() || !first);
 
         first = false;
         *arg = ResolvedArg::Error(guar);

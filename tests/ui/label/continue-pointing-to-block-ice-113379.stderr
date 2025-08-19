@@ -1,0 +1,43 @@
+error[E0670]: `async fn` is not permitted in Rust 2015
+  --> $DIR/continue-pointing-to-block-ice-113379.rs:4:1
+   |
+LL | async fn f999() -> Vec<usize> {
+   | ^^^^^ to use `async fn`, switch to Rust 2018 or later
+   |
+   = help: pass `--edition 2024` to `rustc`
+   = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+
+error[E0601]: `main` function not found in crate `continue_pointing_to_block_ice_113379`
+  --> $DIR/continue-pointing-to-block-ice-113379.rs:11:2
+   |
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/continue-pointing-to-block-ice-113379.rs`
+
+error[E0696]: `continue` pointing to a labeled block
+  --> $DIR/continue-pointing-to-block-ice-113379.rs:8:9
+   |
+LL | /     'b: {
+LL | |
+LL | |         continue 'b;
+   | |         ^^^^^^^^^^^ labeled blocks cannot be `continue`'d
+LL | |
+LL | |     }
+   | |_____- labeled block the `continue` points to
+
+error[E0308]: mismatched types
+  --> $DIR/continue-pointing-to-block-ice-113379.rs:6:5
+   |
+LL | /     'b: {
+LL | |
+LL | |         continue 'b;
+LL | |
+LL | |     }
+   | |_____^ expected `Vec<usize>`, found `()`
+   |
+   = note: expected struct `Vec<usize>`
+           found unit type `()`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0601, E0670, E0696.
+For more information about an error, try `rustc --explain E0308`.

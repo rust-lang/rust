@@ -61,7 +61,7 @@ fn multiline_sugg() {
         //~^ let_unit_value
         .into_iter()
         .map(|i| i * 2)
-        .filter(|i| i % 2 == 0)
+        .filter(|i| i.is_multiple_of(2))
         .map(|_| ())
         .next()
         .unwrap();
@@ -197,4 +197,14 @@ pub fn issue12594() {
         let res = 1;
         returns_result(res).unwrap();
     }
+}
+
+fn issue15061() {
+    fn return_unit() {}
+    fn do_something(x: ()) {}
+
+    let res = return_unit();
+    //~^ let_unit_value
+    do_something(res);
+    println!("{res:?}");
 }

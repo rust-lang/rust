@@ -2,7 +2,7 @@ error: Undefined Behavior: incorrect layout on deallocation: ALLOC has size 1 an
   --> tests/fail/alloc/deallocate-bad-size.rs:LL:CC
    |
 LL |         dealloc(x, Layout::from_size_align_unchecked(2, 1));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: ALLOC has size 1 and alignment ALIGN, but gave size 2 and alignment ALIGN
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

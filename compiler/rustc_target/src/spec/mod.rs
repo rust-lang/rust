@@ -6,34 +6,38 @@
 //! to a new platform, and allows for an unprecedented level of control over how
 //! the compiler works.
 //!
-//! # Using custom targets
+//! # Using targets and target.json
 //!
-//! A target tuple, as passed via `rustc --target=TUPLE`, will first be
-//! compared against the list of built-in targets. This is to ease distributing
-//! rustc (no need for configuration files) and also to hold these built-in
-//! targets as immutable and sacred. If `TUPLE` is not one of the built-in
-//! targets, rustc will check if a file named `TUPLE` exists. If it does, it
-//! will be loaded as the target configuration. If the file does not exist,
-//! rustc will search each directory in the environment variable
-//! `RUST_TARGET_PATH` for a file named `TUPLE.json`. The first one found will
-//! be loaded. If no file is found in any of those directories, a fatal error
-//! will be given.
+//! Invoking "rustc --target=${TUPLE}" will result in rustc initiating the [`Target::search`] by
+//! - checking if "$TUPLE" is a complete path to a json (ending with ".json") and loading if so
+//! - checking builtin targets for "${TUPLE}"
+//! - checking directories in "${RUST_TARGET_PATH}" for "${TUPLE}.json"
+//! - checking for "${RUSTC_SYSROOT}/lib/rustlib/${TUPLE}/target.json"
 //!
-//! Projects defining their own targets should use
-//! `--target=path/to/my-awesome-platform.json` instead of adding to
-//! `RUST_TARGET_PATH`.
+//! Code will then be compiled using the first discovered target spec.
 //!
 //! # Defining a new target
 //!
-//! Targets are defined using [JSON](https://json.org/). The `Target` struct in
-//! this module defines the format the JSON file should take, though each
-//! underscore in the field names should be replaced with a hyphen (`-`) in the
-//! JSON file. Some fields are required in every target specification, such as
-//! `llvm-target`, `target-endian`, `target-pointer-width`, `data-layout`,
-//! `arch`, and `os`. In general, options passed to rustc with `-C` override
-//! the target's settings, though `target-feature` and `link-args` will *add*
-//! to the list specified by the target, rather than replace.
+//! Targets are defined using a struct which additionally has serialization to and from [JSON].
+//! The `Target` struct in this module loosely corresponds with the format the JSON takes.
+//! We usually try to make the fields equivalent but we have given up on a 1:1 correspondence
+//! between the JSON and the actual structure itself.
+//!
+//! Some fields are required in every target spec, and they should be embedded in Target directly.
+//! Optional keys are in TargetOptions, but Target derefs to it, for no practical difference.
+//! Most notable is the "data-layout" field which specifies Rust's notion of sizes and alignments
+//! for several key types, such as f64, pointers, and so on.
+//!
+//! At one point we felt `-C` options should override the target's settings, like in C compilers,
+//! but that was an essentially-unmarked route for making code incorrect and Rust unsound.
+//! Confronted with programmers who prefer a compiler with a good UX instead of a lethal weapon,
+//! we have almost-entirely recanted that notion, though we hope "target modifiers" will offer
+//! a way to have a decent UX yet still extend the necessary compiler controls, without
+//! requiring a new target spec for each and every single possible target micro-variant.
+//!
+//! [JSON]: https://json.org
 
+use core::result::Result;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
@@ -43,7 +47,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 
 use rustc_abi::{
-    Align, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
+    Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
@@ -53,15 +57,16 @@ use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
-use crate::callconv::Conv;
 use crate::json::{Json, ToJson};
 use crate::spec::crt_objects::CrtObjects;
 
 pub mod crt_objects;
 
+mod abi_map;
 mod base;
 mod json;
 
+pub use abi_map::{AbiMap, AbiMapping};
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 
@@ -194,17 +199,28 @@ impl LldFlavor {
             LldFlavor::Link => "link",
         }
     }
+}
 
-    fn from_str(s: &str) -> Option<Self> {
-        Some(match s {
+impl FromStr for LldFlavor {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
             "darwin" => LldFlavor::Ld64,
             "gnu" => LldFlavor::Ld,
             "link" => LldFlavor::Link,
             "wasm" => LldFlavor::Wasm,
-            _ => return None,
+            _ => {
+                return Err(
+                    "invalid value for lld flavor: '{s}', expected one of 'darwin', 'gnu', 'link', 'wasm'"
+                        .into(),
+                );
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(LldFlavor);
 
 impl ToJson for LldFlavor {
     fn to_json(&self) -> Json {
@@ -490,17 +506,21 @@ macro_rules! linker_flavor_cli_impls {
                 concat!("one of: ", $($string, " ",)*)
             }
 
-            pub fn from_str(s: &str) -> Option<LinkerFlavorCli> {
-                Some(match s {
-                    $($string => $($flavor)*,)*
-                    _ => return None,
-                })
-            }
-
             pub fn desc(self) -> &'static str {
                 match self {
                     $($($flavor)* => $string,)*
                 }
+            }
+        }
+
+        impl FromStr for LinkerFlavorCli {
+            type Err = String;
+
+            fn from_str(s: &str) -> Result<LinkerFlavorCli, Self::Err> {
+                Ok(match s {
+                    $($string => $($flavor)*,)*
+                    _ => return Err(format!("invalid linker flavor, allowed values: {}", Self::one_of())),
+                })
             }
         }
     )
@@ -536,6 +556,8 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Em) "em"
 }
 
+crate::json::serde_deserialize_from_str!(LinkerFlavorCli);
+
 impl ToJson for LinkerFlavorCli {
     fn to_json(&self) -> Json {
         self.desc().to_json()
@@ -569,18 +591,25 @@ pub enum LinkSelfContainedDefault {
 
 /// Parses a backwards-compatible `-Clink-self-contained` option string, without components.
 impl FromStr for LinkSelfContainedDefault {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<LinkSelfContainedDefault, ()> {
+    fn from_str(s: &str) -> Result<LinkSelfContainedDefault, Self::Err> {
         Ok(match s {
             "false" => LinkSelfContainedDefault::False,
             "true" | "wasm" => LinkSelfContainedDefault::True,
             "musl" => LinkSelfContainedDefault::InferredForMusl,
             "mingw" => LinkSelfContainedDefault::InferredForMingw,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid `-Clink-self-contained` default. \
+                        Use 'false', 'true', 'wasm', 'musl' or 'mingw'",
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(LinkSelfContainedDefault);
 
 impl ToJson for LinkSelfContainedDefault {
     fn to_json(&self) -> Json {
@@ -648,19 +677,6 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { LinkSelfContainedComponents }
 
 impl LinkSelfContainedComponents {
-    /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
-    pub fn from_str(s: &str) -> Option<LinkSelfContainedComponents> {
-        Some(match s {
-            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
-            "libc" => LinkSelfContainedComponents::LIBC,
-            "unwind" => LinkSelfContainedComponents::UNWIND,
-            "linker" => LinkSelfContainedComponents::LINKER,
-            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
-            "mingw" => LinkSelfContainedComponents::MINGW,
-            _ => return None,
-        })
-    }
-
     /// Return the component's name.
     ///
     /// Returns `None` if the bitflags aren't a singular component (but a mix of multiple flags).
@@ -704,6 +720,29 @@ impl LinkSelfContainedComponents {
     }
 }
 
+impl FromStr for LinkSelfContainedComponents {
+    type Err = String;
+
+    /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "crto" => LinkSelfContainedComponents::CRT_OBJECTS,
+            "libc" => LinkSelfContainedComponents::LIBC,
+            "unwind" => LinkSelfContainedComponents::UNWIND,
+            "linker" => LinkSelfContainedComponents::LINKER,
+            "sanitizers" => LinkSelfContainedComponents::SANITIZERS,
+            "mingw" => LinkSelfContainedComponents::MINGW,
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid link-self-contained component, expected 'crto', 'libc', 'unwind', 'linker', 'sanitizers', 'mingw'"
+                ));
+            }
+        })
+    }
+}
+
+crate::json::serde_deserialize_from_str!(LinkSelfContainedComponents);
+
 impl ToJson for LinkSelfContainedComponents {
     fn to_json(&self) -> Json {
         let components: Vec<_> = Self::all_components()
@@ -721,7 +760,7 @@ impl ToJson for LinkSelfContainedComponents {
 }
 
 bitflags::bitflags! {
-    /// The `-Z linker-features` components that can individually be enabled or disabled.
+    /// The `-C linker-features` components that can individually be enabled or disabled.
     ///
     /// They are feature flags intended to be a more flexible mechanism than linker flavors, and
     /// also to prevent a combinatorial explosion of flavors whenever a new linker feature is
@@ -752,11 +791,22 @@ bitflags::bitflags! {
 rustc_data_structures::external_bitflags_debug! { LinkerFeatures }
 
 impl LinkerFeatures {
-    /// Parses a single `-Z linker-features` well-known feature, not a set of flags.
+    /// Parses a single `-C linker-features` well-known feature, not a set of flags.
     pub fn from_str(s: &str) -> Option<LinkerFeatures> {
         Some(match s {
             "cc" => LinkerFeatures::CC,
             "lld" => LinkerFeatures::LLD,
+            _ => return None,
+        })
+    }
+
+    /// Return the linker feature name, as would be passed on the CLI.
+    ///
+    /// Returns `None` if the bitflags aren't a singular component (but a mix of multiple flags).
+    pub fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            LinkerFeatures::CC => "cc",
+            LinkerFeatures::LLD => "lld",
             _ => return None,
         })
     }
@@ -806,6 +856,25 @@ impl PanicStrategy {
     }
 }
 
+impl FromStr for PanicStrategy {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "unwind" => PanicStrategy::Unwind,
+            "abort" => PanicStrategy::Abort,
+            _ => {
+                return Err(format!(
+                    "'{}' is not a valid value for \
+                    panic-strategy. Use 'unwind' or 'abort'.",
+                    s
+                ));
+            }
+        })
+    }
+}
+
+crate::json::serde_deserialize_from_str!(PanicStrategy);
+
 impl ToJson for PanicStrategy {
     fn to_json(&self) -> Json {
         match *self {
@@ -852,17 +921,23 @@ impl SymbolVisibility {
 }
 
 impl FromStr for SymbolVisibility {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<SymbolVisibility, ()> {
+    fn from_str(s: &str) -> Result<SymbolVisibility, Self::Err> {
         match s {
             "hidden" => Ok(SymbolVisibility::Hidden),
             "protected" => Ok(SymbolVisibility::Protected),
             "interposable" => Ok(SymbolVisibility::Interposable),
-            _ => Err(()),
+            _ => Err(format!(
+                "'{}' is not a valid value for \
+                    symbol-visibility. Use 'hidden', 'protected, or 'interposable'.",
+                s
+            )),
         }
     }
 }
+
+crate::json::serde_deserialize_from_str!(SymbolVisibility);
 
 impl ToJson for SymbolVisibility {
     fn to_json(&self) -> Json {
@@ -875,18 +950,24 @@ impl ToJson for SymbolVisibility {
 }
 
 impl FromStr for RelroLevel {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<RelroLevel, ()> {
+    fn from_str(s: &str) -> Result<RelroLevel, Self::Err> {
         match s {
             "full" => Ok(RelroLevel::Full),
             "partial" => Ok(RelroLevel::Partial),
             "off" => Ok(RelroLevel::Off),
             "none" => Ok(RelroLevel::None),
-            _ => Err(()),
+            _ => Err(format!(
+                "'{}' is not a valid value for \
+                        relro-level. Use 'full', 'partial, 'off', or 'none'.",
+                s
+            )),
         }
     }
 }
+
+crate::json::serde_deserialize_from_str!(RelroLevel);
 
 impl ToJson for RelroLevel {
     fn to_json(&self) -> Json {
@@ -908,7 +989,7 @@ pub enum SmallDataThresholdSupport {
 }
 
 impl FromStr for SmallDataThresholdSupport {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "none" {
@@ -920,10 +1001,12 @@ impl FromStr for SmallDataThresholdSupport {
         } else if let Some(arg) = s.strip_prefix("llvm-arg=") {
             Ok(Self::LlvmArg(arg.to_string().into()))
         } else {
-            Err(())
+            Err(format!("'{s}' is not a valid value for small-data-threshold-support."))
         }
     }
 }
+
+crate::json::serde_deserialize_from_str!(SmallDataThresholdSupport);
 
 impl ToJson for SmallDataThresholdSupport {
     fn to_json(&self) -> Value {
@@ -954,17 +1037,24 @@ impl MergeFunctions {
 }
 
 impl FromStr for MergeFunctions {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<MergeFunctions, ()> {
+    fn from_str(s: &str) -> Result<MergeFunctions, Self::Err> {
         match s {
             "disabled" => Ok(MergeFunctions::Disabled),
             "trampolines" => Ok(MergeFunctions::Trampolines),
             "aliases" => Ok(MergeFunctions::Aliases),
-            _ => Err(()),
+            _ => Err(format!(
+                "'{}' is not a valid value for \
+                    merge-functions. Use 'disabled', \
+                    'trampolines', or 'aliases'.",
+                s
+            )),
         }
     }
 }
+
+crate::json::serde_deserialize_from_str!(MergeFunctions);
 
 impl ToJson for MergeFunctions {
     fn to_json(&self) -> Json {
@@ -1025,9 +1115,9 @@ impl RelocModel {
 }
 
 impl FromStr for RelocModel {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<RelocModel, ()> {
+    fn from_str(s: &str) -> Result<RelocModel, Self::Err> {
         Ok(match s {
             "static" => RelocModel::Static,
             "pic" => RelocModel::Pic,
@@ -1036,10 +1126,18 @@ impl FromStr for RelocModel {
             "ropi" => RelocModel::Ropi,
             "rwpi" => RelocModel::Rwpi,
             "ropi-rwpi" => RelocModel::RopiRwpi,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "invalid relocation model '{s}'.
+                        Run `rustc --print relocation-models` to \
+                        see the list of supported values.'"
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(RelocModel);
 
 impl ToJson for RelocModel {
     fn to_json(&self) -> Json {
@@ -1057,19 +1155,27 @@ pub enum CodeModel {
 }
 
 impl FromStr for CodeModel {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<CodeModel, ()> {
+    fn from_str(s: &str) -> Result<CodeModel, Self::Err> {
         Ok(match s {
             "tiny" => CodeModel::Tiny,
             "small" => CodeModel::Small,
             "kernel" => CodeModel::Kernel,
             "medium" => CodeModel::Medium,
             "large" => CodeModel::Large,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid code model. \
+                        Run `rustc --print code-models` to \
+                        see the list of supported values."
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(CodeModel);
 
 impl ToJson for CodeModel {
     fn to_json(&self) -> Json {
@@ -1092,16 +1198,24 @@ pub enum FloatAbi {
 }
 
 impl FromStr for FloatAbi {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<FloatAbi, ()> {
+    fn from_str(s: &str) -> Result<FloatAbi, Self::Err> {
         Ok(match s {
             "soft" => FloatAbi::Soft,
             "hard" => FloatAbi::Hard,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{}' is not a valid value for \
+                        llvm-floatabi. Use 'soft' or 'hard'.",
+                    s
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(FloatAbi);
 
 impl ToJson for FloatAbi {
     fn to_json(&self) -> Json {
@@ -1123,16 +1237,23 @@ pub enum RustcAbi {
 }
 
 impl FromStr for RustcAbi {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<RustcAbi, ()> {
+    fn from_str(s: &str) -> Result<RustcAbi, Self::Err> {
         Ok(match s {
             "x86-sse2" => RustcAbi::X86Sse2,
             "x86-softfloat" => RustcAbi::X86Softfloat,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid value for rustc-abi. \
+                        Use 'x86-softfloat' or leave the field unset."
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(RustcAbi);
 
 impl ToJson for RustcAbi {
     fn to_json(&self) -> Json {
@@ -1154,9 +1275,9 @@ pub enum TlsModel {
 }
 
 impl FromStr for TlsModel {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<TlsModel, ()> {
+    fn from_str(s: &str) -> Result<TlsModel, Self::Err> {
         Ok(match s {
             // Note the difference "general" vs "global" difference. The model name is "general",
             // but the user-facing option name is "global" for consistency with other compilers.
@@ -1165,10 +1286,18 @@ impl FromStr for TlsModel {
             "initial-exec" => TlsModel::InitialExec,
             "local-exec" => TlsModel::LocalExec,
             "emulated" => TlsModel::Emulated,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid TLS model. \
+                        Run `rustc --print tls-models` to \
+                        see the list of supported values."
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(TlsModel);
 
 impl ToJson for TlsModel {
     fn to_json(&self) -> Json {
@@ -1215,19 +1344,6 @@ impl LinkOutputKind {
         }
     }
 
-    pub(super) fn from_str(s: &str) -> Option<LinkOutputKind> {
-        Some(match s {
-            "dynamic-nopic-exe" => LinkOutputKind::DynamicNoPicExe,
-            "dynamic-pic-exe" => LinkOutputKind::DynamicPicExe,
-            "static-nopic-exe" => LinkOutputKind::StaticNoPicExe,
-            "static-pic-exe" => LinkOutputKind::StaticPicExe,
-            "dynamic-dylib" => LinkOutputKind::DynamicDylib,
-            "static-dylib" => LinkOutputKind::StaticDylib,
-            "wasi-reactor-exe" => LinkOutputKind::WasiReactorExe,
-            _ => return None,
-        })
-    }
-
     pub fn can_link_dylib(self) -> bool {
         match self {
             LinkOutputKind::StaticNoPicExe | LinkOutputKind::StaticPicExe => false,
@@ -1239,6 +1355,31 @@ impl LinkOutputKind {
         }
     }
 }
+
+impl FromStr for LinkOutputKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<LinkOutputKind, Self::Err> {
+        Ok(match s {
+            "dynamic-nopic-exe" => LinkOutputKind::DynamicNoPicExe,
+            "dynamic-pic-exe" => LinkOutputKind::DynamicPicExe,
+            "static-nopic-exe" => LinkOutputKind::StaticNoPicExe,
+            "static-pic-exe" => LinkOutputKind::StaticPicExe,
+            "dynamic-dylib" => LinkOutputKind::DynamicDylib,
+            "static-dylib" => LinkOutputKind::StaticDylib,
+            "wasi-reactor-exe" => LinkOutputKind::WasiReactorExe,
+            _ => {
+                return Err(format!(
+                    "invalid value for CRT object kind. \
+                        Use '(dynamic,static)-(nopic,pic)-exe' or \
+                        '(dynamic,static)-dylib' or 'wasi-reactor-exe'"
+                ));
+            }
+        })
+    }
+}
+
+crate::json::serde_deserialize_from_str!(LinkOutputKind);
 
 impl fmt::Display for LinkOutputKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1275,17 +1416,24 @@ impl DebuginfoKind {
 }
 
 impl FromStr for DebuginfoKind {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, ()> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "dwarf" => DebuginfoKind::Dwarf,
             "dwarf-dsym" => DebuginfoKind::DwarfDsym,
             "pdb" => DebuginfoKind::Pdb,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid value for debuginfo-kind. Use 'dwarf', \
+                        'dwarf-dsym' or 'pdb'."
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(DebuginfoKind);
 
 impl ToJson for DebuginfoKind {
     fn to_json(&self) -> Json {
@@ -1339,17 +1487,24 @@ impl SplitDebuginfo {
 }
 
 impl FromStr for SplitDebuginfo {
-    type Err = ();
+    type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, ()> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "off" => SplitDebuginfo::Off,
             "unpacked" => SplitDebuginfo::Unpacked,
             "packed" => SplitDebuginfo::Packed,
-            _ => return Err(()),
+            _ => {
+                return Err(format!(
+                    "'{s}' is not a valid value for \
+                        split-debuginfo. Use 'off', 'unpacked', or 'packed'.",
+                ));
+            }
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(SplitDebuginfo);
 
 impl ToJson for SplitDebuginfo {
     fn to_json(&self) -> Json {
@@ -1363,7 +1518,9 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde_derive::Deserialize)]
+#[serde(tag = "kind")]
+#[serde(rename_all = "kebab-case")]
 pub enum StackProbeType {
     /// Don't emit any stack probes.
     None,
@@ -1375,44 +1532,10 @@ pub enum StackProbeType {
     Call,
     /// Use inline option for LLVM versions later than specified in `min_llvm_version_for_inline`
     /// and call `__rust_probestack` otherwise.
-    InlineOrCall { min_llvm_version_for_inline: (u32, u32, u32) },
-}
-
-impl StackProbeType {
-    fn from_json(json: &Json) -> Result<Self, String> {
-        let object = json.as_object().ok_or_else(|| "expected a JSON object")?;
-        let kind = object
-            .get("kind")
-            .and_then(|o| o.as_str())
-            .ok_or_else(|| "expected `kind` to be a string")?;
-        match kind {
-            "none" => Ok(StackProbeType::None),
-            "inline" => Ok(StackProbeType::Inline),
-            "call" => Ok(StackProbeType::Call),
-            "inline-or-call" => {
-                let min_version = object
-                    .get("min-llvm-version-for-inline")
-                    .and_then(|o| o.as_array())
-                    .ok_or_else(|| "expected `min-llvm-version-for-inline` to be an array")?;
-                let mut iter = min_version.into_iter().map(|v| {
-                    let int = v.as_u64().ok_or_else(
-                        || "expected `min-llvm-version-for-inline` values to be integers",
-                    )?;
-                    u32::try_from(int)
-                        .map_err(|_| "`min-llvm-version-for-inline` values don't convert to u32")
-                });
-                let min_llvm_version_for_inline = (
-                    iter.next().unwrap_or(Ok(11))?,
-                    iter.next().unwrap_or(Ok(0))?,
-                    iter.next().unwrap_or(Ok(0))?,
-                );
-                Ok(StackProbeType::InlineOrCall { min_llvm_version_for_inline })
-            }
-            _ => Err(String::from(
-                "`kind` expected to be one of `none`, `inline`, `call` or `inline-or-call`",
-            )),
-        }
-    }
+    InlineOrCall {
+        #[serde(rename = "min-llvm-version-for-inline")]
+        min_llvm_version_for_inline: (u32, u32, u32),
+    },
 }
 
 impl ToJson for StackProbeType {
@@ -1534,6 +1657,29 @@ impl fmt::Display for SanitizerSet {
     }
 }
 
+impl FromStr for SanitizerSet {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "address" => SanitizerSet::ADDRESS,
+            "cfi" => SanitizerSet::CFI,
+            "dataflow" => SanitizerSet::DATAFLOW,
+            "kcfi" => SanitizerSet::KCFI,
+            "kernel-address" => SanitizerSet::KERNELADDRESS,
+            "leak" => SanitizerSet::LEAK,
+            "memory" => SanitizerSet::MEMORY,
+            "memtag" => SanitizerSet::MEMTAG,
+            "safestack" => SanitizerSet::SAFESTACK,
+            "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
+            "thread" => SanitizerSet::THREAD,
+            "hwaddress" => SanitizerSet::HWADDRESS,
+            s => return Err(format!("unknown sanitizer {s}")),
+        })
+    }
+}
+
+crate::json::serde_deserialize_from_str!(SanitizerSet);
+
 impl ToJson for SanitizerSet {
     fn to_json(&self) -> Json {
         self.into_iter()
@@ -1572,16 +1718,18 @@ impl FramePointer {
 }
 
 impl FromStr for FramePointer {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, ()> {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(match s {
             "always" => Self::Always,
             "non-leaf" => Self::NonLeaf,
             "may-omit" => Self::MayOmit,
-            _ => return Err(()),
+            _ => return Err(format!("'{s}' is not a valid value for frame-pointer")),
         })
     }
 }
+
+crate::json::serde_deserialize_from_str!(FramePointer);
 
 impl ToJson for FramePointer {
     fn to_json(&self) -> Json {
@@ -1670,7 +1818,7 @@ impl BinaryFormat {
 }
 
 impl FromStr for BinaryFormat {
-    type Err = ();
+    type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "coff" => Ok(Self::Coff),
@@ -1678,10 +1826,15 @@ impl FromStr for BinaryFormat {
             "mach-o" => Ok(Self::MachO),
             "wasm" => Ok(Self::Wasm),
             "xcoff" => Ok(Self::Xcoff),
-            _ => Err(()),
+            _ => Err(format!(
+                "'{s}' is not a valid value for binary_format. \
+                    Use 'coff', 'elf', 'mach-o', 'wasm' or 'xcoff' "
+            )),
         }
     }
 }
+
+crate::json::serde_deserialize_from_str!(BinaryFormat);
 
 impl ToJson for BinaryFormat {
     fn to_json(&self) -> Json {
@@ -1693,6 +1846,12 @@ impl ToJson for BinaryFormat {
             Self::Xcoff => "xcoff",
         }
         .to_json()
+    }
+}
+
+impl ToJson for Align {
+    fn to_json(&self) -> Json {
+        self.bits().to_json()
     }
 }
 
@@ -1942,6 +2101,7 @@ supported_targets! {
     ("armv7a-none-eabihf", armv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
+    ("armv7a-vex-v5", armv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -1980,11 +2140,14 @@ supported_targets! {
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
+    ("loongarch32-unknown-none", loongarch32_unknown_none),
+    ("loongarch32-unknown-none-softfloat", loongarch32_unknown_none_softfloat),
     ("loongarch64-unknown-none", loongarch64_unknown_none),
     ("loongarch64-unknown-none-softfloat", loongarch64_unknown_none_softfloat),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
+    ("aarch64_be-unknown-none-softfloat", aarch64_be_unknown_none_softfloat),
     ("aarch64-unknown-nuttx", aarch64_unknown_nuttx),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
@@ -2107,12 +2270,11 @@ pub(crate) use cvs;
 #[derive(Debug, PartialEq)]
 pub struct TargetWarnings {
     unused_fields: Vec<String>,
-    incorrect_type: Vec<String>,
 }
 
 impl TargetWarnings {
     pub fn empty() -> Self {
-        Self { unused_fields: Vec::new(), incorrect_type: Vec::new() }
+        Self { unused_fields: Vec::new() }
     }
 
     pub fn warning_messages(&self) -> Vec<String> {
@@ -2121,12 +2283,6 @@ impl TargetWarnings {
             warnings.push(format!(
                 "target json file contains unused fields: {}",
                 self.unused_fields.join(", ")
-            ));
-        }
-        if !self.incorrect_type.is_empty() {
-            warnings.push(format!(
-                "target json file contains fields whose value doesn't have the correct json type: {}",
-                self.incorrect_type.join(", ")
             ));
         }
         warnings
@@ -2186,7 +2342,10 @@ pub struct TargetMetadata {
 
 impl Target {
     pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'_>> {
-        let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(&self.data_layout)?;
+        let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(
+            &self.data_layout,
+            self.options.default_address_space,
+        )?;
 
         // Perform consistency checks against the Target information.
         if dl.endian != self.endian {
@@ -2197,25 +2356,18 @@ impl Target {
         }
 
         let target_pointer_width: u64 = self.pointer_width.into();
-        if dl.pointer_size.bits() != target_pointer_width {
+        let dl_pointer_size: u64 = dl.pointer_size().bits();
+        if dl_pointer_size != target_pointer_width {
             return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
-                pointer_size: dl.pointer_size.bits(),
+                pointer_size: dl_pointer_size,
                 target: self.pointer_width,
             });
         }
 
-        dl.c_enum_min_size = self
-            .c_enum_min_bits
-            .map_or_else(
-                || {
-                    self.c_int_width
-                        .parse()
-                        .map_err(|_| String::from("failed to parse c_int_width"))
-                },
-                Ok,
-            )
-            .and_then(|i| Integer::from_size(Size::from_bits(i)))
-            .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
+        dl.c_enum_min_size = Integer::from_size(Size::from_bits(
+            self.c_enum_min_bits.unwrap_or(self.c_int_width as _),
+        ))
+        .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
 
         Ok(dl)
     }
@@ -2230,22 +2382,6 @@ impl HasTargetSpec for Target {
     fn target_spec(&self) -> &Target {
         self
     }
-}
-
-/// Which C ABI to use for `wasm32-unknown-unknown`.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum WasmCAbi {
-    /// Spec-compliant C ABI.
-    Spec,
-    /// Legacy ABI. Which is non-spec-compliant.
-    Legacy {
-        /// Indicates whether the `wasm_c_abi` lint should be emitted.
-        with_lint: bool,
-    },
-}
-
-pub trait HasWasmCAbiOpt {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi;
 }
 
 /// x86 (32-bit) abi options.
@@ -2277,7 +2413,7 @@ pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
-    pub c_int_width: StaticCow<str>,
+    pub c_int_width: u16,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
     /// "none" implies a bare metal target without `std` library.
     /// A couple of targets having `std` also use "unknown" as an `os` value,
@@ -2437,6 +2573,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Whether a target toolchain is like VEXos, the operating system used by the VEX Robotics V5 Brain.
+    pub is_like_vexos: bool,
     /// Target's binary file format. Defaults to BinaryFormat::Elf
     pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
@@ -2486,8 +2624,6 @@ pub struct TargetOptions {
     /// If we give emcc .o files that are actually .bc files it
     /// will 'just work'.
     pub obj_is_bitcode: bool,
-    /// Content of the LLVM cmdline section associated with embedded bitcode.
-    pub bitcode_llvm_cmdline: StaticCow<str>,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -2512,7 +2648,7 @@ pub struct TargetOptions {
     pub stack_probes: StackProbeType,
 
     /// The minimum alignment for global symbols.
-    pub min_global_align: Option<u64>,
+    pub min_global_align: Option<Align>,
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
@@ -2655,12 +2791,17 @@ pub struct TargetOptions {
     /// Default value is "main"
     pub entry_name: StaticCow<str>,
 
-    /// The ABI of entry function.
-    /// Default value is `Conv::C`, i.e. C call convention
-    pub entry_abi: Conv,
+    /// The ABI of the entry function.
+    /// Default value is `CanonAbi::C`
+    pub entry_abi: CanonAbi,
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
+
+    /// The default address space for this target. When using LLVM as a backend, most targets simply
+    /// use LLVM's default address space (0). Some other targets, such as CHERI targets, use a
+    /// custom default address space (in this specific case, `200`).
+    pub default_address_space: rustc_abi::AddressSpace,
 
     /// Whether the targets supports -Z small-data-threshold
     small_data_threshold_support: SmallDataThresholdSupport,
@@ -2774,7 +2915,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             endian: Endian::Little,
-            c_int_width: "32".into(),
+            c_int_width: 32,
             os: "none".into(),
             env: "".into(),
             abi: "".into(),
@@ -2814,6 +2955,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            is_like_vexos: false,
             binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
@@ -2845,7 +2987,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
-            bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,
@@ -2888,8 +3029,9 @@ impl Default for TargetOptions {
             generate_arange_section: true,
             supports_stack_protector: true,
             entry_name: "main".into(),
-            entry_abi: Conv::C,
+            entry_abi: CanonAbi::C,
             supports_xray: false,
+            default_address_space: rustc_abi::AddressSpace::ZERO,
             small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
         }
     }
@@ -2914,114 +3056,9 @@ impl DerefMut for Target {
 }
 
 impl Target {
-    /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: ExternAbi, c_variadic: bool) -> ExternAbi {
-        use ExternAbi::*;
-        match abi {
-            // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
-            // `__stdcall` only applies on x86 and on non-variadic functions:
-            // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            System { unwind } => {
-                if self.is_like_windows && self.arch == "x86" && !c_variadic {
-                    Stdcall { unwind }
-                } else {
-                    C { unwind }
-                }
-            }
-
-            EfiApi => {
-                if self.arch == "arm" {
-                    Aapcs { unwind: false }
-                } else if self.arch == "x86_64" {
-                    Win64 { unwind: false }
-                } else {
-                    C { unwind: false }
-                }
-            }
-
-            // See commentary in `is_abi_supported`.
-            Stdcall { unwind } | Thiscall { unwind } | Fastcall { unwind } => {
-                if self.arch == "x86" { abi } else { C { unwind } }
-            }
-            Vectorcall { unwind } => {
-                if ["x86", "x86_64"].contains(&&*self.arch) {
-                    abi
-                } else {
-                    C { unwind }
-                }
-            }
-
-            // The Windows x64 calling convention we use for `extern "Rust"`
-            // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
-            // expects the callee to save `xmm6` through `xmm15`, but `PreserveMost`
-            // (that we use by default for `extern "rust-cold"`) doesn't save any of those.
-            // So to avoid bloating callers, just use the Rust convention here.
-            RustCold if self.is_like_windows && self.arch == "x86_64" => Rust,
-
-            abi => abi,
-        }
-    }
-
     pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
-        use ExternAbi::*;
-        match abi {
-            Rust | C { .. } | System { .. } | RustCall | Unadjusted | Cdecl { .. } | RustCold => {
-                true
-            }
-            EfiApi => {
-                ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
-            }
-            X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
-            Aapcs { .. } => "arm" == self.arch,
-            CCmseNonSecureCall | CCmseNonSecureEntry => {
-                ["thumbv8m.main-none-eabi", "thumbv8m.main-none-eabihf", "thumbv8m.base-none-eabi"]
-                    .contains(&&self.llvm_target[..])
-            }
-            Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
-            PtxKernel => self.arch == "nvptx64",
-            GpuKernel => ["amdgpu", "nvptx64"].contains(&&self.arch[..]),
-            Msp430Interrupt => self.arch == "msp430",
-            RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
-            AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
-            Thiscall { .. } => self.arch == "x86",
-            // On windows these fall-back to platform native calling convention (C) when the
-            // architecture is not supported.
-            //
-            // This is I believe a historical accident that has occurred as part of Microsoft
-            // striving to allow most of the code to "just" compile when support for 64-bit x86
-            // was added and then later again, when support for ARM architectures was added.
-            //
-            // This is well documented across MSDN. Support for this in Rust has been added in
-            // #54576. This makes much more sense in context of Microsoft's C++ than it does in
-            // Rust, but there isn't much leeway remaining here to change it back at the time this
-            // comment has been written.
-            //
-            // Following are the relevant excerpts from the MSDN documentation.
-            //
-            // > The __vectorcall calling convention is only supported in native code on x86 and
-            // x64 processors that include Streaming SIMD Extensions 2 (SSE2) and above.
-            // > ...
-            // > On ARM machines, __vectorcall is accepted and ignored by the compiler.
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/vectorcall?view=msvc-160
-            //
-            // > On ARM and x64 processors, __stdcall is accepted and ignored by the compiler;
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-160
-            //
-            // > In most cases, keywords or compiler switches that specify an unsupported
-            // > convention on a particular platform are ignored, and the platform default
-            // > convention is used.
-            //
-            // -- https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } if self.is_like_windows => true,
-            // Outside of Windows we want to only support these calling conventions for the
-            // architectures for which these calling conventions are actually well defined.
-            Stdcall { .. } | Fastcall { .. } if self.arch == "x86" => true,
-            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
-            // Reject these calling conventions everywhere else.
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => false,
-        }
+        let abi_map = AbiMap::from_target(self);
+        abi_map.canonize_abi(abi, false).is_mapped()
     }
 
     /// Minimum integer size in bits that this target can perform atomic
@@ -3421,7 +3458,8 @@ impl Target {
     /// Test target self-consistency and JSON encoding/decoding roundtrip.
     #[cfg(test)]
     fn test_target(mut self) {
-        let recycled_target = Target::from_json(self.to_json()).map(|(j, _)| j);
+        let recycled_target =
+            Target::from_json(&serde_json::to_string(&self.to_json()).unwrap()).map(|(j, _)| j);
         self.update_to_cli();
         self.check_consistency(TargetKind::Builtin).unwrap();
         assert_eq!(recycled_target, Ok(self));
@@ -3469,8 +3507,7 @@ impl Target {
 
         fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
             let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
-            let obj = serde_json::from_str(&contents).map_err(|e| e.to_string())?;
-            Target::from_json(obj)
+            Target::from_json(&contents)
         }
 
         match *target_tuple {
@@ -3518,10 +3555,7 @@ impl Target {
                     Err(format!("could not find specification for target {target_tuple:?}"))
                 }
             }
-            TargetTuple::TargetJson { ref contents, .. } => {
-                let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
-                Target::from_json(obj)
-            }
+            TargetTuple::TargetJson { ref contents, .. } => Target::from_json(contents),
         }
     }
 
@@ -3566,8 +3600,21 @@ impl Target {
             ),
             "x86" => (Architecture::I386, None),
             "s390x" => (Architecture::S390x, None),
+            "m68k" => (Architecture::M68k, None),
             "mips" | "mips32r6" => (Architecture::Mips, None),
-            "mips64" | "mips64r6" => (Architecture::Mips64, None),
+            "mips64" | "mips64r6" => (
+                // While there are currently no builtin targets
+                // using the N32 ABI, it is possible to specify
+                // it using a custom target specification. N32
+                // is an ILP32 ABI like the Aarch64_Ilp32
+                // and X86_64_X32 cases above and below this one.
+                if self.options.llvm_abiname.as_ref() == "n32" {
+                    Architecture::Mips64_N32
+                } else {
+                    Architecture::Mips64
+                },
+                None,
+            ),
             "x86_64" => (
                 if self.pointer_width == 32 {
                     Architecture::X86_64_X32
@@ -3594,6 +3641,7 @@ impl Target {
             "msp430" => (Architecture::Msp430, None),
             "hexagon" => (Architecture::Hexagon, None),
             "bpf" => (Architecture::Bpf, None),
+            "loongarch32" => (Architecture::LoongArch32, None),
             "loongarch64" => (Architecture::LoongArch64, None),
             "csky" => (Architecture::Csky, None),
             "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),

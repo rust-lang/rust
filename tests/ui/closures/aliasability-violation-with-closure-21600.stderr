@@ -1,0 +1,31 @@
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/aliasability-violation-with-closure-21600.rs:15:20
+   |
+LL | fn call_it<F>(f: F) where F: Fn() { f(); }
+   |                  - change this to accept `FnMut` instead of `Fn`
+...
+LL |         call_it(|| x.gen_mut());
+   |         ------- -- ^ cannot borrow as mutable
+   |         |       |
+   |         |       in this closure
+   |         expects `Fn` instead of `FnMut`
+
+error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+  --> $DIR/aliasability-violation-with-closure-21600.rs:15:17
+   |
+LL | fn call_it<F>(f: F) where F: Fn() { f(); }
+   |                  - change this to accept `FnMut` instead of `Fn`
+...
+LL |     call_it(|| {
+   |     ------- -- in this closure
+   |     |
+   |     expects `Fn` instead of `FnMut`
+LL |         call_it(|| x.gen());
+LL |         call_it(|| x.gen_mut());
+   |                 ^^ - mutable borrow occurs due to use of `x` in closure
+   |                 |
+   |                 cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

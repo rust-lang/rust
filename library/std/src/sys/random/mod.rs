@@ -1,16 +1,19 @@
-cfg_if::cfg_if! {
+cfg_select! {
     // Tier 1
-    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+    any(target_os = "linux", target_os = "android") => {
         mod linux;
         pub use linux::{fill_bytes, hashmap_random_keys};
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         pub use windows::fill_bytes;
-    } else if #[cfg(target_vendor = "apple")] {
+    }
+    target_vendor = "apple" => {
         mod apple;
         pub use apple::fill_bytes;
     // Others, in alphabetical ordering.
-    } else if #[cfg(any(
+    }
+    any(
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "haiku",
@@ -20,70 +23,87 @@ cfg_if::cfg_if! {
         target_os = "rtems",
         target_os = "solaris",
         target_os = "vita",
-    ))] {
+        target_os = "nuttx",
+    ) => {
         mod arc4random;
         pub use arc4random::fill_bytes;
-    } else if #[cfg(target_os = "emscripten")] {
+    }
+    target_os = "emscripten" => {
         mod getentropy;
         pub use getentropy::fill_bytes;
-    } else if #[cfg(target_os = "espidf")] {
+    }
+    target_os = "espidf" => {
         mod espidf;
         pub use espidf::fill_bytes;
-    } else if #[cfg(target_os = "fuchsia")] {
+    }
+    target_os = "fuchsia" => {
         mod fuchsia;
         pub use fuchsia::fill_bytes;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         mod hermit;
         pub use hermit::fill_bytes;
-    } else if #[cfg(any(target_os = "horizon", target_os = "cygwin"))] {
+    }
+    any(target_os = "horizon", target_os = "cygwin") => {
         // FIXME(horizon): add arc4random_buf to shim-3ds
         mod getrandom;
         pub use getrandom::fill_bytes;
-    } else if #[cfg(any(
+    }
+    any(
         target_os = "aix",
         target_os = "hurd",
         target_os = "l4re",
         target_os = "nto",
-        target_os = "nuttx",
-    ))] {
+    ) => {
         mod unix_legacy;
         pub use unix_legacy::fill_bytes;
-    } else if #[cfg(target_os = "redox")] {
+    }
+    target_os = "redox" => {
         mod redox;
         pub use redox::fill_bytes;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
+    }
+    all(target_vendor = "fortanix", target_env = "sgx") => {
         mod sgx;
         pub use sgx::fill_bytes;
-    } else if #[cfg(target_os = "solid_asp3")] {
+    }
+    target_os = "solid_asp3" => {
         mod solid;
         pub use solid::fill_bytes;
-    } else if #[cfg(target_os = "teeos")] {
+    }
+    target_os = "teeos" => {
         mod teeos;
         pub use teeos::fill_bytes;
-    } else if #[cfg(target_os = "trusty")] {
+    }
+    target_os = "trusty" => {
         mod trusty;
         pub use trusty::fill_bytes;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         pub use uefi::fill_bytes;
-    } else if #[cfg(target_os = "vxworks")] {
+    }
+    target_os = "vxworks" => {
         mod vxworks;
         pub use vxworks::fill_bytes;
-    } else if #[cfg(target_os = "wasi")] {
+    }
+    target_os = "wasi" => {
         mod wasi;
         pub use wasi::fill_bytes;
-    } else if #[cfg(target_os = "zkvm")] {
+    }
+    target_os = "zkvm" => {
         mod zkvm;
         pub use zkvm::fill_bytes;
-    } else if #[cfg(any(
+    }
+    any(
         all(target_family = "wasm", target_os = "unknown"),
         target_os = "xous",
-    ))] {
+    ) => {
         // FIXME: finally remove std support for wasm32-unknown-unknown
         // FIXME: add random data generation to xous
         mod unsupported;
         pub use unsupported::{fill_bytes, hashmap_random_keys};
     }
+    _ => {}
 }
 
 #[cfg(not(any(

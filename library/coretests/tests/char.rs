@@ -21,7 +21,6 @@ fn test_convert() {
     assert!(char::try_from(0xFFFF_FFFF_u32).is_err());
 }
 
-/* FIXME(#110395)
 #[test]
 const fn test_convert_const() {
     assert!(u32::from('a') == 0x61);
@@ -31,7 +30,6 @@ const fn test_convert_const() {
     assert!(char::from(b'a') == 'a');
     assert!(char::from(b'\xFF') == '\u{FF}');
 }
-*/
 
 #[test]
 fn test_from_str() {

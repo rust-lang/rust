@@ -9,15 +9,15 @@ impl Foo for u32 {
 }
 
 pub mod bar {
-    pub use Foo;
+    pub use crate::Foo;
     pub fn bar<T: Foo>(x: T) -> T {
       x.zero()
     }
 }
 
 mod baz {
-    use bar;
-    use Foo;
+    use crate::bar;
+    use crate::Foo;
     pub fn baz<T: Foo + Copy>(x: T) -> T {
         if 0 == 1 {
             bar::bar(x.zero())

@@ -8,7 +8,7 @@ use super::MAP_ERR_IGNORE;
 
 pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
+        && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::Result)
         && let ExprKind::Closure(&Closure {
             capture_clause: CaptureBy::Ref,

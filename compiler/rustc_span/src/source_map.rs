@@ -826,10 +826,10 @@ impl SourceMap {
     /// Given a `Span`, tries to get a shorter span ending just after the first occurrence of `char`
     /// `c`.
     pub fn span_through_char(&self, sp: Span, c: char) -> Span {
-        if let Ok(snippet) = self.span_to_snippet(sp) {
-            if let Some(offset) = snippet.find(c) {
-                return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
-            }
+        if let Ok(snippet) = self.span_to_snippet(sp)
+            && let Some(offset) = snippet.find(c)
+        {
+            return sp.with_hi(BytePos(sp.lo().0 + (offset + c.len_utf8()) as u32));
         }
         sp
     }
@@ -1108,18 +1108,28 @@ pub fn get_source_map() -> Option<Arc<SourceMap>> {
 pub struct FilePathMapping {
     mapping: Vec<(PathBuf, PathBuf)>,
     filename_display_for_diagnostics: FileNameDisplayPreference,
+    filename_embeddable_preference: FileNameEmbeddablePreference,
 }
 
 impl FilePathMapping {
     pub fn empty() -> FilePathMapping {
-        FilePathMapping::new(Vec::new(), FileNameDisplayPreference::Local)
+        FilePathMapping::new(
+            Vec::new(),
+            FileNameDisplayPreference::Local,
+            FileNameEmbeddablePreference::RemappedOnly,
+        )
     }
 
     pub fn new(
         mapping: Vec<(PathBuf, PathBuf)>,
         filename_display_for_diagnostics: FileNameDisplayPreference,
+        filename_embeddable_preference: FileNameEmbeddablePreference,
     ) -> FilePathMapping {
-        FilePathMapping { mapping, filename_display_for_diagnostics }
+        FilePathMapping {
+            mapping,
+            filename_display_for_diagnostics,
+            filename_embeddable_preference,
+        }
     }
 
     /// Applies any path prefix substitution as defined by the mapping.
@@ -1217,11 +1227,13 @@ impl FilePathMapping {
     ) -> RealFileName {
         match file_path {
             // Anything that's already remapped we don't modify, except for erasing
-            // the `local_path` portion.
-            RealFileName::Remapped { local_path: _, virtual_name } => {
+            // the `local_path` portion (if desired).
+            RealFileName::Remapped { local_path, virtual_name } => {
                 RealFileName::Remapped {
-                    // We do not want any local path to be exported into metadata
-                    local_path: None,
+                    local_path: match self.filename_embeddable_preference {
+                        FileNameEmbeddablePreference::RemappedOnly => None,
+                        FileNameEmbeddablePreference::LocalAndRemapped => local_path,
+                    },
                     // We use the remapped name verbatim, even if it looks like a relative
                     // path. The assumption is that the user doesn't want us to further
                     // process paths that have gone through remapping.
@@ -1231,12 +1243,18 @@ impl FilePathMapping {
 
             RealFileName::LocalPath(unmapped_file_path) => {
                 // If no remapping has been applied yet, try to do so
-                let (new_path, was_remapped) = self.map_prefix(unmapped_file_path);
+                let (new_path, was_remapped) = self.map_prefix(&unmapped_file_path);
                 if was_remapped {
                     // It was remapped, so don't modify further
                     return RealFileName::Remapped {
-                        local_path: None,
                         virtual_name: new_path.into_owned(),
+                        // But still provide the local path if desired
+                        local_path: match self.filename_embeddable_preference {
+                            FileNameEmbeddablePreference::RemappedOnly => None,
+                            FileNameEmbeddablePreference::LocalAndRemapped => {
+                                Some(unmapped_file_path)
+                            }
+                        },
                     };
                 }
 
@@ -1252,17 +1270,23 @@ impl FilePathMapping {
 
                 match working_directory {
                     RealFileName::LocalPath(unmapped_working_dir_abs) => {
-                        let file_path_abs = unmapped_working_dir_abs.join(unmapped_file_path_rel);
+                        let unmapped_file_path_abs =
+                            unmapped_working_dir_abs.join(unmapped_file_path_rel);
 
                         // Although neither `working_directory` nor the file name were subject
                         // to path remapping, the concatenation between the two may be. Hence
                         // we need to do a remapping here.
-                        let (file_path_abs, was_remapped) = self.map_prefix(file_path_abs);
+                        let (file_path_abs, was_remapped) =
+                            self.map_prefix(&unmapped_file_path_abs);
                         if was_remapped {
                             RealFileName::Remapped {
-                                // Erase the actual path
-                                local_path: None,
                                 virtual_name: file_path_abs.into_owned(),
+                                local_path: match self.filename_embeddable_preference {
+                                    FileNameEmbeddablePreference::RemappedOnly => None,
+                                    FileNameEmbeddablePreference::LocalAndRemapped => {
+                                        Some(unmapped_file_path_abs)
+                                    }
+                                },
                             }
                         } else {
                             // No kind of remapping applied to this path, so
@@ -1271,41 +1295,25 @@ impl FilePathMapping {
                         }
                     }
                     RealFileName::Remapped {
-                        local_path: _,
+                        local_path,
                         virtual_name: remapped_working_dir_abs,
                     } => {
                         // If working_directory has been remapped, then we emit
                         // Remapped variant as the expanded path won't be valid
                         RealFileName::Remapped {
-                            local_path: None,
                             virtual_name: Path::new(remapped_working_dir_abs)
-                                .join(unmapped_file_path_rel),
+                                .join(&unmapped_file_path_rel),
+                            local_path: match self.filename_embeddable_preference {
+                                FileNameEmbeddablePreference::RemappedOnly => None,
+                                FileNameEmbeddablePreference::LocalAndRemapped => local_path
+                                    .as_ref()
+                                    .map(|local_path| local_path.join(unmapped_file_path_rel)),
+                            },
                         }
                     }
                 }
             }
         }
-    }
-
-    /// Expand a relative path to an absolute path **without** remapping taken into account.
-    ///
-    /// The resulting `RealFileName` will have its `virtual_path` portion erased if
-    /// possible (i.e. if there's also a remapped path).
-    pub fn to_local_embeddable_absolute_path(
-        &self,
-        file_path: RealFileName,
-        working_directory: &RealFileName,
-    ) -> RealFileName {
-        let file_path = file_path.local_path_if_available();
-        if file_path.is_absolute() {
-            // No remapping has applied to this path and it is absolute,
-            // so the working directory cannot influence it either, so
-            // we are done.
-            return RealFileName::LocalPath(file_path.to_path_buf());
-        }
-        debug_assert!(file_path.is_relative());
-        let working_directory = working_directory.local_path_if_available();
-        RealFileName::LocalPath(Path::new(working_directory).join(file_path))
     }
 
     /// Attempts to (heuristically) reverse a prefix mapping.

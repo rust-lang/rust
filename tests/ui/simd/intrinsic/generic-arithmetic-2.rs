@@ -43,6 +43,10 @@ fn main() {
         simd_shl(y, y);
         simd_shr(x, x);
         simd_shr(y, y);
+        simd_funnel_shl(x, x, x);
+        simd_funnel_shl(y, y, y);
+        simd_funnel_shr(x, x, x);
+        simd_funnel_shr(y, y, y);
         simd_and(x, x);
         simd_and(y, y);
         simd_or(x, x);
@@ -73,6 +77,10 @@ fn main() {
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shr(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
+        simd_funnel_shl(0, 0, 0);
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
+        simd_funnel_shr(0, 0, 0);
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_and(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_or(0, 0);
@@ -94,6 +102,10 @@ fn main() {
         simd_shl(z, z);
         //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_shr(z, z);
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
+        simd_funnel_shl(z, z, z);
+        //~^ ERROR unsupported operation on `f32x4` with element `f32`
+        simd_funnel_shr(z, z, z);
         //~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_and(z, z);
         //~^ ERROR unsupported operation on `f32x4` with element `f32`

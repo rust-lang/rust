@@ -21,7 +21,9 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_graphviz as dot};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
-use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};
+use super::{
+    Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor, visit_results,
+};
 use crate::errors::{
     DuplicateValuesFor, PathMustEndInFilename, RequiresAnArgument, UnknownFormatter,
 };
@@ -32,7 +34,8 @@ use crate::errors::{
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    results: &mut Results<'tcx, A>,
+    analysis: &mut A,
+    results: &Results<A::Domain>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where
@@ -77,7 +80,7 @@ where
 
     let mut buf = Vec::new();
 
-    let graphviz = Formatter::new(body, results, style);
+    let graphviz = Formatter::new(body, analysis, results, style);
     let mut render_opts =
         vec![dot::RenderOption::Fontname(tcx.sess.opts.unstable_opts.graphviz_font.clone())];
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
@@ -203,10 +206,11 @@ where
 {
     body: &'mir Body<'tcx>,
     // The `RefCell` is used because `<Formatter as Labeller>::node_label`
-    // takes `&self`, but it needs to modify the results. This is also the
+    // takes `&self`, but it needs to modify the analysis. This is also the
     // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
     // the operations that involve the mutation, i.e. within the `borrow_mut`.
-    results: RefCell<&'mir mut Results<'tcx, A>>,
+    analysis: RefCell<&'mir mut A>,
+    results: &'mir Results<A::Domain>,
     style: OutputStyle,
     reachable: DenseBitSet<BasicBlock>,
 }
@@ -217,11 +221,12 @@ where
 {
     fn new(
         body: &'mir Body<'tcx>,
-        results: &'mir mut Results<'tcx, A>,
+        analysis: &'mir mut A,
+        results: &'mir Results<A::Domain>,
         style: OutputStyle,
     ) -> Self {
         let reachable = traversal::reachable_as_bitset(body);
-        Formatter { body, results: results.into(), style, reachable }
+        Formatter { body, analysis: analysis.into(), results, style, reachable }
     }
 }
 
@@ -259,12 +264,12 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let mut results = self.results.borrow_mut();
+        let analysis = &mut **self.analysis.borrow_mut();
 
-        let diffs = StateDiffCollector::run(self.body, *block, *results, self.style);
+        let diffs = StateDiffCollector::run(self.body, *block, analysis, self.results, self.style);
 
         let mut fmt = BlockFormatter {
-            cursor: results.as_results_cursor(self.body),
+            cursor: ResultsCursor::new_borrowing(self.body, analysis, self.results),
             style: self.style,
             bg: Background::Light,
         };
@@ -692,7 +697,8 @@ impl<D> StateDiffCollector<D> {
     fn run<'tcx, A>(
         body: &Body<'tcx>,
         block: BasicBlock,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
+        results: &Results<A::Domain>,
         style: OutputStyle,
     ) -> Self
     where
@@ -700,12 +706,12 @@ impl<D> StateDiffCollector<D> {
         D: DebugWithContext<A>,
     {
         let mut collector = StateDiffCollector {
-            prev_state: results.analysis.bottom_value(body),
+            prev_state: analysis.bottom_value(body),
             after: vec![],
             before: (style == OutputStyle::BeforeAndAfter).then_some(vec![]),
         };
 
-        results.visit_with(body, std::iter::once(block), &mut collector);
+        visit_results(body, std::iter::once(block), analysis, results, &mut collector);
         collector
     }
 }
@@ -729,49 +735,49 @@ where
 
     fn visit_after_early_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, &results.analysis));
+            before.push(diff_pretty(state, &self.prev_state, analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_statement_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, &results.analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, analysis));
         self.prev_state.clone_from(state)
     }
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
-            before.push(diff_pretty(state, &self.prev_state, &results.analysis));
+            before.push(diff_pretty(state, &self.prev_state, analysis));
             self.prev_state.clone_from(state)
         }
     }
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
-        self.after.push(diff_pretty(state, &self.prev_state, &results.analysis));
+        self.after.push(diff_pretty(state, &self.prev_state, analysis));
         self.prev_state.clone_from(state)
     }
 }
@@ -794,6 +800,7 @@ where
     let re = regex!("\t?\u{001f}([+-])");
 
     let raw_diff = format!("{:#?}", DebugDiffWithAdapter { new, old, ctxt });
+    let raw_diff = dot::escape_html(&raw_diff);
 
     // Replace newlines in the `Debug` output with `<br/>`
     let raw_diff = raw_diff.replace('\n', r#"<br align="left"/>"#);

@@ -1,16 +1,3 @@
-error: unused attribute
-  --> $DIR/repr-empty-packed.rs:4:1
-   |
-LL | #[repr()]
-   | ^^^^^^^^^ help: remove this attribute
-   |
-   = note: attribute `repr` with an empty list has no effect
-note: the lint level is defined here
-  --> $DIR/repr-empty-packed.rs:2:9
-   |
-LL | #![deny(unused_attributes)]
-   |         ^^^^^^^^^^^^^^^^^
-
 error[E0517]: attribute should be applied to a struct or union
   --> $DIR/repr-empty-packed.rs:5:8
    |
@@ -21,6 +8,18 @@ LL | |     Bar,
 LL | |     Baz(i32),
 LL | | }
    | |_- not a struct or union
+
+error: unused attribute
+  --> $DIR/repr-empty-packed.rs:4:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+note: the lint level is defined here
+  --> $DIR/repr-empty-packed.rs:2:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

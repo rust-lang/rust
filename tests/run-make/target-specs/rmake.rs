@@ -4,12 +4,11 @@
 // with the target flag's bundle of new features to check that compilation either succeeds while
 // using them correctly, or fails with the right error message when using them improperly.
 // See https://github.com/rust-lang/rust/pull/16156
+//@ needs-llvm-components: x86
 
 use run_make_support::{diff, rfs, rustc};
 
 fn main() {
-    rustc().input("foo.rs").target("my-awesome-platform.json").crate_type("lib").emit("asm").run();
-    assert!(!rfs::read_to_string("foo.s").contains("morestack"));
     rustc()
         .input("foo.rs")
         .target("my-invalid-platform.json")
@@ -19,7 +18,7 @@ fn main() {
         .input("foo.rs")
         .target("my-incomplete-platform.json")
         .run_fail()
-        .assert_stderr_contains("Field llvm-target");
+        .assert_stderr_contains("missing field `llvm-target`");
     rustc()
         .env("RUST_TARGET_PATH", ".")
         .input("foo.rs")

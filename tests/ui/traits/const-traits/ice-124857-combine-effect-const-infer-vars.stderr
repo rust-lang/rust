@@ -4,8 +4,8 @@ error[E0119]: conflicting implementations of trait `Foo` for type `i32`
 LL | impl const Foo for i32 {}
    | ---------------------- first implementation here
 LL |
-LL | impl<T> const Foo for T where T: ~const Foo {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
+LL | impl<T> const Foo for T where T: [const] Foo {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `i32`
 
 error: aborting due to 1 previous error
 

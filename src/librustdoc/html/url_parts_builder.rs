@@ -14,7 +14,6 @@ pub(crate) struct UrlPartsBuilder {
 
 impl UrlPartsBuilder {
     /// Create an empty buffer.
-    #[allow(dead_code)]
     pub(crate) fn new() -> Self {
         Self { buf: String::new() }
     }
@@ -118,7 +117,7 @@ impl UrlPartsBuilder {
 
 /// This is just a guess at the average length of a URL part,
 /// used for [`String::with_capacity`] calls in the [`FromIterator`]
-/// and [`Extend`] impls, and for [estimating item path lengths].
+/// and [`Extend`] impls.
 ///
 /// The value `8` was chosen for two main reasons:
 ///
@@ -126,17 +125,7 @@ impl UrlPartsBuilder {
 /// * jemalloc's size classes are all multiples of eight,
 ///   which means that the amount of memory it allocates will often match
 ///   the amount requested, avoiding wasted bytes.
-///
-/// [estimating item path lengths]: estimate_item_path_byte_length
 const AVG_PART_LENGTH: usize = 8;
-
-/// Estimate the number of bytes in an item's path, based on how many segments it has.
-///
-/// **Note:** This is only to be used with, e.g., [`String::with_capacity()`];
-/// the return value is just a rough estimate.
-pub(crate) const fn estimate_item_path_byte_length(segment_count: usize) -> usize {
-    AVG_PART_LENGTH * segment_count
-}
 
 impl<'a> FromIterator<&'a str> for UrlPartsBuilder {
     fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {

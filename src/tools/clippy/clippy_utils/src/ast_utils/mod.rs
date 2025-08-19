@@ -5,7 +5,6 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
 use crate::{both, over};
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_span::symbol::Ident;
 use std::mem;
@@ -83,11 +82,11 @@ pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
         && over(&l.attrs, &r.attrs, eq_attr)
 }
 
-pub fn eq_qself(l: &P<QSelf>, r: &P<QSelf>) -> bool {
+pub fn eq_qself(l: &Box<QSelf>, r: &Box<QSelf>) -> bool {
     l.position == r.position && eq_ty(&l.ty, &r.ty)
 }
 
-pub fn eq_maybe_qself(l: Option<&P<QSelf>>, r: Option<&P<QSelf>>) -> bool {
+pub fn eq_maybe_qself(l: Option<&Box<QSelf>>, r: Option<&Box<QSelf>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => eq_qself(l, r),
         (None, None) => true,
@@ -130,7 +129,7 @@ pub fn eq_generic_arg(l: &GenericArg, r: &GenericArg) -> bool {
     }
 }
 
-pub fn eq_expr_opt(l: Option<&P<Expr>>, r: Option<&P<Expr>>) -> bool {
+pub fn eq_expr_opt(l: Option<&Box<Expr>>, r: Option<&Box<Expr>>) -> bool {
     both(l, r, |l, r| eq_expr(l, r))
 }
 
@@ -436,14 +435,15 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
-        (Enum(li, le, lg), Enum(ri, re, rg)) => {
-            eq_id(*li, *ri) && over(&le.variants, &re.variants, eq_variant) && eq_generics(lg, rg)
+        (Enum(li, lg, le), Enum(ri, rg, re)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && over(&le.variants, &re.variants, eq_variant)
         },
-        (Struct(li, lv, lg), Struct(ri, rv, rg)) | (Union(li, lv, lg), Union(ri, rv, rg)) => {
-            eq_id(*li, *ri) && eq_variant_data(lv, rv) && eq_generics(lg, rg)
+        (Struct(li, lg, lv), Struct(ri, rg, rv)) | (Union(li, lg, lv), Union(ri, rg, rv)) => {
+            eq_id(*li, *ri) && eq_generics(lg, rg) && eq_variant_data(lv, rv)
         },
         (
             Trait(box ast::Trait {
+                constness: lc,
                 is_auto: la,
                 safety: lu,
                 ident: li,
@@ -452,6 +452,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: lis,
             }),
             Trait(box ast::Trait {
+                constness: rc,
                 is_auto: ra,
                 safety: ru,
                 ident: ri,
@@ -460,7 +461,8 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: ris,
             }),
         ) => {
-            la == ra
+            matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
+                && la == ra
                 && matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
@@ -471,33 +473,27 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             eq_id(*li, *ri) && eq_generics(lg, rg) && over(lb, rb, eq_generic_bound)
         },
         (
-            Impl(box ast::Impl {
-                safety: lu,
-                polarity: lp,
-                defaultness: ld,
-                constness: lc,
+            Impl(ast::Impl {
                 generics: lg,
                 of_trait: lot,
                 self_ty: lst,
                 items: li,
             }),
-            Impl(box ast::Impl {
-                safety: ru,
-                polarity: rp,
-                defaultness: rd,
-                constness: rc,
+            Impl(ast::Impl {
                 generics: rg,
                 of_trait: rot,
                 self_ty: rst,
                 items: ri,
             }),
         ) => {
-            matches!(lu, Safety::Default) == matches!(ru, Safety::Default)
-                && matches!(lp, ImplPolarity::Positive) == matches!(rp, ImplPolarity::Positive)
-                && eq_defaultness(*ld, *rd)
-                && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
-                && eq_generics(lg, rg)
-                && both(lot.as_ref(), rot.as_ref(), |l, r| eq_path(&l.path, &r.path))
+            eq_generics(lg, rg)
+                && both(lot.as_deref(), rot.as_deref(), |l, r| {
+                    matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
+                        && matches!(l.polarity, ImplPolarity::Positive) == matches!(r.polarity, ImplPolarity::Positive)
+                        && eq_defaultness(l.defaultness, r.defaultness)
+                        && matches!(l.constness, ast::Const::No) == matches!(r.constness, ast::Const::No)
+                        && eq_path(&l.trait_ref.path, &r.trait_ref.path)
+                })
                 && eq_ty(lst, rst)
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
@@ -724,7 +720,7 @@ pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
 }
 
 #[expect(clippy::ref_option, reason = "This is the type how it is stored in the AST")]
-pub fn eq_opt_fn_contract(l: &Option<P<FnContract>>, r: &Option<P<FnContract>>) -> bool {
+pub fn eq_opt_fn_contract(l: &Option<Box<FnContract>>, r: &Option<Box<FnContract>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => {
             eq_expr_opt(l.requires.as_ref(), r.requires.as_ref()) && eq_expr_opt(l.ensures.as_ref(), r.ensures.as_ref())
@@ -838,7 +834,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (PinnedRef(ll, l), PinnedRef(rl, r)) => {
             both(ll.as_ref(), rl.as_ref(), |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
-        (BareFn(l), BareFn(r)) => {
+        (FnPtr(l), FnPtr(r)) => {
             l.safety == r.safety
                 && eq_ext(&l.ext, &r.ext)
                 && over(&l.generic_params, &r.generic_params, eq_generic_param)
@@ -886,13 +882,13 @@ pub fn eq_generic_param(l: &GenericParam, r: &GenericParam) -> bool {
             (
                 Const {
                     ty: lt,
-                    kw_span: _,
                     default: ld,
+                    span: _,
                 },
                 Const {
                     ty: rt,
-                    kw_span: _,
                     default: rd,
+                    span: _,
                 },
             ) => eq_ty(lt, rt) && both(ld.as_ref(), rd.as_ref(), eq_anon_const),
             _ => false,
@@ -960,5 +956,7 @@ pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
 }
 
 pub fn eq_delim_args(l: &DelimArgs, r: &DelimArgs) -> bool {
-    l.delim == r.delim && l.tokens.eq_unspanned(&r.tokens)
+    l.delim == r.delim
+        && l.tokens.len() == r.tokens.len()
+        && l.tokens.iter().zip(r.tokens.iter()).all(|(a, b)| a.eq_unspanned(b))
 }

@@ -11,7 +11,7 @@
 //! This is because `sys_common` not only contains platform-independent code,
 //! but also code that is shared between the different platforms in `sys`.
 //! Ideally all that shared code should be moved to `sys::common`,
-//! and the dependencies between `std`, `sys_common` and `sys` all would form a dag.
+//! and the dependencies between `std`, `sys_common` and `sys` all would form a DAG.
 //! Progress on this is tracked in #84187.
 
 #![allow(missing_docs)]
@@ -20,7 +20,6 @@
 #[cfg(test)]
 mod tests;
 
-pub mod process;
 pub mod wstr;
 pub mod wtf8;
 
@@ -52,17 +51,16 @@ pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }
 
-// Computes (value*numer)/denom without overflow, as long as both
-// (numer*denom) and the overall result fit into i64 (which is the case
-// for our time conversions).
+// Computes (value*numerator)/denom without overflow, as long as both (numerator*denom) and the
+// overall result fit into i64 (which is the case for our time conversions).
 #[allow(dead_code)] // not used on all platforms
-pub fn mul_div_u64(value: u64, numer: u64, denom: u64) -> u64 {
+pub fn mul_div_u64(value: u64, numerator: u64, denom: u64) -> u64 {
     let q = value / denom;
     let r = value % denom;
     // Decompose value as (value/denom*denom + value%denom),
-    // substitute into (value*numer)/denom and simplify.
-    // r < denom, so (denom*numer) is the upper bound of (r*numer)
-    q * numer + r * numer / denom
+    // substitute into (value*numerator)/denom and simplify.
+    // r < denom, so (denom*numerator) is the upper bound of (r*numerator)
+    q * numerator + r * numerator / denom
 }
 
 pub fn ignore_notfound<T>(result: crate::io::Result<T>) -> crate::io::Result<()> {

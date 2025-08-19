@@ -1,7 +1,5 @@
 # High-level overview of the compiler source
 
-<!-- toc -->
-
 Now that we have [seen what the compiler does][orgch],
 let's take a look at the structure of the [`rust-lang/rust`] repository,
 where the rustc source code lives.

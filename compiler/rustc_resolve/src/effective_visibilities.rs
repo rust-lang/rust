@@ -38,11 +38,11 @@ pub(crate) struct EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
 }
 
 impl Resolver<'_, '_> {
-    fn nearest_normal_mod(&mut self, def_id: LocalDefId) -> LocalDefId {
+    fn nearest_normal_mod(&self, def_id: LocalDefId) -> LocalDefId {
         self.get_nearest_non_block_module(def_id.to_def_id()).nearest_parent_mod().expect_local()
     }
 
-    fn private_vis_import(&mut self, binding: NameBinding<'_>) -> Visibility {
+    fn private_vis_import(&self, binding: NameBinding<'_>) -> Visibility {
         let NameBindingKind::Import { import, .. } = binding.kind else { unreachable!() };
         Visibility::Restricted(
             import
@@ -52,7 +52,7 @@ impl Resolver<'_, '_> {
         )
     }
 
-    fn private_vis_def(&mut self, def_id: LocalDefId) -> Visibility {
+    fn private_vis_def(&self, def_id: LocalDefId) -> Visibility {
         // For mod items `nearest_normal_mod` returns its argument, but we actually need its parent.
         let normal_mod_id = self.nearest_normal_mod(def_id);
         if normal_mod_id == def_id {
@@ -113,11 +113,8 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     /// Update effective visibilities of bindings in the given module,
     /// including their whole reexport chains.
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
-        assert!(self.r.module_map.contains_key(&module_id.to_def_id()));
-        let module = self.r.get_module(module_id.to_def_id()).unwrap();
-        let resolutions = self.r.resolutions(module);
-
-        for (_, name_resolution) in resolutions.borrow().iter() {
+        let module = self.r.expect_module(module_id.to_def_id());
+        for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
             let Some(mut binding) = name_resolution.borrow().binding() else {
                 continue;
             };
@@ -252,7 +249,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 self.current_private_vis = prev_private_vis;
             }
 
-            ast::ItemKind::Enum(_, EnumDef { ref variants }, _) => {
+            ast::ItemKind::Enum(_, _, EnumDef { ref variants }) => {
                 self.set_bindings_effective_visibilities(def_id);
                 for variant in variants {
                     let variant_def_id = self.r.local_def_id(variant.id);
@@ -262,7 +259,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
                 }
             }
 
-            ast::ItemKind::Struct(_, ref def, _) | ast::ItemKind::Union(_, ref def, _) => {
+            ast::ItemKind::Struct(_, _, ref def) | ast::ItemKind::Union(_, _, ref def) => {
                 for field in def.fields() {
                     self.update_field(self.r.local_def_id(field.id), def_id);
                 }

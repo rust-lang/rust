@@ -22,42 +22,12 @@
 //! everything.
 
 use std::collections::HashSet;
+use std::iter;
 use std::path::{Path, PathBuf};
-use std::{env, iter};
 
 use crate::core::config::TargetSelection;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
-
-/// Finds archiver tool for the given target if possible.
-/// FIXME(onur-ozkan): This logic should be replaced by calling into the `cc` crate.
-fn cc2ar(cc: &Path, target: TargetSelection, default_ar: PathBuf) -> Option<PathBuf> {
-    if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace('-', "_"))) {
-        Some(PathBuf::from(ar))
-    } else if let Some(ar) = env::var_os("AR") {
-        Some(PathBuf::from(ar))
-    } else if target.is_msvc() {
-        None
-    } else if target.contains("musl") || target.contains("openbsd") {
-        Some(PathBuf::from("ar"))
-    } else if target.contains("vxworks") {
-        Some(PathBuf::from("wr-ar"))
-    } else if target.contains("-nto-") {
-        if target.starts_with("i586") {
-            Some(PathBuf::from("ntox86-ar"))
-        } else if target.starts_with("aarch64") {
-            Some(PathBuf::from("ntoaarch64-ar"))
-        } else if target.starts_with("x86_64") {
-            Some(PathBuf::from("ntox86_64-ar"))
-        } else {
-            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
-        }
-    } else if target.contains("android") || target.contains("-wasi") {
-        Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
-    } else {
-        Some(default_ar)
-    }
-}
 
 /// Creates and configures a new [`cc::Build`] instance for the given target.
 fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
@@ -69,7 +39,7 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
         // Compress debuginfo
         .flag_if_supported("-gz")
         .target(&target.triple)
-        .host(&build.build.triple);
+        .host(&build.host_target.triple);
     match build.crt_static(target) {
         Some(a) => {
             cfg.static_crt(a);
@@ -91,15 +61,15 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 ///
 /// This function determines which targets need a C compiler (and, if needed, a C++ compiler)
 /// by combining the primary build target, host targets, and any additional targets. For
-/// each target, it calls [`find_target`] to configure the necessary compiler tools.
-pub fn find(build: &Build) {
+/// each target, it calls [`fill_target_compiler`] to configure the necessary compiler tools.
+pub fn fill_compilers(build: &mut Build) {
     let targets: HashSet<_> = match build.config.cmd {
         // We don't need to check cross targets for these commands.
         crate::Subcommand::Clean { .. }
-        | crate::Subcommand::Suggest { .. }
+        | crate::Subcommand::Check { .. }
         | crate::Subcommand::Format { .. }
         | crate::Subcommand::Setup { .. } => {
-            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+            build.hosts.iter().cloned().chain(iter::once(build.host_target)).collect()
         }
 
         _ => {
@@ -110,13 +80,13 @@ pub fn find(build: &Build) {
                 .iter()
                 .chain(&build.hosts)
                 .cloned()
-                .chain(iter::once(build.build))
+                .chain(iter::once(build.host_target))
                 .collect()
         }
     };
 
     for target in targets.into_iter() {
-        find_target(build, target);
+        fill_target_compiler(build, target);
     }
 }
 
@@ -125,7 +95,7 @@ pub fn find(build: &Build) {
 /// This function uses both user-specified configuration (from `bootstrap.toml`) and auto-detection
 /// logic to determine the correct C/C++ compilers for the target. It also determines the appropriate
 /// archiver (`ar`) and sets up additional compilation flags (both handled and unhandled).
-pub fn find_target(build: &Build, target: TargetSelection) {
+pub fn fill_target_compiler(build: &mut Build, target: TargetSelection) {
     let mut cfg = new_cc_build(build, target);
     let config = build.config.target_config.get(&target);
     if let Some(cc) = config
@@ -139,10 +109,10 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
     } else {
-        cc2ar(compiler.path(), target, PathBuf::from(cfg.get_archiver().get_program()))
+        cfg.try_get_archiver().map(|c| PathBuf::from(c.get_program())).ok()
     };
 
-    build.cc.borrow_mut().insert(target, compiler.clone());
+    build.cc.insert(target, compiler.clone());
     let mut cflags = build.cc_handled_clags(target, CLang::C);
     cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
 
@@ -164,7 +134,7 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     // for VxWorks, record CXX compiler which will be used in lib.rs:linker()
     if cxx_configured || target.contains("vxworks") {
         let compiler = cfg.get_compiler();
-        build.cxx.borrow_mut().insert(target, compiler);
+        build.cxx.insert(target, compiler);
     }
 
     build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
@@ -177,11 +147,11 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     }
     if let Some(ar) = ar {
         build.verbose(|| println!("AR_{} = {ar:?}", target.triple));
-        build.ar.borrow_mut().insert(target, ar);
+        build.ar.insert(target, ar);
     }
 
     if let Some(ranlib) = config.and_then(|c| c.ranlib.clone()) {
-        build.ranlib.borrow_mut().insert(target, ranlib);
+        build.ranlib.insert(target, ranlib);
     }
 }
 
@@ -250,7 +220,15 @@ fn default_compiler(
         }
 
         t if t.contains("-wasi") => {
-            let root = PathBuf::from(std::env::var_os("WASI_SDK_PATH")?);
+            let root = if let Some(path) = build.wasi_sdk_path.as_ref() {
+                path
+            } else {
+                if build.config.is_running_on_ci {
+                    panic!("ERROR: WASI_SDK_PATH must be configured for a -wasi target on CI");
+                }
+                println!("WARNING: WASI_SDK_PATH not set, using default cc/cxx compiler");
+                return None;
+            };
             let compiler = match compiler {
                 Language::C => format!("{t}-clang"),
                 Language::CPlusPlus => format!("{t}-clang++"),

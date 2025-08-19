@@ -1,12 +1,12 @@
-error: const `impl` for trait `A` which is not marked with `#[const_trait]`
+error: const `impl` for trait `A` which is not `const`
   --> $DIR/const-impl-requires-const-trait.rs:6:12
    |
 LL | impl const A for () {}
    |            ^ this trait is not `const`
    |
-   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
+   = note: marking a trait with `const` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
-help: mark `A` as `#[const_trait]` to allow it to have `const` implementations
+help: mark `A` as `const` to allow it to have `const` implementations
    |
 LL | #[const_trait] pub trait A {}
    | ++++++++++++++

@@ -295,10 +295,10 @@ impl Definition {
         }
 
         // def is crate root
-        if let &Definition::Module(module) = self {
-            if module.is_crate_root() {
-                return SearchScope::reverse_dependencies(db, module.krate());
-            }
+        if let &Definition::Module(module) = self
+            && module.is_crate_root()
+        {
+            return SearchScope::reverse_dependencies(db, module.krate());
         }
 
         let module = match self.module(db) {
@@ -317,7 +317,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -332,7 +332,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -341,7 +341,7 @@ impl Definition {
         if let Definition::SelfType(impl_) = self {
             return match impl_.source(db).map(|src| src.syntax().cloned()) {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -360,7 +360,7 @@ impl Definition {
             };
             return match def {
                 Some(def) => SearchScope::file_range(
-                    def.as_ref().original_file_range_with_macro_call_body(db),
+                    def.as_ref().original_file_range_with_macro_call_input(db),
                 ),
                 None => SearchScope::single_file(file_id),
             };
@@ -429,7 +429,7 @@ pub struct FindUsages<'a> {
     /// The container of our definition should it be an assoc item
     assoc_item_container: Option<hir::AssocItemContainer>,
     /// whether to search for the `Self` type of the definition
-    include_self_kw_refs: Option<hir::Type>,
+    include_self_kw_refs: Option<hir::Type<'a>>,
     /// whether to search for the `self` module
     search_self_mod: bool,
 }
@@ -487,9 +487,9 @@ impl<'a> FindUsages<'a> {
         scope.entries.iter().map(|(&file_id, &search_range)| {
             let text = db.file_text(file_id.file_id(db)).text(db);
             let search_range =
-                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
-            (text, file_id, search_range)
+            (text.clone(), file_id, search_range)
         })
     }
 
@@ -524,17 +524,18 @@ impl<'a> FindUsages<'a> {
     fn find_nodes<'b>(
         sema: &'b Semantics<'_, RootDatabase>,
         name: &str,
+        file_id: EditionedFileId,
         node: &syntax::SyntaxNode,
         offset: TextSize,
     ) -> impl Iterator<Item = SyntaxNode> + 'b {
         node.token_at_offset(offset)
             .find(|it| {
                 // `name` is stripped of raw ident prefix. See the comment on name retrieval below.
-                it.text().trim_start_matches("r#") == name
+                it.text().trim_start_matches('\'').trim_start_matches("r#") == name
             })
             .into_iter()
             .flat_map(move |token| {
-                if sema.might_be_inside_macro_call(&token) {
+                if sema.is_inside_macro_call(InFile::new(file_id.into(), &token)) {
                     sema.descend_into_macros_exact(token)
                 } else {
                     <_>::from([token])
@@ -654,11 +655,14 @@ impl<'a> FindUsages<'a> {
                     let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                     for offset in FindUsages::match_indices(&file_text, &finder, search_range) {
-                        let usages =
-                            FindUsages::find_nodes(sema, &current_to_process, &tree, offset)
-                                .filter(|it| {
-                                    matches!(it.kind(), SyntaxKind::NAME | SyntaxKind::NAME_REF)
-                                });
+                        let usages = FindUsages::find_nodes(
+                            sema,
+                            &current_to_process,
+                            file_id,
+                            &tree,
+                            offset,
+                        )
+                        .filter(|it| matches!(it.kind(), SyntaxKind::NAME | SyntaxKind::NAME_REF));
                         for usage in usages {
                             if let Some(alias) = usage.parent().and_then(|it| {
                                 let path = ast::PathSegment::cast(it)?.parent_path();
@@ -679,51 +683,47 @@ impl<'a> FindUsages<'a> {
                                 }
                             } else if let Some(alias) =
                                 usage.ancestors().find_map(ast::TypeAlias::cast)
+                                && let Some(name) = alias.name()
+                                && seen
+                                    .insert(InFileWrapper::new(file_id, name.syntax().text_range()))
                             {
-                                if let Some(name) = alias.name() {
-                                    if seen.insert(InFileWrapper::new(
-                                        file_id,
-                                        name.syntax().text_range(),
-                                    )) {
-                                        if let Some(def) = is_alias(&alias) {
-                                            cov_mark::hit!(container_type_alias);
-                                            insert_type_alias(
-                                                sema.db,
-                                                &mut to_process,
-                                                name.text().as_str(),
-                                                def.into(),
-                                            );
-                                        } else {
-                                            cov_mark::hit!(same_name_different_def_type_alias);
-                                        }
-                                    }
+                                if let Some(def) = is_alias(&alias) {
+                                    cov_mark::hit!(container_type_alias);
+                                    insert_type_alias(
+                                        sema.db,
+                                        &mut to_process,
+                                        name.text().as_str(),
+                                        def.into(),
+                                    );
+                                } else {
+                                    cov_mark::hit!(same_name_different_def_type_alias);
                                 }
                             }
 
                             // We need to account for `Self`. It can only refer to our type inside an impl.
                             let impl_ = 'impl_: {
                                 for ancestor in usage.ancestors() {
-                                    if let Some(parent) = ancestor.parent() {
-                                        if let Some(parent) = ast::Impl::cast(parent) {
-                                            // Only if the GENERIC_PARAM_LIST is directly under impl, otherwise it may be in the self ty.
-                                            if matches!(
-                                                ancestor.kind(),
-                                                SyntaxKind::ASSOC_ITEM_LIST
-                                                    | SyntaxKind::WHERE_CLAUSE
-                                                    | SyntaxKind::GENERIC_PARAM_LIST
-                                            ) {
-                                                break;
-                                            }
-                                            if parent
-                                                .trait_()
-                                                .is_some_and(|trait_| *trait_.syntax() == ancestor)
-                                            {
-                                                break;
-                                            }
-
-                                            // Otherwise, found an impl where its self ty may be our type.
-                                            break 'impl_ Some(parent);
+                                    if let Some(parent) = ancestor.parent()
+                                        && let Some(parent) = ast::Impl::cast(parent)
+                                    {
+                                        // Only if the GENERIC_PARAM_LIST is directly under impl, otherwise it may be in the self ty.
+                                        if matches!(
+                                            ancestor.kind(),
+                                            SyntaxKind::ASSOC_ITEM_LIST
+                                                | SyntaxKind::WHERE_CLAUSE
+                                                | SyntaxKind::GENERIC_PARAM_LIST
+                                        ) {
+                                            break;
                                         }
+                                        if parent
+                                            .trait_()
+                                            .is_some_and(|trait_| *trait_.syntax() == ancestor)
+                                        {
+                                            break;
+                                        }
+
+                                        // Otherwise, found an impl where its self ty may be our type.
+                                        break 'impl_ Some(parent);
                                     }
                                 }
                                 None
@@ -813,7 +813,7 @@ impl<'a> FindUsages<'a> {
                 let tree = LazyCell::new(move || this.sema.parse(file_id).syntax().clone());
 
                 for offset in FindUsages::match_indices(&file_text, finder, search_range) {
-                    let usages = FindUsages::find_nodes(this.sema, name, &tree, offset)
+                    let usages = FindUsages::find_nodes(this.sema, name, file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast);
                     for usage in usages {
                         let found_usage = usage
@@ -854,14 +854,7 @@ impl<'a> FindUsages<'a> {
                 &finder,
                 name,
                 is_possibly_self.into_iter().map(|position| {
-                    (
-                        self.sema
-                            .db
-                            .file_text(position.file_id.file_id(self.sema.db))
-                            .text(self.sema.db),
-                        position.file_id,
-                        position.range,
-                    )
+                    (position.file_text(self.sema.db).clone(), position.file_id, position.range)
                 }),
                 |path, name_position| {
                     let has_self = path
@@ -934,7 +927,12 @@ impl<'a> FindUsages<'a> {
                     })
                 };
                 // We need to search without the `r#`, hence `as_str` access.
-                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.as_str().to_smolstr())
+                // We strip `'` from lifetimes and labels as otherwise they may not match with raw-escaped ones,
+                // e.g. if we search `'foo` we won't find `'r#foo`.
+                self.def
+                    .name(sema.db)
+                    .or_else(self_kw_refs)
+                    .map(|it| it.as_str().trim_start_matches('\'').to_smolstr())
             }
         };
         let name = match &name {
@@ -957,12 +955,16 @@ impl<'a> FindUsages<'a> {
             // Search for occurrences of the items name
             for offset in Self::match_indices(&text, finder, search_range) {
                 let ret = tree.token_at_offset(offset).any(|token| {
-                    let Some(str_token) = ast::String::cast(token.clone()) else { return false };
-                    if let Some((range, Some(nameres))) =
-                        sema.check_for_format_args_template(token, offset)
+                    if let Some((range, _frange, string_token, Some(nameres))) =
+                        sema.check_for_format_args_template(token.clone(), offset)
                     {
-                        return self
-                            .found_format_args_ref(file_id, range, str_token, nameres, sink);
+                        return self.found_format_args_ref(
+                            file_id,
+                            range,
+                            string_token,
+                            nameres,
+                            sink,
+                        );
                     }
                     false
                 });
@@ -970,8 +972,8 @@ impl<'a> FindUsages<'a> {
                     return;
                 }
 
-                for name in
-                    Self::find_nodes(sema, name, &tree, offset).filter_map(ast::NameLike::cast)
+                for name in Self::find_nodes(sema, name, file_id, &tree, offset)
+                    .filter_map(ast::NameLike::cast)
                 {
                     if match name {
                         ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
@@ -985,8 +987,8 @@ impl<'a> FindUsages<'a> {
             // Search for occurrences of the `Self` referring to our type
             if let Some((self_ty, finder)) = &include_self_kw_refs {
                 for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in
-                        Self::find_nodes(sema, "Self", &tree, offset).filter_map(ast::NameRef::cast)
+                    for name_ref in Self::find_nodes(sema, "Self", file_id, &tree, offset)
+                        .filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_ty_name_ref(self_ty, &name_ref, sink) {
                             return;
@@ -1010,7 +1012,7 @@ impl<'a> FindUsages<'a> {
                 let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in Self::find_nodes(sema, "super", &tree, offset)
+                    for name_ref in Self::find_nodes(sema, "super", file_id, &tree, offset)
                         .filter_map(ast::NameRef::cast)
                     {
                         if self.found_name_ref(&name_ref, sink) {
@@ -1020,7 +1022,7 @@ impl<'a> FindUsages<'a> {
                 }
                 if let Some(finder) = &is_crate_root {
                     for offset in Self::match_indices(&text, finder, search_range) {
-                        for name_ref in Self::find_nodes(sema, "crate", &tree, offset)
+                        for name_ref in Self::find_nodes(sema, "crate", file_id, &tree, offset)
                             .filter_map(ast::NameRef::cast)
                         {
                             if self.found_name_ref(&name_ref, sink) {
@@ -1058,14 +1060,14 @@ impl<'a> FindUsages<'a> {
                 let file_text = sema.db.file_text(file_id.file_id(self.sema.db));
                 let text = file_text.text(sema.db);
                 let search_range =
-                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
+                    search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&**text)));
 
                 let tree = LazyCell::new(|| sema.parse(file_id).syntax().clone());
                 let finder = &Finder::new("self");
 
-                for offset in Self::match_indices(&text, finder, search_range) {
-                    for name_ref in
-                        Self::find_nodes(sema, "self", &tree, offset).filter_map(ast::NameRef::cast)
+                for offset in Self::match_indices(text, finder, search_range) {
+                    for name_ref in Self::find_nodes(sema, "self", file_id, &tree, offset)
+                        .filter_map(ast::NameRef::cast)
                     {
                         if self.found_self_module_name_ref(&name_ref, sink) {
                             return;
@@ -1079,12 +1081,12 @@ impl<'a> FindUsages<'a> {
 
     fn found_self_ty_name_ref(
         &self,
-        self_ty: &hir::Type,
+        self_ty: &hir::Type<'_>,
         name_ref: &ast::NameRef,
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         // See https://github.com/rust-lang/rust-analyzer/pull/15864/files/e0276dc5ddc38c65240edb408522bb869f15afb4#r1389848845
-        let ty_eq = |ty: hir::Type| match (ty.as_adt(), self_ty.as_adt()) {
+        let ty_eq = |ty: hir::Type<'_>| match (ty.as_adt(), self_ty.as_adt()) {
             (Some(ty), Some(self_ty)) => ty == self_ty,
             (None, None) => ty == *self_ty,
             _ => false,
@@ -1307,7 +1309,7 @@ impl<'a> FindUsages<'a> {
     }
 }
 
-fn def_to_ty(sema: &Semantics<'_, RootDatabase>, def: &Definition) -> Option<hir::Type> {
+fn def_to_ty<'db>(sema: &Semantics<'db, RootDatabase>, def: &Definition) -> Option<hir::Type<'db>> {
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),
@@ -1343,11 +1345,10 @@ impl ReferenceCategory {
                         if matches!(expr.op_kind()?, ast::BinaryOp::Assignment { .. }) {
                             // If the variable or field ends on the LHS's end then it's a Write
                             // (covers fields and locals). FIXME: This is not terribly accurate.
-                            if let Some(lhs) = expr.lhs() {
-                                if lhs.syntax().text_range().end() == r.syntax().text_range().end() {
+                            if let Some(lhs) = expr.lhs()
+                                && lhs.syntax().text_range().end() == r.syntax().text_range().end() {
                                     return Some(ReferenceCategory::WRITE)
                                 }
-                            }
                         }
                         Some(ReferenceCategory::READ)
                     },

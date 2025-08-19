@@ -14,7 +14,7 @@ pub trait A {
 #[const_trait]
 pub trait Spec {}
 
-impl<T: ~const Spec> const A for T {
+impl<T: [const] Spec> const A for T {
     default fn a() -> u32 {
         2
     }

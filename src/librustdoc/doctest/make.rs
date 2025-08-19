@@ -8,14 +8,14 @@ use std::sync::Arc;
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::ColorConfig;
 use rustc_errors::emitter::stderr_destination;
+use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
+use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::{FileName, kw};
+use rustc_span::{DUMMY_SP, FileName, Span, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
@@ -35,33 +35,87 @@ struct ParseSourceInfo {
     maybe_crate_attrs: String,
 }
 
-/// This struct contains information about the doctest itself which is then used to generate
-/// doctest source code appropriately.
-pub(crate) struct DocTestBuilder {
-    pub(crate) supports_color: bool,
-    pub(crate) already_has_extern_crate: bool,
-    pub(crate) has_main_fn: bool,
-    pub(crate) crate_attrs: String,
-    /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
-    /// put into `crate_attrs`.
-    pub(crate) maybe_crate_attrs: String,
-    pub(crate) crates: String,
-    pub(crate) everything_else: String,
-    pub(crate) test_id: Option<String>,
-    pub(crate) invalid_ast: bool,
-    pub(crate) can_be_merged: bool,
+/// Builder type for `DocTestBuilder`.
+pub(crate) struct BuildDocTestBuilder<'a> {
+    source: &'a str,
+    crate_name: Option<&'a str>,
+    edition: Edition,
+    can_merge_doctests: bool,
+    // If `test_id` is `None`, it means we're generating code for a code example "run" link.
+    test_id: Option<String>,
+    lang_str: Option<&'a LangString>,
+    span: Span,
+    global_crate_attrs: Vec<String>,
 }
 
-impl DocTestBuilder {
-    pub(crate) fn new(
-        source: &str,
-        crate_name: Option<&str>,
-        edition: Edition,
-        can_merge_doctests: bool,
-        // If `test_id` is `None`, it means we're generating code for a code example "run" link.
-        test_id: Option<String>,
-        lang_str: Option<&LangString>,
-    ) -> Self {
+impl<'a> BuildDocTestBuilder<'a> {
+    pub(crate) fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            crate_name: None,
+            edition: DEFAULT_EDITION,
+            can_merge_doctests: false,
+            test_id: None,
+            lang_str: None,
+            span: DUMMY_SP,
+            global_crate_attrs: Vec::new(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn crate_name(mut self, crate_name: &'a str) -> Self {
+        self.crate_name = Some(crate_name);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn can_merge_doctests(mut self, can_merge_doctests: bool) -> Self {
+        self.can_merge_doctests = can_merge_doctests;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn test_id(mut self, test_id: String) -> Self {
+        self.test_id = Some(test_id);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn lang_str(mut self, lang_str: &'a LangString) -> Self {
+        self.lang_str = Some(lang_str);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn span(mut self, span: Span) -> Self {
+        self.span = span;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn edition(mut self, edition: Edition) -> Self {
+        self.edition = edition;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn global_crate_attrs(mut self, global_crate_attrs: Vec<String>) -> Self {
+        self.global_crate_attrs = global_crate_attrs;
+        self
+    }
+
+    pub(crate) fn build(self, dcx: Option<DiagCtxtHandle<'_>>) -> DocTestBuilder {
+        let BuildDocTestBuilder {
+            source,
+            crate_name,
+            edition,
+            can_merge_doctests,
+            // If `test_id` is `None`, it means we're generating code for a code example "run" link.
+            test_id,
+            lang_str,
+            span,
+            global_crate_attrs,
+        } = self;
         let can_merge_doctests = can_merge_doctests
             && lang_str.is_some_and(|lang_str| {
                 !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
@@ -69,7 +123,7 @@ impl DocTestBuilder {
 
         let result = rustc_driver::catch_fatal_errors(|| {
             rustc_span::create_session_if_not_set_then(edition, |_| {
-                parse_source(source, &crate_name)
+                parse_source(source, &crate_name, dcx, span)
             })
         });
 
@@ -87,7 +141,8 @@ impl DocTestBuilder {
         else {
             // If the AST returned an error, we don't want this doctest to be merged with the
             // others.
-            return Self::invalid(
+            return DocTestBuilder::invalid(
+                Vec::new(),
                 String::new(),
                 String::new(),
                 String::new(),
@@ -107,9 +162,10 @@ impl DocTestBuilder {
             // If this is a merged doctest and a defined macro uses `$crate`, then the path will
             // not work, so better not put it into merged doctests.
             && !(has_macro_def && everything_else.contains("$crate"));
-        Self {
+        DocTestBuilder {
             supports_color,
             has_main_fn,
+            global_crate_attrs,
             crate_attrs,
             maybe_crate_attrs,
             crates,
@@ -120,8 +176,103 @@ impl DocTestBuilder {
             can_be_merged,
         }
     }
+}
 
+/// This struct contains information about the doctest itself which is then used to generate
+/// doctest source code appropriately.
+pub(crate) struct DocTestBuilder {
+    pub(crate) supports_color: bool,
+    pub(crate) already_has_extern_crate: bool,
+    pub(crate) has_main_fn: bool,
+    pub(crate) global_crate_attrs: Vec<String>,
+    pub(crate) crate_attrs: String,
+    /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
+    /// put into `crate_attrs`.
+    pub(crate) maybe_crate_attrs: String,
+    pub(crate) crates: String,
+    pub(crate) everything_else: String,
+    pub(crate) test_id: Option<String>,
+    pub(crate) invalid_ast: bool,
+    pub(crate) can_be_merged: bool,
+}
+
+/// Contains needed information for doctest to be correctly generated with expected "wrapping".
+pub(crate) struct WrapperInfo {
+    pub(crate) before: String,
+    pub(crate) after: String,
+    pub(crate) returns_result: bool,
+    insert_indent_space: bool,
+}
+
+impl WrapperInfo {
+    fn len(&self) -> usize {
+        self.before.len() + self.after.len()
+    }
+}
+
+/// Contains a doctest information. Can be converted into code with the `to_string()` method.
+pub(crate) enum DocTestWrapResult {
+    Valid {
+        crate_level_code: String,
+        /// This field can be `None` if one of the following conditions is true:
+        ///
+        /// * The doctest's codeblock has the `test_harness` attribute.
+        /// * The doctest has a `main` function.
+        /// * The doctest has the `![no_std]` attribute.
+        wrapper: Option<WrapperInfo>,
+        /// Contains the doctest processed code without the wrappers (which are stored in the
+        /// `wrapper` field).
+        code: String,
+    },
+    /// Contains the original source code.
+    SyntaxError(String),
+}
+
+impl std::string::ToString for DocTestWrapResult {
+    fn to_string(&self) -> String {
+        match self {
+            Self::SyntaxError(s) => s.clone(),
+            Self::Valid { crate_level_code, wrapper, code } => {
+                let mut prog_len = code.len() + crate_level_code.len();
+                if let Some(wrapper) = wrapper {
+                    prog_len += wrapper.len();
+                    if wrapper.insert_indent_space {
+                        prog_len += code.lines().count() * 4;
+                    }
+                }
+                let mut prog = String::with_capacity(prog_len);
+
+                prog.push_str(crate_level_code);
+                if let Some(wrapper) = wrapper {
+                    prog.push_str(&wrapper.before);
+
+                    // add extra 4 spaces for each line to offset the code block
+                    if wrapper.insert_indent_space {
+                        write!(
+                            prog,
+                            "{}",
+                            fmt::from_fn(|f| code
+                                .lines()
+                                .map(|line| fmt::from_fn(move |f| write!(f, "    {line}")))
+                                .joined("\n", f))
+                        )
+                        .unwrap();
+                    } else {
+                        prog.push_str(code);
+                    }
+                    prog.push_str(&wrapper.after);
+                } else {
+                    prog.push_str(code);
+                }
+                prog
+            }
+        }
+    }
+}
+
+impl DocTestBuilder {
     fn invalid(
+        global_crate_attrs: Vec<String>,
         crate_attrs: String,
         maybe_crate_attrs: String,
         crates: String,
@@ -131,6 +282,7 @@ impl DocTestBuilder {
         Self {
             supports_color: false,
             has_main_fn: false,
+            global_crate_attrs,
             crate_attrs,
             maybe_crate_attrs,
             crates,
@@ -150,49 +302,49 @@ impl DocTestBuilder {
         dont_insert_main: bool,
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
-    ) -> (String, usize) {
+    ) -> (DocTestWrapResult, usize) {
         if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
             // will be better this way.
             debug!("invalid AST:\n{test_code}");
-            return (test_code.to_string(), 0);
+            return (DocTestWrapResult::SyntaxError(test_code.to_string()), 0);
         }
         let mut line_offset = 0;
-        let mut prog = String::new();
-        let everything_else = self.everything_else.trim();
-        if opts.attrs.is_empty() {
+        let mut crate_level_code = String::new();
+        let processed_code = self.everything_else.trim();
+        if self.global_crate_attrs.is_empty() {
             // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
             // lints that are commonly triggered in doctests. The crate-level test attributes are
             // commonly used to make tests fail in case they trigger warnings, so having this there in
             // that case may cause some tests to pass when they shouldn't have.
-            prog.push_str("#![allow(unused)]\n");
+            crate_level_code.push_str("#![allow(unused)]\n");
             line_offset += 1;
         }
 
-        // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
-        for attr in &opts.attrs {
-            prog.push_str(&format!("#![{attr}]\n"));
+        // Next, any attributes that came from #![doc(test(attr(...)))].
+        for attr in &self.global_crate_attrs {
+            crate_level_code.push_str(&format!("#![{attr}]\n"));
             line_offset += 1;
         }
 
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
         if !self.crate_attrs.is_empty() {
-            prog.push_str(&self.crate_attrs);
+            crate_level_code.push_str(&self.crate_attrs);
             if !self.crate_attrs.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
         if !self.maybe_crate_attrs.is_empty() {
-            prog.push_str(&self.maybe_crate_attrs);
+            crate_level_code.push_str(&self.maybe_crate_attrs);
             if !self.maybe_crate_attrs.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
         if !self.crates.is_empty() {
-            prog.push_str(&self.crates);
+            crate_level_code.push_str(&self.crates);
             if !self.crates.ends_with('\n') {
-                prog.push('\n');
+                crate_level_code.push('\n');
             }
         }
 
@@ -210,17 +362,20 @@ impl DocTestBuilder {
         {
             // rustdoc implicitly inserts an `extern crate` item for the own crate
             // which may be unused, so we need to allow the lint.
-            prog.push_str("#[allow(unused_extern_crates)]\n");
+            crate_level_code.push_str("#[allow(unused_extern_crates)]\n");
 
-            prog.push_str(&format!("extern crate r#{crate_name};\n"));
+            crate_level_code.push_str(&format!("extern crate r#{crate_name};\n"));
             line_offset += 1;
         }
 
         // FIXME: This code cannot yet handle no_std test cases yet
-        if dont_insert_main || self.has_main_fn || prog.contains("![no_std]") {
-            prog.push_str(everything_else);
+        let wrapper = if dont_insert_main
+            || self.has_main_fn
+            || crate_level_code.contains("![no_std]")
+        {
+            None
         } else {
-            let returns_result = everything_else.ends_with("(())");
+            let returns_result = processed_code.ends_with("(())");
             // Give each doctest main function a unique name.
             // This is for example needed for the tooling around `-C instrument-coverage`.
             let inner_fn_name = if let Some(ref test_id) = self.test_id {
@@ -254,28 +409,22 @@ impl DocTestBuilder {
             // /// ``` <- end of the inner main
             line_offset += 1;
 
-            prog.push_str(&main_pre);
+            Some(WrapperInfo {
+                before: main_pre,
+                after: main_post,
+                returns_result,
+                insert_indent_space: opts.insert_indent_space,
+            })
+        };
 
-            // add extra 4 spaces for each line to offset the code block
-            if opts.insert_indent_space {
-                write!(
-                    prog,
-                    "{}",
-                    fmt::from_fn(|f| everything_else
-                        .lines()
-                        .map(|line| fmt::from_fn(move |f| write!(f, "    {line}")))
-                        .joined("\n", f))
-                )
-                .unwrap();
-            } else {
-                prog.push_str(everything_else);
-            };
-            prog.push_str(&main_post);
-        }
-
-        debug!("final doctest:\n{prog}");
-
-        (prog, line_offset)
+        (
+            DocTestWrapResult::Valid {
+                code: processed_code.to_string(),
+                wrapper,
+                crate_level_code,
+            },
+            line_offset,
+        )
     }
 }
 
@@ -289,7 +438,12 @@ fn reset_error_count(psess: &ParseSess) {
 
 const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
 
-fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceInfo, ()> {
+fn parse_source(
+    source: &str,
+    crate_name: &Option<&str>,
+    parent_dcx: Option<DiagCtxtHandle<'_>>,
+    span: Span,
+) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
     use rustc_errors::emitter::{Emitter, HumanEmitter};
     use rustc_span::source_map::FilePathMapping;
@@ -302,16 +456,13 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
     let filename = FileName::anon_source_code(&wrapped_source);
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-        rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-        false,
-    );
+    let translator = rustc_driver::default_translator();
     info.supports_color =
-        HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle.clone())
+        HumanEmitter::new(stderr_destination(ColorConfig::Auto), translator.clone())
             .supports_color();
     // Any errors in parsing should also appear when the doctest is compiled for real, so just
     // send all the errors that the parser emits directly into a `Sink` instead of stderr.
-    let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
+    let emitter = HumanEmitter::new(Box::new(io::sink()), translator);
 
     // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
@@ -466,8 +617,17 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 }
             }
             if has_non_items {
-                // FIXME: if `info.has_main_fn` is `true`, emit a warning here to mention that
-                // this code will not be called.
+                if info.has_main_fn
+                    && let Some(dcx) = parent_dcx
+                    && !span.is_dummy()
+                {
+                    dcx.span_warn(
+                        span,
+                        "the `main` function of this doctest won't be run as it contains \
+                         expressions at the top level, meaning that the whole doctest code will be \
+                         wrapped in a function",
+                    );
+                }
                 info.has_main_fn = false;
             }
             Ok(info)

@@ -181,5 +181,53 @@ LL +         bar
 LL ~ "
    |
 
-error: aborting due to 14 previous errors
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:94:55
+   |
+LL |     writeln!(v, "Hello {3} is {0:2$.1$}", 0.01, 2, 3, "x");
+   |                                                       ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "Hello {3} is {0:2$.1$}", 0.01, 2, 3, "x");
+LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:96:52
+   |
+LL |     writeln!(v, "Hello {2} is {0:3$.1$}", 0.01, 2, "x", 3);
+   |                                                    ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "Hello {2} is {0:3$.1$}", 0.01, 2, "x", 3);
+LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:98:49
+   |
+LL |     writeln!(v, "Hello {1} is {0:3$.2$}", 0.01, "x", 2, 3);
+   |                                                 ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "Hello {1} is {0:3$.2$}", 0.01, "x", 2, 3);
+LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:100:43
+   |
+LL |     writeln!(v, "Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
+   |                                           ^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "Hello {0} is {1:3$.2$}", "x", 0.01, 2, 3);
+LL +     writeln!(v, "Hello x is {0:2$.1$}", 0.01, 2, 3);
+   |
+
+error: aborting due to 18 previous errors
 

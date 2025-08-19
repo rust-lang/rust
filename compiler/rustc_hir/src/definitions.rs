@@ -68,7 +68,7 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collision between {def_path1:?} and {def_path2:?}. \
+                "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
         }
@@ -97,13 +97,31 @@ impl DefPathTable {
     }
 }
 
+#[derive(Debug)]
+pub struct DisambiguatorState {
+    next: UnordMap<(LocalDefId, DefPathData), u32>,
+}
+
+impl DisambiguatorState {
+    pub fn new() -> Self {
+        Self { next: Default::default() }
+    }
+
+    /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
+    /// will have `index` as the disambiguator.
+    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
+        let mut this = Self::new();
+        this.next.insert((def_id, data), index);
+        this
+    }
+}
+
 /// The definition table containing node definitions.
 /// It holds the `DefPathTable` for `LocalDefId`s/`DefPath`s.
 /// It also stores mappings to convert `LocalDefId`s to/from `HirId`s.
 #[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
-    next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -122,12 +140,14 @@ impl DefKey {
     pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
-        parent.hash(&mut hasher);
+        // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
+        // Therefore, we only need to include information of the parent's local hash.
+        parent.local_hash().hash(&mut hasher);
 
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
         std::mem::discriminant(data).hash(&mut hasher);
-        if let Some(name) = data.get_opt_name() {
+        if let Some(name) = data.hashed_symbol() {
             // Get a stable hash by considering the symbol chars rather than
             // the symbol index.
             name.as_str().hash(&mut hasher);
@@ -163,25 +183,23 @@ pub struct DisambiguatedDefPathData {
 }
 
 impl DisambiguatedDefPathData {
-    pub fn fmt_maybe_verbose(&self, writer: &mut impl Write, verbose: bool) -> fmt::Result {
+    pub fn as_sym(&self, verbose: bool) -> Symbol {
         match self.data.name() {
             DefPathDataName::Named(name) => {
                 if verbose && self.disambiguator != 0 {
-                    write!(writer, "{}#{}", name, self.disambiguator)
+                    Symbol::intern(&format!("{}#{}", name, self.disambiguator))
                 } else {
-                    writer.write_str(name.as_str())
+                    name
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                if let DefPathData::AnonAssocTy(method) = self.data {
+                    Symbol::intern(&format!("{}::{{{}#{}}}", method, namespace, self.disambiguator))
+                } else {
+                    Symbol::intern(&format!("{{{}#{}}}", namespace, self.disambiguator))
+                }
             }
         }
-    }
-}
-
-impl fmt::Display for DisambiguatedDefPathData {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.fmt_maybe_verbose(f, true)
     }
 }
 
@@ -228,7 +246,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{component}").unwrap();
+            write!(s, "::{}", component.as_sym(true)).unwrap();
         }
 
         s
@@ -244,7 +262,7 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            write!(s, "{component}").unwrap();
+            write!(s, "{}", component.as_sym(true)).unwrap();
         }
 
         s
@@ -287,10 +305,15 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
-    /// An anonymous associated type from an RPITIT.
-    AnonAssocTy,
+    /// Used for remapped captured lifetimes in an existential `impl Trait` type node.
+    OpaqueLifetime(Symbol),
+    /// An anonymous associated type from an RPITIT. The symbol refers to the name of the method
+    /// that defined the type.
+    AnonAssocTy(Symbol),
     /// A synthetic body for a coroutine's by-move body.
     SyntheticCoroutineBody,
+    /// Additional static data referred to by a static.
+    NestedStatic,
 }
 
 impl Definitions {
@@ -334,19 +357,36 @@ impl Definitions {
             },
         };
 
-        let parent_hash = DefPathHash::new(stable_crate_id, Hash64::ZERO);
-        let def_path_hash = key.compute_stable_hash(parent_hash);
+        // We want *both* halves of a DefPathHash to depend on the crate-id of the defining crate.
+        // The crate-id can be more easily changed than the DefPath of an item, so, in the case of
+        // a crate-local DefPathHash collision, the user can simply "roll the dice again" for all
+        // DefPathHashes in the crate by changing the crate disambiguator (e.g. via bumping the
+        // crate's version number).
+        //
+        // Children paths will only hash the local portion, and still inherit the change to the
+        // root hash.
+        let def_path_hash =
+            DefPathHash::new(stable_crate_id, Hash64::new(stable_crate_id.as_u64()));
 
         // Create the root definition.
         let mut table = DefPathTable::new(stable_crate_id);
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        Definitions { table, next_disambiguator: Default::default() }
+        Definitions { table }
     }
 
-    /// Adds a definition with a parent definition.
-    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+    /// Creates a definition with a parent definition.
+    /// If there are multiple definitions with the same DefPathData and the same parent, use
+    /// `disambiguator` to differentiate them. Distinct `DisambiguatorState` instances are not
+    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
+    /// and `data` pair is distinct from other instances.
+    pub fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        data: DefPathData,
+        disambiguator: &mut DisambiguatorState,
+    ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -354,12 +394,12 @@ impl Definitions {
             self.def_path(parent).to_string_no_crate_verbose(),
         );
 
-        // The root node must be created with `create_root_def()`.
+        // The root node must be created in `new()`.
         assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -411,7 +451,8 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => Some(name),
 
             Impl
             | ForeignMod
@@ -422,17 +463,37 @@ impl DefPathData {
             | Ctor
             | AnonConst
             | OpaqueTy
-            | AnonAssocTy
-            | SyntheticCoroutineBody => None,
+            | AnonAssocTy(..)
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
+        }
+    }
+
+    fn hashed_symbol(&self) -> Option<Symbol> {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
+            | OpaqueLifetime(name) => Some(name),
+
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
         }
     }
 
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
+            | OpaqueLifetime(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
@@ -443,8 +504,9 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
-            AnonAssocTy => DefPathDataName::Anon { namespace: sym::anon_assoc },
+            AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
+            NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
         }
     }
 }

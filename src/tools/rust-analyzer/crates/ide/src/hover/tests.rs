@@ -12,6 +12,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
         size: Some(MemoryLayoutHoverRenderKind::Both),
         offset: Some(MemoryLayoutHoverRenderKind::Both),
         alignment: Some(MemoryLayoutHoverRenderKind::Both),
+        padding: Some(MemoryLayoutHoverRenderKind::Both),
         niches: true,
     }),
     documentation: true,
@@ -933,7 +934,7 @@ struct Foo$0(pub u32) where u32: Copy;
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -959,7 +960,7 @@ struct Foo$0 { field: u32 }
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
     check(
@@ -984,7 +985,7 @@ struct Foo$0 where u32: Copy { field: u32 }
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -1013,7 +1014,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1036,7 +1037,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 4, align = 4, no Drop
+            size = 4, align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1062,7 +1063,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 16 (0x10), align = 4, no Drop
+            size = 16 (0x10), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1083,7 +1084,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
     check_hover_fields_limit(
@@ -1104,7 +1105,7 @@ fn hover_record_struct_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, no Drop
+            size = 12 (0xC), align = 4, largest padding = 0, no Drop
         "#]],
     );
 
@@ -3114,7 +3115,7 @@ struct S$0<T>(core::marker::PhantomData<T>);
 
             ---
 
-            size = 0, align = 1, no Drop
+            size = 0, align = 1, largest padding = 0, no Drop
         "#]],
     );
 }
@@ -3143,6 +3144,111 @@ fn test_hover_layout_of_enum() {
             ---
 
             size = 16 (0x10), align = 8, niches = 254, no Drop
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_layout_padding_info() {
+    check(
+        r#"struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 16 (0x10), align = 8, largest padding = 3, niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"#[repr(align(32))]
+        struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 32 (0x20), align = 32 (0x20), largest padding = 19 (0x13), niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"#[repr(C)]
+        struct $0Foo {
+            x: bool,
+            y: i64,
+            z: u32,
+        }"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo {
+                x: bool,
+                y: i64,
+                z: u32,
+            }
+            ```
+
+            ---
+
+            size = 24 (0x18), align = 8, tail padding = 4, niches = 254, no Drop
+        "#]],
+    );
+
+    check(
+        r#"struct $0Foo(i16, u128, u64)"#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo(i16, u128, u64)
+            ```
+
+            ---
+
+            size = 32 (0x20), align = 8, largest padding = 6, no Drop
         "#]],
     );
 }
@@ -7085,9 +7191,9 @@ fn foo() {
 }
 "#,
         expect![[r#"
-                ```rust
-                &str
-                ```"#]],
+            ```rust
+            &'static str
+            ```"#]],
     );
 }
 
@@ -7370,6 +7476,128 @@ pub struct Foo(i32);
             ---
 
             Doc comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html)
+        "#]],
+    );
+}
+
+#[test]
+fn hover_intra_inner_attr() {
+    check(
+        r#"
+/// outer comment for [`Foo`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub fn Foo {
+    //! inner comment for [`Foo$0`]
+    #![doc = "Doc inner comment for [`Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub fn Foo()
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+        "#]],
+    );
+
+    check(
+        r#"
+/// outer comment for [`Foo`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub mod Foo {
+    //! inner comment for [`super::Foo$0`]
+    #![doc = "Doc inner comment for [`super::Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`super::Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub mod Foo
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+        "#]],
+    );
+}
+
+#[test]
+fn hover_intra_outer_attr() {
+    check(
+        r#"
+/// outer comment for [`Foo$0`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub fn Foo() {
+    //! inner comment for [`Foo`]
+    #![doc = "Doc inner comment for [`Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub fn Foo()
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+            Doc inner comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/fn.Foo.html)
+        "#]],
+    );
+
+    check(
+        r#"
+/// outer comment for [`Foo$0`]
+#[doc = "Doc outer comment for [`Foo`]"]
+pub mod Foo {
+    //! inner comment for [`super::Foo`]
+    #![doc = "Doc inner comment for [`super::Foo`]"]
+}
+"#,
+        expect![[r#"
+            *[`Foo`]*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub mod Foo
+            ```
+
+            ---
+
+            outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc outer comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
+            Doc inner comment for [`super::Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/Foo/index.html)
         "#]],
     );
 }
@@ -8228,7 +8456,7 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str
+            let aaaaa: &'static str
             ```
         "#]],
     );
@@ -8248,7 +8476,7 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str
+            let aaaaa: &'static str
             ```
         "#]],
     );
@@ -8268,7 +8496,7 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str
+            let aaaaa: &'static str
             ```
         "#]],
     );
@@ -8293,7 +8521,7 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            let aaaaa: &str
+            let aaaaa: &'static str
             ```
         "#]],
     );
@@ -8337,7 +8565,7 @@ fn main() {
         expect![[r#"
             *"🦀\u{1f980}\\\x41"*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8353,7 +8581,7 @@ fn main() {
         expect![[r#"
             *r"🦀\u{1f980}\\\x41"*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8375,7 +8603,7 @@ fsdghs";
 
             fsdghs"*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8395,7 +8623,7 @@ fn main() {
         expect![[r#"
             *c"🦀\u{1f980}\\\x41"*
             ```rust
-            &{unknown}
+            &'static {unknown}
             ```
             ___
 
@@ -8414,7 +8642,7 @@ fn main() {
         expect![[r#"
             *r"`[^`]*`"*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8429,7 +8657,7 @@ fn main() {
         expect![[r#"
             *r"`"*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8444,7 +8672,7 @@ fn main() {
         expect![[r#"
             *r"    "*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
@@ -8460,12 +8688,12 @@ fn main() {
         expect![[r#"
             *r" Hello World "*
             ```rust
-            &str
+            &'static str
             ```
             ___
 
             value of literal: `  Hello World  `
-"#]],
+        "#]],
     )
 }
 
@@ -8480,7 +8708,7 @@ fn main() {
         expect![[r#"
             *b"\xF0\x9F\xA6\x80\\"*
             ```rust
-            &[u8; 5]
+            &'static [u8; 5]
             ```
             ___
 
@@ -8496,7 +8724,7 @@ fn main() {
         expect![[r#"
             *br"\xF0\x9F\xA6\x80\\"*
             ```rust
-            &[u8; 18]
+            &'static [u8; 18]
             ```
             ___
 
@@ -9070,13 +9298,13 @@ struct Pedro$0<'a> {
 
             ```rust
             struct Pedro<'a> {
-                hola: &str,
+                hola: &'a str,
             }
             ```
 
             ---
 
-            size = 16 (0x10), align = 8, niches = 1, no Drop
+            size = 16 (0x10), align = 8, largest padding = 0, niches = 1, no Drop
         "#]],
     )
 }
@@ -9937,7 +10165,7 @@ fn baz() {
 
             ---
 
-            `U` = `i32`, `T` = `&str`
+            `U` = `i32`, `T` = `&'static str`
         "#]],
     );
 }
@@ -10030,7 +10258,7 @@ fn bar() {
 
             ---
 
-            `T` = `i8`, `U` = `&str`
+            `T` = `i8`, `U` = `&'static str`
         "#]],
     );
 }
@@ -10437,7 +10665,7 @@ struct DropField$0 {
 
             ---
 
-            size = 4, align = 4, needs Drop
+            size = 4, align = 4, largest padding = 0, needs Drop
         "#]],
     );
     check(
@@ -10695,6 +10923,102 @@ fn main() {
 
             ```rust
             fn to_possible_value<'a>(&'a self)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn keyword_inside_link() {
+    check(
+        r#"
+enum Foo {
+    MacroExpansion,
+}
+
+/// I return a [macro expansion](Foo::MacroExpansion).
+fn bar$0() -> Foo {
+    Foo::MacroExpansion
+}
+    "#,
+        expect![[r#"
+            *bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn bar() -> Foo
+            ```
+
+            ---
+
+            I return a [macro expansion](https://docs.rs/ra_test_fixture/*/ra_test_fixture/enum.Foo.html#variant.MacroExpansion).
+        "#]],
+    );
+}
+
+#[test]
+fn regression_20190() {
+    check(
+        r#"
+struct Foo;
+
+/// [`foo` bar](Foo).
+fn has_docs$0() {}
+    "#,
+        expect![[r#"
+            *has_docs*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn has_docs()
+            ```
+
+            ---
+
+            [`foo` bar](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html).
+        "#]],
+    );
+}
+
+#[test]
+fn regression_20225() {
+    check(
+        r#"
+//- minicore: coerce_unsized
+trait Trait {
+    type Type<'a, T: ?Sized + 'a>;
+}
+
+enum Borrowed {}
+
+impl Trait for Borrowed {
+    type Type<'a, T: ?Sized + 'a> = &'a T;
+}
+
+enum Enum<'a, T: Trait + 'a> {
+    Variant1(T::Type<'a, [Enum<'a, T>]>),
+    Variant2,
+}
+
+impl Enum<'_, Borrowed> {
+    const CONSTANT$0: Self = Self::Variant1(&[Self::Variant2]);
+}
+    "#,
+        expect![[r#"
+            *CONSTANT*
+
+            ```rust
+            ra_test_fixture::Enum
+            ```
+
+            ```rust
+            const CONSTANT: Self = Variant1(&[Variant2])
             ```
         "#]],
     );

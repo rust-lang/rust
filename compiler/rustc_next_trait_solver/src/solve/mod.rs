@@ -21,6 +21,7 @@ mod project_goals;
 mod search_graph;
 mod trait_goals;
 
+use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, TypingMode};
@@ -28,6 +29,7 @@ use tracing::instrument;
 
 pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
 use crate::delegate::SolverDelegate;
+use crate::solve::assembly::Candidate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
 /// with overflow.
@@ -147,6 +149,20 @@ where
         }
     }
 
+    fn compute_unstable_feature_goal(
+        &mut self,
+        param_env: <I as Interner>::ParamEnv,
+        symbol: <I as Interner>::Symbol,
+    ) -> QueryResult<I> {
+        if self.may_use_unstable_feature(param_env, symbol) {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        } else {
+            self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe(
+                MaybeCause::Ambiguity,
+            ))
+        }
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn compute_const_evaluatable_goal(
         &mut self,
@@ -190,6 +206,7 @@ where
         goal: Goal<I, (I::Const, I::Ty)>,
     ) -> QueryResult<I> {
         let (ct, ty) = goal.predicate;
+        let ct = self.structurally_normalize_const(goal.param_env, ct)?;
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
@@ -210,13 +227,19 @@ where
             ty::ConstKind::Bound(_, _) => panic!("escaping bound vars in {:?}", ct),
             ty::ConstKind::Value(cv) => cv.ty(),
             ty::ConstKind::Placeholder(placeholder) => {
-                self.cx().find_const_ty_from_env(goal.param_env, placeholder)
+                placeholder.find_const_ty_from_env(goal.param_env)
             }
         };
 
         self.eq(goal.param_env, ct_ty, ty)?;
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
+}
+
+#[derive(Debug)]
+enum MergeCandidateInfo {
+    AlwaysApplicable(usize),
+    EqualResponse,
 }
 
 impl<D, I> EvalCtxt<'_, D>
@@ -228,50 +251,53 @@ where
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
-    fn try_merge_responses(
+    fn try_merge_candidates(
         &mut self,
-        responses: &[CanonicalResponse<I>],
-    ) -> Option<CanonicalResponse<I>> {
-        if responses.is_empty() {
+        candidates: &[Candidate<I>],
+    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
+        if candidates.is_empty() {
             return None;
         }
 
-        // FIXME(-Znext-solver): We should instead try to find a `Certainty::Yes` response with
-        // a subset of the constraints that all the other responses have.
-        let one = responses[0];
-        if responses[1..].iter().all(|&resp| resp == one) {
-            return Some(one);
+        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
+            candidate.result.value.certainty == Certainty::Yes
+                && has_no_inference_or_external_constraints(candidate.result)
+        });
+        if let Some((i, c)) = always_applicable {
+            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
-        responses
-            .iter()
-            .find(|response| {
-                response.value.certainty == Certainty::Yes
-                    && has_no_inference_or_external_constraints(**response)
-            })
-            .copied()
+        let one: CanonicalResponse<I> = candidates[0].result;
+        if candidates[1..].iter().all(|candidate| candidate.result == one) {
+            return Some((one, MergeCandidateInfo::EqualResponse));
+        }
+
+        None
     }
 
-    fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
-        debug_assert!(!responses.is_empty());
-        if let Certainty::Maybe(maybe_cause) =
-            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-                certainty.unify_with(response.value.certainty)
-            })
-        {
-            self.make_ambiguous_response_no_constraints(maybe_cause)
-        } else {
-            panic!("expected flounder response to be ambiguous")
-        }
+    fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
+        debug_assert!(candidates.len() > 1);
+        let maybe_cause =
+            candidates.iter().fold(MaybeCause::Ambiguity, |maybe_cause, candidates| {
+                // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
+                // these responses, b/c we're combining more than one response and this we
+                // don't know which one applies.
+                let candidate = match candidates.result.value.certainty {
+                    Certainty::Yes => MaybeCause::Ambiguity,
+                    Certainty::Maybe(candidate) => candidate,
+                };
+                maybe_cause.or(candidate)
+            });
+        self.make_ambiguous_response_no_constraints(maybe_cause)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
     #[instrument(level = "trace", skip(self), ret)]
-    fn flounder(&mut self, responses: &[CanonicalResponse<I>]) -> QueryResult<I> {
-        if responses.is_empty() {
+    fn flounder(&mut self, candidates: &[Candidate<I>]) -> QueryResult<I> {
+        if candidates.is_empty() {
             return Err(NoSolution);
         } else {
-            Ok(self.bail_with_ambiguity(responses))
+            Ok(self.bail_with_ambiguity(candidates))
         }
     }
 
@@ -352,7 +378,7 @@ where
 fn response_no_constraints_raw<I: Interner>(
     cx: I,
     max_universe: ty::UniverseIndex,
-    variables: I::CanonicalVars,
+    variables: I::CanonicalVarKinds,
     certainty: Certainty,
 ) -> CanonicalResponse<I> {
     ty::Canonical {
@@ -366,4 +392,39 @@ fn response_no_constraints_raw<I: Interner>(
             certainty,
         },
     }
+}
+
+/// The result of evaluating a goal.
+pub struct GoalEvaluation<I: Interner> {
+    /// The goal we've evaluated. This is the input goal, but potentially with its
+    /// inference variables resolved. This never applies any inference constraints
+    /// from evaluating the goal.
+    ///
+    /// We rely on this to check whether root goals in HIR typeck had an unresolved
+    /// type inference variable in the input. We must not resolve this after evaluating
+    /// the goal as even if the inference variable has been resolved by evaluating the
+    /// goal itself, this goal may still end up failing due to region uniquification
+    /// later on.
+    ///
+    /// This is used as a minor optimization to avoid re-resolving inference variables
+    /// when reevaluating ambiguous goals. E.g. if we've got a goal `?x: Trait` with `?x`
+    /// already being constrained to `Vec<?y>`, then the first evaluation resolves it to
+    /// `Vec<?y>: Trait`. If this goal is still ambiguous and we later resolve `?y` to `u32`,
+    /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
+    /// have to resolve both `?x` and `?y`,
+    pub goal: Goal<I, I::Predicate>,
+    pub certainty: Certainty,
+    pub has_changed: HasChanged,
+    /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
+    /// before rerunning it.
+    pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOn<I: Interner> {
+    pub num_opaques: usize,
+    pub stalled_vars: Vec<I::GenericArg>,
+    /// The cause that will be returned on subsequent evaluations if this goal remains stalled.
+    pub stalled_cause: MaybeCause,
 }

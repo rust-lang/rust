@@ -23,7 +23,7 @@ macro_rules! late_lint_methods {
             fn check_stmt(a: &'tcx rustc_hir::Stmt<'tcx>);
             fn check_arm(a: &'tcx rustc_hir::Arm<'tcx>);
             fn check_pat(a: &'tcx rustc_hir::Pat<'tcx>);
-            fn check_lit(hir_id: rustc_hir::HirId, a: &'tcx rustc_hir::Lit, negated: bool);
+            fn check_lit(hir_id: rustc_hir::HirId, a: rustc_hir::Lit, negated: bool);
             fn check_expr(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_expr_post(a: &'tcx rustc_hir::Expr<'tcx>);
             fn check_ty(a: &'tcx rustc_hir::Ty<'tcx, rustc_hir::AmbigArg>);
@@ -92,7 +92,7 @@ macro_rules! expand_combined_late_lint_pass_methods {
 /// Combines multiple lints passes into a single lint pass, at compile time,
 /// for maximum speed. Each `check_foo` method in `$methods` within this pass
 /// simply calls `check_foo` once per `$pass`. Compare with
-/// `LateLintPassObjects`, which is similar, but combines lint passes at
+/// `RuntimeCombinedLateLintPass`, which is similar, but combines lint passes at
 /// runtime.
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
@@ -123,10 +123,10 @@ macro_rules! declare_combined_late_lint_pass {
         #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $name {
             fn name(&self) -> &'static str {
-                panic!()
+                stringify!($name)
             }
             fn get_lints(&self) -> LintVec {
-                panic!()
+                $name::get_lints()
             }
         }
     )

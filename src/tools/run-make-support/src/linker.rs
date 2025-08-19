@@ -1,6 +1,6 @@
 use regex::Regex;
 
-use crate::{Rustc, is_msvc};
+use crate::{Rustc, is_windows_msvc};
 
 /// Asserts that `rustc` uses LLD for linking when executed.
 pub fn assert_rustc_uses_lld(rustc: &mut Rustc) {
@@ -22,7 +22,7 @@ pub fn assert_rustc_doesnt_use_lld(rustc: &mut Rustc) {
 
 fn get_stderr_with_linker_messages(rustc: &mut Rustc) -> String {
     // lld-link is used if msvc, otherwise a gnu-compatible lld is used.
-    let linker_version_flag = if is_msvc() { "--version" } else { "-Wl,-v" };
+    let linker_version_flag = if is_windows_msvc() { "--version" } else { "-Wl,-v" };
 
     let output = rustc.arg("-Wlinker-messages").link_arg(linker_version_flag).run();
     output.stderr_utf8()

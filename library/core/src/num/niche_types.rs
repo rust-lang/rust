@@ -46,11 +46,11 @@ macro_rules! define_valid_range_type {
             /// primitive without checking whether its zero.
             ///
             /// # Safety
-            /// Immediate language UB if `val == 0`, as it violates the validity
-            /// invariant of this type.
+            /// Immediate language UB if `val` is not within the valid range for this
+            /// type, as it violates the validity invariant.
             #[inline]
             pub const unsafe fn new_unchecked(val: $int) -> Self {
-                // SAFETY: Caller promised that `val` is non-zero.
+                // SAFETY: Caller promised that `val` is within the valid range.
                 unsafe { $name(val) }
             }
 
@@ -131,6 +131,8 @@ define_valid_range_type! {
     pub struct NonZeroI32Inner(i32 as u32 in 1..=0xffff_ffff);
     pub struct NonZeroI64Inner(i64 as u64 in 1..=0xffffffff_ffffffff);
     pub struct NonZeroI128Inner(i128 as u128 in 1..=0xffffffffffffffff_ffffffffffffffff);
+
+    pub struct NonZeroCharInner(char as u32 in 1..=0x10ffff);
 }
 
 #[cfg(target_pointer_width = "16")]

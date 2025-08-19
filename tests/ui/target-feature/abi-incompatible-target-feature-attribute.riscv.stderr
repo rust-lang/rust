@@ -1,5 +1,5 @@
 error: target feature `d` cannot be enabled with `#[target_feature]`: this feature is incompatible with the target ABI
-  --> $DIR/abi-incompatible-target-feature-attribute.rs:15:90
+  --> $DIR/abi-incompatible-target-feature-attribute.rs:21:90
    |
 LL | #[cfg_attr(x86, target_feature(enable = "soft-float"))] #[cfg_attr(riscv, target_feature(enable = "d"))]
    |                                                                                          ^^^^^^^^^^^^

@@ -14,24 +14,24 @@ use std::{
 
 // Null is never valid for references
 pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: null reference
 pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: null reference
 
 // Out of bounds
 pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
-//~^ ERROR: it is undefined behavior to use this value
+//~^ ERROR: dangling reference (going beyond the bounds of its allocation)
 
 // Reading uninitialized  data
-pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }; //~ ERROR: it is undefined behavior to use this value
+pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }; //~ ERROR: uninitialized memory
 // Reinterpret pointers as integers (UB in CTFE.)
-pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) }; //~ ERROR: it is undefined behavior to use this value
+pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size_of::<&u32>()) }; //~ ERROR: pointer, but expected an integer
 // Layout mismatch
-pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; //~ ERROR: it is undefined behavior to use this value
+pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) }; //~ ERROR: 0x11, but expected a boolean
 
 // Reading padding is not ok
 pub static S7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: uninitialized memory
     let ptr = (&D2 as *const Struct as *const u16).add(1);
 
     from_raw_parts(ptr, 4)
@@ -39,53 +39,53 @@ pub static S7: &[u16] = unsafe {
 
 // Unaligned read
 pub static S8: &[u64] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: dangling reference (going beyond the bounds of its allocation)
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
 
     from_raw_parts(ptr, 1)
 };
 
 pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
-//~^ ERROR it is undefined behavior to use this value
+//~^ ERROR encountered a null reference
 pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR 0 < pointee_size && pointee_size <= isize::MAX as usize
 pub static R2: &[u32] = unsafe {
     let ptr = &D0 as *const u32;
     from_ptr_range(ptr..ptr.add(2)) // errors inside libcore
-    //~^ ERROR could not evaluate static initializer
+    //~^ ERROR in-bounds pointer arithmetic failed
 };
 pub static R4: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: encountered uninitialized memory, but expected an integer
     let ptr = (&D1) as *const MaybeUninit<&u32> as *const u8;
     from_ptr_range(ptr..ptr.add(1))
 };
 pub static R5: &[u8] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: encountered a pointer, but expected an integer
     let ptr = &D3 as *const &u32;
     from_ptr_range(ptr.cast()..ptr.add(1).cast())
 };
 pub static R6: &[bool] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: 0x11, but expected a boolean
     let ptr = &D0 as *const u32 as *const bool;
     from_ptr_range(ptr..ptr.add(4))
 };
 pub static R7: &[u16] = unsafe {
-    //~^ ERROR: it is undefined behavior to use this value
+    //~^ ERROR: unaligned reference (required 2 byte alignment but found 1)
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
     from_ptr_range(ptr..ptr.add(4))
 };
 pub static R8: &[u64] = unsafe {
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
     from_ptr_range(ptr..ptr.add(1))
-    //~^ ERROR could not evaluate static initializer
+    //~^ ERROR in-bounds pointer arithmetic failed
 };
 
 // This is sneaky: &D0 and &D0 point to different objects
 // (even if at runtime they have the same address)
 pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR not both derived from the same allocation
 pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
-//~^ ERROR could not evaluate static initializer
+//~^ ERROR not both derived from the same allocation
 
 const D0: u32 = 0x11111111; // Constant chosen for endianness-independent behavior.
 const D1: MaybeUninit<&u32> = MaybeUninit::uninit();

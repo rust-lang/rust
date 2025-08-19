@@ -859,7 +859,7 @@ impl<'a> InferenceTable<'a> {
         ] {
             let krate = self.trait_env.krate;
             let fn_trait = fn_trait_name.get_id(self.db, krate)?;
-            let trait_data = self.db.trait_items(fn_trait);
+            let trait_data = fn_trait.trait_items(self.db);
             let output_assoc_type =
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
@@ -1001,7 +1001,7 @@ impl<'a> InferenceTable<'a> {
             // Must use a loop here and not recursion because otherwise users will conduct completely
             // artificial examples of structs that have themselves as the tail field and complain r-a crashes.
             while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
-                let struct_data = self.db.variant_fields(id.into());
+                let struct_data = id.fields(self.db);
                 if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
                     let last_field_ty = self.db.field_types(id.into())[last_field]
                         .clone()
@@ -1024,16 +1024,12 @@ impl<'a> InferenceTable<'a> {
             }
         }
 
-        let Some(sized) = self
-            .db
-            .lang_item(self.trait_env.krate, LangItem::Sized)
-            .and_then(|sized| sized.as_trait())
-        else {
+        let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
             return false;
         };
         let sized_pred = WhereClause::Implemented(TraitRef {
             trait_id: to_chalk_trait_id(sized),
-            substitution: Substitution::from1(Interner, ty.clone()),
+            substitution: Substitution::from1(Interner, ty),
         });
         let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
         matches!(self.try_obligation(goal), Some(Solution::Unique(_)))

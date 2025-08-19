@@ -4,17 +4,17 @@
 
 trait Trait {
     type Assoc<T = u32>;
-    //~^ ERROR defaults for type parameters are only allowed
+    //~^ ERROR defaults for generic parameters are not allowed here
 }
 
 impl Trait for () {
     type Assoc<T = u32> = u64;
-    //~^ ERROR defaults for type parameters are only allowed
+    //~^ ERROR defaults for generic parameters are not allowed here
 }
 
 impl Trait for u32 {
     type Assoc<T = u32> = T;
-    //~^ ERROR defaults for type parameters are only allowed
+    //~^ ERROR defaults for generic parameters are not allowed here
 }
 
 trait Other {}

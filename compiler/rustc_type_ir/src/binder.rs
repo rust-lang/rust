@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
@@ -15,26 +13,23 @@ use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::{self as ty, Interner};
 
-/// Binder is a binder for higher-ranked lifetimes or types. It is part of the
+/// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
-/// (which would be represented by the type `PolyTraitRef ==
-/// Binder<I, TraitRef>`). Note that when we instantiate,
-/// erase, or otherwise "discharge" these bound vars, we change the
-/// type from `Binder<I, T>` to just `T` (see
-/// e.g., `liberate_late_bound_regions`).
+/// (which would be represented by the type `PolyTraitRef == Binder<I, TraitRef>`).
+///
+/// See <https://rustc-dev-guide.rust-lang.org/ty_module/instantiating_binders.html>
+/// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Hash; I: Interner, T: Hash)]
-#[derive_where(PartialEq; I: Interner, T: PartialEq)]
-#[derive_where(Eq; I: Interner, T: Eq)]
-#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
     bound_vars: I::BoundVarKinds,
 }
+
+impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
 
 // FIXME: We manually derive `Lift` because the `derive(Lift_Generic)` doesn't
 // understand how to turn `T` to `T::Lifted` in the output `type Lifted`.
@@ -154,22 +149,19 @@ impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
 }
 
 impl<I: Interner, T> Binder<I, T> {
-    /// Skips the binder and returns the "bound" value. This is a
-    /// risky thing to do because it's easy to get confused about
-    /// De Bruijn indices and the like. It is usually better to
-    /// discharge the binder using `no_bound_vars` or
-    /// `instantiate_bound_regions` or something like
-    /// that. `skip_binder` is only valid when you are either
-    /// extracting data that has nothing to do with bound vars, you
-    /// are doing some sort of test that does not involve bound
-    /// regions, or you are being very careful about your depth
-    /// accounting.
+    /// Returns the value contained inside of this `for<'a>`. Accessing generic args
+    /// in the returned value is generally incorrect.
     ///
-    /// Some examples where `skip_binder` is reasonable:
+    /// Please read <https://rustc-dev-guide.rust-lang.org/ty_module/instantiating_binders.html>
+    /// before using this function. It is usually better to discharge the binder using
+    /// `no_bound_vars` or `instantiate_bound_regions` or something like that.
     ///
-    /// - extracting the `DefId` from a PolyTraitRef;
-    /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X` does not reference any regions
+    /// `skip_binder` is only valid when you are either extracting data that does not reference
+    /// any generic arguments, e.g. a `DefId`, or when you're making sure you only pass the
+    /// value to things which can handle escaping bound vars.
+    ///
+    /// See existing uses of `.skip_binder()` in `rustc_trait_selection::traits::select`
+    /// or `rustc_next_trait_solver` for examples.
     pub fn skip_binder(self) -> T {
         self.value
     }
@@ -274,8 +266,9 @@ impl<I: Interner, T: IntoIterator> Binder<I, T> {
 pub struct ValidateBoundVars<I: Interner> {
     bound_vars: I::BoundVarKinds,
     binder_index: ty::DebruijnIndex,
-    // We may encounter the same variable at different levels of binding, so
-    // this can't just be `Ty`
+    // We only cache types because any complex const will have to step through
+    // a type at some point anyways. We may encounter the same variable at
+    // different levels of binding, so this can't just be `Ty`.
     visited: SsoHashSet<(ty::DebruijnIndex, I::Ty)>,
 }
 
@@ -319,6 +312,24 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         t.super_visit_with(self)
     }
 
+    fn visit_const(&mut self, c: I::Const) -> Self::Result {
+        if c.outer_exclusive_binder() < self.binder_index {
+            return ControlFlow::Break(());
+        }
+        match c.kind() {
+            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.binder_index => {
+                let idx = bound_const.var().as_usize();
+                if self.bound_vars.len() <= idx {
+                    panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
+                }
+                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+            }
+            _ => {}
+        };
+
+        c.super_visit_with(self)
+    }
+
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
         match r.kind() {
             ty::ReBound(index, br) if index == self.binder_index => {
@@ -336,20 +347,14 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 }
 
-/// Similar to [`super::Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
+/// Similar to [`Binder`] except that it tracks early bound generics, i.e. `struct Foo<T>(T)`
 /// needs `T` instantiated immediately. This type primarily exists to avoid forgetting to call
 /// `instantiate`.
 ///
-/// If you don't have anything to `instantiate`, you may be looking for
-/// [`instantiate_identity`](EarlyBinder::instantiate_identity) or [`skip_binder`](EarlyBinder::skip_binder).
-#[derive_where(Clone; I: Interner, T: Clone)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(PartialEq; I: Interner, T: PartialEq)]
-#[derive_where(Eq; I: Interner, T: Eq)]
-#[derive_where(Ord; I: Interner, T: Ord)]
+/// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
+#[derive_where(Clone, PartialEq, Ord, Hash, Debug; I: Interner, T)]
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
-#[derive_where(Hash; I: Interner, T: Hash)]
-#[derive_where(Debug; I: Interner, T: Debug)]
+#[derive_where(Copy; I: Interner, T: Copy)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -357,8 +362,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
-    _tcx: PhantomData<I>,
+    _tcx: PhantomData<fn() -> I>,
 }
+
+impl<I: Interner, T: Eq> Eq for EarlyBinder<I, T> {}
 
 /// For early binders, you should first call `instantiate` before using any visitors.
 #[cfg(feature = "nightly")]
@@ -404,17 +411,22 @@ impl<I: Interner, T> EarlyBinder<I, T> {
         EarlyBinder { value, _tcx: PhantomData }
     }
 
-    /// Skips the binder and returns the "bound" value.
-    /// This can be used to extract data that does not depend on generic parameters
-    /// (e.g., getting the `DefId` of the inner value or getting the number of
-    /// arguments of an `FnSig`). Otherwise, consider using
-    /// [`instantiate_identity`](EarlyBinder::instantiate_identity).
+    /// Skips the binder and returns the "bound" value. Accessing generic args
+    /// in the returned value is generally incorrect.
+    ///
+    /// Please read <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html>
+    /// before using this function.
+    ///
+    /// Only use this to extract data that does not depend on generic parameters, e.g.
+    /// to get the `DefId` of the inner value or the number of arguments ofan `FnSig`,
+    /// or while making sure to only pass the value to functions which are explicitly
+    /// set up to handle these uninstantiated generic parameters.
     ///
     /// To skip the binder on `x: &EarlyBinder<I, T>` to obtain `&T`, leverage
     /// [`EarlyBinder::as_ref`](EarlyBinder::as_ref): `x.as_ref().skip_binder()`.
     ///
-    /// See also [`Binder::skip_binder`](super::Binder::skip_binder), which is
-    /// the analogous operation on [`super::Binder`].
+    /// See also [`Binder::skip_binder`](Binder::skip_binder), which is
+    /// the analogous operation on [`Binder`].
     pub fn skip_binder(self) -> T {
         self.value
     }
@@ -622,6 +634,17 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
     where
         A: SliceLike<Item = I::GenericArg>,
     {
+        // Nothing to fold, so let's avoid visiting things and possibly re-hashing/equating
+        // them when interning. Perf testing found this to be a modest improvement.
+        // See: <https://github.com/rust-lang/rust/pull/142317>
+        if args.is_empty() {
+            assert!(
+                !self.value.has_param(),
+                "{:?} has parameters, but no args were provided in instantiate",
+                self.value,
+            );
+            return self.value;
+        }
         let mut folder = ArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
         self.value.fold_with(&mut folder)
     }
@@ -676,7 +699,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         // the specialized routine `ty::replace_late_regions()`.
         match r.kind() {
             ty::ReEarlyParam(data) => {
-                let rk = self.args.get(data.index() as usize).map(|k| k.kind());
+                let rk = self.args.get(data.index() as usize).map(|arg| arg.kind());
                 match rk {
                     Some(ty::GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
                     Some(other) => self.region_param_expected(data, r, other),
@@ -711,12 +734,20 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
             c.super_fold_with(self)
         }
     }
+
+    fn fold_predicate(&mut self, p: I::Predicate) -> I::Predicate {
+        if p.has_param() { p.super_fold_with(self) } else { p }
+    }
+
+    fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
+        if c.has_param() { c.super_fold_with(self) } else { c }
+    }
 }
 
 impl<'a, I: Interner> ArgFolder<'a, I> {
     fn ty_for_param(&self, p: I::ParamTy, source_ty: I::Ty) -> I::Ty {
         // Look up the type in the args. It really should be in there.
-        let opt_ty = self.args.get(p.index() as usize).map(|k| k.kind());
+        let opt_ty = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ty = match opt_ty {
             Some(ty::GenericArgKind::Type(ty)) => ty,
             Some(kind) => self.type_param_expected(p, source_ty, kind),
@@ -753,7 +784,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     fn const_for_param(&self, p: I::ParamConst, source_ct: I::Const) -> I::Const {
         // Look up the const in the args. It really should be in there.
-        let opt_ct = self.args.get(p.index() as usize).map(|k| k.kind());
+        let opt_ct = self.args.get(p.index() as usize).map(|arg| arg.kind());
         let ct = match opt_ct {
             Some(ty::GenericArgKind::Const(ct)) => ct,
             Some(kind) => self.const_param_expected(p, source_ct, kind),

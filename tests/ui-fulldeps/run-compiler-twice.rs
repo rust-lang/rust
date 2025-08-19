@@ -18,7 +18,7 @@ extern crate rustc_span;
 use std::path::{Path, PathBuf};
 
 use rustc_interface::{Linker, interface};
-use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
+use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes, Sysroot};
 use rustc_span::FileName;
 
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
         panic!("expected sysroot (and optional linker)");
     }
 
-    let sysroot = PathBuf::from(&args[1]);
+    let sysroot = Sysroot::new(Some(PathBuf::from(&args[1])));
     let linker = args.get(2).map(PathBuf::from);
 
     // compiletest sets the current dir to `output_base_dir` when running.
@@ -43,7 +43,7 @@ fn main() {
     compile(src.to_string(), tmpdir.join("out"), sysroot.clone(), linker.as_deref());
 }
 
-fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path>) {
+fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path>) {
     let mut opts = Options::default();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
     opts.sysroot = sysroot;

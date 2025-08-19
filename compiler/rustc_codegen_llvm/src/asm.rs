@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::builder::Builder;
-use crate::common::{AsCCharPtr, Funclet};
+use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -251,7 +251,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::Nvptx64 => {}
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
-                InlineAsmArch::LoongArch64 => {
+                InlineAsmArch::LoongArch32 | InlineAsmArch::LoongArch64 => {
                     constraints.extend_from_slice(&[
                         "~{$fcc0}".to_string(),
                         "~{$fcc1}".to_string(),
@@ -384,15 +384,19 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
-        // Default to Intel syntax on x86
-        let intel_syntax = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
-            && !options.contains(InlineAsmOptions::ATT_SYNTAX);
-
         // Build the template string
         let mut template_str = String::new();
-        if intel_syntax {
-            template_str.push_str(".intel_syntax\n");
+
+        // On X86 platforms there are two assembly syntaxes. Rust uses intel by default,
+        // but AT&T can be specified explicitly.
+        if matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64) {
+            if options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                template_str.push_str(".att_syntax\n")
+            } else {
+                template_str.push_str(".intel_syntax\n")
+            }
         }
+
         for piece in template {
             match *piece {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
@@ -431,17 +435,15 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                 }
             }
         }
-        if intel_syntax {
+
+        // Just to play it safe, if intel was used, reset the assembly syntax to att.
+        if matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
+            && !options.contains(InlineAsmOptions::ATT_SYNTAX)
+        {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        unsafe {
-            llvm::LLVMAppendModuleInlineAsm(
-                self.llmod,
-                template_str.as_c_char_ptr(),
-                template_str.len(),
-            );
-        }
+        llvm::append_module_inline_asm(self.llmod, template_str.as_bytes());
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
@@ -482,67 +484,67 @@ pub(crate) fn inline_asm_call<'ll>(
 
     debug!("Asm Output Type: {:?}", output);
     let fty = bx.cx.type_func(&argtys, output);
+
     // Ask LLVM to verify that the constraints are well-formed.
-    let constraints_ok =
-        unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_c_char_ptr(), cons.len()) };
+    let constraints_ok = unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr(), cons.len()) };
     debug!("constraint verification result: {:?}", constraints_ok);
-    if constraints_ok {
-        let v = unsafe {
-            llvm::LLVMRustInlineAsm(
-                fty,
-                asm.as_c_char_ptr(),
-                asm.len(),
-                cons.as_c_char_ptr(),
-                cons.len(),
-                volatile,
-                alignstack,
-                dia,
-                can_throw,
-            )
-        };
-
-        let call = if !labels.is_empty() {
-            assert!(catch_funclet.is_none());
-            bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
-        } else if let Some((catch, funclet)) = catch_funclet {
-            bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
-        } else {
-            bx.call(fty, None, None, v, inputs, None, None)
-        };
-
-        // Store mark in a metadata node so we can map LLVM errors
-        // back to source locations. See #17552.
-        let key = "srcloc";
-        let kind = bx.get_md_kind_id(key);
-
-        // `srcloc` contains one 64-bit integer for each line of assembly code,
-        // where the lower 32 bits hold the lo byte position and the upper 32 bits
-        // hold the hi byte position.
-        let mut srcloc = vec![];
-        if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
-            // LLVM inserts an extra line to add the ".intel_syntax", so add
-            // a dummy srcloc entry for it.
-            //
-            // Don't do this if we only have 1 line span since that may be
-            // due to the asm template string coming from a macro. LLVM will
-            // default to the first srcloc for lines that don't have an
-            // associated srcloc.
-            srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
-        }
-        srcloc.extend(line_spans.iter().map(|span| {
-            llvm::LLVMValueAsMetadata(
-                bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
-            )
-        }));
-        let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
-        let md = bx.get_metadata_value(md);
-        llvm::LLVMSetMetadata(call, kind, md);
-
-        Some(call)
-    } else {
-        // LLVM has detected an issue with our constraints, bail out
-        None
+    if !constraints_ok {
+        // LLVM has detected an issue with our constraints, so bail out.
+        return None;
     }
+
+    let v = unsafe {
+        llvm::LLVMGetInlineAsm(
+            fty,
+            asm.as_ptr(),
+            asm.len(),
+            cons.as_ptr(),
+            cons.len(),
+            volatile,
+            alignstack,
+            dia,
+            can_throw,
+        )
+    };
+
+    let call = if !labels.is_empty() {
+        assert!(catch_funclet.is_none());
+        bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
+    } else if let Some((catch, funclet)) = catch_funclet {
+        bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
+    } else {
+        bx.call(fty, None, None, v, inputs, None, None)
+    };
+
+    // Store mark in a metadata node so we can map LLVM errors
+    // back to source locations. See #17552.
+    let key = "srcloc";
+    let kind = bx.get_md_kind_id(key);
+
+    // `srcloc` contains one 64-bit integer for each line of assembly code,
+    // where the lower 32 bits hold the lo byte position and the upper 32 bits
+    // hold the hi byte position.
+    let mut srcloc = vec![];
+    if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
+        // LLVM inserts an extra line to add the ".intel_syntax", so add
+        // a dummy srcloc entry for it.
+        //
+        // Don't do this if we only have 1 line span since that may be
+        // due to the asm template string coming from a macro. LLVM will
+        // default to the first srcloc for lines that don't have an
+        // associated srcloc.
+        srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+    }
+    srcloc.extend(line_spans.iter().map(|span| {
+        llvm::LLVMValueAsMetadata(
+            bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
+        )
+    }));
+    let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
+    let md = bx.get_metadata_value(md);
+    llvm::LLVMSetMetadata(call, kind, md);
+
+    Some(call)
 }
 
 /// If the register is an xmm/ymm/zmm register then return its index.
@@ -1027,6 +1029,15 @@ fn llvm_fixup_input<'ll, 'tcx>(
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            // Smaller floats are always "NaN-boxed" inside larger floats on LoongArch.
+            let value = bx.bitcast(value, bx.type_i16());
+            let value = bx.zext(value, bx.type_i32());
+            let value = bx.or(value, bx.const_u32(0xFFFF_0000));
+            bx.bitcast(value, bx.type_f32())
+        }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1184,6 +1195,13 @@ fn llvm_fixup_output<'ll, 'tcx>(
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            let value = bx.bitcast(value, bx.type_i32());
+            let value = bx.trunc(value, bx.type_i16());
+            bx.bitcast(value, bx.type_f16())
+        }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {
                 // MIPS only supports register-length arithmetics.
@@ -1323,6 +1341,11 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
+        }
+        (LoongArch(LoongArchInlineAsmRegClass::freg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F16) =>
+        {
+            cx.type_f32()
         }
         (Mips(MipsInlineAsmRegClass::reg), BackendRepr::Scalar(s)) => {
             match s.primitive() {

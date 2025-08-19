@@ -2,9 +2,8 @@
 
 macro_rules! m {
     (static a : () = $e:expr) => {
-        static a : () = $e;
-        //~^ ERROR macro expansion ends with an incomplete expression: expected expression
-    }
+        static a: () = $e;
+    };
 }
 
 m! { static a : () = (if b) }

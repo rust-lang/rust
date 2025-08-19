@@ -276,11 +276,11 @@ impl<T, S> HashSet<T, S> {
         Drain { base: self.base.drain() }
     }
 
-    /// Creates an iterator which uses a closure to determine if a value should be removed.
+    /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
-    /// If the closure returns true, then the value is removed and yielded.
-    /// If the closure returns false, the value will remain in the list and will not be yielded
-    /// by the iterator.
+    /// If the closure returns `true`, the element is removed from the set and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the set and will not be yielded.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
@@ -308,7 +308,7 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    #[stable(feature = "hash_extract_if", since = "1.87.0")]
+    #[stable(feature = "hash_extract_if", since = "1.88.0")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, T, F>
     where
         F: FnMut(&T) -> bool,
@@ -1390,11 +1390,8 @@ pub struct Drain<'a, K: 'a> {
 ///
 /// let mut extract_ifed = a.extract_if(|v| v % 2 == 0);
 /// ```
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
-pub struct ExtractIf<'a, K, F>
-where
-    F: FnMut(&K) -> bool,
-{
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
+pub struct ExtractIf<'a, K, F> {
     base: base::ExtractIf<'a, K, F>,
 }
 
@@ -1673,7 +1670,7 @@ impl<K: fmt::Debug> fmt::Debug for Drain<'_, K> {
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
 impl<K, F> Iterator for ExtractIf<'_, K, F>
 where
     F: FnMut(&K) -> bool,
@@ -1690,13 +1687,13 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
 impl<K, F> FusedIterator for ExtractIf<'_, K, F> where F: FnMut(&K) -> bool {}
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
-impl<'a, K, F> fmt::Debug for ExtractIf<'a, K, F>
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
+impl<K, F> fmt::Debug for ExtractIf<'_, K, F>
 where
-    F: FnMut(&K) -> bool,
+    K: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractIf").finish_non_exhaustive()

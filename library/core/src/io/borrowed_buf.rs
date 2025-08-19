@@ -69,6 +69,23 @@ impl<'data> From<&'data mut [MaybeUninit<u8>]> for BorrowedBuf<'data> {
     }
 }
 
+/// Creates a new `BorrowedBuf` from a cursor.
+///
+/// Use `BorrowedCursor::with_unfilled_buf` instead for a safer alternative.
+impl<'data> From<BorrowedCursor<'data>> for BorrowedBuf<'data> {
+    #[inline]
+    fn from(mut buf: BorrowedCursor<'data>) -> BorrowedBuf<'data> {
+        let init = buf.init_mut().len();
+        BorrowedBuf {
+            // SAFETY: no initialized byte is ever uninitialized as per
+            // `BorrowedBuf`'s invariant
+            buf: unsafe { buf.buf.buf.get_unchecked_mut(buf.buf.filled..) },
+            filled: 0,
+            init,
+        }
+    }
+}
+
 impl<'data> BorrowedBuf<'data> {
     /// Returns the total capacity of the buffer.
     #[inline]
@@ -132,7 +149,6 @@ impl<'data> BorrowedBuf<'data> {
     #[inline]
     pub fn unfilled<'this>(&'this mut self) -> BorrowedCursor<'this> {
         BorrowedCursor {
-            start: self.filled,
             // SAFETY: we never assign into `BorrowedCursor::buf`, so treating its
             // lifetime covariantly is safe.
             buf: unsafe {
@@ -188,9 +204,6 @@ pub struct BorrowedCursor<'a> {
     // we create a `BorrowedCursor`. This is only safe if we never replace `buf` by assigning into
     // it, so don't do that!
     buf: &'a mut BorrowedBuf<'a>,
-    /// The length of the filled portion of the underlying buffer at the time of the cursor's
-    /// creation.
-    start: usize,
 }
 
 impl<'a> BorrowedCursor<'a> {
@@ -208,7 +221,6 @@ impl<'a> BorrowedCursor<'a> {
                     self.buf,
                 )
             },
-            start: self.start,
         }
     }
 
@@ -218,23 +230,12 @@ impl<'a> BorrowedCursor<'a> {
         self.buf.capacity() - self.buf.filled
     }
 
-    /// Returns the number of bytes written to this cursor since it was created from a `BorrowedBuf`.
+    /// Returns the number of bytes written to the `BorrowedBuf` this cursor was created from.
     ///
-    /// Note that if this cursor is a reborrowed clone of another, then the count returned is the
-    /// count written via either cursor, not the count since the cursor was reborrowed.
+    /// In particular, the count returned is shared by all reborrows of the cursor.
     #[inline]
     pub fn written(&self) -> usize {
-        self.buf.filled - self.start
-    }
-
-    /// Returns a shared reference to the initialized portion of the cursor.
-    #[inline]
-    pub fn init_ref(&self) -> &[u8] {
-        // SAFETY: We only slice the initialized part of the buffer, which is always valid
-        unsafe {
-            let buf = self.buf.buf.get_unchecked(self.buf.filled..self.buf.init);
-            buf.assume_init_ref()
-        }
+        self.buf.filled
     }
 
     /// Returns a mutable reference to the initialized portion of the cursor.
@@ -245,15 +246,6 @@ impl<'a> BorrowedCursor<'a> {
             let buf = self.buf.buf.get_unchecked_mut(self.buf.filled..self.buf.init);
             buf.assume_init_mut()
         }
-    }
-
-    /// Returns a mutable reference to the uninitialized part of the cursor.
-    ///
-    /// It is safe to uninitialize any of these bytes.
-    #[inline]
-    pub fn uninit_mut(&mut self) -> &mut [MaybeUninit<u8>] {
-        // SAFETY: always in bounds
-        unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) }
     }
 
     /// Returns a mutable reference to the whole cursor.
@@ -281,10 +273,10 @@ impl<'a> BorrowedCursor<'a> {
     /// Panics if there are less than `n` bytes initialized.
     #[inline]
     pub fn advance(&mut self, n: usize) -> &mut Self {
-        let filled = self.buf.filled.strict_add(n);
-        assert!(filled <= self.buf.init);
+        // The subtraction cannot underflow by invariant of this type.
+        assert!(n <= self.buf.init - self.buf.filled);
 
-        self.buf.filled = filled;
+        self.buf.filled += n;
         self
     }
 
@@ -308,7 +300,9 @@ impl<'a> BorrowedCursor<'a> {
     /// Initializes all bytes in the cursor.
     #[inline]
     pub fn ensure_init(&mut self) -> &mut Self {
-        let uninit = self.uninit_mut();
+        // SAFETY: always in bounds and we never uninitialize these bytes.
+        let uninit = unsafe { self.buf.buf.get_unchecked_mut(self.buf.init..) };
+
         // SAFETY: 0 is a valid value for MaybeUninit<u8> and the length matches the allocation
         // since it is comes from a slice reference.
         unsafe {
@@ -352,5 +346,39 @@ impl<'a> BorrowedCursor<'a> {
             self.set_init(buf.len());
         }
         self.buf.filled += buf.len();
+    }
+
+    /// Runs the given closure with a `BorrowedBuf` containing the unfilled part
+    /// of the cursor.
+    ///
+    /// This enables inspecting what was written to the cursor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `BorrowedBuf` given to the closure is replaced by another
+    /// one.
+    pub fn with_unfilled_buf<T>(&mut self, f: impl FnOnce(&mut BorrowedBuf<'_>) -> T) -> T {
+        let mut buf = BorrowedBuf::from(self.reborrow());
+        let prev_ptr = buf.buf as *const _;
+        let res = f(&mut buf);
+
+        // Check that the caller didn't replace the `BorrowedBuf`.
+        // This is necessary for the safety of the code below: if the check wasn't
+        // there, one could mark some bytes as initialized even though there aren't.
+        assert!(core::ptr::addr_eq(prev_ptr, buf.buf));
+
+        let filled = buf.filled;
+        let init = buf.init;
+
+        // Update `init` and `filled` fields with what was written to the buffer.
+        // `self.buf.filled` was the starting length of the `BorrowedBuf`.
+        //
+        // SAFETY: These amounts of bytes were initialized/filled in the `BorrowedBuf`,
+        // and therefore they are initialized/filled in the cursor too, because the
+        // buffer wasn't replaced.
+        self.buf.init = self.buf.filled + init;
+        self.buf.filled += filled;
+
+        res
     }
 }

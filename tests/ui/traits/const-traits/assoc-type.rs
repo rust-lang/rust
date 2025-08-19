@@ -30,12 +30,12 @@ impl Add for NonConstAdd {
 
 #[const_trait]
 trait Foo {
-    type Bar: ~const Add;
+    type Bar: [const] Add;
 }
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
-    //~^ ERROR the trait bound `NonConstAdd: ~const Add` is not satisfied
+    //~^ ERROR the trait bound `NonConstAdd: [const] Add` is not satisfied
 }
 
 #[const_trait]

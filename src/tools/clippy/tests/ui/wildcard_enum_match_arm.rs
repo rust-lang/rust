@@ -91,6 +91,21 @@ fn main() {
     }
 
     {
+        pub enum Enum {
+            A,
+            B,
+            C(u8),
+            D(u8, u8),
+            E { e: u8 },
+        };
+        match Enum::A {
+            Enum::A => (),
+            _ => (),
+            //~^ wildcard_enum_match_arm
+        }
+    }
+
+    {
         #![allow(clippy::manual_non_exhaustive)]
         pub enum Enum {
             A,
@@ -103,5 +118,19 @@ fn main() {
             _ => (),
             //~^ wildcard_enum_match_arm
         }
+    }
+}
+
+fn issue15091() {
+    enum Foo {
+        A,
+        B,
+        C,
+    }
+
+    match Foo::A {
+        Foo::A => {},
+        r#type => {},
+        //~^ wildcard_enum_match_arm
     }
 }

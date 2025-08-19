@@ -3,6 +3,7 @@ use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
+use clippy_utils::paths::PathNS;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
@@ -39,6 +40,9 @@ declare_clippy_lint! {
     ///     # When using an inline table, can add a `reason` for why the macro
     ///     # is disallowed.
     ///     { path = "serde::Serialize", reason = "no serializing" },
+    ///     # This would normally error if the path is incorrect, but with `allow-invalid` = `true`,
+    ///     # it will be silently ignored
+    ///     { path = "std::invalid_macro", reason = "use alternative instead", allow-invalid = true }
     /// ]
     /// ```
     /// ```no_run
@@ -68,14 +72,15 @@ pub struct DisallowedMacros {
 
     // When a macro is disallowed in an early pass, it's stored
     // and emitted during the late pass. This happens for attributes.
-    earlies: AttrStorage,
+    early_macro_cache: AttrStorage,
 }
 
 impl DisallowedMacros {
-    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf, earlies: AttrStorage) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf, early_macro_cache: AttrStorage) -> Self {
         let (disallowed, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_macros,
+            PathNS::Macro,
             |def_kind| matches!(def_kind, DefKind::Macro(_)),
             "macro",
             false,
@@ -84,7 +89,7 @@ impl DisallowedMacros {
             disallowed,
             seen: FxHashSet::default(),
             derive_src: None,
-            earlies,
+            early_macro_cache,
         }
     }
 
@@ -125,7 +130,7 @@ impl_lint_pass!(DisallowedMacros => [DISALLOWED_MACROS]);
 impl LateLintPass<'_> for DisallowedMacros {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         // once we check a crate in the late pass we can emit the early pass lints
-        if let Some(attr_spans) = self.earlies.clone().0.get() {
+        if let Some(attr_spans) = self.early_macro_cache.clone().0.get() {
             for span in attr_spans {
                 self.check(cx, *span, None);
             }

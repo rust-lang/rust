@@ -25,8 +25,8 @@ use std::str::FromStr;
 use std::{fmt, fs};
 
 use indexmap::IndexMap;
-use itertools::Itertools;
 use regex::Regex;
+use rustc_ast::join_path_syms;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
@@ -65,17 +65,17 @@ pub(crate) fn write_shared(
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    let SerializedSearchIndex { index, desc } = build_index(krate, &mut cx.shared.cache, tcx);
-    write_search_desc(cx, krate, &desc)?; // does not need to be merged
+    let search_index =
+        build_index(krate, &mut cx.shared.cache, tcx, &cx.dst, &cx.shared.resource_suffix)?;
 
     let crate_name = krate.name(cx.tcx());
     let crate_name = crate_name.as_str(); // rand
     let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
-        version: CrateInfoVersion::V1,
+        version: CrateInfoVersion::V2,
         src_files_js: SourcesPart::get(cx, &crate_name_json)?,
-        search_index_js: SearchIndexPart::get(index, &cx.shared.resource_suffix)?,
+        search_index,
         all_crates: AllCratesPart::get(crate_name_json.clone(), &cx.shared.resource_suffix)?,
         crates_index: CratesIndexPart::get(crate_name, &external_crates)?,
         trait_impl: TraitAliasPart::get(cx, &crate_name_json)?,
@@ -141,7 +141,7 @@ pub(crate) fn write_not_crate_specific(
     resource_suffix: &str,
     include_sources: bool,
 ) -> Result<(), Error> {
-    write_rendered_cross_crate_info(crates, dst, opt, include_sources)?;
+    write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_static_files(dst, opt, style_files, css_file_extension, resource_suffix)?;
     Ok(())
 }
@@ -151,13 +151,18 @@ fn write_rendered_cross_crate_info(
     dst: &Path,
     opt: &RenderOptions,
     include_sources: bool,
+    resource_suffix: &str,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
     if opt.should_emit_crate() {
         if include_sources {
             write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
         }
-        write_rendered_cci::<SearchIndexPart, _>(SearchIndexPart::blank, dst, crates, m)?;
+        crates
+            .iter()
+            .fold(SerializedSearchIndex::default(), |a, b| a.union(&b.search_index))
+            .sort()
+            .write_to(dst, resource_suffix)?;
         write_rendered_cci::<AllCratesPart, _>(AllCratesPart::blank, dst, crates, m)?;
     }
     write_rendered_cci::<TraitAliasPart, _>(TraitAliasPart::blank, dst, crates, m)?;
@@ -215,38 +220,12 @@ fn write_static_files(
     Ok(())
 }
 
-/// Write the search description shards to disk
-fn write_search_desc(
-    cx: &mut Context<'_>,
-    krate: &Crate,
-    search_desc: &[(usize, String)],
-) -> Result<(), Error> {
-    let crate_name = krate.name(cx.tcx()).to_string();
-    let encoded_crate_name = OrderedJson::serialize(&crate_name).unwrap();
-    let path = PathBuf::from_iter([&cx.dst, Path::new("search.desc"), Path::new(&crate_name)]);
-    if path.exists() {
-        try_err!(fs::remove_dir_all(&path), &path);
-    }
-    for (i, (_, part)) in search_desc.iter().enumerate() {
-        let filename = static_files::suffix_path(
-            &format!("{crate_name}-desc-{i}-.js"),
-            &cx.shared.resource_suffix,
-        );
-        let path = path.join(filename);
-        let part = OrderedJson::serialize(part).unwrap();
-        let part = format!("searchState.loadedDescShard({encoded_crate_name}, {i}, {part})");
-        create_parents(&path)?;
-        try_err!(fs::write(&path, part), &path);
-    }
-    Ok(())
-}
-
 /// Contains pre-rendered contents to insert into the CCI template
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct CrateInfo {
     version: CrateInfoVersion,
     src_files_js: PartsAndLocations<SourcesPart>,
-    search_index_js: PartsAndLocations<SearchIndexPart>,
+    search_index: SerializedSearchIndex,
     all_crates: PartsAndLocations<AllCratesPart>,
     crates_index: PartsAndLocations<CratesIndexPart>,
     trait_impl: PartsAndLocations<TraitAliasPart>,
@@ -277,7 +256,7 @@ impl CrateInfo {
 /// to provide better diagnostics about including an invalid file.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 enum CrateInfoVersion {
-    V1,
+    V2,
 }
 
 /// Paths (relative to the doc root) and their pre-merge contents
@@ -329,36 +308,6 @@ trait CciPart: Sized + fmt::Display + DeserializeOwned + 'static {
     /// Identifies the file format of the cross-crate information
     type FileFormat: sorted_template::FileFormat;
     fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self>;
-}
-
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-struct SearchIndex;
-type SearchIndexPart = Part<SearchIndex, EscapedJson>;
-impl CciPart for SearchIndexPart {
-    type FileFormat = sorted_template::Js;
-    fn from_crate_info(crate_info: &CrateInfo) -> &PartsAndLocations<Self> {
-        &crate_info.search_index_js
-    }
-}
-
-impl SearchIndexPart {
-    fn blank() -> SortedTemplate<<Self as CciPart>::FileFormat> {
-        SortedTemplate::from_before_after(
-            r"var searchIndex = new Map(JSON.parse('[",
-            r"]'));
-if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
-else if (window.initSearch) window.initSearch(searchIndex);",
-        )
-    }
-
-    fn get(
-        search_index: OrderedJson,
-        resource_suffix: &str,
-    ) -> Result<PartsAndLocations<Self>, Error> {
-        let path = suffix_path("search-index.js", resource_suffix);
-        let search_index = EscapedJson::from(search_index);
-        Ok(PartsAndLocations::with(path, search_index))
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -426,6 +375,7 @@ impl CratesIndexPart {
     fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
+            short_title: "Crates",
             css_class: "mod sys",
             root_path: "./",
             static_root_path: cx.shared.static_root_path.as_deref(),
@@ -439,24 +389,20 @@ impl CratesIndexPart {
         let content =
             format!("<h1>List of all crates</h1><ul class=\"all-items\">{DELIMITER}</ul>");
         let template = layout::render(layout, &page, "", content, style_files);
-        match SortedTemplate::from_template(&template, DELIMITER) {
-            Ok(template) => template,
-            Err(e) => panic!(
-                "Object Replacement Character (U+FFFC) should not appear in the --index-page: {e}"
-            ),
-        }
+        SortedTemplate::from_template(&template, DELIMITER)
+            .expect("Object Replacement Character (U+FFFC) should not appear in the --index-page")
     }
 
-    /// Might return parts that are duplicate with ones in prexisting index.html
+    /// Might return parts that are duplicate with ones in preexisting index.html
     fn get(crate_name: &str, external_crates: &[String]) -> Result<PartsAndLocations<Self>, Error> {
         let mut ret = PartsAndLocations::default();
-        let path = PathBuf::from("index.html");
+        let path = Path::new("index.html");
         for crate_name in external_crates.iter().map(|s| s.as_str()).chain(once(crate_name)) {
             let part = format!(
                 "<li><a href=\"{trailing_slash}index.html\">{crate_name}</a></li>",
                 trailing_slash = ensure_trailing_slash(crate_name),
             );
-            ret.push(path.clone(), part);
+            ret.push(path.to_path_buf(), part);
         }
         Ok(ret)
     }
@@ -477,11 +423,7 @@ impl SourcesPart {
         // This needs to be `var`, not `const`.
         // This variable needs declared in the current global scope so that if
         // src-script.js loads first, it can pick it up.
-        SortedTemplate::from_before_after(
-            r"var srcIndex = new Map(JSON.parse('[",
-            r"]'));
-createSrcSidebar();",
-        )
+        SortedTemplate::from_before_after(r"createSrcSidebar('[", r"]');")
     }
 
     fn get(cx: &Context<'_>, crate_name: &OrderedJson) -> Result<PartsAndLocations<Self>, Error> {
@@ -607,68 +549,68 @@ impl TypeAliasPart {
         let cx = type_impl_collector.cx;
         let aliased_types = type_impl_collector.aliased_types;
         for aliased_type in aliased_types.values() {
-            let impls = aliased_type
-                .impl_
-                .values()
-                .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
-                    let mut ret = Vec::new();
-                    let trait_ = impl_
-                        .inner_impl()
-                        .trait_
-                        .as_ref()
-                        .map(|trait_| format!("{:#}", trait_.print(cx)));
+            let impls = aliased_type.impl_.values().filter_map(
+                |AliasedTypeImpl { impl_, type_aliases }| {
+                    let mut ret: Option<AliasSerializableImpl> = None;
                     // render_impl will filter out "impossible-to-call" methods
                     // to make that functionality work here, it needs to be called with
                     // each type alias, and if it gives a different result, split the impl
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
-                        let target_did = impl_
-                            .inner_impl()
-                            .trait_
-                            .as_ref()
-                            .map(|trait_| trait_.def_id())
-                            .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
-                        let provided_methods;
-                        let assoc_link = if let Some(target_did) = target_did {
-                            provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
-                            AssocItemLink::GotoSource(ItemId::DefId(target_did), &provided_methods)
+                        let type_alias_fqp = join_path_syms(type_alias_fqp);
+                        if let Some(ret) = &mut ret {
+                            ret.aliases.push(type_alias_fqp);
                         } else {
-                            AssocItemLink::Anchor(None)
-                        };
-                        let text = super::render_impl(
-                            cx,
-                            impl_,
-                            type_alias_item,
-                            assoc_link,
-                            RenderMode::Normal,
-                            None,
-                            &[],
-                            ImplRenderingParameters {
-                                show_def_docs: true,
-                                show_default_items: true,
-                                show_non_assoc_items: true,
-                                toggle_open_by_default: true,
-                            },
-                        )
-                        .to_string();
-                        let type_alias_fqp = (*type_alias_fqp).iter().join("::");
-                        if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
-                            ret.last_mut()
-                                .expect("already established that ret.last() is Some()")
-                                .aliases
-                                .push(type_alias_fqp);
-                        } else {
-                            ret.push(AliasSerializableImpl {
+                            let target_did = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| trait_.def_id())
+                                .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
+                            let provided_methods;
+                            let assoc_link = if let Some(target_did) = target_did {
+                                provided_methods =
+                                    impl_.inner_impl().provided_trait_methods(cx.tcx());
+                                AssocItemLink::GotoSource(
+                                    ItemId::DefId(target_did),
+                                    &provided_methods,
+                                )
+                            } else {
+                                AssocItemLink::Anchor(None)
+                            };
+                            let text = super::render_impl(
+                                cx,
+                                impl_,
+                                type_alias_item,
+                                assoc_link,
+                                RenderMode::Normal,
+                                None,
+                                &[],
+                                ImplRenderingParameters {
+                                    show_def_docs: true,
+                                    show_default_items: true,
+                                    show_non_assoc_items: true,
+                                    toggle_open_by_default: true,
+                                },
+                            )
+                            .to_string();
+                            // The alternate display prints it as plaintext instead of HTML.
+                            let trait_ = impl_
+                                .inner_impl()
+                                .trait_
+                                .as_ref()
+                                .map(|trait_| format!("{:#}", trait_.print(cx)));
+                            ret = Some(AliasSerializableImpl {
                                 text,
-                                trait_: trait_.clone(),
+                                trait_,
                                 aliases: vec![type_alias_fqp],
                             })
                         }
                     }
                     ret
-                })
-                .collect::<Vec<_>>();
+                },
+            );
 
             let mut path = PathBuf::from("type.impl");
             for component in &aliased_type.target_fqp[..aliased_type.target_fqp.len() - 1] {
@@ -681,7 +623,7 @@ impl TypeAliasPart {
             ));
 
             let part = OrderedJson::array_sorted(
-                impls.iter().map(OrderedJson::serialize).collect::<Result<Vec<_>, _>>().unwrap(),
+                impls.map(|impl_| OrderedJson::serialize(impl_).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -741,7 +683,7 @@ impl TraitAliasPart {
                 },
             };
 
-            let implementors = imps
+            let mut implementors = imps
                 .iter()
                 .filter_map(|imp| {
                     // If the trait and implementation are in the same crate, then
@@ -759,16 +701,16 @@ impl TraitAliasPart {
                         Some(Implementor {
                             text: imp.inner_impl().print(false, cx).to_string(),
                             synthetic: imp.inner_impl().kind.is_auto(),
-                            types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
+                            types: collect_paths_for_type(&imp.inner_impl().for_, cache),
                         })
                     }
                 })
-                .collect::<Vec<_>>();
+                .peekable();
 
             // Only create a js file if we have impls to add to it. If the trait is
             // documented locally though we always create the file to avoid dead
             // links.
-            if implementors.is_empty() && !cache.paths.contains_key(&did) {
+            if implementors.peek().is_none() && !cache.paths.contains_key(&did) {
                 continue;
             }
 
@@ -779,11 +721,7 @@ impl TraitAliasPart {
             path.push(format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
             let part = OrderedJson::array_sorted(
-                implementors
-                    .iter()
-                    .map(OrderedJson::serialize)
-                    .collect::<Result<Vec<_>, _>>()
-                    .unwrap(),
+                implementors.map(|implementor| OrderedJson::serialize(implementor).unwrap()),
             );
             path_parts.push(path, OrderedJson::array_unsorted([crate_name_json, &part]));
         }
@@ -878,9 +816,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             let impl_ = cache
                 .impls
                 .get(&target_did)
-                .map(|v| &v[..])
-                .unwrap_or_default()
-                .iter()
+                .into_iter()
+                .flatten()
                 .map(|impl_| {
                     (impl_.impl_item.item_id, AliasedTypeImpl { impl_, type_aliases: Vec::new() })
                 })
@@ -895,14 +832,8 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
         // Exclude impls that are directly on this type. They're already in the HTML.
         // Some inlining scenarios can cause there to be two versions of the same
         // impl: one on the type alias and one on the underlying target type.
-        let mut seen_impls: FxHashSet<ItemId> = cache
-            .impls
-            .get(&self_did)
-            .map(|s| &s[..])
-            .unwrap_or_default()
-            .iter()
-            .map(|i| i.impl_item.item_id)
-            .collect();
+        let mut seen_impls: FxHashSet<ItemId> =
+            cache.impls.get(&self_did).into_iter().flatten().map(|i| i.impl_item.item_id).collect();
         for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.

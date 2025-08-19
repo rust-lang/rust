@@ -20,7 +20,7 @@ error[E0284]: type annotations needed
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
    |                   ----   ^^^^^^^^^^^^^^^^^^^ cannot infer the value of the const parameter `N` declared on the function `take_array_from_mut`
    |                   |
-   |                   type must be known at this point
+   |                   required by this formatting parameter
    |
    = note: required for `[i32; _]` to implement `Debug`
    = note: 1 redundant requirement hidden

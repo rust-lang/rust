@@ -1,8 +1,0 @@
-error: expected identifier, found `~`
-  --> $DIR/tilde-twice.rs:5:20
-   |
-LL | struct S<T: ~const ~const Tr>;
-   |                    ^ expected identifier
-
-error: aborting due to 1 previous error
-

@@ -6,7 +6,6 @@ use core::ops::{Bound, ControlFlow};
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::case::Case;
@@ -56,7 +55,7 @@ pub(super) enum DestructuredFloat {
 impl<'a> Parser<'a> {
     /// Parses an expression.
     #[inline]
-    pub fn parse_expr(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_expr(&mut self) -> PResult<'a, Box<Expr>> {
         self.current_closure.take();
 
         let attrs = self.parse_outer_attributes()?;
@@ -64,7 +63,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an expression, forcing tokens to be collected.
-    pub fn parse_expr_force_collect(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_expr_force_collect(&mut self) -> PResult<'a, Box<Expr>> {
         self.current_closure.take();
 
         // If the expression is associative (e.g. `1 + 2`), then any preceding
@@ -90,7 +89,10 @@ impl<'a> Parser<'a> {
         self.parse_expr().map(|value| AnonConst { id: DUMMY_NODE_ID, value })
     }
 
-    fn parse_expr_catch_underscore(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
+    fn parse_expr_catch_underscore(
+        &mut self,
+        restrictions: Restrictions,
+    ) -> PResult<'a, Box<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         match self.parse_expr_res(restrictions, attrs) {
             Ok((expr, _)) => Ok(expr),
@@ -109,7 +111,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a sequence of expressions delimited by parentheses.
-    fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<P<Expr>>> {
+    fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
         self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
             .map(|(r, _)| r)
     }
@@ -120,7 +122,7 @@ impl<'a> Parser<'a> {
         &mut self,
         r: Restrictions,
         attrs: AttrWrapper,
-    ) -> PResult<'a, (P<Expr>, bool)> {
+    ) -> PResult<'a, (Box<Expr>, bool)> {
         self.with_res(r, |this| this.parse_expr_assoc_with(Bound::Unbounded, attrs))
     }
 
@@ -131,7 +133,7 @@ impl<'a> Parser<'a> {
         &mut self,
         min_prec: Bound<ExprPrecedence>,
         attrs: AttrWrapper,
-    ) -> PResult<'a, (P<Expr>, bool)> {
+    ) -> PResult<'a, (Box<Expr>, bool)> {
         let lhs = if self.token.is_range_separator() {
             return self.parse_expr_prefix_range(attrs).map(|res| (res, false));
         } else {
@@ -147,8 +149,8 @@ impl<'a> Parser<'a> {
         &mut self,
         min_prec: Bound<ExprPrecedence>,
         starts_stmt: bool,
-        mut lhs: P<Expr>,
-    ) -> PResult<'a, (P<Expr>, bool)> {
+        mut lhs: Box<Expr>,
+    ) -> PResult<'a, (Box<Expr>, bool)> {
         let mut parsed_something = false;
         if !self.should_continue_as_assoc_expr(&lhs) {
             return Ok((lhs, parsed_something));
@@ -263,10 +265,11 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
+            let op_span = op.span;
             let op = op.node;
             // Special cases:
             if op == AssocOp::Cast {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
+                lhs = self.parse_assoc_op_cast(lhs, lhs_span, op_span, ExprKind::Cast)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
@@ -284,7 +287,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_assoc_with(min_prec, attrs)
             })?;
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
+            let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
@@ -413,10 +416,10 @@ impl<'a> Parser<'a> {
     fn parse_expr_range(
         &mut self,
         prec: ExprPrecedence,
-        lhs: P<Expr>,
+        lhs: Box<Expr>,
         limits: RangeLimits,
         cur_op_span: Span,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
             let maybe_lt = self.token;
             let attrs = self.parse_outer_attributes()?;
@@ -429,7 +432,7 @@ impl<'a> Parser<'a> {
             None
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
-        let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
+        let span = self.mk_expr_sp(&lhs, lhs.span, cur_op_span, rhs_span);
         let range = self.mk_range(Some(lhs), rhs, limits);
         Ok(self.mk_expr(span, range))
     }
@@ -447,7 +450,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
-    fn parse_expr_prefix_range(&mut self, attrs: AttrWrapper) -> PResult<'a, P<Expr>> {
+    fn parse_expr_prefix_range(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
         if !attrs.is_empty() {
             let err = errors::DotDotRangeAttribute { span: self.token.span };
             self.dcx().emit_err(err);
@@ -489,7 +492,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_expr_prefix(&mut self, attrs: AttrWrapper) -> PResult<'a, P<Expr>> {
+    fn parse_expr_prefix(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
 
         macro_rules! make_it {
@@ -563,7 +566,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
+    fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, Box<Expr>)> {
         self.bump();
         let attrs = self.parse_outer_attributes()?;
         let expr = if self.token.is_range_separator() {
@@ -652,12 +655,13 @@ impl<'a> Parser<'a> {
 
     fn parse_assoc_op_cast(
         &mut self,
-        lhs: P<Expr>,
+        lhs: Box<Expr>,
         lhs_span: Span,
-        expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind,
-    ) -> PResult<'a, P<Expr>> {
-        let mk_expr = |this: &mut Self, lhs: P<Expr>, rhs: P<Ty>| {
-            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, rhs.span), expr_kind(lhs, rhs))
+        op_span: Span,
+        expr_kind: fn(Box<Expr>, Box<Ty>) -> ExprKind,
+    ) -> PResult<'a, Box<Expr>> {
+        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
+            this.mk_expr(this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span), expr_kind(lhs, rhs))
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -785,9 +789,13 @@ impl<'a> Parser<'a> {
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
                     ExprKind::Use(_, _) => "`.use`",
+                    ExprKind::Yield(YieldKind::Postfix(_)) => "`.yield`",
                     ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
-                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                    _ => unreachable!(
+                        "did not expect {:?} as an illegal postfix operator following cast",
+                        with_postfix.kind
+                    ),
                 }
             );
             let mut err = self.dcx().struct_span_err(span, msg);
@@ -834,7 +842,7 @@ impl<'a> Parser<'a> {
         // guides recovery in case we write `&raw expr`.
         if borrow_kind == ast::BorrowKind::Ref
             && mutbl == ast::Mutability::Not
-            && matches!(&expr.kind, ExprKind::Path(None, p) if p.is_ident(kw::Raw))
+            && matches!(&expr.kind, ExprKind::Path(None, p) if *p == kw::Raw)
         {
             self.expected_token_types.insert(TokenType::KwMut);
             self.expected_token_types.insert(TokenType::KwConst);
@@ -847,7 +855,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LifetimeInBorrowExpression { span, lifetime_span: lt_span });
     }
 
-    /// Parse `mut?` or `raw [ const | mut ]`.
+    /// Parse `mut?` or `[ raw | pin ] [ const | mut ]`.
     fn parse_borrow_modifiers(&mut self) -> (ast::BorrowKind, ast::Mutability) {
         if self.check_keyword(exp!(Raw)) && self.look_ahead(1, Token::is_mutability) {
             // `raw [ const | mut ]`.
@@ -855,6 +863,11 @@ impl<'a> Parser<'a> {
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             (ast::BorrowKind::Raw, mutability)
+        } else if let Some((ast::Pinnedness::Pinned, mutbl)) = self.parse_pin_and_mut() {
+            // `pin [ const | mut ]`.
+            // `pin` has been gated in `self.parse_pin_and_mut()` so we don't
+            // need to gate it here.
+            (ast::BorrowKind::Pin, mutbl)
         } else {
             // `mut?`
             (ast::BorrowKind::Ref, self.parse_mutability())
@@ -862,7 +875,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
-    fn parse_expr_dot_or_call(&mut self, attrs: AttrWrapper) -> PResult<'a, P<Expr>> {
+    fn parse_expr_dot_or_call(&mut self, attrs: AttrWrapper) -> PResult<'a, Box<Expr>> {
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let base = this.parse_expr_bottom()?;
             let span = this.interpolated_or_expr_span(&base);
@@ -873,9 +886,9 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_dot_or_call_with(
         &mut self,
         mut attrs: ast::AttrVec,
-        mut e: P<Expr>,
+        mut e: Box<Expr>,
         lo: Span,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let mut res = ensure_sufficient_stack(|| {
             loop {
                 let has_question =
@@ -934,8 +947,8 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_dot_suffix_expr(
         &mut self,
         lo: Span,
-        base: P<Expr>,
-    ) -> PResult<'a, P<Expr>> {
+        base: Box<Expr>,
+    ) -> PResult<'a, Box<Expr>> {
         // At this point we've consumed something like `expr.` and `self.token` holds the token
         // after the dot.
         match self.token.uninterpolate().kind {
@@ -1119,7 +1132,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, P<[Ident]>> {
+    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -1221,10 +1234,10 @@ impl<'a> Parser<'a> {
         &self,
         lo: Span,
         ident_span: Span,
-        base: P<Expr>,
+        base: Box<Expr>,
         field: Symbol,
         suffix: Option<Symbol>,
-    ) -> P<Expr> {
+    ) -> Box<Expr> {
         if let Some(suffix) = suffix {
             self.expect_no_tuple_index_suffix(ident_span, suffix);
         }
@@ -1232,7 +1245,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a function call expression, `expr(...)`.
-    fn parse_expr_fn_call(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
+    fn parse_expr_fn_call(&mut self, lo: Span, fun: Box<Expr>) -> Box<Expr> {
         let snapshot = if self.token == token::OpenParen {
             Some((self.create_snapshot_for_diagnostic(), fun.kind.clone()))
         } else {
@@ -1256,9 +1269,9 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         open_paren: Span,
-        seq: PResult<'a, P<Expr>>,
+        seq: PResult<'a, Box<Expr>>,
         snapshot: Option<(SnapshotParser<'a>, ExprKind)>,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         match (self.may_recover(), seq, snapshot) {
             (true, Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 snapshot.bump(); // `(`
@@ -1314,7 +1327,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an indexing expression `expr[...]`.
-    fn parse_expr_index(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_expr_index(&mut self, lo: Span, base: Box<Expr>) -> PResult<'a, Box<Expr>> {
         let prev_span = self.prev_token.span;
         let open_delim_span = self.token.span;
         self.bump(); // `[`
@@ -1328,7 +1341,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
-    fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_dot_suffix(&mut self, self_arg: Box<Expr>, lo: Span) -> PResult<'a, Box<Expr>> {
         if self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
@@ -1393,7 +1406,7 @@ impl<'a> Parser<'a> {
     ///
     /// N.B., this does not parse outer attributes, and is private because it only works
     /// correctly if called from `parse_expr_dot_or_call`.
-    fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_bottom(&mut self) -> PResult<'a, Box<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
         let span = self.token.span;
@@ -1520,22 +1533,20 @@ impl<'a> Parser<'a> {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
+                let at_async = this.check_keyword(exp!(Async));
+                // check for `gen {}` and `gen move {}`
+                // or `async gen {}` and `async gen move {}`
+                // FIXME: (async) gen closures aren't yet parsed.
+                // FIXME(gen_blocks): Parse `gen async` and suggest swap
                 if this.token_uninterpolated_span().at_least_rust_2024()
-                    // check for `gen {}` and `gen move {}`
-                    // or `async gen {}` and `async gen move {}`
-                    && (this.is_gen_block(kw::Gen, 0)
-                        || (this.check_keyword(exp!(Async)) && this.is_gen_block(kw::Gen, 1)))
+                    && this.is_gen_block(kw::Gen, at_async as usize)
                 {
-                    // FIXME: (async) gen closures aren't yet parsed.
                     this.parse_gen_block()
-                } else if this.check_keyword(exp!(Async)) {
-                    // FIXME(gen_blocks): Parse `gen async` and suggest swap
-                    if this.is_gen_block(kw::Async, 0) {
-                        // Check for `async {` and `async move {`,
-                        this.parse_gen_block()
-                    } else {
-                        this.parse_expr_closure()
-                    }
+                // Check for `async {` and `async move {`,
+                } else if this.is_gen_block(kw::Async, 0) {
+                    this.parse_gen_block()
+                } else if at_async {
+                    this.parse_expr_closure()
                 } else if this.eat_keyword_noexpect(kw::Await) {
                     this.recover_incorrect_await_syntax(lo)
                 } else {
@@ -1547,7 +1558,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_expr_lit(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_lit(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         match self.parse_opt_token_lit() {
             Some((token_lit, _)) => {
@@ -1558,7 +1569,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_expr_tuple_parens(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
+    fn parse_expr_tuple_parens(&mut self, restrictions: Restrictions) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         self.expect(exp!(OpenParen))?;
         let (es, trailing_comma) = match self.parse_seq_to_end(
@@ -1587,7 +1598,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair<'_>) -> PResult<'a, P<Expr>> {
+    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair<'_>) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[` or other open delim
 
@@ -1618,7 +1629,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn parse_expr_path_start(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_path_start(&mut self) -> PResult<'a, Box<Expr>> {
         let maybe_eq_tok = self.prev_token;
         let (qself, path) = if self.eat_lt() {
             let lt_span = self.prev_token.span;
@@ -1644,7 +1655,7 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
             }
             let lo = path.span;
-            let mac = P(MacCall { path, args: self.parse_delim_args()? });
+            let mac = Box::new(MacCall { path, args: self.parse_delim_args()? });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(exp!(OpenBrace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
@@ -1666,7 +1677,7 @@ impl<'a> Parser<'a> {
         &mut self,
         label_: Label,
         mut consume_colon: bool,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let lo = label_.ident.span;
         let label = Some(label_);
         let ate_colon = self.eat(exp!(Colon));
@@ -1801,7 +1812,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
-    fn recover_do_catch(&mut self) -> PResult<'a, P<Expr>> {
+    fn recover_do_catch(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
 
         self.bump(); // `do`
@@ -1814,12 +1825,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an expression if the token can begin one.
-    fn parse_expr_opt(&mut self) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_expr_opt(&mut self) -> PResult<'a, Option<Box<Expr>>> {
         Ok(if self.token.can_begin_expr() { Some(self.parse_expr()?) } else { None })
     }
 
     /// Parse `"return" expr?`.
-    fn parse_expr_return(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_return(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Ret(self.parse_expr_opt()?);
         let expr = self.mk_expr(lo.to(self.prev_token.span), kind);
@@ -1827,7 +1838,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"do" "yeet" expr?`.
-    fn parse_expr_yeet(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_yeet(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
 
         self.bump(); // `do`
@@ -1842,7 +1853,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"become" expr`, with `"become"` token already eaten.
-    fn parse_expr_become(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_become(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Become(self.parse_expr()?);
         let span = lo.to(self.prev_token.span);
@@ -1859,7 +1870,7 @@ impl<'a> Parser<'a> {
     /// `break 'lbl: loop {}`); a labeled break with an unlabeled loop as its value
     /// expression only gets a warning for compatibility reasons; and a labeled break
     /// with a labeled loop does not even get a warning because there is no ambiguity.
-    fn parse_expr_break(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_break(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
         let mut label = self.eat_label();
         let kind = if self.token == token::Colon
@@ -1921,7 +1932,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"continue" label?`.
-    fn parse_expr_continue(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_expr_continue(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         let mut label = self.eat_label();
 
         // Recover `continue label` -> `continue 'label`
@@ -1938,7 +1949,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"yield" expr?`.
-    fn parse_expr_yield(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_yield(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Yield(YieldKind::Prefix(self.parse_expr_opt()?));
         let span = lo.to(self.prev_token.span);
@@ -1948,7 +1959,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `builtin # ident(args,*)`.
-    fn parse_expr_builtin(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_builtin(&mut self) -> PResult<'a, Box<Expr>> {
         self.parse_builtin(|this, lo, ident| {
             Ok(match ident.name {
                 sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
@@ -1996,7 +2007,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Built-in macro for `offset_of!` expressions.
-    pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+    pub(crate) fn parse_expr_offset_of(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         let container = self.parse_ty()?;
         self.expect(exp!(Comma))?;
 
@@ -2024,7 +2035,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Built-in macro for type ascription expressions.
-    pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, P<Expr>> {
+    pub(crate) fn parse_expr_type_ascribe(&mut self, lo: Span) -> PResult<'a, Box<Expr>> {
         let expr = self.parse_expr()?;
         self.expect(exp!(Comma))?;
         let ty = self.parse_ty()?;
@@ -2036,7 +2047,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         kind: UnsafeBinderCastKind,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let expr = self.parse_expr()?;
         let ty = if self.eat(exp!(Comma)) { Some(self.parse_ty()?) } else { None };
         let span = lo.to(self.token.span);
@@ -2146,7 +2157,7 @@ impl<'a> Parser<'a> {
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
     /// `Lit::from_token` (excluding unary negation).
     fn eat_token_lit(&mut self) -> Option<token::Lit> {
-        let check_expr = |expr: P<Expr>| {
+        let check_expr = |expr: Box<Expr>| {
             if let ast::ExprKind::Lit(token_lit) = expr.kind {
                 Some(token_lit)
             } else if let ast::ExprKind::Unary(UnOp::Neg, inner) = &expr.kind
@@ -2234,7 +2245,7 @@ impl<'a> Parser<'a> {
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus`.
-    pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, Box<Expr>> {
         if let Some(expr) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Expr { .. }),
             |this| {
@@ -2281,7 +2292,7 @@ impl<'a> Parser<'a> {
     /// Emits a suggestion if it looks like the user meant an array but
     /// accidentally used braces, causing the code to be interpreted as a block
     /// expression.
-    fn maybe_suggest_brackets_instead_of_braces(&mut self, lo: Span) -> Option<P<Expr>> {
+    fn maybe_suggest_brackets_instead_of_braces(&mut self, lo: Span) -> Option<Box<Expr>> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
             Ok(arr) => {
@@ -2351,7 +2362,7 @@ impl<'a> Parser<'a> {
         opt_label: Option<Label>,
         lo: Span,
         blk_mode: BlockCheckMode,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         if self.may_recover() && self.is_array_like_block() {
             if let Some(arr) = self.maybe_suggest_brackets_instead_of_braces(lo) {
                 return Ok(arr);
@@ -2374,13 +2385,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a block which takes no attributes and has no label
-    fn parse_simple_block(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_simple_block(&mut self) -> PResult<'a, Box<Expr>> {
         let blk = self.parse_block()?;
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None)))
     }
 
     /// Parses a closure expression (e.g., `move |args| expr`).
-    fn parse_expr_closure(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_closure(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
 
         let before = self.prev_token;
@@ -2406,6 +2417,14 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
+
+        if let ClosureBinder::NotPresent = binder
+            && coroutine_kind.is_some()
+        {
+            // coroutine closures and generators can have the same qualifiers, so we might end up
+            // in here if there is a missing `|` but also no `{`. Adjust the expectations in that case.
+            self.expected_token_types.insert(TokenType::OpenBrace);
+        }
 
         let capture_clause = self.parse_capture_clause()?;
         let (fn_decl, fn_arg_span) = self.parse_fn_block_decl()?;
@@ -2477,7 +2496,7 @@ impl<'a> Parser<'a> {
     }
 
     /// If an explicit return type is given, require a block to appear (RFC 968).
-    fn parse_closure_block_body(&mut self, ret_span: Span) -> PResult<'a, P<Expr>> {
+    fn parse_closure_block_body(&mut self, ret_span: Span) -> PResult<'a, Box<Expr>> {
         if self.may_recover()
             && self.token.can_begin_expr()
             && self.token.kind != TokenKind::OpenBrace
@@ -2548,7 +2567,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the `|arg, arg|` header of a closure.
-    fn parse_fn_block_decl(&mut self) -> PResult<'a, (P<FnDecl>, Span)> {
+    fn parse_fn_block_decl(&mut self) -> PResult<'a, (Box<FnDecl>, Span)> {
         let arg_start = self.token.span.lo();
 
         let inputs = if self.eat(exp!(OrOr)) {
@@ -2570,7 +2589,7 @@ impl<'a> Parser<'a> {
         let output =
             self.parse_ret_ty(AllowPlus::Yes, RecoverQPath::Yes, RecoverReturnSign::Yes)?;
 
-        Ok((P(FnDecl { inputs, output }), arg_span))
+        Ok((Box::new(FnDecl { inputs, output }), arg_span))
     }
 
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).
@@ -2601,7 +2620,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `if` expression (`if` token already eaten).
-    fn parse_expr_if(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_if(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.prev_token.span;
         // Scoping code checks the top level edition of the `if`; let's match it here.
         // The `CondChecker` also checks the edition of the `let` itself, just to make sure.
@@ -2610,7 +2629,7 @@ impl<'a> Parser<'a> {
         self.parse_if_after_cond(lo, cond)
     }
 
-    fn parse_if_after_cond(&mut self, lo: Span, mut cond: P<Expr>) -> PResult<'a, P<Expr>> {
+    fn parse_if_after_cond(&mut self, lo: Span, mut cond: Box<Expr>) -> PResult<'a, Box<Expr>> {
         let cond_span = cond.span;
         // Tries to interpret `cond` as either a missing expression if it's a block,
         // or as an unfinished expression if it's a binop and the RHS is a block.
@@ -2720,7 +2739,10 @@ impl<'a> Parser<'a> {
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
     // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
-    pub fn parse_expr_cond(&mut self, let_chains_policy: LetChainsPolicy) -> PResult<'a, P<Expr>> {
+    pub fn parse_expr_cond(
+        &mut self,
+        let_chains_policy: LetChainsPolicy,
+    ) -> PResult<'a, Box<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;
@@ -2731,7 +2753,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `let $pat = $expr` pseudo-expression.
-    fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
+    fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, Box<Expr>> {
         let recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
@@ -2773,7 +2795,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `else { ... }` expression (`else` token already eaten).
-    fn parse_expr_else(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_else(&mut self) -> PResult<'a, Box<Expr>> {
         let else_span = self.prev_token.span; // `else`
         let attrs = self.parse_outer_attributes()?; // For recovery.
         let expr = if self.eat_keyword(exp!(If)) {
@@ -2871,7 +2893,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn error_on_extra_if(&mut self, cond: &P<Expr>) -> PResult<'a, ()> {
+    fn error_on_extra_if(&mut self, cond: &Box<Expr>) -> PResult<'a, ()> {
         if let ExprKind::Binary(Spanned { span: binop_span, node: binop }, _, right) = &cond.kind
             && let BinOpKind::And = binop
             && let ExprKind::If(cond, ..) = &right.kind
@@ -2884,7 +2906,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
+    fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
         let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
@@ -2950,7 +2972,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
-    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, Box<Expr>> {
         let is_await =
             self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await));
 
@@ -3011,6 +3033,8 @@ impl<'a> Parser<'a> {
             let span = self.token.span;
             self.bump();
             (span, errors::MissingInInForLoopSub::InNotOf)
+        } else if self.eat(exp!(Eq)) {
+            (self.prev_token.span, errors::MissingInInForLoopSub::InNotEq)
         } else {
             (self.prev_token.span.between(self.token.span), errors::MissingInInForLoopSub::AddIn)
         };
@@ -3019,7 +3043,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
-    fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, Box<Expr>> {
         let policy = LetChainsPolicy::EditionDependent { current_edition: lo.edition() };
         let cond = self.parse_expr_cond(policy).map_err(|mut err| {
             err.span_label(lo, "while parsing the condition of this `while` expression");
@@ -3047,7 +3071,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `loop { ... }` (`loop` token already eaten).
-    fn parse_expr_loop(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_expr_loop(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, Box<Expr>> {
         let loop_span = self.prev_token.span;
         let (attrs, body) = self.parse_inner_attrs_and_block(
             // Only suggest moving erroneous block label to the loop header
@@ -3077,7 +3101,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
-    fn parse_expr_match(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_expr_match(&mut self) -> PResult<'a, Box<Expr>> {
         let match_span = self.prev_token.span;
         let attrs = self.parse_outer_attributes()?;
         let (scrutinee, _) = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, attrs)?;
@@ -3091,9 +3115,9 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         match_span: Span,
-        scrutinee: P<Expr>,
+        scrutinee: Box<Expr>,
         match_kind: MatchKind,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         if let Err(mut e) = self.expect(exp!(OpenBrace)) {
             if self.token == token::Semi {
                 e.span_suggestion_short(
@@ -3150,7 +3174,7 @@ impl<'a> Parser<'a> {
     /// Attempt to recover from match arm body with statements and no surrounding braces.
     fn parse_arm_body_missing_braces(
         &mut self,
-        first_expr: &P<Expr>,
+        first_expr: &Box<Expr>,
         arrow_span: Span,
     ) -> Option<(Span, ErrorGuaranteed)> {
         if self.token != token::Semi {
@@ -3311,26 +3335,44 @@ impl<'a> Parser<'a> {
                             let sm = this.psess.source_map();
                             if let Ok(expr_lines) = sm.span_to_lines(expr_span)
                                 && let Ok(arm_start_lines) = sm.span_to_lines(arm_start_span)
-                                && arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col
                                 && expr_lines.lines.len() == 2
                             {
-                                // We check whether there's any trailing code in the parse span,
-                                // if there isn't, we very likely have the following:
-                                //
-                                // X |     &Y => "y"
-                                //   |        --    - missing comma
-                                //   |        |
-                                //   |        arrow_span
-                                // X |     &X => "x"
-                                //   |      - ^^ self.token.span
-                                //   |      |
-                                //   |      parsed until here as `"y" & X`
-                                err.span_suggestion_short(
-                                    arm_start_span.shrink_to_hi(),
-                                    "missing a comma here to end this `match` arm",
-                                    ",",
-                                    Applicability::MachineApplicable,
-                                );
+                                if arm_start_lines.lines[0].end_col == expr_lines.lines[0].end_col {
+                                    // We check whether there's any trailing code in the parse span,
+                                    // if there isn't, we very likely have the following:
+                                    //
+                                    // X |     &Y => "y"
+                                    //   |        --    - missing comma
+                                    //   |        |
+                                    //   |        arrow_span
+                                    // X |     &X => "x"
+                                    //   |      - ^^ self.token.span
+                                    //   |      |
+                                    //   |      parsed until here as `"y" & X`
+                                    err.span_suggestion_short(
+                                        arm_start_span.shrink_to_hi(),
+                                        "missing a comma here to end this `match` arm",
+                                        ",",
+                                        Applicability::MachineApplicable,
+                                    );
+                                } else if arm_start_lines.lines[0].end_col + rustc_span::CharPos(1)
+                                    == expr_lines.lines[0].end_col
+                                {
+                                    // similar to the above, but we may typo a `.` or `/` at the end of the line
+                                    let comma_span = arm_start_span
+                                        .shrink_to_hi()
+                                        .with_hi(arm_start_span.hi() + rustc_span::BytePos(1));
+                                    if let Ok(res) = sm.span_to_snippet(comma_span)
+                                        && (res == "." || res == "/")
+                                    {
+                                        err.span_suggestion_short(
+                                            comma_span,
+                                            "you might have meant to write a `,` to end this `match` arm",
+                                            ",",
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
                             }
                         } else {
                             err.span_label(
@@ -3404,7 +3446,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
+    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Expr>>> {
         // Used to check the `if_let_guard` feature mostly by scanning
         // `&&` tokens.
         fn has_let_expr(expr: &Expr) -> bool {
@@ -3435,7 +3477,7 @@ impl<'a> Parser<'a> {
         Ok(Some(cond))
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Box<Pat>, Option<Box<Expr>>)> {
         if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(
@@ -3450,10 +3492,8 @@ impl<'a> Parser<'a> {
                 // Detect and recover from `($pat if $cond) => $arm`.
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
-                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
-                    unreachable!()
-                };
+                let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
                 CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
                 let right = self.prev_token.span;
@@ -3477,7 +3517,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_guard_condition(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_match_guard_condition(&mut self) -> PResult<'a, Box<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         match self.parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs) {
             Ok((expr, _)) => Ok(expr),
@@ -3511,7 +3551,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `try {...}` expression (`try` token already eaten).
-    fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, P<Expr>> {
+    fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, Box<Expr>> {
         let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {
             Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
@@ -3540,7 +3580,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` or `gen move? {...}` expression.
-    fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_gen_block(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         let kind = if self.eat_keyword(exp!(Async)) {
             if self.eat_keyword(exp!(Gen)) { GenBlockKind::AsyncGen } else { GenBlockKind::Async }
@@ -3589,9 +3629,9 @@ impl<'a> Parser<'a> {
 
     fn maybe_parse_struct_expr(
         &mut self,
-        qself: &Option<P<ast::QSelf>>,
+        qself: &Option<Box<ast::QSelf>>,
         path: &ast::Path,
-    ) -> Option<PResult<'a, P<Expr>>> {
+    ) -> Option<PResult<'a, Box<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
         if struct_allowed || self.is_certainly_not_a_block() {
             if let Err(err) = self.expect(exp!(OpenBrace)) {
@@ -3785,10 +3825,10 @@ impl<'a> Parser<'a> {
     /// Precondition: already parsed the '{'.
     pub(super) fn parse_expr_struct(
         &mut self,
-        qself: Option<P<ast::QSelf>>,
+        qself: Option<Box<ast::QSelf>>,
         pth: ast::Path,
         recover: bool,
-    ) -> PResult<'a, P<Expr>> {
+    ) -> PResult<'a, Box<Expr>> {
         let lo = pth.span;
         let (fields, base, recovered_async) =
             self.parse_struct_fields(pth.clone(), recover, exp!(CloseBrace))?;
@@ -3797,7 +3837,7 @@ impl<'a> Parser<'a> {
         let expr = if let Some(guar) = recovered_async {
             ExprKind::Err(guar)
         } else {
-            ExprKind::Struct(P(ast::StructExpr { qself, path: pth, fields, rest: base }))
+            ExprKind::Struct(Box::new(ast::StructExpr { qself, path: pth, fields, rest: base }))
         };
         Ok(self.mk_expr(span, expr))
     }
@@ -3828,7 +3868,7 @@ impl<'a> Parser<'a> {
         // Convert `label` -> `'label`,
         // so that nameres doesn't complain about non-existing label
         let label = format!("'{}", ident.name);
-        let ident = Ident { name: Symbol::intern(&label), span: ident.span };
+        let ident = Ident::new(Symbol::intern(&label), ident.span);
 
         self.dcx().emit_err(errors::ExpectedLabelFoundIdent {
             span: ident.span,
@@ -3848,8 +3888,7 @@ impl<'a> Parser<'a> {
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
-            let is_wrong = this.token.is_ident()
-                && !this.token.is_reserved_ident()
+            let is_wrong = this.token.is_non_reserved_ident()
                 && !this.look_ahead(1, |t| {
                     t == &token::Colon
                         || t == &token::Eq
@@ -3913,14 +3952,14 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(errors::LeftArrowOperator { span });
     }
 
-    fn mk_assign_op(&self, assign_op: AssignOp, lhs: P<Expr>, rhs: P<Expr>) -> ExprKind {
+    fn mk_assign_op(&self, assign_op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
         ExprKind::AssignOp(assign_op, lhs, rhs)
     }
 
     fn mk_range(
         &mut self,
-        start: Option<P<Expr>>,
-        end: Option<P<Expr>>,
+        start: Option<Box<Expr>>,
+        end: Option<Box<Expr>>,
         limits: RangeLimits,
     ) -> ExprKind {
         if end.is_none() && limits == RangeLimits::Closed {
@@ -3931,63 +3970,69 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn mk_unary(&self, unop: UnOp, expr: P<Expr>) -> ExprKind {
+    fn mk_unary(&self, unop: UnOp, expr: Box<Expr>) -> ExprKind {
         ExprKind::Unary(unop, expr)
     }
 
-    fn mk_binary(&self, binop: BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ExprKind {
+    fn mk_binary(&self, binop: BinOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
         ExprKind::Binary(binop, lhs, rhs)
     }
 
-    fn mk_index(&self, expr: P<Expr>, idx: P<Expr>, brackets_span: Span) -> ExprKind {
+    fn mk_index(&self, expr: Box<Expr>, idx: Box<Expr>, brackets_span: Span) -> ExprKind {
         ExprKind::Index(expr, idx, brackets_span)
     }
 
-    fn mk_call(&self, f: P<Expr>, args: ThinVec<P<Expr>>) -> ExprKind {
+    fn mk_call(&self, f: Box<Expr>, args: ThinVec<Box<Expr>>) -> ExprKind {
         ExprKind::Call(f, args)
     }
 
-    fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
+    fn mk_await_expr(&mut self, self_arg: Box<Expr>, lo: Span) -> Box<Expr> {
         let span = lo.to(self.prev_token.span);
         let await_expr = self.mk_expr(span, ExprKind::Await(self_arg, self.prev_token.span));
         self.recover_from_await_method_call();
         await_expr
     }
 
-    fn mk_use_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
+    fn mk_use_expr(&mut self, self_arg: Box<Expr>, lo: Span) -> Box<Expr> {
         let span = lo.to(self.prev_token.span);
         let use_expr = self.mk_expr(span, ExprKind::Use(self_arg, self.prev_token.span));
         self.recover_from_use();
         use_expr
     }
 
-    pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
-        P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
+    pub(crate) fn mk_expr_with_attrs(
+        &self,
+        span: Span,
+        kind: ExprKind,
+        attrs: AttrVec,
+    ) -> Box<Expr> {
+        Box::new(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
 
-    pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind) -> P<Expr> {
+    pub(crate) fn mk_expr(&self, span: Span, kind: ExprKind) -> Box<Expr> {
         self.mk_expr_with_attrs(span, kind, AttrVec::new())
     }
 
-    pub(super) fn mk_expr_err(&self, span: Span, guar: ErrorGuaranteed) -> P<Expr> {
+    pub(super) fn mk_expr_err(&self, span: Span, guar: ErrorGuaranteed) -> Box<Expr> {
         self.mk_expr(span, ExprKind::Err(guar))
     }
 
     /// Create expression span ensuring the span of the parent node
     /// is larger than the span of lhs and rhs, including the attributes.
-    fn mk_expr_sp(&self, lhs: &P<Expr>, lhs_span: Span, rhs_span: Span) -> Span {
+    fn mk_expr_sp(&self, lhs: &Box<Expr>, lhs_span: Span, op_span: Span, rhs_span: Span) -> Span {
         lhs.attrs
             .iter()
             .find(|a| a.style == AttrStyle::Outer)
             .map_or(lhs_span, |a| a.span)
+            .to(op_span)
             .to(rhs_span)
     }
 
     fn collect_tokens_for_expr(
         &mut self,
         attrs: AttrWrapper,
-        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, P<Expr>>,
-    ) -> PResult<'a, P<Expr>> {
+        f: impl FnOnce(&mut Self, ast::AttrVec) -> PResult<'a, Box<Expr>>,
+    ) -> PResult<'a, Box<Expr>> {
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let res = f(this, attrs)?;
             let trailing = Trailing::from(
@@ -4065,7 +4110,7 @@ impl<'a> CondChecker<'a> {
 }
 
 impl MutVisitor for CondChecker<'_> {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         self.depth += 1;
         use ForbiddenLetReason::*;
 
@@ -4091,7 +4136,7 @@ impl MutVisitor for CondChecker<'_> {
                         LetChainsPolicy::AlwaysAllowed => (),
                         LetChainsPolicy::EditionDependent { current_edition } => {
                             if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
+                                self.parser.dcx().emit_err(errors::LetChainPre2024 { span });
                             }
                         }
                     }

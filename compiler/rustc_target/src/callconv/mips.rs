@@ -10,7 +10,7 @@ where
         ret.extend_integer_width_to(32);
     } else {
         ret.make_indirect();
-        *offset += cx.data_layout().pointer_size;
+        *offset += cx.data_layout().pointer_size();
     }
 }
 

@@ -1,8 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
+error[E0080]: constructing invalid value at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>: encountered a null reference
   --> $DIR/ub-upvars.rs:6:1
    |
 LL | const BAD_UPVAR: &dyn FnOnce() = &{
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>: encountered a null reference
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {

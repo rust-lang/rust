@@ -1,0 +1,11 @@
+error: item name is the same as its containing module's name
+  --> tests/ui-toml/item_name_repetitions/allow_exact_repetitions/item_name_repetitions.rs:6:12
+   |
+LL |     pub fn foo() {}
+   |            ^^^
+   |
+   = note: `-D clippy::module-name-repetitions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::module_name_repetitions)]`
+
+error: aborting due to 1 previous error
+

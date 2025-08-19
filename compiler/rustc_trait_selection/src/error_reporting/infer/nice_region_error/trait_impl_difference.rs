@@ -5,6 +5,7 @@ use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, walk_ty};
 use rustc_hir::{self as hir, AmbigArg};
+use rustc_infer::infer::SubregionOrigin;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
@@ -16,7 +17,7 @@ use tracing::debug;
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
 use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
-use crate::infer::{RegionResolutionError, Subtype, ValuePairs};
+use crate::infer::{RegionResolutionError, ValuePairs};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
@@ -32,7 +33,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _sup,
             _,
         ) = error.clone()
-            && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
+            && let (SubregionOrigin::Subtype(sup_trace), SubregionOrigin::Subtype(sub_trace)) =
+                (&sup_origin, &sub_origin)
             && let &ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
                 sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
@@ -58,14 +60,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
         struct HighlightBuilder<'tcx> {
+            tcx: TyCtxt<'tcx>,
             highlight: RegionHighlightMode<'tcx>,
             counter: usize,
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(tcx: TyCtxt<'tcx>, sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
-                    HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
+                    HighlightBuilder { tcx, highlight: RegionHighlightMode::default(), counter: 1 };
                 sig.visit_with(&mut builder);
                 builder.highlight
             }
@@ -73,15 +76,15 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
-                if !r.has_name() && self.counter <= 3 {
+                if !r.is_named(self.tcx) && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
                     self.counter += 1;
                 }
             }
         }
 
-        let expected_highlight = HighlightBuilder::build(expected);
         let tcx = self.cx.tcx;
+        let expected_highlight = HighlightBuilder::build(tcx, expected);
         let expected = Highlighted {
             highlight: expected_highlight,
             ns: Namespace::TypeNS,
@@ -89,7 +92,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             value: expected,
         }
         .to_string();
-        let found_highlight = HighlightBuilder::build(found);
+        let found_highlight = HighlightBuilder::build(tcx, found);
         let found =
             Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
                 .to_string();
@@ -101,10 +104,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ty::AssocKind::Fn { .. } => {
                 if let Some(hir_id) =
                     assoc_item.def_id.as_local().map(|id| self.tcx().local_def_id_to_hir_id(id))
+                    && let Some(decl) = self.tcx().hir_fn_decl_by_hir_id(hir_id)
                 {
-                    if let Some(decl) = self.tcx().hir_fn_decl_by_hir_id(hir_id) {
-                        visitor.visit_fn_decl(decl);
-                    }
+                    visitor.visit_fn_decl(decl);
                 }
             }
             _ => {}

@@ -1,11 +1,122 @@
+use core::fmt::{self, Display};
+use core::num::NonZero;
+use core::ops::Range;
+use core::slice;
+use core::str::FromStr;
+use rustc_lexer::{self as lexer, FrontmatterAllowed};
+use std::ffi::OsStr;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Read as _, Seek as _, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::process::{self, ExitStatus};
-use std::{fs, io};
+use std::process::{self, Command, ExitStatus, Stdio};
+use std::{env, thread};
+use walkdir::WalkDir;
 
 #[cfg(not(windows))]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
 #[cfg(windows)]
 static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
+
+#[derive(Clone, Copy)]
+pub enum ErrAction {
+    Open,
+    Read,
+    Write,
+    Create,
+    Rename,
+    Delete,
+    Run,
+}
+impl ErrAction {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Open => "opening",
+            Self::Read => "reading",
+            Self::Write => "writing",
+            Self::Create => "creating",
+            Self::Rename => "renaming",
+            Self::Delete => "deleting",
+            Self::Run => "running",
+        }
+    }
+}
+
+#[cold]
+#[track_caller]
+pub fn panic_action(err: &impl Display, action: ErrAction, path: &Path) -> ! {
+    panic!("error {} `{}`: {}", action.as_str(), path.display(), *err)
+}
+
+#[track_caller]
+pub fn expect_action<T>(res: Result<T, impl Display>, action: ErrAction, path: impl AsRef<Path>) -> T {
+    match res {
+        Ok(x) => x,
+        Err(ref e) => panic_action(e, action, path.as_ref()),
+    }
+}
+
+/// Wrapper around `std::fs::File` which panics with a path on failure.
+pub struct File<'a> {
+    pub inner: fs::File,
+    pub path: &'a Path,
+}
+impl<'a> File<'a> {
+    /// Opens a file panicking on failure.
+    #[track_caller]
+    pub fn open(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Self {
+        let path = path.as_ref();
+        Self {
+            inner: expect_action(options.open(path), ErrAction::Open, path),
+            path,
+        }
+    }
+
+    /// Opens a file if it exists, panicking on any other failure.
+    #[track_caller]
+    pub fn open_if_exists(path: &'a (impl AsRef<Path> + ?Sized), options: &mut OpenOptions) -> Option<Self> {
+        let path = path.as_ref();
+        match options.open(path) {
+            Ok(inner) => Some(Self { inner, path }),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => None,
+            Err(e) => panic_action(&e, ErrAction::Open, path),
+        }
+    }
+
+    /// Opens and reads a file into a string, panicking of failure.
+    #[track_caller]
+    pub fn open_read_to_cleared_string<'dst>(
+        path: &'a (impl AsRef<Path> + ?Sized),
+        dst: &'dst mut String,
+    ) -> &'dst mut String {
+        Self::open(path, OpenOptions::new().read(true)).read_to_cleared_string(dst)
+    }
+
+    /// Read the entire contents of a file to the given buffer.
+    #[track_caller]
+    pub fn read_append_to_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
+        expect_action(self.inner.read_to_string(dst), ErrAction::Read, self.path);
+        dst
+    }
+
+    #[track_caller]
+    pub fn read_to_cleared_string<'dst>(&mut self, dst: &'dst mut String) -> &'dst mut String {
+        dst.clear();
+        self.read_append_to_string(dst)
+    }
+
+    /// Replaces the entire contents of a file.
+    #[track_caller]
+    pub fn replace_contents(&mut self, data: &[u8]) {
+        let res = match self.inner.seek(SeekFrom::Start(0)) {
+            Ok(_) => match self.inner.write_all(data) {
+                Ok(()) => self.inner.set_len(data.len() as u64),
+                Err(e) => Err(e),
+            },
+            Err(e) => Err(e),
+        };
+        expect_action(res, ErrAction::Write, self.path);
+    }
+}
 
 /// Returns the path to the `cargo-clippy` binary
 ///
@@ -14,34 +125,167 @@ static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 /// Panics if the path of current executable could not be retrieved.
 #[must_use]
 pub fn cargo_clippy_path() -> PathBuf {
-    let mut path = std::env::current_exe().expect("failed to get current executable name");
+    let mut path = env::current_exe().expect("failed to get current executable name");
     path.set_file_name(CARGO_CLIPPY_EXE);
     path
 }
 
-/// Returns the path to the Clippy project directory
-///
-/// # Panics
-///
-/// Panics if the current directory could not be retrieved, there was an error reading any of the
-/// Cargo.toml files or ancestor directory is the clippy root directory
-#[must_use]
-pub fn clippy_project_root() -> PathBuf {
-    let current_dir = std::env::current_dir().unwrap();
-    for path in current_dir.ancestors() {
-        let result = fs::read_to_string(path.join("Cargo.toml"));
-        if let Err(err) = &result
-            && err.kind() == io::ErrorKind::NotFound
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Version {
+    pub major: u16,
+    pub minor: u16,
+}
+impl FromStr for Version {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(s) = s.strip_prefix("0.")
+            && let Some((major, minor)) = s.split_once('.')
+            && let Ok(major) = major.parse()
+            && let Ok(minor) = minor.parse()
         {
-            continue;
-        }
-
-        let content = result.unwrap();
-        if content.contains("[package]\nname = \"clippy\"") {
-            return path.to_path_buf();
+            Ok(Self { major, minor })
+        } else {
+            Err(())
         }
     }
-    panic!("error: Can't determine root of project. Please run inside a Clippy working dir.");
+}
+impl Version {
+    /// Displays the version as a rust version. i.e. `x.y.0`
+    #[must_use]
+    pub fn rust_display(self) -> impl Display {
+        struct X(Version);
+        impl Display for X {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}.{}.0", self.0.major, self.0.minor)
+            }
+        }
+        X(self)
+    }
+
+    /// Displays the version as it should appear in clippy's toml files. i.e. `0.x.y`
+    #[must_use]
+    pub fn toml_display(self) -> impl Display {
+        struct X(Version);
+        impl Display for X {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "0.{}.{}", self.0.major, self.0.minor)
+            }
+        }
+        X(self)
+    }
+}
+
+enum TomlPart<'a> {
+    Table(&'a str),
+    Value(&'a str, &'a str),
+}
+
+fn toml_iter(s: &str) -> impl Iterator<Item = (usize, TomlPart<'_>)> {
+    let mut pos = 0;
+    s.split('\n')
+        .map(move |s| {
+            let x = pos;
+            pos += s.len() + 1;
+            (x, s)
+        })
+        .filter_map(|(pos, s)| {
+            if let Some(s) = s.strip_prefix('[') {
+                s.split_once(']').map(|(name, _)| (pos, TomlPart::Table(name)))
+            } else if matches!(s.bytes().next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_')) {
+                s.split_once('=').map(|(key, value)| (pos, TomlPart::Value(key, value)))
+            } else {
+                None
+            }
+        })
+}
+
+pub struct CargoPackage<'a> {
+    pub name: &'a str,
+    pub version_range: Range<usize>,
+    pub not_a_platform_range: Range<usize>,
+}
+
+#[must_use]
+pub fn parse_cargo_package(s: &str) -> CargoPackage<'_> {
+    let mut in_package = false;
+    let mut in_platform_deps = false;
+    let mut name = "";
+    let mut version_range = 0..0;
+    let mut not_a_platform_range = 0..0;
+    for (offset, part) in toml_iter(s) {
+        match part {
+            TomlPart::Table(name) => {
+                if in_platform_deps {
+                    not_a_platform_range.end = offset;
+                }
+                in_package = false;
+                in_platform_deps = false;
+
+                match name.trim() {
+                    "package" => in_package = true,
+                    "target.'cfg(NOT_A_PLATFORM)'.dependencies" => {
+                        in_platform_deps = true;
+                        not_a_platform_range.start = offset;
+                    },
+                    _ => {},
+                }
+            },
+            TomlPart::Value(key, value) if in_package => match key.trim_end() {
+                "name" => name = value.trim(),
+                "version" => {
+                    version_range.start = offset + (value.len() - value.trim().len()) + key.len() + 1;
+                    version_range.end = offset + key.len() + value.trim_end().len() + 1;
+                },
+                _ => {},
+            },
+            TomlPart::Value(..) => {},
+        }
+    }
+    CargoPackage {
+        name,
+        version_range,
+        not_a_platform_range,
+    }
+}
+
+pub struct ClippyInfo {
+    pub path: PathBuf,
+    pub version: Version,
+    pub has_intellij_hook: bool,
+}
+impl ClippyInfo {
+    #[must_use]
+    pub fn search_for_manifest() -> Self {
+        let mut path = env::current_dir().expect("error reading the working directory");
+        let mut buf = String::new();
+        loop {
+            path.push("Cargo.toml");
+            if let Some(mut file) = File::open_if_exists(&path, OpenOptions::new().read(true)) {
+                file.read_to_cleared_string(&mut buf);
+                let package = parse_cargo_package(&buf);
+                if package.name == "\"clippy\"" {
+                    if let Some(version) = buf[package.version_range].strip_prefix('"')
+                        && let Some(version) = version.strip_suffix('"')
+                        && let Ok(version) = version.parse()
+                    {
+                        path.pop();
+                        return ClippyInfo {
+                            path,
+                            version,
+                            has_intellij_hook: !package.not_a_platform_range.is_empty(),
+                        };
+                    }
+                    panic!("error reading clippy version from `{}`", file.path.display());
+                }
+            }
+
+            path.pop();
+            assert!(
+                path.pop(),
+                "error finding project root, please run from inside the clippy directory"
+            );
+        }
+    }
 }
 
 /// # Panics
@@ -57,86 +301,465 @@ pub fn exit_if_err(status: io::Result<ExitStatus>) {
     }
 }
 
-pub(crate) fn clippy_version() -> (u32, u32) {
-    fn parse_manifest(contents: &str) -> Option<(u32, u32)> {
-        let version = contents
-            .lines()
-            .filter_map(|l| l.split_once('='))
-            .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))?;
-        let Some(("0", version)) = version.get(1..version.len() - 1)?.split_once('.') else {
-            return None;
-        };
-        let (minor, patch) = version.split_once('.')?;
-        Some((minor.parse().ok()?, patch.parse().ok()?))
+#[derive(Clone, Copy)]
+pub enum UpdateStatus {
+    Unchanged,
+    Changed,
+}
+impl UpdateStatus {
+    #[must_use]
+    pub fn from_changed(value: bool) -> Self {
+        if value { Self::Changed } else { Self::Unchanged }
     }
-    let contents = fs::read_to_string("Cargo.toml").expect("Unable to read `Cargo.toml`");
-    parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
+
+    #[must_use]
+    pub fn is_changed(self) -> bool {
+        matches!(self, Self::Changed)
+    }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub enum UpdateMode {
-    Check,
     Change,
+    Check,
+}
+impl UpdateMode {
+    #[must_use]
+    pub fn from_check(check: bool) -> Self {
+        if check { Self::Check } else { Self::Change }
+    }
+
+    #[must_use]
+    pub fn is_check(self) -> bool {
+        matches!(self, Self::Check)
+    }
 }
 
-pub(crate) fn exit_with_failure() {
-    println!(
-        "Not all lints defined properly. \
-                 Please run `cargo dev update_lints` to make sure all lints are defined properly."
-    );
-    process::exit(1);
+#[derive(Default)]
+pub struct FileUpdater {
+    src_buf: String,
+    dst_buf: String,
 }
+impl FileUpdater {
+    fn update_file_checked_inner(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: &Path,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        match (mode, update(path, &self.src_buf, &mut self.dst_buf)) {
+            (UpdateMode::Check, UpdateStatus::Changed) => {
+                eprintln!(
+                    "the contents of `{}` are out of date\nplease run `{tool}` to update",
+                    path.display()
+                );
+                process::exit(1);
+            },
+            (UpdateMode::Change, UpdateStatus::Changed) => file.replace_contents(self.dst_buf.as_bytes()),
+            (UpdateMode::Check | UpdateMode::Change, UpdateStatus::Unchanged) => {},
+        }
+    }
 
-/// Replaces a region in a file delimited by two lines matching regexes.
-///
-/// `path` is the relative path to the file on which you want to perform the replacement.
-///
-/// See `replace_region_in_text` for documentation of the other options.
-///
-/// # Panics
-///
-/// Panics if the path could not read or then written
-pub(crate) fn replace_region_in_file(
-    update_mode: UpdateMode,
-    path: &Path,
-    start: &str,
-    end: &str,
-    write_replacement: impl FnMut(&mut String),
-) {
-    let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("Cannot read from `{}`: {e}", path.display()));
-    let new_contents = match replace_region_in_text(&contents, start, end, write_replacement) {
-        Ok(x) => x,
-        Err(delim) => panic!("Couldn't find `{delim}` in file `{}`", path.display()),
-    };
+    fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
+        let mut file = File::open(path, OpenOptions::new().read(true).write(true));
+        file.read_to_cleared_string(&mut self.src_buf);
+        self.dst_buf.clear();
+        if update(path, &self.src_buf, &mut self.dst_buf).is_changed() {
+            file.replace_contents(self.dst_buf.as_bytes());
+        }
+    }
 
-    match update_mode {
-        UpdateMode::Check if contents != new_contents => exit_with_failure(),
-        UpdateMode::Check => (),
-        UpdateMode::Change => {
-            if let Err(e) = fs::write(path, new_contents.as_bytes()) {
-                panic!("Cannot write to `{}`: {e}", path.display());
-            }
-        },
+    pub fn update_file_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_checked_inner(tool, mode, path.as_ref(), update);
+    }
+
+    pub fn update_file(
+        &mut self,
+        path: impl AsRef<Path>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.update_file_inner(path.as_ref(), update);
     }
 }
 
 /// Replaces a region in a text delimited by two strings. Returns the new text if both delimiters
 /// were found, or the missing delimiter if not.
-pub(crate) fn replace_region_in_text<'a>(
-    text: &str,
-    start: &'a str,
-    end: &'a str,
-    mut write_replacement: impl FnMut(&mut String),
-) -> Result<String, &'a str> {
-    let (text_start, rest) = text.split_once(start).ok_or(start)?;
-    let (_, text_end) = rest.split_once(end).ok_or(end)?;
+pub fn update_text_region(
+    path: &Path,
+    start: &str,
+    end: &str,
+    src: &str,
+    dst: &mut String,
+    insert: &mut impl FnMut(&mut String),
+) -> UpdateStatus {
+    let Some((src_start, src_end)) = src.split_once(start) else {
+        panic!("`{}` does not contain `{start}`", path.display());
+    };
+    let Some((replaced_text, src_end)) = src_end.split_once(end) else {
+        panic!("`{}` does not contain `{end}`", path.display());
+    };
+    dst.push_str(src_start);
+    dst.push_str(start);
+    let new_start = dst.len();
+    insert(dst);
+    let changed = dst[new_start..] != *replaced_text;
+    dst.push_str(end);
+    dst.push_str(src_end);
+    UpdateStatus::from_changed(changed)
+}
 
-    let mut res = String::with_capacity(text.len() + 4096);
-    res.push_str(text_start);
-    res.push_str(start);
-    write_replacement(&mut res);
-    res.push_str(end);
-    res.push_str(text_end);
+pub fn update_text_region_fn(
+    start: &str,
+    end: &str,
+    mut insert: impl FnMut(&mut String),
+) -> impl FnMut(&Path, &str, &mut String) -> UpdateStatus {
+    move |path, src, dst| update_text_region(path, start, end, src, dst, &mut insert)
+}
 
-    Ok(res)
+#[derive(Clone, Copy)]
+pub enum Token<'a> {
+    /// Matches any number of comments / doc comments.
+    AnyComment,
+    Ident(&'a str),
+    CaptureIdent,
+    LitStr,
+    CaptureLitStr,
+    Bang,
+    CloseBrace,
+    CloseBracket,
+    CloseParen,
+    /// This will consume the first colon even if the second doesn't exist.
+    DoubleColon,
+    Comma,
+    Eq,
+    Lifetime,
+    Lt,
+    Gt,
+    OpenBrace,
+    OpenBracket,
+    OpenParen,
+    Pound,
+    Semi,
+    Slash,
+}
+
+pub struct RustSearcher<'txt> {
+    text: &'txt str,
+    cursor: lexer::Cursor<'txt>,
+    pos: u32,
+    next_token: lexer::Token,
+}
+impl<'txt> RustSearcher<'txt> {
+    #[must_use]
+    #[expect(clippy::inconsistent_struct_constructor)]
+    pub fn new(text: &'txt str) -> Self {
+        let mut cursor = lexer::Cursor::new(text, FrontmatterAllowed::Yes);
+        Self {
+            text,
+            pos: 0,
+            next_token: cursor.advance_token(),
+            cursor,
+        }
+    }
+
+    #[must_use]
+    pub fn peek_text(&self) -> &'txt str {
+        &self.text[self.pos as usize..(self.pos + self.next_token.len) as usize]
+    }
+
+    #[must_use]
+    pub fn peek_len(&self) -> u32 {
+        self.next_token.len
+    }
+
+    #[must_use]
+    pub fn peek(&self) -> lexer::TokenKind {
+        self.next_token.kind
+    }
+
+    #[must_use]
+    pub fn pos(&self) -> u32 {
+        self.pos
+    }
+
+    #[must_use]
+    pub fn at_end(&self) -> bool {
+        self.next_token.kind == lexer::TokenKind::Eof
+    }
+
+    pub fn step(&mut self) {
+        // `next_len` is zero for the sentinel value and the eof marker.
+        self.pos += self.next_token.len;
+        self.next_token = self.cursor.advance_token();
+    }
+
+    /// Consumes the next token if it matches the requested value and captures the value if
+    /// requested. Returns true if a token was matched.
+    fn read_token(&mut self, token: Token<'_>, captures: &mut slice::IterMut<'_, &mut &'txt str>) -> bool {
+        loop {
+            match (token, self.next_token.kind) {
+                (_, lexer::TokenKind::Whitespace)
+                | (
+                    Token::AnyComment,
+                    lexer::TokenKind::BlockComment { terminated: true, .. } | lexer::TokenKind::LineComment { .. },
+                ) => self.step(),
+                (Token::AnyComment, _) => return true,
+                (Token::Bang, lexer::TokenKind::Bang)
+                | (Token::CloseBrace, lexer::TokenKind::CloseBrace)
+                | (Token::CloseBracket, lexer::TokenKind::CloseBracket)
+                | (Token::CloseParen, lexer::TokenKind::CloseParen)
+                | (Token::Comma, lexer::TokenKind::Comma)
+                | (Token::Eq, lexer::TokenKind::Eq)
+                | (Token::Lifetime, lexer::TokenKind::Lifetime { .. })
+                | (Token::Lt, lexer::TokenKind::Lt)
+                | (Token::Gt, lexer::TokenKind::Gt)
+                | (Token::OpenBrace, lexer::TokenKind::OpenBrace)
+                | (Token::OpenBracket, lexer::TokenKind::OpenBracket)
+                | (Token::OpenParen, lexer::TokenKind::OpenParen)
+                | (Token::Pound, lexer::TokenKind::Pound)
+                | (Token::Semi, lexer::TokenKind::Semi)
+                | (Token::Slash, lexer::TokenKind::Slash)
+                | (
+                    Token::LitStr,
+                    lexer::TokenKind::Literal {
+                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
+                        ..
+                    },
+                ) => {
+                    self.step();
+                    return true;
+                },
+                (Token::Ident(x), lexer::TokenKind::Ident) if x == self.peek_text() => {
+                    self.step();
+                    return true;
+                },
+                (Token::DoubleColon, lexer::TokenKind::Colon) => {
+                    self.step();
+                    if !self.at_end() && matches!(self.next_token.kind, lexer::TokenKind::Colon) {
+                        self.step();
+                        return true;
+                    }
+                    return false;
+                },
+                (
+                    Token::CaptureLitStr,
+                    lexer::TokenKind::Literal {
+                        kind: lexer::LiteralKind::Str { terminated: true } | lexer::LiteralKind::RawStr { .. },
+                        ..
+                    },
+                )
+                | (Token::CaptureIdent, lexer::TokenKind::Ident) => {
+                    **captures.next().unwrap() = self.peek_text();
+                    self.step();
+                    return true;
+                },
+                _ => return false,
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn find_token(&mut self, token: Token<'_>) -> bool {
+        let mut capture = [].iter_mut();
+        while !self.read_token(token, &mut capture) {
+            self.step();
+            if self.at_end() {
+                return false;
+            }
+        }
+        true
+    }
+
+    #[must_use]
+    pub fn find_capture_token(&mut self, token: Token<'_>) -> Option<&'txt str> {
+        let mut res = "";
+        let mut capture = &mut res;
+        let mut capture = slice::from_mut(&mut capture).iter_mut();
+        while !self.read_token(token, &mut capture) {
+            self.step();
+            if self.at_end() {
+                return None;
+            }
+        }
+        Some(res)
+    }
+
+    #[must_use]
+    pub fn match_tokens(&mut self, tokens: &[Token<'_>], captures: &mut [&mut &'txt str]) -> bool {
+        let mut captures = captures.iter_mut();
+        tokens.iter().all(|&t| self.read_token(t, &mut captures))
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
+    match OpenOptions::new().create_new(true).write(true).open(new_name) {
+        Ok(file) => drop(file),
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+    }
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            drop(fs::remove_file(new_name));
+            // `NotADirectory` happens on posix when renaming a directory to an existing file.
+            // Windows will ignore this and rename anyways.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_action(e, ErrAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
+    match fs::create_dir(new_name) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+    }
+    // Windows can't reliably rename to an empty directory.
+    #[cfg(windows)]
+    drop(fs::remove_dir(new_name));
+    match fs::rename(old_name, new_name) {
+        Ok(()) => true,
+        Err(ref e) => {
+            // Already dropped earlier on windows.
+            #[cfg(not(windows))]
+            drop(fs::remove_dir(new_name));
+            // `NotADirectory` happens on posix when renaming a file to an existing directory.
+            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                false
+            } else {
+                panic_action(e, ErrAction::Rename, old_name);
+            }
+        },
+    }
+}
+
+pub fn write_file(path: &Path, contents: &str) {
+    expect_action(fs::write(path, contents), ErrAction::Write, path);
+}
+
+#[must_use]
+pub fn run_with_output(path: &(impl AsRef<Path> + ?Sized), cmd: &mut Command) -> Vec<u8> {
+    fn f(path: &Path, cmd: &mut Command) -> Vec<u8> {
+        let output = expect_action(
+            cmd.stdin(Stdio::null())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .output(),
+            ErrAction::Run,
+            path,
+        );
+        expect_action(output.status.exit_ok(), ErrAction::Run, path);
+        output.stdout
+    }
+    f(path.as_ref(), cmd)
+}
+
+/// Splits an argument list across multiple `Command` invocations.
+///
+/// The argument list will be split into a number of batches based on
+/// `thread::available_parallelism`, with `min_batch_size` setting a lower bound on the size of each
+/// batch.
+///
+/// If the size of the arguments would exceed the system limit additional batches will be created.
+pub fn split_args_for_threads(
+    min_batch_size: usize,
+    make_cmd: impl FnMut() -> Command,
+    args: impl ExactSizeIterator<Item: AsRef<OsStr>>,
+) -> impl Iterator<Item = Command> {
+    struct Iter<F, I> {
+        make_cmd: F,
+        args: I,
+        min_batch_size: usize,
+        batch_size: usize,
+        thread_count: usize,
+    }
+    impl<F, I> Iterator for Iter<F, I>
+    where
+        F: FnMut() -> Command,
+        I: ExactSizeIterator<Item: AsRef<OsStr>>,
+    {
+        type Item = Command;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.thread_count > 1 {
+                self.thread_count -= 1;
+            }
+            let mut cmd = (self.make_cmd)();
+            let mut cmd_len = 0usize;
+            for arg in self.args.by_ref().take(self.batch_size) {
+                cmd.arg(arg.as_ref());
+                // `+ 8` to account for the `argv` pointer on unix.
+                // Windows is complicated since the arguments are first converted to UTF-16ish,
+                // but this needs to account for the space between arguments and whatever additional
+                // is needed to escape within an argument.
+                cmd_len += arg.as_ref().len() + 8;
+                cmd_len += 8;
+
+                // Windows has a command length limit of 32767. For unix systems this is more
+                // complicated since the limit includes environment variables and room needs to be
+                // left to edit them once the program starts, but the total size comes from
+                // `getconf ARG_MAX`.
+                //
+                // For simplicity we use 30000 here under a few assumptions.
+                // * Individual arguments aren't super long (the final argument is still added)
+                // * `ARG_MAX` is set to a reasonable amount. Basically every system will be configured way above
+                //   what windows supports, but POSIX only requires `4096`.
+                if cmd_len > 30000 {
+                    self.batch_size = self.args.len().div_ceil(self.thread_count).max(self.min_batch_size);
+                    break;
+                }
+            }
+            (cmd_len != 0).then_some(cmd)
+        }
+    }
+    let thread_count = thread::available_parallelism().map_or(1, NonZero::get);
+    let batch_size = args.len().div_ceil(thread_count).max(min_batch_size);
+    Iter {
+        make_cmd,
+        args,
+        min_batch_size,
+        batch_size,
+        thread_count,
+    }
+}
+
+#[expect(clippy::must_use_candidate)]
+pub fn delete_file_if_exists(path: &Path) -> bool {
+    match fs::remove_file(path) {
+        Ok(()) => true,
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
+}
+
+pub fn delete_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {},
+        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+    }
+}
+
+/// Walks all items excluding top-level dot files/directories and any target directories.
+pub fn walk_dir_no_dot_or_target() -> impl Iterator<Item = ::walkdir::Result<::walkdir::DirEntry>> {
+    WalkDir::new(".").into_iter().filter_entry(|e| {
+        e.path()
+            .file_name()
+            .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
+    })
 }

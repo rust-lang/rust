@@ -14,6 +14,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "compiler/rustc_codegen_gcc",
         "src/llvm-project",
         "library/backtrace",
+        "library/compiler-builtins",
         "library/portable-simd",
         "library/stdarch",
         "src/tools/cargo",
@@ -65,7 +66,7 @@ pub fn walk_many(
             Ok(s) => s,
             Err(_) => return, // skip this file
         };
-        f(&entry, &contents_str);
+        f(entry, contents_str);
     });
 }
 
@@ -82,7 +83,7 @@ pub(crate) fn walk_no_read(
         !skip(e.path(), e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
     });
     for entry in walker.build().flatten() {
-        if entry.file_type().map_or(true, |kind| kind.is_dir() || kind.is_symlink()) {
+        if entry.file_type().is_none_or(|kind| kind.is_dir() || kind.is_symlink()) {
             continue;
         }
         f(&entry);

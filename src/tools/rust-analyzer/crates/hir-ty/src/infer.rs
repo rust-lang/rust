@@ -35,11 +35,12 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ImplId, ItemContainerId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    ImplId, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId,
+    VariantId,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::{LangItem, LangItemTarget, lang_item},
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     signatures::{ConstSignature, StaticSignature},
@@ -135,6 +136,10 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
     Arc::new(ctx.resolve_all())
 }
 
+pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<InferenceResult> {
+    Arc::new(InferenceResult { has_errors: true, ..Default::default() })
+}
+
 /// Fully normalize all the types found within `ty` in context of `owner` body definition.
 ///
 /// This is appropriate to use only after type-check: it assumes
@@ -203,7 +208,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField {
         field: ExprOrPatId,
-        private: bool,
+        private: Option<LocalFieldId>,
         variant: VariantId,
     },
     PrivateField {
@@ -455,19 +460,17 @@ pub struct InferenceResult {
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
-    pub tuple_field_access_types: FxHashMap<TupleId, Substitution>,
+    tuple_field_access_types: FxHashMap<TupleId, Substitution>,
     /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
-    pub diagnostics: Vec<InferenceDiagnostic>,
-    pub type_of_expr: ArenaMap<ExprId, Ty>,
+    diagnostics: Vec<InferenceDiagnostic>,
+    pub(crate) type_of_expr: ArenaMap<ExprId, Ty>,
     /// For each pattern record the type it resolves to.
     ///
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
-    pub type_of_pat: ArenaMap<PatId, Ty>,
-    pub type_of_binding: ArenaMap<BindingId, Ty>,
-    pub type_of_rpit: ArenaMap<ImplTraitIdx, Ty>,
-    /// Type of the result of `.into_iter()` on the for. `ExprId` is the one of the whole for loop.
-    pub type_of_for_iterator: FxHashMap<ExprId, Ty>,
+    pub(crate) type_of_pat: ArenaMap<PatId, Ty>,
+    pub(crate) type_of_binding: ArenaMap<BindingId, Ty>,
+    pub(crate) type_of_rpit: ArenaMap<ImplTraitIdx, Ty>,
     type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
@@ -478,7 +481,7 @@ pub struct InferenceResult {
     // FIXME: Move this into `InferenceContext`
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
+    pub(crate) pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
     /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
     ///
     /// This one is tied to the `PatId` instead of `BindingId`, because in some rare cases, a binding in an
@@ -492,12 +495,12 @@ pub struct InferenceResult {
     /// }
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
-    pub binding_modes: ArenaMap<PatId, BindingMode>,
-    pub expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
+    pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
+    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
-    pub coercion_casts: FxHashSet<ExprId>,
+    pub(crate) coercion_casts: FxHashSet<ExprId>,
 }
 
 impl InferenceResult {
@@ -558,6 +561,55 @@ impl InferenceResult {
             ExprOrPatId::PatId(id) => self.type_of_pat.get(id),
         }
     }
+    pub fn type_of_expr_with_adjust(&self, id: ExprId) -> Option<&Ty> {
+        match self.expr_adjustments.get(&id).and_then(|adjustments| {
+            adjustments
+                .iter()
+                .filter(|adj| {
+                    // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
+                    !matches!(
+                        adj,
+                        Adjustment {
+                            kind: Adjust::NeverToAny,
+                            target,
+                        } if target.is_never()
+                    )
+                })
+                .next_back()
+        }) {
+            Some(adjustment) => Some(&adjustment.target),
+            None => self.type_of_expr.get(id),
+        }
+    }
+    pub fn type_of_pat_with_adjust(&self, id: PatId) -> Option<&Ty> {
+        match self.pat_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
+            adjusted @ Some(_) => adjusted,
+            None => self.type_of_pat.get(id),
+        }
+    }
+    pub fn is_erroneous(&self) -> bool {
+        self.has_errors && self.type_of_expr.iter().count() == 0
+    }
+
+    pub fn diagnostics(&self) -> &[InferenceDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn tuple_field_access_type(&self, id: TupleId) -> &Substitution {
+        &self.tuple_field_access_types[&id]
+    }
+
+    pub fn pat_adjustment(&self, id: PatId) -> Option<&[Ty]> {
+        self.pat_adjustments.get(&id).map(|it| &**it)
+    }
+
+    pub fn expr_adjustment(&self, id: ExprId) -> Option<&[Adjustment]> {
+        self.expr_adjustments.get(&id).map(|it| &**it)
+    }
+
+    pub fn binding_mode(&self, id: PatId) -> Option<BindingMode> {
+        self.binding_modes.get(id).copied()
+    }
 }
 
 impl Index<ExprId> for InferenceResult {
@@ -594,16 +646,16 @@ impl Index<BindingId> for InferenceResult {
 
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
-pub(crate) struct InferenceContext<'a> {
-    pub(crate) db: &'a dyn HirDatabase,
+pub(crate) struct InferenceContext<'db> {
+    pub(crate) db: &'db dyn HirDatabase,
     pub(crate) owner: DefWithBodyId,
-    pub(crate) body: &'a Body,
+    pub(crate) body: &'db Body,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
-    pub(crate) resolver: Resolver,
+    pub(crate) resolver: Resolver<'db>,
     generic_def: GenericDefId,
     generics: OnceCell<Generics>,
-    table: unify::InferenceTable<'a>,
+    table: unify::InferenceTable<'db>,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
@@ -695,12 +747,12 @@ enum ImplTraitReplacingMode {
     TypeAlias,
 }
 
-impl<'a> InferenceContext<'a> {
+impl<'db> InferenceContext<'db> {
     fn new(
-        db: &'a dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         owner: DefWithBodyId,
-        body: &'a Body,
-        resolver: Resolver,
+        body: &'db Body,
+        resolver: Resolver<'db>,
     ) -> Self {
         let trait_env = db.trait_environment_for_body(owner);
         InferenceContext {
@@ -764,7 +816,6 @@ impl<'a> InferenceContext<'a> {
             type_of_pat,
             type_of_binding,
             type_of_rpit,
-            type_of_for_iterator,
             type_mismatches,
             has_errors,
             standard_types: _,
@@ -824,11 +875,6 @@ impl<'a> InferenceContext<'a> {
             *has_errors = *has_errors || ty.contains_unknown();
         }
         type_of_rpit.shrink_to_fit();
-        for ty in type_of_for_iterator.values_mut() {
-            *ty = table.resolve_completely(ty.clone());
-            *has_errors = *has_errors || ty.contains_unknown();
-        }
-        type_of_for_iterator.shrink_to_fit();
 
         *has_errors |= !type_mismatches.is_empty();
 
@@ -856,12 +902,12 @@ impl<'a> InferenceContext<'a> {
                         return false;
                     }
 
-                    if let UnresolvedMethodCall { field_with_same_name, .. } = diagnostic {
-                        if let Some(ty) = field_with_same_name {
-                            *ty = table.resolve_completely(ty.clone());
-                            if ty.contains_unknown() {
-                                *field_with_same_name = None;
-                            }
+                    if let UnresolvedMethodCall { field_with_same_name, .. } = diagnostic
+                        && let Some(ty) = field_with_same_name
+                    {
+                        *ty = table.resolve_completely(ty.clone());
+                        if ty.contains_unknown() {
+                            *field_with_same_name = None;
                         }
                     }
                 }
@@ -964,12 +1010,12 @@ impl<'a> InferenceContext<'a> {
             param_tys.push(va_list_ty);
         }
         let mut param_tys = param_tys.into_iter().chain(iter::repeat(self.table.new_type_var()));
-        if let Some(self_param) = self.body.self_param {
-            if let Some(ty) = param_tys.next() {
-                let ty = self.insert_type_vars(ty);
-                let ty = self.normalize_associated_types_in(ty);
-                self.write_binding_ty(self_param, ty);
-            }
+        if let Some(self_param) = self.body.self_param
+            && let Some(ty) = param_tys.next()
+        {
+            let ty = self.insert_type_vars(ty);
+            let ty = self.normalize_associated_types_in(ty);
+            self.write_binding_ty(self_param, ty);
         }
         let mut tait_candidates = FxHashSet::default();
         for (ty, pat) in param_tys.zip(&*self.body.params) {
@@ -1153,20 +1199,19 @@ impl<'a> InferenceContext<'a> {
             ) -> std::ops::ControlFlow<Self::BreakTy> {
                 let ty = self.table.resolve_ty_shallow(ty);
 
-                if let TyKind::OpaqueType(id, _) = ty.kind(Interner) {
-                    if let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
+                if let TyKind::OpaqueType(id, _) = ty.kind(Interner)
+                    && let ImplTraitId::TypeAliasImplTrait(alias_id, _) =
                         self.db.lookup_intern_impl_trait_id((*id).into())
-                    {
-                        let loc = self.db.lookup_intern_type_alias(alias_id);
-                        match loc.container {
-                            ItemContainerId::ImplId(impl_id) => {
-                                self.assocs.insert(*id, (impl_id, ty.clone()));
-                            }
-                            ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
-                                self.non_assocs.insert(*id, ty.clone());
-                            }
-                            _ => {}
+                {
+                    let loc = self.db.lookup_intern_type_alias(alias_id);
+                    match loc.container {
+                        ItemContainerId::ImplId(impl_id) => {
+                            self.assocs.insert(*id, (impl_id, ty.clone()));
                         }
+                        ItemContainerId::ModuleId(..) | ItemContainerId::ExternBlockId(..) => {
+                            self.non_assocs.insert(*id, ty.clone());
+                        }
+                        _ => {}
                     }
                 }
 
@@ -1665,7 +1710,7 @@ impl<'a> InferenceContext<'a> {
                     // If we can resolve to an enum variant, it takes priority over associated type
                     // of the same name.
                     if let Some((AdtId::EnumId(id), _)) = ty.as_adt() {
-                        let enum_data = self.db.enum_variants(id);
+                        let enum_data = id.enum_variants(self.db);
                         if let Some(variant) = enum_data.variant(current_segment.name) {
                             return if remaining_segments.len() == 1 {
                                 (ty, Some(variant.into()))
@@ -1784,7 +1829,7 @@ impl<'a> InferenceContext<'a> {
                 let segment = path.segments().last().unwrap();
                 // this could be an enum variant or associated type
                 if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
-                    let enum_data = self.db.enum_variants(enum_id);
+                    let enum_data = enum_id.enum_variants(self.db);
                     if let Some(variant) = enum_data.variant(segment) {
                         return (ty, Some(variant.into()));
                     }
@@ -1801,11 +1846,11 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
         let krate = self.resolver.krate();
-        self.db.lang_item(krate, item)
+        lang_item(self.db, krate, item)
     }
 
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
-        self.db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))
+        trait_.trait_items(self.db).associated_type_by_name(&Name::new_symbol_root(sym::Output))
     }
 
     fn resolve_lang_trait(&self, lang: LangItem) -> Option<TraitId> {

@@ -1,0 +1,53 @@
+error[E0277]: `NonDisplay` doesn't implement `std::fmt::Display`
+  --> $DIR/non-source-literals.rs:9:40
+   |
+LL |     let _ = format!(concat!("{", "}"), NonDisplay);
+   |                                        ^^^^^^^^^^ `NonDisplay` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `NonDisplay` doesn't implement `std::fmt::Display`
+  --> $DIR/non-source-literals.rs:10:45
+   |
+LL |     let _ = format!(concat!("{", "0", "}"), NonDisplay);
+   |                                             ^^^^^^^^^^ `NonDisplay` cannot be formatted with the default formatter
+   |
+   = help: the trait `std::fmt::Display` is not implemented for `NonDisplay`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `NonDebug` doesn't implement `Debug`
+  --> $DIR/non-source-literals.rs:11:42
+   |
+LL |     let _ = format!(concat!("{:", "?}"), NonDebug);
+   |                                          ^^^^^^^^ `NonDebug` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `NonDebug`
+   = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `NonDebug` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | pub struct NonDebug;
+   |
+
+error[E0277]: `NonDebug` doesn't implement `Debug`
+  --> $DIR/non-source-literals.rs:12:47
+   |
+LL |     let _ = format!(concat!("{", "0", ":?}"), NonDebug);
+   |                                               ^^^^^^^^ `NonDebug` cannot be formatted using `{:?}` because it doesn't implement `Debug`
+   |
+   = help: the trait `Debug` is not implemented for `NonDebug`
+   = note: add `#[derive(Debug)]` to `NonDebug` or manually `impl Debug for NonDebug`
+   = note: this error originates in the macro `$crate::__export::format_args` which comes from the expansion of the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `NonDebug` with `#[derive(Debug)]`
+   |
+LL + #[derive(Debug)]
+LL | pub struct NonDebug;
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

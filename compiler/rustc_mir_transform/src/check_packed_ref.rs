@@ -40,7 +40,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
         if context.is_borrow() && util::is_disaligned(self.tcx, self.body, self.typing_env, *place)
         {
             let def_id = self.body.source.instance.def_id();
-            if let Some(impl_def_id) = self.tcx.impl_of_method(def_id)
+            if let Some(impl_def_id) = self.tcx.trait_impl_of_assoc(def_id)
                 && self.tcx.is_builtin_derived(impl_def_id)
             {
                 // If we ever reach here it means that the generated derive

@@ -199,5 +199,26 @@ LL ~     foo(1);
 LL +     Some(())
    |
 
-error: aborting due to 10 previous errors
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:171:5
+   |
+LL |     fn_take_unit(mac!(def));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:173:5
+   |
+LL |     fn_take_unit(mac!(func Default::default));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: passing a unit value to a function
+  --> tests/ui/unit_arg.rs:175:5
+   |
+LL |     fn_take_unit(mac!(nonempty_block Default::default()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+error: aborting due to 13 previous errors
 

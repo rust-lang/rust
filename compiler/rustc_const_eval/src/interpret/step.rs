@@ -5,18 +5,19 @@
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_index::IndexSlice;
-use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_target::callconv::FnAbi;
+use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
     Projectable, Scalar, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::util;
+use crate::interpret::EnteredTraceSpan;
+use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
     callee: FnVal<'tcx, M::ExtraFnVal>,
@@ -75,7 +76,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ///
     /// This does NOT move the statement counter forward, the caller has to do that!
     pub fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
-        info!("{:?}", stmt);
+        let _trace = enter_trace_span!(
+            M,
+            step::eval_statement,
+            stmt = ?stmt.kind,
+            span = ?stmt.source_info.span,
+            tracing_separate_thread = Empty,
+        )
+        .or_if_tracing_disabled(|| info!(stmt = ?stmt.kind));
 
         use rustc_middle::mir::StatementKind::*;
 
@@ -333,7 +341,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         for (field_index, operand) in operands.iter_enumerated() {
             let field_index = active_field_index.unwrap_or(field_index);
-            let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
+            let field_dest = self.project_field(&variant_dest, field_index)?;
             let op = self.eval_operand(operand, Some(field_dest.layout))?;
             self.copy_op(&op, &field_dest)?;
         }
@@ -457,7 +465,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
-        info!("{:?}", terminator.kind);
+        let _trace = enter_trace_span!(
+            M,
+            step::eval_terminator,
+            terminator = ?terminator.kind,
+            span = ?terminator.source_info.span,
+            tracing_separate_thread = Empty,
+        )
+        .or_if_tracing_disabled(|| info!(terminator = ?terminator.kind));
 
         use rustc_middle::mir::TerminatorKind::*;
         match terminator.kind {
@@ -506,7 +521,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args)?;
 
-                let destination = self.force_allocation(&self.eval_place(destination)?)?;
+                let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
                     (fn_sig.abi, fn_abi),
@@ -545,7 +560,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     "Async Drop must be expanded or reset to sync in runtime MIR"
                 );
                 let place = self.eval_place(place)?;
-                let instance = Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+                let instance = {
+                    let _trace =
+                        enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+                    Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+                };
                 if let ty::InstanceKind::DropGlue(_, None) = instance.def {
                     // This is the branch we enter if and only if the dropped type has no drop glue
                     // whatsoever. This can happen as a result of monomorphizing a drop of a

@@ -13,6 +13,7 @@
 // containers would use a non-root user, but this leads to issues with
 // `mkfs.ext4 -d`, as well as mounting a loop device for the rootfs.
 //@ ignore-windows - the `set_readonly` functions doesn't work on folders.
+//@ needs-target-std
 
 use run_make_support::{path, rfs, rustdoc};
 

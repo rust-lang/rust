@@ -99,7 +99,7 @@ impl Qualif for HasMutInterior {
         // requires borrowck, which in turn will invoke mir_const_qualifs again, causing a cycle error.
         // Instead we invoke an obligation context manually, and provide the opaque type inference settings
         // that allow the trait solver to just error out instead of cycling.
-        let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, Some(cx.body.span));
+        let freeze_def_id = cx.tcx.require_lang_item(LangItem::Freeze, cx.body.span);
         // FIXME(#132279): Once we've got a typing mode which reveals opaque types using the HIR
         // typeck results without causing query cycles, we should use this here instead of defining
         // opaque types.
@@ -170,17 +170,17 @@ impl Qualif for NeedsNonConstDrop {
 
     #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        // If this doesn't need drop at all, then don't select `[const] Destruct`.
         if !ty.needs_drop(cx.tcx, cx.typing_env) {
             return false;
         }
 
-        // We check that the type is `~const Destruct` since that will verify that
-        // the type is both `~const Drop` (if a drop impl exists for the adt), *and*
-        // that the components of this type are also `~const Destruct`. This
+        // We check that the type is `[const] Destruct` since that will verify that
+        // the type is both `[const] Drop` (if a drop impl exists for the adt), *and*
+        // that the components of this type are also `[const] Destruct`. This
         // amounts to verifying that there are no values in this ADT that may have
         // a non-const drop.
-        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, cx.body.span);
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
@@ -203,9 +203,9 @@ impl Qualif for NeedsNonConstDrop {
     fn is_structural_in_adt_value<'tcx>(cx: &ConstCx<'_, 'tcx>, adt: AdtDef<'tcx>) -> bool {
         // As soon as an ADT has a destructor, then the drop becomes non-structural
         // in its value since:
-        // 1. The destructor may have `~const` bounds which are not present on the type.
+        // 1. The destructor may have `[const]` bounds which are not present on the type.
         //   Someone needs to check that those are satisfied.
-        //   While this could be instead satisfied by checking that the `~const Drop`
+        //   While this could be instead satisfied by checking that the `[const] Drop`
         //   impl holds (i.e. replicating part of the `in_any_value_of_ty` logic above),
         //   even in this case, we have another problem, which is,
         // 2. The destructor may *modify* the operand being dropped, so even if we
@@ -369,7 +369,7 @@ where
         assert!(promoted.is_none() || Q::ALLOW_PROMOTED);
 
         // Don't peek inside trait associated constants.
-        if promoted.is_none() && cx.tcx.trait_of_item(def).is_none() {
+        if promoted.is_none() && cx.tcx.trait_of_assoc(def).is_none() {
             let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def);
 
             if !Q::in_qualifs(&qualifs) {

@@ -17,3 +17,11 @@
       }
   }
   
+  ALLOC0 (size: 5, align: 1) {
+      57 6f 72 6c 64                                  │ World
+  }
+  
+  ALLOC1 (size: 5, align: 1) {
+      48 65 6c 6c 6f                                  │ Hello
+  }
+  

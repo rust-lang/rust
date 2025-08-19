@@ -1,11 +1,11 @@
 error[E0275]: overflow evaluating the requirement `W<_>: Trait`
-  --> $DIR/inductive-fixpoint-hang.rs:31:19
+  --> $DIR/inductive-fixpoint-hang.rs:33:19
    |
 LL |     impls_trait::<W<_>>();
    |                   ^^^^
    |
 note: required by a bound in `impls_trait`
-  --> $DIR/inductive-fixpoint-hang.rs:28:19
+  --> $DIR/inductive-fixpoint-hang.rs:30:19
    |
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`

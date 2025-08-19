@@ -1,7 +1,7 @@
 //! Check that a body annotated with `#[rustc_force_inline]` will not fail to inline based on its
 //! definition alone (irrespective of any specific caller).
 
-use rustc_attr_parsing::InlineAttr;
+use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::{Body, TerminatorKind};
@@ -43,12 +43,6 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     if tcx.has_attr(def_id, sym::rustc_no_mir_inline) {
         return Err("#[rustc_no_mir_inline]");
-    }
-
-    // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
-    // MIR correctly when Modified Condition/Decision Coverage is enabled.
-    if tcx.sess.instrument_coverage_mcdc() {
-        return Err("incompatible with MC/DC coverage");
     }
 
     let ty = tcx.type_of(def_id);

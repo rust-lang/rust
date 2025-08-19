@@ -1,5 +1,5 @@
 error[E0670]: `async fn` is not permitted in Rust 2015
-  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:8:16
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:10:16
    |
 LL |     pub(crate) async fn new(
    |                ^^^^^ to use `async fn`, switch to Rust 2018 or later
@@ -8,7 +8,7 @@ LL |     pub(crate) async fn new(
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0412]: cannot find type `Duration` in this scope
-  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:10:19
+  --> $DIR/drop-location-span-error-rust-2021-incompatible-closure-captures-96258.rs:12:19
    |
 LL |         interval: Duration,
    |                   ^^^^^^^^ not found in this scope

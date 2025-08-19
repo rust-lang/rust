@@ -1,5 +1,6 @@
-//~ ERROR overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:13:41: 13:44}: FnMut(&'a _)`
+//~ ERROR overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:14:41: 14:44}: FnMut(&'a _)`
 //@ build-fail
+//@ compile-flags: -Zwrite-long-types-to-disk=yes
 
 #![recursion_limit = "32"]
 

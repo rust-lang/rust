@@ -34,7 +34,7 @@ fn output_file_suffix(testfile: &Path, bit_width: u32, panic_strategy: PanicStra
 
     let mut suffix = String::new();
     if each_bit_width {
-        suffix.push_str(&format!(".{}bit", bit_width));
+        suffix.push_str(&format!(".{bit_width}bit"));
     }
     if each_panic_strategy {
         match panic_strategy {
@@ -51,7 +51,7 @@ pub fn files_for_miropt_test(
     panic_strategy: PanicStrategy,
 ) -> MiroptTest {
     let mut out = Vec::new();
-    let test_file_contents = fs::read_to_string(&testfile).unwrap();
+    let test_file_contents = fs::read_to_string(testfile).unwrap();
 
     let test_dir = testfile.parent().unwrap();
     let test_crate = testfile.file_stem().unwrap().to_str().unwrap().replace('-', "_");
@@ -76,10 +76,10 @@ pub fn files_for_miropt_test(
 
             if test_name.ends_with(".diff") {
                 let trimmed = test_name.trim_end_matches(".diff");
-                passes.push(trimmed.split('.').last().unwrap().to_owned());
-                let test_against = format!("{}.after.mir", trimmed);
-                from_file = format!("{}.before.mir", trimmed);
-                expected_file = format!("{}{}.diff", trimmed, suffix);
+                passes.push(trimmed.split('.').next_back().unwrap().to_owned());
+                let test_against = format!("{trimmed}.after.mir");
+                from_file = format!("{trimmed}.before.mir");
+                expected_file = format!("{trimmed}{suffix}.diff");
                 assert!(test_names.next().is_none(), "two mir pass names specified for MIR diff");
                 to_file = Some(test_against);
             } else if let Some(first_pass) = test_names.next() {
@@ -92,10 +92,9 @@ pub fn files_for_miropt_test(
                 }
                 assert!(test_names.next().is_none(), "three mir pass names specified for MIR diff");
 
-                expected_file =
-                    format!("{}{}.{}-{}.diff", test_name, suffix, first_pass, second_pass);
-                let second_file = format!("{}.{}.mir", test_name, second_pass);
-                from_file = format!("{}.{}.mir", test_name, first_pass);
+                expected_file = format!("{test_name}{suffix}.{first_pass}-{second_pass}.diff");
+                let second_file = format!("{test_name}.{second_pass}.mir");
+                from_file = format!("{test_name}.{first_pass}.mir");
                 to_file = Some(second_file);
             } else {
                 // Allow-list for file extensions that can be produced by MIR dumps.
@@ -112,7 +111,7 @@ pub fn files_for_miropt_test(
                     )
                 }
 
-                expected_file = format!("{}{}.{}", test_name_wo_ext, suffix, test_name_ext);
+                expected_file = format!("{test_name_wo_ext}{suffix}.{test_name_ext}");
                 from_file = test_name.to_string();
                 assert!(test_names.next().is_none(), "two mir pass names specified for MIR dump");
                 to_file = None;
@@ -123,7 +122,7 @@ pub fn files_for_miropt_test(
                 );
             };
             if !expected_file.starts_with(&test_crate) {
-                expected_file = format!("{}.{}", test_crate, expected_file);
+                expected_file = format!("{test_crate}.{expected_file}");
             }
             let expected_file = test_dir.join(expected_file);
 

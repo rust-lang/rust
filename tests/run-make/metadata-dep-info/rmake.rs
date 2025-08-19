@@ -1,3 +1,5 @@
+//@ needs-target-std
+//
 // Emitting dep-info alongside metadata would present subtle discrepancies
 // in the output file, such as the filename transforming underscores_ into hyphens-.
 // After the fix in #114750, this test checks that the emitted files are identical

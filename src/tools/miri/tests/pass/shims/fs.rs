@@ -6,8 +6,7 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{
-    File, OpenOptions, canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file,
-    rename,
+    self, File, OpenOptions, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename,
 };
 use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -17,22 +16,28 @@ mod utils;
 
 fn main() {
     test_path_conversion();
+    test_file();
+    // Partial reads/writes are apparently not a thing on Windows.
+    if cfg!(not(windows)) {
+        test_file_partial_reads_writes();
+    }
     test_file_create_new();
+    test_metadata();
+    test_seek();
+    test_errors();
+    test_from_raw_os_error();
+    test_file_clone();
     // Windows file handling is very incomplete.
     if cfg!(not(windows)) {
-        test_file();
-        test_seek();
-        test_file_clone();
-        test_metadata();
         test_file_set_len();
         test_file_sync();
-        test_errors();
         test_rename();
         test_directory();
         test_canonicalize();
-        test_from_raw_os_error();
         #[cfg(unix)]
         test_pread_pwrite();
+        #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+        test_flock();
     }
 }
 
@@ -52,7 +57,7 @@ fn test_file() {
     file.write(&mut []).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 0);
 
-    file.write(bytes).unwrap();
+    file.write_all(bytes).unwrap();
     assert_eq!(file.metadata().unwrap().len(), bytes.len() as u64);
     // Test opening, reading and closing a file.
     let mut file = File::open(&path).unwrap();
@@ -65,7 +70,33 @@ fn test_file() {
 
     assert!(!file.is_terminal());
 
+    // Writing to a file opened for reading should error (and not stop interpretation). std does not
+    // categorize the error so we don't check for details.
+    file.write(&[]).unwrap_err();
+
     // Removing file should succeed.
+    remove_file(&path).unwrap();
+}
+
+fn test_file_partial_reads_writes() {
+    let path = utils::prepare_with_content("miri_test_fs_file.txt", b"abcdefg");
+
+    // Ensure we sometimes do incomplete writes.
+    let got_short_write = (0..16).any(|_| {
+        let _ = remove_file(&path); // FIXME(win, issue #4483): errors if the file already exists
+        let mut file = File::create(&path).unwrap();
+        file.write(&[0; 4]).unwrap() != 4
+    });
+    assert!(got_short_write);
+    // Ensure we sometimes do incomplete reads.
+    let got_short_read = (0..16).any(|_| {
+        let mut file = File::open(&path).unwrap();
+        let mut buf = [0; 4];
+        file.read(&mut buf).unwrap() != 4
+    });
+    assert!(got_short_read);
+
+    // Clean up
     remove_file(&path).unwrap();
 }
 
@@ -240,7 +271,7 @@ fn test_canonicalize() {
     let path = dir_path.join("test_file");
     drop(File::create(&path).unwrap());
 
-    let p = canonicalize(format!("{}/./test_file", dir_path.to_string_lossy())).unwrap();
+    let p = fs::canonicalize(format!("{}/./test_file", dir_path.to_string_lossy())).unwrap();
     assert_eq!(p.to_string_lossy().find("/./"), None);
 
     remove_dir_all(&dir_path).unwrap();
@@ -350,4 +381,29 @@ fn test_pread_pwrite() {
     // Ensure that cursor position is not changed
     f.read_exact(&mut buf1).unwrap();
     assert_eq!(&buf1, b"  m");
+}
+
+// This function does seem to exist on Illumos but std does not expose it there.
+#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+fn test_flock() {
+    let bytes = b"Hello, World!\n";
+    let path = utils::prepare_with_content("miri_test_fs_flock.txt", bytes);
+    let file1 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+    let file2 = OpenOptions::new().read(true).write(true).open(&path).unwrap();
+
+    // Test that we can apply many shared locks
+    file1.lock_shared().unwrap();
+    file2.lock_shared().unwrap();
+    // Test that shared lock prevents exclusive lock
+    assert!(matches!(file1.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
+    // Unlock shared lock
+    file1.unlock().unwrap();
+    file2.unlock().unwrap();
+    // Take exclusive lock
+    file1.lock().unwrap();
+    // Test that shared lock prevents exclusive and shared locks
+    assert!(matches!(file2.try_lock().unwrap_err(), fs::TryLockError::WouldBlock));
+    assert!(matches!(file2.try_lock_shared().unwrap_err(), fs::TryLockError::WouldBlock));
+    // Unlock exclusive lock
+    file1.unlock().unwrap();
 }

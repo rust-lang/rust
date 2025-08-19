@@ -55,7 +55,14 @@ pub struct NestedNonZero {
 
 impl Default for NestedNonZero {
     fn default() -> Self {
-        NestedNonZero { pre: 0, val: unsafe { NonZero::new_unchecked(1) }, post: 0 }
+        // Ideally we'd call NonZero::new_unchecked, but this test is supposed
+        // to be target-independent and NonZero::new_unchecked is #[track_caller]
+        // (see #129658) so mentioning that function pulls in std::panic::Location
+        // which contains a &str, whose layout is target-dependent.
+        const ONE: NonZero<u32> = const {
+            unsafe { std::mem::transmute(1u32) }
+        };
+        NestedNonZero { pre: 0, val: ONE, post: 0 }
     }
 }
 

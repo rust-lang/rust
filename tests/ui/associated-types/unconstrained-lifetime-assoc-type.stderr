@@ -1,0 +1,9 @@
+error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained-lifetime-assoc-type.rs:13:6
+   |
+LL | impl<'a> Fun for Holder {
+   |      ^^ unconstrained lifetime parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0207`.

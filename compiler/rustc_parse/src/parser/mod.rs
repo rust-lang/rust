@@ -11,16 +11,20 @@ mod stmt;
 pub mod token_type;
 mod ty;
 
+// Parsers for non-functionlike builtin macros are defined in rustc_parse so they can be used by
+// both rustc_builtin_macros and rustfmt.
+pub mod asm;
+pub mod cfg_select;
+
 use std::assert_matches::debug_assert_matches;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
-pub(crate) use item::FnParseMode;
+pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use path::PathStyle;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
@@ -684,7 +688,7 @@ impl<'a> Parser<'a> {
 
     /// Is the given keyword `kw` followed by a non-reserved identifier?
     fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
-        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+        self.token.is_keyword(kw) && self.look_ahead(1, |t| t.is_non_reserved_ident())
     }
 
     #[inline]
@@ -1281,7 +1285,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses inline const expressions.
-    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
+    fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, Box<Expr>> {
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
@@ -1292,8 +1296,10 @@ impl<'a> Parser<'a> {
         let kind = if pat {
             let guar = self
                 .dcx()
-                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
-                .with_help("use a named `const`-item or an `if`-guard instead")
+                .struct_span_err(blk_span, "const blocks cannot be used as patterns")
+                .with_help(
+                    "use a named `const`-item or an `if`-guard (`x if x == const { ... }`) instead",
+                )
                 .emit();
             ExprKind::Err(guar)
         } else {
@@ -1336,9 +1342,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_delim_args(&mut self) -> PResult<'a, P<DelimArgs>> {
+    fn parse_delim_args(&mut self) -> PResult<'a, Box<DelimArgs>> {
         if let Some(args) = self.parse_delim_args_inner() {
-            Ok(P(args))
+            Ok(Box::new(args))
         } else {
             self.unexpected_any()
         }
@@ -1463,7 +1469,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `path`
                 self.expect(exp!(CloseParen))?; // `)`
                 let vis = VisibilityKind::Restricted {
-                    path: P(path),
+                    path: Box::new(path),
                     id: ast::DUMMY_NODE_ID,
                     shorthand: false,
                 };
@@ -1480,7 +1486,7 @@ impl<'a> Parser<'a> {
                 let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
                 self.expect(exp!(CloseParen))?; // `)`
                 let vis = VisibilityKind::Restricted {
-                    path: P(path),
+                    path: Box::new(path),
                     id: ast::DUMMY_NODE_ID,
                     shorthand: true,
                 };
@@ -1645,14 +1651,14 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
-    Item(P<ast::Item>),
-    Block(P<ast::Block>),
-    Stmt(P<ast::Stmt>),
-    Pat(P<ast::Pat>, NtPatKind),
-    Expr(P<ast::Expr>, NtExprKind),
-    Literal(P<ast::Expr>),
-    Ty(P<ast::Ty>),
-    Meta(P<ast::AttrItem>),
-    Path(P<ast::Path>),
-    Vis(P<ast::Visibility>),
+    Item(Box<ast::Item>),
+    Block(Box<ast::Block>),
+    Stmt(Box<ast::Stmt>),
+    Pat(Box<ast::Pat>, NtPatKind),
+    Expr(Box<ast::Expr>, NtExprKind),
+    Literal(Box<ast::Expr>),
+    Ty(Box<ast::Ty>),
+    Meta(Box<ast::AttrItem>),
+    Path(Box<ast::Path>),
+    Vis(Box<ast::Visibility>),
 }

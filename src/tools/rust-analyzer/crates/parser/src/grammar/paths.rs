@@ -81,7 +81,7 @@ fn path_for_qualifier(
 }
 
 const EXPR_PATH_SEGMENT_RECOVERY_SET: TokenSet =
-    items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
+    expressions::EXPR_RECOVERY_SET.union(items::ITEM_RECOVERY_SET);
 const TYPE_PATH_SEGMENT_RECOVERY_SET: TokenSet = types::TYPE_RECOVERY_SET;
 
 fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<CompletedMarker> {
@@ -89,19 +89,22 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
     // test qual_paths
     // type X = <A as B>::Output;
     // fn foo() { <usize as Default>::default(); }
-    if first && p.eat(T![<]) {
+    if first && p.at(T![<]) {
+        let m = p.start();
+        p.bump(T![<]);
         // test_err angled_path_without_qual
         // type X = <()>;
         // type Y = <A as B>;
         types::type_(p);
         if p.eat(T![as]) {
             if is_use_path_start(p) {
-                types::path_type(p);
+                types::path_type_bounds(p, true);
             } else {
                 p.error("expected a trait");
             }
         }
         p.expect(T![>]);
+        m.complete(p, TYPE_ANCHOR);
         if !p.at(T![::]) {
             p.error("expected `::`");
         }

@@ -58,16 +58,5 @@ error: importing trait that is only used anonymously
 LL |     use simple_trait::{MyStruct, MyTrait};
    |                                  ^^^^^^^ help: use: `MyTrait as _`
 
-error: importing trait that is only used anonymously
-  --> tests/ui/unused_trait_names.rs:206:27
-   |
-LL |             use std::any::Any;
-   |                           ^^^ help: use: `Any as _`
-...
-LL |     foo!();
-   |     ------ in this macro invocation
-   |
-   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 

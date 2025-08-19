@@ -13,7 +13,6 @@ pub(crate) fn unresolved_ident(
         range.range = in_node_range + range.range.start();
     }
     Diagnostic::new(DiagnosticCode::RustcHardError("E0425"), "no such value in this scope", range)
-        .experimental()
 }
 
 #[cfg(test)]

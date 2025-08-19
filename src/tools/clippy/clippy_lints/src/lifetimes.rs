@@ -13,7 +13,7 @@ use rustc_hir::intravisit::{
     walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
 };
 use rustc_hir::{
-    AmbigArg, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
+    AmbigArg, BodyId, FnDecl, FnPtrTy, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
     Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
     WherePredicateKind, lang_items,
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     ///     x.chars()
     /// }
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.87.0"]
     pub ELIDABLE_LIFETIME_NAMES,
     pedantic,
     "lifetime name that can be replaced with the anonymous lifetime"
@@ -150,7 +150,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind
+        } else if let ItemKind::Impl(impl_) = &item.kind
             && !item.span.from_expansion()
         {
             report_extra_impl_lifetimes(cx, impl_);
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Fn(ref sig, id) = item.kind {
-            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id.def_id).is_none();
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.owner_id).is_none();
             check_fn_inner(
                 cx,
                 sig,
@@ -480,7 +480,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_, AmbigArg>) {
         match ty.kind {
-            TyKind::BareFn(&BareFnTy { decl, .. }) => {
+            TyKind::FnPtr(&FnPtrTy { decl, .. }) => {
                 let mut sub_visitor = RefVisitor::new(self.cx);
                 sub_visitor.visit_fn_decl(decl);
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
@@ -712,11 +712,11 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     let mut checker = LifetimeChecker::<middle_nested_filter::All>::new(cx, impl_.generics);
 
     walk_generics(&mut checker, impl_.generics);
-    if let Some(ref trait_ref) = impl_.of_trait {
-        walk_trait_ref(&mut checker, trait_ref);
+    if let Some(of_trait) = impl_.of_trait {
+        walk_trait_ref(&mut checker, &of_trait.trait_ref);
     }
     walk_unambig_ty(&mut checker, impl_.self_ty);
-    for item in impl_.items {
+    for &item in impl_.items {
         walk_impl_item_ref(&mut checker, item);
     }
 

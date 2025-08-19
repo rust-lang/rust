@@ -38,8 +38,7 @@ impl loader::Handle for NotifyHandle {
     fn spawn(sender: loader::Sender) -> NotifyHandle {
         let actor = NotifyActor::new(sender);
         let (sender, receiver) = unbounded::<Message>();
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("VfsLoader".to_owned())
+        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "VfsLoader")
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
         NotifyHandle { sender, _thread: thread }
@@ -195,52 +194,49 @@ impl NotifyActor {
                     }
                 },
                 Event::NotifyEvent(event) => {
-                    if let Some(event) = log_notify_error(event) {
-                        if let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
+                    if let Some(event) = log_notify_error(event)
+                        && let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
                             event.kind
-                        {
-                            let files = event
-                                .paths
-                                .into_iter()
-                                .filter_map(|path| {
-                                    Some(
-                                        AbsPathBuf::try_from(
-                                            Utf8PathBuf::from_path_buf(path).ok()?,
-                                        )
+                    {
+                        let files = event
+                            .paths
+                            .into_iter()
+                            .filter_map(|path| {
+                                Some(
+                                    AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).ok()?)
                                         .expect("path is absolute"),
-                                    )
-                                })
-                                .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
-                                    let meta = fs::metadata(&path).ok()?;
-                                    if meta.file_type().is_dir()
-                                        && self
-                                            .watched_dir_entries
-                                            .iter()
-                                            .any(|dir| dir.contains_dir(&path))
-                                    {
-                                        self.watch(path.as_ref());
-                                        return None;
-                                    }
+                                )
+                            })
+                            .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
+                                let meta = fs::metadata(&path).ok()?;
+                                if meta.file_type().is_dir()
+                                    && self
+                                        .watched_dir_entries
+                                        .iter()
+                                        .any(|dir| dir.contains_dir(&path))
+                                {
+                                    self.watch(path.as_ref());
+                                    return None;
+                                }
 
-                                    if !meta.file_type().is_file() {
-                                        return None;
-                                    }
+                                if !meta.file_type().is_file() {
+                                    return None;
+                                }
 
-                                    if !(self.watched_file_entries.contains(&path)
-                                        || self
-                                            .watched_dir_entries
-                                            .iter()
-                                            .any(|dir| dir.contains_file(&path)))
-                                    {
-                                        return None;
-                                    }
+                                if !(self.watched_file_entries.contains(&path)
+                                    || self
+                                        .watched_dir_entries
+                                        .iter()
+                                        .any(|dir| dir.contains_file(&path)))
+                                {
+                                    return None;
+                                }
 
-                                    let contents = read(&path);
-                                    Some((path, contents))
-                                })
-                                .collect();
-                            self.send(loader::Message::Changed { files });
-                        }
+                                let contents = read(&path);
+                                Some((path, contents))
+                            })
+                            .collect();
+                        self.send(loader::Message::Changed { files });
                     }
                 }
             }

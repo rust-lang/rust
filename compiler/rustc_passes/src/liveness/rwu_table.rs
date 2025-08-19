@@ -44,7 +44,7 @@ impl RWUTable {
     const WORD_RWU_COUNT: usize = Self::WORD_BITS / Self::RWU_BITS;
 
     pub(super) fn new(live_nodes: usize, vars: usize) -> RWUTable {
-        let live_node_words = (vars + Self::WORD_RWU_COUNT - 1) / Self::WORD_RWU_COUNT;
+        let live_node_words = vars.div_ceil(Self::WORD_RWU_COUNT);
         Self { live_nodes, vars, live_node_words, words: vec![0u8; live_node_words * live_nodes] }
     }
 

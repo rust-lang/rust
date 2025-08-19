@@ -4,7 +4,7 @@ warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definiti
 LL | #[diagnostic::on_unimplemented(message = "blah", label = "blah", note = "blah")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(misplaced_diagnostic_attributes)]` on by default
 
 error[E0277]: the trait bound `{integer}: Alias` is not satisfied
   --> $DIR/on_impl_trait.rs:16:9

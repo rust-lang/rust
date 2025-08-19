@@ -1,4 +1,5 @@
-//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+// This tests carefully crafted schedules to ensure they are not considered races.
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::sync::atomic::*;
 use std::thread::{self, spawn};

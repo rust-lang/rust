@@ -3,6 +3,12 @@ error: cannot find attribute `empty_helper` in this scope
    |
 LL | #[empty_helper]
    |   ^^^^^^^^^^^^
+   |
+help: `empty_helper` is an attribute that can be used by the derive macro `Empty`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Empty)]
+LL | struct S;
+   |
 
 error[E0603]: derive macro import `Empty` is private
   --> $DIR/disappearing-resolution.rs:11:8

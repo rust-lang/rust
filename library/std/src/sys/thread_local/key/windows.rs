@@ -81,15 +81,10 @@ impl LazyKey {
             } else {
                 let key = unsafe { c::TlsAlloc() };
                 if key == c::TLS_OUT_OF_INDEXES {
-                    // Wakeup the waiting threads before panicking to avoid deadlock.
-                    unsafe {
-                        c::InitOnceComplete(
-                            self.once.get(),
-                            c::INIT_ONCE_INIT_FAILED,
-                            ptr::null_mut(),
-                        );
-                    }
-                    panic!("out of TLS indexes");
+                    // Since we abort the process, there is no need to wake up
+                    // the waiting threads. If this were a panic, the wakeup
+                    // would need to occur first in order to avoid deadlock.
+                    rtabort!("out of TLS indexes");
                 }
 
                 unsafe {
@@ -112,7 +107,9 @@ impl LazyKey {
             // If there is no destructor to clean up, we can use racy initialization.
 
             let key = unsafe { c::TlsAlloc() };
-            assert_ne!(key, c::TLS_OUT_OF_INDEXES, "out of TLS indexes");
+            if key == c::TLS_OUT_OF_INDEXES {
+                rtabort!("out of TLS indexes");
+            }
 
             match self.key.compare_exchange(0, key + 1, AcqRel, Acquire) {
                 Ok(_) => key,

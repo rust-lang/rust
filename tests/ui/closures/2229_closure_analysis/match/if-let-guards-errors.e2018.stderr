@@ -26,6 +26,15 @@ LL |             E::Number(_) if let E::String(s) = *value => { }
 ...
 LL |     let x = value;
    |             ^^^^^ value used here after move
+   |
+note: if `E` implemented `Clone`, you could clone the value
+  --> $DIR/if-let-guards-errors.rs:32:1
+   |
+LL |             E::Number(_) if let E::String(s) = *value => { }
+   |                                                ------ you could clone this value
+...
+LL | enum E {
+   | ^^^^^^ consider implementing `Clone` for this type
 
 error: aborting due to 2 previous errors
 

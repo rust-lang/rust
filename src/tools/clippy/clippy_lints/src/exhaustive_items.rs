@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{Item, ItemKind, find_attr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -76,7 +76,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
                 "exported enums should not be exhaustive",
                 [].as_slice(),
             ),
-            ItemKind::Struct(_, v, ..) => (
+            ItemKind::Struct(_, _, v) if v.fields().iter().all(|f| f.default.is_none()) => (
                 EXHAUSTIVE_STRUCTS,
                 "exported structs should not be exhaustive",
                 v.fields(),
@@ -85,7 +85,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
         };
         if cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && let attrs = cx.tcx.hir_attrs(item.hir_id())
-            && !attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
+            && !find_attr!(attrs, AttributeKind::NonExhaustive(..))
             && fields.iter().all(|f| cx.tcx.visibility(f.def_id).is_public())
         {
             span_lint_and_then(cx, lint, item.span, msg, |diag| {

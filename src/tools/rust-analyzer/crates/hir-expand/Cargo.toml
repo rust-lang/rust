@@ -10,6 +10,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
+doctest = false
 
 [dependencies]
 cov-mark = "2.0.0"
@@ -21,6 +22,7 @@ smallvec.workspace = true
 triomphe.workspace = true
 query-group.workspace = true
 salsa.workspace = true
+salsa-macros.workspace = true
 
 # local deps
 stdx.workspace = true

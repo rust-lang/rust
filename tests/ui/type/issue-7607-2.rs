@@ -6,7 +6,7 @@ pub mod a {
 }
 
 pub mod b {
-    use a::Foo;
+    use crate::a::Foo;
     impl Foo {
         fn bar(&self) { }
     }

@@ -6,7 +6,7 @@
 
 struct Fail<T>(T);
 impl<T> Fail<T> {
-    const C: () = panic!(); //~ERROR evaluation of `Fail::<i32>::C` failed
+    const C: () = panic!(); //~ERROR evaluation panicked: explicit panic
 }
 
 // This function is not actually called, but it is mentioned in dead code in a function that is

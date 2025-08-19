@@ -1,0 +1,26 @@
+[package]
+name = "rustc_public"
+version = "0.1.0-preview"
+edition = "2024"
+
+[dependencies]
+# tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
+rustc_hir = { path = "../rustc_hir" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_public_bridge = { path = "../rustc_public_bridge" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+scoped-tls = "1.0"
+serde = { version = "1.0.125", features = [ "derive" ] }
+tracing = "0.1"
+# tidy-alphabetical-end
+
+[features]
+# tidy-alphabetical-start
+# Provides access to APIs that expose internals of the rust compiler.
+# APIs enabled by this feature are unstable. They can be removed or modified
+# at any point and they are not included in the crate's semantic versioning.
+rustc_internal = []
+# tidy-alphabetical-end

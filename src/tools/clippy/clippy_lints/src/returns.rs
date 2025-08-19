@@ -5,7 +5,7 @@ use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     binary_expr_needs_parentheses, fn_def_id, is_from_proc_macro, is_inside_let_else, is_res_lang_ctor,
     leaks_droppable_temporary_with_limited_lifetime, path_res, path_to_local_id, span_contains_cfg,
-    span_find_starting_semi,
+    span_find_starting_semi, sym,
 };
 use core::ops::ControlFlow;
 use rustc_ast::MetaItemInner;
@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Pos, Span, sym};
+use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -411,8 +411,8 @@ fn check_final_expr<'tcx>(
                         && let [tool, lint_name] = meta_item.path.segments.as_slice()
                         && tool.ident.name == sym::clippy
                         && matches!(
-                            lint_name.ident.name.as_str(),
-                            "needless_return" | "style" | "all" | "warnings"
+                            lint_name.ident.name,
+                            sym::needless_return | sym::style | sym::all | sym::warnings
                         )
                     {
                         // This is an expectation of the `needless_return` lint
@@ -423,12 +423,21 @@ fn check_final_expr<'tcx>(
                 _ => return,
             }
 
-            emit_return_lint(cx, ret_span, semi_spans, &replacement, expr.hir_id);
+            emit_return_lint(
+                cx,
+                peeled_drop_expr.span,
+                ret_span,
+                semi_spans,
+                &replacement,
+                expr.hir_id,
+            );
         },
         ExprKind::If(_, then, else_clause_opt) => {
             check_block_return(cx, &then.kind, peeled_drop_expr.span, semi_spans.clone());
             if let Some(else_clause) = else_clause_opt {
-                check_block_return(cx, &else_clause.kind, peeled_drop_expr.span, semi_spans);
+                // The `RetReplacement` won't be used there as `else_clause` will be either a block or
+                // a `if` expression.
+                check_final_expr(cx, else_clause, semi_spans, RetReplacement::Empty, match_ty_opt);
             }
         },
         // a match expr, check all arms
@@ -448,6 +457,7 @@ fn check_final_expr<'tcx>(
 
 fn emit_return_lint(
     cx: &LateContext<'_>,
+    lint_span: Span,
     ret_span: Span,
     semi_spans: Vec<Span>,
     replacement: &RetReplacement<'_>,
@@ -457,7 +467,7 @@ fn emit_return_lint(
         cx,
         NEEDLESS_RETURN,
         at,
-        ret_span,
+        lint_span,
         "unneeded `return` statement",
         |diag| {
             let suggestions = std::iter::once((ret_span, replacement.to_string()))
@@ -479,7 +489,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
                 .skip_binder()
                 .output()
                 .walk()
-                .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(re) if !re.is_static()))
+                .any(|arg| matches!(arg.kind(), GenericArgKind::Lifetime(re) if !re.is_static()))
         {
             ControlFlow::Break(())
         } else {

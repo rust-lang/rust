@@ -15,7 +15,7 @@ mod x {
 }
 
 mod y {
-    use x;
+    use crate::x;
 
     // These dependencies SHOULD exist:
     #[rustc_then_this_would_need(typeck)] //~ ERROR OK
@@ -25,7 +25,7 @@ mod y {
 }
 
 mod z {
-    use y;
+    use crate::y;
 
     // These are expected to yield errors, because changes to `x`
     // affect the BODY of `y`, but not its signature.

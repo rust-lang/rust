@@ -2,17 +2,23 @@ error[E0620]: cast to unsized type: `&[u8]` as `[char]`
   --> $DIR/cast-to-slice.rs:2:5
    |
 LL |     "example".as_bytes() as [char];
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^------
-   |                             |
-   |                             help: try casting to a reference instead: `&[char]`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider casting to a reference instead
+   |
+LL |     "example".as_bytes() as &[char];
+   |                             +
 
 error[E0620]: cast to unsized type: `&[u8]` as `[char]`
   --> $DIR/cast-to-slice.rs:6:5
    |
 LL |     arr as [char];
-   |     ^^^^^^^------
-   |            |
-   |            help: try casting to a reference instead: `&[char]`
+   |     ^^^^^^^^^^^^^
+   |
+help: consider casting to a reference instead
+   |
+LL |     arr as &[char];
+   |            +
 
 error: aborting due to 2 previous errors
 

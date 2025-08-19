@@ -1,0 +1,25 @@
+warning: unreachable predicate
+  --> $DIR/cfg_select.rs:52:5
+   |
+LL |     _ => {}
+   |     - always matches
+LL |     true => {}
+   |     ^^^^ this predicate is never reached
+
+error: none of the predicates in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:56:1
+   |
+LL | / cfg_select! {
+LL | |
+LL | |     false => {}
+LL | | }
+   | |_^
+
+error: none of the predicates in this `cfg_select` evaluated to true
+  --> $DIR/cfg_select.rs:61:1
+   |
+LL | cfg_select! {}
+   | ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

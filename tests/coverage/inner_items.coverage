@@ -1,11 +1,11 @@
    LL|       |#![allow(unused_assignments, unused_variables, dead_code)]
    LL|       |
    LL|      1|fn main() {
-   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-   LL|      1|    // dependent conditions.
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    let mut countdown = 0;
    LL|      1|    if is_true {
    LL|      1|        countdown = 10;
@@ -54,7 +54,7 @@
    LL|      1|    let mut val = InStruct {
    LL|      1|        in_struct_field: 101, //
    LL|      1|    };
-   LL|      1|
+   LL|       |
    LL|      1|    val.default_trait_func();
    LL|      1|}
 

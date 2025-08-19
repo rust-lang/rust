@@ -54,7 +54,7 @@ help: use struct literal syntax instead
 LL -     let f = Foo();
 LL +     let f = Foo { a: val };
    |
-help: a function with a similar name exists (notice the capitalization difference)
+help: a function with a similar name exists (notice the capitalization)
    |
 LL -     let f = Foo();
 LL +     let f = foo();

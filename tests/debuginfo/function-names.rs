@@ -2,6 +2,7 @@
 //@ min-gdb-version: 10.1
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -78,8 +79,6 @@
 // cdb-check:[...] a!function_names::const_generic_fn_bool<false> (void)
 
 #![allow(unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 #![feature(adt_const_params, coroutines, coroutine_trait, stmt_expr_attributes)]
 #![allow(incomplete_features)]
 

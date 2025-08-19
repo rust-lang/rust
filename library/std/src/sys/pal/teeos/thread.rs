@@ -2,7 +2,7 @@ use crate::ffi::CStr;
 use crate::mem::{self, ManuallyDrop};
 use crate::num::NonZero;
 use crate::sys::os;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, io, ptr};
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 8 * 1024;
@@ -22,7 +22,11 @@ unsafe extern "C" {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut native: libc::pthread_t = unsafe { mem::zeroed() };
         let mut attr: libc::pthread_attr_t = unsafe { mem::zeroed() };
@@ -109,6 +113,14 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     /// must join, because no pthread_detach supported
     pub fn join(self) {
         let id = self.into_id();
@@ -130,6 +142,10 @@ impl Drop for Thread {
         // we can not call detach, so just panic if thread spawn without join
         panic!("thread must join, detach is not supported!");
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 // Note: Both `sched_getaffinity` and `sysconf` are available but not functional on

@@ -19,9 +19,7 @@ fn has_destructor(db: &dyn HirDatabase, adt: AdtId) -> bool {
         AdtId::StructId(id) => db.lookup_intern_struct(id).container,
         AdtId::UnionId(id) => db.lookup_intern_union(id).container,
     };
-    let Some(drop_trait) =
-        db.lang_item(module.krate(), LangItem::Drop).and_then(|it| it.as_trait())
-    else {
+    let Some(drop_trait) = LangItem::Drop.resolve_trait(db, module.krate()) else {
         return false;
     };
     let impls = match module.containing_block() {
@@ -69,11 +67,11 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
                 }
                 // Unions cannot have fields with destructors.
                 AdtId::UnionId(_) => DropGlue::None,
-                AdtId::EnumId(id) => db
-                    .enum_variants(id)
+                AdtId::EnumId(id) => id
+                    .enum_variants(db)
                     .variants
                     .iter()
-                    .map(|&(variant, _)| {
+                    .map(|&(variant, _, _)| {
                         db.field_types(variant.into())
                             .iter()
                             .map(|(_, field_ty)| {
@@ -181,8 +179,7 @@ fn projection_has_drop_glue(
 }
 
 fn is_copy(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironment>) -> bool {
-    let Some(copy_trait) = db.lang_item(env.krate, LangItem::Copy).and_then(|it| it.as_trait())
-    else {
+    let Some(copy_trait) = LangItem::Copy.resolve_trait(db, env.krate) else {
         return false;
     };
     let trait_ref = TyBuilder::trait_ref(db, copy_trait).push(ty).build();

@@ -104,10 +104,10 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
 
     fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
         for (op, _) in asm.operands {
-            if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op {
-                if let Some(def_id) = def_id.as_local() {
-                    self.reachable_symbols.insert(def_id);
-                }
+            if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op
+                && let Some(def_id) = def_id.as_local()
+            {
+                self.reachable_symbols.insert(def_id);
             }
         }
         intravisit::walk_inline_asm(self, asm, id);
@@ -183,7 +183,7 @@ impl<'tcx> ReachableContext<'tcx> {
             } else {
                 CodegenFnAttrs::EMPTY
             };
-            let is_extern = codegen_attrs.contains_extern_indicator();
+            let is_extern = codegen_attrs.contains_extern_indicator(self.tcx, search_item.into());
             if is_extern {
                 self.reachable_symbols.insert(search_item);
             }
@@ -325,6 +325,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         self.visit(args);
                     }
                 }
+                GlobalAlloc::TypeId { ty, .. } => self.visit(ty),
                 GlobalAlloc::Memory(alloc) => self.propagate_from_alloc(alloc),
             }
         }
@@ -422,12 +423,13 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     if !tcx.def_kind(def_id).has_codegen_attrs() {
         return false;
     }
+
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-    codegen_attrs.contains_extern_indicator()
+    codegen_attrs.contains_extern_indicator(tcx, def_id.into())
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
-        || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+        || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
 }
 
@@ -435,10 +437,12 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
-    let any_library = tcx
-        .crate_types()
-        .iter()
-        .any(|ty| *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro);
+    let any_library = tcx.crate_types().iter().any(|ty| {
+        *ty == CrateType::Rlib
+            || *ty == CrateType::Dylib
+            || *ty == CrateType::ProcMacro
+            || *ty == CrateType::Sdylib
+    });
     let mut reachable_context = ReachableContext {
         tcx,
         maybe_typeck_results: None,

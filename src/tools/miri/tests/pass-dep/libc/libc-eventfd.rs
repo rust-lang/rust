@@ -1,6 +1,6 @@
 //@only-target: linux android illumos
 // test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]

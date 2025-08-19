@@ -42,8 +42,8 @@ LL |     (0_usize..).flat_map(|x| 0..x).product::<usize>();
 error: infinite iteration detected
   --> tests/ui/infinite_iter.rs:41:5
    |
-LL |     (0_u64..).filter(|x| x % 2 == 0).last();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (0_u64..).filter(|x| x.is_multiple_of(2)).last();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: possible infinite iteration detected
   --> tests/ui/infinite_iter.rs:53:5

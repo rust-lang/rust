@@ -8,7 +8,7 @@ mod test1 {
     mod bar { pub fn p() -> isize { 2 } }
 
     pub mod baz {
-        use test1::bar::p;
+        use crate::test1::bar::p;
 
         pub fn my_main() { assert_eq!(p(), 2); }
     }
@@ -20,7 +20,7 @@ mod test2 {
     mod bar { pub fn p() -> isize { 2 } }
 
     pub mod baz {
-        use test2::bar::p;
+        use crate::test2::bar::p;
 
         pub fn my_main() { assert_eq!(p(), 2); }
     }

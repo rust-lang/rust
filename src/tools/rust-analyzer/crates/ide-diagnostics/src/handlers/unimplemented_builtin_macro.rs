@@ -13,4 +13,5 @@ pub(crate) fn unimplemented_builtin_macro(
         "unimplemented built-in macro".to_owned(),
         d.node,
     )
+    .stable()
 }

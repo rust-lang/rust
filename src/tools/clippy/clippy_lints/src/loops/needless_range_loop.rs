@@ -39,7 +39,9 @@ pub(super) fn check<'tcx>(
             var: canonical_id,
             indexed_mut: FxHashSet::default(),
             indexed_indirectly: FxHashMap::default(),
+            unnamed_indexed_indirectly: false,
             indexed_directly: FxIndexMap::default(),
+            unnamed_indexed_directly: false,
             referenced: FxHashSet::default(),
             nonindex: false,
             prefer_mutable: false,
@@ -47,7 +49,11 @@ pub(super) fn check<'tcx>(
         walk_expr(&mut visitor, body);
 
         // linting condition: we only indexed one variable, and indexed it directly
-        if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
+        if visitor.indexed_indirectly.is_empty()
+            && !visitor.unnamed_indexed_indirectly
+            && !visitor.unnamed_indexed_directly
+            && visitor.indexed_directly.len() == 1
+        {
             let (indexed, (indexed_extent, indexed_ty)) = visitor
                 .indexed_directly
                 .into_iter()
@@ -217,6 +223,7 @@ fn is_end_eq_array_len<'tcx>(
     false
 }
 
+#[expect(clippy::struct_excessive_bools)]
 struct VarVisitor<'a, 'tcx> {
     /// context reference
     cx: &'a LateContext<'tcx>,
@@ -226,9 +233,13 @@ struct VarVisitor<'a, 'tcx> {
     indexed_mut: FxHashSet<Symbol>,
     /// indirectly indexed variables (`v[(i + 4) % N]`), the extend is `None` for global
     indexed_indirectly: FxHashMap<Symbol, Option<region::Scope>>,
+    /// indirectly indexed literals, like `[1, 2, 3][(i + 4) % N]`
+    unnamed_indexed_indirectly: bool,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
     indexed_directly: FxIndexMap<Symbol, (Option<region::Scope>, Ty<'tcx>)>,
+    /// directly indexed literals, like `[1, 2, 3][i]`
+    unnamed_indexed_directly: bool,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: FxHashSet<Symbol>,
@@ -242,6 +253,7 @@ struct VarVisitor<'a, 'tcx> {
 
 impl<'tcx> VarVisitor<'_, 'tcx> {
     fn check(&mut self, idx: &'tcx Expr<'_>, seqexpr: &'tcx Expr<'_>, expr: &'tcx Expr<'_>) -> bool {
+        let index_used_directly = matches!(idx.kind, ExprKind::Path(_));
         if let ExprKind::Path(ref seqpath) = seqexpr.kind
             // the indexed container is referenced by a name
             && let QPath::Resolved(None, seqvar) = *seqpath
@@ -251,7 +263,6 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
             if self.prefer_mutable {
                 self.indexed_mut.insert(seqvar.segments[0].ident.name);
             }
-            let index_used_directly = matches!(idx.kind, ExprKind::Path(_));
             let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
             match res {
                 Res::Local(hir_id) => {
@@ -286,6 +297,13 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                 },
                 _ => (),
             }
+        } else if let ExprKind::Repeat(..) | ExprKind::Array(..) = seqexpr.kind {
+            if index_used_directly {
+                self.unnamed_indexed_directly = true;
+            } else {
+                self.unnamed_indexed_indirectly = true;
+            }
+            return false;
         }
         true
     }
@@ -299,7 +317,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
                 .cx
                 .typeck_results()
                 .type_dependent_def_id(expr.hir_id)
-                .and_then(|def_id| self.cx.tcx.trait_of_item(def_id))
+                .and_then(|def_id| self.cx.tcx.trait_of_assoc(def_id))
             && ((meth.ident.name == sym::index && self.cx.tcx.lang_items().index_trait() == Some(trait_id))
                 || (meth.ident.name == sym::index_mut && self.cx.tcx.lang_items().index_mut_trait() == Some(trait_id)))
             && !self.check(args_1, args_0, expr)

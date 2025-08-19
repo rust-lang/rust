@@ -22,7 +22,7 @@ jobs:
         run: rustup update --no-self-update stable
 
       - name: Install cargo-workspaces
-        run: cargo install cargo-workspaces
+        run: cargo install cargo-workspaces --version "0.3.6"
 
       - name: Publish Crates
         env:

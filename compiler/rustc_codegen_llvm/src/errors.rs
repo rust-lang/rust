@@ -3,51 +3,10 @@ use std::path::Path;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 use crate::fluent_generated as fluent;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_ctarget_feature_prefix)]
-#[note]
-pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unknown_ctarget_feature)]
-#[note]
-pub(crate) struct UnknownCTargetFeature<'a> {
-    pub feature: &'a str,
-    #[subdiagnostic]
-    pub rust_feature: PossibleFeature<'a>,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_unstable_ctarget_feature)]
-#[note]
-pub(crate) struct UnstableCTargetFeature<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_forbidden_ctarget_feature)]
-#[note]
-#[note(codegen_llvm_forbidden_ctarget_feature_issue)]
-pub(crate) struct ForbiddenCTargetFeature<'a> {
-    pub feature: &'a str,
-    pub enabled: &'a str,
-    pub reason: &'a str,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum PossibleFeature<'a> {
-    #[help(codegen_llvm_possible_feature)]
-    Some { rust_feature: &'a str },
-    #[help(codegen_llvm_consider_filing_feature_request)]
-    None,
-}
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_symbol_already_defined)]
@@ -58,25 +17,8 @@ pub(crate) struct SymbolAlreadyDefined<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_minimum_alignment_not_power_of_two)]
-pub(crate) struct InvalidMinimumAlignmentNotPowerOfTwo {
-    pub align: u64,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_minimum_alignment_too_large)]
-pub(crate) struct InvalidMinimumAlignmentTooLarge {
-    pub align: u64,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_sanitizer_memtag_requires_mte)]
 pub(crate) struct SanitizerMemtagRequiresMte;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_dynamic_linking_with_lto)]
-#[note]
-pub(crate) struct DynamicLinkingWithLTO;
 
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
@@ -91,29 +33,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_autodiff_without_lto)]
-pub(crate) struct AutoDiffWithoutLTO;
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_without_enable)]
 pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_disallowed)]
-pub(crate) struct LtoDisallowed;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_dylib)]
-pub(crate) struct LtoDylib;
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_lto_proc_macro)]
-pub(crate) struct LtoProcMacro;
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_bitcode_from_rlib)]
 pub(crate) struct LtoBitcodeFromRlib {
-    pub llvm_err: String,
+    pub err: String,
 }
 
 #[derive(Diagnostic)]

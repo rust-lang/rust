@@ -1,8 +1,8 @@
+use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::Res;
-use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind};
+use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind, find_attr};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 use crate::lints::PassByValueDiag;
 use crate::{LateContext, LateLintPass, LintContext};
@@ -24,10 +24,8 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
-                        return;
-                    }
+                if cx.tcx.trait_impl_of_assoc(ty.hir_id.owner.to_def_id()).is_some() {
+                    return;
                 }
                 if let Some(t) = path_for_pass_by_value(cx, inner_ty) {
                     cx.emit_span_lint(
@@ -45,14 +43,16 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
 fn path_for_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Option<String> {
     if let TyKind::Path(QPath::Resolved(_, path)) = &ty.kind {
         match path.res {
-            Res::Def(_, def_id) if cx.tcx.has_attr(def_id, sym::rustc_pass_by_value) => {
+            Res::Def(_, def_id)
+                if find_attr!(cx.tcx.get_all_attrs(def_id), AttributeKind::PassByValue(_)) =>
+            {
                 let name = cx.tcx.item_ident(def_id);
                 let path_segment = path.segments.last().unwrap();
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
             Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
                 if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                    if cx.tcx.has_attr(adt.did(), sym::rustc_pass_by_value) {
+                    if find_attr!(cx.tcx.get_all_attrs(adt.did()), AttributeKind::PassByValue(_)) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }
                 }

@@ -44,7 +44,7 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
     span: Span,
 ) -> Result<(), NoSolution> {
-    let (param_env, AscribeUserType { mir_ty, user_ty }) = key.into_parts();
+    let ty::ParamEnvAnd { param_env, value: AscribeUserType { mir_ty, user_ty } } = key;
     debug!("type_op_ascribe_user_type: mir_ty={:?} user_ty={:?}", mir_ty, user_ty);
     match user_ty.kind {
         UserTypeKind::Ty(user_ty) => relate_mir_and_user_ty(ocx, param_env, span, mir_ty, user_ty)?,

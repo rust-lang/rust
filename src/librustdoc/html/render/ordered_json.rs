@@ -25,7 +25,7 @@ impl OrderedJson {
             .into_iter()
             .sorted_unstable_by(|a, b| a.borrow().cmp(b.borrow()))
             .format_with(",", |item, f| f(item.borrow()));
-        Self(format!("[{}]", items))
+        Self(format!("[{items}]"))
     }
 
     pub(crate) fn array_unsorted<T: Borrow<Self>, I: IntoIterator<Item = T>>(items: I) -> Self {

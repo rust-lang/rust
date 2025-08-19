@@ -6,7 +6,7 @@ use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
 use crate::sys::weak::weak;
 use crate::sys::{os, stack_overflow};
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{cmp, io, ptr};
 #[cfg(not(any(
     target_os = "l4re",
@@ -22,21 +22,9 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
-#[cfg(target_os = "fuchsia")]
-mod zircon {
-    type zx_handle_t = u32;
-    type zx_status_t = i32;
-    pub const ZX_PROP_NAME: u32 = 3;
-
-    unsafe extern "C" {
-        pub fn zx_object_set_property(
-            handle: zx_handle_t,
-            property: u32,
-            value: *const libc::c_void,
-            value_size: libc::size_t,
-        ) -> zx_status_t;
-        pub fn zx_thread_self() -> zx_handle_t;
-    }
+struct ThreadData {
+    name: Option<Box<str>>,
+    f: Box<dyn FnOnce()>,
 }
 
 pub struct Thread {
@@ -51,8 +39,12 @@ unsafe impl Sync for Thread {}
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        let p = Box::into_raw(Box::new(p));
+    pub unsafe fn new(
+        stack: usize,
+        name: Option<&str>,
+        f: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
+        let data = Box::into_raw(Box::new(ThreadData { name: name.map(Box::from), f }));
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
@@ -85,12 +77,23 @@ impl Thread {
                     let page_size = os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                    assert_eq!(libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size), 0);
+
+                    // Some libc implementations, e.g. musl, place an upper bound
+                    // on the stack size, in which case we can only gracefully return
+                    // an error here.
+                    if libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) != 0 {
+                        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
+                        drop(Box::from_raw(data));
+                        return Err(io::const_error!(
+                            io::ErrorKind::InvalidInput,
+                            "invalid stack size"
+                        ));
+                    }
                 }
             };
         }
 
-        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, p as *mut _);
+        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, data as *mut _);
         // Note: if the thread creation fails and this assert fails, then p will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
@@ -99,19 +102,20 @@ impl Thread {
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
-            drop(Box::from_raw(p));
+            drop(Box::from_raw(data));
             Err(io::Error::from_raw_os_error(ret))
         } else {
             Ok(Thread { id: native })
         };
 
-        extern "C" fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
+        extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
             unsafe {
+                let data = Box::from_raw(data as *mut ThreadData);
                 // Next, set up our stack overflow handler which may get triggered if we run
                 // out of stack.
-                let _handler = stack_overflow::Handler::new();
+                let _handler = stack_overflow::Handler::new(data.name);
                 // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+                (data.f)();
             }
             ptr::null_mut()
         }
@@ -147,12 +151,13 @@ impl Thread {
     ))]
     pub fn set_name(name: &CStr) {
         unsafe {
-            cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "linux", target_os = "cygwin"))] {
+            cfg_select! {
+                any(target_os = "linux", target_os = "cygwin") => {
                     // Linux and Cygwin limits the allowed length of the name.
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
-                } else {
+                }
+                _ => {
                     // FreeBSD, DragonFly BSD and NuttX do not enforce length limits.
                 }
             };
@@ -216,7 +221,7 @@ impl Thread {
 
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(name: &CStr) {
-        use self::zircon::*;
+        use super::fuchsia::*;
         unsafe {
             zx_object_set_property(
                 zx_thread_self(),
@@ -239,16 +244,8 @@ impl Thread {
 
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
-        // FIXME(libc): adding real STATUS, ERROR type eventually.
-        unsafe extern "C" {
-            fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
-        }
-
-        //  VX_TASK_NAME_LEN is 31 in VxWorks 7.
-        const VX_TASK_NAME_LEN: usize = 31;
-
-        let mut name = truncate_cstr::<{ VX_TASK_NAME_LEN }>(name);
-        let res = unsafe { taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
+        let mut name = truncate_cstr::<{ (libc::VX_TASK_RENAME_LENGTH - 1) as usize }>(name);
+        let res = unsafe { libc::taskNameSet(libc::taskIdSelf(), name.as_mut_ptr()) };
         debug_assert_eq!(res, libc::OK);
     }
 
@@ -321,6 +318,76 @@ impl Thread {
         }
     }
 
+    // Any unix that has clock_nanosleep
+    // If this list changes update the MIRI chock_nanosleep shim
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    ))]
+    pub fn sleep_until(deadline: Instant) {
+        let Some(ts) = deadline.into_inner().into_timespec().to_timespec() else {
+            // The deadline is further in the future then can be passed to
+            // clock_nanosleep. We have to use Self::sleep instead. This might
+            // happen on 32 bit platforms, especially closer to 2038.
+            let now = Instant::now();
+            if let Some(delay) = deadline.checked_duration_since(now) {
+                Self::sleep(delay);
+            }
+            return;
+        };
+
+        unsafe {
+            // When we get interrupted (res = EINTR) call clock_nanosleep again
+            loop {
+                let res = libc::clock_nanosleep(
+                    super::time::Instant::CLOCK_ID,
+                    libc::TIMER_ABSTIME,
+                    &ts,
+                    core::ptr::null_mut(), // not required with TIMER_ABSTIME
+                );
+
+                if res == 0 {
+                    break;
+                } else {
+                    assert_eq!(
+                        res,
+                        libc::EINTR,
+                        "timespec is in range,
+                         clockid is valid and kernel should support it"
+                    );
+                }
+            }
+        }
+    }
+
+    // Any unix that does not have clock_nanosleep
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "netbsd",
+        target_os = "linux",
+        target_os = "android",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "dragonfly",
+        target_os = "hurd",
+        target_os = "fuchsia",
+        target_os = "vxworks",
+    )))]
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         let id = self.into_id();
         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
@@ -343,6 +410,67 @@ impl Drop for Thread {
     }
 }
 
+pub(crate) fn current_os_id() -> Option<u64> {
+    // Most Unix platforms have a way to query an integer ID of the current thread, all with
+    // slightly different spellings.
+    //
+    // The OS thread ID is used rather than `pthread_self` so as to match what will be displayed
+    // for process inspection (debuggers, trace, `top`, etc.).
+    cfg_select! {
+        // Most platforms have a function returning a `pid_t` or int, which is an `i32`.
+        any(target_os = "android", target_os = "linux") => {
+            use crate::sys::weak::syscall;
+
+            // `libc::gettid` is only available on glibc 2.30+, but the syscall is available
+            // since Linux 2.4.11.
+            syscall!(fn gettid() -> libc::pid_t;);
+
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { gettid() };
+            Some(id as u64)
+        }
+        target_os = "nto" => {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { libc::gettid() };
+            Some(id as u64)
+        }
+        target_os = "openbsd" => {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pid_t = unsafe { libc::getthrid() };
+            Some(id as u64)
+        }
+        target_os = "freebsd" => {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::c_int = unsafe { libc::pthread_getthreadid_np() };
+            Some(id as u64)
+        }
+        target_os = "netbsd" => {
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::lwpid_t = unsafe { libc::_lwp_self() };
+            Some(id as u64)
+        }
+        any(target_os = "illumos", target_os = "solaris") => {
+            // On Illumos and Solaris, the `pthread_t` is the same as the OS thread ID.
+            // SAFETY: FFI call with no preconditions.
+            let id: libc::pthread_t = unsafe { libc::pthread_self() };
+            Some(id as u64)
+        }
+        target_vendor = "apple" => {
+            // Apple allows querying arbitrary thread IDs, `thread=NULL` queries the current thread.
+            let mut id = 0u64;
+            // SAFETY: `thread_id` is a valid pointer, no other preconditions.
+            let status: libc::c_int = unsafe { libc::pthread_threadid_np(0, &mut id) };
+            if status == 0 {
+                Some(id)
+            } else {
+                None
+            }
+        }
+        // Other platforms don't have an OS thread ID or don't have a way to access it.
+        _ => None,
+    }
+}
+
 #[cfg(any(
     target_os = "linux",
     target_os = "nto",
@@ -361,8 +489,8 @@ fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_W
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
-    cfg_if::cfg_if! {
-        if #[cfg(any(
+    cfg_select! {
+        any(
             target_os = "android",
             target_os = "emscripten",
             target_os = "fuchsia",
@@ -371,7 +499,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
-        ))] {
+        ) => {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]
             let mut quota = usize::MAX;
@@ -405,12 +533,13 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                     Ok(unsafe { NonZero::new_unchecked(count) })
                 }
             }
-        } else if #[cfg(any(
-                   target_os = "freebsd",
-                   target_os = "dragonfly",
-                   target_os = "openbsd",
-                   target_os = "netbsd",
-               ))] {
+        }
+        any(
+           target_os = "freebsd",
+           target_os = "dragonfly",
+           target_os = "openbsd",
+           target_os = "netbsd",
+        ) => {
             use crate::ptr;
 
             #[cfg(target_os = "freebsd")]
@@ -485,7 +614,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
 
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
-        } else if #[cfg(target_os = "nto")] {
+        }
+        target_os = "nto" => {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
@@ -496,13 +626,15 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         .ok_or(io::Error::UNKNOWN_THREAD_COUNT)
                 }
             }
-        } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+        }
+        any(target_os = "solaris", target_os = "illumos") => {
             let mut cpus = 0u32;
             if unsafe { libc::pset_info(libc::PS_MYID, core::ptr::null_mut(), &mut cpus, core::ptr::null_mut()) } != 0 {
                 return Err(io::Error::UNKNOWN_THREAD_COUNT);
             }
             Ok(unsafe { NonZero::new_unchecked(cpus as usize) })
-        } else if #[cfg(target_os = "haiku")] {
+        }
+        target_os = "haiku" => {
             // system_info cpu_count field gets the static data set at boot time with `smp_set_num_cpus`
             // `get_system_info` calls then `smp_get_num_cpus`
             unsafe {
@@ -515,7 +647,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
 
                 Ok(NonZero::new_unchecked(sinfo.cpu_count as usize))
             }
-        } else if #[cfg(target_os = "vxworks")] {
+        }
+        target_os = "vxworks" => {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
             unsafe extern "C" {
@@ -527,7 +660,8 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 let set = vxCpuEnabledGet();
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
-        } else {
+        }
+        _ => {
             // FIXME: implement on Redox, l4re
             Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }

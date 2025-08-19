@@ -9,7 +9,7 @@ mod base {
         dummy: (),
     }
 
-    impl ::base::HasNew for Foo {
+    impl crate::base::HasNew for Foo {
         fn new() -> Foo {
             println!("Foo");
             Foo { dummy: () }
@@ -20,7 +20,7 @@ mod base {
         dummy: (),
     }
 
-    impl ::base::HasNew for Bar {
+    impl crate::base::HasNew for Bar {
         fn new() -> Bar {
             println!("Bar");
             Bar { dummy: () }

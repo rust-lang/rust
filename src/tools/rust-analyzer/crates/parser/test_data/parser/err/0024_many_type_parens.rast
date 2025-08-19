@@ -37,7 +37,7 @@ SOURCE_FILE
           WHITESPACE " "
           TYPE_BOUND
             L_PAREN "("
-            FOR_TYPE
+            FOR_BINDER
               FOR_KW "for"
               GENERIC_PARAM_LIST
                 L_ANGLE "<"
@@ -45,18 +45,18 @@ SOURCE_FILE
                   LIFETIME
                     LIFETIME_IDENT "'a"
                 R_ANGLE ">"
-              WHITESPACE " "
-              PATH_TYPE
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "Trait"
-                    GENERIC_ARG_LIST
-                      L_ANGLE "<"
-                      LIFETIME_ARG
-                        LIFETIME
-                          LIFETIME_IDENT "'a"
-                      R_ANGLE ">"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Trait"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    LIFETIME_ARG
+                      LIFETIME
+                        LIFETIME_IDENT "'a"
+                    R_ANGLE ">"
             R_PAREN ")"
       R_ANGLE ">"
     PARAM_LIST
@@ -124,7 +124,7 @@ SOURCE_FILE
               WHITESPACE " "
               TYPE_BOUND
                 L_PAREN "("
-                FOR_TYPE
+                FOR_BINDER
                   FOR_KW "for"
                   GENERIC_PARAM_LIST
                     L_ANGLE "<"
@@ -132,18 +132,18 @@ SOURCE_FILE
                       LIFETIME
                         LIFETIME_IDENT "'a"
                     R_ANGLE ">"
-                  WHITESPACE " "
-                  PATH_TYPE
-                    PATH
-                      PATH_SEGMENT
-                        NAME_REF
-                          IDENT "Trait"
-                        GENERIC_ARG_LIST
-                          L_ANGLE "<"
-                          LIFETIME_ARG
-                            LIFETIME
-                              LIFETIME_IDENT "'a"
-                          R_ANGLE ">"
+                WHITESPACE " "
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Trait"
+                      GENERIC_ARG_LIST
+                        L_ANGLE "<"
+                        LIFETIME_ARG
+                          LIFETIME
+                            LIFETIME_IDENT "'a"
+                        R_ANGLE ">"
                 R_PAREN ")"
         ERROR
           R_ANGLE ">"
@@ -186,13 +186,14 @@ SOURCE_FILE
               TUPLE_EXPR
                 L_PAREN "("
                 CLOSURE_EXPR
-                  FOR_KW "for"
-                  GENERIC_PARAM_LIST
-                    L_ANGLE "<"
-                    LIFETIME_PARAM
-                      LIFETIME
-                        LIFETIME_IDENT "'a"
-                    R_ANGLE ">"
+                  FOR_BINDER
+                    FOR_KW "for"
+                    GENERIC_PARAM_LIST
+                      L_ANGLE "<"
+                      LIFETIME_PARAM
+                        LIFETIME
+                          LIFETIME_IDENT "'a"
+                      R_ANGLE ">"
                 WHITESPACE " "
                 BIN_EXPR
                   BIN_EXPR
@@ -242,13 +243,14 @@ SOURCE_FILE
                           PAREN_TYPE
                             L_PAREN "("
                             FOR_TYPE
-                              FOR_KW "for"
-                              GENERIC_PARAM_LIST
-                                L_ANGLE "<"
-                                LIFETIME_PARAM
-                                  LIFETIME
-                                    LIFETIME_IDENT "'a"
-                                R_ANGLE ">"
+                              FOR_BINDER
+                                FOR_KW "for"
+                                GENERIC_PARAM_LIST
+                                  L_ANGLE "<"
+                                  LIFETIME_PARAM
+                                    LIFETIME
+                                      LIFETIME_IDENT "'a"
+                                  R_ANGLE ">"
                               WHITESPACE " "
                               PATH_TYPE
                                 PATH

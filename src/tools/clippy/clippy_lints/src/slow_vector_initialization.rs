@@ -266,7 +266,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
             let is_matching_resize = if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // If we have a size expression, check that it is equal to what's passed to `resize`
                 SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
-                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
+                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity)
             } else {
                 self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
                 true
@@ -288,7 +288,7 @@ impl<'tcx> VectorInitializationVisitor<'_, 'tcx> {
             if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // Check that len expression is equals to `with_capacity` expression
                 return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
-                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity");
+                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.name == sym::capacity);
             }
 
             self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);

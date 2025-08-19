@@ -135,6 +135,8 @@ use crate::ops::Index;
 /// ]);
 /// ```
 ///
+/// ## `Entry` API
+///
 /// `HashMap` implements an [`Entry` API](#method.entry), which allows
 /// for complex methods of getting, setting, updating and removing keys and
 /// their values:
@@ -166,6 +168,8 @@ use crate::ops::Index;
 /// // modify an entry before an insert with in-place mutation
 /// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
+///
+/// ## Usage with custom key types
 ///
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
@@ -648,14 +652,14 @@ impl<K, V, S> HashMap<K, V, S> {
         Drain { base: self.base.drain() }
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator which uses a closure to determine if an element (key-value pair) should be removed.
     ///
-    /// If the closure returns true, the element is removed from the map and yielded.
-    /// If the closure returns false, or panics, the element remains in the map and will not be
-    /// yielded.
+    /// If the closure returns `true`, the element is removed from the map and
+    /// yielded. If the closure returns `false`, or panics, the element remains
+    /// in the map and will not be yielded.
     ///
-    /// Note that `extract_if` lets you mutate every value in the filter closure, regardless of
-    /// whether you choose to keep or remove it.
+    /// The iterator also lets you mutate the value of each element in the
+    /// closure, regardless of whether you choose to keep or remove it.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
@@ -683,7 +687,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[rustc_lint_query_instability]
-    #[stable(feature = "hash_extract_if", since = "1.87.0")]
+    #[stable(feature = "hash_extract_if", since = "1.88.0")]
     pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F>
     where
         F: FnMut(&K, &mut V) -> bool,
@@ -1680,12 +1684,9 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// ]);
 /// let iter = map.extract_if(|_k, v| *v % 2 == 0);
 /// ```
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct ExtractIf<'a, K, V, F>
-where
-    F: FnMut(&K, &mut V) -> bool,
-{
+pub struct ExtractIf<'a, K, V, F> {
     base: base::ExtractIf<'a, K, V, F>,
 }
 
@@ -2297,7 +2298,7 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
 impl<K, V, F> Iterator for ExtractIf<'_, K, V, F>
 where
     F: FnMut(&K, &mut V) -> bool,
@@ -2314,13 +2315,14 @@ where
     }
 }
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
 impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
-#[stable(feature = "hash_extract_if", since = "1.87.0")]
-impl<'a, K, V, F> fmt::Debug for ExtractIf<'a, K, V, F>
+#[stable(feature = "hash_extract_if", since = "1.88.0")]
+impl<K, V, F> fmt::Debug for ExtractIf<'_, K, V, F>
 where
-    F: FnMut(&K, &mut V) -> bool,
+    K: fmt::Debug,
+    V: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractIf").finish_non_exhaustive()

@@ -1,23 +1,33 @@
 use std::collections::HashMap;
 use std::fmt::{self, Debug, Write as _};
-use std::sync::OnceLock;
+use std::sync::LazyLock;
 
-use anyhow::{Context, anyhow};
+use anyhow::{Context, anyhow, bail, ensure};
+use itertools::Itertools;
 use regex::Regex;
 
-use crate::parser::{Parser, unescape_llvm_string_contents};
+use crate::covmap::FilenameTables;
+use crate::llvm_utils::unescape_llvm_string_contents;
+use crate::parser::Parser;
+
+#[cfg(test)]
+mod tests;
 
 pub(crate) fn dump_covfun_mappings(
     llvm_ir: &str,
+    filename_tables: &FilenameTables,
     function_names: &HashMap<u64, String>,
 ) -> anyhow::Result<()> {
     // Extract function coverage entries from the LLVM IR assembly, and associate
     // each entry with its (demangled) name.
     let mut covfun_entries = llvm_ir
         .lines()
-        .filter_map(covfun_line_data)
-        .map(|line_data| (function_names.get(&line_data.name_hash).map(String::as_str), line_data))
-        .collect::<Vec<_>>();
+        .filter(|line| is_covfun_line(line))
+        .map(parse_covfun_line)
+        .map_ok(|line_data| {
+            (function_names.get(&line_data.name_hash).map(String::as_str), line_data)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     covfun_entries.sort_by(|a, b| {
         // Sort entries primarily by name, to help make the order consistent
         // across platforms and relatively insensitive to changes.
@@ -41,8 +51,12 @@ pub(crate) fn dump_covfun_mappings(
         println!("Number of files: {num_files}");
 
         for i in 0..num_files {
-            let global_file_id = parser.read_uleb128_u32()?;
-            println!("- file {i} => global file {global_file_id}");
+            let global_file_id = parser.read_uleb128_usize()?;
+            let &CovfunLineData { filenames_hash, .. } = line_data;
+            let Some(filename) = filename_tables.lookup(filenames_hash, global_file_id) else {
+                bail!("couldn't resolve global file: {filenames_hash}, {global_file_id}");
+            };
+            println!("- file {i} => {filename}");
         }
 
         let num_expressions = parser.read_uleb128_u32()?;
@@ -107,36 +121,50 @@ pub(crate) fn dump_covfun_mappings(
     Ok(())
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct CovfunLineData {
-    name_hash: u64,
     is_used: bool,
+    name_hash: u64,
+    filenames_hash: u64,
     payload: Vec<u8>,
 }
 
-/// Checks a line of LLVM IR assembly to see if it contains an `__llvm_covfun`
-/// entry, and if so extracts relevant data in a `CovfunLineData`.
-fn covfun_line_data(line: &str) -> Option<CovfunLineData> {
-    let re = {
-        // We cheat a little bit and match variable names `@__covrec_[HASH]u`
-        // rather than the section name, because the section name is harder to
-        // extract and differs across Linux/Windows/macOS. We also extract the
-        // symbol name hash from the variable name rather than the data, since
-        // it's easier and both should match.
-        static RE: OnceLock<Regex> = OnceLock::new();
-        RE.get_or_init(|| {
-            Regex::new(
-                r#"^@__covrec_(?<name_hash>[0-9A-Z]+)(?<is_used>u)? = .*\[[0-9]+ x i8\] c"(?<payload>[^"]*)".*$"#,
-            )
-            .unwrap()
-        })
-    };
+fn is_covfun_line(line: &str) -> bool {
+    line.starts_with("@__covrec_")
+}
 
-    let captures = re.captures(line)?;
-    let name_hash = u64::from_str_radix(&captures["name_hash"], 16).unwrap();
+/// Given a line of LLVM IR assembly that should contain an `__llvm_covfun`
+/// entry, parses it to extract relevant data in a `CovfunLineData`.
+fn parse_covfun_line(line: &str) -> anyhow::Result<CovfunLineData> {
+    ensure!(is_covfun_line(line));
+
+    // We cheat a little bit and match variable names `@__covrec_[HASH]u`
+    // rather than the section name, because the section name is harder to
+    // extract and differs across Linux/Windows/macOS.
+    const RE_STRING: &str = r#"(?x)^
+        @__covrec_[0-9A-Z]+(?<is_used>u)?
+        \ = \ # (trailing space)
+        .*
+        <\{
+            \ i64 \ (?<name_hash> -? [0-9]+),
+            \ i32 \ -? [0-9]+, # (length of payload; currently unused)
+            \ i64 \ -? [0-9]+, # (source hash; currently unused)
+            \ i64 \ (?<filenames_hash> -? [0-9]+),
+            \ \[ [0-9]+ \ x \ i8 \] \ c"(?<payload>[^"]*)"
+            \ # (trailing space)
+        }>
+        .*$
+    "#;
+    static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(RE_STRING).unwrap());
+
+    let captures =
+        RE.captures(line).with_context(|| format!("couldn't parse covfun line: {line:?}"))?;
     let is_used = captures.name("is_used").is_some();
+    let name_hash = i64::from_str_radix(&captures["name_hash"], 10).unwrap() as u64;
+    let filenames_hash = i64::from_str_radix(&captures["filenames_hash"], 10).unwrap() as u64;
     let payload = unescape_llvm_string_contents(&captures["payload"]);
 
-    Some(CovfunLineData { name_hash, is_used, payload })
+    Ok(CovfunLineData { is_used, name_hash, filenames_hash, payload })
 }
 
 // Extra parser methods only needed when parsing `covfun` payloads.

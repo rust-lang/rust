@@ -24,8 +24,7 @@ fn has_sdk_version(file: &str, version: &str) {
 
 fn main() {
     // Fetch rustc's inferred deployment target.
-    let current_deployment_target =
-        rustc().target(target()).print("deployment-target").run().stdout_utf8();
+    let current_deployment_target = rustc().print("deployment-target").run().stdout_utf8();
     let current_deployment_target = current_deployment_target.split('=').last().unwrap().trim();
 
     // Fetch current SDK version via. xcrun.
@@ -45,7 +44,7 @@ fn main() {
     let current_sdk_version = current_sdk_version.trim();
 
     // Check the SDK version in the object file produced by the codegen backend.
-    rustc().target(target()).crate_type("lib").emit("obj").input("foo.rs").output("foo.o").run();
+    rustc().crate_type("lib").emit("obj").input("foo.rs").output("foo.o").run();
     // Set to 0, which means not set or "n/a".
     has_sdk_version("foo.o", "n/a");
 
@@ -53,7 +52,7 @@ fn main() {
     //
     // This is just to ensure that we don't set some odd version in `create_object_file`,
     // if the rmeta file is packed in a different way in the future, this can safely be removed.
-    rustc().target(target()).crate_type("rlib").input("foo.rs").output("libfoo.rlib").run();
+    rustc().crate_type("rlib").input("foo.rs").output("libfoo.rlib").run();
     // Extra .rmeta file (which is encoded as an object file).
     cmd("ar").arg("-x").arg("libfoo.rlib").arg("lib.rmeta").run();
     has_sdk_version("lib.rmeta", "n/a");
@@ -69,7 +68,6 @@ fn main() {
         // Test with clang
         let file_name = format!("foo_cc{file_ext}");
         rustc()
-            .target(target())
             .crate_type("bin")
             .arg("-Clinker-flavor=gcc")
             .input("foo.rs")
@@ -80,7 +78,6 @@ fn main() {
         // Test with ld64
         let file_name = format!("foo_ld{file_ext}");
         rustc()
-            .target(target())
             .crate_type("bin")
             .arg("-Clinker-flavor=ld")
             .input("foo.rs")

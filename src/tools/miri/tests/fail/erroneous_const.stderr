@@ -1,8 +1,8 @@
-error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
+error[E0080]: evaluation panicked: explicit panic
   --> tests/fail/erroneous_const.rs:LL:CC
    |
 LL |     const VOID: ! = panic!();
-   |                     ^^^^^^^^ evaluation panicked: explicit panic
+   |                     ^^^^^^^^ evaluation of `PrintName::<i32>::VOID` failed here
 
 note: erroneous constant encountered
   --> tests/fail/erroneous_const.rs:LL:CC

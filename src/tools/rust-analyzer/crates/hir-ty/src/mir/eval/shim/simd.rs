@@ -31,7 +31,7 @@ impl Evaluator<'_> {
                     Some(len) => len,
                     _ => {
                         if let AdtId::StructId(id) = id.0 {
-                            let struct_data = self.db.variant_fields(id.into());
+                            let struct_data = id.fields(self.db);
                             let fields = struct_data.fields();
                             let Some((first_field, _)) = fields.iter().next() else {
                                 not_supported!("simd type with no field");
@@ -114,12 +114,11 @@ impl Evaluator<'_> {
                             break;
                         }
                     }
-                    if is_signed {
-                        if let Some((&l, &r)) = l.iter().zip(r).next_back() {
-                            if l != r {
-                                result = (l as i8).cmp(&(r as i8));
-                            }
-                        }
+                    if is_signed
+                        && let Some((&l, &r)) = l.iter().zip(r).next_back()
+                        && l != r
+                    {
+                        result = (l as i8).cmp(&(r as i8));
                     }
                     let result = match result {
                         Ordering::Less => ["lt", "le", "ne"].contains(&name),

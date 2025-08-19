@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 rustc-hash = "2.0.0"
-
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena", optional = true }
@@ -24,10 +23,13 @@ tracing = "0.1"
 # tidy-alphabetical-end
 
 [dev-dependencies]
+# tidy-alphabetical-start
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "ansi"] }
 tracing-tree = "0.3.0"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 default = ["rustc"]
 rustc = [
     "dep:rustc_abi",
@@ -43,3 +45,4 @@ rustc = [
     "smallvec/may_dangle",
     "rustc_index/nightly",
 ]
+# tidy-alphabetical-end

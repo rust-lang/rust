@@ -1,4 +1,4 @@
-//@no-rustfix
+//@no-rustfix: multiple suggestions add `-> !` to the same fn
 //@aux-build:proc_macros.rs
 
 #![allow(clippy::never_loop)]

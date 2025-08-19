@@ -7,7 +7,7 @@ import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { log, unwrapUndefinable, type RustEditor } from "./util";
+import { Env, log, unwrapUndefinable, type RustEditor } from "./util";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -18,9 +18,14 @@ export async function selectRunnable(
     prevRunnable?: RunnableQuickPick,
     debuggeeOnly = false,
     showButtons: boolean = true,
+    mode?: "cursor",
 ): Promise<RunnableQuickPick | undefined> {
     const editor = ctx.activeRustEditor ?? ctx.activeCargoTomlEditor;
     if (!editor) return;
+
+    if (mode === "cursor") {
+        return selectRunnableAtCursor(ctx, editor, prevRunnable);
+    }
 
     // show a placeholder while we get the runnables from the server
     const quickPick = vscode.window.createQuickPick();
@@ -54,6 +59,58 @@ export async function selectRunnable(
     );
 }
 
+async function selectRunnableAtCursor(
+    ctx: CtxInit,
+    editor: RustEditor,
+    prevRunnable?: RunnableQuickPick,
+): Promise<RunnableQuickPick | undefined> {
+    const runnableQuickPicks = await getRunnables(ctx.client, editor, prevRunnable, false);
+    let runnableQuickPickAtCursor = null;
+    const cursorPosition = ctx.client.code2ProtocolConverter.asPosition(editor.selection.active);
+    for (const runnableQuickPick of runnableQuickPicks) {
+        if (!runnableQuickPick.runnable.location?.targetRange) {
+            continue;
+        }
+        const runnableQuickPickRange = runnableQuickPick.runnable.location.targetRange;
+        if (
+            runnableQuickPickAtCursor?.runnable?.location?.targetRange != null &&
+            rangeContainsOtherRange(
+                runnableQuickPickRange,
+                runnableQuickPickAtCursor.runnable.location.targetRange,
+            )
+        ) {
+            continue;
+        }
+        if (rangeContainsPosition(runnableQuickPickRange, cursorPosition)) {
+            runnableQuickPickAtCursor = runnableQuickPick;
+        }
+    }
+    if (runnableQuickPickAtCursor == null) {
+        return;
+    }
+    return Promise.resolve(runnableQuickPickAtCursor);
+}
+
+function rangeContainsPosition(range: lc.Range, position: lc.Position): boolean {
+    return (
+        (position.line > range.start.line ||
+            (position.line === range.start.line && position.character >= range.start.character)) &&
+        (position.line < range.end.line ||
+            (position.line === range.end.line && position.character <= range.end.character))
+    );
+}
+
+function rangeContainsOtherRange(range: lc.Range, otherRange: lc.Range) {
+    return (
+        (range.start.line < otherRange.start.line ||
+            (range.start.line === otherRange.start.line &&
+                range.start.character <= otherRange.start.character)) &&
+        (range.end.line > otherRange.end.line ||
+            (range.end.line === otherRange.end.line &&
+                range.end.character >= otherRange.end.character))
+    );
+}
+
 export class RunnableQuickPick implements vscode.QuickPickItem {
     public label: string;
     public description?: string | undefined;
@@ -65,11 +122,8 @@ export class RunnableQuickPick implements vscode.QuickPickItem {
     }
 }
 
-export function prepareBaseEnv(
-    inheritEnv: boolean,
-    base?: Record<string, string>,
-): Record<string, string> {
-    const env: Record<string, string> = { RUST_BACKTRACE: "short" };
+export function prepareBaseEnv(inheritEnv: boolean, base?: Env): Env {
+    const env: Env = { RUST_BACKTRACE: "short" };
     if (inheritEnv) {
         Object.assign(env, process.env);
     }
@@ -79,11 +133,7 @@ export function prepareBaseEnv(
     return env;
 }
 
-export function prepareEnv(
-    inheritEnv: boolean,
-    runnableEnv?: Record<string, string>,
-    runnableEnvCfg?: Record<string, string>,
-): Record<string, string> {
+export function prepareEnv(inheritEnv: boolean, runnableEnv?: Env, runnableEnvCfg?: Env): Env {
     const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {

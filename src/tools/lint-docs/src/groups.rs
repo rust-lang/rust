@@ -26,6 +26,10 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
         "Lints that detect identifiers which will be come keywords in later editions",
     ),
     ("deprecated-safe", "Lints for functions which were erroneously marked as safe in the past"),
+    (
+        "unknown-or-malformed-diagnostic-attributes",
+        "detects unknown or malformed diagnostic attributes",
+    ),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

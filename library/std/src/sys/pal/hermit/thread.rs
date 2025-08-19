@@ -4,7 +4,7 @@ use super::hermit_abi;
 use crate::ffi::CStr;
 use crate::mem::ManuallyDrop;
 use crate::num::NonZero;
-use crate::time::Duration;
+use crate::time::{Duration, Instant};
 use crate::{io, ptr};
 
 pub type Tid = hermit_abi::Tid;
@@ -58,7 +58,11 @@ impl Thread {
         }
     }
 
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        _name: Option<&str>,
+        p: Box<dyn FnOnce()>,
+    ) -> io::Result<Thread> {
         unsafe {
             Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
         }
@@ -86,6 +90,14 @@ impl Thread {
         }
     }
 
+    pub fn sleep_until(deadline: Instant) {
+        let now = Instant::now();
+
+        if let Some(delay) = deadline.checked_duration_since(now) {
+            Self::sleep(delay);
+        }
+    }
+
     pub fn join(self) {
         unsafe {
             let _ = hermit_abi::join(self.tid);
@@ -101,6 +113,10 @@ impl Thread {
     pub fn into_id(self) -> Tid {
         ManuallyDrop::new(self).tid
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
 
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {

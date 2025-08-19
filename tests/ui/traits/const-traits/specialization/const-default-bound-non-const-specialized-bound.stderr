@@ -3,12 +3,12 @@ error[E0119]: conflicting implementations of trait `Bar`
    |
 LL | / impl<T> const Bar for T
 LL | | where
-LL | |     T: ~const Foo,
-   | |__________________- first implementation here
+LL | |     T: [const] Foo,
+   | |___________________- first implementation here
 ...
 LL | / impl<T> Bar for T
 LL | | where
-LL | |     T: Foo, //FIXME ~ ERROR missing `~const` qualifier
+LL | |     T: Foo, //FIXME ~ ERROR missing `[const]` qualifier
 LL | |     T: Specialize,
    | |__________________^ conflicting implementation
 
@@ -17,8 +17,8 @@ error[E0119]: conflicting implementations of trait `Baz`
    |
 LL | / impl<T> const Baz for T
 LL | | where
-LL | |     T: ~const Foo,
-   | |__________________- first implementation here
+LL | |     T: [const] Foo,
+   | |___________________- first implementation here
 ...
 LL | / impl<T> const Baz for T //FIXME ~ ERROR conflicting implementations of trait `Baz`
 LL | | where

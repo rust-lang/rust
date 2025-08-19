@@ -10,6 +10,7 @@ fn create_doc_fragment(s: &str) -> Vec<DocFragment> {
         doc: Symbol::intern(s),
         kind: DocFragmentKind::SugaredDoc,
         indent: 0,
+        from_expansion: false,
     }]
 }
 

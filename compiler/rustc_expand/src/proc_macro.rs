@@ -1,11 +1,10 @@
-use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
 use rustc_span::profiling::SpannedEventArgRecorder;
+use {rustc_ast as ast, rustc_proc_macro as pm};
 
 use crate::base::{self, *};
 use crate::{errors, proc_macro_server};
@@ -161,7 +160,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {
-                        items.push(Annotatable::Stmt(P(ecx.stmt_item(span, item))));
+                        items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
                     } else {
                         items.push(Annotatable::Item(item));
                     }

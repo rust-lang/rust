@@ -1,7 +1,7 @@
 //@only-target: linux android illumos
 //~^ERROR: deadlocked
 //~^^ERROR: deadlocked
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 use std::thread;

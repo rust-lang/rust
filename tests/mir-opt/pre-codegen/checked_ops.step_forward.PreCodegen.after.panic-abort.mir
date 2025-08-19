@@ -25,9 +25,11 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         }
         scope 8 (inlined Option::<u16>::is_none) {
             scope 9 (inlined Option::<u16>::is_some) {
+                scope 10 {
+                }
             }
         }
-        scope 10 (inlined core::num::<impl u16>::wrapping_add) {
+        scope 11 (inlined core::num::<impl u16>::wrapping_add) {
         }
     }
 

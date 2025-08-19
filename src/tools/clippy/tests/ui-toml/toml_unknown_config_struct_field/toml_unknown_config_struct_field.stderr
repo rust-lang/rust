@@ -1,0 +1,8 @@
+error: error reading Clippy's configuration file: data did not match any variant of untagged enum DisallowedPathEnum
+  --> $DIR/tests/ui-toml/toml_unknown_config_struct_field/clippy.toml:3:5
+   |
+LL |     { path = "std::panic", recommendation = "return a `std::result::Result::Error` instead" },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

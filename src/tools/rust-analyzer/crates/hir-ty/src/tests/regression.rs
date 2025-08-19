@@ -629,7 +629,7 @@ fn issue_4053_diesel_where_clauses() {
             488..522 '{     ...     }': ()
             498..502 'self': SelectStatement<F, S, D, W, O, LOf, {unknown}, {unknown}>
             498..508 'self.order': O
-            498..515 'self.o...into()': dyn QueryFragment<DB>
+            498..515 'self.o...into()': dyn QueryFragment<DB> + '?
         "#]],
     );
 }
@@ -773,7 +773,7 @@ fn issue_4800() {
         "#,
         expect![[r#"
             379..383 'self': &'? mut PeerSet<D>
-            401..424 '{     ...     }': dyn Future<Output = ()>
+            401..424 '{     ...     }': dyn Future<Output = ()> + '?
             411..418 'loop {}': !
             416..418 '{}': ()
             575..579 'self': &'? mut Self
@@ -2276,5 +2276,110 @@ fn test(x: bool) {
             337..338 '_': bool
             342..344 '42': i32
         "#]],
+    );
+}
+
+#[test]
+fn issue_19730() {
+    check_infer(
+        r#"
+trait Trait<T = Self> {}
+
+trait Foo {
+    type Bar<A, B>: Trait;
+
+    fn foo<A, B>(bar: Self::Bar<A, B>) {
+        let _ = bar;
+    }
+}
+"#,
+        expect![[r#"
+            83..86 'bar': Foo::Bar<Self, A, B>
+            105..133 '{     ...     }': ()
+            119..120 '_': Foo::Bar<Self, A, B>
+            123..126 'bar': Foo::Bar<Self, A, B>
+        "#]],
+    );
+}
+
+#[test]
+fn no_panic_on_recursive_const() {
+    check_infer(
+        r#"
+struct Foo<const N: usize> {}
+impl<const N: Foo<N>> Foo<N> {
+    fn foo(self) {}
+}
+
+fn test() {
+    let _ = N;
+}
+"#,
+        expect![[r#"
+            72..76 'self': Foo<N>
+            78..80 '{}': ()
+            94..112 '{     ...= N; }': ()
+            104..105 '_': {unknown}
+            108..109 'N': {unknown}
+        "#]],
+    );
+
+    check_infer(
+        r#"
+struct Foo<const N: usize>;
+const N: Foo<N> = Foo;
+
+impl<const N: usize> Foo<N> {
+    fn foo(self) -> usize {
+        N
+    }
+}
+
+fn test() {
+    let _ = N;
+}
+"#,
+        expect![[r#"
+            93..97 'self': Foo<N>
+            108..125 '{     ...     }': usize
+            118..119 'N': usize
+            139..157 '{     ...= N; }': ()
+            149..150 '_': Foo<_>
+            153..154 'N': Foo<_>
+        "#]],
+    );
+}
+
+#[test]
+fn rust_destruct_option_clone() {
+    check_types(
+        r#"
+//- minicore: option, drop
+fn test(o: &Option<i32>) {
+    o.my_clone();
+  //^^^^^^^^^^^^ Option<i32>
+}
+pub trait MyClone: Sized {
+    fn my_clone(&self) -> Self;
+}
+impl<T> const MyClone for Option<T>
+where
+    T: ~const MyClone + ~const Destruct,
+{
+    fn my_clone(&self) -> Self {
+        match self {
+            Some(x) => Some(x.my_clone()),
+            None => None,
+        }
+    }
+}
+impl const MyClone for i32 {
+    fn my_clone(&self) -> Self {
+        *self
+    }
+}
+#[lang = "destruct"]
+pub trait Destruct {}
+"#,
     );
 }

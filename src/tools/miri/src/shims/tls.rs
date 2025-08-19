@@ -302,7 +302,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Windows has a special magic linker section that is run on certain events.
         // We don't support most of that, but just enough to make thread-local dtors in `std` work.
-        interp_ok(this.lookup_link_section(".CRT$XLB")?)
+        interp_ok(this.lookup_link_section(|section| section == ".CRT$XLB")?)
     }
 
     fn schedule_windows_tls_dtor(&mut self, dtor: ImmTy<'tcx>) -> InterpResult<'tcx> {
@@ -325,7 +325,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ExternAbi::System { unwind: false },
             &[null_ptr.clone(), ImmTy::from_scalar(reason, this.machine.layouts.u32), null_ptr],
             None,
-            StackPopCleanup::Root { cleanup: true },
+            ReturnContinuation::Stop { cleanup: true },
         )?;
         interp_ok(())
     }
@@ -346,7 +346,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(data, this.machine.layouts.mut_raw_ptr)],
                 None,
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
 
             return interp_ok(Poll::Pending);
@@ -383,7 +383,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
                 None,
-                StackPopCleanup::Root { cleanup: true },
+                ReturnContinuation::Stop { cleanup: true },
             )?;
 
             return interp_ok(Poll::Pending);

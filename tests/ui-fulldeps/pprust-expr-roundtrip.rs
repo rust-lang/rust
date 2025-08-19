@@ -34,8 +34,7 @@ extern crate thin_vec;
 extern crate rustc_driver;
 
 use parser::parse_expr;
-use rustc_ast::mut_visit::{visit_clobber, MutVisitor};
-use rustc_ast::ptr::P;
+use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_session::parse::ParseSess;
@@ -45,11 +44,11 @@ use rustc_span::DUMMY_SP;
 use thin_vec::{thin_vec, ThinVec};
 
 // Helper functions for building exprs
-fn expr(kind: ExprKind) -> P<Expr> {
-    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: AttrVec::new(), tokens: None })
+fn expr(kind: ExprKind) -> Box<Expr> {
+    Box::new(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: AttrVec::new(), tokens: None })
 }
 
-fn make_x() -> P<Expr> {
+fn make_x() -> Box<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
     let path = Path { segments: thin_vec![seg], span: DUMMY_SP, tokens: None };
     expr(ExprKind::Path(None, path))
@@ -58,7 +57,7 @@ fn make_x() -> P<Expr> {
 /// Iterate over exprs of depth up to `depth`. The goal is to explore all "interesting"
 /// combinations of expression nesting. For example, we explore combinations using `if`, but not
 /// `while` or `match`, since those should print and parse in much the same way as `if`.
-fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
+fn iter_exprs(depth: usize, f: &mut dyn FnMut(Box<Expr>)) {
     if depth == 0 {
         f(make_x());
         return;
@@ -108,7 +107,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Unary(UnOp::Deref, e)));
             }
             9 => {
-                let block = P(Block {
+                let block = Box::new(Block {
                     stmts: ThinVec::new(),
                     id: DUMMY_NODE_ID,
                     rules: BlockCheckMode::Default,
@@ -118,7 +117,10 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             }
             10 => {
-                let decl = P(FnDecl { inputs: thin_vec![], output: FnRetTy::Default(DUMMY_SP) });
+                let decl = Box::new(FnDecl {
+                    inputs: thin_vec![],
+                    output: FnRetTy::Default(DUMMY_SP),
+                });
                 iter_exprs(depth - 1, &mut |e| {
                     g(ExprKind::Closure(Box::new(Closure {
                         binder: ClosureBinder::NotPresent,
@@ -159,7 +161,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             }
             16 => {
                 let path = Path::from_ident(Ident::from_str("S"));
-                g(ExprKind::Struct(P(StructExpr {
+                g(ExprKind::Struct(Box::new(StructExpr {
                     qself: None,
                     path,
                     fields: thin_vec![],
@@ -170,8 +172,12 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Try(e)));
             }
             18 => {
-                let pat =
-                    P(Pat { id: DUMMY_NODE_ID, kind: PatKind::Wild, span: DUMMY_SP, tokens: None });
+                let pat = Box::new(Pat {
+                    id: DUMMY_NODE_ID,
+                    kind: PatKind::Wild,
+                    span: DUMMY_SP,
+                    tokens: None,
+                });
                 iter_exprs(depth - 1, &mut |e| {
                     g(ExprKind::Let(pat.clone(), e, DUMMY_SP, Recovered::No))
                 })
@@ -187,9 +193,9 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
 struct RemoveParens;
 
 impl MutVisitor for RemoveParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         match e.kind.clone() {
-            ExprKind::Paren(inner) => *e = inner,
+            ExprKind::Paren(inner) => *e = *inner,
             _ => {}
         };
         mut_visit::walk_expr(self, e);
@@ -200,17 +206,11 @@ impl MutVisitor for RemoveParens {
 struct AddParens;
 
 impl MutVisitor for AddParens {
-    fn visit_expr(&mut self, e: &mut P<Expr>) {
+    fn visit_expr(&mut self, e: &mut Expr) {
         mut_visit::walk_expr(self, e);
-        visit_clobber(e, |e| {
-            P(Expr {
-                id: DUMMY_NODE_ID,
-                kind: ExprKind::Paren(e),
-                span: DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            })
-        });
+        let expr = std::mem::replace(e, Expr::dummy());
+
+        e.kind = ExprKind::Paren(Box::new(expr));
     }
 }
 

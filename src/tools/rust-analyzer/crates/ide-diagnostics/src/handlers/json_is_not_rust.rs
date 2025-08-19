@@ -135,13 +135,10 @@ pub(crate) fn json_in_items(
                         "JSON syntax is not valid as a Rust item",
                         FileRange { file_id: vfs_file_id, range },
                     )
+                    .stable()
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(vfs_file_id);
-                        let scope = match import_scope {
-                            ImportScope::File(it) => ImportScope::File(scb.make_mut(it)),
-                            ImportScope::Module(it) => ImportScope::Module(scb.make_mut(it)),
-                            ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),
-                        };
+                        let scope = scb.make_import_scope_mut(import_scope);
                         let current_module = semantics_scope.module();
 
                         let cfg = ImportPathConfig {
@@ -151,37 +148,27 @@ pub(crate) fn json_in_items(
                             allow_unstable: true,
                         };
 
-                        if !scope_has("Serialize") {
-                            if let Some(PathResolution::Def(it)) = serialize_resolved {
-                                if let Some(it) = current_module.find_use_path(
-                                    sema.db,
-                                    it,
-                                    config.insert_use.prefix_kind,
-                                    cfg,
-                                ) {
-                                    insert_use(
-                                        &scope,
-                                        mod_path_to_ast(&it, edition),
-                                        &config.insert_use,
-                                    );
-                                }
-                            }
+                        if !scope_has("Serialize")
+                            && let Some(PathResolution::Def(it)) = serialize_resolved
+                            && let Some(it) = current_module.find_use_path(
+                                sema.db,
+                                it,
+                                config.insert_use.prefix_kind,
+                                cfg,
+                            )
+                        {
+                            insert_use(&scope, mod_path_to_ast(&it, edition), &config.insert_use);
                         }
-                        if !scope_has("Deserialize") {
-                            if let Some(PathResolution::Def(it)) = deserialize_resolved {
-                                if let Some(it) = current_module.find_use_path(
-                                    sema.db,
-                                    it,
-                                    config.insert_use.prefix_kind,
-                                    cfg,
-                                ) {
-                                    insert_use(
-                                        &scope,
-                                        mod_path_to_ast(&it, edition),
-                                        &config.insert_use,
-                                    );
-                                }
-                            }
+                        if !scope_has("Deserialize")
+                            && let Some(PathResolution::Def(it)) = deserialize_resolved
+                            && let Some(it) = current_module.find_use_path(
+                                sema.db,
+                                it,
+                                config.insert_use.prefix_kind,
+                                cfg,
+                            )
+                        {
+                            insert_use(&scope, mod_path_to_ast(&it, edition), &config.insert_use);
                         }
                         let mut sc = scb.finish();
                         sc.insert_source_edit(vfs_file_id, edit.finish());

@@ -20,7 +20,7 @@ mod my_mod_inner {
 
 #[coverage = "off"]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR [E0788]
+//~| ERROR attribute cannot be used on
 struct MyStruct;
 
 #[coverage = "off"]
@@ -28,22 +28,22 @@ struct MyStruct;
 impl MyStruct {
     #[coverage = "off"]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
+    //~| ERROR attribute cannot be used on
     const X: u32 = 7;
 }
 
 #[coverage = "off"]
 //~^ ERROR malformed `coverage` attribute input
-//~| ERROR [E0788]
+//~| ERROR attribute cannot be used on
 trait MyTrait {
     #[coverage = "off"]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
+    //~| ERROR attribute cannot be used on
     const X: u32;
 
     #[coverage = "off"]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
+    //~| ERROR attribute cannot be used on
     type T;
 }
 
@@ -52,12 +52,12 @@ trait MyTrait {
 impl MyTrait for MyStruct {
     #[coverage = "off"]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
+    //~| ERROR attribute cannot be used on
     const X: u32 = 8;
 
     #[coverage = "off"]
     //~^ ERROR malformed `coverage` attribute input
-    //~| ERROR [E0788]
+    //~| ERROR attribute cannot be used on
     type T = ();
 }
 

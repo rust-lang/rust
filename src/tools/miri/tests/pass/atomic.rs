@@ -7,15 +7,17 @@
 #![allow(static_mut_refs)]
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicU64, compiler_fence, fence};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicUsize, compiler_fence, fence};
 
 fn main() {
     atomic_bool();
     atomic_all_ops();
-    atomic_u64();
     atomic_fences();
     atomic_ptr();
     weak_sometimes_fails();
+
+    #[cfg(target_has_atomic = "64")]
+    atomic_u64();
 }
 
 fn atomic_bool() {
@@ -36,25 +38,10 @@ fn atomic_bool() {
     }
 }
 
-// There isn't a trait to use to make this generic, so just use a macro
-macro_rules! compare_exchange_weak_loop {
-    ($atom:expr, $from:expr, $to:expr, $succ_order:expr, $fail_order:expr) => {
-        loop {
-            match $atom.compare_exchange_weak($from, $to, $succ_order, $fail_order) {
-                Ok(n) => {
-                    assert_eq!(n, $from);
-                    break;
-                }
-                Err(n) => assert_eq!(n, $from),
-            }
-        }
-    };
-}
-
 /// Make sure we can handle all the intrinsics
 fn atomic_all_ops() {
     static ATOMIC: AtomicIsize = AtomicIsize::new(0);
-    static ATOMIC_UNSIGNED: AtomicU64 = AtomicU64::new(0);
+    static ATOMIC_UNSIGNED: AtomicUsize = AtomicUsize::new(0);
 
     let load_orders = [Relaxed, Acquire, SeqCst];
     let stored_orders = [Relaxed, Release, SeqCst];
@@ -94,8 +81,25 @@ fn atomic_all_ops() {
     }
 }
 
+#[cfg(target_has_atomic = "64")]
 fn atomic_u64() {
+    use std::sync::atomic::AtomicU64;
     static ATOMIC: AtomicU64 = AtomicU64::new(0);
+
+    // There isn't a trait to use to make this generic, so just use a macro
+    macro_rules! compare_exchange_weak_loop {
+        ($atom:expr, $from:expr, $to:expr, $succ_order:expr, $fail_order:expr) => {
+            loop {
+                match $atom.compare_exchange_weak($from, $to, $succ_order, $fail_order) {
+                    Ok(n) => {
+                        assert_eq!(n, $from);
+                        break;
+                    }
+                    Err(n) => assert_eq!(n, $from),
+                }
+            }
+        };
+    }
 
     ATOMIC.store(1, SeqCst);
     assert_eq!(ATOMIC.compare_exchange(0, 0x100, AcqRel, Acquire), Err(1));

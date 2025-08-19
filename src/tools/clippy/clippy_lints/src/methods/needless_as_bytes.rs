@@ -4,11 +4,11 @@ use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use super::NEEDLESS_AS_BYTES;
 
-pub fn check(cx: &LateContext<'_>, prev_method: &str, method: &str, prev_recv: &Expr<'_>, span: Span) {
+pub fn check(cx: &LateContext<'_>, prev_method: Symbol, method: Symbol, prev_recv: &Expr<'_>, span: Span) {
     let ty1 = cx.typeck_results().expr_ty_adjusted(prev_recv).peel_refs();
     if is_type_lang_item(cx, ty1, LangItem::String) || ty1.is_str() {
         let mut app = Applicability::MachineApplicable;

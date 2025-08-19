@@ -1,17 +1,21 @@
 #[cfg_attr(any(target_os = "espidf", target_os = "horizon", target_os = "nuttx"), allow(unused))]
 mod common;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "fuchsia")] {
+cfg_select! {
+    target_os = "fuchsia" => {
         mod fuchsia;
         use fuchsia as imp;
-    } else if #[cfg(target_os = "vxworks")] {
+    }
+    target_os = "vxworks" => {
         mod vxworks;
         use vxworks as imp;
-    } else if #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))] {
+    }
+    any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx") => {
         mod unsupported;
         use unsupported as imp;
-    } else {
+        pub use unsupported::output;
+    }
+    _ => {
         mod unix;
         use unix as imp;
     }

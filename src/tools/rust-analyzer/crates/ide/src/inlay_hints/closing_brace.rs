@@ -3,9 +3,8 @@
 //! fn g() {
 //! } /* fn g */
 //! ```
-use hir::{DisplayTarget, HirDisplay, Semantics};
+use hir::{DisplayTarget, HirDisplay, InRealFile, Semantics};
 use ide_db::{FileRange, RootDatabase};
-use span::EditionedFileId;
 use syntax::{
     SyntaxKind, SyntaxNode, T,
     ast::{self, AstNode, HasLoopBody, HasName},
@@ -21,15 +20,14 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
     display_target: DisplayTarget,
-    original_node: SyntaxNode,
+    InRealFile { file_id, value: node }: InRealFile<SyntaxNode>,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
-    let mut node = original_node.clone();
+    let mut node = node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -44,7 +42,7 @@ pub(super) fn hints(
                     let hint_text = match trait_ {
                         Some(tr) => format!(
                             "impl {} for {}",
-                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            tr.name(sema.db).display(sema.db, display_target.edition),
                             ty.display_truncated(sema.db, config.max_length, display_target,
                         )),
                         None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, display_target)),
@@ -93,8 +91,6 @@ pub(super) fn hints(
         match_ast! {
             match parent {
                 ast::Fn(it) => {
-                    // FIXME: this could include parameters, but `HirDisplay` prints too much info
-                    // and doesn't respect the max length either, so the hints end up way too long
                     (format!("fn {}", it.name()?), it.name().map(name))
                 },
                 ast::Static(it) => (format!("static {}", it.name()?), it.name().map(name)),
@@ -124,11 +120,11 @@ pub(super) fn hints(
     };
 
     if let Some(mut next) = closing_token.next_token() {
-        if next.kind() == T![;] {
-            if let Some(tok) = next.next_token() {
-                closing_token = next;
-                next = tok;
-            }
+        if next.kind() == T![;]
+            && let Some(tok) = next.next_token()
+        {
+            closing_token = next;
+            next = tok;
         }
         if !(next.kind() == SyntaxKind::WHITESPACE && next.text().contains('\n')) {
             // Only display the hint if the `}` is the last token on the line
@@ -142,7 +138,8 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = name_range.map(|range| FileRange { file_id: file_id.into(), range });
+    let linked_location =
+        name_range.map(|range| FileRange { file_id: file_id.file_id(sema.db), range });
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
@@ -151,7 +148,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
-        resolve_parent: Some(original_node.text_range()),
+        resolve_parent: Some(node.text_range()),
     });
 
     None

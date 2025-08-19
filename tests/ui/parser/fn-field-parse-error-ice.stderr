@@ -1,11 +1,11 @@
 error: expected `,`, or `}`, found keyword `fn`
-  --> $DIR/fn-field-parse-error-ice.rs:4:16
+  --> $DIR/fn-field-parse-error-ice.rs:5:16
    |
 LL |     inner : dyn fn ()
    |                ^ help: try adding a comma: `,`
 
 error: expected identifier, found keyword `fn`
-  --> $DIR/fn-field-parse-error-ice.rs:4:17
+  --> $DIR/fn-field-parse-error-ice.rs:5:17
    |
 LL | struct Baz {
    |        --- while parsing this struct
@@ -18,7 +18,7 @@ LL |     inner : dyn r#fn ()
    |                 ++
 
 error[E0412]: cannot find type `dyn` in this scope
-  --> $DIR/fn-field-parse-error-ice.rs:4:13
+  --> $DIR/fn-field-parse-error-ice.rs:5:13
    |
 LL |     inner : dyn fn ()
    |             ^^^ not found in this scope

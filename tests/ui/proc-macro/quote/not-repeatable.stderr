@@ -1,10 +1,25 @@
-error: proc macro panicked
-  --> $DIR/not-repeatable.rs:15:13
+error[E0599]: the method `quote_into_iter` exists for struct `Ipv4Addr`, but its trait bounds were not satisfied
+  --> $DIR/not-repeatable.rs:11:13
    |
+LL | struct Ipv4Addr;
+   | --------------- method `quote_into_iter` not found for this struct because it doesn't satisfy `Ipv4Addr: Iterator`, `Ipv4Addr: ToTokens`, `Ipv4Addr: proc_macro::ext::RepIteratorExt` or `Ipv4Addr: proc_macro::ext::RepToTokensExt`
+...
 LL |     let _ = quote! { $($ip)* };
-   |             ^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^ method cannot be called on `Ipv4Addr` due to unsatisfied trait bounds
    |
-   = help: message: `$` must be followed by an ident or `$` in `quote!`
+   = note: the following trait bounds were not satisfied:
+           `Ipv4Addr: Iterator`
+           which is required by `Ipv4Addr: proc_macro::ext::RepIteratorExt`
+           `&Ipv4Addr: Iterator`
+           which is required by `&Ipv4Addr: proc_macro::ext::RepIteratorExt`
+           `Ipv4Addr: ToTokens`
+           which is required by `Ipv4Addr: proc_macro::ext::RepToTokensExt`
+           `&mut Ipv4Addr: Iterator`
+           which is required by `&mut Ipv4Addr: proc_macro::ext::RepIteratorExt`
+note: the traits `Iterator` and `ToTokens` must be implemented
+  --> $SRC_DIR/proc_macro/src/to_tokens.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0599`.

@@ -206,7 +206,6 @@ pub mod panic_const {
     }
     // Separated panic constants list for async drop feature
     // (May be joined when the corresponding lang items will be in the bootstrap)
-    #[cfg(not(bootstrap))]
     panic_const! {
         panic_const_coroutine_resumed_drop = "coroutine resumed after async drop",
         panic_const_async_fn_resumed_drop = "`async fn` resumed after async drop",
@@ -234,14 +233,6 @@ pub fn panic_nounwind_nobacktrace(expr: &'static str) -> ! {
     panic_nounwind_fmt(fmt::Arguments::new_const(&[expr]), /* force_no_backtrace */ true);
 }
 
-#[track_caller]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
-pub const fn panic_explicit() -> ! {
-    panic_display(&"explicit panic");
-}
-
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
@@ -261,9 +252,8 @@ pub const fn panic_str_2015(expr: &str) -> ! {
 
 #[inline]
 #[track_caller]
+#[lang = "panic_display"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
-// enforce a &&str argument in const-check and hook this by const-eval
-#[rustc_const_panic_str]
 #[rustc_const_stable_indirect] // must follow stable const rules since it is exposed to stable
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));
@@ -311,6 +301,22 @@ fn panic_null_pointer_dereference() -> ! {
 
     panic_nounwind_fmt(
         format_args!("null pointer dereference occurred"),
+        /* force_no_backtrace */ false,
+    )
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_invalid_enum_construction"] // needed by codegen for panic on invalid enum construction.
+#[rustc_nounwind] // `CheckEnums` MIR pass requires this function to never unwind
+fn panic_invalid_enum_construction(source: u128) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic_nounwind_fmt(
+        format_args!("trying to construct an enum from an invalid value {source:#x}"),
         /* force_no_backtrace */ false,
     )
 }

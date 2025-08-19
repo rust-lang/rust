@@ -1,0 +1,121 @@
+#![warn(clippy::ip_constant)]
+#![allow(dead_code)]
+#![allow(clippy::identity_op)]
+#![allow(clippy::eq_op)]
+
+fn literal_test1() {
+    use std::net::Ipv4Addr;
+    let _ = Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    use std::net::Ipv6Addr;
+    let _ = Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = Ipv6Addr::UNSPECIFIED;
+    //~^ ip_constant
+}
+
+fn literal_test2() {
+    use std::net;
+    let _ = net::Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = net::Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = net::Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    let _ = net::Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = net::Ipv6Addr::UNSPECIFIED;
+    //~^ ip_constant
+}
+
+fn literal_test3() {
+    let _ = std::net::Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = std::net::Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = std::net::Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    let _ = std::net::Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = std::net::Ipv6Addr::UNSPECIFIED;
+    //~^ ip_constant
+}
+
+fn wrapped_in_parens() {
+    let _ = std::net::Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = std::net::Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = std::net::Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    let _ = std::net::Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = std::net::Ipv6Addr::UNSPECIFIED;
+    //~^ ip_constant
+}
+
+const CONST_U8_0: u8 = 0;
+const CONST_U8_1: u8 = 1;
+const CONST_U8_127: u8 = 127;
+const CONST_U8_255: u8 = 255;
+
+const CONST_U16_0: u16 = 0;
+const CONST_U16_1: u16 = 1;
+
+fn const_test1() {
+    use std::net::Ipv4Addr;
+    let _ = Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    use std::net::Ipv6Addr;
+    let _ = Ipv6Addr::LOCALHOST;
+
+    let _ = Ipv6Addr::UNSPECIFIED;
+}
+
+fn const_test2() {
+    use std::net::Ipv4Addr;
+    let _ = Ipv4Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::BROADCAST;
+    //~^ ip_constant
+    let _ = Ipv4Addr::UNSPECIFIED;
+    //~^ ip_constant
+
+    use std::net::Ipv6Addr;
+    let _ = Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+    let _ = Ipv6Addr::LOCALHOST;
+    //~^ ip_constant
+}
+
+macro_rules! ipv4_new {
+    ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        std::net::Ipv4Addr::new($a, $b, $c, $d)
+    };
+}
+
+fn macro_test() {
+    let _ = ipv4_new!(127, 0, 0, 1);
+    // no lint
+    let _ = ipv4_new!(255, 255, 255, 255);
+    // no lint
+    let _ = ipv4_new!(0, 0, 0, 0);
+    // no lint
+}
+
+fn main() {
+    // UI Test
+}

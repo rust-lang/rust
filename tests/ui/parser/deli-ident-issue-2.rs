@@ -1,6 +1,6 @@
 fn main() {
     if 1 < 2 {
-        let _a = vec!]; //~ ERROR mismatched closing delimiter
+        let _a = vec!];
     }
 } //~ ERROR unexpected closing delimiter
 

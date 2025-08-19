@@ -1,3 +1,4 @@
+#![feature(default_field_values)]
 #![deny(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 #![allow(unused)]
 
@@ -88,5 +89,11 @@ pub mod structs {
     struct NonExhaustivePrivate {
         pub foo: u8,
         pub bar: String,
+    }
+}
+
+pub mod issue14992 {
+    pub struct A {
+        pub a: isize = 42,
     }
 }

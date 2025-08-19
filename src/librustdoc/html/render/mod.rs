@@ -49,12 +49,11 @@ use std::{fs, str};
 
 use askama::Template;
 use itertools::Either;
-use rustc_attr_parsing::{
-    ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
-};
+use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_hir::Mutability;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_hir::{ConstStability, Mutability, RustcVersion, StabilityLevel, StableSince};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::{Symbol, sym};
@@ -74,9 +73,9 @@ use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::format::{
-    Ending, HrefError, PrintWithSpace, href, join_with_double_colon, print_abi_with_space,
-    print_constness_with_space, print_default_space, print_generic_bounds, print_where_clause,
-    visibility_print_with_space, write_str,
+    Ending, HrefError, PrintWithSpace, href, print_abi_with_space, print_constness_with_space,
+    print_default_space, print_generic_bounds, print_where_clause, visibility_print_with_space,
+    write_str,
 };
 use crate::html::markdown::{
     HeadingOffset, IdMap, Markdown, MarkdownItemInfo, MarkdownSummaryLine,
@@ -131,11 +130,11 @@ pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
-    pub(crate) path: String,
+    pub(crate) module_path: Vec<Symbol>,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
-    pub(crate) parent_idx: Option<isize>,
-    pub(crate) exact_path: Option<String>,
+    pub(crate) parent_idx: Option<usize>,
+    pub(crate) exact_module_path: Option<Vec<Symbol>>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
@@ -151,6 +150,19 @@ struct RenderType {
 }
 
 impl RenderType {
+    fn size(&self) -> usize {
+        let mut size = 1;
+        if let Some(generics) = &self.generics {
+            size += generics.iter().map(RenderType::size).sum::<usize>();
+        }
+        if let Some(bindings) = &self.bindings {
+            for (_, constraints) in bindings.iter() {
+                size += 1;
+                size += constraints.iter().map(RenderType::size).sum::<usize>();
+            }
+        }
+        size
+    }
     // Types are rendered as lists of lists, because that's pretty compact.
     // The contents of the lists are always integers in self-terminating hex
     // form, handled by `RenderTypeId::write_to_string`, so no commas are
@@ -192,6 +204,62 @@ impl RenderType {
             write_optional_id(self.id, string);
         }
     }
+    fn read_from_bytes(string: &[u8]) -> (RenderType, usize) {
+        let mut i = 0;
+        if string[i] == b'{' {
+            i += 1;
+            let (id, offset) = RenderTypeId::read_from_bytes(&string[i..]);
+            i += offset;
+            let generics = if string[i] == b'{' {
+                i += 1;
+                let mut generics = Vec::new();
+                while string[i] != b'}' {
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    i += offset;
+                    generics.push(ty);
+                }
+                assert!(string[i] == b'}');
+                i += 1;
+                Some(generics)
+            } else {
+                None
+            };
+            let bindings = if string[i] == b'{' {
+                i += 1;
+                let mut bindings = Vec::new();
+                while string[i] == b'{' {
+                    i += 1;
+                    let (binding, boffset) = RenderTypeId::read_from_bytes(&string[i..]);
+                    i += boffset;
+                    let mut bconstraints = Vec::new();
+                    assert!(string[i] == b'{');
+                    i += 1;
+                    while string[i] != b'}' {
+                        let (constraint, coffset) = RenderType::read_from_bytes(&string[i..]);
+                        i += coffset;
+                        bconstraints.push(constraint);
+                    }
+                    assert!(string[i] == b'}');
+                    i += 1;
+                    bindings.push((binding.unwrap(), bconstraints));
+                    assert!(string[i] == b'}');
+                    i += 1;
+                }
+                assert!(string[i] == b'}');
+                i += 1;
+                Some(bindings)
+            } else {
+                None
+            };
+            assert!(string[i] == b'}');
+            i += 1;
+            (RenderType { id, generics, bindings }, i)
+        } else {
+            let (id, offset) = RenderTypeId::read_from_bytes(string);
+            i += offset;
+            (RenderType { id, generics: None, bindings: None }, i)
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -213,7 +281,20 @@ impl RenderTypeId {
             RenderTypeId::Index(idx) => (*idx).try_into().unwrap(),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        search_index::encode::write_vlqhex_to_string(id, string);
+        search_index::encode::write_signed_vlqhex_to_string(id, string);
+    }
+    fn read_from_bytes(string: &[u8]) -> (Option<RenderTypeId>, usize) {
+        let Some((value, offset)) = search_index::encode::read_signed_vlqhex_from_string(string)
+        else {
+            return (None, 0);
+        };
+        let value = isize::try_from(value).unwrap();
+        let ty = match value {
+            ..0 => Some(RenderTypeId::Index(value)),
+            0 => None,
+            1.. => Some(RenderTypeId::Index(value - 1)),
+        };
+        (ty, offset)
     }
 }
 
@@ -227,12 +308,64 @@ pub(crate) struct IndexItemFunctionType {
 }
 
 impl IndexItemFunctionType {
-    fn write_to_string<'a>(
-        &'a self,
-        string: &mut String,
-        backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
-    ) {
-        assert!(backref_queue.len() <= 16);
+    fn size(&self) -> usize {
+        self.inputs.iter().map(RenderType::size).sum::<usize>()
+            + self.output.iter().map(RenderType::size).sum::<usize>()
+            + self
+                .where_clause
+                .iter()
+                .map(|constraints| constraints.iter().map(RenderType::size).sum::<usize>())
+                .sum::<usize>()
+    }
+    fn read_from_string_without_param_names(string: &[u8]) -> (IndexItemFunctionType, usize) {
+        let mut i = 0;
+        if string[i] == b'`' {
+            return (
+                IndexItemFunctionType {
+                    inputs: Vec::new(),
+                    output: Vec::new(),
+                    where_clause: Vec::new(),
+                    param_names: Vec::new(),
+                },
+                1,
+            );
+        }
+        assert_eq!(b'{', string[i]);
+        i += 1;
+        fn read_args_from_string(string: &[u8]) -> (Vec<RenderType>, usize) {
+            let mut i = 0;
+            let mut params = Vec::new();
+            if string[i] == b'{' {
+                // multiple params
+                i += 1;
+                while string[i] != b'}' {
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    i += offset;
+                    params.push(ty);
+                }
+                i += 1;
+            } else if string[i] != b'}' {
+                let (tyid, offset) = RenderTypeId::read_from_bytes(&string[i..]);
+                params.push(RenderType { id: tyid, generics: None, bindings: None });
+                i += offset;
+            }
+            (params, i)
+        }
+        let (inputs, offset) = read_args_from_string(&string[i..]);
+        i += offset;
+        let (output, offset) = read_args_from_string(&string[i..]);
+        i += offset;
+        let mut where_clause = Vec::new();
+        while string[i] != b'}' {
+            let (constraint, offset) = read_args_from_string(&string[i..]);
+            i += offset;
+            where_clause.push(constraint);
+        }
+        assert_eq!(b'}', string[i], "{} {}", String::from_utf8_lossy(&string), i);
+        i += 1;
+        (IndexItemFunctionType { inputs, output, where_clause, param_names: Vec::new() }, i)
+    }
+    fn write_to_string_without_param_names<'a>(&'a self, string: &mut String) {
         // If we couldn't figure out a type, just write 0,
         // which is encoded as `` ` `` (see RenderTypeId::write_to_string).
         let has_missing = self
@@ -242,18 +375,7 @@ impl IndexItemFunctionType {
             .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
             string.push('`');
-        } else if let Some(idx) = backref_queue.iter().position(|other| *other == self) {
-            // The backref queue has 16 items, so backrefs use
-            // a single hexit, disjoint from the ones used for numbers.
-            string.push(
-                char::try_from('0' as u32 + u32::try_from(idx).unwrap())
-                    .expect("last possible value is '?'"),
-            );
         } else {
-            backref_queue.push_front(self);
-            if backref_queue.len() > 16 {
-                backref_queue.pop_back();
-            }
             string.push('{');
             match &self.inputs[..] {
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
@@ -508,22 +630,21 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
       the Rustdoc book]({DOC_RUST_LANG_ORG_VERSION}/rustdoc/scraped-examples.html)."
     ));
 
-    let mut ids = IdMap::default();
     format!(
         "<div class=\"main-heading\">\
              <h1>About scraped examples</h1>\
          </div>\
          <div>{}</div>",
-        Markdown {
+        fmt::from_fn(|f| Markdown {
             content: &content,
             links: &[],
-            ids: &mut ids,
+            ids: &mut IdMap::default(),
             error_codes: shared.codes,
             edition: shared.edition(),
             playground: &shared.playground,
             heading_offset: HeadingOffset::H1,
         }
-        .into_string()
+        .write_into(f))
     )
 }
 
@@ -538,7 +659,7 @@ fn document(
     }
 
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, parent).render_into(f).unwrap();
+        document_item_info(cx, item, parent).render_into(f)?;
         if parent.is_none() {
             write!(f, "{}", document_full_collapsible(item, cx, heading_offset))
         } else {
@@ -555,20 +676,18 @@ fn render_markdown(
     heading_offset: HeadingOffset,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        write!(
-            f,
-            "<div class=\"docblock\">{}</div>",
-            Markdown {
-                content: md_text,
-                links: &links,
-                ids: &mut cx.id_map.borrow_mut(),
-                error_codes: cx.shared.codes,
-                edition: cx.shared.edition(),
-                playground: &cx.shared.playground,
-                heading_offset,
-            }
-            .into_string()
-        )
+        f.write_str("<div class=\"docblock\">")?;
+        Markdown {
+            content: md_text,
+            links: &links,
+            ids: &mut cx.id_map.borrow_mut(),
+            error_codes: cx.shared.codes,
+            edition: cx.shared.edition(),
+            playground: &cx.shared.playground,
+            heading_offset,
+        }
+        .write_into(&mut *f)?;
+        f.write_str("</div>")
     })
 }
 
@@ -582,7 +701,7 @@ fn document_short(
     show_def_docs: bool,
 ) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
+        document_item_info(cx, item, Some(parent)).render_into(f)?;
         if !show_def_docs {
             return Ok(());
         }
@@ -661,7 +780,7 @@ fn document_full_inner(
         };
 
         if let clean::ItemKind::FunctionItem(..) | clean::ItemKind::MethodItem(..) = kind {
-            render_call_locations(f, cx, item);
+            render_call_locations(f, cx, item)?;
         }
         Ok(())
     })
@@ -752,7 +871,7 @@ fn short_item_info(
             let mut id_map = cx.id_map.borrow_mut();
             let html = MarkdownItemInfo(note, &mut id_map);
             message.push_str(": ");
-            message.push_str(&html.into_string());
+            html.write_into(&mut message).unwrap();
         }
         extra_info.push(ShortItemInfo::Deprecation { message });
     }
@@ -983,7 +1102,7 @@ fn assoc_method(
     let name = meth.name.as_ref().unwrap();
     let vis = visibility_print_with_space(meth, cx).to_string();
     let defaultness = print_default_space(meth.is_default());
-    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
     // this condition.
     let constness = match render_mode {
         RenderMode::Normal => print_constness_with_space(
@@ -1112,7 +1231,7 @@ fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
         StableSince::Version(since) => Some(since.to_string()),
         StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
-        StableSince::Err => None,
+        StableSince::Err(_) => None,
     }
 }
 
@@ -1194,18 +1313,36 @@ fn render_assoc_item(
 // a whitespace prefix and newline.
 fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
     fmt::from_fn(move |f| {
-        for a in it.attributes(cx.tcx(), cx.cache(), false) {
+        for a in it.attributes(cx.tcx(), cx.cache()) {
             writeln!(f, "{prefix}{a}")?;
         }
         Ok(())
     })
 }
 
+struct CodeAttribute(String);
+
+fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
+    write!(w, "<div class=\"code-attribute\">{}</div>", code_attr.0).unwrap();
+}
+
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
-    for attr in it.attributes(cx.tcx(), cx.cache(), false) {
-        write!(w, "<div class=\"code-attribute\">{attr}</div>").unwrap();
+    for attr in it.attributes(cx.tcx(), cx.cache()) {
+        render_code_attribute(CodeAttribute(attr), w);
+    }
+}
+
+/// used for type aliases to only render their `repr` attribute.
+fn render_repr_attributes_in_code(
+    w: &mut impl fmt::Write,
+    cx: &Context<'_>,
+    def_id: DefId,
+    item_type: ItemType,
+) {
+    if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
+        render_code_attribute(CodeAttribute(repr), w);
     }
 }
 
@@ -1467,10 +1604,10 @@ fn render_deref_methods(
             }
         }
         render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-    } else if let Some(prim) = target.primitive_type() {
-        if let Some(&did) = cache.primitive_locations.get(&prim) {
-            render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
-        }
+    } else if let Some(prim) = target.primitive_type()
+        && let Some(&did) = cache.primitive_locations.get(&prim)
+    {
+        render_assoc_items_inner(&mut w, cx, container_item, did, what, derefs);
     }
 }
 
@@ -1929,7 +2066,7 @@ fn render_impl(
         // 3. Functions
         //
         // This order is because you can have associated constants used in associated types (like array
-        // length), and both in associcated functions. So with this order, when reading from top to
+        // length), and both in associated functions. So with this order, when reading from top to
         // bottom, you should see items definitions before they're actually used most of the time.
         let mut assoc_types = Vec::new();
         let mut methods = Vec::new();
@@ -2042,21 +2179,20 @@ fn render_impl(
         // default items which weren't overridden in the implementation block.
         // We don't emit documentation for default items if they appear in the
         // Implementations on Foreign Types or Implementors sections.
-        if rendering_params.show_default_items {
-            if let Some(t) = trait_
-                && !impl_.is_negative_trait_impl()
-            {
-                render_default_items(
-                    &mut default_impl_items,
-                    &mut impl_items,
-                    cx,
-                    t,
-                    impl_,
-                    &i.impl_item,
-                    render_mode,
-                    rendering_params,
-                )?;
-            }
+        if rendering_params.show_default_items
+            && let Some(t) = trait_
+            && !impl_.is_negative_trait_impl()
+        {
+            render_default_items(
+                &mut default_impl_items,
+                &mut impl_items,
+                cx,
+                t,
+                impl_,
+                &i.impl_item,
+                render_mode,
+                rendering_params,
+            )?;
         }
         if render_mode == RenderMode::Normal {
             let toggled = !(impl_items.is_empty() && default_impl_items.is_empty());
@@ -2137,7 +2273,7 @@ fn render_rightside(
     let tcx = cx.tcx();
 
     fmt::from_fn(move |w| {
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+        // FIXME: Once https://github.com/rust-lang/rust/issues/143874 is implemented, we can remove
         // this condition.
         let const_stability = match render_mode {
             RenderMode::Normal => item.const_stability(tcx),
@@ -2530,7 +2666,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
 /// types are re-exported, we don't use the corresponding
 /// entry from the js file, as inlining will have already
 /// picked up the impl
-fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
+fn collect_paths_for_type(first_ty: &clean::Type, cache: &Cache) -> Vec<String> {
     let mut out = Vec::new();
     let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
@@ -2540,33 +2676,33 @@ fn collect_paths_for_type(first_ty: clean::Type, cache: &Cache) -> Vec<String> {
         let fqp = cache.exact_paths.get(&did).or_else(get_extern);
 
         if let Some(path) = fqp {
-            out.push(join_with_double_colon(path));
+            out.push(join_path_syms(path));
         }
     };
 
     work.push_back(first_ty);
 
     while let Some(ty) = work.pop_front() {
-        if !visited.insert(ty.clone()) {
+        if !visited.insert(ty) {
             continue;
         }
 
         match ty {
             clean::Type::Path { path } => process_path(path.def_id()),
             clean::Type::Tuple(tys) => {
-                work.extend(tys.into_iter());
+                work.extend(tys.iter());
             }
             clean::Type::Slice(ty) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::Array(ty, _) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::RawPointer(_, ty) => {
-                work.push_back(*ty);
+                work.push_back(ty);
             }
             clean::Type::BorrowedRef { type_, .. } => {
-                work.push_back(*type_);
+                work.push_back(type_);
             }
             clean::Type::QPath(box clean::QPathData { self_type, trait_, .. }) => {
                 work.push_back(self_type);
@@ -2584,11 +2720,15 @@ const MAX_FULL_EXAMPLES: usize = 5;
 const NUM_VISIBLE_LINES: usize = 10;
 
 /// Generates the HTML for example call locations generated via the --scrape-examples flag.
-fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean::Item) {
+fn render_call_locations<W: fmt::Write>(
+    mut w: W,
+    cx: &Context<'_>,
+    item: &clean::Item,
+) -> fmt::Result {
     let tcx = cx.tcx();
     let def_id = item.item_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
-    let Some(call_locations) = cx.shared.call_locations.get(&key) else { return };
+    let Some(call_locations) = cx.shared.call_locations.get(&key) else { return Ok(()) };
 
     // Generate a unique ID so users can link to this section for a given method
     let id = cx.derive_id("scraped-examples");
@@ -2602,8 +2742,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
           </h5>",
         root_path = cx.root_path(),
         id = id
-    )
-    .unwrap();
+    )?;
 
     // Create a URL to a particular location in a reverse-dependency's source file
     let link_to_loc = |call_data: &CallData, loc: &CallLocation| -> (String, String) {
@@ -2705,7 +2844,8 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                 title: init_title,
                 locations: locations_encoded,
             }),
-        );
+        )
+        .unwrap();
 
         true
     };
@@ -2761,8 +2901,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
-        )
-        .unwrap();
+        )?;
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
         // make the page arbitrarily huge!
@@ -2774,9 +2913,8 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
         if it.peek().is_some() {
             w.write_str(
                 r#"<div class="example-links">Additional examples can be found in:<br><ul>"#,
-            )
-            .unwrap();
-            it.for_each(|(_, call_data)| {
+            )?;
+            it.try_for_each(|(_, call_data)| {
                 let (url, _) = link_to_loc(call_data, &call_data.locations[0]);
                 write!(
                     w,
@@ -2784,13 +2922,12 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &Context<'_>, item: &clean
                     url = url,
                     name = call_data.display_name
                 )
-                .unwrap();
-            });
-            w.write_str("</ul></div>").unwrap();
+            })?;
+            w.write_str("</ul></div>")?;
         }
 
-        w.write_str("</div></details>").unwrap();
+        w.write_str("</div></details>")?;
     }
 
-    w.write_str("</div>").unwrap();
+    w.write_str("</div>")
 }

@@ -2,7 +2,7 @@ error: unsupported operation: extern static `E` is not supported by Miri
   --> tests/fail/extern_static_in_const.rs:LL:CC
    |
 LL |     let _val = X;
-   |                ^ extern static `E` is not supported by Miri
+   |                ^ unsupported operation occurred here
    |
    = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:

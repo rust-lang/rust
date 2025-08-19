@@ -20,7 +20,7 @@ use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
@@ -57,7 +57,9 @@ impl TokenTree {
         match (self, other) {
             (TokenTree::Token(token, _), TokenTree::Token(token2, _)) => token.kind == token2.kind,
             (TokenTree::Delimited(.., delim, tts), TokenTree::Delimited(.., delim2, tts2)) => {
-                delim == delim2 && tts.eq_unspanned(tts2)
+                delim == delim2
+                    && tts.len() == tts2.len()
+                    && tts.iter().zip(tts2.iter()).all(|(a, b)| a.eq_unspanned(b))
             }
             _ => false,
         }
@@ -632,10 +634,8 @@ impl TokenStream {
                     (
                         TokenTree::Token(token_left, Spacing::Alone),
                         TokenTree::Token(token_right, _),
-                    ) if ((token_left.is_ident() && !token_left.is_reserved_ident())
-                        || token_left.is_lit())
-                        && ((token_right.is_ident() && !token_right.is_reserved_ident())
-                            || token_right.is_lit()) =>
+                    ) if (token_left.is_non_reserved_ident() || token_left.is_lit())
+                        && (token_right.is_non_reserved_ident() || token_right.is_lit()) =>
                     {
                         token_left.span
                     }
@@ -692,18 +692,6 @@ impl TokenStream {
 
     pub fn iter(&self) -> TokenStreamIter<'_> {
         TokenStreamIter::new(self)
-    }
-
-    /// Compares two `TokenStream`s, checking equality without regarding span information.
-    pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        let mut iter1 = self.iter();
-        let mut iter2 = other.iter();
-        for (tt1, tt2) in iter::zip(&mut iter1, &mut iter2) {
-            if !tt1.eq_unspanned(tt2) {
-                return false;
-            }
-        }
-        iter1.next().is_none() && iter2.next().is_none()
     }
 
     /// Create a token stream containing a single token with alone spacing. The
@@ -989,7 +977,7 @@ impl TokenCursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

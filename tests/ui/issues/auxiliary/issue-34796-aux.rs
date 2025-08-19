@@ -9,7 +9,7 @@ impl Future for u32 {
     type Error = Box<()>;
 }
 
-fn foo() -> Box<Future<Item=(), Error=Box<()>>> {
+fn foo() -> Box<dyn Future<Item=(), Error=Box<()>>> {
     Box::new(0u32)
 }
 

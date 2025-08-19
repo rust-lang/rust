@@ -11,11 +11,9 @@
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]
-#![feature(concat_idents)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deref_patterns)]
-#![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
 #![feature(more_qualified_paths)]
@@ -31,9 +29,6 @@
 #![feature(yeet_expr)]
 #![allow(incomplete_features)]
 
-#[prelude_import]
-use self::prelude::*;
-
 mod prelude {
     pub use std::prelude::rust_2024::*;
 
@@ -43,6 +38,9 @@ mod prelude {
         const CONST: ();
     }
 }
+
+#[prelude_import]
+use self::prelude::*;
 
 mod attributes {
     //! inner single-line doc comment
@@ -801,7 +799,6 @@ mod types {
         let _: dyn Send + 'static;
         let _: dyn 'static + Send;
         let _: dyn for<'a> Send;
-        let _: dyn* Send;
     }
 
     /// TyKind::ImplTrait
@@ -810,7 +807,7 @@ mod types {
         let _: impl Send + 'static;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl 'static + Send;     //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl ?Sized;             //[hir]~ ERROR `impl Trait` is not allowed
-        let _: impl ~const Clone;       //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl [const] Clone;       //[hir]~ ERROR `impl Trait` is not allowed
         let _: impl for<'a> Send;       //[hir]~ ERROR `impl Trait` is not allowed
     }
 
@@ -835,11 +832,13 @@ mod types {
     }
 
     /// TyKind::MacCall
-    #[expect(deprecated)] // concat_idents is deprecated
     fn ty_mac_call() {
-        let _: concat_idents!(T);
-        let _: concat_idents![T];
-        let _: concat_idents! { T };
+        macro_rules! ty {
+            ($ty:ty) => { $ty }
+        }
+        let _: ty!(T);
+        let _: ty![T];
+        let _: ty! { T };
     }
 
     /// TyKind::CVarArgs

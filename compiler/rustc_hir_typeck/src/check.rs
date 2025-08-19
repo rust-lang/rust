@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::check_function_signature;
 use rustc_infer::infer::RegionVariableOrigin;
@@ -50,14 +49,16 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let span = body.value.span;
 
-    GatherLocalsVisitor::new(fcx).visit_body(body);
+    for param in body.params {
+        GatherLocalsVisitor::gather_from_param(fcx, param);
+    }
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
     let maybe_va_list = fn_sig.c_variadic.then(|| {
         let span = body.params.last().unwrap().span;
-        let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
-        let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
+        let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
+        let region = fcx.next_region_var(RegionVariableOrigin::Misc(span));
 
         tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
     });
@@ -177,7 +178,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         tcx.dcx().span_err(span, "should have no const parameters");
     }
 
-    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
+    let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, span);
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(

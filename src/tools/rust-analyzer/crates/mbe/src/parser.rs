@@ -155,6 +155,7 @@ pub(crate) enum Separator {
     Literal(tt::Literal<Span>),
     Ident(tt::Ident<Span>),
     Puncts(ArrayVec<tt::Punct<Span>, MAX_GLUED_PUNCT_LEN>),
+    Lifetime(tt::Punct<Span>, tt::Ident<Span>),
 }
 
 // Note that when we compare a Separator, we just care about its textual value.
@@ -170,6 +171,7 @@ impl PartialEq for Separator {
                 let b_iter = b.iter().map(|b| b.char);
                 a_iter.eq(b_iter)
             }
+            (Lifetime(_, a), Lifetime(_, b)) => a.sym == b.sym,
             _ => false,
         }
     }
@@ -350,10 +352,19 @@ fn parse_repeat(src: &mut TtIter<'_, Span>) -> Result<(Option<Separator>, Repeat
             _ => true,
         };
         match tt {
-            tt::Leaf::Ident(_) | tt::Leaf::Literal(_) if has_sep => {
-                return Err(ParseError::InvalidRepeat);
-            }
-            tt::Leaf::Ident(ident) => separator = Separator::Ident(ident.clone()),
+            tt::Leaf::Ident(ident) => match separator {
+                Separator::Puncts(puncts) if puncts.is_empty() => {
+                    separator = Separator::Ident(ident.clone());
+                }
+                Separator::Puncts(puncts) => match puncts.as_slice() {
+                    [tt::Punct { char: '\'', .. }] => {
+                        separator = Separator::Lifetime(puncts[0], ident.clone());
+                    }
+                    _ => return Err(ParseError::InvalidRepeat),
+                },
+                _ => return Err(ParseError::InvalidRepeat),
+            },
+            tt::Leaf::Literal(_) if has_sep => return Err(ParseError::InvalidRepeat),
             tt::Leaf::Literal(lit) => separator = Separator::Literal(lit.clone()),
             tt::Leaf::Punct(punct) => {
                 let repeat_kind = match punct.char {

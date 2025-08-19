@@ -14,7 +14,7 @@ fn b<const C: u8()>() {}
 // Paren generic args in AnonymousReportError
 fn c<T = u8()>() {}
 //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
-//~| ERROR defaults for type parameters are only allowed in
+//~| ERROR defaults for generic parameters are not allowed here
 //~| WARN this was previously accepted
 
 // Elided lifetime in path in ConstGeneric

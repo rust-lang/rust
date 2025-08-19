@@ -44,6 +44,23 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_const_heap_ptr_in_final)]
+#[note]
+pub(crate) struct ConstHeapPtrInFinal {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_partial_pointer_in_final)]
+#[note]
+pub(crate) struct PartialPtrInFinal {
+    #[primary_span]
+    pub span: Span,
+    pub kind: InternKind,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_in_stable_exposed)]
 pub(crate) struct UnstableInStableExposed {
     pub gate: String,
@@ -56,11 +73,6 @@ pub(crate) struct UnstableInStableExposed {
     #[suggestion(
         const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
-        applicability = "has-placeholders"
-    )]
-    #[suggestion(
-        const_eval_bypass_sugg,
-        code = "#[rustc_allow_const_fn_unstable({gate})]\n",
         applicability = "has-placeholders"
     )]
     pub attr_span: Span,
@@ -95,14 +107,6 @@ pub(crate) struct RawPtrComparisonErr {
 pub(crate) struct PanicNonStrErr {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_max_num_nodes_in_const)]
-pub(crate) struct MaxNumNodesInConstErr {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub global_const_id: String,
 }
 
 #[derive(Diagnostic)]
@@ -141,9 +145,7 @@ pub(crate) struct UnstableIntrinsic {
         code = "#![feature({feature})]\n",
         applicability = "machine-applicable"
     )]
-    pub suggestion: Option<Span>,
-    #[help(const_eval_unstable_intrinsic_suggestion)]
-    pub help: bool,
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -165,24 +167,17 @@ pub(crate) struct UnmarkedIntrinsicExposed {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_ref_escaping, code = E0764)]
-pub(crate) struct MutableRefEscaping {
+#[diag(const_eval_mutable_borrow_escaping, code = E0764)]
+#[note]
+#[note(const_eval_note2)]
+#[help]
+pub(crate) struct MutableBorrowEscaping {
     #[primary_span]
+    #[label]
     pub span: Span,
     pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_mutable_raw_escaping, code = E0764)]
-pub(crate) struct MutableRawEscaping {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
-}
 #[derive(Diagnostic)]
 #[diag(const_eval_non_const_fmt_macro_call, code = E0015)]
 pub(crate) struct NonConstFmtMacroCall {
@@ -240,16 +235,15 @@ pub(crate) struct UnallowedInlineAsm {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_interior_mutable_ref_escaping, code = E0492)]
-pub(crate) struct InteriorMutableRefEscaping {
+#[diag(const_eval_interior_mutable_borrow_escaping, code = E0492)]
+#[note]
+#[note(const_eval_note2)]
+#[help]
+pub(crate) struct InteriorMutableBorrowEscaping {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[help]
-    pub opt_help: bool,
     pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    pub teach: bool,
 }
 
 #[derive(LintDiagnostic)]
@@ -298,6 +292,9 @@ impl Subdiagnostic for FrameNote {
             span.push_span_label(self.span, fluent::const_eval_frame_note_last);
         }
         let msg = diag.eagerly_translate(fluent::const_eval_frame_note);
+        diag.remove_arg("times");
+        diag.remove_arg("where_");
+        diag.remove_arg("instance");
         diag.span_note(span, msg);
     }
 }
@@ -444,38 +441,6 @@ pub struct LiveDrop<'tcx> {
     pub dropped_at: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(const_eval_error, code = E0080)]
-pub struct ConstEvalError {
-    #[primary_span]
-    pub span: Span,
-    /// One of "const", "const_with_path", and "static"
-    pub error_kind: &'static str,
-    pub instance: String,
-    #[subdiagnostic]
-    pub frame_notes: Vec<FrameNote>,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_nullary_intrinsic_fail)]
-pub struct NullaryIntrinsicError {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_validation_failure, code = E0080)]
-pub struct ValidationFailure {
-    #[primary_span]
-    pub span: Span,
-    #[note(const_eval_validation_failure_note)]
-    pub ub_note: (),
-    #[subdiagnostic]
-    pub frames: Vec<FrameNote>,
-    #[subdiagnostic]
-    pub raw_bytes: RawBytesNote,
-}
-
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagMessage;
@@ -527,6 +492,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(_) => const_eval_write_to_read_only,
             DerefFunctionPointer(_) => const_eval_deref_function_pointer,
             DerefVTablePointer(_) => const_eval_deref_vtable_pointer,
+            DerefTypeIdPointer(_) => const_eval_deref_typeid_pointer,
             InvalidBool(_) => const_eval_invalid_bool,
             InvalidChar(_) => const_eval_invalid_char,
             InvalidTag(_) => const_eval_invalid_tag,
@@ -543,7 +509,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             InvalidNichedEnumVariantWritten { .. } => {
                 const_eval_invalid_niched_enum_variant_written
             }
-            AbiMismatchArgument { .. } => const_eval_incompatible_types,
+            AbiMismatchArgument { .. } => const_eval_incompatible_arg_types,
             AbiMismatchReturn { .. } => const_eval_incompatible_return_types,
         }
     }
@@ -626,7 +592,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 if addr != 0 {
                     diag.arg(
                         "pointer",
-                        Pointer::<Option<CtfeProvenance>>::from_addr_invalid(addr).to_string(),
+                        Pointer::<Option<CtfeProvenance>>::without_provenance(addr).to_string(),
                     );
                 }
 
@@ -640,7 +606,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("has", has.bytes());
                 diag.arg("msg", format!("{msg:?}"));
             }
-            WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
+            WriteToReadOnly(alloc)
+            | DerefFunctionPointer(alloc)
+            | DerefVTablePointer(alloc)
+            | DerefTypeIdPointer(alloc) => {
                 diag.arg("allocation", alloc);
             }
             InvalidBool(b) => {
@@ -665,12 +634,16 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("data_size", info.data_size);
             }
             InvalidNichedEnumVariantWritten { enum_ty } => {
-                diag.arg("ty", enum_ty.to_string());
+                diag.arg("ty", enum_ty);
             }
-            AbiMismatchArgument { caller_ty, callee_ty }
-            | AbiMismatchReturn { caller_ty, callee_ty } => {
-                diag.arg("caller_ty", caller_ty.to_string());
-                diag.arg("callee_ty", callee_ty.to_string());
+            AbiMismatchArgument { arg_idx, caller_ty, callee_ty } => {
+                diag.arg("arg_idx", arg_idx + 1); // adjust for 1-indexed lists in output
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
+            }
+            AbiMismatchReturn { caller_ty, callee_ty } => {
+                diag.arg("caller_ty", caller_ty);
+                diag.arg("callee_ty", callee_ty);
             }
         }
     }
@@ -691,9 +664,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
-            ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
-            ConstRefToExtern => const_eval_validation_const_ref_to_extern,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
+            MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             NullFnPtr => const_eval_validation_null_fn_ptr,
             NeverVal => const_eval_validation_never_val,
             NullablePtrOutOfRange { .. } => const_eval_validation_nullable_ptr_out_of_range,
@@ -851,9 +823,8 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.arg("expected_dyn_type", expected_dyn_type.to_string());
             }
             NullPtr { .. }
-            | ConstRefToMutable
-            | ConstRefToExtern
             | MutableRefToImmutable
+            | MutableRefInConst
             | NullFnPtr
             | NeverVal
             | UnsafeCellInImmutable
@@ -874,8 +845,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::Unsupported(s) => s.clone().into(),
             UnsupportedOpInfo::ExternTypeField => const_eval_extern_type_field,
             UnsupportedOpInfo::UnsizedLocal => const_eval_unsized_local,
-            UnsupportedOpInfo::OverwritePartialPointer(_) => const_eval_partial_pointer_overwrite,
-            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_copy,
+            UnsupportedOpInfo::ReadPartialPointer(_) => const_eval_partial_pointer_read,
             UnsupportedOpInfo::ReadPointerAsInt(_) => const_eval_read_pointer_as_int,
             UnsupportedOpInfo::ThreadLocalStatic(_) => const_eval_thread_local_static,
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
@@ -886,7 +856,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
         use UnsupportedOpInfo::*;
 
         use crate::fluent_generated::*;
-        if let ReadPointerAsInt(_) | OverwritePartialPointer(_) | ReadPartialPointer(_) = self {
+        if let ReadPointerAsInt(_) | ReadPartialPointer(_) = self {
             diag.help(const_eval_ptr_as_bytes_1);
             diag.help(const_eval_ptr_as_bytes_2);
         }
@@ -898,7 +868,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             | UnsupportedOpInfo::ExternTypeField
             | Unsupported(_)
             | ReadPointerAsInt(_) => {}
-            OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
+            ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
             ThreadLocalStatic(did) | ExternStatic(did) => rustc_middle::ty::tls::with(|tcx| {

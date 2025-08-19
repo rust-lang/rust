@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `aaa`
+  --> $DIR/unresolved-module-error-33293.rs:4:9
+   |
+LL |         aaa::bbb(_) => ()
+   |         ^^^ use of unresolved module or unlinked crate `aaa`
+   |
+   = help: you might be missing a crate named `aaa`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

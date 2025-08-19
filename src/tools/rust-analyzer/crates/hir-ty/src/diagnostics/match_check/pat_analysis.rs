@@ -6,21 +6,22 @@ use std::fmt;
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
 use rustc_pattern_analysis::{
-    Captures, IndexVec, PatCx, PrivateUninhabitedField,
+    IndexVec, PatCx, PrivateUninhabitedField,
     constructor::{Constructor, ConstructorSet, VariantVisibility},
     usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
 use smallvec::{SmallVec, smallvec};
 use stdx::never;
+use triomphe::Arc;
 
 use crate::{
-    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
+    AdtId, Interner, Scalar, TraitEnvironment, Ty, TyExt, TyKind,
     db::HirDatabase,
     infer::normalize,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
 };
 
-use super::{FieldPat, Pat, PatKind, is_box};
+use super::{FieldPat, Pat, PatKind};
 
 use Constructor::*;
 
@@ -49,7 +50,7 @@ impl EnumVariantContiguousIndex {
     }
 
     fn to_enum_variant_id(self, db: &dyn HirDatabase, eid: EnumId) -> EnumVariantId {
-        db.enum_variants(eid).variants[self.0].0
+        eid.enum_variants(db).variants[self.0].0
     }
 }
 
@@ -69,13 +70,19 @@ pub(crate) struct MatchCheckCtx<'db> {
     body: DefWithBodyId,
     pub(crate) db: &'db dyn HirDatabase,
     exhaustive_patterns: bool,
+    env: Arc<TraitEnvironment>,
 }
 
 impl<'db> MatchCheckCtx<'db> {
-    pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
-        let def_map = db.crate_def_map(module.krate());
+    pub(crate) fn new(
+        module: ModuleId,
+        body: DefWithBodyId,
+        db: &'db dyn HirDatabase,
+        env: Arc<TraitEnvironment>,
+    ) -> Self {
+        let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
-        Self { module, body, db, exhaustive_patterns }
+        Self { module, body, db, exhaustive_patterns, env }
     }
 
     pub(crate) fn compute_match_usefulness(
@@ -100,7 +107,7 @@ impl<'db> MatchCheckCtx<'db> {
     }
 
     fn is_uninhabited(&self, ty: &Ty) -> bool {
-        is_ty_uninhabited_from(self.db, ty, self.module)
+        is_ty_uninhabited_from(self.db, ty, self.module, self.env.clone())
     }
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
@@ -131,15 +138,15 @@ impl<'db> MatchCheckCtx<'db> {
     }
 
     // This lists the fields of a variant along with their types.
-    fn list_variant_fields<'a>(
-        &'a self,
-        ty: &'a Ty,
+    fn list_variant_fields(
+        &self,
+        ty: &Ty,
         variant: VariantId,
-    ) -> impl Iterator<Item = (LocalFieldId, Ty)> + Captures<'a> + Captures<'db> {
+    ) -> impl Iterator<Item = (LocalFieldId, Ty)> {
         let (_, substs) = ty.as_adt().unwrap();
 
         let field_tys = self.db.field_types(variant);
-        let fields_len = variant.variant_data(self.db).fields().len() as u32;
+        let fields_len = variant.fields(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
             let ty = field_tys[fid].clone().substitute(Interner, substs);
@@ -163,8 +170,6 @@ impl<'db> MatchCheckCtx<'db> {
             }
             PatKind::Deref { subpattern } => {
                 ctor = match pat.ty.kind(Interner) {
-                    // This is a box pattern.
-                    TyKind::Adt(adt, _) if is_box(self.db, adt.0) => Struct,
                     TyKind::Ref(..) => Ref,
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
@@ -187,23 +192,6 @@ impl<'db> MatchCheckCtx<'db> {
                         ctor = Struct;
                         arity = substs.len(Interner);
                     }
-                    TyKind::Adt(adt, _) if is_box(self.db, adt.0) => {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        // FIXME(Nadrieril): A `Box` can in theory be matched either with `Box(_,
-                        // _)` or a box pattern. As a hack to avoid an ICE with the former, we
-                        // ignore other fields than the first one. This will trigger an error later
-                        // anyway.
-                        // See https://github.com/rust-lang/rust/issues/82772 ,
-                        // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
-                        // The problem is that we can't know from the type whether we'll match
-                        // normally or through box-patterns. We'll have to figure out a proper
-                        // solution when we introduce generalized deref patterns. Also need to
-                        // prevent mixing of those two options.
-                        fields.retain(|ipat| ipat.idx == 0);
-                        ctor = Struct;
-                        arity = 1;
-                    }
                     &TyKind::Adt(AdtId(adt), _) => {
                         ctor = match pat.kind.as_ref() {
                             PatKind::Leaf { .. } if matches!(adt, hir_def::AdtId::UnionId(_)) => {
@@ -222,7 +210,7 @@ impl<'db> MatchCheckCtx<'db> {
                             }
                         };
                         let variant = Self::variant_id_for_adt(self.db, &ctor, adt).unwrap();
-                        arity = variant.variant_data(self.db).fields().len();
+                        arity = variant.fields(self.db).fields().len();
                     }
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
@@ -270,12 +258,6 @@ impl<'db> MatchCheckCtx<'db> {
                         })
                         .collect(),
                 },
-                TyKind::Adt(adt, _) if is_box(self.db, adt.0) => {
-                    // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
-                    // of `std`). So this branch is only reachable when the feature is enabled and
-                    // the pattern is a box pattern.
-                    PatKind::Deref { subpattern: subpatterns.next().unwrap() }
-                }
                 TyKind::Adt(adt, substs) => {
                     let variant = Self::variant_id_for_adt(self.db, pat.ctor(), adt.0).unwrap();
                     let subpatterns = self
@@ -301,6 +283,7 @@ impl<'db> MatchCheckCtx<'db> {
             // ignore this issue.
             Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(_) => unimplemented!(),
+            DerefPattern(_) => unimplemented!(),
             &Str(void) => match void {},
             Wildcard | NonExhaustive | Hidden | PrivateUninhabited => PatKind::Wild,
             Never => PatKind::Never,
@@ -335,14 +318,8 @@ impl PatCx for MatchCheckCtx<'_> {
             Struct | Variant(_) | UnionField => match *ty.kind(Interner) {
                 TyKind::Tuple(arity, ..) => arity,
                 TyKind::Adt(AdtId(adt), ..) => {
-                    if is_box(self.db, adt) {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        1
-                    } else {
-                        let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
-                        variant.variant_data(self.db).fields().len()
-                    }
+                    let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
+                    variant.fields(self.db).fields().len()
                 }
                 _ => {
                     never!("Unexpected type for `Single` constructor: {:?}", ty);
@@ -351,6 +328,7 @@ impl PatCx for MatchCheckCtx<'_> {
             },
             Ref => 1,
             Slice(..) => unimplemented!(),
+            DerefPattern(..) => unimplemented!(),
             Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
             | Hidden | Missing | Wildcard => 0,
@@ -374,29 +352,22 @@ impl PatCx for MatchCheckCtx<'_> {
                     tys.cloned().map(|ty| (ty, PrivateUninhabitedField(false))).collect()
                 }
                 TyKind::Ref(.., rty) => single(rty.clone()),
-                &TyKind::Adt(AdtId(adt), ref substs) => {
-                    if is_box(self.db, adt) {
-                        // The only legal patterns of type `Box` (outside `std`) are `_` and box
-                        // patterns. If we're here we can assume this is a box pattern.
-                        let subst_ty = substs.at(Interner, 0).assert_ty_ref(Interner).clone();
-                        single(subst_ty)
-                    } else {
-                        let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
+                &TyKind::Adt(AdtId(adt), ..) => {
+                    let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                        let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
+                    let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
-                        self.list_variant_fields(ty, variant)
-                            .map(move |(fid, ty)| {
-                                let is_visible = || {
-                                    matches!(adt, hir_def::AdtId::EnumId(..))
-                                        || visibilities[fid].is_visible_from(self.db, self.module)
-                                };
-                                let is_uninhabited = self.is_uninhabited(&ty);
-                                let private_uninhabited = is_uninhabited && !is_visible();
-                                (ty, PrivateUninhabitedField(private_uninhabited))
-                            })
-                            .collect()
-                    }
+                    self.list_variant_fields(ty, variant)
+                        .map(move |(fid, ty)| {
+                            let is_visible = || {
+                                matches!(adt, hir_def::AdtId::EnumId(..))
+                                    || visibilities[fid].is_visible_from(self.db, self.module)
+                            };
+                            let is_uninhabited = self.is_uninhabited(&ty);
+                            let private_uninhabited = is_uninhabited && !is_visible();
+                            (ty, PrivateUninhabitedField(private_uninhabited))
+                        })
+                        .collect()
                 }
                 ty_kind => {
                     never!("Unexpected type for `{:?}` constructor: {:?}", ctor, ty_kind);
@@ -411,6 +382,7 @@ impl PatCx for MatchCheckCtx<'_> {
                 }
             },
             Slice(_) => unreachable!("Found a `Slice` constructor in match checking"),
+            DerefPattern(_) => unreachable!("Found a `DerefPattern` constructor in match checking"),
             Never | Bool(..) | IntRange(..) | F16Range(..) | F32Range(..) | F64Range(..)
             | F128Range(..) | Str(..) | Opaque(..) | NonExhaustive | PrivateUninhabited
             | Hidden | Missing | Wildcard => {
@@ -448,16 +420,21 @@ impl PatCx for MatchCheckCtx<'_> {
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(adt @ hir_def::AdtId::EnumId(enum_id)), ref subst) => {
-                let enum_data = cx.db.enum_variants(enum_id);
+                let enum_data = enum_id.enum_variants(cx.db);
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive(adt);
 
                 if enum_data.variants.is_empty() && !is_declared_nonexhaustive {
                     ConstructorSet::NoConstructors
                 } else {
                     let mut variants = IndexVec::with_capacity(enum_data.variants.len());
-                    for &(variant, _) in enum_data.variants.iter() {
-                        let is_uninhabited =
-                            is_enum_variant_uninhabited_from(cx.db, variant, subst, cx.module);
+                    for &(variant, _, _) in enum_data.variants.iter() {
+                        let is_uninhabited = is_enum_variant_uninhabited_from(
+                            cx.db,
+                            variant,
+                            subst,
+                            cx.module,
+                            self.env.clone(),
+                        );
                         let visibility = if is_uninhabited {
                             VariantVisibility::Empty
                         } else {
@@ -511,6 +488,14 @@ impl PatCx for MatchCheckCtx<'_> {
 
     fn complexity_exceeded(&self) -> Result<(), Self::Error> {
         Err(())
+    }
+
+    fn report_mixed_deref_pat_ctors(
+        &self,
+        _deref_pat: &DeconstructedPat<'_>,
+        _normal_pat: &DeconstructedPat<'_>,
+    ) {
+        // FIXME(deref_patterns): This could report an error comparable to the one in rustc.
     }
 }
 

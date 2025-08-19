@@ -1,0 +1,15 @@
+error[E0599]: no method named `foo` found for reference `&B` in the current scope
+  --> $DIR/nested-mod-trait-method-lookup-leak-10465.rs:19:15
+   |
+LL |             b.foo();
+   |               ^^^ method not found in `&B`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `A` which provides `foo` is implemented but not in scope; perhaps you want to import it
+   |
+LL +         use a::A;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

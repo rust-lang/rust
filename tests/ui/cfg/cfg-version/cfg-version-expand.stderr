@@ -1,0 +1,17 @@
+warning: unexpected `cfg` condition name: `version`
+  --> $DIR/cfg-version-expand.rs:15:11
+   |
+LL | #[cfg(not(version = "1.48.0"))]
+   |           ^^^^^^^^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(version, values("1.48.0"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+help: there is a similar config predicate: `version("..")`
+   |
+LL - #[cfg(not(version = "1.48.0"))]
+LL + #[cfg(not(version("1.48.0")))]
+   |
+
+warning: 1 warning emitted
+

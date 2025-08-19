@@ -37,6 +37,11 @@ impl FileDescription for EventFd {
         "event"
     }
 
+    fn nondet_short_accesses(&self) -> bool {
+        // We always read and write exactly one `u64`.
+        false
+    }
+
     fn close<'tcx>(
         self,
         _communicate_allowed: bool,

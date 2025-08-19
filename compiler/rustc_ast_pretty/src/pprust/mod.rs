@@ -7,7 +7,9 @@ use std::borrow::Cow;
 use rustc_ast as ast;
 use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
-pub use state::{AnnNode, Comments, PpAnn, PrintState, State, print_crate};
+pub use state::{
+    AnnNode, Comments, PpAnn, PrintState, State, print_crate, print_crate_as_interface,
+};
 
 /// Print the token kind precisely, without converting `$crate` into its respective crate name.
 pub fn token_kind_to_string(tok: &TokenKind) -> Cow<'static, str> {
@@ -49,6 +51,18 @@ pub fn tts_to_string(tokens: &TokenStream) -> String {
 
 pub fn item_to_string(i: &ast::Item) -> String {
     State::new().item_to_string(i)
+}
+
+pub fn assoc_item_to_string(i: &ast::AssocItem) -> String {
+    State::new().assoc_item_to_string(i)
+}
+
+pub fn foreign_item_to_string(i: &ast::ForeignItem) -> String {
+    State::new().foreign_item_to_string(i)
+}
+
+pub fn stmt_to_string(s: &ast::Stmt) -> String {
+    State::new().stmt_to_string(s)
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {

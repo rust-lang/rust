@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed for `[Foo<_>; 2]`
+  --> $DIR/copy-inference-side-effects-are-lazy.rs:17:9
+   |
+LL |     let x = [Foo(PhantomData); 2];
+   |         ^
+LL |
+LL |     extract(x).max(2);
+   |     ---------- type must be known at this point
+   |
+help: consider giving `x` an explicit type, where the type for type parameter `T` is specified
+   |
+LL |     let x: [Foo<T>; 2] = [Foo(PhantomData); 2];
+   |          +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

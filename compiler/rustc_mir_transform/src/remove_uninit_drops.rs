@@ -22,6 +22,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
         let move_data = MoveData::gather_moves(body, tcx, |ty| ty.needs_drop(tcx, typing_env));
 
         let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
+            .exclude_inactive_in_otherwise()
             .iterate_to_fixpoint(tcx, body, Some("remove_uninit_drops"))
             .into_results_cursor(body);
 

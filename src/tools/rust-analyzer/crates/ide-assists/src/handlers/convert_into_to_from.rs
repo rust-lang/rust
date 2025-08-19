@@ -65,10 +65,10 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext<'_>) -
     };
 
     let into_fn = impl_.assoc_item_list()?.assoc_items().find_map(|item| {
-        if let ast::AssocItem::Fn(f) = item {
-            if f.name()?.text() == "into" {
-                return Some(f);
-            }
+        if let ast::AssocItem::Fn(f) = item
+            && f.name()?.text() == "into"
+        {
+            return Some(f);
         };
         None
     })?;

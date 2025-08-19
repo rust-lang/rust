@@ -15,11 +15,11 @@ use triomphe::Arc;
 use crate::{
     LocalModuleId, Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
-    nameres::{DefMap, ModuleSource},
+    nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
 };
 
-#[salsa::db]
+#[salsa_macros::db]
 #[derive(Clone)]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
@@ -30,9 +30,18 @@ pub(crate) struct TestDB {
 
 impl Default for TestDB {
     fn default() -> Self {
+        let events = <Arc<Mutex<Option<Vec<salsa::Event>>>>>::default();
         let mut this = Self {
-            storage: Default::default(),
-            events: Default::default(),
+            storage: salsa::Storage::new(Some(Box::new({
+                let events = events.clone();
+                move |event| {
+                    let mut events = events.lock().unwrap();
+                    if let Some(events) = &mut *events {
+                        events.push(event);
+                    }
+                }
+            }))),
+            events,
             files: Default::default(),
             crates_map: Default::default(),
         };
@@ -44,16 +53,8 @@ impl Default for TestDB {
     }
 }
 
-#[salsa::db]
-impl salsa::Database for TestDB {
-    fn salsa_event(&self, event: &dyn std::ops::Fn() -> salsa::Event) {
-        let mut events = self.events.lock().unwrap();
-        if let Some(events) = &mut *events {
-            let event = event();
-            events.push(event);
-        }
-    }
-}
+#[salsa_macros::db]
+impl salsa::Database for TestDB {}
 
 impl fmt::Debug for TestDB {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -63,7 +64,7 @@ impl fmt::Debug for TestDB {
 
 impl panic::RefUnwindSafe for TestDB {}
 
-#[salsa::db]
+#[salsa_macros::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -133,7 +134,7 @@ impl TestDB {
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
-            let crate_def_map = self.crate_def_map(krate);
+            let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
                     return crate_def_map.module_id(local_id);
@@ -146,16 +147,16 @@ impl TestDB {
     pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
         let file_module = self.module_for_file(position.file_id.file_id(self));
         let mut def_map = file_module.def_map(self);
-        let module = self.mod_at_position(&def_map, position);
+        let module = self.mod_at_position(def_map, position);
 
-        def_map = match self.block_at_position(&def_map, position) {
+        def_map = match self.block_at_position(def_map, position) {
             Some(it) => it,
             None => return def_map.module_id(module),
         };
         loop {
-            let new_map = self.block_at_position(&def_map, position);
+            let new_map = self.block_at_position(def_map, position);
             match new_map {
-                Some(new_block) if !Arc::ptr_eq(&new_block, &def_map) => {
+                Some(new_block) if !std::ptr::eq(&new_block, &def_map) => {
                     def_map = new_block;
                 }
                 _ => {
@@ -206,7 +207,7 @@ impl TestDB {
         res
     }
 
-    fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<Arc<DefMap>> {
+    fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<&DefMap> {
         // Find the smallest (innermost) function in `def_map` containing the cursor.
         let mut size = None;
         let mut fn_def = None;
@@ -263,7 +264,7 @@ impl TestDB {
             let mut containing_blocks =
                 scopes.scope_chain(Some(scope)).filter_map(|scope| scopes.block(scope));
 
-            if let Some(block) = containing_blocks.next().map(|block| self.block_def_map(block)) {
+            if let Some(block) = containing_blocks.next().map(|block| block_def_map(self, block)) {
                 return Some(block);
             }
         }

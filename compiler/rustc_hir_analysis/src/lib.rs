@@ -59,14 +59,12 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(coroutines)]
 #![feature(debug_closure_helpers)]
+#![feature(gen_blocks)]
 #![feature(if_let_guard)]
-#![feature(iter_from_coroutine)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
@@ -93,8 +91,9 @@ mod variance;
 
 pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
+use rustc_hir::lints::DelayedLint;
+use rustc_hir::{self as hir};
 use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
@@ -115,12 +114,6 @@ fn require_c_abi_if_c_variadic(
     abi: ExternAbi,
     span: Span,
 ) {
-    const CONVENTIONS_UNSTABLE: &str =
-        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
-    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
-    const UNSTABLE_EXPLAIN: &str =
-        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
-
     // ABIs which can stably use varargs
     if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
         return;
@@ -140,39 +133,48 @@ fn require_c_abi_if_c_variadic(
 
     // Looks like we need to pick an error to emit.
     // Is there any feature which we could have enabled to make this work?
+    let unstable_explain =
+        format!("C-variadic functions with the {abi} calling convention are unstable");
     match abi {
         ExternAbi::System { .. } => {
-            feature_err(&tcx.sess, sym::extern_system_varargs, span, UNSTABLE_EXPLAIN)
+            feature_err(&tcx.sess, sym::extern_system_varargs, span, unstable_explain)
         }
         abi if abi.supports_varargs() => {
-            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, unstable_explain)
         }
         _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
             span,
-            conventions: if tcx.sess.opts.unstable_features.is_nightly_build() {
-                CONVENTIONS_UNSTABLE
-            } else {
-                CONVENTIONS_STABLE
-            },
+            convention: &format!("{abi}"),
         }),
     }
     .emit();
 }
 
+/// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
 pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);
-    check_unused::provide(providers);
-    variance::provide(providers);
-    outlives::provide(providers);
-    hir_wf_check::provide(providers);
     *providers = Providers {
+        check_unused_traits: check_unused::check_unused_traits,
+        diagnostic_hir_wf_check: hir_wf_check::diagnostic_hir_wf_check,
+        inferred_outlives_crate: outlives::inferred_outlives_crate,
+        inferred_outlives_of: outlives::inferred_outlives_of,
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
         enforce_impl_non_lifetime_params_are_constrained:
             impl_wf_check::enforce_impl_non_lifetime_params_are_constrained,
+        crate_variances: variance::crate_variances,
+        variances_of: variance::variances_of,
         ..*providers
     };
+}
+
+fn emit_delayed_lint(lint: &DelayedLint, tcx: TyCtxt<'_>) {
+    match lint {
+        DelayedLint::AttributeParsing(attribute_lint) => {
+            rustc_attr_parsing::emit_attribute_lint(attribute_lint, tcx)
+        }
+    }
 }
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
@@ -183,9 +185,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        tcx.par_hir_for_each_module(|module| {
-            let _: R = tcx.ensure_ok().check_mod_type_wf(module);
-        });
+        let _: R = tcx.ensure_ok().check_type_wf(());
 
         for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
             let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
@@ -193,6 +193,72 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // these queries are executed for side-effects (error reporting):
         let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
+    });
+
+    tcx.sess.time("emit_ast_lowering_delayed_lints", || {
+        // sanity check in debug mode that all lints are really noticed
+        // and we really will emit them all in the loop right below.
+        //
+        // during ast lowering, when creating items, foreign items, trait items and impl items
+        // we store in them whether they have any lints in their owner node that should be
+        // picked up by `hir_crate_items`. However, theoretically code can run between that
+        // boolean being inserted into the item and the owner node being created.
+        // We don't want any new lints to be emitted there
+        // (though honestly, you have to really try to manage to do that but still),
+        // but this check is there to catch that.
+        #[cfg(debug_assertions)]
+        {
+            // iterate over all owners
+            for owner_id in tcx.hir_crate_items(()).owners() {
+                // if it has delayed lints
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                    if !delayed_lints.lints.is_empty() {
+                        // assert that delayed_lint_items also picked up this item to have lints
+                        assert!(
+                            tcx.hir_crate_items(()).delayed_lint_items().any(|i| i == owner_id)
+                        );
+                    }
+                }
+            }
+        }
+
+        for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+            if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+                for lint in &delayed_lints.lints {
+                    emit_delayed_lint(lint, tcx);
+                }
+            }
+        }
+    });
+
+    tcx.par_hir_body_owners(|item_def_id| {
+        let def_kind = tcx.def_kind(item_def_id);
+        // Make sure we evaluate all static and (non-associated) const items, even if unused.
+        // If any of these fail to evaluate, we do not want this crate to pass compilation.
+        match def_kind {
+            DefKind::Static { .. } => {
+                tcx.ensure_ok().eval_static_initializer(item_def_id);
+                check::maybe_check_static_with_link_section(tcx, item_def_id);
+            }
+            DefKind::Const if !tcx.generics_of(item_def_id).own_requires_monomorphization() => {
+                // FIXME(generic_const_items): Passing empty instead of identity args is fishy but
+                //                             seems to be fine for now. Revisit this!
+                let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
+                let cid = GlobalId { instance, promoted: None };
+                let typing_env = ty::TypingEnv::fully_monomorphized();
+                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
+            }
+            _ => (),
+        }
+        // Skip `AnonConst`s because we feed their `type_of`.
+        if !matches!(def_kind, DefKind::AnonConst) {
+            tcx.ensure_ok().typeck(item_def_id);
+        }
+        // Ensure we generate the new `DefId` before finishing `check_crate`.
+        // Afterwards we freeze the list of `DefId`s.
+        if tcx.needs_coroutine_by_move_body_def_id(item_def_id.to_def_id()) {
+            tcx.ensure_done().coroutine_by_move_body_def_id(item_def_id);
+        }
     });
 
     if tcx.features().rustc_attrs() {
@@ -205,33 +271,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             collect::dump::vtables(tcx);
         });
     }
-
-    // Make sure we evaluate all static and (non-associated) const items, even if unused.
-    // If any of these fail to evaluate, we do not want this crate to pass compilation.
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
-        match def_kind {
-            DefKind::Static { .. } => {
-                tcx.ensure_ok().eval_static_initializer(item_def_id);
-                check::maybe_check_static_with_link_section(tcx, item_def_id);
-            }
-            DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
-                let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
-                let typing_env = ty::TypingEnv::fully_monomorphized();
-                tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
-            }
-            _ => (),
-        }
-    });
-
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
-        // Skip `AnonConst`s because we feed their `type_of`.
-        if !matches!(def_kind, DefKind::AnonConst) {
-            tcx.ensure_ok().typeck(item_def_id);
-        }
-    });
 
     tcx.ensure_ok().check_unused_traits(());
 }

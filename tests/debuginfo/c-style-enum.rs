@@ -1,6 +1,7 @@
 //@ ignore-aarch64
 
 //@ compile-flags:-g
+//@ disable-gdb-pretty-printers
 
 // === GDB TESTS ===================================================================================
 
@@ -88,8 +89,6 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section)]
-#![omit_gdb_pretty_printer_section]
 
 use self::AutoDiscriminant::{One, Two, Three};
 use self::ManualDiscriminant::{OneHundred, OneThousand, OneMillion};

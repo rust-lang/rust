@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
+    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, TlsModel,
+    cvs,
 };
 
 pub(crate) fn opts() -> TargetOptions {
@@ -44,6 +45,8 @@ pub(crate) fn opts() -> TargetOptions {
         eh_frame_header: false,
         debuginfo_kind: DebuginfoKind::Dwarf,
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
+        tls_model: TlsModel::Emulated,
+        has_thread_local: true,
         ..Default::default()
     }
 }

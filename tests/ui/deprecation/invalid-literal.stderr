@@ -1,20 +1,13 @@
-error: malformed `deprecated` attribute input
+error[E0539]: malformed `deprecated` attribute input
   --> $DIR/invalid-literal.rs:1:1
    |
 LL | #[deprecated = b"test"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^-^^^^^^^
+   |                |
+   |                help: consider removing the prefix
    |
-help: the following are the possible correct uses
-   |
-LL - #[deprecated = b"test"]
-LL + #[deprecated = "reason"]
-   |
-LL - #[deprecated = b"test"]
-LL + #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
-   |
-LL - #[deprecated = b"test"]
-LL + #[deprecated]
-   |
+   = note: expected a normal string literal, not a byte string literal
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.

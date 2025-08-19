@@ -8,6 +8,7 @@
 //! the threading utilities in [`crate::thread`].
 
 use std::{
+    marker::PhantomData,
     panic::{self, UnwindSafe},
     sync::{
         Arc,
@@ -16,8 +17,9 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender};
+use crossbeam_utils::sync::WaitGroup;
 
-use super::{Builder, JoinHandle, ThreadIntent};
+use crate::thread::{Builder, JoinHandle, ThreadIntent};
 
 pub struct Pool {
     // `_handles` is never read: the field is present
@@ -50,10 +52,9 @@ impl Pool {
         let extant_tasks = Arc::new(AtomicUsize::new(0));
 
         let mut handles = Vec::with_capacity(threads);
-        for _ in 0..threads {
-            let handle = Builder::new(INITIAL_INTENT)
+        for idx in 0..threads {
+            let handle = Builder::new(INITIAL_INTENT, format!("Worker{idx}",))
                 .stack_size(STACK_SIZE)
-                .name("Worker".into())
                 .allow_leak(true)
                 .spawn({
                     let extant_tasks = Arc::clone(&extant_tasks);
@@ -80,9 +81,6 @@ impl Pool {
         Self { _handles: handles.into_boxed_slice(), extant_tasks, job_sender }
     }
 
-    /// # Panics
-    ///
-    /// Panics if job panics
     pub fn spawn<F>(&self, intent: ThreadIntent, f: F)
     where
         F: FnOnce() + Send + UnwindSafe + 'static,
@@ -98,6 +96,17 @@ impl Pool {
         self.job_sender.send(job).unwrap();
     }
 
+    pub fn scoped<'pool, 'scope, F, R>(&'pool self, f: F) -> R
+    where
+        F: FnOnce(&Scope<'pool, 'scope>) -> R,
+    {
+        let wg = WaitGroup::new();
+        let scope = Scope { pool: self, wg, _marker: PhantomData };
+        let r = f(&scope);
+        scope.wg.wait();
+        r
+    }
+
     #[must_use]
     pub fn len(&self) -> usize {
         self.extant_tasks.load(Ordering::SeqCst)
@@ -106,5 +115,38 @@ impl Pool {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+pub struct Scope<'pool, 'scope> {
+    pool: &'pool Pool,
+    wg: WaitGroup,
+    _marker: PhantomData<fn(&'scope ()) -> &'scope ()>,
+}
+
+impl<'scope> Scope<'_, 'scope> {
+    pub fn spawn<F>(&self, intent: ThreadIntent, f: F)
+    where
+        F: 'scope + FnOnce() + Send + UnwindSafe,
+    {
+        let wg = self.wg.clone();
+        let f = Box::new(move || {
+            if cfg!(debug_assertions) {
+                intent.assert_is_used_on_current_thread();
+            }
+            f();
+            drop(wg);
+        });
+
+        let job = Job {
+            requested_intent: intent,
+            f: unsafe {
+                std::mem::transmute::<
+                    Box<dyn 'scope + FnOnce() + Send + UnwindSafe>,
+                    Box<dyn 'static + FnOnce() + Send + UnwindSafe>,
+                >(f)
+            },
+        };
+        self.pool.job_sender.send(job).unwrap();
     }
 }

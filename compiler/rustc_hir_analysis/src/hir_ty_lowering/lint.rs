@@ -103,7 +103,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // In case there is an associated type with the same name
             // Add the suggestion to this error
             if let Some(mut sugg) =
-                tcx.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
+                self.dcx().steal_non_err(self_ty.span, StashKey::AssociatedTypeSuggestion)
                 && let Suggestions::Enabled(ref mut s1) = diag.suggestions
                 && let Suggestions::Enabled(ref mut s2) = sugg.suggestions
             {
@@ -141,7 +141,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let generics = match tcx.hir_node_by_def_id(parent_item) {
             hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Struct(_, variant, generics),
+                kind: hir::ItemKind::Struct(_, generics, variant),
                 ..
             }) => {
                 if !variant.fields().iter().any(|field| field.hir_id == parent_hir_id) {
@@ -149,7 +149,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 generics
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, def, generics), .. }) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(_, generics, def), .. }) => {
                 if !def
                     .variants
                     .iter()
@@ -200,7 +200,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }) = tcx.hir_node_by_def_id(parent_id)
             && self_ty.hir_id == impl_self_ty.hir_id
         {
-            let Some(of_trait_ref) = of_trait else {
+            let Some(of_trait) = of_trait else {
                 diag.span_suggestion_verbose(
                     impl_self_ty.span.shrink_to_hi(),
                     "you might have intended to implement this trait for a given type",
@@ -209,10 +209,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 return;
             };
-            if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
+            if !of_trait.trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
                 return;
             }
-            let of_trait_span = of_trait_ref.path.span;
+            let of_trait_span = of_trait.trait_ref.path.span;
             // make sure that we are not calling unwrap to abort during the compilation
             let Ok(of_trait_name) = tcx.sess.source_map().span_to_snippet(of_trait_span) else {
                 return;
@@ -269,7 +269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::Node::Field(field) => {
                 // Enums can't have unsized fields, fields can only have an unsized tail field.
                 if let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(_, variant, _), ..
+                    kind: hir::ItemKind::Struct(_, _, variant), ..
                 }) = tcx.parent_hir_node(field.hir_id)
                     && variant
                         .fields()
@@ -447,14 +447,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
         let mut parents = self.tcx().hir_parent_iter(self_ty.hir_id);
 
-        if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
+        if let Some((c_hir_id, hir::Node::AssocItemConstraint(constraint))) = parents.next()
             && let Some(obj_ty) = constraint.ty()
+            && let Some((_, hir::Node::TraitRef(trait_ref))) = parents.next()
         {
-            if let Some((_, hir::Node::TraitRef(..))) = parents.next()
-                && let Some((_, hir::Node::Ty(ty))) = parents.next()
+            if let Some((_, hir::Node::Ty(ty))) = parents.next()
                 && let hir::TyKind::TraitObject(..) = ty.kind
             {
                 // Assoc ty bounds aren't permitted inside trait object types.
+                return;
+            }
+
+            if trait_ref
+                .path
+                .segments
+                .iter()
+                .find_map(|seg| {
+                    seg.args.filter(|args| args.constraints.iter().any(|c| c.hir_id == c_hir_id))
+                })
+                .is_none_or(|args| args.parenthesized != hir::GenericArgsParentheses::No)
+            {
+                // Only consider angle-bracketed args (where we have a `=` to replace with `:`).
                 return;
             }
 

@@ -84,12 +84,12 @@ pub(crate) struct MatchFailed {
 /// Checks if `code` matches the search pattern found in `search_scope`, returning information about
 /// the match, if it does. Since we only do matching in this module and searching is done by the
 /// parent module, we don't populate nested matches.
-pub(crate) fn get_match(
+pub(crate) fn get_match<'db>(
     debug_active: bool,
-    rule: &ResolvedRule,
+    rule: &ResolvedRule<'db>,
     code: &SyntaxNode,
     restrict_range: &Option<FileRange>,
-    sema: &Semantics<'_, ide_db::RootDatabase>,
+    sema: &Semantics<'db, ide_db::RootDatabase>,
 ) -> Result<Match, MatchFailed> {
     record_match_fails_reasons_scope(debug_active, || {
         Matcher::try_match(rule, code, restrict_range, sema)
@@ -102,7 +102,7 @@ struct Matcher<'db, 'sema> {
     /// If any placeholders come from anywhere outside of this range, then the match will be
     /// rejected.
     restrict_range: Option<FileRange>,
-    rule: &'sema ResolvedRule,
+    rule: &'sema ResolvedRule<'db>,
 }
 
 /// Which phase of matching we're currently performing. We do two phases because most attempted
@@ -117,7 +117,7 @@ enum Phase<'a> {
 
 impl<'db, 'sema> Matcher<'db, 'sema> {
     fn try_match(
-        rule: &ResolvedRule,
+        rule: &ResolvedRule<'db>,
         code: &SyntaxNode,
         restrict_range: &Option<FileRange>,
         sema: &'sema Semantics<'db, ide_db::RootDatabase>,
@@ -156,12 +156,11 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// processing a macro expansion and we want to fail the match if we're working with a node that
     /// didn't originate from the token tree of the macro call.
     fn validate_range(&self, range: &FileRange) -> Result<(), MatchFailed> {
-        if let Some(restrict_range) = &self.restrict_range {
-            if restrict_range.file_id != range.file_id
-                || !restrict_range.range.contains_range(range.range)
-            {
-                fail_match!("Node originated from a macro");
-            }
+        if let Some(restrict_range) = &self.restrict_range
+            && (restrict_range.file_id != range.file_id
+                || !restrict_range.range.contains_range(range.range))
+        {
+            fail_match!("Node originated from a macro");
         }
         Ok(())
     }
@@ -404,30 +403,27 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
         // Build a map keyed by field name.
         let mut fields_by_name: FxHashMap<SmolStr, SyntaxNode> = FxHashMap::default();
         for child in code.children() {
-            if let Some(record) = ast::RecordExprField::cast(child.clone()) {
-                if let Some(name) = record.field_name() {
-                    fields_by_name.insert(name.text().into(), child.clone());
-                }
+            if let Some(record) = ast::RecordExprField::cast(child.clone())
+                && let Some(name) = record.field_name()
+            {
+                fields_by_name.insert(name.text().into(), child.clone());
             }
         }
         for p in pattern.children_with_tokens() {
-            if let SyntaxElement::Node(p) = p {
-                if let Some(name_element) = p.first_child_or_token() {
-                    if self.get_placeholder(&name_element).is_some() {
-                        // If the pattern is using placeholders for field names then order
-                        // independence doesn't make sense. Fall back to regular ordered
-                        // matching.
-                        return self.attempt_match_node_children(phase, pattern, code);
-                    }
-                    if let Some(ident) = only_ident(name_element) {
-                        let code_record = fields_by_name.remove(ident.text()).ok_or_else(|| {
-                            match_error!(
-                                "Placeholder has record field '{}', but code doesn't",
-                                ident
-                            )
-                        })?;
-                        self.attempt_match_node(phase, &p, &code_record)?;
-                    }
+            if let SyntaxElement::Node(p) = p
+                && let Some(name_element) = p.first_child_or_token()
+            {
+                if self.get_placeholder(&name_element).is_some() {
+                    // If the pattern is using placeholders for field names then order
+                    // independence doesn't make sense. Fall back to regular ordered
+                    // matching.
+                    return self.attempt_match_node_children(phase, pattern, code);
+                }
+                if let Some(ident) = only_ident(name_element) {
+                    let code_record = fields_by_name.remove(ident.text()).ok_or_else(|| {
+                        match_error!("Placeholder has record field '{}', but code doesn't", ident)
+                    })?;
+                    self.attempt_match_node(phase, &p, &code_record)?;
                 }
             }
         }
@@ -476,14 +472,13 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                             }
                         }
                         SyntaxElement::Node(n) => {
-                            if let Some(first_token) = n.first_token() {
-                                if Some(first_token.text()) == next_pattern_token.as_deref() {
-                                    if let Some(SyntaxElement::Node(p)) = pattern.next() {
-                                        // We have a subtree that starts with the next token in our pattern.
-                                        self.attempt_match_token_tree(phase, &p, n)?;
-                                        break;
-                                    }
-                                }
+                            if let Some(first_token) = n.first_token()
+                                && Some(first_token.text()) == next_pattern_token.as_deref()
+                                && let Some(SyntaxElement::Node(p)) = pattern.next()
+                            {
+                                // We have a subtree that starts with the next token in our pattern.
+                                self.attempt_match_token_tree(phase, &p, n)?;
+                                break;
                             }
                         }
                     };
@@ -535,7 +530,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     fn attempt_match_ufcs_to_method_call(
         &self,
         phase: &mut Phase<'_>,
-        pattern_ufcs: &UfcsCallInfo,
+        pattern_ufcs: &UfcsCallInfo<'db>,
         code: &ast::MethodCallExpr,
     ) -> Result<(), MatchFailed> {
         use ast::HasArgList;
@@ -562,23 +557,22 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 let deref_count = self.check_expr_type(pattern_type, expr)?;
                 let pattern_receiver = pattern_args.next();
                 self.attempt_match_opt(phase, pattern_receiver.clone(), code.receiver())?;
-                if let Phase::Second(match_out) = phase {
-                    if let Some(placeholder_value) = pattern_receiver
+                if let Phase::Second(match_out) = phase
+                    && let Some(placeholder_value) = pattern_receiver
                         .and_then(|n| self.get_placeholder_for_node(n.syntax()))
                         .and_then(|placeholder| {
                             match_out.placeholder_values.get_mut(&placeholder.ident)
                         })
-                    {
-                        placeholder_value.autoderef_count = deref_count;
-                        placeholder_value.autoref_kind = self
-                            .sema
-                            .resolve_method_call_as_callable(code)
-                            .and_then(|callable| {
-                                let (self_param, _) = callable.receiver_param(self.sema.db)?;
-                                Some(self.sema.source(self_param)?.value.kind())
-                            })
-                            .unwrap_or(ast::SelfParamKind::Owned);
-                    }
+                {
+                    placeholder_value.autoderef_count = deref_count;
+                    placeholder_value.autoref_kind = self
+                        .sema
+                        .resolve_method_call_as_callable(code)
+                        .and_then(|callable| {
+                            let (self_param, _) = callable.receiver_param(self.sema.db)?;
+                            Some(self.sema.source(self_param)?.value.kind())
+                        })
+                        .unwrap_or(ast::SelfParamKind::Owned);
                 }
             }
         } else {
@@ -597,7 +591,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     fn attempt_match_ufcs_to_ufcs(
         &self,
         phase: &mut Phase<'_>,
-        pattern_ufcs: &UfcsCallInfo,
+        pattern_ufcs: &UfcsCallInfo<'db>,
         code: &ast::CallExpr,
     ) -> Result<(), MatchFailed> {
         use ast::HasArgList;
@@ -615,7 +609,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
     /// times. Returns the number of times it needed to be dereferenced.
     fn check_expr_type(
         &self,
-        pattern_type: &hir::Type,
+        pattern_type: &hir::Type<'db>,
         expr: &ast::Expr,
     ) -> Result<usize, MatchFailed> {
         use hir::HirDisplay;
@@ -656,10 +650,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
 }
 
 impl Match {
-    fn render_template_paths(
+    fn render_template_paths<'db>(
         &mut self,
-        template: &ResolvedPattern,
-        sema: &Semantics<'_, ide_db::RootDatabase>,
+        template: &ResolvedPattern<'db>,
+        sema: &Semantics<'db, ide_db::RootDatabase>,
     ) -> Result<(), MatchFailed> {
         let module = sema
             .scope(&self.matched_node)
@@ -698,12 +692,11 @@ impl Phase<'_> {
     }
 
     fn record_ignored_comments(&mut self, token: &SyntaxToken) {
-        if token.kind() == SyntaxKind::COMMENT {
-            if let Phase::Second(match_out) = self {
-                if let Some(comment) = ast::Comment::cast(token.clone()) {
-                    match_out.ignored_comments.push(comment);
-                }
-            }
+        if token.kind() == SyntaxKind::COMMENT
+            && let Phase::Second(match_out) = self
+            && let Some(comment) = ast::Comment::cast(token.clone())
+        {
+            match_out.ignored_comments.push(comment);
         }
     }
 }

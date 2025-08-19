@@ -6,15 +6,11 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-//@ ignore-none
-// Reason: no-std is not supported.
 //@ ignore-wasm32
 //@ ignore-wasm64
 // Reason: compiling C++ to WASM may cause problems.
 
-// Neither of these are tested in full CI.
-//@ ignore-nvptx64-nvidia-cuda
-// Reason: can't find crate "std"
+// Not exercised in full CI, but sgx technically supports std.
 //@ ignore-sgx
 
 use run_make_support::{build_native_static_lib_cxx, run, rustc};

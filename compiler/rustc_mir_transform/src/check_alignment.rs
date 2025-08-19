@@ -51,22 +51,18 @@ fn insert_alignment_check<'tcx>(
     let const_raw_ptr = Ty::new_imm_ptr(tcx, tcx.types.unit);
     let rvalue = Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(pointer), const_raw_ptr);
     let thin_ptr = local_decls.push(LocalDecl::with_source_info(const_raw_ptr, source_info)).into();
-    stmts
-        .push(Statement { source_info, kind: StatementKind::Assign(Box::new((thin_ptr, rvalue))) });
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((thin_ptr, rvalue)))));
 
     // Transmute the pointer to a usize (equivalent to `ptr.addr()`).
     let rvalue = Rvalue::Cast(CastKind::Transmute, Operand::Copy(thin_ptr), tcx.types.usize);
     let addr = local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-    stmts.push(Statement { source_info, kind: StatementKind::Assign(Box::new((addr, rvalue))) });
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((addr, rvalue)))));
 
     // Get the alignment of the pointee
     let alignment =
         local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
     let rvalue = Rvalue::NullaryOp(NullOp::AlignOf, pointee_ty);
-    stmts.push(Statement {
-        source_info,
-        kind: StatementKind::Assign(Box::new((alignment, rvalue))),
-    });
+    stmts.push(Statement::new(source_info, StatementKind::Assign(Box::new((alignment, rvalue)))));
 
     // Subtract 1 from the alignment to get the alignment mask
     let alignment_mask =
@@ -76,13 +72,13 @@ fn insert_alignment_check<'tcx>(
         user_ty: None,
         const_: Const::Val(ConstValue::Scalar(Scalar::from_target_usize(1, &tcx)), tcx.types.usize),
     }));
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             alignment_mask,
             Rvalue::BinaryOp(BinOp::Sub, Box::new((Operand::Copy(alignment), one))),
         ))),
-    });
+    ));
 
     // If this target does not have reliable alignment, further limit the mask by anding it with
     // the mask for the highest reliable alignment.
@@ -99,31 +95,31 @@ fn insert_alignment_check<'tcx>(
                 tcx.types.usize,
             ),
         }));
-        stmts.push(Statement {
+        stmts.push(Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((
+            StatementKind::Assign(Box::new((
                 alignment_mask,
                 Rvalue::BinaryOp(
                     BinOp::BitAnd,
                     Box::new((Operand::Copy(alignment_mask), max_mask)),
                 ),
             ))),
-        });
+        ));
     }
 
     // BitAnd the alignment mask with the pointer
     let alignment_bits =
         local_decls.push(LocalDecl::with_source_info(tcx.types.usize, source_info)).into();
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             alignment_bits,
             Rvalue::BinaryOp(
                 BinOp::BitAnd,
                 Box::new((Operand::Copy(addr), Operand::Copy(alignment_mask))),
             ),
         ))),
-    });
+    ));
 
     // Check if the alignment bits are all zero
     let is_ok = local_decls.push(LocalDecl::with_source_info(tcx.types.bool, source_info)).into();
@@ -132,13 +128,13 @@ fn insert_alignment_check<'tcx>(
         user_ty: None,
         const_: Const::Val(ConstValue::Scalar(Scalar::from_target_usize(0, &tcx)), tcx.types.usize),
     }));
-    stmts.push(Statement {
+    stmts.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             is_ok,
             Rvalue::BinaryOp(BinOp::Eq, Box::new((Operand::Copy(alignment_bits), zero.clone()))),
         ))),
-    });
+    ));
 
     // Emit a check that asserts on the alignment and otherwise triggers a
     // AssertKind::MisalignedPointerDereference.

@@ -7,7 +7,7 @@ pub (crate::a) fn cfn() {} //~ ERROR incorrect visibility restriction
 pub fn privfn() {}
 mod x {
     mod y {
-        pub (in x) fn foo() {}
+        pub (in crate::x) fn foo() {}
         pub (super) fn bar() {}
         pub (crate) fn qux() {}
     }
@@ -18,9 +18,9 @@ mod y {
         pub (crate) c: usize,
         pub (super) s: usize,
         valid_private: usize,
-        pub (in y) valid_in_x: usize,
+        pub (in crate::y) valid_in_x: usize,
         pub (a) invalid: usize, //~ ERROR incorrect visibility restriction
-        pub (in x) non_parent_invalid: usize, //~ ERROR visibilities can only be restricted
+        pub (in crate::x) non_parent_invalid: usize, //~ ERROR visibilities can only be restricted
     }
 }
 

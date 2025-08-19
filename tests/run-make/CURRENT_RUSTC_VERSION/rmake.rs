@@ -1,3 +1,4 @@
+//@ needs-target-std
 // ignore-tidy-linelength
 
 // Check that the `CURRENT_RUSTC_VERSION` placeholder is correctly replaced by the current

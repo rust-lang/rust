@@ -10,7 +10,7 @@ use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -129,10 +129,55 @@ struct Stop {
     kind: StopKind,
     first: usize,
     last: usize,
+    name: Option<Symbol>,
 }
 
 impl Stop {
-    fn convert_to_inner(&self) -> (Span, String) {
+    fn is_outer_attr_only(&self) -> bool {
+        let Some(name) = self.name else {
+            return false;
+        };
+        // Check if the attribute only has effect when as an outer attribute
+        // The below attributes are collected from the builtin attributes of The Rust Reference
+        // https://doc.rust-lang.org/reference/attributes.html#r-attributes.builtin
+        // And the comments below are from compiler errors and warnings
+        matches!(
+            name,
+            // Cannot be used at crate level
+            sym::repr | sym::test | sym::derive | sym::automatically_derived | sym::path | sym::global_allocator |
+            // Only has an effect on macro definitions
+            sym::macro_export |
+            // Only be applied to trait definitions
+            sym::on_unimplemented |
+            // Only be placed on trait implementations
+            sym::do_not_recommend |
+            // Only has an effect on items
+            sym::ignore | sym::should_panic | sym::proc_macro | sym::proc_macro_derive | sym::proc_macro_attribute |
+            // Has no effect when applied to a module
+            sym::must_use |
+            // Should be applied to a foreign function or static
+            sym::link_name | sym::link_ordinal | sym::link_section |
+            // Should be applied to an `extern crate` item
+            sym::no_link |
+            // Should be applied to a free function, impl method or static
+            sym::export_name | sym::no_mangle |
+            // Should be applied to a `static` variable
+            sym::used |
+            // Should be applied to function or closure
+            sym::inline |
+            // Should be applied to a function definition
+            sym::cold | sym::target_feature | sym::track_caller | sym::instruction_set |
+            // Should be applied to a struct or enum
+            sym::non_exhaustive |
+            // Note: No any warning when it as an inner attribute, but it has no effect
+            sym::panic_handler
+        )
+    }
+
+    fn convert_to_inner(&self) -> Option<(Span, String)> {
+        if self.is_outer_attr_only() {
+            return None;
+        }
         let inner = match self.kind {
             // #![...]
             StopKind::Attr => InnerSpan::new(1, 1),
@@ -140,7 +185,7 @@ impl Stop {
             //   ^      ^
             StopKind::Doc(_) => InnerSpan::new(2, 3),
         };
-        (self.span.from_inner(inner), "!".into())
+        Some((self.span.from_inner(inner), "!".into()))
     }
 
     fn comment_out(&self, cx: &EarlyContext<'_>, suggestions: &mut Vec<(Span, String)>) {
@@ -177,6 +222,7 @@ impl Stop {
             },
             first: file.lookup_line(file.relative_position(lo))?,
             last: file.lookup_line(file.relative_position(hi))?,
+            name: attr.name(),
         })
     }
 }
@@ -356,6 +402,12 @@ impl EmptyLineAfter {
         if let Some(parent) = self.items.iter().rev().nth(1)
             && (parent.kind == "module" || parent.kind == "crate")
             && parent.mod_items == Some(id)
+            && let suggestions = gaps
+                .iter()
+                .flat_map(|gap| gap.prev_chunk)
+                .filter_map(Stop::convert_to_inner)
+                .collect::<Vec<_>>()
+            && !suggestions.is_empty()
         {
             let desc = if parent.kind == "module" {
                 "parent module"
@@ -367,10 +419,7 @@ impl EmptyLineAfter {
                     StopKind::Attr => format!("if the attribute should apply to the {desc} use an inner attribute"),
                     StopKind::Doc(_) => format!("if the comment should document the {desc} use an inner doc comment"),
                 },
-                gaps.iter()
-                    .flat_map(|gap| gap.prev_chunk)
-                    .map(Stop::convert_to_inner)
-                    .collect(),
+                suggestions,
                 Applicability::MaybeIncorrect,
             );
         }
@@ -425,6 +474,7 @@ impl EmptyLineAfter {
                 first: line.line,
                 // last doesn't need to be accurate here, we don't compare it with anything
                 last: line.line,
+                name: None,
             });
         }
 

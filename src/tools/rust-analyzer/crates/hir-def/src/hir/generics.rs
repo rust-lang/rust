@@ -331,13 +331,13 @@ impl GenericParams {
     }
 
     #[inline]
-    pub fn no_predicates(&self) -> bool {
+    pub fn has_no_predicates(&self) -> bool {
         self.where_predicates.is_empty()
     }
 
     #[inline]
-    pub fn where_predicates(&self) -> std::slice::Iter<'_, WherePredicate> {
-        self.where_predicates.iter()
+    pub fn where_predicates(&self) -> &[WherePredicate] {
+        &self.where_predicates
     }
 
     /// Iterator of type_or_consts field

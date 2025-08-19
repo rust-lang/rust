@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{iter, ptr};
 
-use libc::{c_char, c_longlong, c_uint};
+use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
@@ -159,13 +159,15 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
     let data_layout = &cx.tcx.data_layout;
+    let pointer_size = data_layout.pointer_size();
+    let pointer_align = data_layout.pointer_align();
     let ptr_type_debuginfo_name = compute_debuginfo_type_name(cx.tcx, ptr_type, true);
 
     match wide_pointer_kind(cx, pointee_type) {
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             assert_eq!(
-                (data_layout.pointer_size, data_layout.pointer_align.abi),
+                (pointer_size, pointer_align.abi),
                 cx.size_and_align_of(ptr_type),
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
@@ -174,8 +176,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 llvm::LLVMRustDIBuilderCreatePointerType(
                     DIB(cx),
                     pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
+                    pointer_size.bits(),
+                    pointer_align.abi.bits() as u32,
                     0, // Ignore DWARF address space.
                     ptr_type_debuginfo_name.as_c_char_ptr(),
                     ptr_type_debuginfo_name.len(),
@@ -319,7 +321,9 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
         ty::FnDef(..) => (Size::ZERO, Align::ONE),
-        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
+        ty::FnPtr(..) => {
+            (cx.tcx.data_layout.pointer_size(), cx.tcx.data_layout.pointer_align().abi)
+        }
         _ => unreachable!(),
     };
     let di_node = unsafe {
@@ -504,7 +508,7 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
         create_basic_type(
             cx,
             "<recur_type>",
-            cx.tcx.data_layout.pointer_size,
+            cx.tcx.data_layout.pointer_size(),
             dwarf_const::DW_ATE_unsigned,
         )
     })
@@ -1578,13 +1582,9 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     };
 
     let trait_ref_typeid = typeid_for_trait_ref(cx.tcx, trait_ref);
+    let typeid = cx.create_metadata(trait_ref_typeid.as_bytes());
 
     unsafe {
-        let typeid = llvm::LLVMMDStringInContext2(
-            cx.llcx,
-            trait_ref_typeid.as_ptr() as *const c_char,
-            trait_ref_typeid.as_bytes().len(),
-        );
         let v = [llvm::LLVMValueAsMetadata(cx.const_usize(0)), typeid];
         llvm::LLVMRustGlobalAddMetadata(
             vtable,
@@ -1626,7 +1626,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
     // to concrete type.
-    llvm::SetUnnamedAddress(vtable, llvm::UnnamedAddr::No);
+    llvm::set_unnamed_address(vtable, llvm::UnnamedAddr::No);
 
     let vtable_name =
         compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);

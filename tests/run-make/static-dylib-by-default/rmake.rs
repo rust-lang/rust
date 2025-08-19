@@ -9,7 +9,7 @@
 // Reason: the compiled binary is executed
 
 use run_make_support::{
-    cc, cwd, dynamic_lib_name, extra_c_flags, has_extension, is_msvc, rfs, run, rustc,
+    cc, cwd, dynamic_lib_name, extra_c_flags, has_extension, is_windows_msvc, rfs, run, rustc,
     shallow_find_files,
 };
 
@@ -22,13 +22,13 @@ fn main() {
     // bar.dll.exp // export library for the dylib
     // msvc's underlying link.exe requires the import library for the dynamic library as input.
     // That is why the library is bar.dll.lib, not bar.dll.
-    let library = if is_msvc() { "bar.dll.lib" } else { &dynamic_lib_name("bar") };
+    let library = if is_windows_msvc() { "bar.dll.lib" } else { &dynamic_lib_name("bar") };
     cc().input("main.c").out_exe("main").arg(library).args(extra_c_flags()).run();
     for rlib in shallow_find_files(cwd(), |path| has_extension(path, "rlib")) {
         rfs::remove_file(rlib);
     }
     rfs::remove_file(dynamic_lib_name("foo"));
-    if is_msvc() {
+    if is_windows_msvc() {
         rfs::remove_file("foo.dll.lib");
     }
     run("main");

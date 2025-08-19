@@ -2,7 +2,7 @@ error: Undefined Behavior: incorrect number of arguments for `abort`: got 1, exp
   --> tests/fail/function_calls/check_arg_count_abort.rs:LL:CC
    |
 LL |         abort(1);
-   |         ^^^^^^^^ incorrect number of arguments for `abort`: got 1, expected 0
+   |         ^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

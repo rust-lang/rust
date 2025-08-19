@@ -38,3 +38,6 @@ pub fn main() { }
 
 #[cfg(target_arch = "loongarch64")]
 pub fn main() { }
+
+#[cfg(target_arch = "arm64ec")]
+pub fn main() { }

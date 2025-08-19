@@ -84,18 +84,3 @@ fn check_dup_symbol_and_keyword() {
     };
     test_symbols_macro(input, &["Symbol `splat` is duplicated", "location of previous definition"]);
 }
-
-#[test]
-fn check_symbol_order() {
-    let input = quote! {
-        Keywords {}
-        Symbols {
-            zebra,
-            aardvark,
-        }
-    };
-    test_symbols_macro(
-        input,
-        &["Symbol `aardvark` must precede `zebra`", "location of previous symbol `zebra`"],
-    );
-}

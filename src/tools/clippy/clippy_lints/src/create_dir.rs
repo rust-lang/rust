@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -34,10 +33,12 @@ declare_lint_pass!(CreateDir => [CREATE_DIR]);
 
 impl LateLintPass<'_> for CreateDir {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::Call(func, [arg]) = expr.kind
+        if let ExprKind::Call(func, [_]) = expr.kind
             && let ExprKind::Path(ref path) = func.kind
             && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::fs_create_dir, def_id)
+            && let QPath::Resolved(_, path) = path
+            && let Some(last) = path.segments.last()
         {
             span_lint_and_then(
                 cx,
@@ -45,15 +46,15 @@ impl LateLintPass<'_> for CreateDir {
                 expr.span,
                 "calling `std::fs::create_dir` where there may be a better way",
                 |diag| {
-                    let mut app = Applicability::MaybeIncorrect;
-                    diag.span_suggestion_verbose(
-                        expr.span,
+                    let mut suggestions = vec![(last.ident.span.shrink_to_hi(), "_all".to_owned())];
+                    if path.segments.len() == 1 {
+                        suggestions.push((path.span.shrink_to_lo(), "std::fs::".to_owned()));
+                    }
+
+                    diag.multipart_suggestion_verbose(
                         "consider calling `std::fs::create_dir_all` instead",
-                        format!(
-                            "create_dir_all({})",
-                            snippet_with_applicability(cx, arg.span, "..", &mut app)
-                        ),
-                        app,
+                        suggestions,
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );

@@ -1,8 +1,8 @@
-error: unused import: `a::x`
+error: unused import: `crate::a::x`
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:12:9
    |
-LL |     use a::x;
-   |         ^^^^
+LL |     use crate::a::x;
+   |         ^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:1:9
@@ -10,11 +10,11 @@ note: the lint level is defined here
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: unused import: `a::y`
+error: unused import: `crate::a::y`
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:21:9
    |
-LL |     use a::y;
-   |         ^^^^
+LL |     use crate::a::y;
+   |         ^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-directives-on-use-items-issue-10534.rs:20:12

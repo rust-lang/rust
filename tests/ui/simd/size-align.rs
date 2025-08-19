@@ -7,12 +7,12 @@
 
 use std::mem;
 
-/// `T` should satisfy `size_of T (mod min_align_of T) === 0` to be stored at `Vec<T>` properly
+/// `T` should satisfy `size_of T (mod align_of T) === 0` to be stored at `Vec<T>` properly
 /// Please consult the issue #20460
 fn check<T>() {
-    assert_eq!(mem::size_of::<T>() % mem::min_align_of::<T>(), 0);
-    assert_eq!(mem::size_of::<T>() % mem::min_align_of::<T>(), 0);
-    assert_eq!(mem::size_of::<T>() % mem::min_align_of::<T>(), 0);
+    assert_eq!(mem::size_of::<T>() % mem::align_of::<T>(), 0);
+    assert_eq!(mem::size_of::<T>() % mem::align_of::<T>(), 0);
+    assert_eq!(mem::size_of::<T>() % mem::align_of::<T>(), 0);
 }
 
 #[repr(simd)]

@@ -1,15 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, should_call_clone_as_function, walk_ptrs_ty_depth};
-use clippy_utils::{
-    get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, peel_blocks, strip_pat_refs,
-};
+use clippy_utils::{get_parent_expr, is_diag_trait_item, path_to_local_id, peel_blocks, strip_pat_refs};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use core::ops::ControlFlow;
 
@@ -41,7 +39,7 @@ fn get_enum_ty(enum_ty: Ty<'_>) -> Option<Ty<'_>> {
 }
 
 /// Checks for the `USELESS_ASREF` lint.
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str, recvr: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: Symbol, recvr: &hir::Expr<'_>) {
     // when we get here, we've already checked that the call name is "as_ref" or "as_mut"
     // check if the call is to the actual `AsRef` or `AsMut` trait
     let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
@@ -81,8 +79,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
                 applicability,
             );
         }
-    } else if match_def_path(cx, def_id, &["core", "option", "Option", call_name])
-        || match_def_path(cx, def_id, &["core", "result", "Result", call_name])
+    } else if let Some(impl_id) = cx.tcx.impl_of_assoc(def_id)
+        && let Some(adt) = cx.tcx.type_of(impl_id).instantiate_identity().ty_adt_def()
+        && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::Option | sym::Result))
     {
         let rcv_ty = cx.typeck_results().expr_ty(recvr).peel_refs();
         let res_ty = cx.typeck_results().expr_ty(expr).peel_refs();
@@ -132,7 +131,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                 hir::ExprKind::MethodCall(method, obj, [], _) => {
                     if method.ident.name == sym::clone
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                        && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                        && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                         // We check it's the `Clone` trait.
                         && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs
@@ -162,7 +161,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     }
 }
 
-fn lint_as_ref_clone(cx: &LateContext<'_>, span: Span, recvr: &hir::Expr<'_>, call_name: &str) {
+fn lint_as_ref_clone(cx: &LateContext<'_>, span: Span, recvr: &hir::Expr<'_>, call_name: Symbol) {
     let mut applicability = Applicability::MachineApplicable;
     span_lint_and_sugg(
         cx,

@@ -1,15 +1,5 @@
-warning: elided lifetime has a name
-  --> $DIR/object-lifetime-default-elision.rs:48:40
-   |
-LL | fn load2<'a>(ss: &'a dyn SomeTrait) -> &dyn SomeTrait {
-   |          --                            ^ this elided lifetime gets resolved as `'a`
-   |          |
-   |          lifetime `'a` declared here
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error: lifetime may not live long enough
-  --> $DIR/object-lifetime-default-elision.rs:73:5
+  --> $DIR/object-lifetime-default-elision.rs:71:5
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |          -- -- lifetime `'b` defined here
@@ -21,5 +11,5 @@ LL |     ss
    |
    = help: consider adding the following bound: `'a: 'b`
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 1 previous error
 

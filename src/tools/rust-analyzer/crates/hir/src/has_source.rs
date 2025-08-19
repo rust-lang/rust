@@ -225,7 +225,7 @@ impl HasSource for LocalSource {
     }
 }
 
-impl HasSource for Param {
+impl HasSource for Param<'_> {
     type Ast = Either<ast::SelfParam, ast::Param>;
 
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {

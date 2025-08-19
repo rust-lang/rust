@@ -22,21 +22,6 @@ error: suffixes on string literals are invalid
 LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
-error: malformed `must_use` attribute input
-  --> $DIR/bad-lit-suffixes.rs:34:1
-   |
-LL | #[must_use = "string"suffix]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use = "reason"]
-   |
-LL - #[must_use = "string"suffix]
-LL + #[must_use]
-   |
-
 error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:39:15
    |
@@ -165,5 +150,34 @@ LL |     1.0e10suffix;
    |
    = help: valid suffixes are `f32` and `f64`
 
-error: aborting due to 21 previous errors; 2 warnings emitted
+error[E0539]: malformed `must_use` attribute input
+  --> $DIR/bad-lit-suffixes.rs:34:1
+   |
+LL | #[must_use = "string"suffix]
+   | ^^^^^^^^^^^^^--------------^
+   |              |
+   |              expected a string literal here
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[must_use = "string"suffix]
+LL + #[must_use = "reason"]
+   |
+LL - #[must_use = "string"suffix]
+LL + #[must_use]
+   |
 
+error[E0805]: malformed `rustc_layout_scalar_valid_range_start` attribute input
+  --> $DIR/bad-lit-suffixes.rs:43:1
+   |
+LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^
+   | |                                      |
+   | |                                      expected a single argument here
+   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+
+error: aborting due to 22 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

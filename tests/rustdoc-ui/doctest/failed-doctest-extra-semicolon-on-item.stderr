@@ -1,0 +1,8 @@
+warning: the `main` function of this doctest won't be run as it contains expressions at the top level, meaning that the whole doctest code will be wrapped in a function
+  --> $DIR/failed-doctest-extra-semicolon-on-item.rs:11:1
+   |
+11 | /// ```rust
+   | ^^^^^^^^^^^
+
+warning: 1 warning emitted
+

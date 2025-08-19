@@ -1,0 +1,52 @@
+// MIR for `<impl at $DIR/derived_ord_debug.rs:6:10: 6:20>::partial_cmp` after PreCodegen
+
+fn <impl at $DIR/derived_ord_debug.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &MultiField) -> Option<std::cmp::Ordering> {
+    debug self => _1;
+    debug other => _2;
+    let mut _0: std::option::Option<std::cmp::Ordering>;
+    let _3: &char;
+    let _4: &char;
+    let mut _5: std::option::Option<std::cmp::Ordering>;
+    let mut _6: isize;
+    let mut _7: i8;
+    let _8: &i16;
+    let _9: &i16;
+    scope 1 {
+        debug cmp => _5;
+    }
+
+    bb0: {
+        _3 = &((*_1).0: char);
+        _4 = &((*_2).0: char);
+        _5 = <char as PartialOrd>::partial_cmp(copy _3, copy _4) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _6 = discriminant(_5);
+        switchInt(move _6) -> [1: bb2, 0: bb4, otherwise: bb6];
+    }
+
+    bb2: {
+        _7 = discriminant(((_5 as Some).0: std::cmp::Ordering));
+        switchInt(move _7) -> [0: bb3, otherwise: bb4];
+    }
+
+    bb3: {
+        _8 = &((*_1).1: i16);
+        _9 = &((*_2).1: i16);
+        _0 = <i16 as PartialOrd>::partial_cmp(copy _8, copy _9) -> [return: bb5, unwind continue];
+    }
+
+    bb4: {
+        _0 = copy _5;
+        goto -> bb5;
+    }
+
+    bb5: {
+        return;
+    }
+
+    bb6: {
+        unreachable;
+    }
+}

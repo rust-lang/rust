@@ -4,7 +4,7 @@ error: generic parameters may not be used in const operations
 LL |     SmallVec<{ D * 2 }>:,
    |                ^ cannot perform const operation using `D`
    |
-   = help: const parameters may only be used as standalone arguments, i.e. `D`
+   = help: const parameters may only be used as standalone arguments here, i.e. `D`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error[E0747]: constant provided when a type was expected

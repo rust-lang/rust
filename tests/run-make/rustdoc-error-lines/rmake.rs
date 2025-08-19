@@ -1,6 +1,8 @@
 // Assert that the search index is generated deterministically, regardless of the
 // order that crates are documented in.
 
+//@ needs-target-std
+
 use run_make_support::rustdoc;
 
 fn main() {

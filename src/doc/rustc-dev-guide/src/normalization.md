@@ -1,7 +1,5 @@
 # Aliases and Normalization
 
-<!-- toc -->
-
 ## Aliases
 
 In Rust there are a number of types that are considered equal to some "underlying" type, for example inherent associated types, trait associated types, free type aliases (`type Foo = u32`), and opaque types (`-> impl RPIT`). We consider such types to be "aliases", alias types are represented by the [`TyKind::Alias`][tykind_alias] variant, with the kind of alias tracked by the [`AliasTyKind`][aliaskind] enum.
@@ -166,7 +164,10 @@ In this example:
 
 When interfacing with the type system it will often be the case that it's necessary to request a type be normalized. There are a number of different entry points to the underlying normalization logic and each entry point should only be used in specific parts of the compiler.
 
-An additional complication is that the compiler is currently undergoing a transition from the old trait solver to the new trait solver. As part of this transition our approach to normalization in the compiler has changed somewhat significantly, resulting in some normalization entry points being "old solver only" slated for removal in the long-term once the new solver has stabilized.
+<!-- date-check: May 2025 -->
+An additional complication is that the compiler is currently undergoing a transition from the old trait solver to the new trait solver.
+As part of this transition our approach to normalization in the compiler has changed somewhat significantly, resulting in some normalization entry points being "old solver only" slated for removal in the long-term once the new solver has stabilized.
+The transition can be tracked via the [WG-trait-system-refactor](https://github.com/rust-lang/rust/labels/WG-trait-system-refactor) label in Github.
 
 Here is a rough overview of the different entry points to normalization in the compiler:
 - `infcx.at.structurally_normalize`
@@ -262,13 +263,13 @@ Another problem was that it was not possible to normalize `ParamEnv`s correctly 
 
 Given a type such as `for<'a> fn(<?x as Trait<'a>::Assoc>)`, it is not possible to correctly handle this with the old solver's approach to normalization.
 
-If we were to normalize it to `for<'a> fn(?y)` and register a goal to normalize `for<'a> <?x as Trait<'a>>::Assoc -> ?y`, this would result in errors in cases where `<?x as Trait<'a>>::Assoc` normalized to `&'a u32`. The inference variable `?y` would be in a lower [universe][universes] than the placeholders made when instantiating the `for<'a>` binder.
+If we were to normalize it to `for<'a> fn(?y)` and register a goal to normalize `for<'a> <?x as Trait<'a>>::Assoc -> ?y`, this would result in errors in cases where `<?x as Trait<'a>>::Assoc` normalized to `&'a u32`. The inference variable `?y` would be in a lower [universe] than the placeholders made when instantiating the `for<'a>` binder.
 
 Leaving the alias unnormalized would also be wrong as the old solver expects all aliases to be rigid. This was a soundness bug before the new solver was stabilized in coherence: [relating projection substs is unsound during coherence](https://github.com/rust-lang/rust/issues/102048).
 
 Ultimately this means that it is not always possible to ensure all aliases inside of a value are rigid.
 
-[universes]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html#what-is-a-universe
+[universe]: borrow_check/region_inference/placeholders_and_universes.md#what-is-a-universe
 [deeply_normalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/normalize/trait.NormalizeExt.html#tymethod.deeply_normalize
 
 ## Handling uses of diverging aliases

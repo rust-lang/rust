@@ -17,14 +17,14 @@ fn main() {
     // No gating if both the `if` and the chain are from a 2024 macro
 
     macro_in_2021::make_if!((let Some(0) = None && let Some(0) = None) { never!() } { never!() });
-    //~^ ERROR `let` expressions in this position are unstable
-    //~| ERROR `let` expressions in this position are unstable
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
+    //~| ERROR let chains are only allowed in Rust 2024 or later
     macro_in_2021::make_if!(let (Some(0)) let (Some(0)) { never!() } { never!() });
-    //~^ ERROR `let` expressions in this position are unstable
-    //~| ERROR `let` expressions in this position are unstable
+    //~^ ERROR let chains are only allowed in Rust 2024 or later
+    //~| ERROR let chains are only allowed in Rust 2024 or later
 
     macro_in_2024::make_if!((let Some(0) = None && let Some(0) = None) { never!() } { never!() });
-    //[edition2021]~^ ERROR `let` expressions in this position are unstable
-    //[edition2021]~| ERROR `let` expressions in this position are unstable
+    //[edition2021]~^ ERROR let chains are only allowed in Rust 2024 or later
+    //[edition2021]~| ERROR let chains are only allowed in Rust 2024 or later
     macro_in_2024::make_if!(let (Some(0)) let (Some(0)) { never!() } { never!() });
 }

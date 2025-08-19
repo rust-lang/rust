@@ -4,8 +4,8 @@ use std::cell::Cell;
 use std::mem;
 
 pub struct S {
-    s: Cell<usize>
+    s: Cell<usize>,
 }
 
 pub const N: usize = 0 - (mem::size_of::<S>() != 400) as usize;
-//~^ ERROR evaluation of constant value failed
+//~^ ERROR overflow

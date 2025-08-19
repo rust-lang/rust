@@ -10,8 +10,8 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update both macOS's and Windows's tarballs when bumping the version here.
-# Try to keep this in sync with src/ci/docker/host-x86_64/dist-x86_64-linux/build-clang.sh
-LLVM_VERSION="18.1.4"
+# Try to keep this in sync with src/ci/docker/scripts/build-clang.sh
+LLVM_VERSION="20.1.3"
 
 if isMacOS; then
     # FIXME: This is the latest pre-built version of LLVM that's available for
@@ -56,9 +56,19 @@ elif isWindows && ! isKnownToBeMingwBuild; then
 
     mkdir -p citools/clang-rust
     cd citools
-    retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" \
-        -o "LLVM-${LLVM_VERSION}-win64.exe"
-    7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
+
+    if [[ "${CI_JOB_NAME}" = *aarch64* ]]; then
+        suffix=woa64
+
+        # On Arm64, the Ring crate requires that Clang be on the PATH.
+        # https://github.com/briansmith/ring/blob/main/BUILDING.md
+        ciCommandAddPath "$(cygpath -m "$(pwd)/clang-rust/bin")"
+    else
+        suffix=win64
+    fi
+    retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-${suffix}.exe" \
+        -o "LLVM-${LLVM_VERSION}-${suffix}.exe"
+    7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-${suffix}.exe"
     ciCommandSetEnv RUST_CONFIGURE_ARGS \
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 

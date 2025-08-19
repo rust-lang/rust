@@ -4,7 +4,7 @@
 
 #[const_trait]
 trait Foo {
-    fn bar() where Self: ~const Foo;
+    fn bar() where Self: [const] Foo;
 }
 
 struct S;
@@ -17,7 +17,7 @@ fn baz<T: Foo>() {
     T::bar();
 }
 
-const fn qux<T: ~const Foo>() {
+const fn qux<T: [const] Foo>() {
     T::bar();
 }
 

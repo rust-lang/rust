@@ -15,17 +15,15 @@ use rustc_span::source_map::SourceMap;
 use crate::emitter::FileWithAnnotatedLines;
 use crate::registry::Registry;
 use crate::snippet::Line;
-use crate::translation::{Translate, to_fluent_args};
+use crate::translation::{Translator, to_fluent_args};
 use crate::{
-    CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, FluentBundle, LazyFallbackBundle,
-    Level, MultiSpan, Style, Subdiag,
+    CodeSuggestion, DiagInner, DiagMessage, Emitter, ErrCode, Level, MultiSpan, Style, Subdiag,
 };
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitter {
     source_map: Option<Arc<SourceMap>>,
-    fluent_bundle: Option<Arc<FluentBundle>>,
-    fallback_bundle: LazyFallbackBundle,
+    translator: Translator,
 
     /// If true, hides the longer explanation text
     short_message: bool,
@@ -33,16 +31,6 @@ pub struct AnnotateSnippetEmitter {
     ui_testing: bool,
 
     macro_backtrace: bool,
-}
-
-impl Translate for AnnotateSnippetEmitter {
-    fn fluent_bundle(&self) -> Option<&FluentBundle> {
-        self.fluent_bundle.as_deref()
-    }
-
-    fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &self.fallback_bundle
-    }
 }
 
 impl Emitter for AnnotateSnippetEmitter {
@@ -78,6 +66,10 @@ impl Emitter for AnnotateSnippetEmitter {
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
+
+    fn translator(&self) -> &Translator {
+        &self.translator
+    }
 }
 
 /// Provides the source string for the given `line` of `file`
@@ -104,19 +96,11 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::Level {
 impl AnnotateSnippetEmitter {
     pub fn new(
         source_map: Option<Arc<SourceMap>>,
-        fluent_bundle: Option<Arc<FluentBundle>>,
-        fallback_bundle: LazyFallbackBundle,
+        translator: Translator,
         short_message: bool,
         macro_backtrace: bool,
     ) -> Self {
-        Self {
-            source_map,
-            fluent_bundle,
-            fallback_bundle,
-            short_message,
-            ui_testing: false,
-            macro_backtrace,
-        }
+        Self { source_map, translator, short_message, ui_testing: false, macro_backtrace }
     }
 
     /// Allows to modify `Self` to enable or disable the `ui_testing` flag.
@@ -137,7 +121,7 @@ impl AnnotateSnippetEmitter {
         _children: &[Subdiag],
         _suggestions: &[CodeSuggestion],
     ) {
-        let message = self.translate_messages(messages, args);
+        let message = self.translator.translate_messages(messages, args);
         if let Some(source_map) = &self.source_map {
             // Make sure our primary file comes first
             let primary_lo = if let Some(primary_span) = msp.primary_span().as_ref() {

@@ -69,7 +69,7 @@ call-function: ("check-colors", {
 // and make sure it goes away.
 
 // First, open the settings menu.
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 
@@ -121,7 +121,7 @@ call-function: ("check-padding", {
 define-function: ("check-line-numbers-existence", [], block {
     assert-local-storage: {"rustdoc-line-numbers": "true" }
     assert-false: ".example-line-numbers"
-    click: "#settings-menu"
+    click: "rustdoc-toolbar .settings-menu"
     wait-for: "#settings"
 
     // Then, click the toggle button.
@@ -129,15 +129,15 @@ define-function: ("check-line-numbers-existence", [], block {
     wait-for-local-storage-false: {"rustdoc-line-numbers": "true" }
     assert-false: ".example-line-numbers"
     // Line numbers should still be there.
-    assert-css: ("[data-nosnippet]", { "display": "inline-block"})
+    assert-css: ("[data-nosnippet]", { "display": "block"})
     // Now disabling the setting.
     click: "input#line-numbers"
     wait-for-local-storage: {"rustdoc-line-numbers": "true" }
     assert-false: ".example-line-numbers"
     // Line numbers should still be there.
-    assert-css: ("[data-nosnippet]", { "display": "inline-block"})
+    assert-css: ("[data-nosnippet]", { "display": "block"})
     // Closing settings menu.
-    click: "#settings-menu"
+    click: "rustdoc-toolbar .settings-menu"
     wait-for-css: ("#settings", {"display": "none"})
 })
 
@@ -168,7 +168,7 @@ assert: ".example-wrap > pre.rust"
 assert-count: (".example-wrap", 2)
 assert-count: (".example-wrap.digits-1", 2)
 
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 
 // Then, click the toggle button.

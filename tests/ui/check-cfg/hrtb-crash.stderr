@@ -1,0 +1,13 @@
+warning: unexpected `cfg` condition name: `b`
+  --> $DIR/hrtb-crash.rs:6:15
+   |
+LL |     for<#[cfg(b)] c> u8:;
+   |               ^ help: found config with similar value: `target_feature = "b"`
+   |
+   = help: expected names are: `FALSE`, `docsrs`, and `test` and 31 more
+   = help: to expect this configuration use `--check-cfg=cfg(b)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

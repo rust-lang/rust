@@ -70,11 +70,11 @@ pub fn visit_file_defs(
     };
     let mut defs: VecDeque<_> = module.declarations(db).into();
     while let Some(def) = defs.pop_front() {
-        if let ModuleDef::Module(submodule) = def {
-            if submodule.is_inline(db) {
-                defs.extend(submodule.declarations(db));
-                submodule.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
-            }
+        if let ModuleDef::Module(submodule) = def
+            && submodule.is_inline(db)
+        {
+            defs.extend(submodule.declarations(db));
+            submodule.impl_defs(db).into_iter().for_each(|impl_| cb(impl_.into()));
         }
         cb(def.into());
     }

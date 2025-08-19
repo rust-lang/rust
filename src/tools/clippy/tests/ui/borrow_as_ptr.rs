@@ -47,3 +47,9 @@ fn implicit_cast() {
     // Do not lint references to temporaries
     core::ptr::eq(&0i32, &1i32);
 }
+
+fn issue_15141() {
+    let a = String::new();
+    // Don't lint cast to dyn trait pointers
+    let b = &a as *const dyn std::any::Any;
+}

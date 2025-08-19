@@ -1,8 +1,8 @@
 error: braces around A is unnecessary
   --> $DIR/lint-unnecessary-import-braces.rs:3:1
    |
-LL | use test::{A};
-   | ^^^^^^^^^^^^^^
+LL | use crate::test::{A};
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-unnecessary-import-braces.rs:1:9

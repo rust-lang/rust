@@ -31,7 +31,7 @@ pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> acceses
+// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> accesses
 struct FixProxyFutureDropVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     replace_to: Local,
@@ -75,7 +75,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             build_call_shim(tcx, instance, Some(adjustment), CallKind::Direct(def_id))
         }
         ty::InstanceKind::FnPtrShim(def_id, ty) => {
-            let trait_ = tcx.trait_of_item(def_id).unwrap();
+            let trait_ = tcx.parent(def_id);
             // Supports `Fn` or `async Fn` traits.
             let adjustment = match tcx
                 .fn_trait_kind_from_def_id(trait_)
@@ -98,7 +98,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             build_call_shim(tcx, instance, None, CallKind::Direct(def_id))
         }
         ty::InstanceKind::ClosureOnceShim { call_once: _, track_caller: _ } => {
-            let fn_mut = tcx.require_lang_item(LangItem::FnMut, None);
+            let fn_mut = tcx.require_lang_item(LangItem::FnMut, DUMMY_SP);
             let call_mut = tcx
                 .associated_items(fn_mut)
                 .in_definition_order()
@@ -323,9 +323,7 @@ fn dropee_emit_retag<'tcx>(
             StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr)),
         ];
         for s in new_statements {
-            body.basic_blocks_mut()[START_BLOCK]
-                .statements
-                .push(Statement { source_info, kind: s });
+            body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, s));
         }
     }
     dropee_ptr
@@ -350,11 +348,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
-        blocks.push(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator { source_info, kind }),
-            is_cleanup: false,
-        })
+        blocks.push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
     };
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
@@ -440,8 +434,8 @@ pub(super) struct DropShimElaborator<'a, 'tcx> {
 }
 
 impl fmt::Debug for DropShimElaborator<'_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        f.debug_struct("DropShimElaborator").finish_non_exhaustive()
     }
 }
 
@@ -515,17 +509,17 @@ fn build_thread_local_shim<'tcx>(
     let span = tcx.def_span(def_id);
     let source_info = SourceInfo::outermost(span);
 
-    let blocks = IndexVec::from_raw(vec![BasicBlockData {
-        statements: vec![Statement {
+    let blocks = IndexVec::from_raw(vec![BasicBlockData::new_stmts(
+        vec![Statement::new(
             source_info,
-            kind: StatementKind::Assign(Box::new((
+            StatementKind::Assign(Box::new((
                 Place::return_place(),
                 Rvalue::ThreadLocalRef(def_id),
             ))),
-        }],
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    }]);
+        )],
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    )]);
 
     new_body(
         MirSource::from_instance(instance),
@@ -609,11 +603,11 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         is_cleanup: bool,
     ) -> BasicBlock {
         let source_info = self.source_info();
-        self.blocks.push(BasicBlockData {
+        self.blocks.push(BasicBlockData::new_stmts(
             statements,
-            terminator: Some(Terminator { source_info, kind }),
+            Some(Terminator { source_info, kind }),
             is_cleanup,
-        })
+        ))
     }
 
     /// Gives the index of an upcoming BasicBlock, with an offset.
@@ -625,7 +619,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     }
 
     fn make_statement(&self, kind: StatementKind<'tcx>) -> Statement<'tcx> {
-        Statement { source_info: self.source_info(), kind }
+        Statement::new(self.source_info(), kind)
     }
 
     fn copy_shim(&mut self) {
@@ -901,13 +895,13 @@ fn build_call_shim<'tcx>(
                 .immutable(),
             );
             let borrow_kind = BorrowKind::Mut { kind: MutBorrowKind::Default };
-            statements.push(Statement {
+            statements.push(Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     Place::from(ref_rcvr),
                     Rvalue::Ref(tcx.lifetimes.re_erased, borrow_kind, rcvr_place()),
                 ))),
-            });
+            ));
             Operand::Move(Place::from(ref_rcvr))
         }
     });
@@ -956,11 +950,11 @@ fn build_call_shim<'tcx>(
     let n_blocks = if let Some(Adjustment::RefMut) = rcvr_adjustment { 5 } else { 2 };
     let mut blocks = IndexVec::with_capacity(n_blocks);
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
-        blocks.push(BasicBlockData {
+        blocks.push(BasicBlockData::new_stmts(
             statements,
-            terminator: Some(Terminator { source_info, kind }),
+            Some(Terminator { source_info, kind }),
             is_cleanup,
-        })
+        ))
     };
 
     // BB #0
@@ -1071,8 +1065,9 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 
     let kind = AggregateKind::Adt(adt_def.did(), variant_index, args, None, None);
     let variant = adt_def.variant(variant_index);
-    let statement = Statement {
-        kind: StatementKind::Assign(Box::new((
+    let statement = Statement::new(
+        source_info,
+        StatementKind::Assign(Box::new((
             Place::return_place(),
             Rvalue::Aggregate(
                 Box::new(kind),
@@ -1081,14 +1076,13 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
                     .collect(),
             ),
         ))),
-        source_info,
-    };
+    );
 
-    let start_block = BasicBlockData {
-        statements: vec![statement],
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    };
+    let start_block = BasicBlockData::new_stmts(
+        vec![statement],
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    );
 
     let source = MirSource::item(ctor_id);
     let mut body = new_body(
@@ -1130,16 +1124,16 @@ fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'t
         Operand::Move(Place::from(Local::new(1))),
         Ty::new_imm_ptr(tcx, tcx.types.unit),
     );
-    let stmt = Statement {
+    let stmt = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
-    };
+        StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+    );
     let statements = vec![stmt];
-    let start_block = BasicBlockData {
+    let start_block = BasicBlockData::new_stmts(
         statements,
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    };
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    );
     let source = MirSource::from_instance(ty::InstanceKind::FnPtrAddrShim(def_id, self_ty));
     new_body(source, IndexVec::from_elem_n(start_block, 1), locals, sig.inputs().len(), span)
 }
@@ -1230,16 +1224,16 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
         Box::new(AggregateKind::Coroutine(coroutine_def_id, coroutine_args)),
         IndexVec::from_raw(fields),
     );
-    let stmt = Statement {
+    let stmt = Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
-    };
+        StatementKind::Assign(Box::new((Place::return_place(), rvalue))),
+    );
     let statements = vec![stmt];
-    let start_block = BasicBlockData {
+    let start_block = BasicBlockData::new_stmts(
         statements,
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    };
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    );
 
     let source = MirSource::from_instance(ty::InstanceKind::ConstructCoroutineInClosureShim {
         coroutine_closure_def_id,

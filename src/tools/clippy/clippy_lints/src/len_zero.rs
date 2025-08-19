@@ -10,14 +10,15 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
-    QPath, TraitItemRef, TyKind,
+    BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, HirId, ImplItem, ImplItemKind, ImplicitSelfKind,
+    Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy, QPath, TraitItemId,
+    TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FnSig, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
+use rustc_span::symbol::kw;
 use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;
 
@@ -124,7 +125,7 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMP
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, ident, _, _, trait_items) = item.kind
+        if let ItemKind::Trait(_, _, _, ident, _, _, trait_items) = item.kind
             && !item.span.from_expansion()
         {
             check_trait_items(cx, item, ident, trait_items);
@@ -264,22 +265,16 @@ fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
     }
 }
 
-fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
-        item.ident.name == name
-            && if let AssocItemKind::Fn { has_self } = item.kind {
-                has_self && {
-                    cx.tcx
-                        .fn_sig(item.id.owner_id)
-                        .skip_binder()
-                        .inputs()
-                        .skip_binder()
-                        .len()
-                        == 1
-                }
-            } else {
-                false
-            }
+fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemId]) {
+    fn is_named_self(cx: &LateContext<'_>, item: TraitItemId, name: Symbol) -> bool {
+        cx.tcx.item_name(item.owner_id) == name
+            && matches!(
+                cx.tcx.fn_arg_idents(item.owner_id),
+                [Some(Ident {
+                    name: kw::SelfLower,
+                    ..
+                })],
+            )
     }
 
     // fill the set with current and super traits
@@ -292,7 +287,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
     }
 
     if cx.effective_visibilities.is_exported(visited_trait.owner_id.def_id)
-        && trait_items.iter().any(|i| is_named_self(cx, i, sym::len))
+        && trait_items.iter().any(|&i| is_named_self(cx, i, sym::len))
     {
         let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.owner_id.to_def_id(), &mut current_and_super_traits, cx);

@@ -10,7 +10,7 @@ union Foo<'a> {
 }
 
 const FOO: &() = {
-    //~^ ERROR it is undefined behavior to use this value
+    //~^ ERROR dangling reference
     let y = ();
     unsafe { Foo { y: &y }.long_live_the_unit }
 };

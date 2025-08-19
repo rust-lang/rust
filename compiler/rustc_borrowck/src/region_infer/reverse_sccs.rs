@@ -59,13 +59,10 @@ impl ReverseSccGraph {
 }
 
 impl RegionInferenceContext<'_> {
-    /// Compute the reverse SCC-based constraint graph (lazily).
-    pub(super) fn compute_reverse_scc_graph(&mut self) {
-        if self.rev_scc_graph.is_some() {
-            return;
-        }
-
-        self.rev_scc_graph =
-            Some(ReverseSccGraph::compute(&self.constraint_sccs, self.universal_regions()));
+    /// Return the reverse graph of the region SCCs, initialising it if needed.
+    pub(super) fn reverse_scc_graph(&self) -> &ReverseSccGraph {
+        self.rev_scc_graph.get_or_init(|| {
+            ReverseSccGraph::compute(&self.constraint_sccs, self.universal_regions())
+        })
     }
 }

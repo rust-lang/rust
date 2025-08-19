@@ -1,28 +1,28 @@
 error[E0277]: `A` cannot be shared between threads safely
-  --> $DIR/extern-types-not-sync-send.rs:13:19
+  --> $DIR/extern-types-not-sync-send.rs:15:19
    |
 LL |     assert_sync::<A>();
    |                   ^ `A` cannot be shared between threads safely
    |
    = help: the trait `Sync` is not implemented for `A`
 note: required by a bound in `assert_sync`
-  --> $DIR/extern-types-not-sync-send.rs:9:28
+  --> $DIR/extern-types-not-sync-send.rs:11:34
    |
-LL | fn assert_sync<T: ?Sized + Sync>() {}
-   |                            ^^^^ required by this bound in `assert_sync`
+LL | fn assert_sync<T: PointeeSized + Sync>() {}
+   |                                  ^^^^ required by this bound in `assert_sync`
 
 error[E0277]: `A` cannot be sent between threads safely
-  --> $DIR/extern-types-not-sync-send.rs:16:19
+  --> $DIR/extern-types-not-sync-send.rs:18:19
    |
 LL |     assert_send::<A>();
    |                   ^ `A` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `A`
 note: required by a bound in `assert_send`
-  --> $DIR/extern-types-not-sync-send.rs:10:28
+  --> $DIR/extern-types-not-sync-send.rs:12:34
    |
-LL | fn assert_send<T: ?Sized + Send>() {}
-   |                            ^^^^ required by this bound in `assert_send`
+LL | fn assert_send<T: PointeeSized + Send>() {}
+   |                                  ^^^^ required by this bound in `assert_send`
 
 error: aborting due to 2 previous errors
 

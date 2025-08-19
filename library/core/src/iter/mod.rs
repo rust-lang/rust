@@ -233,10 +233,12 @@
 //!
 //! ```
 //! let mut values = vec![41];
-//! for x in &mut values { // same as `values.iter_mut()`
+//! for x in &mut values {
+//!     //   ^ same as `values.iter_mut()`
 //!     *x += 1;
 //! }
-//! for x in &values { // same as `values.iter()`
+//! for x in &values {
+//!     //   ^ same as `values.iter()`
 //!     assert_eq!(*x, 42);
 //! }
 //! assert_eq!(values.len(), 1);
@@ -402,7 +404,7 @@ pub use self::adapters::StepBy;
 pub use self::adapters::TrustedRandomAccess;
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::adapters::TrustedRandomAccessNoCoerce;
-#[unstable(feature = "iter_chain", reason = "recently added", issue = "125964")]
+#[stable(feature = "iter_chain", since = "CURRENT_RUSTC_VERSION")]
 pub use self::adapters::chain;
 pub(crate) use self::adapters::try_process;
 #[stable(feature = "iter_zip", since = "1.59.0")]
@@ -420,6 +422,8 @@ pub use self::adapters::{Intersperse, IntersperseWith};
     issue = "42168"
 )]
 pub use self::range::Step;
+#[unstable(feature = "iter_macro", issue = "142269", reason = "generators are unstable")]
+pub use self::sources::iter;
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub use self::sources::{Empty, empty};
 #[unstable(

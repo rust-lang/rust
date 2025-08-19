@@ -5,7 +5,7 @@
 //! assists if we are allowed to.
 
 use hir::ImportPathConfig;
-use ide_db::{SnippetCap, imports::insert_use::InsertUseConfig};
+use ide_db::{SnippetCap, assists::ExprFillDefaultMode, imports::insert_use::InsertUseConfig};
 
 use crate::AssistKind;
 
@@ -21,6 +21,8 @@ pub struct AssistConfig {
     pub term_search_fuel: u64,
     pub term_search_borrowck: bool,
     pub code_action_grouping: bool,
+    pub expr_fill_default: ExprFillDefaultMode,
+    pub prefer_self_ty: bool,
 }
 
 impl AssistConfig {

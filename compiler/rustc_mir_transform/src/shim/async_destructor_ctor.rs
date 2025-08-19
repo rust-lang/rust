@@ -6,7 +6,7 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, LocalDecl, MirSource, Operand, Place, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, TypeVisitableExt};
 
 use super::*;
 use crate::patch::MirPatch;
@@ -64,7 +64,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let needs_async_drop = drop_ty.needs_async_drop(tcx, typing_env);
     let needs_sync_drop = !needs_async_drop && drop_ty.needs_drop(tcx, typing_env);
 
-    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+    let resume_adt = tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
     let resume_ty = Ty::new_adt(tcx, resume_adt, ty::List::empty());
 
     let fn_sig = ty::Binder::dummy(tcx.mk_fn_sig(
@@ -88,11 +88,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
     let return_block = BasicBlock::new(1);
     let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
-        blocks.push(BasicBlockData {
-            statements: vec![],
-            terminator: Some(Terminator { source_info, kind }),
-            is_cleanup: false,
-        })
+        blocks.push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
     };
     block(
         &mut blocks,
@@ -121,9 +117,10 @@ pub(super) fn build_async_drop_shim<'tcx>(
         parent_args.as_coroutine().resume_ty(),
     )));
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
-    if !needs_async_drop {
+    if !needs_async_drop || drop_ty.references_error() {
         // Returning noop body for types without `need async drop`
-        // (or sync Drop in case of !`need async drop` && `need drop`)
+        // (or sync Drop in case of !`need async drop` && `need drop`).
+        // And also for error types.
         return body;
     }
 
@@ -132,7 +129,7 @@ pub(super) fn build_async_drop_shim<'tcx>(
         dropee_ptr,
         Rvalue::Use(Operand::Move(coroutine_layout_dropee)),
     )));
-    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement { source_info, kind: st_kind });
+    body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, st_kind));
     dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
     let dropline = body.basic_blocks.last_index();
@@ -219,7 +216,7 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();
-    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, Some(span)));
+    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let args = tcx.mk_args(&[proxy_ref.into()]);
     let pin_proxy_ref = Ty::new_adt(tcx, pin_adt_ref, args);
 
@@ -239,13 +236,13 @@ fn build_adrop_for_coroutine_shim<'tcx>(
             .project_deeper(&[PlaceElem::Field(FieldIdx::ZERO, proxy_ref)], tcx);
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             idx,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     Place::from(proxy_ref_local),
                     Rvalue::CopyForDeref(proxy_ref_place),
                 ))),
-            },
+            ),
         );
         idx += 1;
         let mut cor_ptr_local = proxy_ref_local;
@@ -260,13 +257,13 @@ fn build_adrop_for_coroutine_shim<'tcx>(
                 // _cor_ptr = _proxy.0.0 (... .0)
                 body.basic_blocks_mut()[START_BLOCK].statements.insert(
                     idx,
-                    Statement {
+                    Statement::new(
                         source_info,
-                        kind: StatementKind::Assign(Box::new((
+                        StatementKind::Assign(Box::new((
                             Place::from(cor_ptr_local),
                             Rvalue::CopyForDeref(impl_ptr_place),
                         ))),
-                    },
+                    ),
                 );
                 idx += 1;
             }
@@ -280,10 +277,10 @@ fn build_adrop_for_coroutine_shim<'tcx>(
         );
         body.basic_blocks_mut()[START_BLOCK].statements.insert(
             idx,
-            Statement {
+            Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((Place::from(cor_ref_local), reborrow))),
-            },
+                StatementKind::Assign(Box::new((Place::from(cor_ref_local), reborrow))),
+            ),
         );
     }
     body
@@ -307,10 +304,10 @@ fn build_adrop_for_adrop_shim<'tcx>(
     let cor_ref = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, impl_ty);
 
     // ret_ty = `Poll<()>`
-    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, None));
+    let poll_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Poll, span));
     let ret_ty = Ty::new_adt(tcx, poll_adt_ref, tcx.mk_args(&[tcx.types.unit.into()]));
     // env_ty = `Pin<&mut proxy_ty>`
-    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, None));
+    let pin_adt_ref = tcx.adt_def(tcx.require_lang_item(LangItem::Pin, span));
     let env_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[proxy_ref.into()]));
     // sig = `fn (Pin<&mut proxy_ty>, &mut Context) -> Poll<()>`
     let sig = tcx.mk_fn_sig(
@@ -333,13 +330,13 @@ fn build_adrop_for_adrop_shim<'tcx>(
 
     let mut statements = Vec::new();
 
-    statements.push(Statement {
+    statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((
+        StatementKind::Assign(Box::new((
             Place::from(proxy_ref_local),
             Rvalue::CopyForDeref(proxy_ref_place),
         ))),
-    });
+    ));
 
     let mut cor_ptr_local = proxy_ref_local;
     proxy_ty.find_async_drop_impl_coroutine(tcx, |ty| {
@@ -349,13 +346,13 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 .project_deeper(&[PlaceElem::Deref, PlaceElem::Field(FieldIdx::ZERO, ty_ptr)], tcx);
             cor_ptr_local = locals.push(LocalDecl::new(ty_ptr, span));
             // _cor_ptr = _proxy.0.0 (... .0)
-            statements.push(Statement {
+            statements.push(Statement::new(
                 source_info,
-                kind: StatementKind::Assign(Box::new((
+                StatementKind::Assign(Box::new((
                     Place::from(cor_ptr_local),
                     Rvalue::CopyForDeref(impl_ptr_place),
                 ))),
-            });
+            ));
         }
     });
 
@@ -366,20 +363,20 @@ fn build_adrop_for_adrop_shim<'tcx>(
         tcx.mk_place_deref(Place::from(cor_ptr_local)),
     );
     let cor_ref_place = Place::from(locals.push(LocalDecl::new(cor_ref, span)));
-    statements.push(Statement {
+    statements.push(Statement::new(
         source_info,
-        kind: StatementKind::Assign(Box::new((cor_ref_place, reborrow))),
-    });
+        StatementKind::Assign(Box::new((cor_ref_place, reborrow))),
+    ));
 
     // cor_pin_ty = `Pin<&mut cor_ref>`
     let cor_pin_ty = Ty::new_adt(tcx, pin_adt_ref, tcx.mk_args(&[cor_ref.into()]));
     let cor_pin_place = Place::from(locals.push(LocalDecl::new(cor_pin_ty, span)));
 
-    let pin_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, Some(span));
+    let pin_fn = tcx.require_lang_item(LangItem::PinNewUnchecked, span);
     // call Pin<FutTy>::new_unchecked(&mut impl_cor)
-    blocks.push(BasicBlockData {
+    blocks.push(BasicBlockData::new_stmts(
         statements,
-        terminator: Some(Terminator {
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(tcx, pin_fn, [cor_ref.into()], span),
@@ -391,15 +388,14 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 fn_span: span,
             },
         }),
-        is_cleanup: false,
-    });
+        false,
+    ));
     // When dropping async drop coroutine, we continue its execution:
     // we call impl::poll (impl_layout, ctx)
-    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, None);
+    let poll_fn = tcx.require_lang_item(LangItem::FuturePoll, span);
     let resume_ctx = Place::from(Local::new(2));
-    blocks.push(BasicBlockData {
-        statements: vec![],
-        terminator: Some(Terminator {
+    blocks.push(BasicBlockData::new(
+        Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
                 func: Operand::function_handle(tcx, poll_fn, [impl_ty.into()], span),
@@ -415,13 +411,12 @@ fn build_adrop_for_adrop_shim<'tcx>(
                 fn_span: span,
             },
         }),
-        is_cleanup: false,
-    });
-    blocks.push(BasicBlockData {
-        statements: vec![],
-        terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
-        is_cleanup: false,
-    });
+        false,
+    ));
+    blocks.push(BasicBlockData::new(
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
+        false,
+    ));
 
     let source = MirSource::from_instance(instance);
     let mut body = new_body(source, blocks, locals, sig.inputs().len(), span);
