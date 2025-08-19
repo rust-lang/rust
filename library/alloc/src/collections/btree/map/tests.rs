@@ -11,7 +11,7 @@ use crate::fmt::Debug;
 use crate::rc::Rc;
 use crate::string::{String, ToString};
 use crate::testing::crash_test::{CrashTestDummy, Panic};
-use crate::testing::ord_chaos::{Cyclic3, Governed, Governor};
+use crate::testing::ord_chaos::{Cyclic3, Governed, Governor, IdBased};
 use crate::testing::rng::DeterministicRng;
 
 // Minimum number of elements to insert, to guarantee a tree with 2 levels,
@@ -2586,4 +2586,32 @@ fn cursor_peek_prev_agrees_with_cursor_mut() {
 
     let prev = cursor.peek_prev();
     assert_matches!(prev, Some((&3, _)));
+}
+
+#[test]
+fn test_id_based_insert() {
+    let mut lhs = BTreeMap::new();
+    let mut rhs = BTreeMap::new();
+
+    lhs.insert(IdBased { id: 0, name: "lhs_k".to_string() }, "lhs_v".to_string());
+    rhs.insert(IdBased { id: 0, name: "rhs_k".to_string() }, "rhs_v".to_string());
+
+    for (k, v) in rhs.into_iter() {
+        lhs.insert(k, v);
+    }
+
+    assert_eq!(lhs.pop_first().unwrap().0.name, "lhs_k".to_string());
+}
+
+#[test]
+fn test_id_based_append() {
+    let mut lhs = BTreeMap::new();
+    let mut rhs = BTreeMap::new();
+
+    lhs.insert(IdBased { id: 0, name: "lhs_k".to_string() }, "lhs_v".to_string());
+    rhs.insert(IdBased { id: 0, name: "rhs_k".to_string() }, "rhs_v".to_string());
+
+    lhs.append(&mut rhs);
+
+    assert_eq!(lhs.pop_first().unwrap().0.name, "lhs_k".to_string());
 }
