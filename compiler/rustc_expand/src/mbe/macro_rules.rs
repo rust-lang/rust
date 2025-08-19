@@ -596,6 +596,7 @@ pub(super) fn try_match_macro_attr<'matcher, T: Tracker<'matcher>>(
         match result {
             Success(body_named_matches) => {
                 psess.gated_spans.merge(gated_spans_snapshot);
+                #[allow(rustc::potential_query_instability)]
                 named_matches.extend(body_named_matches);
                 return Ok((i, rule, named_matches));
             }
