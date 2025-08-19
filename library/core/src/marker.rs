@@ -1077,12 +1077,13 @@ pub trait Tuple {}
 /// that all fields are also `ConstParamTy`, which implies that recursively, all fields
 /// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
 // We name this differently than the derive macro so that the `adt_const_params` can
 // be used independently of `unsized_const_params` without requiring a full path
 // to the derive macro every time it is used. This should be renamed on stabilization.
-pub trait ConstParamTy: StructuralPartialEq + Eq {}
+pub trait ConstParamTy_: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
 #[rustc_builtin_macro]
@@ -1095,7 +1096,6 @@ pub macro ConstParamTy($item:item) {
 // FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
     #[unstable(feature = "adt_const_params", issue = "95174")]
-    #[unstable_feature_bound(adt_const_params)]
     ConstParamTy for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
