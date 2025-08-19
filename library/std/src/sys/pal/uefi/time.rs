@@ -188,7 +188,7 @@ pub(crate) mod system_time_internal {
         Duration::new(epoch, t.nanosecond)
     }
 
-    /// This algorithm is a modifed version of the one described in the post:
+    /// This algorithm is a modified version of the one described in the post:
     /// https://howardhinnant.github.io/date_algorithms.html#clive_from_days
     ///
     /// The changes are to use 1900-01-01-00:00:00 with timezone -1440 as anchor instead of UNIX
@@ -197,7 +197,7 @@ pub(crate) mod system_time_internal {
         // Check timzone validity
         assert!(timezone <= 1440 && timezone >= -1440);
 
-        // FIXME(#126043): use checked_sub_signed once stablized
+        // FIXME(#126043): use checked_sub_signed once stabilized
         let secs =
             dur.as_secs().checked_add_signed((-timezone as i64) * SECS_IN_MINUTE as i64).unwrap();
 
