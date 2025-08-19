@@ -1708,6 +1708,7 @@ mod hidden {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
+#[cfg(not(doc))]
 impl<Ptr> DerefMut for Pin<Ptr>
 where
     Ptr: Deref,
@@ -1717,6 +1718,20 @@ where
         // SAFETY: Pin and PinHelper have the same layout, so this is equivalent to
         // `&mut self.pointer` which is safe because `Target: Unpin`.
         unsafe { &mut **(self as *mut Pin<Ptr> as *mut hidden::PinHelper<Ptr>) }
+    }
+}
+
+// This impl is only used during documentation, but it is fully equivalent to the above impl with
+// the exception of how the orphan rule treats it.
+#[stable(feature = "pin", since = "1.33.0")]
+#[cfg(doc)]
+impl<Ptr> DerefMut for Pin<Ptr>
+where
+    Ptr: DerefMut,
+    Ptr::Target: Unpin,
+{
+    fn deref_mut(&mut self) -> &mut Ptr::Target {
+        Pin::get_mut(Pin::as_mut(self))
     }
 }
 
