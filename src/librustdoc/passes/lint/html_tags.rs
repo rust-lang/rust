@@ -520,7 +520,7 @@ impl TagParser {
                     iter.next();
                     *is_in_comment = Some(Range {
                         start: range.start + start_pos,
-                        end: range.start + start_pos + 3,
+                        end: range.start + start_pos + 4,
                     });
                 } else {
                     if self.tag_name.is_empty() {
