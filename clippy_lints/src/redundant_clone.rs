@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, is_type_lang_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{has_drop, is_copy, is_type_lang_item, walk_ptrs_ty_depth};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -147,8 +147,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     is_call_with_ref_arg(cx, mir, &pred_terminator.kind)
                     && res == cloned
                     && cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id)
-                    && (is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
-                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString))
+                    && let ty::Adt(pred_arg_def, _) = pred_arg_ty.kind()
+                    && let Some(pred_arg_name) = cx.tcx.get_diagnostic_name(pred_arg_def.did())
+                    && matches!(pred_arg_name, sym::PathBuf | sym::OsString)
                 {
                     (pred_arg, res)
                 } else {
