@@ -2443,7 +2443,7 @@ unsafe extern "C" {
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
         UseEmulatedTls: bool,
-        ArgsCstrBuff: *const c_char,
+        ArgsCstrBuff: *const c_uchar, // See "PTR_LEN_STR".
         ArgsCstrBuffLen: usize,
         UseWasmEH: bool,
     ) -> *mut TargetMachine;
