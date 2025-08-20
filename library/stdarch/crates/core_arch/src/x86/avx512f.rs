@@ -5823,7 +5823,7 @@ pub fn _mm512_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m512d) -> _
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 16))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm256_roundscale_pd<const IMM8: i32>(a: __m256d) -> __m256d {
     unsafe {
@@ -5897,7 +5897,7 @@ pub fn _mm256_maskz_roundscale_pd<const IMM8: i32>(k: __mmask8, a: __m256d) -> _
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[stable(feature = "stdarch_x86_avx512", since = "1.89")]
-#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 0))]
+#[cfg_attr(test, assert_instr(vrndscalepd, IMM8 = 16))]
 #[rustc_legacy_const_generics(1)]
 pub fn _mm_roundscale_pd<const IMM8: i32>(a: __m128d) -> __m128d {
     unsafe {
@@ -49621,7 +49621,9 @@ mod tests {
         assert_eq_m512i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/154492
+    //#[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm512_mask_cvttps_epu32() {
         let a = _mm512_setr_ps(
             0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
@@ -49634,7 +49636,9 @@ mod tests {
         assert_eq_m512i(r, e);
     }
 
-    #[simd_test(enable = "avx512f")]
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/154492
+    //#[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "avx512f,avx512vl")]
     unsafe fn test_mm512_maskz_cvttps_epu32() {
         let a = _mm512_setr_ps(
             0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
