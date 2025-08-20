@@ -2046,6 +2046,8 @@ mod snapshot {
                 // bootstrap tests under bootstrap tests causes non-deterministic snapshot diffs
                 // on CI.
                 .args(&["--skip", "bootstrap"])
+                // rustdoc-js-std requires nodejs to be present
+                .args(&["--set", "build.nodejs=/bin/nodejs"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> Tidy 1 <host>
         [test] tidy <>
