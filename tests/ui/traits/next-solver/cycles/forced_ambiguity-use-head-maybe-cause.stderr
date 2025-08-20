@@ -5,7 +5,20 @@ LL |     impls_trait::<Root<_>>()
    |                   ^^^^^^^ cannot infer type for struct `Head<_>`
    |
    = note: cannot satisfy `Head<_>: Trait`
-   = help: the trait `Trait` is implemented for `Head<T>`
+help: the following types implement trait `Trait`
+  --> $DIR/forced_ambiguity-use-head-maybe-cause.rs:23:1
+   |
+LL | / impl<T> Trait for Head<T>
+LL | | where
+LL | |     Root<T>: Trait,
+LL | |     T: Trait, // ambiguous
+   | |_____________^ `Head<T>`
+...
+LL | / impl<T> Trait for Head<T>
+LL | | where
+LL | |     Error<T>: Trait,
+LL | |     NotImplemented<T>: Trait,
+   | |_____________________________^ `Head<T>`
 note: required for `Root<_>` to implement `Trait`
   --> $DIR/forced_ambiguity-use-head-maybe-cause.rs:18:9
    |

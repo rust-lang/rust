@@ -35,7 +35,11 @@ error[E0277]: the trait bound `(dyn B + 'static): Mirror` is not satisfied
 LL | ) -> &'a <dyn B + 'static as Mirror>::Assoc {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Mirror` is not implemented for `(dyn B + 'static)`
    |
-   = help: the trait `Mirror` is implemented for `dyn A`
+help: the trait `Mirror` is implemented for `dyn A`
+  --> $DIR/projection-dyn-associated-type.rs:13:1
+   |
+LL | impl<T: ?Sized> Mirror for A {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(dyn B + 'static): Mirror` is not satisfied
   --> $DIR/projection-dyn-associated-type.rs:22:6
@@ -43,7 +47,11 @@ error[E0277]: the trait bound `(dyn B + 'static): Mirror` is not satisfied
 LL | ) -> &'a <dyn B + 'static as Mirror>::Assoc {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Mirror` is not implemented for `(dyn B + 'static)`
    |
-   = help: the trait `Mirror` is implemented for `dyn A`
+help: the trait `Mirror` is implemented for `dyn A`
+  --> $DIR/projection-dyn-associated-type.rs:13:1
+   |
+LL | impl<T: ?Sized> Mirror for A {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 4 previous errors; 1 warning emitted
