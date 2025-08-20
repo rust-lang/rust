@@ -307,6 +307,11 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
             Overlap::EqualOrDisjoint
         }
+        (ProjectionElem::UnwrapUnsafeBinder(_), ProjectionElem::UnwrapUnsafeBinder(_)) => {
+            // casts to other types may always conflict irrespective of the type being cast to.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-OPAQUE");
+            Overlap::EqualOrDisjoint
+        }
         (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) => {
             if f1 == f2 {
                 // same field (e.g., `a.y` vs. `a.y`) - recur.
@@ -512,6 +517,7 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subtype(_)
             | ProjectionElem::OpaqueCast { .. }
+            | ProjectionElem::UnwrapUnsafeBinder { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(..),
             _,
@@ -520,9 +526,5 @@ fn place_projection_conflict<'tcx>(
             pi1_elem,
             pi2_elem
         ),
-
-        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
-            todo!()
-        }
     }
 }

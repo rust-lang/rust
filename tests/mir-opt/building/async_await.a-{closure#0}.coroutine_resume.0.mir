@@ -13,7 +13,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
     debug _task_context => _4;
     let mut _0: std::task::Poll<()>;
     let mut _3: ();
-    let mut _4: &mut std::task::Context<'_>;
+    let mut _4: unsafe<'a, 'b> &'a mut std::task::Context<'b>;
     let mut _5: u32;
 
     bb0: {
@@ -22,7 +22,7 @@ fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) ->
     }
 
     bb1: {
-        _4 = move _2;
+        _4 = wrap_binder!(move _2; unsafe<'a, 'b> &'a mut std::task::Context<'b>);
         _3 = const ();
         goto -> bb3;
     }

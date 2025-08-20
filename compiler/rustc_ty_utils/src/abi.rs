@@ -159,16 +159,11 @@ fn fn_sig_for_fn_abi<'tcx>(
                     // with `&mut Context<'_>` which is used in codegen.
                     #[cfg(debug_assertions)]
                     {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
+                        let resume_ty = Ty::new_resume_ty(tcx);
+                        assert_eq!(resume_ty, sig.resume_ty);
                     }
-                    let context_mut_ref = Ty::new_task_context(tcx);
 
+                    let context_mut_ref = Ty::new_task_context(tcx);
                     (Some(context_mut_ref), ret_ty)
                 }
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
@@ -191,20 +186,15 @@ fn fn_sig_for_fn_abi<'tcx>(
                     // Yield type is already `Poll<Option<yield_ty>>`
                     let ret_ty = sig.yield_ty;
 
-                    // We have to replace the `ResumeTy` that is used for type and borrow checking
+                    // We have to replace the `{:?}` that is used for type and borrow checking
                     // with `&mut Context<'_>` which is used in codegen.
                     #[cfg(debug_assertions)]
                     {
-                        if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
-                            let expected_adt =
-                                tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, DUMMY_SP));
-                            assert_eq!(*resume_ty_adt, expected_adt);
-                        } else {
-                            panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
-                        };
+                        let resume_ty = Ty::new_resume_ty(tcx);
+                        assert_eq!(resume_ty, sig.resume_ty);
                     }
-                    let context_mut_ref = Ty::new_task_context(tcx);
 
+                    let context_mut_ref = Ty::new_task_context(tcx);
                     (Some(context_mut_ref), ret_ty)
                 }
                 hir::CoroutineKind::Coroutine(_) => {

@@ -927,10 +927,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_awaitee],
             );
-            let get_context = self.expr_call_lang_item_fn_mut(
+            let get_context = self.expr(
                 gen_future_span,
-                hir::LangItem::GetContext,
-                arena_vec![self; task_context],
+                hir::ExprKind::UnsafeBinderCast(
+                    UnsafeBinderCastKind::Unwrap,
+                    self.arena.alloc(task_context),
+                    None,
+                ),
             );
             let call = match await_kind {
                 FutureKind::Future => self.expr_call_lang_item_fn(

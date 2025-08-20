@@ -474,6 +474,9 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
+        ty::UnsafeBinder(binder) => {
+            return type_di_node(cx, cx.tcx.instantiate_bound_regions_with_erased(*binder));
+        }
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
