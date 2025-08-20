@@ -705,6 +705,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> std 1 <target1>
         [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 2 <host> -> rustc 3 <target1>
         ");
     }
