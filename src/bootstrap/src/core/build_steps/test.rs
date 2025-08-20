@@ -1476,12 +1476,6 @@ macro_rules! test {
                     }),
                 })
             }
-
-            fn metadata(&self) -> Option<StepMetadata> {
-                Some(
-                    StepMetadata::test(stringify!($name), self.target)
-                )
-            }
         }
     };
 }
@@ -2361,6 +2355,13 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             let _time = helpers::timeit(builder);
             try_run_tests(builder, &mut cmd, false);
         }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test(&format!("compiletest-{}", self.suite), self.target)
+                .stage(self.compiler.stage),
+        )
     }
 }
 
