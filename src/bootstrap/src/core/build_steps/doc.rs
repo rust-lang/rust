@@ -994,7 +994,7 @@ macro_rules! tool_doc {
                     (compilers.build_compiler(), Mode::ToolRustc)
                 } else {
                     // bootstrap/host tools have to be documented with the stage 0 compiler
-                    (prepare_doc_compiler(run.builder, target, 1), Mode::ToolBootstrap)
+                    (prepare_doc_compiler(run.builder, run.builder.host_target, 1), Mode::ToolBootstrap)
                 };
 
                 run.builder.ensure($tool { build_compiler, mode, target });
