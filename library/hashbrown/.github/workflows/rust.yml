@@ -55,7 +55,7 @@ jobs:
           # Disabled due to issues with cross-rs
           #x86_64-pc-windows-gnu,
         ]
-        channel: [1.74.0, nightly]
+        channel: [1.80.0, nightly]
         include:
         - os: macos-latest
           target: aarch64-apple-darwin
@@ -65,10 +65,10 @@ jobs:
           channel: nightly
         - os: macos-latest
           target: aarch64-apple-darwin
-          channel: 1.74.0
+          channel: 1.80.0
         - os: windows-latest
           target: x86_64-pc-windows-msvc
-          channel: 1.74.0
+          channel: 1.80.0
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
           channel: beta
@@ -81,12 +81,8 @@ jobs:
     needs: basics
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
-    - uses: dtolnay/rust-toolchain@1.65.0 # MSRV
-    - run: cargo +nightly generate-lockfile -Z direct-minimal-versions
-    - env:
-        TARGET: x86_64-unknown-linux-gnu
-      run: sh ci/run.sh
+    - run: cargo install cargo-msrv
+    - run: cargo msrv --workspace verify
 
   dep_of_std:
     runs-on: ubuntu-latest
