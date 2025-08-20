@@ -3319,8 +3319,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
-    // #[cfg_attr(test, assert_instr(vsegb))]
+    #[cfg_attr(test, assert_instr(vsegb))]
     pub unsafe fn vsegb(a: vector_signed_char) -> vector_signed_long_long {
         simd_as(simd_shuffle::<_, _, i8x2>(
             a,
@@ -3331,8 +3330,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
-    // #[cfg_attr(test, assert_instr(vsegh))]
+    #[cfg_attr(test, assert_instr(vsegh))]
     pub unsafe fn vsegh(a: vector_signed_short) -> vector_signed_long_long {
         simd_as(simd_shuffle::<_, _, i16x2>(
             a,
@@ -3343,8 +3341,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
-    // #[cfg_attr(test, assert_instr(vsegf))]
+    #[cfg_attr(test, assert_instr(vsegf))]
     pub unsafe fn vsegf(a: vector_signed_int) -> vector_signed_long_long {
         simd_as(simd_shuffle::<_, _, i32x2>(
             a,
