@@ -343,6 +343,7 @@ declare_features! (
     (unstable, riscv_target_feature, "1.45.0", Some(44839)),
     (unstable, rtm_target_feature, "1.35.0", Some(44839)),
     (unstable, s390x_target_feature, "1.82.0", Some(44839)),
+    (unstable, s390x_target_feature_vector, "CURRENT_RUSTC_VERSION", Some(145649)),
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     (unstable, wasm_target_feature, "1.30.0", Some(44839)),
     (unstable, x87_target_feature, "1.85.0", Some(44839)),

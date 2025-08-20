@@ -17,6 +17,7 @@
 // gate-test-lahfsahf_target_feature
 // gate-test-prfchw_target_feature
 // gate-test-s390x_target_feature
+// gate-test-s390x_target_feature_vector
 // gate-test-sparc_target_feature
 // gate-test-x87_target_feature
 // gate-test-m68k_target_feature
