@@ -122,7 +122,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
     match source {
         PathFreshness::LastModifiedUpstream { upstream } => {
             // Download from upstream CI
-            let root = ci_gcc_root(&builder.config);
+            let root = ci_gcc_root(&builder.config, target);
             let gcc_stamp = BuildStamp::new(&root).with_prefix("gcc").add_stamp(&upstream);
             if !gcc_stamp.is_up_to_date() && !builder.config.dry_run() {
                 builder.config.download_ci_gcc(&upstream, &root);
@@ -286,8 +286,8 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 
 /// The absolute path to the downloaded GCC artifacts.
 #[cfg(not(test))]
-fn ci_gcc_root(config: &crate::Config) -> PathBuf {
-    config.out.join(config.host_target).join("ci-gcc")
+fn ci_gcc_root(config: &crate::Config, target: TargetSelection) -> PathBuf {
+    config.out.join(target).join("ci-gcc")
 }
 
 /// Detect whether GCC sources have been modified locally or not.
