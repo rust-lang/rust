@@ -10,7 +10,7 @@
 //@[z13_soft_float] needs-llvm-components: systemz
 //[z13_soft_float]~? WARN must be disabled to ensure that the ABI of the current target can be implemented correctly
 
-#![feature(no_core, repr_simd, s390x_target_feature_vector)]
+#![feature(no_core, repr_simd)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
