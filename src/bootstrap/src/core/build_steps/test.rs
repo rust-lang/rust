@@ -1741,7 +1741,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             builder.std(compiler, target);
         }
 
-        builder.ensure(RemoteCopyLibs { compiler, target });
+        builder.ensure(RemoteCopyLibs { build_compiler: compiler, target });
 
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
@@ -2842,7 +2842,7 @@ impl Step for Crate {
             // Also prepare a sysroot for the target.
             if !builder.config.is_host_target(target) {
                 builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
-                builder.ensure(RemoteCopyLibs { compiler, target });
+                builder.ensure(RemoteCopyLibs { build_compiler: compiler, target });
             }
 
             // Build `cargo test` command
@@ -3050,7 +3050,7 @@ impl Step for CrateRustdocJsonTypes {
 /// the build target (us) and the server is built for the target.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteCopyLibs {
-    compiler: Compiler,
+    build_compiler: Compiler,
     target: TargetSelection,
 }
 
@@ -3062,18 +3062,17 @@ impl Step for RemoteCopyLibs {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
+        let build_compiler = self.build_compiler;
         let target = self.target;
         if !builder.remote_tested(target) {
             return;
         }
 
-        builder.std(compiler, target);
+        builder.std(build_compiler, target);
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
-        let remote_test_server =
-            builder.ensure(tool::RemoteTestServer { build_compiler: compiler, target });
+        let remote_test_server = builder.ensure(tool::RemoteTestServer { build_compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
@@ -3088,7 +3087,7 @@ impl Step for RemoteCopyLibs {
         cmd.run(builder);
 
         // Push all our dylibs to the emulator
-        for f in t!(builder.sysroot_target_libdir(compiler, target).read_dir()) {
+        for f in t!(builder.sysroot_target_libdir(build_compiler, target).read_dir()) {
             let f = t!(f);
             if helpers::is_dylib(&f.path()) {
                 command(&tool).arg("push").arg(f.path()).run(builder);
@@ -3134,6 +3133,9 @@ impl Step for Distcheck {
             .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
             .unwrap_or_default();
 
+        // FIXME: unpack the source tarballs into a directory outside the source checkout, to
+        // ensure that it cannot access any local state
+        // Also ensure that it doesn't use download-ci-llvm
         command("tar")
             .arg("-xf")
             .arg(plain_src_tarball.tarball())
@@ -3720,8 +3722,10 @@ impl Step for TestFloatParse {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(Self { build_compiler: get_compiler_to_test(run.builder), target: run.target });
+        run.builder.ensure(Self {
+            build_compiler: get_compiler_to_test(run.builder, run.target),
+            target: run.target,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
