@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use rustc_data_structures::intern::Interned;
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
@@ -131,6 +131,35 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
         } else {
             Ok(())
         }
+    }
+
+    fn print_coroutine_with_kind(
+        &mut self,
+        def_id: DefId,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        kind: Ty<'tcx>,
+    ) -> Result<(), PrintError> {
+        self.print_def_path(def_id, parent_args)?;
+
+        let ty::Coroutine(_, args) = self.tcx.type_of(def_id).instantiate_identity().kind() else {
+            // Could be `ty::Error`.
+            return Ok(());
+        };
+
+        let default_kind = args.as_coroutine().kind_ty();
+
+        match kind.to_opt_closure_kind() {
+            _ if kind == default_kind => {
+                // No need to mark the closure if it's the deduced coroutine kind.
+            }
+            Some(ty::ClosureKind::Fn) | None => {
+                // Should never happen. Just don't mark anything rather than panicking.
+            }
+            Some(ty::ClosureKind::FnMut) => self.path.push_str("::{{call_mut}}"),
+            Some(ty::ClosureKind::FnOnce) => self.path.push_str("::{{call_once}}"),
+        }
+
+        Ok(())
     }
 }
 

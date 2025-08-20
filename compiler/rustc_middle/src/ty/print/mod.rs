@@ -124,6 +124,15 @@ pub trait Printer<'tcx>: Sized {
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError>;
 
+    fn print_coroutine_with_kind(
+        &mut self,
+        def_id: DefId,
+        parent_args: &'tcx [GenericArg<'tcx>],
+        kind: Ty<'tcx>,
+    ) -> Result<(), PrintError> {
+        self.print_path_with_generic_args(|p| p.print_def_path(def_id, parent_args), &[kind.into()])
+    }
+
     // Defaults (should not be overridden):
 
     #[instrument(skip(self), level = "debug")]
@@ -162,9 +171,10 @@ pub trait Printer<'tcx>: Sized {
                             )) = self.tcx().coroutine_kind(def_id)
                                 && args.len() > parent_args.len()
                             {
-                                return self.print_path_with_generic_args(
-                                    |p| p.print_def_path(def_id, parent_args),
-                                    &args[..parent_args.len() + 1][..1],
+                                return self.print_coroutine_with_kind(
+                                    def_id,
+                                    parent_args,
+                                    args[parent_args.len()].expect_ty(),
                                 );
                             } else {
                                 // Closures' own generics are only captures, don't print them.
