@@ -119,11 +119,31 @@ pub(crate) fn imply_features(mut value: cache::Initializer) -> cache::Initialize
         imply!(d | zfhmin | zfa => f);
         imply!(zfbfmin => f); // and some of (not all) "Zfh" instructions.
 
-        // Relatively complex implication rules from the "C" extension.
+        // Relatively complex implication rules around the "C" extension.
+        // (from "C" and some others)
         imply!(c => zca);
         imply!(c & d => zcd);
         #[cfg(target_arch = "riscv32")]
         imply!(c & f => zcf);
+        // (to "C"; defined as superset)
+        cfg_select! {
+            target_arch = "riscv32" => {
+                if value.test(Feature::d as u32) {
+                    imply!(zcf & zcd => c);
+                } else if value.test(Feature::f as u32) {
+                    imply!(zcf => c);
+                } else {
+                    imply!(zca => c);
+                }
+            }
+            _ => {
+                if value.test(Feature::d as u32) {
+                    imply!(zcd => c);
+                } else {
+                    imply!(zca => c);
+                }
+            }
+        }
 
         imply!(zicntr | zihpm | f | zfinx | zve32x => zicsr);
 
