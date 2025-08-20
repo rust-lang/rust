@@ -2476,7 +2476,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
 /// path does not exist. Note that the inverse is not true,
-/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// ie. if a path does exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
 /// # Examples
@@ -2946,7 +2946,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
 /// path does not exist. Note that the inverse is not true,
-/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// ie. if a path does exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
 /// # Examples
