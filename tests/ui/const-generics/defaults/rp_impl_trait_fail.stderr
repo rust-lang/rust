@@ -12,7 +12,11 @@ help: the trait `Trait` is not implemented for `Uwu<10, 12>`
    |
 LL | struct Uwu<const N: u32 = 1, const M: u32 = N>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: the trait `Trait` is implemented for `Uwu<N>`
+help: the trait `Trait` is implemented for `Uwu<N>`
+  --> $DIR/rp_impl_trait_fail.rs:4:1
+   |
+LL | impl<const N: u32> Trait for Uwu<N> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `u32: Traitor<N>` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:16:26

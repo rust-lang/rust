@@ -4,7 +4,11 @@ error[E0277]: the trait bound `{integer}: Scalar` is not satisfied
 LL |   b + 3
    |     ^ the trait `Scalar` is not implemented for `{integer}`
    |
-   = help: the trait `Scalar` is implemented for `f64`
+help: the trait `Scalar` is implemented for `f64`
+  --> $DIR/issue-22645.rs:4:1
+   |
+LL | impl Scalar for f64 {}
+   | ^^^^^^^^^^^^^^^^^^^
 note: required for `Bob` to implement `Add<{integer}>`
   --> $DIR/issue-22645.rs:8:19
    |

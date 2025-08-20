@@ -4,9 +4,13 @@ error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
 LL |     <u8 as Baz>::Quaks: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
@@ -19,9 +23,13 @@ error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
 LL |     [<u8 as Baz>::Quaks; 2]: Bar,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
    = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
@@ -34,9 +42,13 @@ error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
 LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |
@@ -52,9 +64,13 @@ error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
 LL | impl Foo for FooImpl {}
    |      ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
@@ -70,9 +86,13 @@ error[E0277]: the trait bound `[[u16; 3]; 2]: Bar` is not satisfied
 LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[[u16; 3]; 2]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:14:30
    |
@@ -88,9 +108,13 @@ error[E0277]: the trait bound `[u16; 3]: Bar` is not satisfied
 LL | fn f(_: impl Foo) {}
    |              ^^^ the trait `Bar` is not implemented for `[u16; 3]`
    |
-   = help: the following other types implement trait `Bar`:
-             [[u16; 3]; 3]
-             [u16; 4]
+help: the following other types implement trait `Bar`
+  --> $DIR/issue-67185-2.rs:9:1
+   |
+LL | impl Bar for [u16; 4] {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `[u16; 4]`
+LL | impl Bar for [[u16; 3]; 3] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ `[[u16; 3]; 3]`
 note: required by a bound in `Foo`
   --> $DIR/issue-67185-2.rs:15:25
    |
