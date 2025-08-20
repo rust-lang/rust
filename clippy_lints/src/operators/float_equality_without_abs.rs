@@ -37,7 +37,8 @@ pub(crate) fn check<'tcx>(
         // right hand side matches either f32::EPSILON or f64::EPSILON
         && let ExprKind::Path(ref epsilon_path) = rhs.kind
         && let Res::Def(DefKind::AssocConst, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id)
-        && ([sym::f32_epsilon, sym::f64_epsilon].into_iter().any(|sym| cx.tcx.is_diagnostic_item(sym, def_id)))
+        && let Some(epsilon) = cx.tcx.get_diagnostic_name(def_id)
+        && matches!(epsilon, sym::f32_epsilon| sym::f64_epsilon)
 
         // values of the subtractions on the left hand side are of the type float
         && let t_val_l = cx.typeck_results().expr_ty(val_l)

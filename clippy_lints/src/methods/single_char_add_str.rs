@@ -5,10 +5,10 @@ use rustc_span::sym;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::Expr<'_>, args: &[hir::Expr<'_>]) {
     if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        if cx.tcx.is_diagnostic_item(sym::string_push_str, fn_def_id) {
-            single_char_push_string::check(cx, expr, receiver, args);
-        } else if cx.tcx.is_diagnostic_item(sym::string_insert_str, fn_def_id) {
-            single_char_insert_string::check(cx, expr, receiver, args);
+        match cx.tcx.get_diagnostic_name(fn_def_id) {
+            Some(sym::string_push_str) => single_char_push_string::check(cx, expr, receiver, args),
+            Some(sym::string_insert_str) => single_char_insert_string::check(cx, expr, receiver, args),
+            _ => {},
         }
     }
 }
