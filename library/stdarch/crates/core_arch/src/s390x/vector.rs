@@ -169,13 +169,6 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vpklsfs"] fn vpklsfs(a: vector_unsigned_int, b: vector_unsigned_int) -> PackedTuple<vector_unsigned_short, i32>;
     #[link_name = "llvm.s390.vpklsgs"] fn vpklsgs(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> PackedTuple<vector_unsigned_int, i32>;
 
-    #[link_name = "llvm.s390.vuplb"] fn vuplb (a: vector_signed_char) -> vector_signed_short;
-    #[link_name = "llvm.s390.vuplhw"] fn vuplhw (a: vector_signed_short) -> vector_signed_int;
-    #[link_name = "llvm.s390.vuplf"] fn vuplf (a: vector_signed_int) -> vector_signed_long_long;
-    #[link_name = "llvm.s390.vupllb"] fn vupllb (a: vector_unsigned_char) -> vector_unsigned_short;
-    #[link_name = "llvm.s390.vupllh"] fn vupllh (a: vector_unsigned_short) -> vector_unsigned_int;
-    #[link_name = "llvm.s390.vupllf"] fn vupllf (a: vector_unsigned_int) -> vector_unsigned_long_long;
-
     #[link_name = "llvm.s390.vavgb"] fn vavgb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vavgh"] fn vavgh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
     #[link_name = "llvm.s390.vavgf"] fn vavgf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
@@ -2583,8 +2576,14 @@ mod sealed {
         unsafe fn vec_unpackl(self) -> Self::Result;
     }
 
-    // FIXME(llvm): a shuffle + simd_as does not currently optimize into a single instruction like
-    // unpachk above. Tracked in https://github.com/llvm/llvm-project/issues/129576.
+    // NOTE: `vuplh` is used for "unpack logical high", hence `vuplhw`.
+    impl_vec_unpack!(unpack_low vuplb vector_signed_char i8x8 vector_signed_short 8);
+    impl_vec_unpack!(unpack_low vuplhw vector_signed_short i16x4 vector_signed_int 4);
+    impl_vec_unpack!(unpack_low vuplf vector_signed_int i32x2 vector_signed_long_long 2);
+
+    impl_vec_unpack!(unpack_low vupllb vector_unsigned_char u8x8 vector_unsigned_short 8);
+    impl_vec_unpack!(unpack_low vupllh vector_unsigned_short u16x4 vector_unsigned_int 4);
+    impl_vec_unpack!(unpack_low vupllf vector_unsigned_int u32x2 vector_unsigned_long_long 2);
 
     impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplb (vector_signed_char) -> vector_signed_short}
     impl_vec_trait! {[VectorUnpackl vec_unpackl] vuplhw (vector_signed_short) -> vector_signed_int}
