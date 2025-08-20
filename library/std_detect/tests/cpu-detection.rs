@@ -11,7 +11,6 @@
 )]
 #![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
-#![cfg_attr(target_arch = "s390x", feature(stdarch_s390x_feature_detection))]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg_attr(

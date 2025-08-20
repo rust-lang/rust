@@ -9,7 +9,7 @@ features! {
     ///
     /// When the feature is known to be enabled at compile time (e.g. via `-Ctarget-feature`)
     /// the macro expands to `true`.
-    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    #[stable(feature = "stdarch_s390x_feature_detection", since = "CURRENT_RUSTC_VERSION")]
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] concurrent_functions: "concurrent-functions";
     /// s390x concurrent-functions facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] deflate_conversion: "deflate-conversion";
