@@ -42,8 +42,10 @@ extern "riscv-interrupt-m" fn riscv_m() {}
 //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
 extern "riscv-interrupt-s" fn riscv_s() {}
 //[x64,x64_win,i686,avr,msp430]~^ ERROR is not a supported ABI
-extern "x86-interrupt" fn x86() {}
+extern "x86-interrupt" fn x86(_x: *const u8) {}
 //[riscv32,riscv64,avr,msp430]~^ ERROR is not a supported ABI
+
+static BYTE: u8 = 0;
 
 /* extern "interrupt" calls  */
 fn call_the_interrupts() {
@@ -55,7 +57,7 @@ fn call_the_interrupts() {
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be called
     riscv_s();
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be called
-    x86();
+    x86(&raw const BYTE);
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be called
 }
 
