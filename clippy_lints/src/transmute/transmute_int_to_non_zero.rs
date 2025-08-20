@@ -1,6 +1,6 @@
 use super::TRANSMUTE_INT_TO_NON_ZERO;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::sugg;
+use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
         && let int_ty = substs.type_at(0)
         && from_ty == int_ty
     {
-        let arg = sugg::Sugg::hir(cx, arg, "..");
+        let arg = Sugg::hir(cx, arg, "..");
         span_lint_and_sugg(
             cx,
             TRANSMUTE_INT_TO_NON_ZERO,
