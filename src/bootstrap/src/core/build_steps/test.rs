@@ -3691,18 +3691,6 @@ impl Step for CodegenGCC {
     }
 }
 
-/// Get a build compiler that can be used to test the standard library (i.e. its stage will
-/// correspond to the stage that we want to test).
-fn get_test_build_compiler_for_std(builder: &Builder<'_>) -> Compiler {
-    if builder.top_stage == 0 {
-        eprintln!(
-            "ERROR: cannot run tests on stage 0. `build.compiletest-allow-stage0` only works for compiletest test suites."
-        );
-        exit!(1);
-    }
-    builder.compiler(builder.top_stage, builder.host_target)
-}
-
 /// Test step that does two things:
 /// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
@@ -3732,10 +3720,8 @@ impl Step for TestFloatParse {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self {
-            build_compiler: get_test_build_compiler_for_std(run.builder),
-            target: run.target,
-        });
+        run.builder
+            .ensure(Self { build_compiler: get_compiler_to_test(run.builder), target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
