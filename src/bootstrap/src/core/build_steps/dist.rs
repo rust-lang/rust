@@ -764,24 +764,10 @@ pub struct Std {
 
 impl Std {
     pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
-        // This is a build time optimization for running just `x dist rust-std` (without
-        // `x dist rustc`).
-        // If we know that we will be uplifting a stage2+ library from stage 1 anyway,
-        // there is no point in building a stage2 rustc, which will then not do anything (because
-        // the stdlib will be uplifted).
-        let top_stage = builder.top_stage;
-        let stage = if top_stage > 1
-            && compile::Std::should_be_uplifted_from_stage_1(builder, top_stage, target)
-        {
-            builder.info(&format!(
-                "Note: stage {top_stage} library for `{}` would be uplifted from stage 1, so stage was downgraded from {top_stage} to 1 to avoid needless compiler build(s)",
-                target
-            ));
-            1
-        } else {
-            top_stage
-        };
-        Std { build_compiler: builder.compiler(stage, builder.config.host_target), target }
+        Std {
+            build_compiler: builder.compiler(builder.top_stage, builder.config.host_target),
+            target,
+        }
     }
 }
 
