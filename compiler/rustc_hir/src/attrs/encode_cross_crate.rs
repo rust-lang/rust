@@ -78,7 +78,7 @@ impl AttributeKind {
             SpecializationTrait(..) => No,
             Stability { .. } => Yes,
             StdInternalSymbol(..) => No,
-            TargetFeature(..) => No,
+            TargetFeature { .. } => No,
             TrackCaller(..) => Yes,
             TypeConst(..) => Yes,
             UnsafeSpecializationMarker(..) => No,

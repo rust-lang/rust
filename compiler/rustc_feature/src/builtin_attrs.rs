@@ -745,6 +745,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorPreceding, EncodeCrossCrate::No
     ),
     gated!(
+        unsafe force_target_feature, Normal, template!(List: &[r#"enable = "name""#]),
+        DuplicatesOk, EncodeCrossCrate::No, effective_target_features, experimental!(force_target_feature)
+    ),
+    gated!(
         sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
         EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
