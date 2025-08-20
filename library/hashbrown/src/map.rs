@@ -5519,8 +5519,7 @@ mod test_map {
         map.insert(2, 1);
         map.insert(3, 4);
 
-        #[allow(clippy::no_effect)] // false positive lint
-        map[&4];
+        _ = map[&4];
     }
 
     #[test]
