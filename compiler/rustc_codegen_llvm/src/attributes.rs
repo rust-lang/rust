@@ -420,6 +420,16 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
+        if let Some(zv) =
+            cx.tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
+            && let Some(name) = zv.value_str()
+        {
+            to_add.push(llvm::CreateAttrStringValue(
+                cx.llcx,
+                "alloc-variant-zeroed",
+                &mangle_internal_symbol(cx.tcx, name.as_str()),
+            ));
+        }
         // apply to argument place instead of function
         let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(1), &[alloc_align]);
