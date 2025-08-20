@@ -2191,7 +2191,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         msg.extend(types.1.0);
                         msg.push(StringPart::normal("`"));
                     }
-                    err.highlighted_help(msg);
+                    err.highlighted_span_help(self.tcx.def_span(single.impl_def_id), msg);
 
                     if let [TypeError::Sorts(exp_found)] = &terrs[..] {
                         let exp_found = self.resolve_vars_if_possible(*exp_found);
