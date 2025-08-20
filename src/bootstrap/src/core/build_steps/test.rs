@@ -1316,76 +1316,6 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     }
 }
 
-fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
-    builder.out.join(host).join("test")
-}
-
-/// Declares a test step that invokes compiletest on a particular test suite.
-macro_rules! test {
-    (
-        $( #[$attr:meta] )* // allow docstrings and attributes
-        $name:ident {
-            path: $path:expr,
-            mode: $mode:expr,
-            suite: $suite:expr,
-            default: $default:expr
-            $( , IS_HOST: $IS_HOST:expr )? // default: false
-            $( , compare_mode: $compare_mode:expr )? // default: None
-            $( , )? // optional trailing comma
-        }
-    ) => {
-        $( #[$attr] )*
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
-        }
-
-        impl Step for $name {
-            type Output = ();
-            const DEFAULT: bool = $default;
-            const IS_HOST: bool = (const {
-                #[allow(unused_assignments, unused_mut)]
-                let mut value = false;
-                $( value = $IS_HOST; )?
-                value
-            });
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.suite_path($path)
-            }
-
-            fn make_run(run: RunConfig<'_>) {
-                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-
-                run.builder.ensure($name { compiler, target: run.target });
-            }
-
-            fn run(self, builder: &Builder<'_>) {
-                builder.ensure(Compiletest {
-                    compiler: self.compiler,
-                    target: self.target,
-                    mode: $mode,
-                    suite: $suite,
-                    path: $path,
-                    compare_mode: (const {
-                        #[allow(unused_assignments, unused_mut)]
-                        let mut value = None;
-                        $( value = $compare_mode; )?
-                        value
-                    }),
-                })
-            }
-
-            fn metadata(&self) -> Option<StepMetadata> {
-                Some(
-                    StepMetadata::test(stringify!($name), self.target)
-                )
-            }
-        }
-    };
-}
-
 /// Runs `cargo test` on the `src/tools/run-make-support` crate.
 /// That crate is used by run-make tests.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1460,6 +1390,76 @@ impl Step for CrateBuildHelper {
         cargo.allow_features("test");
         run_cargo_test(cargo, &[], &[], "build_helper self test", host, builder);
     }
+}
+
+fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
+    builder.out.join(host).join("test")
+}
+
+/// Declares a test step that invokes compiletest on a particular test suite.
+macro_rules! test {
+    (
+        $( #[$attr:meta] )* // allow docstrings and attributes
+        $name:ident {
+            path: $path:expr,
+            mode: $mode:expr,
+            suite: $suite:expr,
+            default: $default:expr
+            $( , IS_HOST: $IS_HOST:expr )? // default: false
+            $( , compare_mode: $compare_mode:expr )? // default: None
+            $( , )? // optional trailing comma
+        }
+    ) => {
+        $( #[$attr] )*
+        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub compiler: Compiler,
+            pub target: TargetSelection,
+        }
+
+        impl Step for $name {
+            type Output = ();
+            const DEFAULT: bool = $default;
+            const IS_HOST: bool = (const {
+                #[allow(unused_assignments, unused_mut)]
+                let mut value = false;
+                $( value = $IS_HOST; )?
+                value
+            });
+
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                run.suite_path($path)
+            }
+
+            fn make_run(run: RunConfig<'_>) {
+                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+
+                run.builder.ensure($name { compiler, target: run.target });
+            }
+
+            fn run(self, builder: &Builder<'_>) {
+                builder.ensure(Compiletest {
+                    compiler: self.compiler,
+                    target: self.target,
+                    mode: $mode,
+                    suite: $suite,
+                    path: $path,
+                    compare_mode: (const {
+                        #[allow(unused_assignments, unused_mut)]
+                        let mut value = None;
+                        $( value = $compare_mode; )?
+                        value
+                    }),
+                })
+            }
+
+            fn metadata(&self) -> Option<StepMetadata> {
+                Some(
+                    StepMetadata::test(stringify!($name), self.target)
+                )
+            }
+        }
+    };
 }
 
 test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
