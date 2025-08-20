@@ -1942,6 +1942,7 @@ symbols! {
         rwpi,
         s,
         s390x_target_feature,
+        s390x_target_feature_vector,
         safety,
         sanitize,
         sanitizer_cfi_generalize_pointers,

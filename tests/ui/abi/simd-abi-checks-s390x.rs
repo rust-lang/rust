@@ -9,7 +9,7 @@
 //@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
 //@[z13_soft_float] needs-llvm-components: systemz
 
-#![feature(no_core, repr_simd, s390x_target_feature)]
+#![feature(no_core, repr_simd, s390x_target_feature_vector)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
