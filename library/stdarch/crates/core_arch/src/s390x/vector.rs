@@ -2352,6 +2352,9 @@ mod sealed {
         unsafe fn vec_packs(self, b: Other) -> Self::Result;
     }
 
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/153655
+    // Other targets can use a min/max for the saturation + a truncation.
+
     impl_vec_trait! { [VectorPacks vec_packs] vpksh (vector_signed_short, vector_signed_short) -> vector_signed_char }
     impl_vec_trait! { [VectorPacks vec_packs] vpklsh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_char }
     impl_vec_trait! { [VectorPacks vec_packs] vpksf (vector_signed_int, vector_signed_int) -> vector_signed_short }
