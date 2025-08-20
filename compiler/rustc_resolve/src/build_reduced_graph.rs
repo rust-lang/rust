@@ -210,6 +210,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
+    /// Add every proc macro accessible from the current crate to the `macro_map` so diagnostics can
+    /// find them for suggestions.
+    pub(crate) fn register_macros_for_all_crates(&mut self) {
+        if !self.all_crate_macros_already_registered {
+            for def_id in self.cstore().all_proc_macro_def_ids() {
+                self.get_macro_by_def_id(def_id);
+            }
+            self.all_crate_macros_already_registered = true;
+        }
+    }
+
     pub(crate) fn build_reduced_graph(
         &mut self,
         fragment: &AstFragment,
@@ -474,6 +485,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_span,
             root_id,
             vis,
+            vis_span: item.vis.span,
         });
 
         self.r.indeterminate_imports.push(import);
@@ -966,6 +978,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
+            vis_span: item.vis.span,
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1100,6 +1113,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
+                vis_span: item.vis.span,
             })
         };
 
@@ -1270,6 +1284,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
+                    vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);

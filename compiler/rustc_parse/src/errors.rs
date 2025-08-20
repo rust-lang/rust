@@ -3163,27 +3163,6 @@ pub(crate) struct ModifierLifetime {
     pub modifier: &'static str,
 }
 
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_parenthesized_lifetime_suggestion,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct RemoveParens {
-    #[suggestion_part(code = "")]
-    pub lo: Span,
-    #[suggestion_part(code = "")]
-    pub hi: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_parenthesized_lifetime)]
-pub(crate) struct ParenthesizedLifetime {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sugg: RemoveParens,
-}
-
 #[derive(Diagnostic)]
 #[diag(parse_underscore_literal_suffix)]
 pub(crate) struct UnderscoreLiteralSuffix {

@@ -27,8 +27,9 @@ use crate::{enter_trace_span, fluent_generated as fluent};
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
-    /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
-    /// make the place inaccessible for the duration of the function call.
+    /// Allow for the argument to be passed in-place: destroy the value originally stored at that
+    /// place and make the place inaccessible for the duration of the function call. This *must* be
+    /// an in-memory place so that we can do the proper alias checks.
     InPlace(MPlaceTy<'tcx, Prov>),
 }
 
@@ -379,6 +380,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
+        // *Before* pushing the new frame, determine whether the return destination is in memory.
+        // Need to use `place_to_op` to be *sure* we get the mplace if there is one.
+        let destination_mplace = self.place_to_op(destination)?.as_mplace_or_imm().left();
+
+        // Push the "raw" frame -- this leaves locals uninitialized.
         self.push_stack_frame_raw(instance, body, destination, cont)?;
 
         // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -496,7 +502,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             // Protect return place for in-place return value passing.
             // We only need to protect anything if this is actually an in-memory place.
-            if let Left(mplace) = destination.as_mplace_or_local() {
+            if let Some(mplace) = destination_mplace {
                 M::protect_in_place_function_argument(self, &mplace)?;
             }
 

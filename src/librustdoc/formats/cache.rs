@@ -1,6 +1,5 @@
 use std::mem;
 
-use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::StabilityLevel;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
@@ -48,7 +47,7 @@ pub(crate) struct Cache {
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub(crate) external_paths: FxHashMap<DefId, (Vec<Symbol>, ItemType)>,
+    pub(crate) external_paths: FxIndexMap<DefId, (Vec<Symbol>, ItemType)>,
 
     /// Maps local `DefId`s of exported types to fully qualified paths.
     /// Unlike 'paths', this mapping ignores any renames that occur
@@ -574,7 +573,6 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         clean::ItemKind::ImportItem(import) => import.source.did.unwrap_or(item_def_id),
         _ => item_def_id,
     };
-    let path = join_path_syms(parent_path);
     let impl_id = if let Some(ParentStackItem::Impl { item_id, .. }) = cache.parent_stack.last() {
         item_id.as_def_id()
     } else {
@@ -593,11 +591,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         ty: item.type_(),
         defid: Some(defid),
         name,
-        path,
+        module_path: parent_path.to_vec(),
         desc,
         parent: parent_did,
         parent_idx: None,
-        exact_path: None,
+        exact_module_path: None,
         impl_id,
         search_type,
         aliases,

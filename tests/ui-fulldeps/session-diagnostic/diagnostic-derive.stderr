@@ -559,6 +559,12 @@ error: cannot find attribute `error` in this scope
    |
 LL | #[error(no_crate_example, code = E0123)]
    |   ^^^^^
+   |
+help: `error` is an attribute that can be used by the derive macro `Error`, you might be missing a `derive` attribute
+   |
+LL + #[derive(Error)]
+LL | struct ErrorAttribute {}
+   |
 
 error: cannot find attribute `warn_` in this scope
   --> $DIR/diagnostic-derive.rs:590:3

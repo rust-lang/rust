@@ -179,6 +179,16 @@ fn main() {
         }
     }
 
+    // Here we pass additional paths that essentially act as a sysroot.
+    // These are used to load rustc crates (e.g. `extern crate rustc_ast;`)
+    // for rustc_private tools, so that we do not have to copy them into the
+    // actual sysroot of the compiler that builds the tool.
+    if let Ok(dirs) = env::var("RUSTC_ADDITIONAL_SYSROOT_PATHS") {
+        for dir in dirs.split(",") {
+            cmd.arg(format!("-L{dir}"));
+        }
+    }
+
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates
     // also in the sysroot. We also do this for host crates, since those

@@ -6,8 +6,8 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Interner, Movability, TraitPredicate, TraitRef, TypeVisitableExt as _, TypingMode,
-    Upcast as _, elaborate,
+    self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
+    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
 
@@ -133,19 +133,26 @@ where
             cx: I,
             clause_def_id: I::DefId,
             goal_def_id: I::DefId,
+            polarity: PredicatePolarity,
         ) -> bool {
             clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
             // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
             //
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
-                || (cx.is_lang_item(clause_def_id, TraitSolverLangItem::Sized)
+                || (polarity == PredicatePolarity::Positive
+                    && cx.is_lang_item(clause_def_id, TraitSolverLangItem::Sized)
                     && cx.is_lang_item(goal_def_id, TraitSolverLangItem::MetaSized))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
             && trait_clause.polarity() == goal.predicate.polarity
-            && trait_def_id_matches(ecx.cx(), trait_clause.def_id(), goal.predicate.def_id())
+            && trait_def_id_matches(
+                ecx.cx(),
+                trait_clause.def_id(),
+                goal.predicate.def_id(),
+                goal.predicate.polarity,
+            )
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.trait_ref.args,
                 trait_clause.skip_binder().trait_ref.args,
@@ -168,6 +175,8 @@ where
         // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
         // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
         // are syntactic sugar for a lack of bounds so don't need this.
+        // We don't need to check polarity, `fast_reject_assumption` already rejected non-`Positive`
+        // polarity `Sized` assumptions as matching non-`Positive` `MetaSized` goals.
         if ecx.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::MetaSized)
             && ecx.cx().is_lang_item(trait_clause.def_id(), TraitSolverLangItem::Sized)
         {

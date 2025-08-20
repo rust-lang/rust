@@ -1,0 +1,34 @@
+error: Undefined Behavior: read access through <TAG> (root of the allocation) at ALLOC[0x0] is forbidden
+  --> tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
+   |
+LL |             Call(_unit = callee(Move(non_copy), Move(non_copy)), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> (root of the allocation) is foreign to the protected tag <TAG> (i.e., it is not a child)
+   = help: this foreign read access would cause the protected tag <TAG> (currently Active) to become Disabled
+   = help: protected tags must never be Disabled
+help: the accessed tag <TAG> was created here
+  --> tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
+   |
+LL |             Call(_unit = callee(Move(non_copy), Move(non_copy)), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the protected tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
+   |
+LL |     y.0 = 0;
+   |     ^^^^^^^
+help: the protected tag <TAG> later transitioned to Active due to a child write access at offsets [0x0..0x4]
+  --> tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
+   |
+LL |     y.0 = 0;
+   |     ^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at tests/fail/function_calls/arg_inplace_locals_alias.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

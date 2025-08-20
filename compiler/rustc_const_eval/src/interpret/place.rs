@@ -234,6 +234,12 @@ impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     }
 
     /// A place is either an mplace or some local.
+    ///
+    /// Note that the return value can be different even for logically identical places!
+    /// Specifically, if a local is stored in-memory, this may return `Local` or `MPlaceTy`
+    /// depending on how the place was constructed. In other words, seeing `Local` here does *not*
+    /// imply that this place does not point to memory. Every caller must therefore always handle
+    /// both cases.
     #[inline(always)]
     pub fn as_mplace_or_local(
         &self,
@@ -759,6 +765,13 @@ where
         &mut self,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
+        // If this is an efficiently represented local variable without provenance, skip the
+        // `as_mplace_or_mutable_local` that would otherwise force this local into memory.
+        if let Right(imm) = dest.to_op(self)?.as_mplace_or_imm() {
+            if !imm.has_provenance() {
+                return interp_ok(());
+            }
+        }
         match self.as_mplace_or_mutable_local(&dest.to_place())? {
             Right((local_val, _local_layout, local)) => {
                 local_val.clear_provenance()?;

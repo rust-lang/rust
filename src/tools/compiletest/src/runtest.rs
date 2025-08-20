@@ -2151,7 +2151,7 @@ impl<'test> TestCx<'test> {
 
         #[rustfmt::skip]
         let tidy_args = [
-            "--new-blocklevel-tags", "rustdoc-search,rustdoc-toolbar",
+            "--new-blocklevel-tags", "rustdoc-search,rustdoc-toolbar,rustdoc-topbar",
             "--indent", "yes",
             "--indent-spaces", "2",
             "--wrap", "0",

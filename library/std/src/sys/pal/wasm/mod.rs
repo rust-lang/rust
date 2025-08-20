@@ -23,13 +23,14 @@ pub mod pipe;
 #[path = "../unsupported/time.rs"]
 pub mod time;
 
-cfg_if::cfg_if! {
-    if #[cfg(target_feature = "atomics")] {
+cfg_select! {
+    target_feature = "atomics" => {
         #[path = "atomics/futex.rs"]
         pub mod futex;
         #[path = "atomics/thread.rs"]
         pub mod thread;
-    } else {
+    }
+    _ => {
         #[path = "../unsupported/thread.rs"]
         pub mod thread;
     }
