@@ -26,7 +26,9 @@ use crate::core::builder;
 use crate::core::builder::{
     Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
 };
-use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::core::config::{
+    CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
+};
 use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
@@ -574,10 +576,12 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins(target) {
-        if let Some(path) = builder.config.optimized_compiler_builtins_path(target) {
+    let compiler_builtins_c_feature = match builder.config.optimized_compiler_builtins(target) {
+        CompilerBuiltins::LinkLLVMBuiltinsLib(path) => {
             cargo.env("LLVM_COMPILER_RT_LIB", path);
-        } else {
+            " compiler-builtins-c"
+        }
+        CompilerBuiltins::BuildLLVMFuncs => {
             // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce
             // `submodules = false`, so this is a no-op. But, the user could still decide to
             //  manually use an in-tree submodule.
@@ -599,10 +603,9 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
             // The path to `compiler-rt` is also used by `profiler_builtins` (above),
             // so if you're changing something here please also change that as appropriate.
             cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
+            " compiler-builtins-c"
         }
-        " compiler-builtins-c"
-    } else {
-        ""
+        CompilerBuiltins::BuildRustOnly => "",
     };
 
     // `libtest` uses this to know whether or not to support

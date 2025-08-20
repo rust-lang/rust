@@ -218,6 +218,33 @@ impl<T> Merge for Option<T> {
     }
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub enum CompilerBuiltins {
+    #[default]
+    // Only build native rust intrinsic compiler functions.
+    BuildRustOnly,
+    // Some intrinsic functions have a C implementation provided by LLVM's
+    // compiler-rt builtins library. Build them from the LLVM source included
+    // with Rust.
+    BuildLLVMFuncs,
+    // Similar to BuildLLVMFuncs, but specify a path to an existing library
+    // containing LLVM's compiler-rt builtins instead of compiling them.
+    LinkLLVMBuiltinsLib(String),
+}
+
+impl<'de> Deserialize<'de> for CompilerBuiltins {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(match Deserialize::deserialize(deserializer)? {
+            StringOrBool::Bool(false) => Self::BuildRustOnly,
+            StringOrBool::Bool(true) => Self::BuildLLVMFuncs,
+            StringOrBool::String(path) => Self::LinkLLVMBuiltinsLib(path),
+        })
+    }
+}
+
 #[derive(Copy, Clone, Default, Debug, Eq, PartialEq)]
 pub enum DebuginfoLevel {
     #[default]

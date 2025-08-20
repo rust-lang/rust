@@ -18,7 +18,7 @@ use crate::builder::Builder;
 use crate::builder::Kind;
 #[cfg(not(test))]
 use crate::core::build_steps::tool;
-use crate::core::config::Target;
+use crate::core::config::{CompilerBuiltins, Target};
 use crate::utils::exec::command;
 use crate::{Build, Subcommand};
 
@@ -330,7 +330,8 @@ than building it.
 
         // compiler-rt c fallbacks for wasm cannot be built with gcc
         if target.contains("wasm")
-            && (build.config.optimized_compiler_builtins(*target)
+            && (*build.config.optimized_compiler_builtins(*target)
+                != CompilerBuiltins::BuildRustOnly
                 || build.config.rust_std_features.contains("compiler-builtins-c"))
         {
             let cc_tool = build.cc_tool(*target);

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::ReplaceOpt;
-use crate::core::config::{Merge, StringOrBool};
+use crate::core::config::{CompilerBuiltins, Merge, StringOrBool};
 use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
@@ -65,7 +65,7 @@ define_config! {
         // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
-        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
+        optimized_compiler_builtins: Option<CompilerBuiltins> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         compiletest_allow_stage0: Option<bool> = "compiletest-allow-stage0",
