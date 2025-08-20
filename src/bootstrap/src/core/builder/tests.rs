@@ -2042,15 +2042,18 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("test")
-                // Skip bootstrap tests, as for some reason the recursive nature of running
-                // bootstrap tests under bootstrap tests causes non-deterministic snapshot diffs
-                // on CI.
-                .args(&["--skip", "bootstrap"])
-                // rustdoc-js-std requires nodejs to be present
-                .args(&["--set", "build.nodejs=/bin/nodejs"])
+                // Bootstrap only run by default on CI, so we have to emulate that also locally.
+                .args(&["--ci", "true"])
+                // These rustdoc tests requires nodejs to be present.
+                // We can't easily opt out of it, so if it is present on the local PC, the test
+                // would have different result on CI, where nodejs might be missing.
+                .args(&["--skip", "rustdoc-js-std"])
+                .args(&["--skip", "rustdoc-js"])
+                .args(&["--skip", "rustdoc-gui"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> Tidy 1 <host>
         [test] tidy <>
+        [build] rustdoc 0 <host>
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
@@ -2071,7 +2074,6 @@ mod snapshot {
         [test] Pretty <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> std 0 <host>
-        [build] rustdoc 0 <host>
         [test] CrateLibrustc <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [test] crate-bootstrap <host> src/tools/coverage-dump
@@ -2107,8 +2109,6 @@ mod snapshot {
         [test] rustc 0 <host> -> rust-analyzer 1 <host>
         [doc] rustc (book) <host>
         [test] rustc 1 <host> -> lint-docs 2 <host>
-        [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [test] rustdoc-js-std 1 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
         [test] RustdocUi <host>
