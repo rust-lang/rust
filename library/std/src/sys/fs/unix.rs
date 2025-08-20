@@ -492,13 +492,14 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
         let mut buf = vec![0; libc::PATH_MAX as usize];
         let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
         if n == -1 {
-            cfg_if::cfg_if! {
-                if #[cfg(target_os = "netbsd")] {
+            cfg_select! {
+                target_os = "netbsd" => {
                     // fallback to procfs as last resort
                     let mut p = PathBuf::from("/proc/self/fd");
                     p.push(&fd.to_string());
                     return run_path_with_cstr(&p, &readlink).ok()
-                } else {
+                }
+                _ => {
                     return None;
                 }
             }
@@ -2162,80 +2163,6 @@ impl FromRawFd for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(any(target_os = "linux", target_os = "illumos", target_os = "solaris"))]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let mut p = PathBuf::from("/proc/self/fd");
-            p.push(&fd.to_string());
-            run_path_with_cstr(&p, &readlink).ok()
-        }
-
-        #[cfg(any(target_vendor = "apple", target_os = "netbsd"))]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because Apple targets and NetBSD define `fcntl`
-            // with `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
-            // alternatives. If a better method is invented, it should be used
-            // instead.
-            let mut buf = vec![0; libc::PATH_MAX as usize];
-            let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
-            if n == -1 {
-                cfg_select! {
-                    target_os = "netbsd" => {
-                        // fallback to procfs as last resort
-                        let mut p = PathBuf::from("/proc/self/fd");
-                        p.push(&fd.to_string());
-                        return run_path_with_cstr(&p, &readlink).ok()
-                    }
-                    _ => {
-                        return None;
-                    }
-                }
-            }
-            let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
-            buf.shrink_to_fit();
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(target_os = "freebsd")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let info = Box::<libc::kinfo_file>::new_zeroed();
-            let mut info = unsafe { info.assume_init() };
-            info.kf_structsize = size_of::<libc::kinfo_file>() as libc::c_int;
-            let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
-            if n == -1 {
-                return None;
-            }
-            let buf = unsafe { CStr::from_ptr(info.kf_path.as_mut_ptr()).to_bytes().to_vec() };
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(target_os = "vxworks")]
-        fn get_path(fd: c_int) -> Option<PathBuf> {
-            let mut buf = vec![0; libc::PATH_MAX as usize];
-            let n = unsafe { libc::ioctl(fd, libc::FIOGETNAME, buf.as_ptr()) };
-            if n == -1 {
-                return None;
-            }
-            let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
-            Some(PathBuf::from(OsString::from_vec(buf)))
-        }
-
-        #[cfg(not(any(
-            target_os = "linux",
-            target_os = "vxworks",
-            target_os = "freebsd",
-            target_os = "netbsd",
-            target_os = "illumos",
-            target_os = "solaris",
-            target_vendor = "apple",
-        )))]
-        fn get_path(_fd: c_int) -> Option<PathBuf> {
-            // FIXME(#24570): implement this for other Unix platforms
-            None
-        }
-
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {

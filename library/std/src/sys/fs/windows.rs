@@ -1052,12 +1052,17 @@ impl Dir {
 
     fn new_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
         let creation = opts.get_creation_mode()?;
+        let sa = c::SECURITY_ATTRIBUTES {
+            nLength: size_of::<c::SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: opts.inherit_handle as c::BOOL,
+        };
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
-                opts.security_attributes,
+                &raw const sa,
                 creation,
                 opts.get_flags_and_attributes() | c::FILE_FLAG_BACKUP_SEMANTICS,
                 ptr::null_mut(),
