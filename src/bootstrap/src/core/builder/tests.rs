@@ -2124,7 +2124,7 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make 1 <host>
         ");
     }
@@ -2143,7 +2143,7 @@ mod snapshot {
         [test] compiletest-ui 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         [test] compiletest-rustdoc 1 <host>
@@ -2172,7 +2172,7 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <host>
         [test] compiletest-rustdoc 2 <host>
@@ -2206,7 +2206,7 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <target1>
         [test] compiletest-ui-fulldeps 2 <target1>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <target1>
         [test] compiletest-rustdoc 2 <target1>
@@ -2301,7 +2301,7 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make 2 <host>
         ");
     }

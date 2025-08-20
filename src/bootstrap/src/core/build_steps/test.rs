@@ -1848,12 +1848,15 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
 
         if mode == "run-make" {
-            let cargo_path = if builder.top_stage == 0 {
+            let cargo_path = if test_compiler.stage == 0 {
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
                 builder
-                    .ensure(tool::Cargo::from_build_compiler(test_compiler, test_compiler.host))
+                    .ensure(tool::Cargo::from_build_compiler(
+                        builder.compiler(test_compiler.stage - 1, test_compiler.host),
+                        test_compiler.host,
+                    ))
                     .tool_path
             };
 
@@ -1902,7 +1905,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
-        let sysroot = if builder.top_stage == 0 {
+        let sysroot = if test_compiler.stage == 0 {
             builder.initial_sysroot.clone()
         } else {
             builder.sysroot(test_compiler)
