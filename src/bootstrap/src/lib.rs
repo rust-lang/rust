@@ -1165,7 +1165,7 @@ impl Build {
 
     /// Return a `Group` guard for a [`Step`] that tests `what` with the given `stage` and `target`
     /// (determined by `host_and_stage`).
-    /// Use this instead of [`Builder::msg`] when there is no clear `build_compiler` to be
+    /// Use this instead of [`builder::Builder::msg`] when there is no clear `build_compiler` to be
     /// determined.
     ///
     /// [`Step`]: crate::core::builder::Step
