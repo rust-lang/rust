@@ -665,9 +665,6 @@ impl Config {
         exec_ctx.set_verbosity(cmp::max(build_verbose.unwrap_or_default() as u8, flags_verbose));
 
         let stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
-        let bootstrap_cache_path = build_bootstrap_cache_path;
-        let patch_binaries_for_nix = build_patch_binaries_for_nix;
-
         let path_modification_cache = Arc::new(Mutex::new(HashMap::new()));
 
         let host_target = flags_build
@@ -681,7 +678,6 @@ impl Config {
             })
             .unwrap_or_else(|| vec![host_target]);
 
-        let submodules = build_submodules;
         let llvm_assertions = llvm_assertions_.unwrap_or(false);
 
         let mut target_config = HashMap::new();
@@ -739,17 +735,17 @@ impl Config {
             path_modification_cache: path_modification_cache.clone(),
             src: &src,
             rust_info: rust_info.clone(),
-            submodules: &submodules,
+            submodules: &build_submodules,
             download_rustc_commit: download_rustc_commit.clone(),
             host_target,
             llvm_from_ci,
             target_config: target_config.clone(),
             out: out.clone(),
-            patch_binaries_for_nix,
+            patch_binaries_for_nix: build_patch_binaries_for_nix,
             exec_ctx: &exec_ctx,
             stage0_metadata: &stage0_metadata,
             llvm_assertions,
-            bootstrap_cache_path: &bootstrap_cache_path,
+            bootstrap_cache_path: &build_bootstrap_cache_path,
             is_running_on_ci,
         };
 
@@ -873,7 +869,7 @@ impl Config {
                 }
                 if let Some(patches) = cfg.llvm_has_rust_patches {
                     assert!(
-                        submodules == Some(false) || cfg.llvm_config.is_some(),
+                        build_submodules == Some(false) || cfg.llvm_config.is_some(),
                         "use of `llvm-has-rust-patches` is restricted to cases where either submodules are disabled or llvm-config been provided"
                     );
                     target.llvm_has_rust_patches = Some(patches);
@@ -1131,7 +1127,7 @@ impl Config {
             docs: build_docs.unwrap_or(true),
             locked_deps: build_locked_deps.unwrap_or(false),
             full_bootstrap: build_full_bootstrap.unwrap_or(false),
-            bootstrap_cache_path,
+            bootstrap_cache_path: build_bootstrap_cache_path,
             extended: build_extended.unwrap_or(false),
             tools: build_tools,
             tool: build_tool.unwrap_or_default(),
@@ -1341,7 +1337,9 @@ impl Config {
                     && src.join("vendor").exists()
                     && src.join(".cargo/config.toml").exists(),
             ),
+            patch_binaries_for_nix: build_patch_binaries_for_nix,
             cmd: flags_cmd,
+            submodules: build_submodules,
             exec_ctx,
             out,
             rust_info,
@@ -1349,7 +1347,6 @@ impl Config {
             initial_rustc,
             initial_sysroot,
             initial_rustfmt,
-            submodules,
             target_config,
             omit_git_hash,
             stage,
@@ -1362,7 +1359,6 @@ impl Config {
             channel,
             is_running_on_ci,
             path_modification_cache,
-            patch_binaries_for_nix,
             stage0_metadata,
             download_rustc_commit,
             llvm_link_shared,
