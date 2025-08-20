@@ -8,6 +8,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
+use crate::sys::{cvt, cvt_r};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{io, process, sys};
 
@@ -213,6 +214,84 @@ pub trait CommandExt: Sealed {
 
     #[unstable(feature = "process_setsid", issue = "105376")]
     fn setsid(&mut self, setsid: bool) -> &mut process::Command;
+
+    /// Pass a file descriptor to a child process.
+    ///
+    /// Getting this right is tricky. It is recommended to provide further information to the child
+    /// process by some other mechanism. This could be an argument confirming file descriptors that
+    /// the child can use, device/inode numbers to allow for sanity checks, or something similar.
+    ///
+    /// If `new_fd` is an open file descriptor and closing it would produce one or more errors,
+    /// those errors will be lost when this function is called. See
+    /// [`man 2 dup`](https://www.man7.org/linux/man-pages/man2/dup.2.html#NOTES) for more information.
+    ///
+    /// ```
+    /// #![feature(command_pass_fds)]
+    ///
+    /// use std::process::{Command, Stdio};
+    /// use std::os::fd::process::CommandExt;
+    /// use std::io::{self, Write};
+    ///
+    /// # fn main() -> io::Result<()> {
+    /// let (pipe_reader, mut pipe_writer) = io::pipe()?;
+    ///
+    /// let fd_num = 123;
+    ///
+    /// let mut cmd = Command::new("cat");
+    /// cmd.arg(format!("/dev/fd/{fd_num}")).stdout(Stdio::piped()).fd(fd_num, pipe_reader);
+    ///
+    /// let mut child = cmd.spawn()?;
+    /// let mut stdout = child.stdout.take().unwrap();
+    ///
+    /// pipe_writer.write_all(b"Hello, world!")?;
+    /// drop(pipe_writer);
+    ///
+    /// child.wait()?;
+    /// assert_eq!(io::read_to_string(&mut stdout)?, "Hello, world!");
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// If this method is called multiple times with the same `new_fd`, all but one file descriptor
+    /// will be lost.
+    ///
+    /// ```
+    /// #![feature(command_pass_fds)]
+    ///
+    /// use std::process::{Command, Stdio};
+    /// use std::os::fd::process::CommandExt;
+    /// use std::io::{self, Write};
+    ///
+    /// # fn main() -> io::Result<()> {
+    /// let (pipe_reader1, mut pipe_writer1) = io::pipe()?;
+    /// let (pipe_reader2, mut pipe_writer2) = io::pipe()?;
+    ///
+    /// let fd_num = 123;
+    ///
+    /// let mut cmd = Command::new("cat");
+    /// cmd.arg(format!("/dev/fd/{fd_num}"))
+    ///     .stdout(Stdio::piped())
+    ///     .fd(fd_num, pipe_reader1)
+    ///     .fd(fd_num, pipe_reader2);
+    ///
+    /// let mut child = cmd.spawn()?;
+    /// let mut stdout = child.stdout.take().unwrap();
+    ///
+    /// pipe_writer1.write_all(b"Hello from pipe 1!")?;
+    /// drop(pipe_writer1);
+    ///
+    /// pipe_writer2.write_all(b"Hello from pipe 2!")?;
+    /// drop(pipe_writer2);
+    ///
+    /// child.wait()?;
+    /// assert_eq!(io::read_to_string(&mut stdout)?, "Hello from pipe 2!");
+    ///
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "command_pass_fds", issue = "144989")]
+    fn fd(&mut self, new_fd: RawFd, old_fd: impl Into<OwnedFd>) -> &mut Self;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -267,6 +346,19 @@ impl CommandExt for process::Command {
     fn setsid(&mut self, setsid: bool) -> &mut process::Command {
         self.as_inner_mut().setsid(setsid);
         self
+    }
+
+    fn fd(&mut self, new_fd: RawFd, old_fd: impl Into<OwnedFd>) -> &mut Self {
+        let old = old_fd.into();
+        unsafe {
+            self.pre_exec(move || {
+                cvt_r(|| libc::dup2(old.as_raw_fd(), new_fd))?;
+                let flags = cvt(libc::fcntl(new_fd, libc::F_GETFD))?;
+                cvt(libc::fcntl(new_fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC))?;
+                cvt_r(|| libc::close(old.as_raw_fd()))?;
+                Ok(())
+            })
+        }
     }
 }
 
