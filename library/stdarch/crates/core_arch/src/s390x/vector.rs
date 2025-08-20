@@ -94,8 +94,6 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsrlb"] fn vsrlb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vslb"] fn vslb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
 
-    #[link_name = "llvm.s390.vsldb"] fn vsldb(a: i8x16, b: i8x16, c: u32) -> i8x16;
-    #[link_name = "llvm.s390.vsld"] fn vsld(a: i8x16, b: i8x16, c: u32) -> i8x16;
     #[link_name = "llvm.s390.vsrd"] fn vsrd(a: i8x16, b: i8x16, c: u32) -> i8x16;
 
     #[link_name = "llvm.s390.verimb"] fn verimb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char, d: i32) -> vector_signed_char;
@@ -3484,10 +3482,44 @@ mod sealed {
         unsafe fn vec_sldb<const C: u32>(self, b: Self) -> Self;
     }
 
-    // FIXME(llvm) https://github.com/llvm/llvm-project/issues/129955
-    // ideally we could implement this in terms of llvm.fshl.i128
-    // #[link_name = "llvm.fshl.i128"] fn fshl_i128(a: u128, b: u128, c: u128) -> u128;
-    // transmute(fshl_i128(transmute(a), transmute(b), const { C * 8 } ))
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vsldb))]
+    unsafe fn test_vec_sld(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        a.vec_sld::<13>(b)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vsldb))]
+    unsafe fn test_vec_sldw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        a.vec_sldw::<3>(b)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector-enhancements-2")]
+    #[cfg_attr(test, assert_instr(vsld))]
+    unsafe fn test_vec_sldb(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        a.vec_sldb::<7>(b)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector-enhancements-2")]
+    #[cfg_attr(test, assert_instr(vsrd))]
+    unsafe fn test_vec_srdb(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
+        a.vec_srdb::<7>(b)
+    }
+
+    unsafe fn funnel_shl_u128(a: u128, b: u128, c: u128) -> u128 {
+        #[repr(simd)]
+        struct Single([u128; 1]);
+
+        transmute(simd_funnel_shl::<Single>(
+            transmute(a),
+            transmute(b),
+            transmute(c),
+        ))
+    }
 
     macro_rules! impl_vec_sld {
         ($($ty:ident)*) => {
@@ -3498,21 +3530,21 @@ mod sealed {
                     #[target_feature(enable = "vector")]
                     unsafe fn vec_sld<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 4);
-                        transmute(vsldb(transmute(self), transmute(b), C))
+                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 * 8 }))
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn vec_sldw<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 2);
-                        transmute(vsldb(transmute(self), transmute(b), const { 4 * C }))
+                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 * 4 * 8 }))
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector-enhancements-2")]
                     unsafe fn vec_sldb<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 3);
-                        transmute(vsld(transmute(self), transmute(b), C))
+                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 }))
                     }
                 }
 
@@ -3523,6 +3555,11 @@ mod sealed {
                     unsafe fn vec_srdb<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 3);
                         transmute(vsrd(transmute(self), transmute(b), C))
+                        // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129955#issuecomment-3207488190
+                        // LLVM currently rewrites `fshr` to `fshl`, and the logic in the s390x
+                        // backend cannot deal with that yet.
+                        // #[link_name = "llvm.fshr.i128"] fn fshr_i128(a: u128, b: u128, c: u128) -> u128;
+                        // transmute(fshr_i128(transmute(self), transmute(b), const { C as u128 }))
                     }
                 }
             )*
