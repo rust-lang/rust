@@ -253,11 +253,12 @@
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
-use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
+use crate::mem::{self, ManuallyDrop};
+use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
+use crate::range;
 
 mod lazy;
 mod once;
@@ -709,6 +710,62 @@ impl<T, const N: usize> Cell<[T; N]> {
     pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
+    }
+}
+
+/// Types that can be cloned from a copy of the value.
+///
+/// # Safety
+///
+/// Implementing this trait is safe for any type that can be safely bitwise copied.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+// Allow potential overlapping implementations in user code
+#[marker]
+pub unsafe trait CloneFromCopy: Clone {}
+
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: Copy> CloneFromCopy for T {}
+
+// `CloneFromCopy` can be implemented for types that don't have indirection. A commonly-used subset is covered here.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy, const N: usize> CloneFromCopy for [T; N] {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy> CloneFromCopy for Option<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy, E: CloneFromCopy> CloneFromCopy for Result<T, E> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy> CloneFromCopy for PhantomData<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy> CloneFromCopy for ManuallyDrop<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy> CloneFromCopy for ops::Range<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCopy> CloneFromCopy for range::Range<T> {}
+
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+impl<T: CloneFromCopy> Cell<T> {
+    /// Get a clone of the `Cell` that contains a copy of the original value.
+    ///
+    /// This allows a cheaply `Clone`-able type like an `Rc` to be stored in a `Cell`, exposing the
+    /// cheaper `clone()` method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_get_cloned)]
+    ///
+    /// use core::cell::Cell;
+    /// use std::rc::Rc;
+    ///
+    /// let rc = Rc::new(1usize);
+    /// let c1 = Cell::new(rc);
+    /// let c2 = c1.get_cloned();
+    /// assert_eq!(*c2.into_inner(), 1);
+    /// ```
+    pub fn get_cloned(&self) -> Self {
+        // SAFETY: T is CloneFromCopy, which guarantees that this is sound.
+        let copy = ManuallyDrop::new(unsafe { self.as_ptr().read() });
+        Cell::new(T::clone(&*copy))
     }
 }
 
