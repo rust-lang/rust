@@ -679,15 +679,11 @@ impl Config {
             .unwrap_or_else(|| vec![host_target]);
 
         let llvm_assertions = llvm_assertions_.unwrap_or(false);
-
         let mut target_config = HashMap::new();
-        let mut download_rustc_commit = None;
-        let mut llvm_from_ci = false;
         let mut channel = "dev".to_string();
         let mut out = flags_build_dir
             .or(build_build_dir.map(PathBuf::from))
             .unwrap_or_else(|| PathBuf::from("build"));
-        let mut rust_info = GitInfo::Absent;
 
         if cfg!(test) {
             // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
@@ -730,16 +726,11 @@ impl Config {
             );
         }
 
-        let mut dwn_ctx = DownloadContext {
+        let dwn_ctx = DownloadContext {
             path_modification_cache: path_modification_cache.clone(),
             src: &src,
-            rust_info: rust_info.clone(),
             submodules: &build_submodules,
-            download_rustc_commit: download_rustc_commit.clone(),
             host_target,
-            llvm_from_ci,
-            target_config: target_config.clone(),
-            out: out.clone(),
             patch_binaries_for_nix: build_patch_binaries_for_nix,
             exec_ctx: &exec_ctx,
             stage0_metadata: &stage0_metadata,
@@ -749,7 +740,7 @@ impl Config {
         };
 
         let initial_rustc = build_rustc.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx);
+            download_beta_toolchain(&dwn_ctx, &out);
             out.join(host_target).join("stage0").join("bin").join(exe("rustc", host_target))
         });
 
@@ -763,7 +754,7 @@ impl Config {
         ));
 
         let initial_cargo = build_cargo.unwrap_or_else(|| {
-            download_beta_toolchain(&dwn_ctx);
+            download_beta_toolchain(&dwn_ctx, &out);
             initial_sysroot.join("bin").join(exe("cargo", host_target))
         });
 
@@ -771,7 +762,6 @@ impl Config {
         if exec_ctx.dry_run() {
             out = out.join("tmp-dry-run");
             fs::create_dir_all(&out).expect("Failed to create dry-run directory");
-            dwn_ctx.out = out.clone();
         }
 
         let file_content = t!(fs::read_to_string(src.join("src/ci/channel")));
@@ -791,8 +781,7 @@ impl Config {
 
         let omit_git_hash = rust_omit_git_hash.unwrap_or(channel == "dev");
 
-        rust_info = git_info(&exec_ctx, omit_git_hash, &src);
-        dwn_ctx.rust_info = rust_info.clone();
+        let rust_info = git_info(&exec_ctx, omit_git_hash, &src);
 
         if !is_user_configured_rust_channel && rust_info.is_from_tarball() {
             channel = ci_channel.into();
@@ -823,9 +812,8 @@ impl Config {
             );
         }
 
-        download_rustc_commit =
-            download_ci_rustc_commit(&dwn_ctx, rust_download_rustc, llvm_assertions);
-        dwn_ctx.download_rustc_commit = download_rustc_commit.clone();
+        let mut download_rustc_commit =
+            download_ci_rustc_commit(&dwn_ctx, &rust_info, rust_download_rustc, llvm_assertions);
 
         if debug_assertions_requested && download_rustc_commit.is_some() {
             eprintln!(
@@ -834,7 +822,6 @@ impl Config {
             );
             // We need to put this later down_ci_rustc_commit.
             download_rustc_commit = None;
-            dwn_ctx.download_rustc_commit = None;
         }
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
@@ -847,9 +834,10 @@ impl Config {
                 "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
             );
 
-            channel = read_file_by_commit(&dwn_ctx, Path::new("src/ci/channel"), commit)
-                .trim()
-                .to_owned();
+            channel =
+                read_file_by_commit(&dwn_ctx, &rust_info, Path::new("src/ci/channel"), commit)
+                    .trim()
+                    .to_owned();
         }
 
         if let Some(t) = toml.target {
@@ -911,11 +899,15 @@ impl Config {
 
                 target_config.insert(TargetSelection::from_user(&triple), target);
             }
-            dwn_ctx.target_config = target_config.clone();
         }
 
-        llvm_from_ci = parse_download_ci_llvm(&dwn_ctx, llvm_download_ci_llvm, llvm_assertions);
-        dwn_ctx.llvm_from_ci = llvm_from_ci;
+        let llvm_from_ci = parse_download_ci_llvm(
+            &dwn_ctx,
+            &rust_info,
+            &download_rustc_commit,
+            llvm_download_ci_llvm,
+            llvm_assertions,
+        );
 
         // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
@@ -976,18 +968,16 @@ impl Config {
 
         if llvm_from_ci {
             let triple = &host_target.triple;
-            let ci_llvm_bin = ci_llvm_root(&dwn_ctx).join("bin");
+            let ci_llvm_bin = ci_llvm_root(&dwn_ctx, llvm_from_ci, &out).join("bin");
             let build_target =
                 target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
-            dwn_ctx.target_config.entry(host_target).or_insert_with(|| Target::from_triple(triple));
-
             check_ci_llvm!(build_target.llvm_config);
             check_ci_llvm!(build_target.llvm_filecheck);
             build_target.llvm_config = Some(ci_llvm_bin.join(exe("llvm-config", host_target)));
             build_target.llvm_filecheck = Some(ci_llvm_bin.join(exe("FileCheck", host_target)));
         }
 
-        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx));
+        let initial_rustfmt = build_rustfmt.or_else(|| maybe_download_rustfmt(&dwn_ctx, &out));
 
         if matches!(rust_lld_mode.unwrap_or_default(), LldMode::SelfContained)
             && !lld_enabled
@@ -998,7 +988,7 @@ impl Config {
             );
         }
 
-        if lld_enabled && is_system_llvm(&dwn_ctx, host_target) {
+        if lld_enabled && is_system_llvm(&dwn_ctx, &target_config, llvm_from_ci, host_target) {
             panic!("Cannot enable LLD with `rust.lld = true` when using external llvm-config.");
         }
 
@@ -1392,7 +1382,7 @@ impl Config {
     /// Returns the content of the given file at a specific commit.
     pub(crate) fn read_file_by_commit(&self, file: &Path, commit: &str) -> String {
         let dwn_ctx = DownloadContext::from(self);
-        read_file_by_commit(dwn_ctx, file, commit)
+        read_file_by_commit(dwn_ctx, &self.rust_info, file, commit)
     }
 
     /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
@@ -1464,7 +1454,7 @@ impl Config {
     /// The absolute path to the downloaded LLVM artifacts.
     pub(crate) fn ci_llvm_root(&self) -> PathBuf {
         let dwn_ctx = DownloadContext::from(self);
-        ci_llvm_root(dwn_ctx)
+        ci_llvm_root(dwn_ctx, self.llvm_from_ci, &self.out)
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
@@ -1628,7 +1618,7 @@ impl Config {
     )]
     pub(crate) fn update_submodule(&self, relative_path: &str) {
         let dwn_ctx = DownloadContext::from(self);
-        update_submodule(dwn_ctx, relative_path);
+        update_submodule(dwn_ctx, &self.rust_info, relative_path);
     }
 
     /// Returns true if any of the `paths` have been modified locally.
@@ -1744,7 +1734,7 @@ impl Config {
     /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
     pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
         let dwn_ctx = DownloadContext::from(self);
-        is_system_llvm(dwn_ctx, target)
+        is_system_llvm(dwn_ctx, &self.target_config, self.llvm_from_ci, target)
     }
 
     /// Returns `true` if this is our custom, patched, version of LLVM.
@@ -2038,6 +2028,7 @@ pub fn check_stage0_version(
 
 pub fn download_ci_rustc_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    rust_info: &channel::GitInfo,
     download_rustc: Option<StringOrBool>,
     llvm_assertions: bool,
 ) -> Option<String> {
@@ -2057,7 +2048,7 @@ pub fn download_ci_rustc_commit<'a>(
         None | Some(StringOrBool::Bool(false)) => return None,
         Some(StringOrBool::Bool(true)) => false,
         Some(StringOrBool::String(s)) if s == "if-unchanged" => {
-            if !dwn_ctx.rust_info.is_managed_git_subrepository() {
+            if !rust_info.is_managed_git_subrepository() {
                 println!(
                     "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
                 );
@@ -2071,7 +2062,7 @@ pub fn download_ci_rustc_commit<'a>(
         }
     };
 
-    let commit = if dwn_ctx.rust_info.is_managed_git_subrepository() {
+    let commit = if rust_info.is_managed_git_subrepository() {
         // Look for a version to compare to based on the current commit.
         // Only commits merged by bors will have CI artifacts.
         let freshness = check_path_modifications_(dwn_ctx, RUSTC_IF_UNCHANGED_ALLOWED_PATHS);
@@ -2145,6 +2136,8 @@ pub fn git_config(stage0_metadata: &build_helper::stage0_parser::Stage0) -> GitC
 
 pub fn parse_download_ci_llvm<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    rust_info: &channel::GitInfo,
+    download_rustc_commit: &Option<String>,
     download_ci_llvm: Option<StringOrBool>,
     asserts: bool,
 ) -> bool {
@@ -2160,7 +2153,7 @@ pub fn parse_download_ci_llvm<'a>(
     let download_ci_llvm = download_ci_llvm.unwrap_or(default);
 
     let if_unchanged = || {
-        if dwn_ctx.rust_info.is_from_tarball() {
+        if rust_info.is_from_tarball() {
             // Git is needed for running "if-unchanged" logic.
             println!("ERROR: 'if-unchanged' is only compatible with Git managed sources.");
             crate::exit!(1);
@@ -2168,7 +2161,7 @@ pub fn parse_download_ci_llvm<'a>(
 
         // Fetching the LLVM submodule is unnecessary for self-tests.
         #[cfg(not(test))]
-        update_submodule(dwn_ctx, "src/llvm-project");
+        update_submodule(dwn_ctx, rust_info, "src/llvm-project");
 
         // Check for untracked changes in `src/llvm-project` and other important places.
         let has_changes = has_changes_from_upstream(dwn_ctx, LLVM_INVALIDATION_PATHS);
@@ -2183,7 +2176,7 @@ pub fn parse_download_ci_llvm<'a>(
 
     match download_ci_llvm {
         StringOrBool::Bool(b) => {
-            if !b && dwn_ctx.download_rustc_commit.is_some() {
+            if !b && download_rustc_commit.is_some() {
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `false` if `rust.download-rustc` is set to `true` or `if-unchanged`."
                 );
@@ -2226,9 +2219,13 @@ pub fn has_changes_from_upstream<'a>(
         fields(relative_path = ?relative_path),
     ),
 )]
-pub(crate) fn update_submodule<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, relative_path: &str) {
+pub(crate) fn update_submodule<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    rust_info: &channel::GitInfo,
+    relative_path: &str,
+) {
     let dwn_ctx = dwn_ctx.as_ref();
-    if dwn_ctx.rust_info.is_from_tarball() || !submodules_(dwn_ctx.submodules, &dwn_ctx.rust_info) {
+    if rust_info.is_from_tarball() || !submodules_(dwn_ctx.submodules, rust_info) {
         return;
     }
 
@@ -2357,12 +2354,14 @@ pub fn submodules_(submodules: &Option<bool>, rust_info: &channel::GitInfo) -> b
 /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
 pub fn is_system_llvm<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    target_config: &HashMap<TargetSelection, Target>,
+    llvm_from_ci: bool,
     target: TargetSelection,
 ) -> bool {
     let dwn_ctx = dwn_ctx.as_ref();
-    match dwn_ctx.target_config.get(&target) {
+    match target_config.get(&target) {
         Some(Target { llvm_config: Some(_), .. }) => {
-            let ci_llvm = dwn_ctx.llvm_from_ci && is_host_target(&dwn_ctx.host_target, &target);
+            let ci_llvm = llvm_from_ci && is_host_target(&dwn_ctx.host_target, &target);
             !ci_llvm
         }
         // We're building from the in-tree src/llvm-project sources.
@@ -2375,21 +2374,26 @@ pub fn is_host_target(host_target: &TargetSelection, target: &TargetSelection) -
     host_target == target
 }
 
-pub(crate) fn ci_llvm_root<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) -> PathBuf {
+pub(crate) fn ci_llvm_root<'a>(
+    dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    llvm_from_ci: bool,
+    out: &Path,
+) -> PathBuf {
     let dwn_ctx = dwn_ctx.as_ref();
-    assert!(dwn_ctx.llvm_from_ci);
-    dwn_ctx.out.join(dwn_ctx.host_target).join("ci-llvm")
+    assert!(llvm_from_ci);
+    out.join(dwn_ctx.host_target).join("ci-llvm")
 }
 
 /// Returns the content of the given file at a specific commit.
 pub(crate) fn read_file_by_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    rust_info: &channel::GitInfo,
     file: &Path,
     commit: &str,
 ) -> String {
     let dwn_ctx = dwn_ctx.as_ref();
     assert!(
-        dwn_ctx.rust_info.is_managed_git_subrepository(),
+        rust_info.is_managed_git_subrepository(),
         "`Config::read_file_by_commit` is not supported in non-git sources."
     );
 
