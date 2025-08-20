@@ -820,6 +820,7 @@ pub fn vabaq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vabd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v4f16")]
@@ -842,6 +843,7 @@ pub fn vabd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vabdq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vabds.v8f16")]
@@ -1405,6 +1407,7 @@ pub fn vabdl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vabs_f16(a: float16x4_t) -> float16x4_t {
     unsafe { simd_fabs(a) }
 }
@@ -1419,6 +1422,7 @@ pub fn vabs_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vabsq_f16(a: float16x8_t) -> float16x8_t {
     unsafe { simd_fabs(a) }
 }
@@ -1625,6 +1629,7 @@ pub fn vabsq_s32(a: int32x4_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vabsh_f16(a: f16) -> f16 {
     unsafe { simd_extract!(vabs_f16(vdup_n_f16(a)), 0) }
 }
@@ -1639,6 +1644,7 @@ pub fn vabsh_f16(a: f16) -> f16 {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe { simd_add(a, b) }
 }
@@ -1653,6 +1659,7 @@ pub fn vadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vaddq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe { simd_add(a, b) }
 }
@@ -2129,6 +2136,7 @@ pub fn vaddq_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vaddh_f16(a: f16, b: f16) -> f16 {
     a + b
 }
@@ -3828,6 +3836,7 @@ pub fn vbicq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     assert_instr(bsl)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vbsl_f16(a: uint16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     let not = int16x4_t::splat(-1);
     unsafe {
@@ -3848,6 +3857,7 @@ pub fn vbsl_f16(a: uint16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     assert_instr(bsl)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vbslq_f16(a: uint16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
     let not = int16x8_t::splat(-1);
     unsafe {
@@ -4462,6 +4472,7 @@ pub fn vbslq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcage_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v4i16.v4f16")]
@@ -4484,6 +4495,7 @@ pub fn vcage_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcageq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacge.v8i16.v8f16")]
@@ -4564,6 +4576,7 @@ pub fn vcageq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcagt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v4i16.v4f16")]
@@ -4586,6 +4599,7 @@ pub fn vcagt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcagtq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vacgt.v8i16.v8f16")]
@@ -4666,6 +4680,7 @@ pub fn vcagtq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcale_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     vcage_f16(b, a)
 }
@@ -4680,6 +4695,7 @@ pub fn vcale_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcaleq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     vcageq_f16(b, a)
 }
@@ -4736,6 +4752,7 @@ pub fn vcaleq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcalt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     vcagt_f16(b, a)
 }
@@ -4750,6 +4767,7 @@ pub fn vcalt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcaltq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     vcagtq_f16(b, a)
 }
@@ -4806,6 +4824,7 @@ pub fn vcaltq_f32(a: float32x4_t, b: float32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vceq_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe { simd_eq(a, b) }
 }
@@ -4820,6 +4839,7 @@ pub fn vceq_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vceqq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe { simd_eq(a, b) }
 }
@@ -5170,6 +5190,7 @@ pub fn vceqq_p8(a: poly8x16_t, b: poly8x16_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcge_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe { simd_ge(a, b) }
 }
@@ -5184,6 +5205,7 @@ pub fn vcge_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgeq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe { simd_ge(a, b) }
 }
@@ -5492,6 +5514,7 @@ pub fn vcgeq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgez_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
     unsafe { simd_ge(a, transmute(b)) }
@@ -5507,6 +5530,7 @@ pub fn vcgez_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgezq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     unsafe { simd_ge(a, transmute(b)) }
@@ -5522,6 +5546,7 @@ pub fn vcgezq_f16(a: float16x8_t) -> uint16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe { simd_gt(a, b) }
 }
@@ -5536,6 +5561,7 @@ pub fn vcgt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgtq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe { simd_gt(a, b) }
 }
@@ -5844,6 +5870,7 @@ pub fn vcgtq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgtz_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
     unsafe { simd_gt(a, transmute(b)) }
@@ -5859,6 +5886,7 @@ pub fn vcgtz_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcgtzq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     unsafe { simd_gt(a, transmute(b)) }
@@ -5874,6 +5902,7 @@ pub fn vcgtzq_f16(a: float16x8_t) -> uint16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcle_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe { simd_le(a, b) }
 }
@@ -5888,6 +5917,7 @@ pub fn vcle_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcleq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe { simd_le(a, b) }
 }
@@ -6196,6 +6226,7 @@ pub fn vcleq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vclez_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
     unsafe { simd_le(a, transmute(b)) }
@@ -6211,6 +6242,7 @@ pub fn vclez_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vclezq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     unsafe { simd_le(a, transmute(b)) }
@@ -6526,6 +6558,7 @@ pub fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vclt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
     unsafe { simd_lt(a, b) }
 }
@@ -6540,6 +6573,7 @@ pub fn vclt_f16(a: float16x4_t, b: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcltq_f16(a: float16x8_t, b: float16x8_t) -> uint16x8_t {
     unsafe { simd_lt(a, b) }
 }
@@ -6848,6 +6882,7 @@ pub fn vcltq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcltz_f16(a: float16x4_t) -> uint16x4_t {
     let b: f16x4 = f16x4::new(0.0, 0.0, 0.0, 0.0);
     unsafe { simd_lt(a, transmute(b)) }
@@ -6863,6 +6898,7 @@ pub fn vcltz_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcltzq_f16(a: float16x8_t) -> uint16x8_t {
     let b: f16x8 = f16x8::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     unsafe { simd_lt(a, transmute(b)) }
@@ -7536,6 +7572,7 @@ pub fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vcombine_f16(a: float16x4_t, b: float16x4_t) -> float16x8_t {
     unsafe { simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]) }
@@ -7756,6 +7793,7 @@ pub fn vcombine_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcreate_f16(a: u64) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -7771,6 +7809,7 @@ pub fn vcreate_f16(a: u64) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcreate_f16(a: u64) -> float16x4_t {
     unsafe {
         let ret_val: float16x4_t = transmute(a);
@@ -8274,6 +8313,7 @@ pub fn vcreate_p64(a: u64) -> poly64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_f16_f32(a: float32x4_t) -> float16x4_t {
     unsafe { simd_cast(a) }
 }
@@ -8288,6 +8328,7 @@ pub fn vcvt_f16_f32(a: float32x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_f16_s16(a: int16x4_t) -> float16x4_t {
     unsafe { simd_cast(a) }
 }
@@ -8302,6 +8343,7 @@ pub fn vcvt_f16_s16(a: int16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_f16_s16(a: int16x8_t) -> float16x8_t {
     unsafe { simd_cast(a) }
 }
@@ -8316,6 +8358,7 @@ pub fn vcvtq_f16_s16(a: int16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_f16_u16(a: uint16x4_t) -> float16x4_t {
     unsafe { simd_cast(a) }
 }
@@ -8330,6 +8373,7 @@ pub fn vcvt_f16_u16(a: uint16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_f16_u16(a: uint16x8_t) -> float16x8_t {
     unsafe { simd_cast(a) }
 }
@@ -8344,6 +8388,7 @@ pub fn vcvtq_f16_u16(a: uint16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_f32_f16(a: float16x4_t) -> float32x4_t {
     unsafe { simd_cast(a) }
 }
@@ -8443,6 +8488,7 @@ pub fn vcvtq_f32_u32(a: uint32x4_t) -> float32x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_f16_s16<const N: i32>(a: int16x4_t) -> float16x4_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8470,6 +8516,7 @@ pub fn vcvt_n_f16_s16<const N: i32>(a: int16x4_t) -> float16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_f16_s16<const N: i32>(a: int16x8_t) -> float16x8_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8497,6 +8544,7 @@ pub fn vcvtq_n_f16_s16<const N: i32>(a: int16x8_t) -> float16x8_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_f16_u16<const N: i32>(a: uint16x4_t) -> float16x4_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8524,6 +8572,7 @@ pub fn vcvt_n_f16_u16<const N: i32>(a: uint16x4_t) -> float16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_f16_u16<const N: i32>(a: uint16x8_t) -> float16x8_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8703,6 +8752,7 @@ pub fn vcvtq_n_f32_u32<const N: i32>(a: uint32x4_t) -> float32x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_s16_f16<const N: i32>(a: float16x4_t) -> int16x4_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8730,6 +8780,7 @@ pub fn vcvt_n_s16_f16<const N: i32>(a: float16x4_t) -> int16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_s16_f16<const N: i32>(a: float16x8_t) -> int16x8_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8833,6 +8884,7 @@ pub fn vcvtq_n_s32_f32<const N: i32>(a: float32x4_t) -> int32x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_n_u16_f16<const N: i32>(a: float16x4_t) -> uint16x4_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8860,6 +8912,7 @@ pub fn vcvt_n_u16_f16<const N: i32>(a: float16x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_n_u16_f16<const N: i32>(a: float16x8_t) -> uint16x8_t {
     static_assert!(N >= 1 && N <= 16);
     unsafe extern "unadjusted" {
@@ -8962,6 +9015,7 @@ pub fn vcvtq_n_u32_f32<const N: i32>(a: float32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe { simd_cast(a) }
 }
@@ -8976,6 +9030,7 @@ pub fn vcvt_s16_f16(a: float16x4_t) -> int16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe { simd_cast(a) }
 }
@@ -9048,6 +9103,7 @@ pub fn vcvtq_s32_f32(a: float32x4_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvt_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe { simd_cast(a) }
 }
@@ -9062,6 +9118,7 @@ pub fn vcvt_u16_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe { simd_cast(a) }
 }
@@ -9361,6 +9418,7 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdup_lane_f16<const N: i32>(a: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 2);
     unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
@@ -9377,6 +9435,7 @@ pub fn vdup_lane_f16<const N: i32>(a: float16x4_t) -> float16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdupq_lane_f16<const N: i32>(a: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 2);
     unsafe {
@@ -9922,6 +9981,7 @@ pub fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdup_laneq_f16<const N: i32>(a: float16x8_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 3);
     unsafe { simd_shuffle!(a, a, [N as u32, N as u32, N as u32, N as u32]) }
@@ -9938,6 +9998,7 @@ pub fn vdup_laneq_f16<const N: i32>(a: float16x8_t) -> float16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdupq_laneq_f16<const N: i32>(a: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
@@ -10482,6 +10543,7 @@ pub fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdup_n_f16(a: f16) -> float16x4_t {
     float16x4_t::splat(a)
 }
@@ -10496,6 +10558,7 @@ pub fn vdup_n_f16(a: f16) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vdupq_n_f16(a: f16) -> float16x8_t {
     float16x8_t::splat(a)
 }
@@ -11443,6 +11506,7 @@ pub fn veorq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vext_f16<const N: i32>(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(N, 2);
     unsafe {
@@ -11814,6 +11878,7 @@ pub fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vextq_f16<const N: i32>(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(N, 3);
     unsafe {
@@ -12394,6 +12459,7 @@ pub fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vfma_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     unsafe { simd_fma(b, c, a) }
 }
@@ -12408,6 +12474,7 @@ pub fn vfma_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmaq_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
     unsafe { simd_fma(b, c, a) }
 }
@@ -12507,6 +12574,7 @@ pub fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vfms_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
     unsafe {
         let b: float16x4_t = simd_neg(b);
@@ -12525,6 +12593,7 @@ pub fn vfms_f16(a: float16x4_t, b: float16x4_t, c: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vfmsq_f16(a: float16x8_t, b: float16x8_t, c: float16x8_t) -> float16x8_t {
     unsafe {
         let b: float16x8_t = simd_neg(b);
@@ -12627,6 +12696,7 @@ pub fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vget_high_f16(a: float16x8_t) -> float16x4_t {
     unsafe { simd_shuffle!(a, a, [4, 5, 6, 7]) }
@@ -12637,6 +12707,7 @@ pub fn vget_high_f16(a: float16x8_t) -> float16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vget_low_f16(a: float16x8_t) -> float16x4_t {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3]) }
@@ -12884,6 +12955,7 @@ pub fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 )]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vget_lane_f16<const LANE: i32>(a: float16x4_t) -> f16 {
     static_assert_uimm_bits!(LANE, 2);
     unsafe { simd_extract!(a, LANE as u32) }
@@ -12900,6 +12972,7 @@ pub fn vget_lane_f16<const LANE: i32>(a: float16x4_t) -> f16 {
 )]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vgetq_lane_f16<const LANE: i32>(a: float16x8_t) -> f16 {
     static_assert_uimm_bits!(LANE, 3);
     unsafe { simd_extract!(a, LANE as u32) }
@@ -14256,6 +14329,7 @@ pub fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_dup_f16(ptr: *const f16) -> float16x4_t {
     let x: float16x4_t = vld1_lane_f16::<0>(ptr, transmute(f16x4::splat(0.0)));
     simd_shuffle!(x, x, [0, 0, 0, 0])
@@ -14273,6 +14347,7 @@ pub unsafe fn vld1_dup_f16(ptr: *const f16) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_dup_f16(ptr: *const f16) -> float16x8_t {
     let x: float16x8_t = vld1q_lane_f16::<0>(ptr, transmute(f16x8::splat(0.0)));
     simd_shuffle!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
@@ -14843,6 +14918,7 @@ pub unsafe fn vld1_dup_u64(ptr: *const u64) -> uint64x1_t {
 #[target_feature(enable = "neon,v7")]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
     transmute(vld1_v4f16(
@@ -14860,6 +14936,7 @@ pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
 #[target_feature(enable = "neon,v7")]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
     let ret_val: float16x4_t = transmute(vld1_v4f16(
@@ -14878,6 +14955,7 @@ pub unsafe fn vld1_f16(ptr: *const f16) -> float16x4_t {
 #[target_feature(enable = "neon,v7")]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
     transmute(vld1q_v8f16(
@@ -14895,6 +14973,7 @@ pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
 #[target_feature(enable = "neon,v7")]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.16"))]
 pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
     let ret_val: float16x8_t = transmute(vld1q_v8f16(
@@ -14916,6 +14995,7 @@ pub unsafe fn vld1q_f16(ptr: *const f16) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_f16_x2(a: *const f16) -> float16x4x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -14940,6 +15020,7 @@ pub unsafe fn vld1_f16_x2(a: *const f16) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_f16_x3(a: *const f16) -> float16x4x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -14964,6 +15045,7 @@ pub unsafe fn vld1_f16_x3(a: *const f16) -> float16x4x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_f16_x4(a: *const f16) -> float16x4x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -14988,6 +15070,7 @@ pub unsafe fn vld1_f16_x4(a: *const f16) -> float16x4x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_f16_x2(a: *const f16) -> float16x8x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -15012,6 +15095,7 @@ pub unsafe fn vld1q_f16_x2(a: *const f16) -> float16x8x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_f16_x3(a: *const f16) -> float16x8x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -15036,6 +15120,7 @@ pub unsafe fn vld1q_f16_x3(a: *const f16) -> float16x8x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_f16_x4(a: *const f16) -> float16x8x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -15732,6 +15817,7 @@ pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     simd_insert!(src, LANE as u32, *ptr)
@@ -15750,6 +15836,7 @@ pub unsafe fn vld1_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x4_t) 
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld1q_lane_f16<const LANE: i32>(ptr: *const f16, src: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     simd_insert!(src, LANE as u32, *ptr)
@@ -19490,6 +19577,7 @@ unsafe fn vld1q_v8i16(a: *const i8, b: i32) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 unsafe fn vld1_v4f16(a: *const i8, b: i32) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v4f16")]
@@ -19507,6 +19595,7 @@ unsafe fn vld1_v4f16(a: *const i8, b: i32) -> float16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 unsafe fn vld1q_v8f16(a: *const i8, b: i32) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld1.v8f16")]
@@ -19548,6 +19637,7 @@ pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v4f16.p0")]
@@ -19565,6 +19655,7 @@ pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
 #[target_feature(enable = "neon,fp16")]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2dup.v8f16.p0")]
@@ -19584,6 +19675,7 @@ pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -19606,6 +19698,7 @@ pub unsafe fn vld2_dup_f16(a: *const f16) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_dup_f16(a: *const f16) -> float16x8x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -20521,6 +20614,7 @@ pub unsafe fn vld2q_dup_p16(a: *const p16) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v4f16.p0")]
@@ -20538,6 +20632,7 @@ pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld2))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld2.v8f16.p0")]
@@ -20557,6 +20652,7 @@ pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -20579,6 +20675,7 @@ pub unsafe fn vld2_f16(a: *const f16) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_f16(a: *const f16) -> float16x8x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -20880,6 +20977,7 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) -> float16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -20905,6 +21003,7 @@ pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -> float16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -20932,6 +21031,7 @@ pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) -> float16x4x2_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -20957,6 +21057,7 @@ pub unsafe fn vld2_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x2_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld2q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x2_t) -> float16x8x2_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -22109,6 +22210,7 @@ pub unsafe fn vld2q_p16(a: *const p16) -> poly16x8x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v4f16.p0")]
@@ -22126,6 +22228,7 @@ pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3dup.v8f16.p0")]
@@ -22145,6 +22248,7 @@ pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -22167,6 +22271,7 @@ pub unsafe fn vld3_dup_f16(a: *const f16) -> float16x4x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_dup_f16(a: *const f16) -> float16x8x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -23104,6 +23209,7 @@ pub unsafe fn vld3q_dup_p16(a: *const p16) -> poly16x8x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v4f16.p0")]
@@ -23121,6 +23227,7 @@ pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld3))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_f16(a: *const f16) -> float16x8x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld3.v8f16.p0")]
@@ -23140,6 +23247,7 @@ pub unsafe fn vld3q_f16(a: *const f16) -> float16x8x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -23162,6 +23270,7 @@ pub unsafe fn vld3_f16(a: *const f16) -> float16x4x3_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_f16(a: *const f16) -> float16x8x3_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -23463,6 +23572,7 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) -> float16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -23489,6 +23599,7 @@ pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -> float16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -23517,6 +23628,7 @@ pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) -> float16x4x3_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -23547,6 +23659,7 @@ pub unsafe fn vld3_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x3_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld3q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x3_t) -> float16x8x3_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -24775,6 +24888,7 @@ pub unsafe fn vld3q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x3_t) -
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v4f16.p0")]
@@ -24792,6 +24906,7 @@ pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4dup.v8f16.p0")]
@@ -24811,6 +24926,7 @@ pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -24833,6 +24949,7 @@ pub unsafe fn vld4_dup_f16(a: *const f16) -> float16x4x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_dup_f16(a: *const f16) -> float16x8x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -25792,6 +25909,7 @@ pub unsafe fn vld4q_dup_p16(a: *const p16) -> poly16x8x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v4f16.p0")]
@@ -25809,6 +25927,7 @@ pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vld4))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_f16(a: *const f16) -> float16x8x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vld4.v8f16.p0")]
@@ -25828,6 +25947,7 @@ pub unsafe fn vld4q_f16(a: *const f16) -> float16x8x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -25850,6 +25970,7 @@ pub unsafe fn vld4_f16(a: *const f16) -> float16x4x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_f16(a: *const f16) -> float16x8x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -26151,6 +26272,7 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) -> float16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -26178,6 +26300,7 @@ pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -> float16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -26207,6 +26330,7 @@ pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) -> float16x4x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -26238,6 +26362,7 @@ pub unsafe fn vld4_lane_f16<const LANE: i32>(a: *const f16, b: float16x4x4_t) ->
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vld4q_lane_f16<const LANE: i32>(a: *const f16, b: float16x8x4_t) -> float16x8x4_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -27527,6 +27652,7 @@ pub unsafe fn vldrq_p128(a: *const p128) -> p128 {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v4f16")]
@@ -27549,6 +27675,7 @@ pub fn vmax_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmaxs.v8f16")]
@@ -27917,6 +28044,7 @@ pub fn vmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe { simd_fmax(a, b) }
 }
@@ -27931,6 +28059,7 @@ pub fn vmaxnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmaxnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe { simd_fmax(a, b) }
 }
@@ -27987,6 +28116,7 @@ pub fn vmaxnmq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v4f16")]
@@ -28009,6 +28139,7 @@ pub fn vmin_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vminq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vmins.v8f16")]
@@ -28377,6 +28508,7 @@ pub fn vminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe { simd_fmin(a, b) }
 }
@@ -28391,6 +28523,7 @@ pub fn vminnm_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vminnmq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe { simd_fmin(a, b) }
 }
@@ -31573,6 +31706,7 @@ pub fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmov_n_f16(a: f16) -> float16x4_t {
     vdup_n_f16(a)
 }
@@ -31587,6 +31721,7 @@ pub fn vmov_n_f16(a: f16) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmovq_n_f16(a: f16) -> float16x8_t {
     vdupq_n_f16(a)
 }
@@ -32315,6 +32450,7 @@ pub fn vmovn_u64(a: uint64x2_t) -> uint32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe { simd_mul(a, b) }
 }
@@ -32329,6 +32465,7 @@ pub fn vmul_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe { simd_mul(a, b) }
 }
@@ -32386,6 +32523,7 @@ pub fn vmulq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_lane_f16<const LANE: i32>(a: float16x4_t, v: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
@@ -32407,6 +32545,7 @@ pub fn vmul_lane_f16<const LANE: i32>(a: float16x4_t, v: float16x4_t) -> float16
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_lane_f16<const LANE: i32>(a: float16x8_t, v: float16x4_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe {
@@ -33022,6 +33161,7 @@ pub fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmul_n_f16(a: float16x4_t, b: f16) -> float16x4_t {
     unsafe { simd_mul(a, vdup_n_f16(b)) }
 }
@@ -33036,6 +33176,7 @@ pub fn vmul_n_f16(a: float16x4_t, b: f16) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vmulq_n_f16(a: float16x8_t, b: f16) -> float16x8_t {
     unsafe { simd_mul(a, vdupq_n_f16(b)) }
 }
@@ -34369,6 +34510,7 @@ pub fn vmvnq_u8(a: uint8x16_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vneg_f16(a: float16x4_t) -> float16x4_t {
     unsafe { simd_neg(a) }
 }
@@ -34383,6 +34525,7 @@ pub fn vneg_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vnegq_f16(a: float16x8_t) -> float16x8_t {
     unsafe { simd_neg(a) }
 }
@@ -35613,6 +35756,7 @@ pub fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vpadd_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpadd.v4f16")]
@@ -41943,6 +42087,7 @@ pub fn vraddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpe_f16(a: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v4f16")]
@@ -41965,6 +42110,7 @@ pub fn vrecpe_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpeq_f16(a: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecpe.v8f16")]
@@ -42103,6 +42249,7 @@ pub fn vrecpeq_u32(a: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecps_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v4f16")]
@@ -42125,6 +42272,7 @@ pub fn vrecps_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrecpsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrecps.v8f16")]
@@ -42206,6 +42354,7 @@ pub fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
     unsafe { transmute(a) }
 }
@@ -42221,6 +42370,7 @@ pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42240,6 +42390,7 @@ pub fn vreinterpret_f32_f16(a: float16x4_t) -> float32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
     unsafe { transmute(a) }
 }
@@ -42255,6 +42406,7 @@ pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42274,6 +42426,7 @@ pub fn vreinterpret_s8_f16(a: float16x4_t) -> int8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
     unsafe { transmute(a) }
 }
@@ -42289,6 +42442,7 @@ pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42308,6 +42462,7 @@ pub fn vreinterpret_s16_f16(a: float16x4_t) -> int16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
     unsafe { transmute(a) }
 }
@@ -42323,6 +42478,7 @@ pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42342,6 +42498,7 @@ pub fn vreinterpret_s32_f16(a: float16x4_t) -> int32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
     unsafe { transmute(a) }
 }
@@ -42357,6 +42514,7 @@ pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe { transmute(a) }
@@ -42373,6 +42531,7 @@ pub fn vreinterpret_s64_f16(a: float16x4_t) -> int64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
     unsafe { transmute(a) }
 }
@@ -42388,6 +42547,7 @@ pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42407,6 +42567,7 @@ pub fn vreinterpret_u8_f16(a: float16x4_t) -> uint8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
     unsafe { transmute(a) }
 }
@@ -42422,6 +42583,7 @@ pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42441,6 +42603,7 @@ pub fn vreinterpret_u16_f16(a: float16x4_t) -> uint16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
     unsafe { transmute(a) }
 }
@@ -42456,6 +42619,7 @@ pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42475,6 +42639,7 @@ pub fn vreinterpret_u32_f16(a: float16x4_t) -> uint32x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
     unsafe { transmute(a) }
 }
@@ -42490,6 +42655,7 @@ pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe { transmute(a) }
@@ -42506,6 +42672,7 @@ pub fn vreinterpret_u64_f16(a: float16x4_t) -> uint64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
     unsafe { transmute(a) }
 }
@@ -42521,6 +42688,7 @@ pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42540,6 +42708,7 @@ pub fn vreinterpret_p8_f16(a: float16x4_t) -> poly8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
     unsafe { transmute(a) }
 }
@@ -42555,6 +42724,7 @@ pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -42574,6 +42744,7 @@ pub fn vreinterpret_p16_f16(a: float16x4_t) -> poly16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
     unsafe { transmute(a) }
 }
@@ -42589,6 +42760,7 @@ pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42608,6 +42780,7 @@ pub fn vreinterpretq_f32_f16(a: float16x8_t) -> float32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
     unsafe { transmute(a) }
 }
@@ -42623,6 +42796,7 @@ pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42646,6 +42820,7 @@ pub fn vreinterpretq_s8_f16(a: float16x8_t) -> int8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
     unsafe { transmute(a) }
 }
@@ -42661,6 +42836,7 @@ pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42680,6 +42856,7 @@ pub fn vreinterpretq_s16_f16(a: float16x8_t) -> int16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
     unsafe { transmute(a) }
 }
@@ -42695,6 +42872,7 @@ pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42714,6 +42892,7 @@ pub fn vreinterpretq_s32_f16(a: float16x8_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
     unsafe { transmute(a) }
 }
@@ -42729,6 +42908,7 @@ pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42748,6 +42928,7 @@ pub fn vreinterpretq_s64_f16(a: float16x8_t) -> int64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
     unsafe { transmute(a) }
 }
@@ -42763,6 +42944,7 @@ pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42786,6 +42968,7 @@ pub fn vreinterpretq_u8_f16(a: float16x8_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
     unsafe { transmute(a) }
 }
@@ -42801,6 +42984,7 @@ pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42820,6 +43004,7 @@ pub fn vreinterpretq_u16_f16(a: float16x8_t) -> uint16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
     unsafe { transmute(a) }
 }
@@ -42835,6 +43020,7 @@ pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42854,6 +43040,7 @@ pub fn vreinterpretq_u32_f16(a: float16x8_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
     unsafe { transmute(a) }
 }
@@ -42869,6 +43056,7 @@ pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42888,6 +43076,7 @@ pub fn vreinterpretq_u64_f16(a: float16x8_t) -> uint64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
     unsafe { transmute(a) }
 }
@@ -42903,6 +43092,7 @@ pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42926,6 +43116,7 @@ pub fn vreinterpretq_p8_f16(a: float16x8_t) -> poly8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
     unsafe { transmute(a) }
 }
@@ -42941,6 +43132,7 @@ pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -42960,6 +43152,7 @@ pub fn vreinterpretq_p16_f16(a: float16x8_t) -> poly16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -42975,6 +43168,7 @@ pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
     let a: float32x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -42994,6 +43188,7 @@ pub fn vreinterpret_f16_f32(a: float32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43009,6 +43204,7 @@ pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
     let a: float32x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43028,6 +43224,7 @@ pub fn vreinterpretq_f16_f32(a: float32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43043,6 +43240,7 @@ pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
     let a: int8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43062,6 +43260,7 @@ pub fn vreinterpret_f16_s8(a: int8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43077,6 +43276,7 @@ pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
     let a: int8x16_t =
         unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
@@ -43097,6 +43297,7 @@ pub fn vreinterpretq_f16_s8(a: int8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43112,6 +43313,7 @@ pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
     let a: int16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43131,6 +43333,7 @@ pub fn vreinterpret_f16_s16(a: int16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43146,6 +43349,7 @@ pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
     let a: int16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43165,6 +43369,7 @@ pub fn vreinterpretq_f16_s16(a: int16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43180,6 +43385,7 @@ pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
     let a: int32x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -43199,6 +43405,7 @@ pub fn vreinterpret_f16_s32(a: int32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43214,6 +43421,7 @@ pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
     let a: int32x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43233,6 +43441,7 @@ pub fn vreinterpretq_f16_s32(a: int32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43248,6 +43457,7 @@ pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
     unsafe {
         let ret_val: float16x4_t = transmute(a);
@@ -43266,6 +43476,7 @@ pub fn vreinterpret_f16_s64(a: int64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43281,6 +43492,7 @@ pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
     let a: int64x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -43300,6 +43512,7 @@ pub fn vreinterpretq_f16_s64(a: int64x2_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43315,6 +43528,7 @@ pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
     let a: uint8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43334,6 +43548,7 @@ pub fn vreinterpret_f16_u8(a: uint8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43349,6 +43564,7 @@ pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
     let a: uint8x16_t =
         unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
@@ -43369,6 +43585,7 @@ pub fn vreinterpretq_f16_u8(a: uint8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43384,6 +43601,7 @@ pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
     let a: uint16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43403,6 +43621,7 @@ pub fn vreinterpret_f16_u16(a: uint16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43418,6 +43637,7 @@ pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
     let a: uint16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43437,6 +43657,7 @@ pub fn vreinterpretq_f16_u16(a: uint16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43452,6 +43673,7 @@ pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
     let a: uint32x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -43471,6 +43693,7 @@ pub fn vreinterpret_f16_u32(a: uint32x2_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43486,6 +43709,7 @@ pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
     let a: uint32x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43505,6 +43729,7 @@ pub fn vreinterpretq_f16_u32(a: uint32x4_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43520,6 +43745,7 @@ pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
     unsafe {
         let ret_val: float16x4_t = transmute(a);
@@ -43538,6 +43764,7 @@ pub fn vreinterpret_f16_u64(a: uint64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43553,6 +43780,7 @@ pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
     let a: uint64x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -43572,6 +43800,7 @@ pub fn vreinterpretq_f16_u64(a: uint64x2_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43587,6 +43816,7 @@ pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
     let a: poly8x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43606,6 +43836,7 @@ pub fn vreinterpret_f16_p8(a: poly8x8_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43621,6 +43852,7 @@ pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
     let a: poly8x16_t =
         unsafe { simd_shuffle!(a, a, [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]) };
@@ -43641,6 +43873,7 @@ pub fn vreinterpretq_f16_p8(a: poly8x16_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43656,6 +43889,7 @@ pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
     let a: poly16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe {
@@ -43675,6 +43909,7 @@ pub fn vreinterpret_f16_p16(a: poly16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43690,6 +43925,7 @@ pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
     let a: poly16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43709,6 +43945,7 @@ pub fn vreinterpretq_f16_p16(a: poly16x8_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43724,6 +43961,7 @@ pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
     unsafe {
         let ret_val: float16x8_t = transmute(a);
@@ -43742,6 +43980,7 @@ pub fn vreinterpretq_f16_p128(a: p128) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
     unsafe { transmute(a) }
 }
@@ -43757,6 +43996,7 @@ pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
     let a: float16x4_t = unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) };
     unsafe { transmute(a) }
@@ -43773,6 +44013,7 @@ pub fn vreinterpret_p64_f16(a: float16x4_t) -> poly64x1_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
     unsafe { transmute(a) }
 }
@@ -43788,6 +44029,7 @@ pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe { transmute(a) }
@@ -43804,6 +44046,7 @@ pub fn vreinterpretq_p128_f16(a: float16x8_t) -> p128 {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
     unsafe { transmute(a) }
 }
@@ -43819,6 +44062,7 @@ pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
     let a: float16x8_t = unsafe { simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]) };
     unsafe {
@@ -43838,6 +44082,7 @@ pub fn vreinterpretq_p64_f16(a: float16x8_t) -> poly64x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
     unsafe { transmute(a) }
 }
@@ -43853,6 +44098,7 @@ pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
     unsafe {
         let ret_val: float16x4_t = transmute(a);
@@ -43871,6 +44117,7 @@ pub fn vreinterpret_f16_p64(a: poly64x1_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p64(a: poly64x2_t) -> float16x8_t {
     unsafe { transmute(a) }
 }
@@ -43886,6 +44133,7 @@ pub fn vreinterpretq_f16_p64(a: poly64x2_t) -> float16x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vreinterpretq_f16_p64(a: poly64x2_t) -> float16x8_t {
     let a: poly64x2_t = unsafe { simd_shuffle!(a, a, [1, 0]) };
     unsafe {
@@ -57882,6 +58130,7 @@ pub fn vrev64q_u8(a: uint8x16_t) -> uint8x16_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrev64_f16(a: float16x4_t) -> float16x4_t {
     unsafe { simd_shuffle!(a, a, [3, 2, 1, 0]) }
 }
@@ -57896,6 +58145,7 @@ pub fn vrev64_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrev64q_f16(a: float16x8_t) -> float16x8_t {
     unsafe { simd_shuffle!(a, a, [3, 2, 1, 0, 7, 6, 5, 4]) }
 }
@@ -58258,6 +58508,7 @@ pub fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -58280,6 +58531,7 @@ pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -59366,6 +59618,7 @@ pub fn vrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
     assert_instr(frsqrte)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrte_f16(a: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v4f16")]
@@ -59388,6 +59641,7 @@ pub fn vrsqrte_f16(a: float16x4_t) -> float16x4_t {
     assert_instr(frsqrte)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrteq_f16(a: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v8f16")]
@@ -59526,6 +59780,7 @@ pub fn vrsqrteq_u32(a: uint32x4_t) -> uint32x4_t {
     assert_instr(frsqrts)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrts_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v4f16")]
@@ -59548,6 +59803,7 @@ pub fn vrsqrts_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     assert_instr(frsqrts)
 )]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vrsqrtsq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrts.v8f16")]
@@ -60231,6 +60487,7 @@ pub fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vset_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> float16x4_t {
     static_assert_uimm_bits!(LANE, 2);
     unsafe { simd_insert!(b, LANE as u32, a) }
@@ -60247,6 +60504,7 @@ pub fn vset_lane_f16<const LANE: i32>(a: f16, b: float16x4_t) -> float16x4_t {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vsetq_lane_f16<const LANE: i32>(a: f16, b: float16x8_t) -> float16x8_t {
     static_assert_uimm_bits!(LANE, 3);
     unsafe { simd_insert!(b, LANE as u32, a) }
@@ -63699,6 +63957,7 @@ pub fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1_f16(ptr: *mut f16, a: float16x4_t) {
     vst1_v4f16(
@@ -63716,6 +63975,7 @@ pub unsafe fn vst1_f16(ptr: *mut f16, a: float16x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 pub unsafe fn vst1q_f16(ptr: *mut f16, a: float16x8_t) {
     vst1q_v8f16(
@@ -63734,6 +63994,7 @@ pub unsafe fn vst1q_f16(ptr: *mut f16, a: float16x8_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.p0.v4f16")]
@@ -63751,6 +64012,7 @@ pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x2.p0.v8f16")]
@@ -63767,6 +64029,7 @@ pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -63786,6 +64049,7 @@ pub unsafe fn vst1_f16_x2(a: *mut f16, b: float16x4x2_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -63806,6 +64070,7 @@ pub unsafe fn vst1q_f16_x2(a: *mut f16, b: float16x8x2_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v4f16")]
@@ -63823,6 +64088,7 @@ pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
 #[cfg_attr(test, assert_instr(vst1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst1x3.p0.v8f16")]
@@ -63839,6 +64105,7 @@ pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -63858,6 +64125,7 @@ pub unsafe fn vst1_f16_x3(a: *mut f16, b: float16x4x3_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -63877,6 +64145,7 @@ pub unsafe fn vst1q_f16_x3(a: *mut f16, b: float16x8x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
     unsafe extern "unadjusted" {
@@ -63900,6 +64169,7 @@ pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst1))]
 pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
     unsafe extern "unadjusted" {
@@ -63923,6 +64193,7 @@ pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -63948,6 +64219,7 @@ pub unsafe fn vst1_f16_x4(a: *mut f16, b: float16x4x4_t) {
 #[cfg_attr(test, assert_instr(st1))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_f16_x4(a: *mut f16, b: float16x8x4_t) {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -64556,6 +64828,7 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     *a = simd_extract!(b, LANE as u32);
@@ -64574,6 +64847,7 @@ pub unsafe fn vst1_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst1q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8_t) {
     static_assert_uimm_bits!(LANE, 3);
     *a = simd_extract!(b, LANE as u32);
@@ -67138,6 +67412,7 @@ unsafe fn vst1q_v8i16(addr: *const i8, val: int16x8_t, align: i32) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 unsafe fn vst1_v4f16(addr: *const i8, val: float16x4_t, align: i32) {
     unsafe extern "unadjusted" {
@@ -67155,6 +67430,7 @@ unsafe fn vst1_v4f16(addr: *const i8, val: float16x4_t, align: i32) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
 unsafe fn vst1q_v8f16(addr: *const i8, val: float16x8_t, align: i32) {
     unsafe extern "unadjusted" {
@@ -67196,6 +67472,7 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
     unsafe extern "unadjusted" {
@@ -67215,6 +67492,7 @@ pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st2))]
 pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
     unsafe extern "unadjusted" {
@@ -67235,6 +67513,7 @@ pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
     unsafe extern "unadjusted" {
@@ -67252,6 +67531,7 @@ pub unsafe fn vst2_f16(a: *mut f16, b: float16x4x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst2))]
 pub unsafe fn vst2q_f16(a: *mut f16, b: float16x8x2_t) {
     unsafe extern "unadjusted" {
@@ -67550,6 +67830,7 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -67571,6 +67852,7 @@ pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
 #[cfg_attr(test, assert_instr(st2, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -67593,6 +67875,7 @@ pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -67612,6 +67895,7 @@ pub unsafe fn vst2_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x2_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst2q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x2_t) {
     static_assert_uimm_bits!(LANE, 1);
     unsafe extern "unadjusted" {
@@ -68413,6 +68697,7 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst3))]
 pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
     unsafe extern "unadjusted" {
@@ -68430,6 +68715,7 @@ pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst3))]
 pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
     unsafe extern "unadjusted" {
@@ -68446,6 +68732,7 @@ pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
     unsafe extern "unadjusted" {
@@ -68465,6 +68752,7 @@ pub unsafe fn vst3_f16(a: *mut f16, b: float16x4x3_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_f16(a: *mut f16, b: float16x8x3_t) {
     unsafe extern "unadjusted" {
@@ -68767,6 +69055,7 @@ pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -68793,6 +69082,7 @@ pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -68818,6 +69108,7 @@ pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -68839,6 +69130,7 @@ pub unsafe fn vst3_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x3_t) {
 #[cfg_attr(test, assert_instr(st3, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst3q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -69685,6 +69977,7 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
     unsafe extern "unadjusted" {
@@ -69709,6 +70002,7 @@ pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(vst4))]
 pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
     unsafe extern "unadjusted" {
@@ -69732,6 +70026,7 @@ pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
     unsafe extern "unadjusted" {
@@ -69751,6 +70046,7 @@ pub unsafe fn vst4_f16(a: *mut f16, b: float16x4x4_t) {
 #[cfg(not(target_arch = "arm"))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_f16(a: *mut f16, b: float16x8x4_t) {
     unsafe extern "unadjusted" {
@@ -70102,6 +70398,7 @@ pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -70129,6 +70426,7 @@ pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
 #[rustc_legacy_const_generics(2)]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -70155,6 +70453,7 @@ pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
     unsafe extern "unadjusted" {
@@ -70183,6 +70482,7 @@ pub unsafe fn vst4_lane_f16<const LANE: i32>(a: *mut f16, b: float16x4x4_t) {
 #[cfg_attr(test, assert_instr(st4, LANE = 0))]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub unsafe fn vst4q_lane_f16<const LANE: i32>(a: *mut f16, b: float16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
     unsafe extern "unadjusted" {
@@ -71124,6 +71424,7 @@ pub unsafe fn vstrq_p128(a: *mut p128, b: p128) {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vsub_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
     unsafe { simd_sub(a, b) }
 }
@@ -71138,6 +71439,7 @@ pub fn vsub_f16(a: float16x4_t, b: float16x4_t) -> float16x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vsubq_f16(a: float16x8_t, b: float16x8_t) -> float16x8_t {
     unsafe { simd_sub(a, b) }
 }
@@ -73002,6 +73304,7 @@ pub fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vtrn_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
     unsafe {
         let a1: float16x4_t = simd_shuffle!(a, b, [0, 4, 2, 6]);
@@ -73024,6 +73327,7 @@ pub fn vtrn_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vtrnq_f16(a: float16x8_t, b: float16x8_t) -> float16x8x2_t {
     unsafe {
         let a1: float16x8_t = simd_shuffle!(a, b, [0, 8, 2, 10, 4, 12, 6, 14]);
@@ -74134,6 +74438,7 @@ pub fn vusmmlaq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vuzp_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
     unsafe {
         let a0: float16x4_t = simd_shuffle!(a, b, [0, 2, 4, 6]);
@@ -74156,6 +74461,7 @@ pub fn vuzp_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vuzpq_f16(a: float16x8_t, b: float16x8_t) -> float16x8x2_t {
     unsafe {
         let a0: float16x8_t = simd_shuffle!(a, b, [0, 2, 4, 6, 8, 10, 12, 14]);
@@ -74724,6 +75030,7 @@ pub fn vuzpq_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vzip_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
     unsafe {
         let a0: float16x4_t = simd_shuffle!(a, b, [0, 4, 1, 5]);
@@ -74746,6 +75053,7 @@ pub fn vzip_f16(a: float16x4_t, b: float16x4_t) -> float16x4x2_t {
 )]
 #[target_feature(enable = "neon,fp16")]
 #[unstable(feature = "stdarch_neon_f16", issue = "136306")]
+#[cfg(not(target_arch = "arm64ec"))]
 pub fn vzipq_f16(a: float16x8_t, b: float16x8_t) -> float16x8x2_t {
     unsafe {
         let a0: float16x8_t = simd_shuffle!(a, b, [0, 8, 1, 9, 2, 10, 3, 11]);
