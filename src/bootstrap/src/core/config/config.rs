@@ -687,7 +687,7 @@ impl Config {
 
         if cfg!(test) {
             // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-            if out == PathBuf::from("build") {
+            if out == Path::new("build") {
                 out = Path::new(
                     &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
                 )
@@ -1088,14 +1088,64 @@ impl Config {
             )
         };
 
+        let ccache = match build_ccache {
+            Some(StringOrBool::String(s)) => Some(s),
+            Some(StringOrBool::Bool(true)) => Some("ccache".to_string()),
+            _ => None,
+        };
+
+        let explicit_stage_from_config = build_test_stage.is_some()
+            || build_build_stage.is_some()
+            || build_doc_stage.is_some()
+            || build_dist_stage.is_some()
+            || build_install_stage.is_some()
+            || build_check_stage.is_some()
+            || build_bench_stage.is_some();
+
+        let deny_warnings = match flags_warnings {
+            Warnings::Deny => true,
+            Warnings::Warn => false,
+            Warnings::Default => rust_deny_warnings.unwrap_or(true),
+        };
+
+        let gcc_ci_mode = match gcc_download_ci_gcc {
+            Some(value) => match value {
+                true => GccCiMode::DownloadFromCi,
+                false => GccCiMode::BuildLocally,
+            },
+            None => GccCiMode::default(),
+        };
+
+        let targets = flags_target
+            .map(|TargetSelectionList(targets)| targets)
+            .or_else(|| {
+                build_target.map(|t| t.iter().map(|t| TargetSelection::from_user(t)).collect())
+            })
+            .unwrap_or_else(|| hosts.clone());
+
+        #[allow(clippy::map_identity)]
+        let skip = flags_skip
+            .into_iter()
+            .chain(flags_exclude)
+            .chain(build_exclude.unwrap_or_default())
+            .map(|p| {
+                // Never return top-level path here as it would break `--skip`
+                // logic on rustc's internal test framework which is utilized by compiletest.
+                #[cfg(windows)]
+                {
+                    PathBuf::from(p.to_string_lossy().replace('/', "\\"))
+                }
+                #[cfg(not(windows))]
+                {
+                    p
+                }
+            })
+            .collect();
+
         Config {
             change_id: toml.change_id.inner,
             bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
-            ccache: match build_ccache {
-                Some(StringOrBool::String(s)) => Some(s),
-                Some(StringOrBool::Bool(true)) => Some("ccache".to_string()),
-                _ => None,
-            },
+            ccache,
             ninja_in_file: llvm_ninja.unwrap_or(true),
             compiler_docs: build_compiler_docs.unwrap_or(false),
             library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
@@ -1122,13 +1172,7 @@ impl Config {
             stderr_is_tty: std::io::stderr().is_terminal(),
             on_fail: flags_on_fail,
             explicit_stage_from_cli: flags_stage.is_some(),
-            explicit_stage_from_config: build_test_stage.is_some()
-                || build_build_stage.is_some()
-                || build_doc_stage.is_some()
-                || build_dist_stage.is_some()
-                || build_install_stage.is_some()
-                || build_check_stage.is_some()
-                || build_bench_stage.is_some(),
+            explicit_stage_from_config,
 
             keep_stage: flags_keep_stage,
             keep_stage_std: flags_keep_stage_std,
@@ -1136,11 +1180,7 @@ impl Config {
             incremental: flags_incremental || rust_incremental == Some(true),
             dump_bootstrap_shims: flags_dump_bootstrap_shims,
             free_args: flags_free_args,
-            deny_warnings: match flags_warnings {
-                Warnings::Deny => true,
-                Warnings::Warn => false,
-                Warnings::Default => rust_deny_warnings.unwrap_or(true),
-            },
+            deny_warnings,
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
             llvm_tests: llvm_tests.unwrap_or(false),
             llvm_enzyme: llvm_enzyme.unwrap_or(false),
@@ -1167,13 +1207,7 @@ impl Config {
             llvm_cxxflags,
             llvm_ldflags,
             llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
-            gcc_ci_mode: match gcc_download_ci_gcc {
-                Some(value) => match value {
-                    true => GccCiMode::DownloadFromCi,
-                    false => GccCiMode::BuildLocally,
-                },
-                None => GccCiMode::default(),
-            },
+            gcc_ci_mode,
             rust_optimize: rust_optimize.unwrap_or(RustOptimize::Bool(true)),
             rust_codegen_units: rust_codegen_units.map(threads_from_config),
             rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
@@ -1278,30 +1312,8 @@ impl Config {
                 // If we're building from git or tarball sources, enable it by default.
                 rust_info.is_managed_git_subrepository() || rust_info.is_from_tarball()
             }),
-            targets: flags_target
-                .map(|TargetSelectionList(targets)| targets)
-                .or_else(|| {
-                    build_target.map(|t| t.iter().map(|t| TargetSelection::from_user(t)).collect())
-                })
-                .unwrap_or_else(|| hosts.clone()),
-            #[allow(clippy::map_identity)]
-            skip: flags_skip
-                .into_iter()
-                .chain(flags_exclude)
-                .chain(build_exclude.unwrap_or_default())
-                .map(|p| {
-                    // Never return top-level path here as it would break `--skip`
-                    // logic on rustc's internal test framework which is utilized by compiletest.
-                    #[cfg(windows)]
-                    {
-                        PathBuf::from(p.to_string_lossy().replace('/', "\\"))
-                    }
-                    #[cfg(not(windows))]
-                    {
-                        p
-                    }
-                })
-                .collect(),
+            targets,
+            skip,
             paths: flags_paths,
             config: toml_path,
             llvm_thin_lto: llvm_thin_lto.unwrap_or(false),
