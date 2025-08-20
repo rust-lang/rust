@@ -28,6 +28,7 @@ stacker = "0.1.17"
 tempfile.workspace = true
 thin-vec.workspace = true
 tracing.workspace = true
+triomphe.workspace = true
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]

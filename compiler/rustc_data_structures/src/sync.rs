@@ -105,6 +105,15 @@ mod mode {
     }
 }
 
+/// Alternative form of `Arc` that lacks a weak ref count.
+pub type TrArc<T> = triomphe::Arc<T>;
+
+/// Alternative form of `UniqueArc` that lacks a weak ref count.
+pub type TrUniqueArc<T> = triomphe::UniqueArc<T>;
+
+/// Like `TrArc<(H, [T])>`, but with a thin pointer.
+pub type TrThinArc<H, T> = triomphe::ThinArc<H, T>;
+
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
 #[derive(Debug, Default)]

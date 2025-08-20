@@ -84,6 +84,7 @@ serde_json = "1.0.142"
 tempfile = "3.20.0"
 thin-vec = "0.2.14"
 tracing = "0.1.37"
+triomphe = "0.1.14"
 # tidy-alphabetical-end
 
 [profile.release.package.rustc_thread_pool]

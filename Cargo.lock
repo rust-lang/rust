@@ -3325,6 +3325,7 @@ dependencies = [
  "smallvec",
  "thin-vec",
  "tracing",
+ "triomphe",
 ]
 
 [[package]]
@@ -3615,6 +3616,7 @@ dependencies = [
  "tempfile",
  "thin-vec",
  "tracing",
+ "triomphe",
  "windows 0.61.3",
 ]
 
@@ -5599,6 +5601,16 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "triomphe"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef8f7726da4807b58ea5c96fdc122f80702030edc33b35aff9190a51148ccc85"
+dependencies = [
+ "serde",
+ "stable_deref_trait",
 ]
 
 [[package]]

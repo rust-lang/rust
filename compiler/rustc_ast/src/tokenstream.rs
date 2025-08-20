@@ -4,13 +4,15 @@
 //! A `TokenStream` is, roughly speaking, a sequence of [`TokenTree`]s,
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
 
+#![allow(unused)] // njn: temp
+
 use std::borrow::Cow;
 use std::ops::Range;
 use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, TrArc, TrThinArc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
@@ -490,7 +492,7 @@ fn attrs_and_tokens_to_token_trees(
                 for inner_attr in inner_attrs {
                     tts.extend(inner_attr.token_trees());
                 }
-                tts.extend(stream.0.iter().cloned());
+                tts.extend(stream.slice().iter().cloned());
                 let stream = TokenStream::new(tts);
                 *tree = TokenTree::Delimited(*span, *spacing, Delimiter::Brace, stream);
                 return true;
@@ -597,24 +599,61 @@ pub enum Spacing {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
+// njn: explain the usize -- it's the real `len`, while the length in ThinArc
+// is actually the capacity
+// njn: start with Arc<Vec<TokenTree>>
+//
+// HeaderSlice {
+//     header: HeaderWithLength {
+//         header: 5,  // actually the length
+//         length: 8,  // actually the capacity
+//     },
+//     slice: [tt1, tt2, tt3, tt4, tt5, eof, eof, eof],
+// },
+#[derive(Clone, Debug)]
+pub struct TokenStream(pub(crate) TrThinArc<usize, TokenTree>);
+
+/// njn: comment
+/// njn: triomphe qualifier, hmm
+// njn: make this a newtype, have `len` and `slice` methods, pass it to
+// reserve_and_modify
+type TokenStreamInner = triomphe::HeaderSlice<triomphe::HeaderWithLength<usize>, [TokenTree]>;
 
 impl TokenStream {
+    #[inline]
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Arc::new(tts))
+        // We start out with length==capacity, that never changes in most cases.
+        let capacity = tts.len();
+        TokenStream(TrThinArc::from_header_and_iter(capacity, tts.into_iter()))
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.len() == 0
     }
 
+    #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        // njn: see comment on TokenStream definition for explanation of this
+        self.0.header.header
     }
 
+    // njn: not pub
+    #[inline]
+    fn capacity(&self) -> usize {
+        // njn: see comment on TokenStream definition for explanation of this
+        self.0.header.length
+    }
+
+    // njn: must use this instead of .0.slice!
+    #[inline]
+    fn slice(&self) -> &[TokenTree] {
+        &self.0.slice[..self.len()]
+    }
+
+    #[inline]
     pub fn get(&self, index: usize) -> Option<&TokenTree> {
-        self.0.get(index)
+        self.slice().get(index)
     }
 
     pub fn iter(&self) -> TokenStreamIter<'_> {
@@ -638,57 +677,120 @@ impl TokenStream {
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
-    fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
-        if let Some(TokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) = vec.last()
+    fn try_glue_to_last(tts: &mut [TokenTree], tt: &TokenTree) -> bool {
+        if let Some(TokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) = tts.last()
             && let TokenTree::Token(tok, spacing) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
         {
-            // ...then overwrite the last token tree in `vec` with the
+            // ...then overwrite the last token tree in `tts` with the
             // glued token, and skip the first token tree from `stream`.
-            *vec.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
+            *tts.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
             true
         } else {
             false
         }
     }
 
+    // Allows the modification of a `TokenStream`. `additional_len` is how many tokens will be
+    // added as part of the modification, and can be zero. The contents are cloned if either of the
+    // following conditions are true.
+    // - If the capacity is insufficient (similar to `Vec::push`). The capacity is also increased.
+    // - If the refcount > 1 (similar to `Arc::make_mut`).
+    //
+    // `f` is then called. If it adds elements it must update the length stored in
+    // `inner.header.header`.
+    fn reserve_and_modify<F, R>(&mut self, additional_len: usize, f: F) -> R
+    where
+        F: FnOnce(&mut TokenStreamInner) -> R,
+    {
+        // Note: TrThinArc doesn't have `make_mut`, so we effectively implement it ourselves.
+        let new_len = self.len() + additional_len;
+        if new_len > self.capacity() {
+            // Growth strategy: new token streams always have length==capacity, because token
+            // stream never need to grow. For ones that do need to grow, we always increase
+            // capacity to the next power of two big enough to fit `additional_len` elements, while
+            // also skipping capacities of 1 and 2 because they are likely to need immediate
+            // subsequent resizing. (`Vec` does the same thing.)
+            let new_cap = std::cmp::max(new_len.next_power_of_two(), 4);
+            let additional_cap = new_cap - self.capacity();
+            // `chain` doesn't implement `ExactSizeIterator`, so we need to collect into a `Vec`.
+            // We use `Token::dummy()` for the excess "uninitialized" elements (i.e. those between
+            // `length` and `capacity`).
+            let dummy = TokenTree::Token(Token::dummy(), Spacing::Alone);
+            // Note: we use `.0.slice` not `.slice()` here to copy all existing elements, both
+            // "initialized" (within `length`) and "uninitialized" (beyond `length` but within
+            // `capacity`).
+            let tmp: Vec<_> = self
+                .0
+                .slice
+                .iter()
+                .cloned()
+                .chain(iter::repeat(dummy).take(additional_cap))
+                .collect();
+            assert_eq!(tmp.len(), new_cap);
+            *self = TokenStream(TrThinArc::from_header_and_iter(self.len(), tmp.into_iter()));
+        } else if TrThinArc::strong_count(&self.0) > 1 {
+            *self = TokenStream(TrThinArc::from_header_and_iter(
+                self.len(),
+                self.0.slice.iter().cloned(), // njn: don't truncate excess capacity here
+            ));
+        }
+        assert!(self.capacity() >= self.len() + additional_len);
+
+        // The `TokenStream` is now unshared and has enough capacity to add `additional_len`
+        // elements. Call `f`.
+        self.0.with_arc_mut(|arc| f(TrArc::get_mut(arc).unwrap()))
+    }
+
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-
-        if Self::try_glue_to_last(vec_mut, &tt) {
-            // nothing else to do
-        } else {
-            vec_mut.push(tt);
-        }
+        // njn: reserving 1, not always needed
+        self.reserve_and_modify(1, |inner| {
+            let len = &mut inner.header.header; // njn: ugh
+            if Self::try_glue_to_last(&mut inner.slice[..*len], &tt) {
+                // Nothing else to do.
+            } else {
+                // Push `tt`.
+                inner.slice[*len] = tt;
+                *len += 1;
+            }
+        });
     }
 
     /// Push `stream` onto the end of the stream, possibly gluing the first
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
-        let vec_mut = Arc::make_mut(&mut self.0);
-
-        let stream_iter = stream.0.iter().cloned();
-
-        if let Some(first) = stream.0.first()
-            && Self::try_glue_to_last(vec_mut, first)
-        {
-            // Now skip the first token tree from `stream`.
-            vec_mut.extend(stream_iter.skip(1));
-        } else {
-            // Append all of `stream`.
-            vec_mut.extend(stream_iter);
-        }
+        // njn: sometimes reserving 1 more than needed
+        let additional_len = stream.len();
+        self.reserve_and_modify(additional_len, |inner| {
+            let len = &mut inner.header.header;
+            let stream_iter = stream.slice().iter().cloned();
+            if let Some(first) = stream.slice().first()
+                && Self::try_glue_to_last(&mut inner.slice[..*len], first)
+            {
+                // Now skip the first token tree from `stream`.
+                for tt in stream_iter.skip(1) {
+                    inner.slice[*len] = tt;
+                    *len += 1;
+                }
+            } else {
+                // Append all of `stream`.
+                for tt in stream_iter {
+                    inner.slice[*len] = tt;
+                    *len += 1;
+                }
+            }
+        })
     }
 
     pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree> {
-        self.0.chunks(chunk_size)
+        self.slice().chunks(chunk_size)
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
-    /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
+    /// r"foo"]`. Modifies the `TokenStream` via `TrArc::make_mut`, but as little
     /// as possible.
     pub fn desugar_doc_comments(&mut self) {
         if let Some(desugared_stream) = desugar_inner(self.clone()) {
@@ -699,17 +801,34 @@ impl TokenStream {
         fn desugar_inner(mut stream: TokenStream) -> Option<TokenStream> {
             let mut i = 0;
             let mut modified = false;
-            while let Some(tt) = stream.0.get(i) {
+            while let Some(tt) = stream.slice().get(i) {
                 match tt {
                     &TokenTree::Token(
                         Token { kind: token::DocComment(_, attr_style, data), span },
                         _spacing,
                     ) => {
+                        // njn: splice(i..i + 1, desugared);
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
-                        Arc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+                        let additional_len = desugared_len - 1;
+                        stream.reserve_and_modify(additional_len, |inner| {
+                            let len = &mut inner.header.header;
+
+                            // njn: shift elems after i up
+                            for j in ((i + 1)..*len).rev() {
+                                // njn: clone, ugh
+                                inner.slice[j + additional_len] = inner.slice[j].clone();
+                            }
+
+                            // njn: insert `desugared` in i..i + desugared_len
+                            for tt in desugared {
+                                inner.slice[i] = tt;
+                                i += 1;
+                            }
+
+                            *len += additional_len;
+                        });
                         modified = true;
-                        i += desugared_len;
                     }
 
                     &TokenTree::Token(..) => i += 1,
@@ -718,7 +837,9 @@ impl TokenStream {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
                             let new_tt =
                                 TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
-                            Arc::make_mut(&mut stream.0)[i] = new_tt;
+                            stream.reserve_and_modify(0, |inner| {
+                                inner.slice[i] = new_tt;
+                            });
                             modified = true;
                         }
                         i += 1;
@@ -780,7 +901,7 @@ impl TokenStream {
     pub fn add_comma(&self) -> Option<(TokenStream, Span)> {
         // Used to suggest if a user writes `foo!(a b);`
         let mut suggestion = None;
-        let mut iter = self.0.iter().enumerate().peekable();
+        let mut iter = self.slice().iter().enumerate().peekable();
         while let Some((pos, ts)) = iter.next() {
             if let Some((_, next)) = iter.peek() {
                 let sp = match (&ts, &next) {
@@ -802,14 +923,20 @@ impl TokenStream {
             }
         }
         if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
-            let parts = self.0.split_at(pos + 1);
+            let mut new_stream = Vec::with_capacity(self.len() + 1);
+            let parts = self.slice().split_at(pos + 1);
             new_stream.extend_from_slice(parts.0);
             new_stream.push(comma);
             new_stream.extend_from_slice(parts.1);
             return Some((TokenStream::new(new_stream), sp));
         }
         None
+    }
+}
+
+impl Default for TokenStream {
+    fn default() -> TokenStream {
+        TokenStream::new(Vec::new())
     }
 }
 
@@ -838,6 +965,19 @@ where
     }
 }
 
+impl<E: SpanEncoder> Encodable<E> for TokenStream {
+    fn encode(&self, e: &mut E) {
+        self.slice().encode(e)
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for TokenStream {
+    fn decode(d: &mut D) -> TokenStream {
+        let elems: Vec<_> = Decodable::decode(d);
+        TokenStream::new(elems)
+    }
+}
+
 #[derive(Clone)]
 pub struct TokenStreamIter<'t> {
     stream: &'t TokenStream,
@@ -853,7 +993,7 @@ impl<'t> TokenStreamIter<'t> {
     // and this is simple and avoids the need to use `peekable` and `Peekable`
     // at all the use sites.
     pub fn peek(&self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index)
+        self.stream.slice().get(self.index)
     }
 }
 
@@ -861,7 +1001,7 @@ impl<'t> Iterator for TokenStreamIter<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
+        self.stream.slice().get(self.index).map(|tree| {
             self.index += 1;
             tree
         })
