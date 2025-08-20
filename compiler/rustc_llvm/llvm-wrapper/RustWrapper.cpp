@@ -278,6 +278,7 @@ enum class LLVMRustAttributeKind {
   Writable = 42,
   DeadOnUnwind = 43,
   DeadOnReturn = 44,
+  CapturesReadOnly = 45,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -376,6 +377,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
 #else
     report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
 #endif
+  case LLVMRustAttributeKind::CapturesReadOnly:
+    report_fatal_error("Should be handled separately");
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
@@ -429,6 +432,11 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
   // LLVM 21 replaced the NoCapture attribute with Captures(none).
   if (RustAttr == LLVMRustAttributeKind::NoCapture) {
     return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  }
+  if (RustAttr == LLVMRustAttributeKind::CapturesReadOnly) {
+    return wrap(Attribute::getWithCaptureInfo(
+        *unwrap(C), CaptureInfo(CaptureComponents::Address |
+                                CaptureComponents::ReadProvenance)));
   }
 #endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));

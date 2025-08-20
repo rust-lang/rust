@@ -80,7 +80,7 @@ pub fn option_nonzero_int(x: Option<NonZero<u64>>) -> Option<NonZero<u64>> {
     x
 }
 
-// CHECK: @readonly_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
+// CHECK: @readonly_borrow(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn readonly_borrow(_: &i32) {}
@@ -91,12 +91,12 @@ pub fn readonly_borrow_ret() -> &'static i32 {
     loop {}
 }
 
-// CHECK: @static_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
+// CHECK: @static_borrow(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
 // static borrow may be captured
 #[no_mangle]
 pub fn static_borrow(_: &'static i32) {}
 
-// CHECK: @named_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
+// CHECK: @named_borrow(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
 // borrow with named lifetime may be captured
 #[no_mangle]
 pub fn named_borrow<'r>(_: &'r i32) {}
@@ -129,7 +129,7 @@ pub fn mutable_borrow_ret() -> &'static mut i32 {
 // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>.
 pub fn mutable_notunpin_borrow(_: &mut NotUnpin) {}
 
-// CHECK: @notunpin_borrow(ptr noalias noundef readonly align 4 dereferenceable(4) %_1)
+// CHECK: @notunpin_borrow(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(4) %_1)
 // But `&NotUnpin` behaves perfectly normal.
 #[no_mangle]
 pub fn notunpin_borrow(_: &NotUnpin) {}
@@ -138,12 +138,12 @@ pub fn notunpin_borrow(_: &NotUnpin) {}
 #[no_mangle]
 pub fn indirect_struct(_: S) {}
 
-// CHECK: @borrowed_struct(ptr noalias noundef readonly align 4 dereferenceable(32) %_1)
+// CHECK: @borrowed_struct(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable(32) %_1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn borrowed_struct(_: &S) {}
 
-// CHECK: @option_borrow(ptr noalias noundef readonly align 4 dereferenceable_or_null(4) %_x)
+// CHECK: @option_borrow(ptr noalias noundef readonly align 4{{( captures\(address, read_provenance\))?}} dereferenceable_or_null(4) %_x)
 #[no_mangle]
 pub fn option_borrow(_x: Option<&i32>) {}
 
@@ -185,7 +185,7 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
 // With a custom allocator, it should *not* have `noalias`. (See
 // <https://github.com/rust-lang/miri/issues/3341> for why.) The second argument is the allocator,
 // which is a reference here that still carries `noalias` as usual.
-// CHECK: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias noundef nonnull readonly align 1 %x.1)
+// CHECK: @_box_custom(ptr noundef nonnull align 4 %x.0, ptr noalias noundef nonnull readonly align 1{{( captures\(address, read_provenance\))?}} %x.1)
 #[no_mangle]
 pub fn _box_custom(x: Box<i32, &std::alloc::Global>) {
     drop(x)
@@ -208,7 +208,7 @@ pub fn struct_return() -> S {
 #[no_mangle]
 pub fn helper(_: usize) {}
 
-// CHECK: @slice(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @slice(ptr noalias noundef nonnull readonly align 1{{( captures\(address, read_provenance\))?}} %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {}
@@ -227,7 +227,7 @@ pub fn unsafe_slice(_: &[UnsafeInner]) {}
 #[no_mangle]
 pub fn raw_slice(_: *const [u8]) {}
 
-// CHECK: @str(ptr noalias noundef nonnull readonly align 1 %_1.0, [[USIZE]] noundef %_1.1)
+// CHECK: @str(ptr noalias noundef nonnull readonly align 1{{( captures\(address, read_provenance\))?}} %_1.0, [[USIZE]] noundef %_1.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {}
@@ -259,7 +259,7 @@ pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + U
     x
 }
 
-// CHECK: { ptr, [[USIZE]] } @return_slice(ptr noalias noundef nonnull readonly align 2 %x.0, [[USIZE]] noundef %x.1)
+// CHECK: { ptr, [[USIZE]] } @return_slice(ptr noalias noundef nonnull readonly align 2{{( captures\(address, read_provenance\))?}} %x.0, [[USIZE]] noundef %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
     x
