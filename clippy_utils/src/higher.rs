@@ -288,22 +288,23 @@ impl<'a> VecArgs<'a> {
             && is_expn_of(fun.span, sym::vec).is_some()
             && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         {
-            return if cx.tcx.is_diagnostic_item(sym::vec_from_elem, fun_def_id) && args.len() == 2 {
-                // `vec![elem; size]` case
-                Some(VecArgs::Repeat(&args[0], &args[1]))
-            } else if cx.tcx.is_diagnostic_item(sym::slice_into_vec, fun_def_id) && args.len() == 1 {
-                // `vec![a, b, c]` case
-                if let ExprKind::Call(_, [arg]) = &args[0].kind
-                    && let ExprKind::Array(args) = arg.kind
-                {
-                    Some(VecArgs::Vec(args))
-                } else {
-                    None
-                }
-            } else if cx.tcx.is_diagnostic_item(sym::vec_new, fun_def_id) && args.is_empty() {
-                Some(VecArgs::Vec(&[]))
-            } else {
-                None
+            return match (cx.tcx.get_diagnostic_name(fun_def_id), args.len()) {
+                (Some(sym::vec_from_elem), 2) => {
+                    // `vec![elem; size]` case
+                    Some(VecArgs::Repeat(&args[0], &args[1]))
+                },
+                (Some(sym::slice_into_vec), 1) => {
+                    // `vec![a, b, c]` case
+                    if let ExprKind::Call(_, [arg]) = &args[0].kind
+                        && let ExprKind::Array(args) = arg.kind
+                    {
+                        Some(VecArgs::Vec(args))
+                    } else {
+                        None
+                    }
+                },
+                (Some(sym::vec_new), 0) => Some(VecArgs::Vec(&[])),
+                _ => None,
             };
         }
 
