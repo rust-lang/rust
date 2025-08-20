@@ -32,30 +32,30 @@ features! {
     /// s390x message-security-assist-extension9 facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] message_security_assist_extension12: "message-security-assist-extension12";
     /// s390x message-security-assist-extension12 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_2: "miscellaneous-extensions-2";
     /// s390x miscellaneous-extensions-2 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] miscellaneous_extensions_3: "miscellaneous-extensions-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_3: "miscellaneous-extensions-3";
     /// s390x miscellaneous-extensions-3 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] miscellaneous_extensions_4: "miscellaneous-extensions-4";
     /// s390x miscellaneous-extensions-4 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] nnp_assist: "nnp-assist";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] nnp_assist: "nnp-assist";
     /// s390x nnp-assist facility
     @FEATURE: #[unstable(feature = "s390x_target_feature", issue = "44839")] transactional_execution: "transactional-execution";
     /// s390x transactional-execution facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector: "vector";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector: "vector";
     /// s390x vector facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_enhancements_1: "vector-enhancements-1";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_1: "vector-enhancements-1";
     /// s390x vector-enhancements-1 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_enhancements_2: "vector-enhancements-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_2: "vector-enhancements-2";
     /// s390x vector-enhancements-2 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_enhancements_3: "vector-enhancements-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_enhancements_3: "vector-enhancements-3";
     /// s390x vector-enhancements-3 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_packed_decimal: "vector-packed-decimal";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal: "vector-packed-decimal";
     /// s390x vector-packed-decimal facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_packed_decimal_enhancement: "vector-packed-decimal-enhancement";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement: "vector-packed-decimal-enhancement";
     /// s390x vector-packed-decimal-enhancement facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_packed_decimal_enhancement_2: "vector-packed-decimal-enhancement-2";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement_2: "vector-packed-decimal-enhancement-2";
     /// s390x vector-packed-decimal-enhancement-2 facility
-    @FEATURE: #[unstable(feature = "s390x_target_feature_vector", issue = "145649")] vector_packed_decimal_enhancement_3: "vector-packed-decimal-enhancement-3";
+    @FEATURE: #[stable(feature = "s390x_target_feature_vector", since = "CURRENT_RUSTC_VERSION")] vector_packed_decimal_enhancement_3: "vector-packed-decimal-enhancement-3";
     /// s390x vector-packed-decimal-enhancement-3 facility
 }
