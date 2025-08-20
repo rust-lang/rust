@@ -3450,7 +3450,7 @@ impl Step for TestHelpers {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenCranelift {
-    compiler: Compiler,
+    compilers: RustcPrivateCompilers,
     target: TargetSelection,
 }
 
@@ -3466,7 +3466,7 @@ impl Step for CodegenCranelift {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
 
         if builder.doc_tests == DocTests::Only {
             return;
@@ -3496,71 +3496,50 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        builder.ensure(CodegenCranelift { compiler, target: run.target });
+        builder.ensure(CodegenCranelift { compilers, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
+        let compilers = self.compilers;
+        let build_compiler = compilers.build_compiler();
+
+        // We need to run the cranelift tests with the compiler against cranelift links to, not with
+        // the build compiler.
+        let target_compiler = compilers.target_compiler();
         let target = self.target;
 
-        builder.std(compiler, target);
+        builder.std(target_compiler, target);
 
-        // If we're not doing a full bootstrap but we're testing a stage2
-        // version of libstd, then what we're actually testing is the libstd
-        // produced in stage1. Reflect that here by updating the compiler that
-        // we're working with automatically.
-        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+        let mut cargo = builder::Cargo::new(
+            builder,
+            target_compiler,
+            Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
+            SourceType::InTree,
+            target,
+            Kind::Run,
+        );
 
-        let build_cargo = || {
-            let mut cargo = builder::Cargo::new(
-                builder,
-                compiler,
-                Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
-                SourceType::InTree,
-                target,
-                Kind::Run,
-            );
+        cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
+        compile::rustc_cargo_env(builder, &mut cargo, target);
 
-            cargo.current_dir(&builder.src.join("compiler/rustc_codegen_cranelift"));
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("compiler/rustc_codegen_cranelift/build_system/Cargo.toml"));
-            compile::rustc_cargo_env(builder, &mut cargo, target);
+        // Avoid incremental cache issues when changing rustc
+        cargo.env("CARGO_BUILD_INCREMENTAL", "false");
 
-            // Avoid incremental cache issues when changing rustc
-            cargo.env("CARGO_BUILD_INCREMENTAL", "false");
-
-            cargo
-        };
-
-        builder.info(&format!(
-            "{} cranelift stage{} ({} -> {})",
-            Kind::Test.description(),
-            compiler.stage,
-            &compiler.host,
-            target
-        ));
-        let _time = helpers::timeit(builder);
+        let _guard = builder.msg_test("rustc_codegen_cranelift", target_compiler);
 
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");
 
-        // FIXME: Uncomment the `prepare` command below once vendoring is implemented.
-        /*
-        let mut prepare_cargo = build_cargo();
-        prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
-        #[expect(deprecated)]
-        builder.config.try_run(&mut prepare_cargo.into()).unwrap();
-        */
-
-        let mut cargo = build_cargo();
         cargo
             .arg("--")
             .arg("test")
             .arg("--download-dir")
             .arg(&download_dir)
             .arg("--out-dir")
-            .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_clif"))
+            .arg(builder.stage_out(build_compiler, Mode::Codegen).join("cg_clif"))
             .arg("--no-unstable-features")
             .arg("--use-backend")
             .arg("cranelift")
@@ -3573,6 +3552,13 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
 
         cargo.into_cmd().run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("rustc_codegen_cranelift", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
     }
 }
 
@@ -3637,7 +3623,7 @@ impl Step for CodegenGCC {
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
         );
 
-        let _msg = builder.msg_test("rustc_codegen_gcc", compilers.build_compiler());
+        let _guard = builder.msg_test("rustc_codegen_gcc", compilers.build_compiler());
 
         let mut cargo = builder::Cargo::new(
             builder,
