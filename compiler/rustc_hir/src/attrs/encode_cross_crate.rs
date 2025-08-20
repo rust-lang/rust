@@ -73,6 +73,7 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
+            Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,
             SpecializationTrait(..) => No,

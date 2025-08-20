@@ -10,6 +10,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol};
+pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
@@ -504,6 +505,12 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
+
+    /// Represents `#[sanitize]`
+    ///
+    /// the on set and off set are distjoint since there's a third option: unset.
+    /// a node may not set the sanitizer setting in which case it inherits from parents.
+    Sanitize { on_set: SanitizerSet, off_set: SanitizerSet, span: Span },
 
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },

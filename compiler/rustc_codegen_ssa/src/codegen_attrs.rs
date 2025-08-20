@@ -293,6 +293,9 @@ fn process_builtin_attrs(
                         codegen_fn_attrs.linkage = linkage;
                     }
                 }
+                AttributeKind::Sanitize { span, .. } => {
+                    interesting_spans.sanitize = Some(*span);
+                }
                 _ => {}
             }
         }
@@ -310,7 +313,6 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR_ZEROED
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
-            sym::sanitize => interesting_spans.sanitize = Some(attr.span()),
             sym::instruction_set => {
                 codegen_fn_attrs.instruction_set = parse_instruction_set_attr(tcx, attr)
             }
@@ -560,79 +562,9 @@ fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     }
 }
 
-/// For an attr that has the `sanitize` attribute, read the list of
-/// disabled sanitizers. `current_attr` holds the information about
-/// previously parsed attributes.
-fn parse_sanitize_attr(
-    tcx: TyCtxt<'_>,
-    attr: &Attribute,
-    current_attr: SanitizerSet,
-) -> SanitizerSet {
-    let mut result = current_attr;
-    if let Some(list) = attr.meta_item_list() {
-        for item in list.iter() {
-            let MetaItemInner::MetaItem(set) = item else {
-                tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
-                break;
-            };
-            let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-            match segments.as_slice() {
-                // Similar to clang, sanitize(address = ..) and
-                // sanitize(kernel_address = ..) control both ASan and KASan
-                // Source: https://reviews.llvm.org/D44981.
-                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
-                }
-                [sym::address] | [sym::kernel_address] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::ADDRESS;
-                    result &= !SanitizerSet::KERNELADDRESS;
-                }
-                [sym::cfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::CFI,
-                [sym::cfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::CFI,
-                [sym::kcfi] if set.value_str() == Some(sym::off) => result |= SanitizerSet::KCFI,
-                [sym::kcfi] if set.value_str() == Some(sym::on) => result &= !SanitizerSet::KCFI,
-                [sym::memory] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::MEMORY
-                }
-                [sym::memory] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::MEMORY
-                }
-                [sym::memtag] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::MEMTAG
-                }
-                [sym::memtag] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::MEMTAG
-                }
-                [sym::shadow_call_stack] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::SHADOWCALLSTACK
-                }
-                [sym::shadow_call_stack] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::SHADOWCALLSTACK
-                }
-                [sym::thread] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::THREAD
-                }
-                [sym::thread] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::THREAD
-                }
-                [sym::hwaddress] if set.value_str() == Some(sym::off) => {
-                    result |= SanitizerSet::HWADDRESS
-                }
-                [sym::hwaddress] if set.value_str() == Some(sym::on) => {
-                    result &= !SanitizerSet::HWADDRESS
-                }
-                _ => {
-                    tcx.dcx().emit_err(errors::InvalidSanitize { span: attr.span() });
-                }
-            }
-        }
-    }
-    result
-}
-
 fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
     // Backtrack to the crate root.
-    let disabled = match tcx.opt_local_parent(did) {
+    let mut disabled = match tcx.opt_local_parent(did) {
         // Check the parent (recursively).
         Some(parent) => tcx.disabled_sanitizers_for(parent),
         // We reached the crate root without seeing an attribute, so
@@ -641,8 +573,17 @@ fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
     };
 
     // Check for a sanitize annotation directly on this def.
-    if let Some(attr) = tcx.get_attr(did, sym::sanitize) {
-        return parse_sanitize_attr(tcx, attr, disabled);
+    if let Some((on_set, off_set)) = find_attr!(tcx.get_all_attrs(did), AttributeKind::Sanitize {on_set, off_set, ..} => (on_set, off_set))
+    {
+        // the on set is the set of sanitizers explicitly enabled.
+        // we mask those out since we want the set of disabled sanitizers here
+        disabled &= !*on_set;
+        // the off set is the set of sanitizers explicitly disabled.
+        // we or those in here.
+        disabled |= *off_set;
+        // the on set and off set are distjoint since there's a third option: unset.
+        // a node may not set the sanitizer setting in which case it inherits from parents.
+        // the code above in this function does this backtracking
     }
     disabled
 }
