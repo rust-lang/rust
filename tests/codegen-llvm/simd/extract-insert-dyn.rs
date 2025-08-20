@@ -5,7 +5,6 @@
     repr_simd,
     arm_target_feature,
     mips_target_feature,
-    s390x_target_feature_vector,
     riscv_target_feature
 )]
 #![no_std]
