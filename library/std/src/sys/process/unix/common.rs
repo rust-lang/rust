@@ -103,6 +103,7 @@ pub struct Command {
     create_pidfd: bool,
     pgroup: Option<pid_t>,
     setsid: bool,
+    fds: Vec<(OwnedFd, RawFd)>,
 }
 
 // passed to do_exec() with configuration of what the child stdio should look
@@ -183,6 +184,7 @@ impl Command {
             create_pidfd: false,
             pgroup: None,
             setsid: false,
+            fds: Vec::new(),
         }
     }
 
@@ -359,6 +361,18 @@ impl Command {
         let ours = StdioPipes { stdin: our_stdin, stdout: our_stdout, stderr: our_stderr };
         let theirs = ChildPipes { stdin: their_stdin, stdout: their_stdout, stderr: their_stderr };
         Ok((ours, theirs))
+    }
+
+    pub fn fd(&mut self, old_fd: OwnedFd, new_fd: RawFd) {
+        self.fds.push((old_fd, new_fd));
+    }
+
+    pub fn get_fds(&self) -> &[(OwnedFd, RawFd)] {
+        &self.fds
+    }
+
+    pub fn clear_fds(&mut self) {
+        self.fds.clear();
     }
 }
 
