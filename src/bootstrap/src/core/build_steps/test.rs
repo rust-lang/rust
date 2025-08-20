@@ -3578,7 +3578,7 @@ impl Step for CodegenCranelift {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CodegenGCC {
-    compiler: Compiler,
+    compilers: RustcPrivateCompilers,
     target: TargetSelection,
 }
 
@@ -3594,7 +3594,7 @@ impl Step for CodegenGCC {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let host = run.build_triple();
-        let compiler = run.builder.compiler_for(run.builder.top_stage, host, host);
+        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, host);
 
         if builder.doc_tests == DocTests::Only {
             return;
@@ -3623,68 +3623,41 @@ impl Step for CodegenGCC {
             return;
         }
 
-        builder.ensure(CodegenGCC { compiler, target: run.target });
+        builder.ensure(CodegenGCC { compilers, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
+        let compilers = self.compilers;
         let target = self.target;
 
         let gcc = builder.ensure(Gcc { target });
 
         builder.ensure(
-            compile::Std::new(compiler, target)
+            compile::Std::new(compilers.build_compiler(), target)
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
         );
 
-        // If we're not doing a full bootstrap but we're testing a stage2
-        // version of libstd, then what we're actually testing is the libstd
-        // produced in stage1. Reflect that here by updating the compiler that
-        // we're working with automatically.
-        let compiler = builder.compiler_for(compiler.stage, compiler.host, target);
+        let _msg = builder.msg_test("rustc_codegen_gcc", compilers.build_compiler());
 
-        let build_cargo = || {
-            let mut cargo = builder::Cargo::new(
-                builder,
-                compiler,
-                Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
-                SourceType::InTree,
-                target,
-                Kind::Run,
-            );
+        let mut cargo = builder::Cargo::new(
+            builder,
+            compilers.build_compiler(),
+            Mode::Codegen, // Must be codegen to ensure dlopen on compiled dylibs works
+            SourceType::InTree,
+            target,
+            Kind::Run,
+        );
 
-            cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
-            cargo
-                .arg("--manifest-path")
-                .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
-            compile::rustc_cargo_env(builder, &mut cargo, target);
-            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        cargo.current_dir(&builder.src.join("compiler/rustc_codegen_gcc"));
+        cargo
+            .arg("--manifest-path")
+            .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
+        compile::rustc_cargo_env(builder, &mut cargo, target);
+        add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
-            // Avoid incremental cache issues when changing rustc
-            cargo.env("CARGO_BUILD_INCREMENTAL", "false");
-            cargo.rustflag("-Cpanic=abort");
-
-            cargo
-        };
-
-        builder.info(&format!(
-            "{} GCC stage{} ({} -> {})",
-            Kind::Test.description(),
-            compiler.stage,
-            &compiler.host,
-            target
-        ));
-        let _time = helpers::timeit(builder);
-
-        // FIXME: Uncomment the `prepare` command below once vendoring is implemented.
-        /*
-        let mut prepare_cargo = build_cargo();
-        prepare_cargo.arg("--").arg("prepare");
-        #[expect(deprecated)]
-        builder.config.try_run(&mut prepare_cargo.into()).unwrap();
-        */
-
-        let mut cargo = build_cargo();
+        // Avoid incremental cache issues when changing rustc
+        cargo.env("CARGO_BUILD_INCREMENTAL", "false");
+        cargo.rustflag("-Cpanic=abort");
 
         cargo
             // cg_gcc's build system ignores RUSTFLAGS. pass some flags through CG_RUSTFLAGS instead.
@@ -3696,13 +3669,20 @@ impl Step for CodegenGCC {
             .arg("--gcc-path")
             .arg(gcc.libgccjit.parent().unwrap())
             .arg("--out-dir")
-            .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_gcc"))
+            .arg(builder.stage_out(compilers.build_compiler(), Mode::Codegen).join("cg_gcc"))
             .arg("--release")
             .arg("--mini-tests")
             .arg("--std-tests");
         cargo.args(builder.config.test_args());
 
         cargo.into_cmd().run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("rustc_codegen_gcc", self.target)
+                .built_by(self.compilers.build_compiler()),
+        )
     }
 }
 
