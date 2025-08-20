@@ -16,35 +16,29 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
 ) -> bool {
-    let tcx = cx.tcx;
-
-    let (ty::Int(_) | ty::Uint(_), ty::Adt(adt, substs)) = (&from_ty.kind(), to_ty.kind()) else {
-        return false;
-    };
-
-    if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
-        return false;
+    if let ty::Int(_) | ty::Uint(_) = from_ty.kind()
+        && let ty::Adt(adt, substs) = to_ty.kind()
+        && cx.tcx.is_diagnostic_item(sym::NonZero, adt.did())
+        && let int_ty = substs.type_at(0)
+        && from_ty == int_ty
+    {
+        span_lint_and_then(
+            cx,
+            TRANSMUTE_INT_TO_NON_ZERO,
+            e.span,
+            format!("transmute from a `{from_ty}` to a `{}<{int_ty}>`", sym::NonZero),
+            |diag| {
+                let arg = sugg::Sugg::hir(cx, arg, "..");
+                diag.span_suggestion(
+                    e.span,
+                    "consider using",
+                    format!("{}::{}({arg})", sym::NonZero, sym::new_unchecked),
+                    Applicability::Unspecified,
+                );
+            },
+        );
+        true
+    } else {
+        false
     }
-
-    let int_ty = substs.type_at(0);
-    if from_ty != int_ty {
-        return false;
-    }
-
-    span_lint_and_then(
-        cx,
-        TRANSMUTE_INT_TO_NON_ZERO,
-        e.span,
-        format!("transmute from a `{from_ty}` to a `{}<{int_ty}>`", sym::NonZero),
-        |diag| {
-            let arg = sugg::Sugg::hir(cx, arg, "..");
-            diag.span_suggestion(
-                e.span,
-                "consider using",
-                format!("{}::{}({arg})", sym::NonZero, sym::new_unchecked),
-                Applicability::Unspecified,
-            );
-        },
-    );
-    true
 }
