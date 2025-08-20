@@ -1079,7 +1079,7 @@ impl Step for RustdocJSNotStd {
 
     fn run(self, builder: &Builder<'_>) {
         builder.ensure(Compiletest {
-            compiler: self.compiler,
+            test_compiler: self.compiler,
             target: self.target,
             mode: "rustdoc-js",
             suite: "rustdoc-js",
@@ -1437,8 +1437,8 @@ macro_rules! test {
         $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
+            test_compiler: Compiler,
+            target: TargetSelection,
         }
 
         impl Step for $name {
@@ -1456,14 +1456,14 @@ macro_rules! test {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+                let test_compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
 
-                run.builder.ensure($name { compiler, target: run.target });
+                run.builder.ensure($name { test_compiler, target: run.target });
             }
 
             fn run(self, builder: &Builder<'_>) {
                 builder.ensure(Compiletest {
-                    compiler: self.compiler,
+                    test_compiler: self.test_compiler,
                     target: self.target,
                     mode: $mode,
                     suite: $suite,
@@ -1644,7 +1644,7 @@ impl Step for Coverage {
         // Like other compiletest suite test steps, delegate to an internal
         // compiletest task to actually run the tests.
         builder.ensure(Compiletest {
-            compiler,
+            test_compiler: compiler,
             target,
             mode,
             suite: Self::SUITE,
@@ -1685,7 +1685,7 @@ impl Step for MirOpt {
     fn run(self, builder: &Builder<'_>) {
         let run = |target| {
             builder.ensure(Compiletest {
-                compiler: self.compiler,
+                test_compiler: self.compiler,
                 target,
                 mode: "mir-opt",
                 suite: "mir-opt",
@@ -1720,9 +1720,15 @@ impl Step for MirOpt {
     }
 }
 
+/// Executes the `compiletest` tool to run a suite of tests.
+///
+/// Compiles all tests with `test_compiler` for `target` with the specified
+/// compiletest `mode` and `suite` arguments. For example `mode` can be
+/// "run-pass" or `suite` can be something like `debuginfo`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
-    compiler: Compiler,
+    /// The compiler that we're testing.
+    test_compiler: Compiler,
     target: TargetSelection,
     mode: &'static str,
     suite: &'static str,
@@ -1737,11 +1743,6 @@ impl Step for Compiletest {
         run.never()
     }
 
-    /// Executes the `compiletest` tool to run a suite of tests.
-    ///
-    /// Compiles all tests with `compiler` for `target` with the specified
-    /// compiletest `mode` and `suite` arguments. For example `mode` can be
-    /// "run-pass" or `suite` can be something like `debuginfo`.
     fn run(self, builder: &Builder<'_>) {
         if builder.doc_tests == DocTests::Only {
             return;
@@ -1756,7 +1757,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             crate::exit!(1);
         }
 
-        let mut compiler = self.compiler;
+        let mut test_compiler = self.test_compiler;
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
@@ -1776,30 +1777,30 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let query_compiler;
-        let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+        let (stage, stage_id) = if suite == "ui-fulldeps" && test_compiler.stage == 1 {
             // Even when using the stage 0 compiler, we also need to provide the stage 1 compiler
             // so that compiletest can query it for target information.
-            query_compiler = Some(compiler);
+            query_compiler = Some(test_compiler);
             // At stage 0 (stage - 1) we are using the stage0 compiler. Using `self.target` can lead
             // finding an incorrect compiler path on cross-targets, as the stage 0 is always equal to
             // `build.build` in the configuration.
             let build = builder.build.host_target;
-            compiler = builder.compiler(compiler.stage - 1, build);
-            let test_stage = compiler.stage + 1;
+            test_compiler = builder.compiler(test_compiler.stage - 1, build);
+            let test_stage = test_compiler.stage + 1;
             (test_stage, format!("stage{test_stage}-{build}"))
         } else {
             query_compiler = None;
-            let stage = compiler.stage;
+            let stage = test_compiler.stage;
             (stage, format!("stage{stage}-{target}"))
         };
 
         if suite.ends_with("fulldeps") {
-            builder.ensure(compile::Rustc::new(compiler, target));
+            builder.ensure(compile::Rustc::new(test_compiler, target));
         }
 
         if suite == "debuginfo" {
             builder.ensure(dist::DebuggerScripts {
-                sysroot: builder.sysroot(compiler).to_path_buf(),
+                sysroot: builder.sysroot(test_compiler).to_path_buf(),
                 target,
             });
         }
@@ -1809,20 +1810,22 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // ensure that `libproc_macro` is available on the host.
         if suite == "mir-opt" {
-            builder.ensure(compile::Std::new(compiler, compiler.host).is_for_mir_opt_tests(true));
+            builder.ensure(
+                compile::Std::new(test_compiler, test_compiler.host).is_for_mir_opt_tests(true),
+            );
         } else {
-            builder.std(compiler, compiler.host);
+            builder.std(test_compiler, test_compiler.host);
         }
 
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
 
         if suite == "mir-opt" {
-            builder.ensure(compile::Std::new(compiler, target).is_for_mir_opt_tests(true));
+            builder.ensure(compile::Std::new(test_compiler, target).is_for_mir_opt_tests(true));
         } else {
-            builder.std(compiler, target);
+            builder.std(test_compiler, target);
         }
 
-        builder.ensure(RemoteCopyLibs { build_compiler: compiler, target });
+        builder.ensure(RemoteCopyLibs { build_compiler: test_compiler, target });
 
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
@@ -1830,9 +1833,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--stage").arg(stage.to_string());
         cmd.arg("--stage-id").arg(stage_id);
 
-        cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
-        cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
-        cmd.arg("--rustc-path").arg(builder.rustc(compiler));
+        cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(test_compiler));
+        cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(test_compiler, target));
+        cmd.arg("--rustc-path").arg(builder.rustc(test_compiler));
         if let Some(query_compiler) = query_compiler {
             cmd.arg("--query-rustc-path").arg(builder.rustc(query_compiler));
         }
@@ -1849,14 +1852,16 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                builder.ensure(tool::Cargo::from_build_compiler(compiler, compiler.host)).tool_path
+                builder
+                    .ensure(tool::Cargo::from_build_compiler(test_compiler, test_compiler.host))
+                    .tool_path
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
 
             // We need to pass the compiler that was used to compile run-make-support,
             // because we have to use the same compiler to compile rmake.rs recipes.
-            let stage0_rustc_path = builder.compiler(0, compiler.host);
+            let stage0_rustc_path = builder.compiler(0, test_compiler.host);
             cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
         }
 
@@ -1868,7 +1873,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             || mode == "rustdoc-json"
             || suite == "coverage-run-rustdoc"
         {
-            cmd.arg("--rustdoc-path").arg(builder.rustdoc_for_compiler(compiler));
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc_for_compiler(test_compiler));
         }
 
         if mode == "rustdoc-json" {
@@ -1893,14 +1898,14 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // directory immediately under the root build directory, and the test-suite-specific build
         // directory.
         cmd.arg("--build-root").arg(&builder.out);
-        cmd.arg("--build-test-suite-root").arg(testdir(builder, compiler.host).join(suite));
+        cmd.arg("--build-test-suite-root").arg(testdir(builder, test_compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
         let sysroot = if builder.top_stage == 0 {
             builder.initial_sysroot.clone()
         } else {
-            builder.sysroot(compiler)
+            builder.sysroot(test_compiler)
         };
 
         cmd.arg("--sysroot-base").arg(sysroot);
@@ -1908,11 +1913,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());
-        cmd.arg("--host").arg(&*compiler.host.triple);
+        cmd.arg("--host").arg(&*test_compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
         if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
-            if !builder.config.enabled_codegen_backends(compiler.host).contains(codegen_backend) {
+            if !builder.config.enabled_codegen_backends(test_compiler.host).contains(codegen_backend) {
                 eprintln!(
                     "\
 ERROR: No configured backend named `{name}`
@@ -1931,7 +1936,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
             cmd.arg("--default-codegen-backend")
-                .arg(builder.config.default_codegen_backend(compiler.host).name());
+                .arg(builder.config.default_codegen_backend(test_compiler.host).name());
         }
 
         if builder.build.config.llvm_enzyme {
@@ -2011,7 +2016,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             if let Some(linker) = builder.linker(target) {
                 cmd.arg("--target-linker").arg(linker);
             }
-            if let Some(linker) = builder.linker(compiler.host) {
+            if let Some(linker) = builder.linker(test_compiler.host) {
                 cmd.arg("--host-linker").arg(linker);
             }
         }
@@ -2022,16 +2027,18 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
         }
 
         let mut hostflags = flags.clone();
-        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
+        hostflags.extend(linker_flags(builder, test_compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
 
         // Provide `rust_test_helpers` for both host and target.
         if suite == "ui" || suite == "incremental" {
-            builder.ensure(TestHelpers { target: compiler.host });
+            builder.ensure(TestHelpers { target: test_compiler.host });
             builder.ensure(TestHelpers { target });
-            hostflags
-                .push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
+            hostflags.push(format!(
+                "-Lnative={}",
+                builder.test_helpers_out(test_compiler.host).display()
+            ));
             targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
         }
 
@@ -2116,7 +2123,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
-        if builder.config.llvm_enabled(compiler.host) {
+        if builder.config.llvm_enabled(test_compiler.host) {
             let llvm::LlvmResult { host_llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
@@ -2327,7 +2334,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             format!("compiletest suite={suite} mode={mode}"),
             // FIXME: compiletest sometimes behaves as ToolStd, we could expose that difference here
             Mode::ToolBootstrap,
-            compiler,
+            test_compiler,
             target,
         );
         try_run_tests(builder, &mut cmd, false);
@@ -2350,7 +2357,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
 
             builder.info(&format!(
                 "Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
-                suite, mode, compare_mode, &compiler.host, target
+                suite, mode, compare_mode, &test_compiler.host, target
             ));
             let _time = helpers::timeit(builder);
             try_run_tests(builder, &mut cmd, false);
@@ -2360,7 +2367,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
     fn metadata(&self) -> Option<StepMetadata> {
         Some(
             StepMetadata::test(&format!("compiletest-{}", self.suite), self.target)
-                .stage(self.compiler.stage),
+                .stage(self.test_compiler.stage),
         )
     }
 }
