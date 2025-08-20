@@ -2038,6 +2038,76 @@ mod snapshot {
     }
 
     #[test]
+    fn test_all() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> Tidy 1 <host>
+        [test] tidy <>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] Ui <host>
+        [test] Crashes <host>
+        [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [test] CodegenLlvm <host>
+        [test] CodegenUnits <host>
+        [test] AssemblyLlvm <host>
+        [test] Incremental <host>
+        [test] Debuginfo <host>
+        [test] UiFullDeps <host>
+        [build] rustdoc 1 <host>
+        [test] Rustdoc <host>
+        [test] CoverageRunRustdoc <host>
+        [test] Pretty <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [test] CrateLibrustc <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 0 <host>
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [doc] rustc 0 <host> -> standalone 1 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 0 <host> -> error-index 1 <host>
+        [doc] rustc 0 <host> -> error-index 1 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 0 <host> -> releases 1 <host>
+        [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [test] tier-check <host>
+        [doc] rustc (book) <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] RustdocUi <host>
+        [build] rustc 0 <host> -> JsonDocCk 1 <host>
+        [build] rustc 0 <host> -> JsonDocLint 1 <host>
+        [test] RustdocJson <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [test] RunMake <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
@@ -2125,7 +2195,7 @@ mod snapshot {
                 .render_steps(), @r"
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
-        [test] rustc 0 <host> -> tier-check 1 <host>
+        [test] tier-check <host>
         ");
     }
 
