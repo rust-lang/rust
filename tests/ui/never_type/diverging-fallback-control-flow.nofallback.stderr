@@ -12,7 +12,7 @@ note: in edition 2024, the requirement `!: UnitDefault` will fail
    |
 LL |         x = UnitDefault::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: ();
@@ -54,7 +54,7 @@ note: in edition 2024, the requirement `!: UnitDefault` will fail
    |
 LL |         x = UnitDefault::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: ();
@@ -75,7 +75,7 @@ note: in edition 2024, the requirement `!: UnitDefault` will fail
    |
 LL |         x = UnitDefault::default();
    |             ^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
+   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |     let x: ();
