@@ -1,5 +1,5 @@
 error: suffixes on string literals are invalid
-  --> $DIR/raw-string-suffix-invalid.rs:5:13
+  --> $DIR/raw-string-suffix-invalid.rs:4:13
    |
 LL |     let s = r#" \ "#r"\ ";
    |             ^^^^^^^^^^ invalid suffix `r`
