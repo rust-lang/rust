@@ -4678,11 +4678,9 @@ pub unsafe fn vec_subc_u128(
     a: vector_unsigned_char,
     b: vector_unsigned_char,
 ) -> vector_unsigned_char {
-    // FIXME(llvm) sadly this does not work https://github.com/llvm/llvm-project/issues/129608
-    // let a: u128 = transmute(a);
-    // let b: u128 = transmute(b);
-    // transmute(!a.overflowing_sub(b).1 as u128)
-    transmute(vscbiq(transmute(a), transmute(b)))
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+    transmute(!a.overflowing_sub(b).1 as u128)
 }
 
 /// Vector Add Compute Carryout unsigned 128-bits
@@ -4714,7 +4712,7 @@ pub unsafe fn vec_adde_u128(
     let a: u128 = transmute(a);
     let b: u128 = transmute(b);
     let c: u128 = transmute(c);
-    // FIXME(llvm) sadly this does not work
+    // FIXME(llvm) https://github.com/llvm/llvm-project/pull/153557
     //     let (d, _carry) = a.carrying_add(b, c & 1 != 0);
     //     transmute(d)
     transmute(vacq(a, b, c))
