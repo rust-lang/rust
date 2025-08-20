@@ -2093,6 +2093,7 @@ mod snapshot {
         [build] rustc 0 <host> -> Linkchecker 1 <host>
         [test] tier-check <host>
         [doc] rustc (book) <host>
+        [test] rustc 1 <host> -> lint-docs 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[]
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] RustdocUi <host>

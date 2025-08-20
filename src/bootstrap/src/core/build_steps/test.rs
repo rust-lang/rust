@@ -12,7 +12,7 @@ use std::{env, fs, iter};
 use build_helper::exit;
 
 use crate::core::build_steps::compile::{Std, run_cargo};
-use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::get_completion_paths;
@@ -3304,8 +3304,8 @@ impl Step for TierCheck {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LintDocs {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for LintDocs {
@@ -3318,8 +3318,21 @@ impl Step for LintDocs {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // Bump the stage to 2, because the rustc book requires an in-tree compiler.
+        // At the same time, since this step is enabled by default, we don't want `x test` to fail
+        // in stage 1.
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
+            run.builder.top_stage
+        } else {
+            2
+        };
+
         run.builder.ensure(LintDocs {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+            build_compiler: prepare_doc_compiler(
+                run.builder,
+                run.builder.config.host_target,
+                stage,
+            ),
             target: run.target,
         });
     }
@@ -3327,8 +3340,14 @@ impl Step for LintDocs {
     /// Tests that the lint examples in the rustc book generate the correct
     /// lints and have the expected format.
     fn run(self, builder: &Builder<'_>) {
-        builder
-            .ensure(crate::core::build_steps::doc::RustcBook::validate(self.compiler, self.target));
+        builder.ensure(crate::core::build_steps::doc::RustcBook::validate(
+            self.build_compiler,
+            self.target,
+        ));
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("lint-docs", self.target).built_by(self.build_compiler))
     }
 }
 
