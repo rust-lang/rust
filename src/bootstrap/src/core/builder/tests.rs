@@ -2064,9 +2064,10 @@ mod snapshot {
         [test] CoverageRunRustdoc <host>
         [test] Pretty <host>
         [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> std 0 <host>
+        [build] rustdoc 0 <host>
         [test] CrateLibrustc <host>
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 0 <host>
         [test] crate-bootstrap <host> src/tools/coverage-dump
         [test] crate-bootstrap <host> src/tools/jsondoclint
         [test] crate-bootstrap <host> src/tools/replace-version-placeholder
@@ -2101,7 +2102,7 @@ mod snapshot {
         [doc] rustc (book) <host>
         [test] rustc 1 <host> -> lint-docs 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[]
-        [test] rustc 1 <host> -> rustdoc-js-std 2 <host>
+        [test] rustdoc-js-std 1 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
         [test] RustdocUi <host>
