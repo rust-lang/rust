@@ -1306,9 +1306,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.get_inner(k) {
-            Some((_, v)) => Some(v),
-            None => None,
+        if !self.table.is_empty() {
+            let hash = make_hash::<Q, S>(&self.hash_builder, k);
+            match self.table.get(hash, equivalent_key(k)) {
+                Some((_, v)) => Some(v),
+                None => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -1337,22 +1342,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.get_inner(k) {
-            Some((key, value)) => Some((key, value)),
-            None => None,
-        }
-    }
-
-    #[inline]
-    fn get_inner<Q>(&self, k: &Q) -> Option<&(K, V)>
-    where
-        Q: Hash + Equivalent<K> + ?Sized,
-    {
-        if self.table.is_empty() {
-            None
-        } else {
+        if !self.table.is_empty() {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
-            self.table.get(hash, equivalent_key(k))
+            match self.table.get(hash, equivalent_key(k)) {
+                Some((key, value)) => Some((key, value)),
+                None => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -1385,9 +1382,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.get_inner_mut(k) {
-            Some(&mut (ref key, ref mut value)) => Some((key, value)),
-            None => None,
+        if !self.table.is_empty() {
+            let hash = make_hash::<Q, S>(&self.hash_builder, k);
+            match self.table.get_mut(hash, equivalent_key(k)) {
+                Some(&mut (ref key, ref mut value)) => Some((key, value)),
+                None => None,
+            }
+        } else {
+            None
         }
     }
 
@@ -1415,7 +1417,12 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_inner(k).is_some()
+        if !self.table.is_empty() {
+            let hash = make_hash::<Q, S>(&self.hash_builder, k);
+            self.table.get(hash, equivalent_key(k)).is_some()
+        } else {
+            false
+        }
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -1447,22 +1454,14 @@ where
         Q: Hash + Equivalent<K> + ?Sized,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
-        match self.get_inner_mut(k) {
-            Some(&mut (_, ref mut v)) => Some(v),
-            None => None,
-        }
-    }
-
-    #[inline]
-    fn get_inner_mut<Q>(&mut self, k: &Q) -> Option<&mut (K, V)>
-    where
-        Q: Hash + Equivalent<K> + ?Sized,
-    {
-        if self.table.is_empty() {
-            None
-        } else {
+        if !self.table.is_empty() {
             let hash = make_hash::<Q, S>(&self.hash_builder, k);
-            self.table.get_mut(hash, equivalent_key(k))
+            match self.table.get_mut(hash, equivalent_key(k)) {
+                Some(&mut (_, ref mut v)) => Some(v),
+                None => None,
+            }
+        } else {
+            None
         }
     }
 
