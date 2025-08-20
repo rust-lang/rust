@@ -292,7 +292,9 @@ impl dyn Any {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_ref_unchecked<T: Any>(&self) -> &T {
-        debug_assert!(self.is::<T>());
+        if core::ub_checks::check_library_ub() {
+            assert!(self.is::<T>());
+        }
         // SAFETY: caller guarantees that T is the correct type
         unsafe { &*(self as *const dyn Any as *const T) }
     }
@@ -322,7 +324,9 @@ impl dyn Any {
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     #[inline]
     pub unsafe fn downcast_mut_unchecked<T: Any>(&mut self) -> &mut T {
-        debug_assert!(self.is::<T>());
+        if core::ub_checks::check_library_ub() {
+            assert!(self.is::<T>());
+        }
         // SAFETY: caller guarantees that T is the correct type
         unsafe { &mut *(self as *mut dyn Any as *mut T) }
     }
