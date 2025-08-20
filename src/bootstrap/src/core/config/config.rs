@@ -623,7 +623,7 @@ impl Config {
             targets: llvm_targets,
             experimental_targets: llvm_experimental_targets,
             link_jobs: llvm_link_jobs,
-            link_shared: llvm_link_shared_,
+            link_shared: llvm_link_shared,
             version_suffix: llvm_version_suffix,
             clang_cl: llvm_clang_cl,
             cflags: llvm_cflags,
@@ -682,7 +682,6 @@ impl Config {
 
         let mut target_config = HashMap::new();
         let mut download_rustc_commit = None;
-        let llvm_link_shared = Cell::default();
         let mut llvm_from_ci = false;
         let mut channel = "dev".to_string();
         let mut out = flags_build_dir
@@ -764,7 +763,7 @@ impl Config {
         ));
 
         let initial_cargo = build_cargo.unwrap_or_else(|| {
-            download_beta_toolchain(&mut dwn_ctx);
+            download_beta_toolchain(&dwn_ctx);
             initial_sysroot.join("bin").join(exe("cargo", host_target))
         });
 
@@ -848,11 +847,9 @@ impl Config {
                 "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
             );
 
-            let channel_ = read_file_by_commit(&dwn_ctx, Path::new("src/ci/channel"), commit)
+            channel = read_file_by_commit(&dwn_ctx, Path::new("src/ci/channel"), commit)
                 .trim()
                 .to_owned();
-
-            channel = channel_;
         }
 
         if let Some(t) = toml.target {
@@ -917,6 +914,9 @@ impl Config {
             dwn_ctx.target_config = target_config.clone();
         }
 
+        llvm_from_ci = parse_download_ci_llvm(&dwn_ctx, llvm_download_ci_llvm, llvm_assertions);
+        dwn_ctx.llvm_from_ci = llvm_from_ci;
+
         // We make `x86_64-unknown-linux-gnu` use the self-contained linker by default, so we will
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
         // to true by default:
@@ -939,13 +939,6 @@ impl Config {
             rust_lld_enabled.unwrap_or(false)
         };
 
-        if let Some(v) = llvm_link_shared_ {
-            llvm_link_shared.set(Some(v));
-        }
-
-        llvm_from_ci = parse_download_ci_llvm(&dwn_ctx, llvm_download_ci_llvm, llvm_assertions);
-        dwn_ctx.llvm_from_ci = llvm_from_ci;
-
         if llvm_from_ci {
             let warn = |option: &str| {
                 println!(
@@ -960,7 +953,7 @@ impl Config {
                 warn("static-libstdcpp");
             }
 
-            if llvm_link_shared_.is_some() {
+            if llvm_link_shared.is_some() {
                 warn("link-shared");
             }
 
@@ -979,13 +972,6 @@ impl Config {
                     "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                 );
             }
-        }
-
-        if !llvm_from_ci && llvm_thin_lto.unwrap_or(false) && llvm_link_shared_.is_none() {
-            // If we're building with ThinLTO on, by default we want to link
-            // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-            // the link step) with each stage.
-            llvm_link_shared.set(Some(true));
         }
 
         if llvm_from_ci {
@@ -1340,6 +1326,13 @@ impl Config {
             patch_binaries_for_nix: build_patch_binaries_for_nix,
             cmd: flags_cmd,
             submodules: build_submodules,
+            // If we're building with ThinLTO on, by default we want to link
+            // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+            // the link step) with each stage.
+            llvm_link_shared: Cell::new(
+                llvm_link_shared
+                    .or((!llvm_from_ci && llvm_thin_lto.unwrap_or(false)).then_some(true)),
+            ),
             exec_ctx,
             out,
             rust_info,
@@ -1361,7 +1354,6 @@ impl Config {
             path_modification_cache,
             stage0_metadata,
             download_rustc_commit,
-            llvm_link_shared,
         }
     }
 
