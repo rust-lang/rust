@@ -1,5 +1,5 @@
 use super::TRANSMUTE_INT_TO_NON_ZERO;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -22,20 +22,15 @@ pub(super) fn check<'tcx>(
         && let int_ty = substs.type_at(0)
         && from_ty == int_ty
     {
-        span_lint_and_then(
+        let arg = sugg::Sugg::hir(cx, arg, "..");
+        span_lint_and_sugg(
             cx,
             TRANSMUTE_INT_TO_NON_ZERO,
             e.span,
             format!("transmute from a `{from_ty}` to a `{}<{int_ty}>`", sym::NonZero),
-            |diag| {
-                let arg = sugg::Sugg::hir(cx, arg, "..");
-                diag.span_suggestion(
-                    e.span,
-                    "consider using",
-                    format!("{}::{}({arg})", sym::NonZero, sym::new_unchecked),
-                    Applicability::Unspecified,
-                );
-            },
+            "consider using",
+            format!("{}::{}({arg})", sym::NonZero, sym::new_unchecked),
+            Applicability::Unspecified,
         );
         true
     } else {
