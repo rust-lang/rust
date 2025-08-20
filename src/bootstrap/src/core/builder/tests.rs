@@ -2067,6 +2067,10 @@ mod snapshot {
         [test] CrateLibrustc <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustdoc 0 <host>
+        [test] crate-bootstrap <host> src/tools/coverage-dump
+        [test] crate-bootstrap <host> src/tools/jsondoclint
+        [test] crate-bootstrap <host> src/tools/replace-version-placeholder
+        [test] crate-bootstrap <host> tidyselftest
         [build] rustc 0 <host> -> UnstableBookGen 1 <host>
         [build] rustc 0 <host> -> Rustbook 1 <host>
         [doc] unstable-book (book) <host>
@@ -2091,17 +2095,22 @@ mod snapshot {
         [doc] style-guide (book) <host>
         [doc] rustc 0 <host> -> releases 1 <host>
         [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [test] link-check <host>
         [test] tier-check <host>
+        [test] rustc 0 <host> -> rust-analyzer 1 <host>
         [doc] rustc (book) <host>
         [test] rustc 1 <host> -> lint-docs 2 <host>
         [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [test] rustc 1 <host> -> rustdoc-js-std 2 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] rustdoc-theme 1 <host>
         [test] RustdocUi <host>
         [build] rustc 0 <host> -> JsonDocCk 1 <host>
         [build] rustc 0 <host> -> JsonDocLint 1 <host>
         [test] RustdocJson <host>
         [doc] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
         [test] RunMake <host>
@@ -2148,6 +2157,7 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
         [build] rustdoc 0 <host>
+        [test] rustc 0 <host> -> cargo 1 <host>
         ");
     }
 
@@ -2167,6 +2177,7 @@ mod snapshot {
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustdoc 2 <host>
         [build] rustdoc 1 <host>
+        [test] rustc 1 <host> -> cargo 2 <host>
         ");
     }
 

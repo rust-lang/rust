@@ -98,6 +98,13 @@ impl Step for CrateBootstrap {
         let crate_name = path.rsplit_once('/').unwrap().1;
         run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("crate-bootstrap", self.host)
+                .with_metadata(self.path.as_path().to_string_lossy().to_string()),
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -173,6 +180,10 @@ You can skip linkcheck with --skip src/tools/linkchecker"
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Linkcheck { host: run.target });
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("link-check", self.host))
+    }
 }
 
 fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
@@ -220,6 +231,10 @@ impl Step for HtmlCheck {
             .delay_failure()
             .arg(builder.doc_out(self.target))
             .run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("html-check", self.target))
     }
 }
 
@@ -399,6 +414,10 @@ impl Step for Cargo {
         let _time = helpers::timeit(builder);
         add_flags_and_try_run_tests(builder, &mut cargo);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("cargo", self.host).built_by(self.build_compiler))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -457,6 +476,13 @@ impl Step for RustAnalyzer {
         cargo.add_rustc_lib_path(builder);
         run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("rust-analyzer", self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
 }
 
 /// Runs `cargo test` for rustfmt.
@@ -507,6 +533,13 @@ impl Step for Rustfmt {
         cargo.add_rustc_lib_path(builder);
 
         run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("rustfmt", self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
     }
 }
 
@@ -887,6 +920,13 @@ impl Step for Clippy {
             crate::exit!(1);
         }
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("clippy", self.compilers.target())
+                .built_by(self.compilers.build_compiler()),
+        )
+    }
 }
 
 fn bin_path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
@@ -895,9 +935,11 @@ fn bin_path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
     env::join_paths(iter::once(path).chain(env::split_paths(&old_path))).expect("")
 }
 
+/// Run the rustdoc-themes tool to test a given compiler.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocTheme {
-    pub compiler: Compiler,
+    /// The compiler (more accurately, its rustdoc) that we test.
+    test_compiler: Compiler,
 }
 
 impl Step for RustdocTheme {
@@ -910,9 +952,9 @@ impl Step for RustdocTheme {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.target);
+        let test_compiler = run.builder.compiler(run.builder.top_stage, run.target);
 
-        run.builder.ensure(RustdocTheme { compiler });
+        run.builder.ensure(RustdocTheme { test_compiler });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -920,21 +962,34 @@ impl Step for RustdocTheme {
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
             .arg(builder.src.join("src/librustdoc/html/static/css/rustdoc.css").to_str().unwrap())
-            .env("RUSTC_STAGE", self.compiler.stage.to_string())
-            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
-            .env("RUSTDOC_LIBDIR", builder.sysroot_target_libdir(self.compiler, self.compiler.host))
+            .env("RUSTC_STAGE", self.test_compiler.stage.to_string())
+            .env("RUSTC_SYSROOT", builder.sysroot(self.test_compiler))
+            .env(
+                "RUSTDOC_LIBDIR",
+                builder.sysroot_target_libdir(self.test_compiler, self.test_compiler.host),
+            )
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
-            .env("RUSTDOC_REAL", builder.rustdoc_for_compiler(self.compiler))
+            .env("RUSTDOC_REAL", builder.rustdoc_for_compiler(self.test_compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
+        cmd.args(linker_args(builder, self.test_compiler.host, LldThreads::No));
 
         cmd.delay_failure().run(builder);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(
+            StepMetadata::test("rustdoc-theme", self.test_compiler.host)
+                .stage(self.test_compiler.stage),
+        )
+    }
 }
 
+/// Test rustdoc JS for the standard library.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocJSStd {
-    pub target: TargetSelection,
+    /// Compiler that will build the standary library.
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for RustdocJSStd {
@@ -948,7 +1003,10 @@ impl Step for RustdocJSStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJSStd { target: run.target });
+        run.builder.ensure(RustdocJSStd {
+            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            target: run.target,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -976,18 +1034,17 @@ impl Step for RustdocJSStd {
             }
         }
         builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
-            builder.compiler(builder.top_stage, builder.host_target),
+            self.build_compiler,
             self.target,
             DocumentationFormat::Html,
         ));
-        let _guard = builder.msg(
-            Kind::Test,
-            "rustdoc-js-std",
-            None,
-            (builder.config.host_target, builder.top_stage),
-            self.target,
-        );
+        let _guard =
+            builder.msg(Kind::Test, "rustdoc-js-std", None, self.build_compiler, self.target);
         command.run(builder);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("rustdoc-js-std", self.target).stage(self.build_compiler.stage))
     }
 }
 
@@ -1046,10 +1103,12 @@ fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<Stri
         .or_else(|| get_browser_ui_test_version_inner(builder, npm, true))
 }
 
+/// Run GUI tests on a given rustdoc.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct RustdocGUI {
-    pub target: TargetSelection,
-    pub compiler: Compiler,
+    /// The compiler whose rustdoc we are testing.
+    test_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for RustdocGUI {
@@ -1073,12 +1132,12 @@ impl Step for RustdocGUI {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocGUI { target: run.target, compiler });
+        let test_compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        run.builder.ensure(RustdocGUI { test_compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.std(self.compiler, self.target);
+        builder.std(self.test_compiler, self.target);
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
@@ -1086,7 +1145,7 @@ impl Step for RustdocGUI {
         build_stamp::clear_if_dirty(
             builder,
             &out_dir,
-            &builder.rustdoc_for_compiler(self.compiler),
+            &builder.rustdoc_for_compiler(self.test_compiler),
         );
 
         if let Some(src) = builder.config.src.to_str() {
@@ -1103,10 +1162,10 @@ impl Step for RustdocGUI {
 
         cmd.arg("--jobs").arg(builder.jobs().to_string());
 
-        cmd.env("RUSTDOC", builder.rustdoc_for_compiler(self.compiler))
-            .env("RUSTC", builder.rustc(self.compiler));
+        cmd.env("RUSTDOC", builder.rustdoc_for_compiler(self.test_compiler))
+            .env("RUSTC", builder.rustc(self.test_compiler));
 
-        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.test_compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1133,8 +1192,12 @@ impl Step for RustdocGUI {
         }
 
         let _time = helpers::timeit(builder);
-        let _guard = builder.msg(Kind::Test, "rustdoc-gui", None, self.compiler, self.target);
+        let _guard = builder.msg_test("rustdoc-gui", (self.target, self.test_compiler.stage));
         try_run_tests(builder, &mut cmd, true);
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::test("rustdoc-gui", self.target).stage(self.test_compiler.stage))
     }
 }
 
