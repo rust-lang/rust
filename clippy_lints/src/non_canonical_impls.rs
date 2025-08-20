@@ -258,26 +258,27 @@ fn expr_is_cmp<'tcx>(
     needs_fully_qualified: &mut bool,
 ) -> bool {
     let impl_item_did = impl_item.owner_id.def_id;
-    if let ExprKind::Call(
-        Expr {
-            kind: ExprKind::Path(some_path),
-            hir_id: some_hir_id,
-            ..
-        },
-        [cmp_expr],
-    ) = expr.kind
-    {
-        is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
+    match expr.kind {
+        ExprKind::Call(
+            Expr {
+                kind: ExprKind::Path(some_path),
+                hir_id: some_hir_id,
+                ..
+            },
+            [cmp_expr],
+        ) => {
+            is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
             // Fix #11178, allow `Self::cmp(self, ..)` too
             && self_cmp_call(cx, cmp_expr, impl_item_did, needs_fully_qualified)
-    } else if let ExprKind::MethodCall(_, recv, [], _) = expr.kind {
-        cx.tcx
-            .typeck(impl_item_did)
-            .type_dependent_def_id(expr.hir_id)
-            .is_some_and(|def_id| is_diag_trait_item(cx, def_id, sym::Into))
-            && self_cmp_call(cx, recv, impl_item_did, needs_fully_qualified)
-    } else {
-        false
+        },
+        ExprKind::MethodCall(_, recv, [], _) => {
+            cx.tcx
+                .typeck(impl_item_did)
+                .type_dependent_def_id(expr.hir_id)
+                .is_some_and(|def_id| is_diag_trait_item(cx, def_id, sym::Into))
+                && self_cmp_call(cx, recv, impl_item_did, needs_fully_qualified)
+        },
+        _ => false,
     }
 }
 
