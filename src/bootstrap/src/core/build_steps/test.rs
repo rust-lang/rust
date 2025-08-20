@@ -1878,7 +1878,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if mode == "rustdoc-json" {
             // Use the stage0 compiler for jsondocck
-            let json_compiler = compiler.with_stage(0);
+            let json_compiler = builder.compiler(0, builder.host_target);
             cmd.arg("--jsondocck-path")
                 .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }).tool_path);
             cmd.arg("--jsondoclint-path").arg(

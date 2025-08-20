@@ -2109,11 +2109,6 @@ impl Compiler {
         self.forced_compiler = forced_compiler;
     }
 
-    pub fn with_stage(mut self, stage: u32) -> Compiler {
-        self.stage = stage;
-        self
-    }
-
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.host_target
