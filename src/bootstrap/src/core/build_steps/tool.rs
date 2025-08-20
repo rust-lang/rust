@@ -1539,7 +1539,7 @@ tool_rustc_extended!(Rustfmt {
     add_bins_to_sysroot: ["rustfmt"]
 });
 
-pub const TEST_FLOAT_PARSE_ALLOW_FEATURES: &'static str = "f16,cfg_target_has_reliable_f16_f128";
+pub const TEST_FLOAT_PARSE_ALLOW_FEATURES: &str = "f16,cfg_target_has_reliable_f16_f128";
 
 impl Builder<'_> {
     /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for

@@ -2042,6 +2042,10 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
             ctx.config("test")
+                // Skip bootstrap tests, as for some reason the recursive nature of running
+                // bootstrap tests under bootstrap tests causes non-deterministic snapshot diffs
+                // on CI.
+                .args(&["--skip", "bootstrap"])
                 .render_steps(), @r"
         [build] rustc 0 <host> -> Tidy 1 <host>
         [test] tidy <>
