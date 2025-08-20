@@ -33,6 +33,7 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 [`aarch64-apple-darwin`](platform-support/apple-darwin.md) | ARM64 macOS (11.0+, Big Sur+)
+[`aarch64-pc-windows-msvc`](platform-support/windows-msvc.md) | ARM64 Windows MSVC
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1+, glibc 2.17+)
 [`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4) [^x86_32-floats-return-ABI]
@@ -88,7 +89,6 @@ so Rustup may install the documentation for a similar tier 1 target instead.
 target | notes
 -------|-------
 [`aarch64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | ARM64 MinGW (Windows 10+), LLVM ABI
-[`aarch64-pc-windows-msvc`](platform-support/windows-msvc.md) | ARM64 Windows MSVC
 [`aarch64-unknown-linux-musl`](platform-support/aarch64-unknown-linux-musl.md) | ARM64 Linux with musl 1.2.3
 [`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ARM64 OpenHarmony
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2+, glibc 2.17)
