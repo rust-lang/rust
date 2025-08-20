@@ -17,7 +17,7 @@ fn main() {
 
     // Check that compiling and linking still works.
     //
-    // Removing `SDKROOT` is necessary for the test to excercise what we want, since bootstrap runs
+    // Removing `SDKROOT` is necessary for the test to exercise what we want, since bootstrap runs
     // under `/usr/bin/python3`, which will set SDKROOT for us.
     rustc().target(target()).env_remove("SDKROOT").env("PATH", &path).input("foo.rs").run();
 
