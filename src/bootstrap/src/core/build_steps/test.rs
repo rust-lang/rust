@@ -18,8 +18,8 @@ use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::get_completion_paths;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{
-    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType, Tool, ToolTargetBuildMode,
-    get_tool_target_compiler,
+    self, COMPILETEST_ALLOW_FEATURES, RustcPrivateCompilers, SourceType,
+    TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool, ToolTargetBuildMode, get_tool_target_compiler,
 };
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
@@ -2886,6 +2886,7 @@ impl Step for Crate {
     }
 }
 
+/// Run cargo tests for the rustdoc crate.
 /// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
@@ -2981,7 +2982,8 @@ impl Step for CrateRustdoc {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdocJsonTypes {
-    host: TargetSelection,
+    build_compiler: Compiler,
+    target: TargetSelection,
 }
 
 impl Step for CrateRustdocJsonTypes {
@@ -2996,23 +2998,22 @@ impl Step for CrateRustdocJsonTypes {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        builder.ensure(CrateRustdocJsonTypes { host: run.target });
+        builder.ensure(CrateRustdocJsonTypes {
+            build_compiler: get_tool_target_compiler(
+                builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
+            target: run.target,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let target = self.host;
-
-        // Use the previous stage compiler to reuse the artifacts that are
-        // created when running compiletest for tests/rustdoc. If this used
-        // `compiler`, then it would cause rustdoc to be built *again*, which
-        // isn't really necessary.
-        let compiler = builder.compiler_for(builder.top_stage, target, target);
-        builder.ensure(compile::Rustc::new(compiler, target));
+        let target = self.target;
 
         let cargo = tool::prepare_tool_cargo(
             builder,
-            compiler,
-            Mode::ToolRustc,
+            self.build_compiler,
+            Mode::ToolTarget,
             target,
             builder.kind,
             "src/rustdoc-json-types",
@@ -3021,7 +3022,7 @@ impl Step for CrateRustdocJsonTypes {
         );
 
         // FIXME: this looks very wrong, libtest doesn't accept `-C` arguments and the quotes are fishy.
-        let libtest_args = if self.host.contains("musl") {
+        let libtest_args = if target.contains("musl") {
             ["'-Ctarget-feature=-crt-static'"].as_slice()
         } else {
             &[]
@@ -3705,14 +3706,35 @@ impl Step for CodegenGCC {
     }
 }
 
+/// Get a build compiler that can be used to test the standard library (i.e. its stage will
+/// correspond to the stage that we want to test).
+fn get_test_build_compiler_for_std(builder: &Builder<'_>) -> Compiler {
+    if builder.top_stage == 0 {
+        eprintln!(
+            "ERROR: cannot run tests on stage 0. `build.compiletest-allow-stage0` only works for compiletest test suites."
+        );
+        exit!(1);
+    }
+    builder.compiler(builder.top_stage, builder.host_target)
+}
+
 /// Test step that does two things:
 /// - Runs `cargo test` for the `src/tools/test-float-parse` tool.
 /// - Invokes the `test-float-parse` tool to test the standard library's
 ///   float parsing routines.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {
-    path: PathBuf,
-    host: TargetSelection,
+    /// The build compiler which will build and run unit tests of `test-float-parse`, and which will
+    /// build the `test-float-parse` tool itself.
+    ///
+    /// Note that the staging is a bit funny here, because this step essentially tests std, but it
+    /// also needs to build the tool. So if we test stage1 std, we build:
+    /// 1) stage1 rustc
+    /// 2) Use that to build stage1 libstd
+    /// 3) Use that to build and run *stage2* test-float-parse
+    build_compiler: Compiler,
+    /// Target for which we build std and test that std.
+    target: TargetSelection,
 }
 
 impl Step for TestFloatParse {
@@ -3725,47 +3747,47 @@ impl Step for TestFloatParse {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        for path in run.paths {
-            let path = path.assert_single_path().path.clone();
-            run.builder.ensure(Self { path, host: run.target });
-        }
+        run.builder.ensure(Self {
+            build_compiler: get_test_build_compiler_for_std(run.builder),
+            target: run.target,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let bootstrap_host = builder.config.host_target;
-        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
-        let path = self.path.to_str().unwrap();
-        let crate_name = self.path.iter().next_back().unwrap().to_str().unwrap();
+        let build_compiler = self.build_compiler;
+        let target = self.target;
 
-        builder.ensure(tool::TestFloatParse { host: self.host });
+        // Build the standard library that will be tested, and a stdlib for host code
+        builder.std(build_compiler, target);
+        builder.std(build_compiler, builder.host_target);
 
         // Run any unit tests in the crate
         let mut cargo_test = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolStd,
-            bootstrap_host,
+            target,
             Kind::Test,
-            path,
+            "src/tools/test-float-parse",
             SourceType::InTree,
             &[],
         );
-        cargo_test.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
+        cargo_test.allow_features(TEST_FLOAT_PARSE_ALLOW_FEATURES);
 
-        run_cargo_test(cargo_test, &[], &[], crate_name, bootstrap_host, builder);
+        run_cargo_test(cargo_test, &[], &[], "test-float-parse", target, builder);
 
         // Run the actual parse tests.
         let mut cargo_run = tool::prepare_tool_cargo(
             builder,
-            compiler,
+            build_compiler,
             Mode::ToolStd,
-            bootstrap_host,
+            target,
             Kind::Run,
-            path,
+            "src/tools/test-float-parse",
             SourceType::InTree,
             &[],
         );
-        cargo_run.allow_features(tool::TestFloatParse::ALLOW_FEATURES);
+        cargo_run.allow_features(TEST_FLOAT_PARSE_ALLOW_FEATURES);
 
         if !matches!(env::var("FLOAT_PARSE_TESTS_NO_SKIP_HUGE").as_deref(), Ok("1") | Ok("true")) {
             cargo_run.args(["--", "--skip-huge"]);
