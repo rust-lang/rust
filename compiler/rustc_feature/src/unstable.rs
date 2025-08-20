@@ -556,6 +556,8 @@ declare_features! (
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Allow `macro_rules!` attribute rules
     (unstable, macro_attr, "CURRENT_RUSTC_VERSION", Some(83527)),
+    /// Allow `macro_rules!` derive rules
+    (unstable, macro_derive, "CURRENT_RUSTC_VERSION", Some(143549)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
@@ -592,8 +594,6 @@ declare_features! (
     (unstable, new_range, "1.86.0", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
-    /// Allows the use of `no_sanitize` attribute.
-    (unstable, no_sanitize, "1.42.0", Some(39699)),
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
@@ -626,6 +626,8 @@ declare_features! (
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Allows the use of the `sanitize` attribute.
+    (unstable, sanitize, "CURRENT_RUSTC_VERSION", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).

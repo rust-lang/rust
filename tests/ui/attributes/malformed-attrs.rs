@@ -12,7 +12,7 @@
 #![feature(min_generic_const_args)]
 #![feature(ffi_const, ffi_pure)]
 #![feature(coverage_attribute)]
-#![feature(no_sanitize)]
+#![feature(sanitize)]
 #![feature(marker_trait_attr)]
 #![feature(thread_local)]
 #![feature(must_not_suspend)]
@@ -89,7 +89,7 @@
 //~^ ERROR malformed
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-#[no_sanitize]
+#[sanitize]
 //~^ ERROR malformed
 #[ignore()]
 //~^ ERROR valid forms for the attribute are

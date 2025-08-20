@@ -49,13 +49,36 @@ macro_rules! error {
 }
 
 #[cfg(feature = "tracing")]
+pub const IO_SPAN_TARGET: &str = "IO";
+
+/// Create a tracing span around an I/O operation, if tracing is enabled.
+/// Note that at least one tracing value field has to be passed to this macro, otherwise it will not
+/// compile.
+#[macro_export]
+macro_rules! trace_io {
+    ($name:expr, $($args:tt)*) => {
+        ::tracing::trace_span!(
+            target: $crate::utils::tracing::IO_SPAN_TARGET,
+            $name,
+            $($args)*,
+            location = $crate::utils::tracing::format_location(*::std::panic::Location::caller())
+        ).entered()
+    }
+}
+
+#[cfg(feature = "tracing")]
+pub fn format_location(location: std::panic::Location<'static>) -> String {
+    format!("{}:{}", location.file(), location.line())
+}
+
+#[cfg(feature = "tracing")]
 const COMMAND_SPAN_TARGET: &str = "COMMAND";
 
 #[cfg(feature = "tracing")]
 pub fn trace_cmd(command: &crate::BootstrapCommand) -> tracing::span::EnteredSpan {
     let fingerprint = command.fingerprint();
     let location = command.get_created_location();
-    let location = format!("{}:{}", location.file(), location.line());
+    let location = format_location(location);
 
     tracing::span!(
         target: COMMAND_SPAN_TARGET,
@@ -84,6 +107,7 @@ mod inner {
     use std::fmt::Debug;
     use std::fs::File;
     use std::io::Write;
+    use std::path::{Path, PathBuf};
     use std::sync::atomic::Ordering;
 
     use chrono::{DateTime, Utc};
@@ -93,8 +117,8 @@ mod inner {
     use tracing_subscriber::registry::{LookupSpan, SpanRef};
     use tracing_subscriber::{EnvFilter, Layer};
 
+    use super::{COMMAND_SPAN_TARGET, IO_SPAN_TARGET};
     use crate::STEP_SPAN_TARGET;
-    use crate::utils::tracing::COMMAND_SPAN_TARGET;
 
     pub fn setup_tracing(env_name: &str) -> TracingGuard {
         let filter = EnvFilter::from_env(env_name);
@@ -291,6 +315,23 @@ mod inner {
                 Ok(())
             }
 
+            // Write fields while treating the "location" field specially, and assuming that it
+            // contains the source file location relevant to the span.
+            let write_with_location = |writer: &mut W| -> std::io::Result<()> {
+                if let Some(values) = field_values {
+                    write_fields(
+                        writer,
+                        values.fields.iter().filter(|(name, _)| *name != "location"),
+                    )?;
+                    let location =
+                        &values.fields.iter().find(|(name, _)| *name == "location").unwrap().1;
+                    let (filename, line) = location.rsplit_once(':').unwrap();
+                    let filename = shorten_filename(filename);
+                    write!(writer, " ({filename}:{line})",)?;
+                }
+                Ok(())
+            };
+
             // We handle steps specially. We instrument them dynamically in `Builder::ensure`,
             // and we want to have custom name for each step span. But tracing doesn't allow setting
             // dynamic span names. So we detect step spans here and override their name.
@@ -311,17 +352,11 @@ mod inner {
                 // Executed command
                 COMMAND_SPAN_TARGET => {
                     write!(writer, "{}", span.name())?;
-                    if let Some(values) = field_values {
-                        write_fields(
-                            writer,
-                            values.fields.iter().filter(|(name, _)| *name != "location"),
-                        )?;
-                        write!(
-                            writer,
-                            " ({})",
-                            values.fields.iter().find(|(name, _)| *name == "location").unwrap().1
-                        )?;
-                    }
+                    write_with_location(writer)?;
+                }
+                IO_SPAN_TARGET => {
+                    write!(writer, "{}", span.name())?;
+                    write_with_location(writer)?;
                 }
                 // Other span
                 _ => {
@@ -342,27 +377,31 @@ mod inner {
         writer: &mut W,
         metadata: &'static tracing::Metadata<'static>,
     ) -> std::io::Result<()> {
-        use std::path::{Path, PathBuf};
-
         if let Some(filename) = metadata.file() {
-            // Keep only the module name and file name to make it shorter
-            let filename: PathBuf = Path::new(filename)
-                .components()
-                // Take last two path components
-                .rev()
-                .take(2)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect();
+            let filename = shorten_filename(filename);
 
-            write!(writer, " ({}", filename.display())?;
+            write!(writer, " ({filename}")?;
             if let Some(line) = metadata.line() {
                 write!(writer, ":{line}")?;
             }
             write!(writer, ")")?;
         }
         Ok(())
+    }
+
+    /// Keep only the module name and file name to make it shorter
+    fn shorten_filename(filename: &str) -> String {
+        Path::new(filename)
+            .components()
+            // Take last two path components
+            .rev()
+            .take(2)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect::<PathBuf>()
+            .display()
+            .to_string()
     }
 
     impl<S> Layer<S> for TracingPrinter

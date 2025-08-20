@@ -15,7 +15,11 @@ LL |     let _next = iter2.next();
    = note: requirement occurs because of a mutable reference to `Eat<&mut I, F>`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-   = note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+note: due to a current limitation of the type system, this implies a `'static` lifetime
+  --> $DIR/hrtb-implied-2.rs:31:8
+   |
+LL |     F: FnMut(I::Item<'_>),
+   |        ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

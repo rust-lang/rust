@@ -61,12 +61,27 @@ def read_pid_from_file() -> int:
         ) from e
 
 
-def main() -> int:
-    pid = read_pid_from_file()
+def wait_for_process(pid: int):
+    timeout_duration_seconds = 5 * 60
+    interval_seconds = 3
+    max_attempts = timeout_duration_seconds / interval_seconds
+    attempts = 0
 
     # Poll until process exits
     while is_process_running(pid):
-        time.sleep(3)
+        if attempts >= max_attempts:
+            print(
+                "::warning::Timeout expired while waiting for the disk cleanup process to finish."
+            )
+            break
+        time.sleep(interval_seconds)
+        attempts += 1
+
+
+def main() -> int:
+    pid = read_pid_from_file()
+
+    wait_for_process(pid)
 
     print_logs()
 

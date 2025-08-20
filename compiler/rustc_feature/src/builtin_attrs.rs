@@ -6,6 +6,7 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::AttrStyle;
 use rustc_hir::attrs::EncodeCrossCrate;
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, sym};
@@ -132,9 +133,12 @@ pub struct AttributeTemplate {
 }
 
 impl AttributeTemplate {
-    pub fn suggestions(&self, inner: bool, name: impl std::fmt::Display) -> Vec<String> {
+    pub fn suggestions(&self, style: AttrStyle, name: impl std::fmt::Display) -> Vec<String> {
         let mut suggestions = vec![];
-        let inner = if inner { "!" } else { "" };
+        let inner = match style {
+            AttrStyle::Outer => "",
+            AttrStyle::Inner => "!",
+        };
         if self.word {
             suggestions.push(format!("#{inner}[{name}]"));
         }
@@ -741,9 +745,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorPreceding, EncodeCrossCrate::No
     ),
     gated!(
-        no_sanitize, Normal,
-        template!(List: &["address, kcfi, memory, thread"]), DuplicatesOk,
-        EncodeCrossCrate::No, experimental!(no_sanitize)
+        sanitize, Normal, template!(List: &[r#"address = "on|off""#, r#"kernel_address = "on|off""#, r#"cfi = "on|off""#, r#"hwaddress = "on|off""#, r#"kcfi = "on|off""#, r#"memory = "on|off""#, r#"memtag = "on|off""#, r#"shadow_call_stack = "on|off""#, r#"thread = "on|off""#]), ErrorPreceding,
+        EncodeCrossCrate::No, sanitize, experimental!(sanitize),
     ),
     gated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),

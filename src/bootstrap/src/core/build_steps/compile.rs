@@ -12,6 +12,7 @@ use std::ffi::OsStr;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use std::{env, fs, str};
 
 use serde_derive::Deserialize;
@@ -38,7 +39,7 @@ use crate::{
 };
 
 /// Build a standard library for the given `target` using the given `build_compiler`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     pub target: TargetSelection,
     /// Compiler that builds the standard library.
@@ -933,13 +934,22 @@ fn cp_rustc_component_to_ci_sysroot(builder: &Builder<'_>, sysroot: &Path, conte
     }
 }
 
+/// Represents information about a built rustc.
+#[derive(Clone, Debug)]
+pub struct BuiltRustc {
+    /// The compiler that actually built this *rustc*.
+    /// This can be different from the *build_compiler* passed to the `Rustc` step because of
+    /// uplifting.
+    pub build_compiler: Compiler,
+}
+
 /// Build rustc using the passed `build_compiler`.
 ///
 /// - Makes sure that `build_compiler` has a standard library prepared for its host target,
 ///   so that it can compile build scripts and proc macros when building this `rustc`.
 /// - Makes sure that `build_compiler` has a standard library prepared for `target`,
 ///   so that the built `rustc` can *link to it* and use it at runtime.
-#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     /// The target on which rustc will run (its host).
     pub target: TargetSelection,
@@ -960,7 +970,7 @@ impl Rustc {
 }
 
 impl Step for Rustc {
-    type Output = ();
+    type Output = BuiltRustc;
 
     const IS_HOST: bool = true;
     const DEFAULT: bool = false;
@@ -1000,7 +1010,7 @@ impl Step for Rustc {
     /// This will build the compiler for a particular stage of the build using
     /// the `build_compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let build_compiler = self.build_compiler;
         let target = self.target;
 
@@ -1016,7 +1026,7 @@ impl Step for Rustc {
                 &sysroot,
                 builder.config.ci_rustc_dev_contents(),
             );
-            return;
+            return BuiltRustc { build_compiler };
         }
 
         // Build a standard library for `target` using the `build_compiler`.
@@ -1028,9 +1038,9 @@ impl Step for Rustc {
 
             builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
             builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.ensure(RustcLink::from_rustc(self, build_compiler));
+            builder.ensure(RustcLink::from_rustc(self));
 
-            return;
+            return BuiltRustc { build_compiler };
         }
 
         // The stage of the compiler that we're building
@@ -1042,21 +1052,35 @@ impl Step for Rustc {
             && !builder.config.full_bootstrap
             && (target == builder.host_target || builder.hosts.contains(&target))
         {
-            // If we're cross-compiling, the earliest rustc that we could have is stage 2.
-            // If we're not cross-compiling, then we should have rustc stage 1.
-            let stage_to_uplift = if target == builder.host_target { 1 } else { 2 };
-            let rustc_to_uplift = builder.compiler(stage_to_uplift, target);
-            let msg = if rustc_to_uplift.host == target {
-                format!("Uplifting rustc (stage{} -> stage{stage})", rustc_to_uplift.stage,)
+            // Here we need to determine the **build compiler** that built the stage that we will
+            // be uplifting. We cannot uplift stage 1, as it has a different ABI than stage 2+,
+            // so we always uplift the stage2 compiler (compiled with stage 1).
+            let uplift_build_compiler = builder.compiler(1, build_compiler.host);
+            let msg = if uplift_build_compiler.host == target {
+                format!("Uplifting rustc (stage2 -> stage{stage})")
             } else {
                 format!(
-                    "Uplifting rustc (stage{}:{} -> stage{stage}:{target})",
-                    rustc_to_uplift.stage, rustc_to_uplift.host,
+                    "Uplifting rustc (stage2:{} -> stage{stage}:{target})",
+                    uplift_build_compiler.host
                 )
             };
             builder.info(&msg);
-            builder.ensure(RustcLink::from_rustc(self, rustc_to_uplift));
-            return;
+
+            // Here the compiler that built the rlibs (`uplift_build_compiler`) can be different
+            // from the compiler whose sysroot should be modified in this step. So we need to copy
+            // the (previously built) rlibs into the correct sysroot.
+            builder.ensure(RustcLink::from_build_compiler_and_sysroot(
+                // This is the compiler that actually built the rustc rlibs
+                uplift_build_compiler,
+                // We copy the rlibs into the sysroot of `build_compiler`
+                build_compiler,
+                target,
+                self.crates,
+            ));
+
+            // Here we have performed an uplift, so we return the actual build compiler that "built"
+            // this rustc.
+            return BuiltRustc { build_compiler: uplift_build_compiler };
         }
 
         // Build a standard library for the current host target using the `build_compiler`.
@@ -1129,10 +1153,8 @@ impl Step for Rustc {
             strip_debug(builder, target, &target_root_dir.join("rustc-main"));
         }
 
-        builder.ensure(RustcLink::from_rustc(
-            self,
-            builder.compiler(build_compiler.stage, builder.config.host_target),
-        ));
+        builder.ensure(RustcLink::from_rustc(self));
+        BuiltRustc { build_compiler }
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -1441,30 +1463,50 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
 }
 
-/// `RustcLink` copies all of the rlibs from the rustc build into the previous stage's sysroot.
+/// `RustcLink` copies compiler rlibs from a rustc build into a compiler sysroot.
+/// It works with (potentially up to) three compilers:
+/// - `build_compiler` is a compiler that built rustc rlibs
+/// - `sysroot_compiler` is a compiler into whose sysroot we will copy the rlibs
+///   - In most situations, `build_compiler` == `sysroot_compiler`
+/// - `target_compiler` is the compiler whose rlibs were built. It is not represented explicitly
+///   in this step, rather we just read the rlibs from a rustc build stamp of `build_compiler`.
+///
 /// This is necessary for tools using `rustc_private`, where the previous compiler will build
 /// a tool against the next compiler.
 /// To build a tool against a compiler, the rlibs of that compiler that it links against
 /// must be in the sysroot of the compiler that's doing the compiling.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct RustcLink {
-    /// The compiler whose rlibs we are copying around.
-    pub compiler: Compiler,
-    /// This is the compiler into whose sysroot we want to copy the rlibs into.
-    pub previous_stage_compiler: Compiler,
-    pub target: TargetSelection,
+    /// This compiler **built** some rustc, whose rlibs we will copy into a sysroot.
+    build_compiler: Compiler,
+    /// This is the compiler into whose sysroot we want to copy the built rlibs.
+    /// In most cases, it will correspond to `build_compiler`.
+    sysroot_compiler: Compiler,
+    target: TargetSelection,
     /// Not actually used; only present to make sure the cache invalidation is correct.
     crates: Vec<String>,
 }
 
 impl RustcLink {
-    fn from_rustc(rustc: Rustc, host_compiler: Compiler) -> Self {
+    /// Copy rlibs from the build compiler that build this `rustc` into the sysroot of that
+    /// build compiler.
+    fn from_rustc(rustc: Rustc) -> Self {
         Self {
-            compiler: host_compiler,
-            previous_stage_compiler: rustc.build_compiler,
+            build_compiler: rustc.build_compiler,
+            sysroot_compiler: rustc.build_compiler,
             target: rustc.target,
             crates: rustc.crates,
         }
+    }
+
+    /// Copy rlibs **built** by `build_compiler` into the sysroot of `sysroot_compiler`.
+    fn from_build_compiler_and_sysroot(
+        build_compiler: Compiler,
+        sysroot_compiler: Compiler,
+        target: TargetSelection,
+        crates: Vec<String>,
+    ) -> Self {
+        Self { build_compiler, sysroot_compiler, target, crates }
     }
 }
 
@@ -1477,14 +1519,14 @@ impl Step for RustcLink {
 
     /// Same as `std_link`, only for librustc
     fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
-        let previous_stage_compiler = self.previous_stage_compiler;
+        let build_compiler = self.build_compiler;
+        let sysroot_compiler = self.sysroot_compiler;
         let target = self.target;
         add_to_sysroot(
             builder,
-            &builder.sysroot_target_libdir(previous_stage_compiler, target),
-            &builder.sysroot_target_libdir(previous_stage_compiler, compiler.host),
-            &build_stamp::librustc_stamp(builder, compiler, target),
+            &builder.sysroot_target_libdir(sysroot_compiler, target),
+            &builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host),
+            &build_stamp::librustc_stamp(builder, build_compiler, target),
         );
     }
 }
@@ -1918,7 +1960,7 @@ impl Step for Sysroot {
 /// linker wrappers (LLD, LLVM bitcode linker, etc.).
 ///
 /// This will assemble a compiler in `build/$target/stage$stage`.
-#[derive(Debug, PartialOrd, Ord, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Assemble {
     /// The compiler which we will produce in this step. Assemble itself will
     /// take care of ensuring that the necessary prerequisites to do so exist,
@@ -2099,7 +2141,10 @@ impl Step for Assemble {
             "target_compiler.host" = ?target_compiler.host,
             "building compiler libraries to link to"
         );
-        builder.ensure(Rustc::new(build_compiler, target_compiler.host));
+
+        // It is possible that an uplift has happened, so we override build_compiler here.
+        let BuiltRustc { build_compiler } =
+            builder.ensure(Rustc::new(build_compiler, target_compiler.host));
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
@@ -2286,6 +2331,7 @@ impl Step for Assemble {
 ///
 /// For a particular stage this will link the file listed in `stamp` into the
 /// `sysroot_dst` provided.
+#[track_caller]
 pub fn add_to_sysroot(
     builder: &Builder<'_>,
     sysroot_dst: &Path,
@@ -2568,7 +2614,17 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = t!(t!(path.metadata()).modified());
-    command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    let stamp = BuildStamp::new(path.parent().unwrap())
+        .with_prefix(path.file_name().unwrap().to_str().unwrap())
+        .with_prefix("strip")
+        .add_stamp(previous_mtime.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos());
+
+    // Running strip can be relatively expensive (~1s on librustc_driver.so), so we don't rerun it
+    // if the file is unchanged.
+    if !stamp.is_up_to_date() {
+        command("strip").arg("--strip-debug").arg(path).run_capture(builder);
+    }
+    t!(stamp.write());
 
     let file = t!(fs::File::open(path));
 

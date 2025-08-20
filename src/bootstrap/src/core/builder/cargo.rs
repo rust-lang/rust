@@ -101,6 +101,7 @@ pub struct Cargo {
 impl Cargo {
     /// Calls [`Builder::cargo`] and [`Cargo::configure_linker`] to prepare an invocation of `cargo`
     /// to be run.
+    #[track_caller]
     pub fn new(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -139,6 +140,7 @@ impl Cargo {
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
     /// [`Cargo::configure_linker`].
+    #[track_caller]
     pub fn new_for_mir_opt_tests(
         builder: &Builder<'_>,
         compiler: Compiler,
@@ -184,6 +186,32 @@ impl Cargo {
         assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
         self.command.env(key.as_ref(), value.as_ref());
         self
+    }
+
+    /// Append a value to an env var of the cargo command instance.
+    /// If the variable was unset previously, this is equivalent to [`Cargo::env`].
+    /// If the variable was already set, this will append `delimiter` and then `value` to it.
+    ///
+    /// Note that this only considers the existence of the env. var. configured on this `Cargo`
+    /// instance. It does not look at the environment of this process.
+    pub fn append_to_env(
+        &mut self,
+        key: impl AsRef<OsStr>,
+        value: impl AsRef<OsStr>,
+        delimiter: impl AsRef<OsStr>,
+    ) -> &mut Cargo {
+        assert_ne!(key.as_ref(), "RUSTFLAGS");
+        assert_ne!(key.as_ref(), "RUSTDOCFLAGS");
+
+        let key = key.as_ref();
+        if let Some((_, Some(previous_value))) = self.command.get_envs().find(|(k, _)| *k == key) {
+            let mut combined: OsString = previous_value.to_os_string();
+            combined.push(delimiter.as_ref());
+            combined.push(value.as_ref());
+            self.env(key, combined)
+        } else {
+            self.env(key, value)
+        }
     }
 
     pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>) {
@@ -396,6 +424,7 @@ impl From<Cargo> for BootstrapCommand {
 
 impl Builder<'_> {
     /// Like [`Builder::cargo`], but only passes flags that are valid for all commands.
+    #[track_caller]
     pub fn bare_cargo(
         &self,
         compiler: Compiler,
@@ -480,6 +509,7 @@ impl Builder<'_> {
     /// scoped by `mode`'s output directory, it will pass the `--target` flag for the specified
     /// `target`, and will be executing the Cargo command `cmd`. `cmd` can be `miri-cmd` for
     /// commands to be run with Miri.
+    #[track_caller]
     fn cargo(
         &self,
         compiler: Compiler,

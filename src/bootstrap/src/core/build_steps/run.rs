@@ -17,7 +17,7 @@ use crate::core::config::flags::get_completion;
 use crate::utils::exec::command;
 use crate::{Mode, t};
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
 
 impl Step for BuildManifest {
@@ -56,7 +56,7 @@ impl Step for BuildManifest {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BumpStage0;
 
 impl Step for BumpStage0 {
@@ -78,7 +78,7 @@ impl Step for BumpStage0 {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ReplaceVersionPlaceholder;
 
 impl Step for ReplaceVersionPlaceholder {
@@ -169,7 +169,7 @@ impl Step for Miri {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {
@@ -200,7 +200,7 @@ impl Step for CollectLicenseMetadata {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
@@ -264,7 +264,7 @@ impl Step for GenerateCopyright {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateWindowsSys;
 
 impl Step for GenerateWindowsSys {
@@ -326,7 +326,7 @@ impl Step for GenerateCompletions {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct UnicodeTableGenerator;
 
 impl Step for UnicodeTableGenerator {
@@ -348,7 +348,7 @@ impl Step for UnicodeTableGenerator {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct FeaturesStatusDump;
 
 impl Step for FeaturesStatusDump {
@@ -408,7 +408,7 @@ impl Step for CyclicStep {
 ///
 /// The coverage-dump tool is an internal detail of coverage tests, so this run
 /// step is only needed when testing coverage-dump manually.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CoverageDump;
 
 impl Step for CoverageDump {

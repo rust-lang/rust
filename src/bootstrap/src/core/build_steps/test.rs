@@ -2732,7 +2732,7 @@ fn prepare_cargo_test(
 /// FIXME(Zalathar): Try to split this into two separate steps: a user-visible
 /// step for testing standard library crates, and an internal step used for both
 /// library crates and compiler crates.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
@@ -3747,7 +3747,7 @@ impl Step for TestFloatParse {
 /// Runs the tool `src/tools/collect-license-metadata` in `ONLY_CHECK=1` mode,
 /// which verifies that `license-metadata.json` is up-to-date and therefore
 /// running the tool normally would not update anything.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {

@@ -230,6 +230,7 @@ impl SourceCollector<'_, '_> {
         );
         let page = layout::Page {
             title: &title,
+            short_title: &src_fname.to_string_lossy(),
             css_class: "src",
             root_path: &root_path,
             static_root_path: shared.static_root_path.as_deref(),

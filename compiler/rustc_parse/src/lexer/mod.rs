@@ -49,6 +49,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
+    frontmatter_allowed: FrontmatterAllowed,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
@@ -56,7 +57,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    let cursor = Cursor::new(src, FrontmatterAllowed::Yes);
+    let cursor = Cursor::new(src, frontmatter_allowed);
     let mut lexer = Lexer {
         psess,
         start_pos,

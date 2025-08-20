@@ -366,31 +366,36 @@ pub fn abort_internal() -> ! {
     unsafe { libc::abort() }
 }
 
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "android")] {
+cfg_select! {
+    target_os = "android" => {
         #[link(name = "dl", kind = "static", modifiers = "-bundle",
             cfg(target_feature = "crt-static"))]
         #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
         #[link(name = "log", cfg(not(target_feature = "crt-static")))]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "freebsd")] {
+    }
+    target_os = "freebsd" => {
         #[link(name = "execinfo")]
         #[link(name = "pthread")]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "netbsd")] {
+    }
+    target_os = "netbsd" => {
         #[link(name = "pthread")]
         #[link(name = "rt")]
         unsafe extern "C" {}
-    } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd", target_os = "cygwin"))] {
+    }
+    any(target_os = "dragonfly", target_os = "openbsd", target_os = "cygwin") => {
         #[link(name = "pthread")]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "solaris")] {
+    }
+    target_os = "solaris" => {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
         #[link(name = "resolv")]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "illumos")] {
+    }
+    target_os = "illumos" => {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
@@ -399,24 +404,29 @@ cfg_if::cfg_if! {
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
         unsafe extern "C" {}
-    } else if #[cfg(target_vendor = "apple")] {
+    }
+    target_vendor = "apple" => {
         // Link to `libSystem.dylib`.
         //
         // Don't get confused by the presence of `System.framework`,
         // it is a deprecated wrapper over the dynamic library.
         #[link(name = "System")]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "fuchsia")] {
+    }
+    target_os = "fuchsia" => {
         #[link(name = "zircon")]
         #[link(name = "fdio")]
         unsafe extern "C" {}
-    } else if #[cfg(all(target_os = "linux", target_env = "uclibc"))] {
+    }
+    all(target_os = "linux", target_env = "uclibc") => {
         #[link(name = "dl")]
         unsafe extern "C" {}
-    } else if #[cfg(target_os = "vita")] {
+    }
+    target_os = "vita" => {
         #[link(name = "pthread", kind = "static", modifiers = "-bundle")]
         unsafe extern "C" {}
     }
+    _ => {}
 }
 
 #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]

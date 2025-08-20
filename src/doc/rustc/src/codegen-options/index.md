@@ -375,12 +375,12 @@ linking time. It takes one of the following values:
 
 * `y`, `yes`, `on`, `true`, `fat`, or no value: perform "fat" LTO which attempts to
   perform optimizations across all crates within the dependency graph.
-* `n`, `no`, `off`, `false`: disables LTO.
 * `thin`: perform ["thin"
   LTO](http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html).
   This is similar to "fat", but takes substantially less time to run while
   still achieving performance gains similar to "fat".
   For larger projects like the Rust compiler, ThinLTO can even result in better performance than fat LTO.
+* `n`, `no`, `off`, `false`: disables LTO.
 
 If `-C lto` is not specified, then the compiler will attempt to perform "thin
 local LTO" which performs "thin" LTO on the local crate only across its

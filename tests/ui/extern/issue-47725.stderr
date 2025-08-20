@@ -1,5 +1,5 @@
 error[E0539]: malformed `link_name` attribute input
-  --> $DIR/issue-47725.rs:17:1
+  --> $DIR/issue-47725.rs:19:1
    |
 LL | #[link_name]
    | ^^^^^^^^^^^^ help: must be of the form: `#[link_name = "name"]`
@@ -21,7 +21,7 @@ LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
-  --> $DIR/issue-47725.rs:9:1
+  --> $DIR/issue-47725.rs:10:1
    |
 LL | #[link_name = "foobar"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL | #[link_name = "foobar"]
    = help: `#[link_name]` can be applied to foreign functions, foreign statics
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
-  --> $DIR/issue-47725.rs:17:1
+  --> $DIR/issue-47725.rs:19:1
    |
 LL | #[link_name]
    | ^^^^^^^^^^^^
