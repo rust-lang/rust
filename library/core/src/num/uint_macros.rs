@@ -1750,8 +1750,8 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub fn exact_shl(self, rhs: u32) -> Option<$SelfT> {
-            if rhs <= self.leading_zeros().max(<$SelfT>::BITS - 1) {
+        pub const fn exact_shl(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.leading_zeros() && rhs < <$SelfT>::BITS {
                 // SAFETY: rhs is checked above
                 Some(unsafe { self.unchecked_shl(rhs) })
             } else {
@@ -1774,14 +1774,15 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub unsafe fn exact_shl_unchecked(self, rhs: u32) -> $SelfT {
+        pub const unsafe fn unchecked_exact_shl(self, rhs: u32) -> $SelfT {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::exact_shl_unchecked cannot shift out non-zero bits"),
                 (
-                    len: u32 = self.leading_zeros().max(<$SelfT>::BITS - 1),
+                    zeros: u32 = self.leading_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
                     rhs: u32 = rhs,
-                ) => rhs <= len,
+                ) => rhs <= zeros && rhs < bits,
             );
 
             // SAFETY: this is guaranteed to be safe by the caller
@@ -1913,14 +1914,14 @@ macro_rules! uint_impl {
         /// #![feature(exact_bitshifts)]
         ///
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(4), Some(0x1));")]
-        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(129), None);")]
+        #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".exact_shr(5), None);")]
         /// ```
         #[unstable(feature = "exact_bitshifts", issue = "144336")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub fn exact_shr(self, rhs: u32) -> Option<$SelfT> {
-            if rhs <= self.trailing_zeros().max(<$SelfT>::BITS - 1) {
+        pub const fn exact_shr(self, rhs: u32) -> Option<$SelfT> {
+            if rhs <= self.trailing_zeros() && rhs < <$SelfT>::BITS {
                 // SAFETY: rhs is checked above
                 Some(unsafe { self.unchecked_shr(rhs) })
             } else {
@@ -1943,14 +1944,15 @@ macro_rules! uint_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub unsafe fn exact_shr_unchecked(self, rhs: u32) -> $SelfT {
+        pub const unsafe fn unchecked_exact_shr(self, rhs: u32) -> $SelfT {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::exact_shr_unchecked cannot shift out non-zero bits"),
                 (
-                    len: u32 = self.trailing_zeros().max(<$SelfT>::BITS - 1),
+                    zeros: u32 = self.trailing_zeros(),
+                    bits: u32 =  <$SelfT>::BITS,
                     rhs: u32 = rhs,
-                ) => rhs <= len,
+                ) => rhs <= zeros && rhs < bits,
             );
 
             // SAFETY: this is guaranteed to be safe by the caller
