@@ -148,3 +148,58 @@ impl_disjoint_bitor! {
     u8, u16, u32, u64, u128, usize,
     i8, i16, i32, i64, i128, isize,
 }
+
+#[const_trait]
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub trait FunnelShift: Copy + 'static {
+    /// See [`super::unchecked_funnel_shl`]; we just need the trait indirection to handle
+    /// different types since calling intrinsics with generics doesn't work.
+    unsafe fn unchecked_funnel_shl(self, rhs: Self, shift: u32) -> Self;
+
+    /// See [`super::unchecked_funnel_shr`]; we just need the trait indirection to handle
+    /// different types since calling intrinsics with generics doesn't work.
+    unsafe fn unchecked_funnel_shr(self, rhs: Self, shift: u32) -> Self;
+}
+
+macro_rules! impl_funnel_shifts {
+    ($($type:ident),*) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        impl const FunnelShift for $type {
+            #[cfg_attr(miri, track_caller)]
+            #[inline]
+            unsafe fn unchecked_funnel_shl(self, rhs: Self, shift: u32) -> Self {
+                if shift == 0 {
+                    self
+                } else {
+                    // SAFETY: our precondition is that `shift < T::BITS`, so these are valid
+                    unsafe {
+                        super::disjoint_bitor(
+                            super::unchecked_shl(self, shift),
+                            super::unchecked_shr(rhs, $type::BITS - shift),
+                        )
+                    }
+                }
+            }
+
+            #[cfg_attr(miri, track_caller)]
+            #[inline]
+            unsafe fn unchecked_funnel_shr(self, rhs: Self, shift: u32) -> Self {
+                if shift == 0 {
+                    rhs
+                } else {
+                    // SAFETY: our precondition is that `shift < T::BITS`, so these are valid
+                    unsafe {
+                        super::disjoint_bitor(
+                            super::unchecked_shl(self, $type::BITS - shift),
+                            super::unchecked_shr(rhs, shift),
+                        )
+                    }
+                }
+            }
+        }
+    )*};
+}
+
+impl_funnel_shifts! {
+    u8, u16, u32, u64, u128, usize
+}
