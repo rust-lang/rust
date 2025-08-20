@@ -1194,10 +1194,8 @@ mod sealed {
     test_impl! { vec_roundc_f32 (a: vector_float) -> vector_float [nearbyint_v4f32,  "vector-enhancements-1" vfisb] }
     test_impl! { vec_roundc_f64 (a: vector_double) -> vector_double [nearbyint_v2f64, vfidb] }
 
-    // FIXME(llvm) llvm trunk already lowers roundeven to vfidb, but rust does not use it yet
-    // use https://godbolt.org/z/cWq95fexe to check, and enable the instruction test when it works
-    test_impl! { vec_round_f32 (a: vector_float) -> vector_float [roundeven_v4f32, _] }
-    test_impl! { vec_round_f64 (a: vector_double) -> vector_double [roundeven_v2f64, _] }
+    test_impl! { vec_round_f32 (a: vector_float) -> vector_float [roundeven_v4f32, "vector-enhancements-1" vfisb] }
+    test_impl! { vec_round_f64 (a: vector_double) -> vector_double [roundeven_v2f64, vfidb] }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorRoundc {
