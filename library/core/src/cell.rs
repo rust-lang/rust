@@ -253,11 +253,12 @@
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{PhantomData, Unsize};
-use crate::mem;
-use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
+use crate::mem::{self, ManuallyDrop};
+use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
+use crate::range;
 
 mod lazy;
 mod once;
@@ -710,6 +711,93 @@ impl<T, const N: usize> Cell<[T; N]> {
     pub const fn as_array_of_cells(&self) -> &[Cell<T>; N] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T; N]> as *const [Cell<T>; N]) }
+    }
+}
+
+/// Types for which cloning `Cell<Self>` is sound.
+///
+/// # Safety
+///
+/// Implementing this trait for a type is sound if and only if the following code is sound for T =
+/// that type.
+///
+/// ```
+/// #![feature(cell_get_cloned)]
+/// # use std::cell::{CloneFromCell, Cell};
+/// fn clone_from_cell<T: CloneFromCell>(cell: &Cell<T>) -> T {
+///     unsafe { T::clone(&*cell.as_ptr()) }
+/// }
+/// ```
+///
+/// Importantly, you can't just implement `CloneFromCell` for any arbitrary `Copy` type, e.g. the
+/// following is unsound:
+///
+/// ```rust
+/// #![feature(cell_get_cloned)]
+/// # use std::cell::Cell;
+///
+/// #[derive(Copy, Debug)]
+/// pub struct Bad<'a>(Option<&'a Cell<Bad<'a>>>, u8);
+///
+/// impl Clone for Bad<'_> {
+///     fn clone(&self) -> Self {
+///         let a: &u8 = &self.1;
+///         // when self.0 points to self, we write to self.1 while we have a live `&u8` pointing to
+///         // it -- this is UB
+///         self.0.unwrap().set(Self(None, 1));
+///         dbg!((a, self));
+///         Self(None, 0)
+///     }
+/// }
+///
+/// // this is not sound
+/// // unsafe impl CloneFromCell for Bad<'_> {}
+/// ```
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+// Allow potential overlapping implementations in user code
+#[marker]
+pub unsafe trait CloneFromCell: Clone {}
+
+// `CloneFromCell` can be implemented for types that don't have indirection and which don't access
+// `Cell`s in their `Clone` implementation. A commonly-used subset is covered here.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell, const N: usize> CloneFromCell for [T; N] {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell> CloneFromCell for Option<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell, E: CloneFromCell> CloneFromCell for Result<T, E> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCell for PhantomData<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell> CloneFromCell for ManuallyDrop<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell> CloneFromCell for ops::Range<T> {}
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: CloneFromCell> CloneFromCell for range::Range<T> {}
+
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+impl<T: CloneFromCell> Cell<T> {
+    /// Get a clone of the `Cell` that contains a copy of the original value.
+    ///
+    /// This allows a cheaply `Clone`-able type like an `Rc` to be stored in a `Cell`, exposing the
+    /// cheaper `clone()` method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cell_get_cloned)]
+    ///
+    /// use core::cell::Cell;
+    /// use std::rc::Rc;
+    ///
+    /// let rc = Rc::new(1usize);
+    /// let c1 = Cell::new(rc);
+    /// let c2 = c1.get_cloned();
+    /// assert_eq!(*c2.into_inner(), 1);
+    /// ```
+    pub fn get_cloned(&self) -> Self {
+        // SAFETY: T is CloneFromCell, which guarantees that this is sound.
+        Cell::new(T::clone(unsafe { &*self.as_ptr() }))
     }
 }
 
