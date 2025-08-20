@@ -176,12 +176,11 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
-                PatKind::Expr(lit) => match lit.kind {
-                    PatExprKind::Lit { lit, .. } => match lit.node {
-                        LitKind::Str(lit, _) => lit.as_str().is_empty(),
-                        _ => false,
-                    },
-                    _ => false,
+                PatKind::Expr(lit)
+                    if let PatExprKind::Lit { lit, .. } = lit.kind
+                        && let LitKind::Str(lit, _) = lit.node =>
+                {
+                    lit.as_str().is_empty()
                 },
                 _ => false,
             }
