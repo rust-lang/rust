@@ -274,12 +274,10 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
                 key,
                 call_ctxt: expr.span.ctxt(),
             };
-            if cx.tcx.is_diagnostic_item(sym::btreemap_contains_key, id) {
-                Some((MapType::BTree, expr))
-            } else if cx.tcx.is_diagnostic_item(sym::hashmap_contains_key, id) {
-                Some((MapType::Hash, expr))
-            } else {
-                None
+            match cx.tcx.get_diagnostic_name(id) {
+                Some(sym::btreemap_contains_key) => Some((MapType::BTree, expr)),
+                Some(sym::hashmap_contains_key) => Some((MapType::Hash, expr)),
+                _ => None,
             }
         },
         _ => None,
