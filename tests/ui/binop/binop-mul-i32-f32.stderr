@@ -5,11 +5,17 @@ LL |     x * y
    |       ^ no implementation for `i32 * f32`
    |
    = help: the trait `Mul<f32>` is not implemented for `i32`
-   = help: the following other types implement trait `Mul<Rhs>`:
-             `&i32` implements `Mul<i32>`
-             `&i32` implements `Mul`
-             `i32` implements `Mul<&i32>`
-             `i32` implements `Mul`
+help: the following other types implement trait `Mul<Rhs>`
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `&i32` implements `Mul<i32>`
+   |
+   = note: `&i32` implements `Mul`
+   |
+   = note: `i32` implements `Mul<&i32>`
+   |
+   = note: `i32` implements `Mul`
+   = note: this error originates in the macro `mul_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

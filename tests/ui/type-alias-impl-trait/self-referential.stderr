@@ -8,7 +8,9 @@ LL |     i
    |     - return type was inferred to be `&i32` here
    |
    = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)`
   --> $DIR/self-referential.rs:14:31
@@ -20,7 +22,9 @@ LL |     (42, i)
    |     ------- return type was inferred to be `(i32, &i32)` here
    |
    = help: the trait `PartialEq<(i32, Foo<'a, 'b>::{opaque#0}<'a, 'b>)>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)`
   --> $DIR/self-referential.rs:22:31
@@ -32,7 +36,9 @@ LL |     (42, i)
    |     ------- return type was inferred to be `(i32, &i32)` here
    |
    = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0}<'b, 'a>)>` is not implemented for `&i32`
-   = help: the trait `PartialEq` is implemented for `i32`
+help: the trait `PartialEq` is implemented for `i32`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: this error originates in the macro `partial_eq_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 
