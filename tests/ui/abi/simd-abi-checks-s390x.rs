@@ -14,7 +14,7 @@
 //[z13_no_vector,z13_soft_float]~? WARN unstable feature specified for `-Ctarget-feature`
 //[z13_soft_float]~? WARN target feature `soft-float` cannot be enabled with `-Ctarget-feature`
 
-#![feature(no_core, repr_simd, s390x_target_feature)]
+#![feature(no_core, repr_simd, s390x_target_feature_vector)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
