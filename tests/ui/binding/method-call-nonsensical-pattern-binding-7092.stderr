@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-7092.rs:6:9
+  --> $DIR/method-call-nonsensical-pattern-binding-7092.rs:7:9
    |
 LL |     match x {
    |           - this expression has type `Whatever`

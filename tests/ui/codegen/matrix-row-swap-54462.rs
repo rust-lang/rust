@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/54462
 //@ run-pass
 //
 //@ compile-flags: -Ccodegen-units=1 -O

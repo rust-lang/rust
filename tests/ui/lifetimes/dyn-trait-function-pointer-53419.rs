@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/53419
 //@ check-pass
 
 struct Foo {

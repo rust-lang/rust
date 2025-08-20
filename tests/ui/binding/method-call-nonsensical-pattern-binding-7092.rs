@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/7092
 enum Whatever {
 }
 
