@@ -3246,9 +3246,6 @@ impl Step for Distcheck {
             .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
             .unwrap_or_default();
 
-        // FIXME: unpack the source tarballs into a directory outside the source checkout, to
-        // ensure that it cannot access any local state
-        // Also ensure that it doesn't use download-ci-llvm
         command("tar")
             .arg("-xf")
             .arg(plain_src_tarball.tarball())
