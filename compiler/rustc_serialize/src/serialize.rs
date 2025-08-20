@@ -509,6 +509,18 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
     }
 }
 
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for triomphe::Arc<T> {
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for triomphe::Arc<T> {
+    fn decode(d: &mut D) -> triomphe::Arc<T> {
+        triomphe::Arc::new(Decodable::decode(d))
+    }
+}
+
 impl<S: Encoder, T: ?Sized + Encodable<S>> Encodable<S> for Box<T> {
     fn encode(&self, s: &mut S) {
         (**self).encode(s)

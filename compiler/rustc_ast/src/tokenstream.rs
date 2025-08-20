@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::{cmp, fmt, iter, mem};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync;
+use rustc_data_structures::sync::{self, TrArc};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
@@ -558,7 +558,7 @@ pub struct AttrsTarget {
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
+pub struct TokenStream(pub(crate) TrArc<Vec<TokenTree>>);
 
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
@@ -675,7 +675,7 @@ impl PartialEq<TokenStream> for TokenStream {
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
-        TokenStream(Arc::new(tts))
+        TokenStream(TrArc::new(tts))
     }
 
     pub fn is_empty(&self) -> bool {
@@ -728,7 +728,7 @@ impl TokenStream {
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
     pub fn push_tree(&mut self, tt: TokenTree) {
-        let vec_mut = Arc::make_mut(&mut self.0);
+        let vec_mut = TrArc::make_mut(&mut self.0);
 
         if Self::try_glue_to_last(vec_mut, &tt) {
             // nothing else to do
@@ -741,7 +741,7 @@ impl TokenStream {
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
     pub fn push_stream(&mut self, stream: TokenStream) {
-        let vec_mut = Arc::make_mut(&mut self.0);
+        let vec_mut = TrArc::make_mut(&mut self.0);
 
         let stream_iter = stream.0.iter().cloned();
 
@@ -761,7 +761,7 @@ impl TokenStream {
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
-    /// r"foo"]`. Modifies the `TokenStream` via `Arc::make_mut`, but as little
+    /// r"foo"]`. Modifies the `TokenStream` via `TrArc::make_mut`, but as little
     /// as possible.
     pub fn desugar_doc_comments(&mut self) {
         if let Some(desugared_stream) = desugar_inner(self.clone()) {
@@ -780,7 +780,7 @@ impl TokenStream {
                     ) => {
                         let desugared = desugared_tts(attr_style, data, span);
                         let desugared_len = desugared.len();
-                        Arc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
+                        TrArc::make_mut(&mut stream.0).splice(i..i + 1, desugared);
                         modified = true;
                         i += desugared_len;
                     }
@@ -791,7 +791,7 @@ impl TokenStream {
                         if let Some(desugared_delim_stream) = desugar_inner(delim_stream.clone()) {
                             let new_tt =
                                 TokenTree::Delimited(sp, spacing, delim, desugared_delim_stream);
-                            Arc::make_mut(&mut stream.0)[i] = new_tt;
+                            TrArc::make_mut(&mut stream.0)[i] = new_tt;
                             modified = true;
                         }
                         i += 1;

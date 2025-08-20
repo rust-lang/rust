@@ -67,6 +67,7 @@ memchr = "2.7.5"
 rustc-literal-escaper = "0.0.5"
 thin-vec = "0.2.14"
 tracing = "0.1.37"
+triomphe = "0.1.14"
 # tidy-alphabetical-end
 
 [profile.release.package.rustc_thread_pool]
