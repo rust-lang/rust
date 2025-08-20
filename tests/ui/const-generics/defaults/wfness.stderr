@@ -10,8 +10,12 @@ error[E0277]: the trait bound `(): Trait<2>` is not satisfied
 LL |     (): Trait<N>;
    |         ^^^^^^^^ the trait `Trait<2>` is not implemented for `()`
    |
-   = help: the trait `Trait<2>` is not implemented for `()`
-           but trait `Trait<3>` is implemented for it
+help: the trait `Trait<2>` is not implemented for `()`
+      but trait `Trait<3>` is implemented for it
+  --> $DIR/wfness.rs:5:1
+   |
+LL | impl Trait<3> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `WhereClause`
   --> $DIR/wfness.rs:8:9
    |
@@ -27,8 +31,12 @@ error[E0277]: the trait bound `(): Trait<1>` is not satisfied
 LL | fn foo() -> DependentDefaultWfness {
    |             ^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<1>` is not implemented for `()`
    |
-   = help: the trait `Trait<1>` is not implemented for `()`
-           but trait `Trait<3>` is implemented for it
+help: the trait `Trait<1>` is not implemented for `()`
+      but trait `Trait<3>` is implemented for it
+  --> $DIR/wfness.rs:5:1
+   |
+LL | impl Trait<3> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `WhereClause`
   --> $DIR/wfness.rs:8:9
    |
