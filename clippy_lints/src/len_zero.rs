@@ -336,26 +336,16 @@ fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&
 }
 
 fn is_first_generic_integral<'tcx>(segment: &'tcx PathSegment<'tcx>) -> bool {
-    if let Some(generic_args) = segment.args {
-        if generic_args.args.is_empty() {
-            return false;
-        }
-        let arg = &generic_args.args[0];
-        if let GenericArg::Type(rustc_hir::Ty {
-            kind: TyKind::Path(QPath::Resolved(_, path)),
-            ..
-        }) = arg
-        {
-            let segments = &path.segments;
-            let segment = &segments[0];
-            let res = &segment.res;
-            if matches!(res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_))) {
-                return true;
-            }
-        }
+    if let Some(generic_args) = segment.args
+        && let [GenericArg::Type(ty), ..] = &generic_args.args
+        && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
+        && let [segment, ..] = &path.segments
+        && matches!(segment.res, Res::PrimTy(PrimTy::Uint(_) | PrimTy::Int(_)))
+    {
+        true
+    } else {
+        false
     }
-
-    false
 }
 
 fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<LenOutput> {
