@@ -103,6 +103,11 @@ pub struct Command {
     create_pidfd: bool,
     pgroup: Option<pid_t>,
     setsid: bool,
+    // A map of parent FDs to child FDs to be inherited during spawn.
+    fds: Vec<(OwnedFd, RawFd)>,
+    // For testing purposes: store `Some(true)` if the last spawn used `posix_spawn`, `Some(false)`
+    // if it used `exec`, and `None` if it hasn't been spawned yet.
+    last_spawn_was_posix_spawn: Option<bool>,
 }
 
 // passed to do_exec() with configuration of what the child stdio should look
@@ -183,6 +188,8 @@ impl Command {
             create_pidfd: false,
             pgroup: None,
             setsid: false,
+            fds: Vec::new(),
+            last_spawn_was_posix_spawn: None,
         }
     }
 
@@ -363,6 +370,29 @@ impl Command {
         let ours = StdioPipes { stdin: our_stdin, stdout: our_stdout, stderr: our_stderr };
         let theirs = ChildPipes { stdin: their_stdin, stdout: their_stdout, stderr: their_stderr };
         Ok((ours, theirs))
+    }
+
+    pub fn fd(&mut self, old_fd: OwnedFd, new_fd: RawFd) {
+        self.fds.push((old_fd, new_fd));
+    }
+
+    pub fn get_fds(&self) -> &[(OwnedFd, RawFd)] {
+        &self.fds
+    }
+
+    /// Clear the fd vector, closing all descriptors owned by this `Command`.
+    pub fn close_owned_fds(&mut self) {
+        self.fds.clear();
+    }
+
+    pub fn last_spawn_was_posix_spawn(&mut self, val: bool) {
+        self.last_spawn_was_posix_spawn = Some(val);
+    }
+
+    // this lint can't see tests
+    #[allow(unused)]
+    pub fn get_last_spawn_was_posix_spawn(&self) -> Option<bool> {
+        self.last_spawn_was_posix_spawn
     }
 }
 
