@@ -110,47 +110,47 @@ extern "C" fn vector_transparent_wrapper_ret_large(
 #[no_mangle]
 extern "C" fn vector_arg_small(x: i8x8) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const i8x8 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_arg(x: i8x16) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const i8x16 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_arg_large(x: i8x32) -> i64 {
     // Ok
-    unsafe { *(&x as *const i8x32 as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 #[no_mangle]
 extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const Wrapper<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const Wrapper<i8x16> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
     // Ok
-    unsafe { *(&x as *const Wrapper<i8x32> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const TransparentWrapper<i8x8> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
     //~^ ERROR requires the `vector` target feature, which is not enabled
-    unsafe { *(&x as *const TransparentWrapper<i8x16> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg_large(x: TransparentWrapper<i8x32>) -> i64 {
     // Ok
-    unsafe { *(&x as *const TransparentWrapper<i8x32> as *const i64) }
+    unsafe { *(&raw const x as *const i64) }
 }
