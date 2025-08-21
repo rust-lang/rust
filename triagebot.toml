@@ -1603,3 +1603,8 @@ labels = ["S-waiting-on-concerns"]
 # onto a different base commit
 # Documentation at: https://forge.rust-lang.org/triagebot/range-diff.html
 [range-diff]
+
+# Adds at the end of a review body a link to view the changes that happened
+# since the review
+# Documentation at: https://forge.rust-lang.org/triagebot/review-changes-since.html
+[review-changes-since]
