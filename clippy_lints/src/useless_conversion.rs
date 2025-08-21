@@ -407,9 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    }
-
-                    if name == sym::from_fn && same_type_and_consts(a, b) {
+                    } else if name == sym::from_fn && same_type_and_consts(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
