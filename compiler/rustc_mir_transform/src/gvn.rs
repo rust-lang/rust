@@ -447,7 +447,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             Projection(base, elem) => {
                 let base = self.evaluated[base].as_ref()?;
-                // `Index` by constants should have been replaces by `ConstantIndex` by
+                // `Index` by constants should have been replaced by `ConstantIndex` by
                 // `simplify_place_projection`.
                 let elem = elem.try_map(|_| None, |()| ty.ty)?;
                 self.ecx.project(base, elem).discard_err()?
@@ -460,7 +460,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let pointer = self.evaluated[local].as_ref()?;
                 let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
                 for elem in place.projection.iter().skip(1) {
-                    // `Index` by constants should have been replaces by `ConstantIndex` by
+                    // `Index` by constants should have been replaced by `ConstantIndex` by
                     // `simplify_place_projection`.
                     let elem = elem.try_map(|_| None, |ty| ty)?;
                     mplace = self.ecx.project(&mplace, elem).discard_err()?;
