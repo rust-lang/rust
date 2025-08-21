@@ -200,10 +200,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         let fn_ty = bx.fn_decl_backend_type(fn_abi);
 
         let fn_attrs = if bx.tcx().def_kind(fx.instance.def_id()).has_codegen_attrs() {
-            Some(bx.tcx().codegen_fn_attrs(fx.instance.def_id()))
+            Some(bx.tcx().codegen_instance_attrs(fx.instance.def))
         } else {
             None
         };
+        let fn_attrs = fn_attrs.as_deref();
 
         if !fn_abi.can_unwind {
             unwind = mir::UnwindAction::Unreachable;
