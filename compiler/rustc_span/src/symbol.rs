@@ -1837,6 +1837,7 @@ symbols! {
         rustc_align,
         rustc_allocator,
         rustc_allocator_zeroed,
+        rustc_allocator_zeroed_variant,
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
         rustc_allowed_through_unstable_modules,

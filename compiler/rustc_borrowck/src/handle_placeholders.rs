@@ -15,7 +15,6 @@ use tracing::debug;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::member_constraints::MemberConstraintSet;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
 use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
 use crate::ty::VarianceDiagInfo;
@@ -30,7 +29,6 @@ pub(crate) struct LoweredConstraints<'tcx> {
     pub(crate) constraint_sccs: Sccs<RegionVid, ConstraintSccIndex>,
     pub(crate) definitions: Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>,
     pub(crate) scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
-    pub(crate) member_constraints: MemberConstraintSet<'tcx, RegionVid>,
     pub(crate) outlives_constraints: Frozen<OutlivesConstraintSet<'tcx>>,
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
     pub(crate) liveness_constraints: LivenessValues,
@@ -147,9 +145,10 @@ impl scc::Annotation for RegionTracker {
 
 /// Determines if the region variable definitions contain
 /// placeholders, and compute them for later use.
-fn region_definitions<'tcx>(
-    universal_regions: &UniversalRegions<'tcx>,
+// FIXME: This is also used by opaque type handling. Move it to a separate file.
+pub(super) fn region_definitions<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
 ) -> (Frozen<IndexVec<RegionVid, RegionDefinition<'tcx>>>, bool) {
     let var_infos = infcx.get_region_var_infos();
     // Create a RegionDefinition for each inference variable. This happens here because
@@ -213,14 +212,13 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
 ) -> LoweredConstraints<'tcx> {
     let universal_regions = &universal_region_relations.universal_regions;
-    let (definitions, has_placeholders) = region_definitions(universal_regions, infcx);
+    let (definitions, has_placeholders) = region_definitions(infcx, universal_regions);
 
     let MirTypeckRegionConstraints {
         placeholder_indices,
         placeholder_index_to_region: _,
         liveness_constraints,
         mut outlives_constraints,
-        member_constraints,
         universe_causes,
         type_tests,
     } = constraints;
@@ -246,7 +244,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
 
         return LoweredConstraints {
             type_tests,
-            member_constraints,
             constraint_sccs,
             scc_annotations: scc_annotations.scc_to_annotation,
             definitions,
@@ -283,7 +280,6 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         constraint_sccs,
         definitions,
         scc_annotations,
-        member_constraints,
         outlives_constraints: Frozen::freeze(outlives_constraints),
         type_tests,
         liveness_constraints,

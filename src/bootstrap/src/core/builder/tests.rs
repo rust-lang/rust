@@ -673,6 +673,83 @@ mod snapshot {
     }
 
     #[test]
+    fn build_compiler_stage_3() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .hosts(&[TEST_TRIPLE_1])
+                .stage(3)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] llvm <target1>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_full_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .args(&["--set", "build.full-bootstrap=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_cross_full_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .hosts(&[TEST_TRIPLE_1])
+                .args(&["--set", "build.full-bootstrap=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] llvm <target1>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <target1>
+        ");
+    }
+
+    #[test]
     fn build_compiler_codegen_backend() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(

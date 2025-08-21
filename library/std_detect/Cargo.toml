@@ -21,8 +21,8 @@ is-it-maintained-open-issues = { repository = "rust-lang/stdarch" }
 maintenance = { status = "experimental" }
 
 [dependencies]
-core = { path = "../core" }
-alloc = { path = "../alloc" }
+core = { version = "1.0.0", package = 'rustc-std-workspace-core' }
+alloc = { version = "1.0.0", package = 'rustc-std-workspace-alloc' }
 
 [target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2.0", optional = true, default-features = false }

@@ -1,4 +1,6 @@
+//@ revisions: normal llvm21
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
+//@ [llvm21] min-llvm-version: 21
 //@ only-x86_64
 
 #![crate_type = "lib"]
@@ -174,6 +176,24 @@ pub fn vec_option_i32(n: usize) -> Vec<Option<i32>> {
 
     // CHECK: ret void
     vec![None; n]
+}
+
+// LLVM21-LABEL: @vec_array
+#[cfg(llvm21)]
+#[no_mangle]
+pub fn vec_array(n: usize) -> Vec<[u32; 1_000_000]> {
+    // LLVM21-NOT: call {{.*}}alloc::vec::from_elem
+    // LLVM21-NOT: call {{.*}}reserve
+    // LLVM21-NOT: call {{.*}}__rust_alloc(
+
+    // LLVM21: call {{.*}}__rust_alloc_zeroed(
+
+    // LLVM21-NOT: call {{.*}}alloc::vec::from_elem
+    // LLVM21-NOT: call {{.*}}reserve
+    // LLVM21-NOT: call {{.*}}__rust_alloc(
+
+    // LLVM21: ret void
+    vec![[0; 1_000_000]; 3]
 }
 
 // Ensure that __rust_alloc_zeroed gets the right attributes for LLVM to optimize it away.

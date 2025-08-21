@@ -2,7 +2,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
-use rustc_middle::ty::{OpaqueHiddenType, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{EarlyBinder, OpaqueHiddenType, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
 
@@ -19,7 +19,7 @@ pub(super) struct BorrowCheckRootCtxt<'tcx> {
     tainted_by_errors: Option<ErrorGuaranteed>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
-    pub(crate) consumer: Option<BorrowckConsumer<'tcx>>,
+    pub consumer: Option<BorrowckConsumer<'tcx>>,
 }
 
 impl<'tcx> BorrowCheckRootCtxt<'tcx> {
@@ -65,6 +65,13 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         } else {
             self.concrete_opaque_types.0.insert(def_id, hidden_ty);
         }
+    }
+
+    pub(super) fn get_concrete_opaque_type(
+        &mut self,
+        def_id: LocalDefId,
+    ) -> Option<EarlyBinder<'tcx, OpaqueHiddenType<'tcx>>> {
+        self.concrete_opaque_types.0.get(&def_id).map(|ty| EarlyBinder::bind(*ty))
     }
 
     pub(super) fn set_tainted_by_errors(&mut self, guar: ErrorGuaranteed) {
