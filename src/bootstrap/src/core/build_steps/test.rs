@@ -1830,10 +1830,27 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
-        if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
-            // Tells compiletest which codegen backend is used by default by the compiler.
+        if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
+            if !builder.config.enabled_codegen_backends(compiler.host).contains(codegen_backend) {
+                eprintln!(
+                    "\
+ERROR: No configured backend named `{name}`
+HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}]`",
+                    name = codegen_backend.name(),
+                );
+                crate::exit!(1);
+            }
+            // Tells compiletest that we want to use this codegen in particular and to override
+            // the default one.
+            cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
+            // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
-            cmd.arg("--codegen-backend").arg(codegen_backend.name());
+            cmd.arg("--default-codegen-backend").arg(codegen_backend.name());
+        } else {
+            // Tells compiletest which codegen backend to use.
+            // It is used to e.g. ignore tests that don't support that codegen backend.
+            cmd.arg("--default-codegen-backend")
+                .arg(builder.config.default_codegen_backend(compiler.host).unwrap().name());
         }
 
         if builder.build.config.llvm_enzyme {
