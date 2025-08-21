@@ -21,6 +21,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2"
+thin-vec.workspace = true
 tracing = "0.1"
 # tidy-alphabetical-end

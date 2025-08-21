@@ -13,5 +13,5 @@ rustc_span = { path = "../rustc_span" }
 
 [dev-dependencies]
 # tidy-alphabetical-start
-thin-vec = "0.2.12"
+thin-vec.workspace = true
 # tidy-alphabetical-end
