@@ -329,7 +329,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             || &args[..generics.count()]
                 == self
                     .tcx
-                    .erase_regions(ty::GenericArgs::identity_for_item(self.tcx, impl_def_id))
+                    .erase_and_anonymize_regions(ty::GenericArgs::identity_for_item(
+                        self.tcx,
+                        impl_def_id,
+                    ))
                     .as_slice()
         {
             (

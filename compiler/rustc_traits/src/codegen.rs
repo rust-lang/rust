@@ -73,7 +73,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     }
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);
-    let impl_source = tcx.erase_regions(impl_source);
+    let impl_source = tcx.erase_and_anonymize_regions(impl_source);
     if impl_source.has_non_region_infer() {
         // Unused generic types or consts on an impl get replaced with inference vars,
         // but never resolved, causing the return value of a query to contain inference
