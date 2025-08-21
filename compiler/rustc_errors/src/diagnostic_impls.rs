@@ -201,7 +201,7 @@ impl IntoDiagArg for PathBuf {
 
 impl IntoDiagArg for PanicStrategy {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(Cow::Owned(self.desc().to_string()))
+        DiagArgValue::Str(Cow::Owned(self.as_str().to_string()))
     }
 }
 

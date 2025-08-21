@@ -45,6 +45,7 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
+use rustc_target::spec::{CodeModel, RelocModel, TlsModel};
 
 mod abi;
 mod allocator;
@@ -247,32 +248,27 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req.kind {
             PrintKind::RelocationModels => {
                 writeln!(out, "Available relocation models:").unwrap();
-                for name in &[
-                    "static",
-                    "pic",
-                    "pie",
-                    "dynamic-no-pic",
-                    "ropi",
-                    "rwpi",
-                    "ropi-rwpi",
-                    "default",
-                ] {
+                for name in RelocModel::ALL
+                    .iter()
+                    .copied()
+                    .map(RelocModel::as_str)
+                    .into_iter()
+                    .chain(["default"])
+                {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
             }
             PrintKind::CodeModels => {
                 writeln!(out, "Available code models:").unwrap();
-                for name in &["tiny", "small", "kernel", "medium", "large"] {
+                for name in CodeModel::ALL.iter().copied().map(CodeModel::as_str) {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
             }
             PrintKind::TlsModels => {
                 writeln!(out, "Available TLS models:").unwrap();
-                for name in
-                    &["global-dynamic", "local-dynamic", "initial-exec", "local-exec", "emulated"]
-                {
+                for name in TlsModel::ALL.iter().copied().map(TlsModel::as_str) {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
