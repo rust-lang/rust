@@ -12,6 +12,6 @@ fn recur<'a>() -> impl Sized + 'a {
     // inference variable at this point, we unify it with `opaque<'1>` and
     // end up ignoring that defining use as the hidden type is equal to its key.
     prove_proj(|| recur());
-    //[next]~^ ERROR expected generic lifetime parameter, found `'_`
+    //[next]~^ ERROR non-defining use of `impl Sized + '_` in the defining scope
 }
 fn main() {}

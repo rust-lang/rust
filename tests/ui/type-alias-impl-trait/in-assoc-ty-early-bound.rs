@@ -9,7 +9,7 @@ impl Foo for () {
     type Assoc<'a, 'b> = impl Sized;
     fn bar<'a: 'a, 'b: 'b>(x: &'a ()) -> Self::Assoc<'a, 'b> {
         let closure = |x: &'a ()| -> Self::Assoc<'b, 'a> { x };
-        //~^ ERROR `<() as Foo>::Assoc<'b, 'a>` captures lifetime that does not appear in bounds
+        //~^ ERROR expected generic lifetime parameter, found `'_`
         x
     }
 }
