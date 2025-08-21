@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty;
+use clippy_utils::{is_path_diagnostic_item, ty};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -107,8 +107,7 @@ impl LateLintPass<'_> for InstantSubtraction {
 
 fn is_instant_now_call(cx: &LateContext<'_>, expr_block: &'_ Expr<'_>) -> bool {
     if let ExprKind::Call(fn_expr, []) = expr_block.kind
-        && let Some(fn_id) = clippy_utils::path_def_id(cx, fn_expr)
-        && cx.tcx.is_diagnostic_item(sym::instant_now, fn_id)
+        && is_path_diagnostic_item(cx, fn_expr, sym::instant_now)
     {
         true
     } else {
