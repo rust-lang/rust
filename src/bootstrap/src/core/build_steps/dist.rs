@@ -566,6 +566,8 @@ impl Step for Rustc {
             // Debugger scripts
             builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
 
+            generate_target_spec_json_schema(builder, image);
+
             // HTML copyright files
             let file_list = builder.ensure(super::run::GenerateCopyright);
             for file in file_list {
@@ -592,6 +594,28 @@ impl Step for Rustc {
     fn metadata(&self) -> Option<StepMetadata> {
         Some(StepMetadata::dist("rustc", self.compiler.host))
     }
+}
+
+fn generate_target_spec_json_schema(builder: &Builder<'_>, sysroot: &Path) {
+    // Since we run rustc in bootstrap, we need to ensure that we use the host compiler.
+    // We do this by using the stage 1 compiler, which is always compiled for the host,
+    // even in a cross build.
+    let stage1_host = builder.compiler(1, builder.host_target);
+    let mut rustc = command(builder.rustc(stage1_host)).fail_fast();
+    rustc
+        .env("RUSTC_BOOTSTRAP", "1")
+        .args(["--print=target-spec-json-schema", "-Zunstable-options"]);
+    let schema = rustc.run_capture(builder).stdout();
+
+    let schema_dir = tmpdir(builder);
+    t!(fs::create_dir_all(&schema_dir));
+    let schema_file = schema_dir.join("target-spec-json-schema.json");
+    t!(std::fs::write(&schema_file, schema));
+
+    let dst = sysroot.join("etc");
+    t!(fs::create_dir_all(&dst));
+
+    builder.install(&schema_file, &dst, FileType::Regular);
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
