@@ -484,10 +484,10 @@ pub(crate) struct EmptyAttributeList {
 #[diag(attr_parsing_invalid_target_lint)]
 #[warning]
 #[help]
-pub(crate) struct InvalidTargetLint {
-    pub name: Symbol,
-    pub target: &'static str,
-    pub applied: String,
+pub(crate) struct InvalidTargetLint<'a> {
+    pub name: &'a AttrPath,
+    pub target: &'a str,
+    pub applied: DiagArgValue,
     pub only: &'static str,
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub attr_span: Span,
@@ -500,9 +500,9 @@ pub(crate) struct InvalidTarget {
     #[primary_span]
     #[suggestion(code = "", applicability = "machine-applicable", style = "tool-only")]
     pub span: Span,
-    pub name: Symbol,
+    pub name: AttrPath,
     pub target: &'static str,
-    pub applied: String,
+    pub applied: DiagArgValue,
     pub only: &'static str,
 }
 

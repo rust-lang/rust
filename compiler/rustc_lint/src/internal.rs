@@ -4,7 +4,7 @@
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId};
-use rustc_middle::ty::{self, ClauseKind, GenericArgsRef, PredicatePolarity, TraitPredicate, Ty};
+use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
@@ -129,18 +129,23 @@ fn has_unstable_into_iter_predicate<'tcx>(
     };
     let predicates = cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args);
     for (predicate, _) in predicates {
-        let ClauseKind::Trait(TraitPredicate { trait_ref, polarity: PredicatePolarity::Positive }) =
-            predicate.kind().skip_binder()
-        else {
+        let Some(trait_pred) = predicate.as_trait_clause() else {
             continue;
         };
-        // Does the function or method require any of its arguments to implement `IntoIterator`?
-        if trait_ref.def_id != into_iterator_def_id {
+        if trait_pred.def_id() != into_iterator_def_id
+            || trait_pred.polarity() != PredicatePolarity::Positive
+        {
             continue;
         }
-        let Ok(Some(instance)) =
-            ty::Instance::try_resolve(cx.tcx, cx.typing_env(), into_iter_fn_def_id, trait_ref.args)
-        else {
+        // `IntoIterator::into_iter` has no additional method args.
+        let into_iter_fn_args =
+            cx.tcx.instantiate_bound_regions_with_erased(trait_pred).trait_ref.args;
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
+            cx.tcx,
+            cx.typing_env(),
+            into_iter_fn_def_id,
+            into_iter_fn_args,
+        ) else {
             continue;
         };
         // Does the input type's `IntoIterator` implementation have the

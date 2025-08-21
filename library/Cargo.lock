@@ -192,7 +192,6 @@ name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "cfg-if",
  "libc",
  "rustc-std-workspace-core",
  "unwind",
