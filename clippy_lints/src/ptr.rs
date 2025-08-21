@@ -237,7 +237,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             .collect();
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
-        for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
+        for (result, args) in iter::zip(&results, &lint_args).filter(|(r, _)| !r.skip) {
             span_lint_hir_and_then(cx, PTR_ARG, args.emission_id, args.span, args.build_msg(), |diag| {
                 diag.multipart_suggestion(
                     "change this to",
@@ -386,7 +386,6 @@ impl<'tcx> DerefTy<'tcx> {
     }
 }
 
-#[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
@@ -413,13 +412,13 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     Some(sym::Vec) => (
                         [(sym::clone, ".to_owned()")].as_slice(),
                         DerefTy::Slice(
-                            name.args.and_then(|args| args.args.first()).and_then(|arg| {
-                                if let GenericArg::Type(ty) = arg {
-                                    Some(ty.span)
-                                } else {
-                                    None
-                                }
-                            }),
+                            if let Some(name_args) = name.args
+                                && let [GenericArg::Type(ty), ..] = name_args.args
+                            {
+                                Some(ty.span)
+                            } else {
+                                None
+                            },
                             args.type_at(0),
                         ),
                     ),
@@ -432,33 +431,29 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                         DerefTy::Path,
                     ),
                     Some(sym::Cow) if mutability == Mutability::Not => {
-                        if let Some((lifetime, ty)) = name.args.and_then(|args| {
-                            if let [GenericArg::Lifetime(lifetime), ty] = args.args {
-                                return Some((lifetime, ty));
-                            }
-                            None
-                        }) {
+                        if let Some(name_args) = name.args
+                            && let [GenericArg::Lifetime(lifetime), ty] = name_args.args
+                        {
                             if let LifetimeKind::Param(param_def_id) = lifetime.kind
                                 && !lifetime.is_anonymous()
                                 && fn_sig
                                     .output()
                                     .walk()
-                                    .filter_map(|arg| {
-                                        arg.as_region().and_then(|lifetime| match lifetime.kind() {
-                                            ty::ReEarlyParam(r) => Some(
-                                                cx.tcx
-                                                    .generics_of(cx.tcx.parent(param_def_id.to_def_id()))
-                                                    .region_param(r, cx.tcx)
-                                                    .def_id,
-                                            ),
-                                            ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReLateParam(r) => r.kind.get_id(),
-                                            ty::ReStatic
-                                            | ty::ReVar(_)
-                                            | ty::RePlaceholder(_)
-                                            | ty::ReErased
-                                            | ty::ReError(_) => None,
-                                        })
+                                    .filter_map(ty::GenericArg::as_region)
+                                    .filter_map(|lifetime| match lifetime.kind() {
+                                        ty::ReEarlyParam(r) => Some(
+                                            cx.tcx
+                                                .generics_of(cx.tcx.parent(param_def_id.to_def_id()))
+                                                .region_param(r, cx.tcx)
+                                                .def_id,
+                                        ),
+                                        ty::ReBound(_, r) => r.kind.get_id(),
+                                        ty::ReLateParam(r) => r.kind.get_id(),
+                                        ty::ReStatic
+                                        | ty::ReVar(_)
+                                        | ty::RePlaceholder(_)
+                                        | ty::ReErased
+                                        | ty::ReError(_) => None,
                                     })
                                     .any(|def_id| def_id.as_local().is_some_and(|def_id| def_id == param_def_id))
                             {
@@ -627,12 +622,16 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
                         }
                     }
 
+                    // If the expression's type gets adjusted down to the deref type, we might as
+                    // well have started with that deref type -- the lint should fire
                     let deref_ty = args.deref_ty.ty(self.cx);
                     let adjusted_ty = self.cx.typeck_results().expr_ty_adjusted(e).peel_refs();
                     if adjusted_ty == deref_ty {
                         return;
                     }
 
+                    // If the expression's type is constrained by `dyn Trait`, see if the deref
+                    // type implements the trait(s) as well, and if so, the lint should fire
                     if let ty::Dynamic(preds, ..) = adjusted_ty.kind()
                         && matches_preds(self.cx, deref_ty, preds)
                     {
