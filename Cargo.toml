@@ -63,6 +63,7 @@ exclude = [
 # tidy-alphabetical-start
 bitflags = "2.9.3"
 memchr = "2.7.5"
+rustc-literal-escaper = "0.0.5"
 thin-vec = "0.2.14"
 # tidy-alphabetical-end
 
