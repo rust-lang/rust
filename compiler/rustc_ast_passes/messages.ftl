@@ -20,6 +20,10 @@ ast_passes_abi_must_not_have_return_type=
     .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
 
+ast_passes_abi_x86_interrupt =
+    invalid signature for `extern "x86-interrupt"` function
+    .note = functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found {$param_count})
+
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
     .suggestion = provide a definition for the constant
