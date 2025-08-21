@@ -101,11 +101,9 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if let ty::Adt(def, subst) = ty.kind()
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
-        && let ready_ty = subst.type_at(0)
-        && let ty::Adt(ready_def, ready_subst) = ready_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::Result, ready_def.did())
     {
-        Some(ready_subst.type_at(1))
+        let ready_ty = subst.type_at(0);
+        result_error_type(cx, ready_ty)
     } else {
         None
     }
@@ -117,10 +115,8 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
         && let ready_ty = subst.type_at(0)
         && let Some(some_ty) = option_arg_ty(cx, ready_ty)
-        && let ty::Adt(some_def, some_subst) = some_ty.kind()
-        && cx.tcx.is_diagnostic_item(sym::Result, some_def.did())
     {
-        Some(some_subst.type_at(1))
+        result_error_type(cx, some_ty)
     } else {
         None
     }
