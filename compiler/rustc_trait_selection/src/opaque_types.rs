@@ -14,22 +14,22 @@ use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::ObligationCtxt;
 
 #[derive(Debug)]
-pub enum InvalidOpaqueTypeArgs<'tcx> {
-    AlreadyReported(ErrorGuaranteed),
+pub enum NonDefiningUseReason<'tcx> {
+    Tainted(ErrorGuaranteed),
     NotAParam { opaque_type_key: OpaqueTypeKey<'tcx>, param_index: usize, span: Span },
     DuplicateParam { opaque_type_key: OpaqueTypeKey<'tcx>, param_indices: Vec<usize>, span: Span },
 }
-impl From<ErrorGuaranteed> for InvalidOpaqueTypeArgs<'_> {
+impl From<ErrorGuaranteed> for NonDefiningUseReason<'_> {
     fn from(guar: ErrorGuaranteed) -> Self {
-        InvalidOpaqueTypeArgs::AlreadyReported(guar)
+        NonDefiningUseReason::Tainted(guar)
     }
 }
-impl<'tcx> InvalidOpaqueTypeArgs<'tcx> {
+impl<'tcx> NonDefiningUseReason<'tcx> {
     pub fn report(self, infcx: &InferCtxt<'tcx>) -> ErrorGuaranteed {
         let tcx = infcx.tcx;
         match self {
-            InvalidOpaqueTypeArgs::AlreadyReported(guar) => guar,
-            InvalidOpaqueTypeArgs::NotAParam { opaque_type_key, param_index, span } => {
+            NonDefiningUseReason::Tainted(guar) => guar,
+            NonDefiningUseReason::NotAParam { opaque_type_key, param_index, span } => {
                 let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
                 let opaque_param = opaque_generics.param_at(param_index, tcx);
                 let kind = opaque_param.kind.descr();
@@ -40,7 +40,7 @@ impl<'tcx> InvalidOpaqueTypeArgs<'tcx> {
                     param_span: tcx.def_span(opaque_param.def_id),
                 })
             }
-            InvalidOpaqueTypeArgs::DuplicateParam { opaque_type_key, param_indices, span } => {
+            NonDefiningUseReason::DuplicateParam { opaque_type_key, param_indices, span } => {
                 let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
                 let descr = opaque_generics.param_at(param_indices[0], tcx).kind.descr();
                 let spans: Vec<_> = param_indices
@@ -58,15 +58,17 @@ impl<'tcx> InvalidOpaqueTypeArgs<'tcx> {
 }
 
 /// Opaque type parameter validity check as documented in the [rustc-dev-guide chapter].
+/// With the new solver, uses which fail this check are simply treated as non-defining
+/// and we only emit an error if no defining use exists.
 ///
 /// [rustc-dev-guide chapter]:
 /// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
-pub fn check_opaque_type_parameter_valid<'tcx>(
+pub fn opaque_type_has_defining_use_args<'tcx>(
     infcx: &InferCtxt<'tcx>,
     opaque_type_key: OpaqueTypeKey<'tcx>,
     span: Span,
     defining_scope_kind: DefiningScopeKind,
-) -> Result<(), InvalidOpaqueTypeArgs<'tcx>> {
+) -> Result<(), NonDefiningUseReason<'tcx>> {
     let tcx = infcx.tcx;
     let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
@@ -105,13 +107,13 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             opaque_env.param_is_error(i)?;
-            return Err(InvalidOpaqueTypeArgs::NotAParam { opaque_type_key, param_index: i, span });
+            return Err(NonDefiningUseReason::NotAParam { opaque_type_key, param_index: i, span });
         }
     }
 
     for (_, param_indices) in seen_params {
         if param_indices.len() > 1 {
-            return Err(InvalidOpaqueTypeArgs::DuplicateParam {
+            return Err(NonDefiningUseReason::DuplicateParam {
                 opaque_type_key,
                 param_indices,
                 span,

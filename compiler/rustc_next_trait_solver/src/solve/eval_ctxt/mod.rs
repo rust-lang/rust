@@ -4,7 +4,6 @@ use std::ops::ControlFlow;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
 use rustc_type_ir::data_structures::{HashMap, HashSet};
-use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
@@ -1128,6 +1127,7 @@ where
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn register_hidden_type_in_storage(
         &mut self,
         opaque_type_key: ty::OpaqueTypeKey<I>,
@@ -1152,29 +1152,6 @@ where
             &mut goals,
         );
         self.add_goals(GoalSource::AliasWellFormed, goals);
-    }
-
-    // Do something for each opaque/hidden pair defined with `def_id` in the
-    // current inference context.
-    pub(super) fn probe_existing_opaque_ty(
-        &mut self,
-        key: ty::OpaqueTypeKey<I>,
-    ) -> Option<(ty::OpaqueTypeKey<I>, I::Ty)> {
-        // We shouldn't have any duplicate entries when using
-        // this function during `TypingMode::Analysis`.
-        let duplicate_entries = self.delegate.clone_duplicate_opaque_types();
-        assert!(duplicate_entries.is_empty(), "unexpected duplicates: {duplicate_entries:?}");
-        let mut matching = self.delegate.clone_opaque_types_lookup_table().into_iter().filter(
-            |(candidate_key, _)| {
-                candidate_key.def_id == key.def_id
-                    && DeepRejectCtxt::relate_rigid_rigid(self.cx())
-                        .args_may_unify(candidate_key.args, key.args)
-            },
-        );
-        let first = matching.next();
-        let second = matching.next();
-        assert_eq!(second, None);
-        first
     }
 
     // Try to evaluate a const, or return `None` if the const is too generic.

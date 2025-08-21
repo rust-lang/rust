@@ -127,6 +127,10 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
     }
 
     fn non_defining_use_in_defining_scope(&mut self, item_def_id: LocalDefId) {
+        // We make sure that all opaque types get defined while
+        // type checking the defining scope, so this error is unreachable
+        // with the new solver.
+        assert!(!self.tcx.next_trait_solver_globally());
         let guar = self.tcx.dcx().emit_err(TaitForwardCompat2 {
             span: self
                 .tcx
@@ -252,9 +256,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             } else if let Some(hidden_ty) = tables.concrete_opaque_types.get(&def_id) {
                 hidden_ty.ty
             } else {
-                // FIXME(-Znext-solver): This should not be necessary and we should
-                // instead rely on inference variable fallback inside of typeck itself.
-
+                assert!(!tcx.next_trait_solver_globally());
                 // We failed to resolve the opaque type or it
                 // resolves to itself. We interpret this as the
                 // no values of the hidden type ever being constructed,
@@ -273,6 +275,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                     if let Err(guar) = hir_ty.error_reported() {
                         Ty::new_error(tcx, guar)
                     } else {
+                        assert!(!tcx.next_trait_solver_globally());
                         hir_ty
                     }
                 }
