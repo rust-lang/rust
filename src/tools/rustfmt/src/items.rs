@@ -3600,7 +3600,7 @@ pub(crate) fn rewrite_extern_crate(
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
     !matches!(
         item.kind,
-        ast::ItemKind::Mod(_, _, ast::ModKind::Loaded(_, ast::Inline::Yes, _, _))
+        ast::ItemKind::Mod(_, _, ast::ModKind::Loaded(_, ast::Inline::Yes, _))
     )
 }
 
