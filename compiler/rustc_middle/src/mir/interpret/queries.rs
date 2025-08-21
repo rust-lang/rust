@@ -41,7 +41,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
-        let inputs = self.erase_regions(typing_env.as_query_input(cid));
+        let inputs = self.erase_and_anonymize_regions(typing_env.as_query_input(cid));
         self.eval_to_allocation_raw(inputs)
     }
 
@@ -172,8 +172,9 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs =
-            self.erase_regions(typing_env.with_post_analysis_normalized(self).as_query_input(cid));
+        let inputs = self.erase_and_anonymize_regions(
+            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+        );
         if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
@@ -192,8 +193,9 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> ConstToValTreeResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs =
-            self.erase_regions(typing_env.with_post_analysis_normalized(self).as_query_input(cid));
+        let inputs = self.erase_and_anonymize_regions(
+            typing_env.with_post_analysis_normalized(self).as_query_input(cid),
+        );
         debug!(?inputs);
         let res = if !span.is_dummy() {
             // The query doesn't know where it is being invoked, so we need to fix the span.

@@ -285,7 +285,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         let _ = tcx.hir_body_owner_kind(callee_id);
     }
 
-    let ty = tcx.erase_regions(ty);
+    let ty = tcx.erase_and_anonymize_regions(ty);
     if ty.has_escaping_bound_vars() {
         return false;
     }

@@ -55,7 +55,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::ConstKind::Unevaluated(uv) => match self.tcx.thir_abstract_const(uv.def) {
                         Err(e) => ty::Const::new_error(self.tcx, e),
                         Ok(Some(bac)) => {
-                            let args = self.tcx.erase_regions(uv.args);
+                            let args = self.tcx.erase_and_anonymize_regions(uv.args);
                             let bac = bac.instantiate(self.tcx, args);
                             return bac.fold_with(self);
                         }

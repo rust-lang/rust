@@ -875,7 +875,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
-                let args = tcx.erase_regions(GenericArgs::identity_for_item(tcx, def));
+                let args =
+                    tcx.erase_and_anonymize_regions(GenericArgs::identity_for_item(tcx, def));
                 let uneval =
                     mir::UnevaluatedConst { def, args, promoted: Some(next_promoted_index) };
 

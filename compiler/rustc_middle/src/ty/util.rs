@@ -132,9 +132,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash128 {
         // We want the type_id be independent of the types free regions, so we
-        // erase them. The erase_regions() call will also anonymize bound
-        // regions, which is desirable too.
-        let ty = self.erase_regions(ty);
+        // erase them. We also want type_id to be independnt of the names of bound
+        // regions so we anonymize them.
+        let ty = self.erase_and_anonymize_regions(ty);
 
         self.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
@@ -1309,7 +1309,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
             }
@@ -1346,7 +1346,7 @@ impl<'tcx> Ty<'tcx> {
                 debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(typing_env, query_ty)
-                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
+                    .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
             }
