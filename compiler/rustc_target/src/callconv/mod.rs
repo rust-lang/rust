@@ -119,6 +119,7 @@ mod attr_impl {
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
             const NoUndef = 1 << 6;
+            const CapturesReadOnly = 1 << 7;
         }
     }
     rustc_data_structures::external_bitflags_debug! { ArgAttribute }

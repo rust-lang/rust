@@ -251,6 +251,7 @@ pub(crate) enum AttributeKind {
     Writable = 42,
     DeadOnUnwind = 43,
     DeadOnReturn = 44,
+    CapturesReadOnly = 45,
 }
 
 /// LLVMIntPredicate

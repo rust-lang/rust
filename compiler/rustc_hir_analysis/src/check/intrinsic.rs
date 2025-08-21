@@ -136,6 +136,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::round_ties_even_f64
         | sym::round_ties_even_f128
         | sym::autodiff
+        | sym::prefetch_read_data
+        | sym::prefetch_write_data
+        | sym::prefetch_read_instruction
+        | sym::prefetch_write_instruction
         | sym::const_eval_select => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
@@ -218,7 +222,7 @@ pub(crate) fn check_intrinsic_type(
         | sym::prefetch_write_data
         | sym::prefetch_read_instruction
         | sym::prefetch_write_instruction => {
-            (1, 0, vec![Ty::new_imm_ptr(tcx, param(0)), tcx.types.i32], tcx.types.unit)
+            (1, 1, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.unit)
         }
         sym::needs_drop => (1, 0, vec![], tcx.types.bool),
 

@@ -17,6 +17,7 @@ unsafe extern "Rust" {
     #[rustc_allocator]
     #[rustc_nounwind]
     #[rustc_std_internal_symbol]
+    #[rustc_allocator_zeroed_variant = "__rust_alloc_zeroed"]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
     #[rustc_nounwind]
