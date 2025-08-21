@@ -1,15 +1,5 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use super::prelude::*;
 
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];

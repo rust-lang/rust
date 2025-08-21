@@ -7,9 +7,9 @@
 //! Specifically, you might not care about managing the state of your [`AttributeParser`]
 //! state machine yourself. In this case you can choose to implement:
 //!
-//! - [`SingleAttributeParser`]: makes it easy to implement an attribute which should error if it
+//! - [`SingleAttributeParser`](crate::attributes::SingleAttributeParser): makes it easy to implement an attribute which should error if it
 //! appears more than once in a list of attributes
-//! - [`CombineAttributeParser`]: makes it easy to implement an attribute which should combine the
+//! - [`CombineAttributeParser`](crate::attributes::CombineAttributeParser): makes it easy to implement an attribute which should combine the
 //! contents of attributes, if an attribute appear multiple times in a list
 //!
 //! Attributes should be added to `crate::context::ATTRIBUTE_PARSERS` to be parsed.
@@ -21,9 +21,13 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
-use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
+use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::ArgParser;
 use crate::session_diagnostics::UnusedMultiple;
+use crate::target_checking::AllowedTargets;
+
+/// All the parsers require roughly the same imports, so this prelude has most of the often-needed ones.
+mod prelude;
 
 pub(crate) mod allow_unstable;
 pub(crate) mod body;

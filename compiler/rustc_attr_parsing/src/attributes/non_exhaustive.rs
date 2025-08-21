@@ -3,8 +3,10 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AllowedTargets, Stage};
+use crate::context::Stage;
+use crate::target_checking::AllowedTargets;
+use crate::target_checking::Policy::{Allow, Warn};
+
 pub(crate) struct NonExhaustiveParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NonExhaustiveParser {

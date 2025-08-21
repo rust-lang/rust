@@ -1,13 +1,5 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_span::{Symbol, sym};
+use super::prelude::*;
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
 pub(crate) struct IgnoreParser;
 
 impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {

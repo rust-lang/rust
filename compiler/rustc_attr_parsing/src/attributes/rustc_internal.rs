@@ -1,12 +1,6 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Symbol, sym};
+use super::prelude::*;
+use super::util::parse_single_integer;
 
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AcceptContext, AllowedTargets, Stage, parse_single_integer};
-use crate::parser::ArgParser;
 pub(crate) struct RustcLayoutScalarValidRangeStart;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStart {
