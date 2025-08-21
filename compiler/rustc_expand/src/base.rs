@@ -1101,6 +1101,7 @@ pub trait ResolverExpand {
         fragment: &AstFragment,
     );
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
+    fn override_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind);
 
     fn expansion_for_ast_pass(
         &mut self,
