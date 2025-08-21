@@ -11,7 +11,7 @@ use std::sync::Arc;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
+    ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
@@ -813,7 +813,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Mod(_, ident, ref mod_kind) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
-                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
+                if let ast::ModKind::Loaded(_, Inline::No { had_parse_error: Err(_) }, _) = mod_kind
+                {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
                 self.parent_scope.module = self.r.new_local_module(
