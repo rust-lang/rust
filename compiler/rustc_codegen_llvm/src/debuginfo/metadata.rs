@@ -387,13 +387,15 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
 fn build_pattern_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     inner_ty: Ty<'tcx>,
-    _unique_type_id: UniqueTypeId<'tcx>,
+    unique_type_id: UniqueTypeId<'tcx>,
     pattern_ty: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     debug!("build_pattern_type_di_node: {:?}", pattern_ty);
 
     // Get the debuginfo for the underlying type
     let inner_di_node = type_di_node(cx, inner_ty);
+
+    return_if_di_node_created_in_meantime!(cx, unique_type_id);
 
     // Create a typedef that points to the underlying type but uses the pattern type's name
     let type_name = compute_debuginfo_type_name(cx.tcx, pattern_ty, false);
