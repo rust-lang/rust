@@ -481,12 +481,15 @@ impl Analysis {
         // `world_symbols` currently clones the database to run stuff in parallel, which will make any query panic
         // if we were to attach it here.
         Cancelled::catch(|| {
-            symbol_index::world_symbols(&self.db, query)
-                .into_iter()
-                .filter_map(|s| s.try_to_nav(&self.db))
-                .take(limit)
-                .map(UpmappingResult::call_site)
-                .collect::<Vec<_>>()
+            let symbols = symbol_index::world_symbols(&self.db, query);
+            salsa::attach(&self.db, || {
+                symbols
+                    .into_iter()
+                    .filter_map(|s| s.try_to_nav(&self.db))
+                    .take(limit)
+                    .map(UpmappingResult::call_site)
+                    .collect::<Vec<_>>()
+            })
         })
     }
 
