@@ -28,25 +28,15 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
         && is_res_lang_ctor(cx, path_res(cx, err_fun), ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)
     {
-        let prefix;
-        let suffix;
-        let err_ty;
-
-        if let Some(ty) = result_error_type(cx, return_ty) {
-            prefix = "Err(";
-            suffix = ")";
-            err_ty = ty;
+        let (prefix, suffix, err_ty) = if let Some(ty) = result_error_type(cx, return_ty) {
+            ("Err(", ")", ty)
         } else if let Some(ty) = poll_result_error_type(cx, return_ty) {
-            prefix = "Poll::Ready(Err(";
-            suffix = "))";
-            err_ty = ty;
+            ("Poll::Ready(Err(", "))", ty)
         } else if let Some(ty) = poll_option_result_error_type(cx, return_ty) {
-            prefix = "Poll::Ready(Some(Err(";
-            suffix = ")))";
-            err_ty = ty;
+            ("Poll::Ready(Some(Err(", ")))", ty)
         } else {
             return;
-        }
+        };
 
         span_lint_and_then(
             cx,
