@@ -139,6 +139,7 @@ impl LateLintPass<'_> for DisallowedMacros {
                 | AttributeKind::ConstStability { span, .. }
                 | AttributeKind::ConstTrait(span)
                 | AttributeKind::Coverage(span, _)
+                | AttributeKind::CrateName { attr_span: span, .. }
                 | AttributeKind::DenyExplicitImpl(span)
                 | AttributeKind::Deprecation { span, .. }
                 | AttributeKind::DoNotImplementViaObject(span)
@@ -174,11 +175,12 @@ impl LateLintPass<'_> for DisallowedMacros {
                 | AttributeKind::RustcBuiltinMacro { span, .. }
                 | AttributeKind::RustcLayoutScalarValidRangeEnd(_, span)
                 | AttributeKind::RustcLayoutScalarValidRangeStart(_, span)
+                | AttributeKind::Sanitize { span, .. }
                 | AttributeKind::SkipDuringMethodDispatch { span, .. }
                 | AttributeKind::SpecializationTrait(span)
                 | AttributeKind::Stability { span, .. }
                 | AttributeKind::StdInternalSymbol(span)
-                | AttributeKind::TargetFeature(_, span)
+                | AttributeKind::TargetFeature { attr_span: span, .. }
                 | AttributeKind::TrackCaller(span)
                 | AttributeKind::TypeConst(span)
                 | AttributeKind::UnsafeSpecializationMarker(span)
@@ -186,6 +188,7 @@ impl LateLintPass<'_> for DisallowedMacros {
                 | AttributeKind::Coroutine(span)
                 | AttributeKind::Linkage(_, span)
                 | AttributeKind::ShouldPanic { span, .. }
+                | AttributeKind::CustomMir(_, _, span)
                 | AttributeKind::Used { span, .. } => *span,
 
                 AttributeKind::CoherenceIsCore
