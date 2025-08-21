@@ -2290,13 +2290,10 @@ intrinsics:
       - [uint64x1_t, u64, i64]
       - [uint64x2_t, u64, i64]
     compose:
-      - LLVMLink:
-          name: "uqsub.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.uqsub.v{neon_type[0].lane}{type[2]}"
-              arch: aarch64,arm64ec
-            - link: "llvm.usub.sat.v{neon_type[0].lane}{type[2]}"
-              arch: arm
+      - FnCall:
+        - simd_saturating_sub
+        - - a
+          - b
 
   - name: "vqsub{neon_type[0].no}"
     doc: Saturating subtract
@@ -2319,13 +2316,10 @@ intrinsics:
       - [int64x1_t, s64, i64]
       - [int64x2_t, s64, i64]
     compose:
-      - LLVMLink:
-          name: "sqsub.{neon_type[0]}"
-          links:
-            - link: "llvm.aarch64.neon.sqsub.v{neon_type[0].lane}{type[2]}"
-              arch: aarch64,arm64ec
-            - link: "llvm.ssub.sat.v{neon_type[0].lane}{type[2]}"
-              arch: arm
+      - FnCall:
+        - simd_saturating_sub
+        - - a
+          - b
 
   - name: "vhadd{neon_type.no}"
     doc: Halving add
@@ -2541,13 +2535,10 @@ intrinsics:
       - uint64x1_t
       - uint64x2_t
     compose:
-      - LLVMLink:
-          name: "uqadd.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.uqadd.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.uadd.sat.{neon_type}"
-              arch: arm
+      - FnCall:
+        - simd_saturating_add
+        - - a
+          - b
 
   - name: "vqadd{neon_type.no}"
     doc: Saturating add
@@ -2570,13 +2561,10 @@ intrinsics:
       - int64x1_t
       - int64x2_t
     compose:
-      - LLVMLink:
-          name: "sqadd.{neon_type}"
-          links:
-            - link: "llvm.aarch64.neon.sqadd.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.sadd.sat.{neon_type}"
-              arch: arm
+      - FnCall:
+        - simd_saturating_add
+        - - a
+          - b
 
   - name: "vld1{neon_type[1].no}"
     doc: "Load multiple single-element structures to one, two, three, or four registers"
