@@ -41,6 +41,11 @@ jobs:
             multiarch: s390x
             gcc_cross: s390x-linux-gnu
             qemu: true
+          - host_target: powerpc64le-unknown-linux-gnu
+            os: ubuntu-latest
+            multiarch: ppc64el
+            gcc_cross: powerpc64le-linux-gnu
+            qemu: true
           - host_target: aarch64-apple-darwin
             os: macos-latest
           - host_target: i686-pc-windows-msvc
