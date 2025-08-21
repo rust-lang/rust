@@ -933,8 +933,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // We do still need to modify it to make all the uninhabited variants fit so they
         // can be partially-initialized.
         //
-        // FIXME: We shouldn't assume this is better than the tagged layout; it's worse for
-        // `enum Foo { A, B(i32, !) }` because it has no niche.
+        // We keep this as a prospective layout, and don't assume it's better than the tagged
+        // layout and return it immediately; e.g. it's worse for `enum Foo { A, B(i32, !) }`
+        // because it has no niche.
         let no_tag_layout = if single_variant_layout_eligible
             && let Some((single_inhabited_variant_idx, Ok(mut st))) =
                 single_inhabited_variant_no_tag_layout
