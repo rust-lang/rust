@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::default::Default;
+use std::fmt::Debug;
 use std::iter;
 use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
@@ -1090,7 +1091,7 @@ pub struct DeriveResolution {
     pub is_const: bool,
 }
 
-pub trait ResolverExpand {
+pub trait ResolverExpand: Debug {
     fn next_node_id(&mut self) -> NodeId;
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId;
 
