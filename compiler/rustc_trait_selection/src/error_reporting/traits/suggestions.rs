@@ -2876,7 +2876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // we check if `TraitB` can be reachable from `S`
                                 // to determine whether to note `TraitA` is sealed trait.
                                 if let ty::Adt(adt, _) = ty.kind() {
-                                    let visibilities = tcx.effective_visibilities(());
+                                    let visibilities = &tcx.resolutions(()).effective_visibilities;
                                     visibilities.effective_vis(local).is_none_or(|v| {
                                         v.at_level(Level::Reexported)
                                             .is_accessible_from(adt.did(), tcx)
