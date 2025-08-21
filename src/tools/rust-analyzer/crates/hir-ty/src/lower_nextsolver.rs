@@ -1756,7 +1756,11 @@ fn named_associated_type_shorthand_candidates<'db, R>(
                 db,
                 GenericDefId::TraitId(trait_def_id),
                 PredicateFilter::SelfTrait,
-                |pred| pred == GenericDefId::TraitId(trait_def_id),
+                // We are likely in the midst of lowering generic predicates of `def`.
+                // So, if we allow `pred == def` we might fall into an infinite recursion.
+                // Actually, we have already checked for the case `pred == def` above as we started
+                // with a stack including `trait_id`
+                |pred| pred != def && pred == GenericDefId::TraitId(trait_def_id),
             )
             .0
             .deref()

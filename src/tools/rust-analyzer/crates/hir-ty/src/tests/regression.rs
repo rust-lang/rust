@@ -2439,3 +2439,56 @@ pub fn null_mut<T: PointeeSized + Thin>() -> *mut T {
 "#,
     );
 }
+
+#[test]
+fn issue_20484() {
+    check_no_mismatches(
+        r#"
+struct Eth;
+
+trait FullBlockBody {
+    type Transaction;
+}
+
+impl FullBlockBody for () {
+    type Transaction = ();
+}
+
+trait NodePrimitives {
+    type BlockBody;
+    type SignedTx;
+}
+
+impl NodePrimitives for () {
+    type BlockBody = ();
+    type SignedTx = ();
+}
+
+impl NodePrimitives for Eth {
+    type BlockBody = ();
+    type SignedTx = ();
+}
+
+trait FullNodePrimitives
+where
+    Self: NodePrimitives<BlockBody: FullBlockBody<Transaction = Self::SignedTx>>,
+{
+}
+
+impl<T> FullNodePrimitives for T where
+    T: NodePrimitives<BlockBody: FullBlockBody<Transaction = Self::SignedTx>>,
+{
+}
+
+fn node<N>(_: N)
+where
+    N: FullNodePrimitives,
+{
+}
+
+fn main() {
+    node(Eth);
+}
+"#,
+    );
+}
