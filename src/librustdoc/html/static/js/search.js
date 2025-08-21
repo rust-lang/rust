@@ -606,7 +606,8 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             c = parserState.userQuery[parserState.pos];
         }
         const generics = [];
-        if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
+        const pos = parserState.pos;
+        if (parserState.userQuery.slice(pos, pos + 3) === "mut") {
             generics.push(makePrimitiveElement("mut", { typeFilter: "keyword" }));
             parserState.pos += 3;
             c = parserState.userQuery[parserState.pos];
@@ -623,7 +624,7 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             getFilteredNextElem(query, parserState, generics, isInGenerics);
         }
         elems.push(makePrimitiveElement(name, { generics }));
-    }
+    };
 
     skipWhitespace(parserState);
     let start = parserState.pos;
@@ -2310,6 +2311,25 @@ class DocSearch {
                     return true;
                 } else if (fnType.id === this.typeNameIdOfReference) {
                     pushText({ name: "&", highlighted: fnType.highlighted }, result);
+                    let prevHighlighted = false;
+                    await onEachBtwnAsync(
+                        fnType.generics,
+                        async value => {
+                            prevHighlighted = !!value.highlighted;
+                            await writeFn(value, result);
+                        },
+                        // @ts-expect-error
+                        value => pushText({
+                            name: " ",
+                            highlighted: prevHighlighted && value.highlighted,
+                        }, result),
+                    );
+                    return true;
+                } else if (fnType.id === this.typeNameIdOfPointer) {
+                    pushText({ name: "*", highlighted: fnType.highlighted }, result);
+                    if (fnType.generics.length < 2) {
+                        pushText({ name: "const ", highlighted: fnType.highlighted }, result);
+                    }
                     let prevHighlighted = false;
                     await onEachBtwnAsync(
                         fnType.generics,
