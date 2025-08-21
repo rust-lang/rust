@@ -135,30 +135,23 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             self.report_abi_mismatch(expr.span, caller_sig.abi, callee_sig.abi);
         }
 
+        // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
+        // e.g.
+        // ```
+        // fn a() -> impl Sized { become b() } // ICE
+        // fn b() -> u8 { 0 }
+        // ```
+        // we should think what is the expected behavior here.
+        // (we should probably just accept this by revealing opaques?)
         if caller_sig.inputs_and_output != callee_sig.inputs_and_output {
-            if caller_sig.inputs() != callee_sig.inputs() {
-                self.report_arguments_mismatch(
-                    expr.span,
-                    self.tcx.liberate_late_bound_regions(
-                        CRATE_DEF_ID.to_def_id(),
-                        self.caller_ty.fn_sig(self.tcx),
-                    ),
-                    self.tcx
-                        .liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
-                );
-            }
-
-            // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
-            // e.g.
-            // ```
-            // fn a() -> impl Sized { become b() } // ICE
-            // fn b() -> u8 { 0 }
-            // ```
-            // we should think what is the expected behavior here.
-            // (we should probably just accept this by revealing opaques?)
-            if caller_sig.output() != callee_sig.output() {
-                span_bug!(expr.span, "hir typeck should have checked the return type already");
-            }
+            self.report_signature_mismatch(
+                expr.span,
+                self.tcx.liberate_late_bound_regions(
+                    CRATE_DEF_ID.to_def_id(),
+                    self.caller_ty.fn_sig(self.tcx),
+                ),
+                self.tcx.liberate_late_bound_regions(CRATE_DEF_ID.to_def_id(), ty.fn_sig(self.tcx)),
+            );
         }
 
         {
@@ -365,7 +358,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         self.found_errors = Err(err);
     }
 
-    fn report_arguments_mismatch(
+    fn report_signature_mismatch(
         &mut self,
         sp: Span,
         caller_sig: ty::FnSig<'_>,
