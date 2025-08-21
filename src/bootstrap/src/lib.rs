@@ -165,6 +165,20 @@ impl CodegenBackendKind {
     }
 }
 
+impl std::str::FromStr for CodegenBackendKind {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "" => Err("Invalid empty backend name"),
+            "gcc" => Ok(Self::Gcc),
+            "llvm" => Ok(Self::Llvm),
+            "cranelift" => Ok(Self::Cranelift),
+            _ => Ok(Self::Custom(s.to_string())),
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
     /// Run normal tests and doc tests (default).

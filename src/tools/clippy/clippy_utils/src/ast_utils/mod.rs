@@ -403,7 +403,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             ls == rs
                 && eq_id(*li, *ri)
                 && match (lmk, rmk) {
-                    (ModKind::Loaded(litems, linline, _, _), ModKind::Loaded(ritems, rinline, _, _)) => {
+                    (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) => {
                         linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind))
                     },
                     (ModKind::Unloaded, ModKind::Unloaded) => true,

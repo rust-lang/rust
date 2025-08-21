@@ -1,6 +1,8 @@
+use std::borrow::Cow;
 use std::fmt::{self, Display};
 use std::sync::OnceLock;
 
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{
     Decodable, Encodable, HashStable_Generic, PrintAttribute, current_rustc_version,
 };
@@ -43,5 +45,11 @@ static CURRENT_OVERRIDABLE: OnceLock<RustcVersion> = OnceLock::new();
 impl Display for RustcVersion {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+impl IntoDiagArg for RustcVersion {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }

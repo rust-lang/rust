@@ -1778,7 +1778,7 @@ Language
 - [Undeprecate lint `unstable_features` and make use of it in the compiler.](https://github.com/rust-lang/rust/pull/118639/)
 - [Make inductive cycles in coherence ambiguous always.](https://github.com/rust-lang/rust/pull/118649/)
 - [Get rid of type-driven traversal in const-eval interning](https://github.com/rust-lang/rust/pull/119044/),
-  only as a [future compatiblity lint](https://github.com/rust-lang/rust/pull/122204) for now.
+  only as a [future compatibility lint](https://github.com/rust-lang/rust/pull/122204) for now.
 - [Deny braced macro invocations in let-else.](https://github.com/rust-lang/rust/pull/119062/)
 
 <a id="1.77.0-Compiler"></a>

@@ -43,7 +43,7 @@ impl<'a> Parser<'a> {
             self.expect(exp!(OpenBrace))?;
             let (inner_attrs, items, inner_span) = self.parse_mod(exp!(CloseBrace))?;
             attrs.extend(inner_attrs);
-            ModKind::Loaded(items, Inline::Yes, inner_span, Ok(()))
+            ModKind::Loaded(items, Inline::Yes, inner_span)
         };
         Ok(ItemKind::Mod(safety, ident, mod_kind))
     }
