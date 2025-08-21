@@ -46,7 +46,8 @@ impl From<ImportLibraryItem> for COFFShortExport {
             name: item.name,
             ext_name: None,
             symbol_name: item.symbol_name,
-            alias_target: None,
+            import_name: None,
+            export_as: None,
             ordinal: item.ordinal.unwrap_or(0),
             noname: item.ordinal.is_some(),
             data: item.is_data,
@@ -134,6 +135,7 @@ pub trait ArchiveBuilderBuilder {
                 // when linking a rust staticlib using `/WHOLEARCHIVE`.
                 // See #129020
                 true,
+                &[],
             ) {
                 sess.dcx()
                     .emit_fatal(ErrorCreatingImportLibrary { lib_name, error: error.to_string() });
@@ -527,7 +529,7 @@ impl<'a> ArArchiveBuilder<'a> {
             &entries,
             archive_kind,
             false,
-            /* is_ec = */ self.sess.target.arch == "arm64ec",
+            /* is_ec = */ Some(self.sess.target.arch == "arm64ec"),
         )?;
         archive_tmpfile.flush()?;
         drop(archive_tmpfile);

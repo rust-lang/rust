@@ -158,11 +158,11 @@ checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
 name = "ar_archive_writer"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
+checksum = "3219abbb81fdcb1a976d794ea40cd8567b67c4e8f93bdcd077a40a0905f133e8"
 dependencies = [
- "object 0.36.7",
+ "object 0.37.2",
 ]
 
 [[package]]
