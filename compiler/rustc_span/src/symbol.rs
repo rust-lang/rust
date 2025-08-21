@@ -1754,6 +1754,7 @@ symbols! {
         readonly,
         realloc,
         reason,
+        reborrow,
         receiver,
         receiver_target,
         recursion_limit,
