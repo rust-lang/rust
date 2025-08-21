@@ -5252,7 +5252,7 @@ if (typeof window !== "undefined") {
         },
         loadTreeByHash: hashHex => {
             const script = document.createElement("script");
-            script.src = `${ROOT_PATH}/search.index/${hashHex}.js`;
+            script.src = `${ROOT_PATH}search.index/${hashHex}.js`;
             script.onerror = e => {
                 if (databaseCallbacks) {
                     databaseCallbacks.err_rn_(hashHex, e);
@@ -5262,7 +5262,7 @@ if (typeof window !== "undefined") {
         },
         loadDataByNameAndHash: (name, hashHex) => {
             const script = document.createElement("script");
-            script.src = `${ROOT_PATH}/search.index/${name}/${hashHex}.js`;
+            script.src = `${ROOT_PATH}search.index/${name}/${hashHex}.js`;
             script.onerror = e => {
                 if (databaseCallbacks) {
                     databaseCallbacks.err_rd_(hashHex, e);
