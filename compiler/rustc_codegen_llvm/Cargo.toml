@@ -8,7 +8,7 @@ test = false
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
+bitflags.workspace = true
 # To avoid duplicate dependencies, this should match the version of gimli used
 # by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
 gimli = "0.31"
