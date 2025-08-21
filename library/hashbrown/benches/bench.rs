@@ -16,6 +16,7 @@ use std::{
 };
 
 const SIZE: usize = 1000;
+const OP_COUNT: usize = 500;
 
 // The default hashmap when using this crate directly.
 type FoldHashMap<K, V> = HashMap<K, V, DefaultHashBuilder>;
@@ -73,6 +74,22 @@ macro_rules! bench_suite {
         );
         $bench_macro!($bench_foldhash_random, FoldHashMap, RandomKeys::new());
         $bench_macro!($bench_std_random, StdHashMap, RandomKeys::new());
+    };
+}
+
+macro_rules! bench_suite_2 {
+    ($bench_macro:ident,
+     $name0:ident, $size0:literal, $name1:ident, $size1:literal, $name2:ident, $size2:literal,
+     $name3:ident, $size3:literal, $name4:ident, $size4:literal, $name5:ident, $size5:literal,
+     $name6:ident, $size6:literal, $name7:ident, $size7:literal) => {
+        $bench_macro!($name0, $size0, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name1, $size1, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name2, $size2, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name3, $size3, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name4, $size4, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name5, $size5, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name6, $size6, FoldHashMap, RandomKeys::new());
+        $bench_macro!($name7, $size7, FoldHashMap, RandomKeys::new());
     };
 }
 
@@ -220,6 +237,83 @@ bench_suite!(
     lookup_fail_std_highbits,
     lookup_fail_foldhash_random,
     lookup_fail_std_random
+);
+
+macro_rules! bench_lookup_load_factor {
+    ($name:ident, $size:literal, $maptype:ident, $keydist:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let mut m = $maptype::default();
+            for i in $keydist.take($size) {
+                m.insert(i, DropType(i));
+            }
+
+            b.iter(|| {
+                for i in $keydist.take(OP_COUNT) {
+                    black_box(m.get(&i));
+                }
+            });
+        }
+    };
+}
+
+bench_suite_2!(
+    bench_lookup_load_factor, // same capacity of 32768 * 0.875
+    loadfactor_lookup_14500,
+    14500,
+    loadfactor_lookup_16500,
+    16500,
+    loadfactor_lookup_18500,
+    18500,
+    loadfactor_lookup_20500,
+    20500,
+    loadfactor_lookup_22500,
+    22500,
+    loadfactor_lookup_24500,
+    24500,
+    loadfactor_lookup_26500,
+    26500,
+    loadfactor_lookup_28500,
+    28500
+);
+
+macro_rules! bench_lookup_fail_load_factor {
+    ($name:ident, $size:literal, $maptype:ident, $keydist:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            let mut m = $maptype::default();
+            let mut iter = $keydist;
+            for i in (&mut iter).take($size) {
+                m.insert(i, DropType(i));
+            }
+
+            b.iter(|| {
+                for i in (&mut iter).take(OP_COUNT) {
+                    black_box(m.get(&i));
+                }
+            })
+        }
+    };
+}
+
+bench_suite_2!(
+    bench_lookup_fail_load_factor, // same capacity of 32768 * 0.875
+    loadfactor_lookup_fail_14500,
+    14500,
+    loadfactor_lookup_fail_16500,
+    16500,
+    loadfactor_lookup_fail_18500,
+    18500,
+    loadfactor_lookup_fail_20500,
+    20500,
+    loadfactor_lookup_fail_22500,
+    22500,
+    loadfactor_lookup_fail_24500,
+    24500,
+    loadfactor_lookup_fail_26500,
+    26500,
+    loadfactor_lookup_fail_28500,
+    28500
 );
 
 macro_rules! bench_iter {
