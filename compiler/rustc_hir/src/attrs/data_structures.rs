@@ -1,7 +1,11 @@
+use std::borrow::Cow;
+use std::path::PathBuf;
+
 pub use ReprAttr::*;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, ast};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
@@ -213,12 +217,34 @@ pub enum MirDialect {
     Runtime,
 }
 
+impl IntoDiagArg for MirDialect {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirDialect::Analysis => "analysis",
+            MirDialect::Built => "built",
+            MirDialect::Runtime => "runtime",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
+    }
+}
+
 #[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum MirPhase {
     Initial,
     PostCleanup,
     Optimized,
+}
+
+impl IntoDiagArg for MirPhase {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirPhase::Initial => "initial",
+            MirPhase::PostCleanup => "post-cleanup",
+            MirPhase::Optimized => "optimized",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
+    }
 }
 
 /// Represents parsed *built-in* inert attributes.

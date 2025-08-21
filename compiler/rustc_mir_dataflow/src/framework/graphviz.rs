@@ -8,7 +8,6 @@ use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
-use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
@@ -16,6 +15,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_span::def_id::DefId;
 use rustc_span::{Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_graphviz as dot};

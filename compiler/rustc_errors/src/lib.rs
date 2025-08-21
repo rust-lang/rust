@@ -41,12 +41,11 @@ use std::{fmt, panic};
 use Level::*;
 pub use codes::*;
 pub use diagnostic::{
-    BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
-    Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
-    Subdiagnostic,
+    BugAbort, Diag, DiagArgMap, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee,
+    FatalAbort, LintDiagnostic, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
-    DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
+    DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
@@ -56,11 +55,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
-    DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
-    SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
+    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
+    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
+    fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
-use rustc_hir::HirId;
+use rustc_hir_id::HirId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
@@ -1996,6 +1996,12 @@ impl Level {
 
             Warning | Note | Help | OnceNote | OnceHelp => true,
         }
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
 
