@@ -75,7 +75,6 @@ rm -r tests/run-make/reachable-extern-fn-available-lto
 
 # coverage instrumentation
 rm tests/ui/consts/precise-drop-with-coverage.rs
-rm tests/ui/issues/issue-85461.rs
 rm -r tests/ui/instrument-coverage/
 
 # optimization tests
