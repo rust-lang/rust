@@ -50,11 +50,14 @@ new_pr = true
 [autolabel."S-waiting-on-author"]
 new_draft = true
 
-# Automatically close and reopen PRs made by bots to run CI on them
-[bot-pull-requests]
-
-# Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree
+# Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree.
 [canonicalize-issue-links]
 
-# Prevents mentions in commits to avoid users being spammed
+# Prevents mentions in commits to avoid users being spammed.
 [no-mentions]
+
+# Show range-diff links on force pushes.
+[range-diff]
+
+# Add link to the review body to review changes since posting it.
+[review-changes-since]
