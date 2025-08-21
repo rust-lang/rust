@@ -6,3 +6,5 @@
 pub fn foo() -> u32 {
     0
 }
+
+fn private_function() {}

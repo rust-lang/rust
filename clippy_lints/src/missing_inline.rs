@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir};
-use clippy_utils::fulfill_or_allowed;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, Attribute, find_attr};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocContainer;
+use rustc_session::config::CrateType;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -82,15 +82,6 @@ fn check_missing_inline_attrs(
     }
 }
 
-fn is_executable_or_proc_macro(cx: &LateContext<'_>) -> bool {
-    use rustc_session::config::CrateType;
-
-    cx.tcx
-        .crate_types()
-        .iter()
-        .any(|t: &CrateType| matches!(t, CrateType::Executable | CrateType::ProcMacro))
-}
-
 declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
@@ -99,9 +90,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
 
-        if is_executable_or_proc_macro(cx)
-            // Allow the lint if it is expected, when building with `--test`
-            && !(cx.sess().is_test_crate() && fulfill_or_allowed(cx, MISSING_INLINE_IN_PUBLIC_ITEMS, [it.hir_id()]))
+        if cx
+            .tcx
+            .crate_types()
+            .iter()
+            .any(|t: &CrateType| matches!(t, CrateType::ProcMacro))
         {
             return;
         }
@@ -157,7 +150,13 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if impl_item.span.in_external_macro(cx.sess().source_map()) || is_executable_or_proc_macro(cx) {
+        if impl_item.span.in_external_macro(cx.sess().source_map())
+            || cx
+                .tcx
+                .crate_types()
+                .iter()
+                .any(|t: &CrateType| matches!(t, CrateType::ProcMacro))
+        {
             return;
         }
 
