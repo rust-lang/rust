@@ -1,7 +1,7 @@
 use rustc_ast::MetaItem;
-use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::def_id::DefId;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
