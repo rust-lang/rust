@@ -314,7 +314,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_binding: Option<NameBinding<'ra>>,
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> Option<LexicalScopeBinding<'ra>> {
-        assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
         let (general_span, normalized_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
