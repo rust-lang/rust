@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, option_arg_ty};
+use clippy_utils::ty::option_arg_ty;
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
@@ -88,8 +88,8 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
 
 /// Extracts the error type from Result<T, E>.
 fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    if let ty::Adt(_, subst) = ty.kind()
-        && is_type_diagnostic_item(cx, ty, sym::Result)
+    if let ty::Adt(def, subst) = ty.kind()
+        && cx.tcx.is_diagnostic_item(sym::Result, def.did())
     {
         Some(subst.type_at(1))
     } else {
