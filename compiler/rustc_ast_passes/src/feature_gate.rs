@@ -524,6 +524,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
     gate_all!(super_let, "`super let` is experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(coroutines, "coroutine syntax is experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
