@@ -11,7 +11,9 @@ use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
+use rustc_middle::ty::{
+    self as ty, GenericArgKind, IsSuggestable, Ty, TypeFlags, TypeVisitableExt,
+};
 use rustc_span::{Span, sym};
 use tracing::debug;
 
@@ -89,6 +91,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
+        // when found is unresolved var, we can't suggest anything
+        if exp_found.found.has_type_flags(TypeFlags::HAS_INFER_TY_VAR) {
+            return;
+        }
+
         // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
         // some modifications due to that being in typeck and this being in infer.
         if let ObligationCauseCode::Pattern { .. } = cause.code()
