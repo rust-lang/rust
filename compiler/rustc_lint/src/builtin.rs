@@ -3097,7 +3097,7 @@ impl EarlyLintPass for SpecialModuleName {
             if let ast::ItemKind::Mod(
                 _,
                 ident,
-                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _, _),
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No { .. }, _),
             ) = item.kind
             {
                 if item.attrs.iter().any(|a| a.has_name(sym::path)) {
