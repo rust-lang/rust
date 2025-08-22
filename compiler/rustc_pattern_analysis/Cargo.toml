@@ -19,7 +19,7 @@ rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_session = { path = "../rustc_session", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 smallvec = { version = "1.8.1", features = ["union"] }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [dev-dependencies]

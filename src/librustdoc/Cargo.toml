@@ -24,8 +24,8 @@ smallvec = "1.8.1"
 stringdex = { version = "0.0.1-alpha4" }
 tempfile = "3"
 threadpool = "1.8.1"
-tracing = "0.1"
 tracing-tree = "0.3.0"
+tracing.workspace = true
 unicode-segmentation = "1.9"
 # tidy-alphabetical-end
 

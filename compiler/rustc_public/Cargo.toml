@@ -14,7 +14,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 scoped-tls = "1.0"
 serde = { version = "1.0.125", features = [ "derive" ] }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [features]

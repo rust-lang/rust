@@ -31,7 +31,7 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 tempfile = "3.7.1"
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]

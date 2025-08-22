@@ -42,7 +42,7 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
 thin-vec.workspace = true
 thorin-dwp = "0.9"
-tracing = "0.1"
+tracing.workspace = true
 wasm-encoder = "0.219"
 # tidy-alphabetical-end
 

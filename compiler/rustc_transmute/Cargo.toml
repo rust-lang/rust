@@ -11,7 +11,7 @@ rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_middle = { path = "../rustc_middle", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 smallvec = "1.8.1"
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [dev-dependencies]

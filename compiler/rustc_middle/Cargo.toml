@@ -35,7 +35,7 @@ rustc_thread_pool = { path = "../rustc_thread_pool" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [features]

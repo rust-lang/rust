@@ -26,7 +26,7 @@ smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dang
 stacker = "0.1.17"
 tempfile = "3.2"
 thin-vec.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]

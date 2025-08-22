@@ -15,7 +15,7 @@ rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [features]

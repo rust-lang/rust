@@ -19,7 +19,7 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 unicode-normalization = "0.1.11"
 unicode-width = "0.2.0"
 # tidy-alphabetical-end
