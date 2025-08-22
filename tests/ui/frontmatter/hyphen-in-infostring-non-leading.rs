@@ -1,8 +1,8 @@
 --- Cargo-toml
-//~^ ERROR: invalid infostring for frontmatter
 ---
 
-// infostrings cannot have hyphens
+// infostrings can contain hyphens as long as a hyphen isn't the first character.
+//@ check-pass
 
 #![feature(frontmatter)]
 
