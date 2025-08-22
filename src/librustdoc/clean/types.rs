@@ -779,20 +779,25 @@ impl Item {
         self.attrs
             .other_attrs
             .iter()
-            .filter_map(|attr| match attr {
-                hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
-                    Some(format!("#[unsafe(link_section = \"{name}\")]"))
+            .filter_map(|attr| {
+                if attr_has_doc_flag(attr, sym::hidden) {
+                    return Some("#[doc(hidden)]".to_string());
                 }
-                hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
-                    Some("#[unsafe(no_mangle)]".to_string())
+                match attr {
+                    hir::Attribute::Parsed(AttributeKind::LinkSection { name, .. }) => {
+                        Some(format!("#[unsafe(link_section = \"{name}\")]"))
+                    }
+                    hir::Attribute::Parsed(AttributeKind::NoMangle(..)) => {
+                        Some("#[unsafe(no_mangle)]".to_string())
+                    }
+                    hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
+                        Some(format!("#[unsafe(export_name = \"{name}\")]"))
+                    }
+                    hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
+                        Some("#[non_exhaustive]".to_string())
+                    }
+                    _ => None,
                 }
-                hir::Attribute::Parsed(AttributeKind::ExportName { name, .. }) => {
-                    Some(format!("#[unsafe(export_name = \"{name}\")]"))
-                }
-                hir::Attribute::Parsed(AttributeKind::NonExhaustive(..)) => {
-                    Some("#[non_exhaustive]".to_string())
-                }
-                _ => None,
             })
             .collect()
     }
@@ -1159,6 +1164,19 @@ pub(crate) struct Attributes {
     pub(crate) other_attrs: ThinVec<hir::Attribute>,
 }
 
+/// Returns `true` if the attribute is a `#[doc(...)]` attribute with the given flag, e.g.
+/// `#[doc(hidden)]` or `#[doc(inline)]`.
+fn attr_has_doc_flag(attr: &hir::Attribute, flag: Symbol) -> bool {
+    if !attr.has_name(sym::doc) {
+        return false;
+    }
+
+    if let Some(items) = attr.meta_item_list() {
+        return items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag));
+    }
+    false
+}
+
 impl Attributes {
     pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> {
         hir_attr_lists(&self.other_attrs[..], name)
@@ -1166,13 +1184,7 @@ impl Attributes {
 
     pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-
-            if let Some(items) = attr.meta_item_list()
-                && items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag))
-            {
+            if attr_has_doc_flag(attr, flag) {
                 return true;
             }
         }

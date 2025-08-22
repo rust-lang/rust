@@ -1865,7 +1865,6 @@ fn item_variants(
 fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
-            // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
             render_attributes_in_code(w, it, "", cx);
             if !t.macro_rules {
                 write!(w, "{}", visibility_print_with_space(it, cx))?;
