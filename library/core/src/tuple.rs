@@ -1,7 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::{ConstParamTy, StructuralPartialEq};
+use crate::marker::{ConstParamTy_, StructuralPartialEq};
 use crate::ops::ControlFlow::{self, Break, Continue};
 
 // Recursive macro for implementing n-ary tuple functions and operations
@@ -46,7 +46,7 @@ macro_rules! tuple_impls {
             $($T)+ @
             #[unstable(feature = "adt_const_params", issue = "95174")]
             #[unstable_feature_bound(adt_const_params)]
-            impl<$($T: ConstParamTy),+> ConstParamTy for ($($T,)+)
+            impl<$($T: ConstParamTy_),+> ConstParamTy_ for ($($T,)+)
             {}
         }
 

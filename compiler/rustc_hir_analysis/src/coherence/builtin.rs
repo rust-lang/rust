@@ -139,7 +139,7 @@ fn visit_implementation_of_const_param_ty(
     checker: &Checker<'_>,
     kind: LangItem,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
+    assert_matches!(kind, LangItem::ConstParamTy);
 
     let tcx = checker.tcx;
     let header = checker.impl_header;
