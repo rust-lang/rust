@@ -102,7 +102,6 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    // FIXME: core panics if remove unsizedconstparamty, figure out why
     assert_matches!(lang_item, LangItem::ConstParamTy);
     let mut need_unstable_feature_bound = false;
 
@@ -152,7 +151,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
 
-        // FIXME: add a comment here
+        // Make sure certain types are gated with #[unstable_feature_bound(unsized_const_params)]
         if need_unstable_feature_bound {
             ocx.register_obligation(Obligation::new(
                 tcx,
