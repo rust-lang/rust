@@ -288,19 +288,6 @@ lint_hidden_glob_reexport = private item shadows public glob re-export
 
 lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
 
-lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
-    .label = this {$label} contains {$count ->
-        [one] an invisible
-        *[other] invisible
-    } unicode text flow control {$count ->
-        [one] codepoint
-        *[other] codepoints
-    }
-    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-    .suggestion_remove = if their presence wasn't intentional, you can remove them
-    .suggestion_escape = if you want to keep them but make them visible in your source code, you can escape them
-    .no_suggestion_note_escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}
-
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
 lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->

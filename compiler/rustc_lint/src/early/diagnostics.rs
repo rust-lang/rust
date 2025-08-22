@@ -183,27 +183,6 @@ pub fn decorate_builtin_lint(
                 lints::ReservedMultihash { suggestion }.decorate_lint(diag);
             }
         }
-        BuiltinLintDiag::HiddenUnicodeCodepoints {
-            label,
-            count,
-            span_label,
-            labels,
-            escape,
-            spans,
-        } => {
-            lints::HiddenUnicodeCodepointsDiag {
-                label: &label,
-                count,
-                span_label,
-                labels: labels.map(|spans| lints::HiddenUnicodeCodepointsDiagLabels { spans }),
-                sub: if escape {
-                    lints::HiddenUnicodeCodepointsDiagSub::Escape { spans }
-                } else {
-                    lints::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
-                },
-            }
-            .decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedBuiltinAttribute {
             attr_name,
             macro_name,
