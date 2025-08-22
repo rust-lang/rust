@@ -126,6 +126,7 @@ use rustc_span::{InnerSpan, Span};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
+use crate::ast_utils::unordered_over;
 use crate::consts::{ConstEvalCtxt, Constant, mir_to_const};
 use crate::higher::Range;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
@@ -1992,7 +1993,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
         (PatKind::Tuple(pats, dotdot), ExprKind::Tup(tup))
             if dotdot.as_opt_usize().is_none() && pats.len() == tup.len() =>
         {
-            zip(pats, tup).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
+            over(pats, tup, |pat, expr| is_expr_identity_of_pat(cx, pat, expr, by_hir))
         },
         (PatKind::Slice(before, None, after), ExprKind::Array(arr)) if before.len() + after.len() == arr.len() => {
             zip(before.iter().chain(after), arr).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr, by_hir))
@@ -2004,7 +2005,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
             if let ExprKind::Path(ident) = &ident.kind
                 && qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
                 // check fields
-                && zip(field_pats, fields).all(|(pat, expr)| is_expr_identity_of_pat(cx, pat, expr,by_hir))
+                && over(field_pats, fields, |pat, expr| is_expr_identity_of_pat(cx, pat, expr,by_hir))
             {
                 true
             } else {
@@ -2017,10 +2018,8 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
             // check ident
             qpath_res(&pat_ident, pat.hir_id) == qpath_res(ident, expr.hir_id)
                 // check fields
-                && field_pats.iter().all(|field_pat| {
-                    fields.iter().any(|field| {
-                        field_pat.ident == field.ident && is_expr_identity_of_pat(cx, field_pat.pat, field.expr, by_hir)
-                    })
+                && unordered_over(field_pats, fields, |field_pat, field| {
+                    field_pat.ident == field.ident && is_expr_identity_of_pat(cx, field_pat.pat, field.expr, by_hir)
                 })
         },
         _ => false,
