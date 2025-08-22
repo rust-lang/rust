@@ -1461,7 +1461,9 @@ function preLoadCss(cssUrl) {
         }
     }
 
-    // @ts-expect-error
+    /**
+     * @param {Event & { relatedTarget: Node }} event
+     */
     function tooltipBlurHandler(event) {
         if (window.CURRENT_TOOLTIP_ELEMENT &&
             !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
