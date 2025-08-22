@@ -18,7 +18,7 @@ impl<T> Covariant<T> {
 
 fn main() {
     let mut string = String::new();
-    let _ = string.as_ptr() as *mut u8;
+    let _ = string.as_mut_ptr();
     //~^ as_ptr_cast_mut
 
     let _ = string.as_ptr() as *const i8;

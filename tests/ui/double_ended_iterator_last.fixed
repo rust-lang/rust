@@ -81,6 +81,11 @@ fn issue_14139() {
     let (subindex, _) = (index.by_ref().take(3), 42);
     let _ = subindex.last();
     let _ = index.next();
+
+    let mut index = [true, true, false, false, false, true].iter();
+    let subindex = (index.by_ref().take(3), 42);
+    let _ = subindex.0.last();
+    let _ = index.next();
 }
 
 fn drop_order() {
@@ -108,6 +113,12 @@ fn drop_order() {
     let mut v = DropDeIterator(v.into_iter());
     println!("Last element is {}", v.next_back().unwrap().0);
     //~^ ERROR: called `Iterator::last` on a `DoubleEndedIterator`
+
+    let v = vec![S("four"), S("five"), S("six")];
+    let mut v = (DropDeIterator(v.into_iter()), 42);
+    println!("Last element is {}", v.0.next_back().unwrap().0);
+    //~^ ERROR: called `Iterator::last` on a `DoubleEndedIterator`
+
     println!("Done");
 }
 

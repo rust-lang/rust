@@ -5,7 +5,7 @@ use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_w
 use clippy_utils::{span_contains_non_whitespace, tokenize_with_text};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -141,11 +141,7 @@ impl CollapsibleIf {
 
                     // Prevent "elseif"
                     // Check that the "else" is followed by whitespace
-                    let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
-                        !c.is_whitespace()
-                    } else {
-                        false
-                    };
+                    let requires_space = snippet(cx, up_to_else, "..").ends_with(|c: char| !c.is_whitespace());
                     let mut applicability = Applicability::MachineApplicable;
                     diag.span_suggestion(
                         else_block.span,
@@ -173,8 +169,7 @@ impl CollapsibleIf {
             && cx.tcx.hir_attrs(inner.hir_id).is_empty()
             && let ExprKind::If(check_inner, _, None) = &inner.kind
             && self.eligible_condition(cx, check_inner)
-            && let ctxt = expr.span.ctxt()
-            && inner.span.ctxt() == ctxt
+            && expr.span.eq_ctxt(inner.span)
             && !block_starts_with_significant_tokens(cx, then, inner, self.lint_commented_code)
         {
             span_lint_and_then(
@@ -262,14 +257,9 @@ fn block_starts_with_significant_tokens(
 /// If `block` is a block with either one expression or a statement containing an expression,
 /// return the expression. We don't peel blocks recursively, as extra blocks might be intentional.
 fn expr_block<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    match block.stmts {
-        [] => block.expr,
-        [
-            Stmt {
-                kind: StmtKind::Semi(expr),
-                ..
-            },
-        ] if block.expr.is_none() => Some(expr),
+    match (block.stmts, block.expr) {
+        ([], expr) => expr,
+        ([stmt], None) if let StmtKind::Semi(expr) = stmt.kind => Some(expr),
         _ => None,
     }
 }
