@@ -28,6 +28,8 @@ declare global {
         currentTheme: HTMLLinkElement|null;
         /** Generated in `render/context.rs` */
         SIDEBAR_ITEMS?: { [key: string]: string[] };
+        /** Notable trait data */
+        NOTABLE_TRAITS?: { [key: string]: string };
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */

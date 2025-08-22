@@ -1327,11 +1327,9 @@ function preLoadCss(cssUrl) {
      */
     function showTooltip(e) {
         const notable_ty = e.getAttribute("data-notable-ty");
-        // @ts-expect-error
         if (!window.NOTABLE_TRAITS && notable_ty) {
             const data = document.getElementById("notable-traits-data");
             if (data) {
-                // @ts-expect-error
                 window.NOTABLE_TRAITS = JSON.parse(data.innerText);
             } else {
                 throw new Error("showTooltip() called with notable without any notable traits!");
