@@ -14,6 +14,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
@@ -2469,7 +2470,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        self.visit_node(node)
+        ensure_sufficient_stack(|| self.visit_node(node))
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {
