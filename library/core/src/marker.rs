@@ -1096,22 +1096,22 @@ pub macro ConstParamTy($item:item) {
 // FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
     #[unstable(feature = "adt_const_params", issue = "95174")]
-    ConstParamTy for
+    ConstParamTy_ for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,
         bool,
         char,
         (),
-        {T: ConstParamTy, const N: usize} [T; N],
+        {T: ConstParamTy_, const N: usize} [T; N],
 }
 
 marker_impls! {
     #[unstable(feature = "unsized_const_params", issue = "95174")]
     #[unstable_feature_bound(unsized_const_params)]
-    ConstParamTy for
+    ConstParamTy_ for
         str,
-        {T: ConstParamTy} [T],
-        {T: ConstParamTy + ?Sized} &T,
+        {T: ConstParamTy_} [T],
+        {T: ConstParamTy_ + ?Sized} &T,
 }
 
 /// A common trait implemented by all function pointers.

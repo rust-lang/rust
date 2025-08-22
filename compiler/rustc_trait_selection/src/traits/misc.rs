@@ -103,7 +103,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
     // FIXME: core panics if remove unsizedconstparamty, figure out why
-    assert_matches!(lang_item, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
+    assert_matches!(lang_item, LangItem::ConstParamTy);
     let mut need_unstable_feature_bound = false;
 
     let inner_tys: Vec<_> = match *self_type.kind() {

@@ -1,4 +1,4 @@
-use crate::marker::ConstParamTy;
+use crate::marker::ConstParamTy_;
 
 /// Marks that `Src` is transmutable into `Self`.
 ///
@@ -290,7 +290,7 @@ pub struct Assume {
 
 #[unstable(feature = "transmutability", issue = "99571")]
 #[unstable_feature_bound(transmutability)]
-impl ConstParamTy for Assume {}
+impl ConstParamTy_ for Assume {}
 
 impl Assume {
     /// With this, [`TransmuteFrom`] does not assume you have ensured any safety
