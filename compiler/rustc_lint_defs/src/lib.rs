@@ -810,11 +810,6 @@ pub enum BuiltinLintDiag {
         path: String,
         location: String,
     },
-    UnexpectedBuiltinCfg {
-        cfg: String,
-        cfg_name: Symbol,
-        controlled_by: &'static str,
-    },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
