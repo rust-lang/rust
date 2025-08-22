@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
@@ -647,7 +646,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    MissingAbi(Span, ExternAbi),
     UnusedDocComment(Span),
     UnusedBuiltinAttribute {
         attr_name: Symbol,

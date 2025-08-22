@@ -876,7 +876,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                BuiltinLintDiag::MissingAbi(span, ExternAbi::FALLBACK),
+                errors::MissingAbiSugg { span, default_abi: ExternAbi::FALLBACK },
             )
         }
     }

@@ -1,7 +1,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
-use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
@@ -2877,14 +2876,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
     pub span: Span,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_extern_without_abi)]
-pub(crate) struct MissingAbi {
-    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub default_abi: ExternAbi,
 }
 
 #[derive(LintDiagnostic)]
