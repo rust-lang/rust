@@ -15,6 +15,7 @@
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![feature(cfg_emscripten_wasm_eh)]
+#![feature(cfg_select)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(panic_unwind)]
@@ -33,18 +34,21 @@ use alloc::boxed::Box;
 use core::any::Any;
 use core::panic::PanicPayload;
 
-cfg_if::cfg_if! {
-    if #[cfg(all(target_os = "emscripten", not(emscripten_wasm_eh)))] {
+cfg_select! {
+    all(target_os = "emscripten", not(emscripten_wasm_eh)) => {
         #[path = "emcc.rs"]
         mod imp;
-    } else if #[cfg(target_os = "hermit")] {
+    }
+    target_os = "hermit" => {
         #[path = "hermit.rs"]
         mod imp;
-    } else if #[cfg(target_os = "l4re")] {
+    }
+    target_os = "l4re" => {
         // L4Re is unix family but does not yet support unwinding.
         #[path = "dummy.rs"]
         mod imp;
-    } else if #[cfg(any(
+    }
+    any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",
         target_os = "xous",
@@ -52,19 +56,22 @@ cfg_if::cfg_if! {
         all(target_family = "unix", not(any(target_os = "espidf", target_os = "nuttx"))),
         all(target_vendor = "fortanix", target_env = "sgx"),
         target_family = "wasm",
-    ))] {
+    ) => {
         #[path = "gcc.rs"]
         mod imp;
-    } else if #[cfg(miri)] {
+    }
+    miri => {
         // Use the Miri runtime on Windows as miri doesn't support funclet based unwinding,
         // only landingpad based unwinding. Also use the Miri runtime on unsupported platforms.
         #[path = "miri.rs"]
         mod imp;
-    } else if #[cfg(all(target_env = "msvc", not(target_arch = "arm")))] {
+    }
+    all(target_env = "msvc", not(target_arch = "arm")) => {
         // LLVM does not support unwinding on 32 bit ARM msvc (thumbv7a-pc-windows-msvc)
         #[path = "seh.rs"]
         mod imp;
-    } else {
+    }
+    _ => {
         // Targets that don't support unwinding.
         // - os=none ("bare metal" targets)
         // - os=uefi

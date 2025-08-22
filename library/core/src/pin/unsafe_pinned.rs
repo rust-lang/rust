@@ -120,8 +120,8 @@ impl<T: ?Sized> UnsafePinned<T> {
     #[inline(always)]
     #[must_use]
     #[unstable(feature = "unsafe_pinned", issue = "125735")]
-    pub const fn raw_get(this: *const Self) -> *const T {
-        this as *const T
+    pub const fn raw_get(this: *const Self) -> *mut T {
+        this as *const T as *mut T
     }
 
     /// Gets a mutable pointer to the wrapped value.

@@ -3137,7 +3137,7 @@ impl FnRetTy {
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
 pub enum Inline {
     Yes,
-    No,
+    No { had_parse_error: Result<(), ErrorGuaranteed> },
 }
 
 /// Module item kind.
@@ -3147,7 +3147,7 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(ThinVec<Box<Item>>, Inline, ModSpans, Result<(), ErrorGuaranteed>),
+    Loaded(ThinVec<Box<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
 }

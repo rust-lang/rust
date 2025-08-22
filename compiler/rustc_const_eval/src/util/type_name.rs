@@ -164,12 +164,12 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
-    fn should_print_optional_region(&self, _region: ty::Region<'_>) -> bool {
+    fn should_print_optional_region(&self, region: ty::Region<'_>) -> bool {
         // Bound regions are always printed (as `'_`), which gives some idea that they are special,
         // even though the `for` is omitted by the pretty printer.
         // E.g. `for<'a, 'b> fn(&'a u32, &'b u32)` is printed as "fn(&'_ u32, &'_ u32)".
-        match _region.kind() {
-            ty::ReErased => false,
+        match region.kind() {
+            ty::ReErased | ty::ReEarlyParam(_) => false,
             ty::ReBound(..) => true,
             _ => unreachable!(),
         }

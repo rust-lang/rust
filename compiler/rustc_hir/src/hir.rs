@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+use std::borrow::Cow;
 use std::fmt;
 
 use rustc_abi::ExternAbi;
@@ -17,6 +18,7 @@ pub use rustc_ast::{
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
@@ -1159,6 +1161,12 @@ pub struct AttrPath {
     pub span: Span,
 }
 
+impl IntoDiagArg for AttrPath {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(path)
+    }
+}
+
 impl AttrPath {
     pub fn from_ast(path: &ast::Path) -> Self {
         AttrPath {
@@ -2259,8 +2267,15 @@ impl fmt::Display for ConstContext {
     }
 }
 
-// NOTE: `IntoDiagArg` impl for `ConstContext` lives in `rustc_errors`
-// due to a cyclical dependency between hir and that crate.
+impl IntoDiagArg for ConstContext {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self {
+            ConstContext::ConstFn => "const_fn",
+            ConstContext::Static(_) => "static",
+            ConstContext::Const { .. } => "const",
+        }))
+    }
+}
 
 /// A literal.
 pub type Lit = Spanned<LitKind>;

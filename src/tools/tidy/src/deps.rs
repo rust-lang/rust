@@ -592,6 +592,8 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
 
         if workspace == "library" {
             check_runtime_license_exceptions(&metadata, bad);
+            check_runtime_no_duplicate_dependencies(&metadata, bad);
+            check_runtime_no_proc_macros(&metadata, bad);
             checked_runtime_licenses = true;
         }
     }
@@ -785,6 +787,37 @@ fn check_license_exceptions(
                 "invalid license `{}` for package `{}` in workspace `{workspace}`",
                 license,
                 pkg.id
+            );
+        }
+    }
+}
+
+fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) {
+    let mut seen_pkgs = HashSet::new();
+    for pkg in &metadata.packages {
+        if pkg.source.is_none() {
+            continue;
+        }
+
+        if !seen_pkgs.insert(&*pkg.name) {
+            tidy_error!(
+                bad,
+                "duplicate package `{}` is not allowed for the standard library",
+                pkg.name
+            );
+        }
+    }
+}
+
+fn check_runtime_no_proc_macros(metadata: &Metadata, bad: &mut bool) {
+    for pkg in &metadata.packages {
+        if pkg.targets.iter().any(|target| target.is_proc_macro()) {
+            tidy_error!(
+                bad,
+                "proc macro `{}` is not allowed as standard library dependency.\n\
+                Using proc macros in the standard library would break cross-compilation \
+                as proc-macros don't get shipped for the host tuple.",
+                pkg.name
             );
         }
     }

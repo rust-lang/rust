@@ -528,7 +528,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         orig_ident.span,
                                         BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
                                             span: orig_ident.span,
-                                            ns,
+                                            ns_descr: ns.descr(),
                                             ident,
                                         },
                                     );
