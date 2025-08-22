@@ -11,6 +11,12 @@ LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
+  --> $DIR/bad-lit-suffixes.rs:14:5
+   |
+LL |     r#""#suffix;
+   |     ^^^^^^^^^^^ invalid suffix `suffix`
+
+error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:30:17
    |
 LL | #[rustc_dummy = "string"suffix]
@@ -61,12 +67,6 @@ error: suffixes on byte string literals are invalid
    |
 LL |     b""suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
-
-error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:14:5
-   |
-LL |     r#""#suffix;
-   |     ^^^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on byte string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:15:5

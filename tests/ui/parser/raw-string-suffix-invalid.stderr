@@ -1,0 +1,8 @@
+error: suffixes on string literals are invalid
+  --> $DIR/raw-string-suffix-invalid.rs:4:13
+   |
+LL |     let s = r#" \ "#r"\ ";
+   |             ^^^^^^^^^^ invalid suffix `r`
+
+error: aborting due to 1 previous error
+
