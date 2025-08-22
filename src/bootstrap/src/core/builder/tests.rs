@@ -2312,8 +2312,9 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("install")
                 .args(&[
-                    "--set", &format!("install.prefix={}", ctx.dir().display()),
-                    "--set", &format!("install.sysconfdir={}", ctx.dir().display()),
+                    // Using backslashes fails with `--set`
+                    "--set", &format!("install.prefix={}", ctx.dir().display()).replace("\\", "/"),
+                    "--set", &format!("install.sysconfdir={}", ctx.dir().display()).replace("\\", "/"),
                     "--set", "build.extended=true"
                 ])
                 .render_steps(), @r"
