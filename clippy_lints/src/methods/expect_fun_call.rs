@@ -15,7 +15,6 @@ use std::ops::ControlFlow;
 use super::EXPECT_FUN_CALL;
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
-#[allow(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     format_args_storage: &FormatArgsStorage,
@@ -25,43 +24,6 @@ pub(super) fn check<'tcx>(
     receiver: &'tcx hir::Expr<'tcx>,
     args: &'tcx [hir::Expr<'tcx>],
 ) {
-    // Strip `{}`, `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
-    // `&str`
-    fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
-        let mut arg_root = peel_blocks(arg);
-        loop {
-            arg_root = match &arg_root.kind {
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
-                    if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
-                        let arg_type = cx.typeck_results().expr_ty(receiver);
-                        let base_type = arg_type.peel_refs();
-                        base_type.is_str() || is_type_lang_item(cx, base_type, hir::LangItem::String)
-                    } {
-                        receiver
-                    } else {
-                        break;
-                    }
-                },
-                _ => break,
-            };
-        }
-        arg_root
-    }
-
-    fn contains_call<'a>(cx: &LateContext<'a>, arg: &'a hir::Expr<'a>) -> bool {
-        for_each_expr(cx, arg, |expr| {
-            if matches!(expr.kind, hir::ExprKind::MethodCall { .. } | hir::ExprKind::Call { .. })
-                && !is_inside_always_const_context(cx.tcx, expr.hir_id)
-            {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
-        })
-        .is_some()
-    }
-
     if name == sym::expect
         && let [arg] = args
         && let arg_root = get_arg_root(cx, arg)
@@ -113,4 +75,41 @@ pub(super) fn check<'tcx>(
             applicability,
         );
     }
+}
+
+/// Strip `{}`, `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
+/// `&str`
+fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+    let mut arg_root = peel_blocks(arg);
+    loop {
+        arg_root = match &arg_root.kind {
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
+            hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
+                if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
+                    let arg_type = cx.typeck_results().expr_ty(receiver);
+                    let base_type = arg_type.peel_refs();
+                    base_type.is_str() || is_type_lang_item(cx, base_type, hir::LangItem::String)
+                } {
+                    receiver
+                } else {
+                    break;
+                }
+            },
+            _ => break,
+        };
+    }
+    arg_root
+}
+
+fn contains_call<'a>(cx: &LateContext<'a>, arg: &'a hir::Expr<'a>) -> bool {
+    for_each_expr(cx, arg, |expr| {
+        if matches!(expr.kind, hir::ExprKind::MethodCall { .. } | hir::ExprKind::Call { .. })
+            && !is_inside_always_const_context(cx.tcx, expr.hir_id)
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }

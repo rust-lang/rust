@@ -95,7 +95,7 @@ cargo dev new_lint
 cargo dev deprecate
 # automatically formatting all code before each commit
 cargo dev setup git-hook
-# (experimental) Setup Clippy to work with IntelliJ-Rust
+# (experimental) Setup Clippy to work with RustRover
 cargo dev setup intellij
 # runs the `dogfood` tests
 cargo dev dogfood
@@ -103,7 +103,7 @@ cargo dev dogfood
 
 More about [intellij] command usage and reasons.
 
-[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#intellij-rust
+[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#rustrover
 
 ## lintcheck
 
