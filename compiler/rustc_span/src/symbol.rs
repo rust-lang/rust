@@ -3045,13 +3045,17 @@ impl Ident {
         self.name.can_be_raw() && self.is_reserved()
     }
 
+    /// Given the name of a lifetime without the first quote (`'`),
+    /// returns whether the lifetime name is reserved (therefore invalid)
+    pub fn is_reserved_lifetime(self) -> bool {
+        self.is_reserved() && ![kw::Underscore, kw::Static].contains(&self.name)
+    }
+
     pub fn is_raw_lifetime_guess(self) -> bool {
-        // this should be kept consistent with `Parser::expect_lifetime` found under
-        // compiler/rustc_parse/src/parser/ty.rs
         let name_without_apostrophe = self.without_first_quote();
         name_without_apostrophe.name != self.name
-            && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&self.name)
-            && name_without_apostrophe.is_raw_guess()
+            && name_without_apostrophe.name.can_be_raw()
+            && name_without_apostrophe.is_reserved_lifetime()
     }
 
     pub fn guess_print_mode(self) -> IdentPrintMode {

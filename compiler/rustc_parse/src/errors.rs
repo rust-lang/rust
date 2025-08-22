@@ -2228,11 +2228,10 @@ pub(crate) struct KeywordLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_invalid_label)]
-pub(crate) struct InvalidLabel {
+#[diag(parse_keyword_label)]
+pub(crate) struct KeywordLabel {
     #[primary_span]
     pub span: Span,
-    pub name: String,
 }
 
 #[derive(Diagnostic)]
