@@ -16,7 +16,7 @@ jobs:
     permissions:
       pull-requests: write
 
-    # Do not in any case add code that runs anything coming from the  the content
+    # Do not in any case add code that runs anything coming from the content
     # of the pull request, as malicious code would be able to access the private
     # GitHub token.
     steps:
