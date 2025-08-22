@@ -1,7 +1,7 @@
   ---
 //~^ ERROR: invalid preceding whitespace for frontmatter opening
+//~^^ ERROR: unclosed frontmatter
   ---
-//~^ ERROR: invalid preceding whitespace for frontmatter close
 
 #![feature(frontmatter)]
 
