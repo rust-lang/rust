@@ -99,7 +99,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             None,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
+            BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
         )
     };
 

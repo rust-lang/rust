@@ -3798,6 +3798,7 @@ dependencies = [
  "annotate-snippets 0.11.5",
  "derive_setters",
  "rustc_abi",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_error_messages",
