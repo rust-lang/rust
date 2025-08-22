@@ -1,5 +1,7 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{HasSession, snippet_with_applicability};
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
+use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -24,7 +26,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// fn simple_no_parens() -> i32 {
-    ///     0
+    ///     (0)
     /// }
     ///
     /// # fn foo(bar: usize) {}
@@ -40,23 +42,51 @@ declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        let span = match &expr.kind {
-            ExprKind::Paren(in_paren) if matches!(in_paren.kind, ExprKind::Paren(_) | ExprKind::Tup(_)) => expr.span,
-            ExprKind::Call(_, args) | ExprKind::MethodCall(box MethodCall { args, .. })
-                if let [args] = &**args
-                    && let ExprKind::Paren(_) = args.kind =>
-            {
-                args.span
+        if expr.span.from_expansion() {
+            return;
+        }
+
+        match &expr.kind {
+            // ((..))
+            // ^^^^^^ expr
+            //  ^^^^  inner
+            ExprKind::Paren(inner) if matches!(inner.kind, ExprKind::Paren(_) | ExprKind::Tup(_)) => {
+                // suggest removing the outer parens
+                let mut applicability = Applicability::MachineApplicable;
+                let sugg = snippet_with_applicability(cx.sess(), inner.span, "_", &mut applicability);
+                span_lint_and_sugg(
+                    cx,
+                    DOUBLE_PARENS,
+                    expr.span,
+                    "unnecessary parentheses",
+                    "remove them",
+                    sugg.to_string(),
+                    applicability,
+                );
             },
-            _ => return,
-        };
-        if !expr.span.from_expansion() {
-            span_lint(
-                cx,
-                DOUBLE_PARENS,
-                span,
-                "consider removing unnecessary double parentheses",
-            );
+
+            // func((n))
+            // ^^^^^^^^^ expr
+            //      ^^^  arg
+            //       ^   inner
+            ExprKind::Call(_, args) | ExprKind::MethodCall(box MethodCall { args, .. })
+                if let [arg] = &**args
+                    && let ExprKind::Paren(inner) = &arg.kind =>
+            {
+                // suggest removing the inner parens
+                let mut applicability = Applicability::MachineApplicable;
+                let sugg = snippet_with_applicability(cx.sess(), inner.span, "_", &mut applicability);
+                span_lint_and_sugg(
+                    cx,
+                    DOUBLE_PARENS,
+                    arg.span,
+                    "unnecessary parentheses",
+                    "remove them",
+                    sugg.to_string(),
+                    applicability,
+                );
+            },
+            _ => {},
         }
     }
 }
