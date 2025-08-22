@@ -153,8 +153,16 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 }
 
 newtype_index! {
+    #[debug_format = "_v{}"]
     struct VnIndex {}
 }
+
+newtype_index! {
+    #[debug_format = "_o{}"]
+    struct VnOpaque {}
+}
+
+const DETERMINISTIC: VnOpaque = VnOpaque::MAX;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressKind {
@@ -167,14 +175,14 @@ enum Value<'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
     /// The `usize` is a counter incremented by `new_opaque`.
-    Opaque(usize),
+    Opaque(VnOpaque),
     /// Evaluated or unevaluated constant value.
     Constant {
         value: Const<'tcx>,
         /// Some constants do not have a deterministic value. To avoid merging two instances of the
         /// same `Const`, we assign them an additional integer index.
-        // `disambiguator` is 0 iff the constant is deterministic.
-        disambiguator: usize,
+        // `disambiguator` is `DETERMINISTIC` iff the constant is deterministic.
+        disambiguator: VnOpaque,
     },
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
@@ -193,7 +201,7 @@ enum Value<'tcx> {
         place: Place<'tcx>,
         kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
-        provenance: usize,
+        provenance: VnOpaque,
     },
 
     // Extractions.
@@ -219,8 +227,7 @@ struct ValueSet<'tcx> {
     hashes: IndexVec<VnIndex, u64>,
     values: IndexVec<VnIndex, Value<'tcx>>,
     types: IndexVec<VnIndex, Ty<'tcx>>,
-    /// Counter to generate different values.
-    next_opaque: usize,
+    opaques: IndexVec<VnOpaque, VnIndex>,
 }
 
 impl<'tcx> ValueSet<'tcx> {
@@ -230,8 +237,23 @@ impl<'tcx> ValueSet<'tcx> {
             hashes: IndexVec::with_capacity(num_values),
             values: IndexVec::with_capacity(num_values),
             types: IndexVec::with_capacity(num_values),
-            next_opaque: 1,
+            opaques: IndexVec::with_capacity(num_values),
         }
+    }
+
+    #[inline]
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        value: impl FnOnce(VnOpaque) -> Value<'tcx>,
+    ) -> VnIndex {
+        let index = self.hashes.push(0);
+        let _index = self.types.push(ty);
+        debug_assert_eq!(index, _index);
+        let opaque = self.opaques.push(index);
+        let _index = self.values.push(value(opaque));
+        debug_assert_eq!(index, _index);
+        index
     }
 
     #[allow(rustc::pass_by_value)]
@@ -263,13 +285,6 @@ impl<'tcx> ValueSet<'tcx> {
     }
 
     #[inline]
-    fn next_opaque(&mut self) -> usize {
-        let next_opaque = self.next_opaque;
-        self.next_opaque += 1;
-        next_opaque
-    }
-
-    #[inline]
     fn value(&self, index: VnIndex) -> &Value<'tcx> {
         &self.values[index]
     }
@@ -281,7 +296,7 @@ impl<'tcx> ValueSet<'tcx> {
 
     #[inline]
     fn forget(&mut self, index: VnIndex) {
-        let opaque = self.next_opaque();
+        let opaque = self.opaques.push(index);
         self.values[index] = Value::Opaque(opaque);
     }
 }
@@ -360,8 +375,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let value = Value::Opaque(self.values.next_opaque());
-        self.insert(ty, value)
+        let index = self.values.insert_unique(ty, Value::Opaque);
+        let _index = self.evaluated.push(None);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
     }
 
     /// Create a new `Value::Address` distinct from all the others.
@@ -374,8 +393,39 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, pty, mutbl.to_mutbl_lossy()),
         };
-        let value = Value::Address { place, kind, provenance: self.values.next_opaque() };
-        self.insert(ty, value)
+        let index =
+            self.values.insert_unique(ty, |provenance| Value::Address { place, kind, provenance });
+        let evaluated = self.eval_to_const(index);
+        let _index = self.evaluated.push(evaluated);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
+        let (index, new) = if value.is_deterministic() {
+            // The constant is deterministic, no need to disambiguate.
+            let constant = Value::Constant { value, disambiguator: DETERMINISTIC };
+            self.values.insert(constant, value.ty())
+        } else {
+            // Multiple mentions of this constant will yield different values,
+            // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
+            let index = self.values.insert_unique(value.ty(), |disambiguator| {
+                debug_assert_ne!(disambiguator, DETERMINISTIC);
+                Value::Constant { value, disambiguator }
+            });
+            (index, true)
+        };
+        if new {
+            let evaluated = self.eval_to_const(index);
+            let _index = self.evaluated.push(evaluated);
+            debug_assert_eq!(index, _index);
+            let _index = self.rev_locals.push(SmallVec::new());
+            debug_assert_eq!(index, _index);
+        }
+        index
     }
 
     #[inline]
@@ -396,33 +446,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.rev_locals[value].push(local);
     }
 
-    fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let disambiguator = if value.is_deterministic() {
-            // The constant is deterministic, no need to disambiguate.
-            0
-        } else {
-            // Multiple mentions of this constant will yield different values,
-            // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let disambiguator = self.values.next_opaque();
-            // `disambiguator: 0` means deterministic.
-            debug_assert_ne!(disambiguator, 0);
-            disambiguator
-        };
-        self.insert(value.ty(), Value::Constant { value, disambiguator })
-    }
-
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
         debug_assert!(value.is_deterministic());
-        self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: 0 })
+        self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: DETERMINISTIC })
     }
 
     fn insert_scalar(&mut self, ty: Ty<'tcx>, scalar: Scalar) -> VnIndex {
         // Scalars are deterministic.
         let value = Const::from_scalar(self.tcx, scalar, ty);
         debug_assert!(value.is_deterministic());
-        self.insert(ty, Value::Constant { value, disambiguator: 0 })
+        self.insert(ty, Value::Constant { value, disambiguator: DETERMINISTIC })
     }
 
     fn insert_tuple(&mut self, ty: Ty<'tcx>, values: Vec<VnIndex>) -> VnIndex {
@@ -1678,7 +1713,7 @@ impl<'tcx> VnState<'_, 'tcx> {
         // This was already constant in MIR, do not change it. If the constant is not
         // deterministic, adding an additional mention of it in MIR will not give the same value as
         // the former mention.
-        if let Value::Constant { value, disambiguator: 0 } = *self.get(index) {
+        if let Value::Constant { value, disambiguator: DETERMINISTIC } = *self.get(index) {
             debug_assert!(value.is_deterministic());
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
