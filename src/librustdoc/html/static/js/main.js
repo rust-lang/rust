@@ -1825,8 +1825,7 @@ function preLoadCss(cssUrl) {
         sidebarButton.addEventListener("click", e => {
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
-            if (document.querySelector(".rustdoc.src")) {
-                // @ts-expect-error
+            if (window.rustdocToggleSrcSidebar) {
                 window.rustdocToggleSrcSidebar();
             }
             e.preventDefault();
