@@ -16,7 +16,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 # tidy-alphabetical-end
 
 [features]

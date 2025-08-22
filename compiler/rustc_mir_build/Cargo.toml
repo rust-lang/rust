@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
