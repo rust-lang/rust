@@ -398,7 +398,7 @@ impl std::fmt::Debug for HasTypeFlagsVisitor {
 // looks, particular for `Ty`/`Predicate` where it's just a field access.
 //
 // N.B. The only case where this isn't totally true is binders, which also
-// add `HAS_{RE,TY,CT}_LATE_BOUND` flag depending on the *bound variables* that
+// add `HAS_BINDER_VARS` flag depending on the *bound variables* that
 // are present, regardless of whether those bound variables are used. This
 // is important for anonymization of binders in `TyCtxt::erase_and_anonymize_regions`. We
 // specifically detect this case in `visit_binder`.

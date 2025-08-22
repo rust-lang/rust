@@ -984,8 +984,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // borrowck, and specifically region constraints will be populated during
         // MIR typeck which is run on the new body.
         //
-        // We're not using `tcx.erase_and_anonymize_regions` as that also anonymizes bound variables,
-        // regressing borrowck diagnostics.
+        // We're not using `tcx.erase_and_anonymize_regions` as that also
+        // anonymizes bound variables, regressing borrowck diagnostics.
         value = fold_regions(tcx, value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.
