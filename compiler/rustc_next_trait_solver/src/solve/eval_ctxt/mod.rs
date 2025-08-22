@@ -459,10 +459,7 @@ where
         let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) = eager_resolve_vars(self.delegate, (goal, opaque_types));
 
-        let is_hir_typeck_root_goal = matches!(goal_evaluation_kind, GoalEvaluationKind::Root)
-            && self.delegate.in_hir_typeck();
-        let (orig_values, canonical_goal) =
-            self.canonicalize_goal(is_hir_typeck_root_goal, goal, opaque_types);
+        let (orig_values, canonical_goal) = self.canonicalize_goal(goal, opaque_types);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
         let canonical_result = self.search_graph.evaluate_goal(
