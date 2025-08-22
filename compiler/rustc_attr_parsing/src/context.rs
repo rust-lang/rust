@@ -502,10 +502,11 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of [foo, meow]`
     pub(crate) fn expected_specific_argument(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
@@ -521,10 +522,12 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of [foo, meow] as an argument`.
+    /// i.e. slightly different wording to [`expected_specific_argument`](Self::expected_specific_argument).
     pub(crate) fn expected_specific_argument_and_list(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
@@ -540,10 +543,11 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of ["foo", "meow"]`
     pub(crate) fn expected_specific_argument_strings(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
