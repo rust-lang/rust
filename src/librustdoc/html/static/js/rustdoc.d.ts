@@ -95,6 +95,8 @@ declare global {
         rustdoc_remove_line_numbers_from_examples?: function(),
         /** JSON-encoded raw search index */
         searchIndex: string,
+        /** Used in search index shards in order to load data into the in-memory database */
+        rr_: function(string),
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */

@@ -5245,7 +5245,6 @@ if (typeof window !== "undefined") {
             // this script doesn't need to launch it, but
             // must pick it up
             if (window.searchIndex) {
-                // @ts-ignore
                 window.rr_(window.searchIndex);
             }
         },

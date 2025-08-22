@@ -407,7 +407,6 @@ function preLoadCss(cssUrl) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    // @ts-expect-error
                     window.rr_ = data => {
                         window.searchIndex = data;
                     };
