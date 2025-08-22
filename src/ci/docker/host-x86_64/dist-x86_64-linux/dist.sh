@@ -4,6 +4,8 @@ set -eux
 
 python3 ../x.py build --set rust.debug=true opt-dist
 
+export LD_PRELOAD=/usr/lib64/libjemalloc.so.1
+
 ./build/$HOSTS/stage1-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \

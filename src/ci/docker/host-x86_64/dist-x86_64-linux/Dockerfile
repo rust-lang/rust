@@ -42,6 +42,8 @@ RUN yum upgrade -y && \
       zlib-devel.x86_64 \
       && yum clean all
 
+RUN yum install -y epel-release && yum install -y jemalloc
+
 RUN mkdir -p /rustroot/bin
 
 ENV PATH=/rustroot/bin:$PATH
