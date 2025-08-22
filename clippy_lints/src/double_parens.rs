@@ -42,11 +42,11 @@ impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         let span = match &expr.kind {
             ExprKind::Paren(in_paren) if matches!(in_paren.kind, ExprKind::Paren(_) | ExprKind::Tup(_)) => expr.span,
-            ExprKind::Call(_, params)
-                if let [param] = &**params
-                    && let ExprKind::Paren(_) = param.kind =>
+            ExprKind::Call(_, args)
+                if let [args] = &**args
+                    && let ExprKind::Paren(_) = args.kind =>
             {
-                param.span
+                args.span
             },
             ExprKind::MethodCall(call)
                 if let [arg] = &*call.args
