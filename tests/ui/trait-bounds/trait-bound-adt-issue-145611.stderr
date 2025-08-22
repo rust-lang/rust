@@ -2,8 +2,13 @@ error[E0277]: the trait bound `SomeType: LocalTrait` is not satisfied
   --> $DIR/trait-bound-adt-issue-145611.rs:8:19
    |
 LL |     impls_trait::<SomeType>();
-   |                   ^^^^^^^^ the trait `LocalTrait` is not implemented for `SomeType`
+   |                   ^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `LocalTrait` is not implemented for `SomeType`
+  --> $DIR/trait-bound-adt-issue-145611.rs:5:1
+   |
+LL | struct SomeType;
+   | ^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/trait-bound-adt-issue-145611.rs:4:1
    |
