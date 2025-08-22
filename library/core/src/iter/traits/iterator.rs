@@ -7,6 +7,7 @@ use super::super::{
 use super::TrustedLen;
 use crate::array;
 use crate::cmp::{self, Ordering};
+use crate::iter::adapters::{Dedup, DedupEq, DedupKey};
 use crate::num::NonZero;
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
@@ -1866,6 +1867,142 @@ pub trait Iterator {
         F: FnMut(&Self::Item),
     {
         Inspect::new(self, f)
+    }
+
+    /// Removes all but the first of consecutive repeated elements in the iterator
+    /// according to the [`PartialEq`] trait implementation.
+    ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// calling [`next`][Iterator::next] on this iterator may never halt.
+    ///
+    /// If the iterator is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_dedup)]
+    ///
+    /// let vec = vec![1, 2, 2, 3, 2];
+    ///
+    /// let mut iter = vec.into_iter().dedup();
+    ///
+    /// assert_eq!(iter.next(), Some(1));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), Some(3));
+    /// assert_eq!(iter.next(), Some(2));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup().next();
+    /// ```
+    #[unstable(feature = "iter_dedup", issue = "83747")]
+    #[inline]
+    fn dedup<F>(self) -> Dedup<Self, DedupEq>
+    where
+        Self: Sized,
+        Self::Item: PartialEq,
+    {
+        Dedup::new(self, DedupEq)
+    }
+
+    /// Removes all but the first of consecutive elements in the iterator
+    /// satisfying a given equality relation.
+    ///
+    /// The `same_bucket` function is passed a references to two elements from
+    /// the iterator and must determine if the elements compare equal.
+    ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// calling [`next`][Iterator::next] on this iterator may never halt.
+    ///
+    /// If the iterator is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_dedup)]
+    ///
+    /// let vec = vec!["foo", "bar", "Bar", "baz", "bar"];
+    ///
+    /// let mut iter = vec.into_iter().dedup_by(|a, b| a.eq_ignore_ascii_case(b));
+    ///
+    /// assert_eq!(iter.next(), Some("foo"));
+    /// assert_eq!(iter.next(), Some("bar"));
+    /// assert_eq!(iter.next(), Some("baz"));
+    /// assert_eq!(iter.next(), Some("bar"));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup_by(|a, b| a == b).next();
+    /// ```
+    #[unstable(feature = "iter_dedup", issue = "83747")]
+    #[inline]
+    fn dedup_by<F>(self, f: F) -> Dedup<Self, F>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
+    {
+        Dedup::new(self, f)
+    }
+
+    /// Removes all but the first of consecutive elements in the iterator
+    /// that resolve to the same key.
+    ///
+    /// For an iterator yielding infinitely many consecutive duplicates,
+    /// calling [`next`][Iterator::next] on this iterator may never halt.
+    ///
+    /// If the iterator is sorted, this removes all duplicates.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_dedup)]
+    ///
+    /// let vec = vec![10, 20, 21, 30, 20];
+    ///
+    /// let mut iter = vec.into_iter().dedup_by_key(|&i| i / 10);
+    ///
+    /// assert_eq!(iter.next(), Some(10));
+    /// assert_eq!(iter.next(), Some(20));
+    /// assert_eq!(iter.next(), Some(30));
+    /// assert_eq!(iter.next(), Some(20));
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup_by_key(|&n| n).next();
+    /// ```
+    #[unstable(feature = "iter_dedup", issue = "83747")]
+    #[inline]
+    fn dedup_by_key<F, K>(self, f: F) -> Dedup<Self, DedupKey<F>>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> K,
+        K: PartialEq,
+    {
+        Dedup::new(self, DedupKey(f))
     }
 
     /// Creates a "by reference" adapter for this instance of `Iterator`.
