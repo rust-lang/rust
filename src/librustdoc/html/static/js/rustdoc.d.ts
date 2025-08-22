@@ -93,6 +93,8 @@ declare global {
         pending_type_impls?: rustdoc.TypeImpls,
         rustdoc_add_line_numbers_to_examples?: function(),
         rustdoc_remove_line_numbers_from_examples?: function(),
+        /** JSON-encoded raw search index */
+        searchIndex: string,
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */

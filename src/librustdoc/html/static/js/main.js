@@ -409,7 +409,6 @@ function preLoadCss(cssUrl) {
                     searchLoaded = true;
                     // @ts-expect-error
                     window.rr_ = data => {
-                        // @ts-expect-error
                         window.searchIndex = data;
                     };
                     if (!window.StringdexOnload) {
