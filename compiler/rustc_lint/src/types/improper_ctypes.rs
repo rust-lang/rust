@@ -173,7 +173,7 @@ fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum CItemKind {
+enum CItemKind {
     Declaration,
     Definition,
 }
@@ -385,7 +385,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         {
                             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
                             if let Some(ty) =
-                                repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty, self.mode)
+                                repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty)
                             {
                                 return self.check_type_for_ffi(acc, ty);
                             }
