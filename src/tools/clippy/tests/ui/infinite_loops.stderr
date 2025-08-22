@@ -311,5 +311,27 @@ help: if this is intentional, consider specifying `!` as function return
 LL | fn continue_outer() -> ! {
    |                     ++++
 
-error: aborting due to 21 previous errors
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:459:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:466:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 continue;
+LL | |             }
+   | |_____________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: aborting due to 23 previous errors
 

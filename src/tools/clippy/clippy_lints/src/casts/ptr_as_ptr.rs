@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
@@ -25,7 +26,7 @@ impl OmitFollowedCastReason<'_> {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Msrv) {
     if let ExprKind::Cast(cast_expr, cast_to_hir_ty) = expr.kind
         && let (cast_from, cast_to) = (cx.typeck_results().expr_ty(cast_expr), cx.typeck_results().expr_ty(expr))
         && let ty::RawPtr(_, from_mutbl) = cast_from.kind()
@@ -36,6 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
         && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
         && msrv.meets(cx, msrvs::POINTER_CAST)
+        && !is_from_proc_macro(cx, expr)
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {

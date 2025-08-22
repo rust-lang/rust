@@ -89,7 +89,7 @@ LL |     type D = HashMap<u32, S<E>>;
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:96:34
+  --> tests/ui/zero_sized_hashmap_values.rs:104:34
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |                                  ^^^^^^^
@@ -97,7 +97,7 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:96:12
+  --> tests/ui/zero_sized_hashmap_values.rs:104:12
    |
 LL |     let _: HashMap<String, ()> = HashMap::new();
    |            ^^^^^^^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL |     let _: HashMap<String, ()> = HashMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_hashmap_values.rs:102:12
+  --> tests/ui/zero_sized_hashmap_values.rs:110:12
    |
 LL |     let _: HashMap<_, _> = std::iter::empty::<(String, ())>().collect();
    |            ^^^^^^^^^^^^^

@@ -15,8 +15,7 @@
 )]
 #![allow(clippy::missing_panics_doc)]
 
-// The `rustc_driver` crate seems to be required in order to use the `rust_lexer` crate.
-#[allow(unused_extern_crates)]
+#[expect(unused_extern_crates, reason = "required to link to rustc crates")]
 extern crate rustc_driver;
 extern crate rustc_lexer;
 extern crate rustc_literal_escaper;
@@ -32,4 +31,6 @@ pub mod serve;
 pub mod setup;
 pub mod sync;
 pub mod update_lints;
-pub mod utils;
+
+mod utils;
+pub use utils::{ClippyInfo, UpdateMode};
