@@ -39,6 +39,13 @@ define-function: (
     "perform-search",
     [query],
     block {
+        // Block requests with doubled `//`.
+        // Amazon S3 doesn't support them, but other web hosts do,
+        // and so do file:/// URLs, which means we need to block
+        // it here if we want to avoid breaking the main docs site.
+        // https://github.com/rust-lang/rust/issues/145646
+        block-network-request: "file://*//*"
+        // Perform search
         click: "#search-button"
         wait-for: ".search-input"
         write-into: (".search-input", |query|)
