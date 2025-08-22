@@ -78,7 +78,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Msrv)
             let method = snippet_with_applicability(cx, qpath_span_without_turbofish(method), "..", &mut app);
             ("try call directly", format!("{method}{turbofish}()"))
         } else {
-            let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);
+            let cast_expr_sugg = Sugg::hir_with_context(cx, cast_expr, expr.span.ctxt(), "_", &mut app);
 
             (
                 "try `pointer::cast`, a safer alternative",
