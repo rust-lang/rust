@@ -1360,7 +1360,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // Enable rustc's env var for `rust-lld` when requested.
-    if builder.config.lld_enabled {
+    if builder.config.lld_enabled && builder.config.channel != "stable" {
         cargo.env("CFG_USE_SELF_CONTAINED_LINKER", "1");
     }
 

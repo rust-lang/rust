@@ -657,6 +657,7 @@ impl Config {
         //   when the config sets `rust.lld = false`
         if default_lld_opt_in_targets().contains(&self.host_target.triple.to_string())
             && self.hosts == [self.host_target]
+            && self.channel != "stable"
         {
             let no_llvm_config = self
                 .target_config
