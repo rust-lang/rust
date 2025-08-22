@@ -1275,13 +1275,11 @@ function preLoadCss(cssUrl) {
     }
 
     window.addEventListener("resize", () => {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
             // As a workaround to the behavior of `contains: layout` used in doc togglers,
             // tooltip popovers are positioned using javascript.
             //
             // This means when the window is resized, we need to redo the layout.
-            // @ts-expect-error
             const base = window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE;
             const force_visible = base.TOOLTIP_FORCE_VISIBLE;
             hideTooltip(false);
@@ -1337,14 +1335,15 @@ function preLoadCss(cssUrl) {
         }
         // Make this function idempotent. If the tooltip is already shown, avoid doing extra work
         // and leave it alone.
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
-            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             return;
         }
         window.hideAllModals(false);
-        const wrapper = document.createElement("div");
+        // use Object.assign to make sure the object has the correct type
+        // with all of the correct fields before it is assigned to a variable,
+        // as typescript has no way to change the type of a variable once it is initialized.
+        const wrapper = Object.assign(document.createElement("div"), {TOOLTIP_BASE: e});
         if (notable_ty) {
             wrapper.innerHTML = "<div class=\"content\">" +
                 // @ts-expect-error
@@ -1390,11 +1389,7 @@ function preLoadCss(cssUrl) {
             );
         }
         wrapper.style.visibility = "";
-        // @ts-expect-error
         window.CURRENT_TOOLTIP_ELEMENT = wrapper;
-        // @ts-expect-error
-        window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
-        // @ts-expect-error
         clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
         wrapper.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
@@ -1429,19 +1424,15 @@ function preLoadCss(cssUrl) {
      */
     function setTooltipHoverTimeout(element, show) {
         clearTooltipHoverTimeout(element);
-        // @ts-expect-error
         if (!show && !window.CURRENT_TOOLTIP_ELEMENT) {
             // To "hide" an already hidden element, just cancel its timeout.
             return;
         }
-        // @ts-expect-error
         if (show && window.CURRENT_TOOLTIP_ELEMENT) {
             // To "show" an already visible element, just cancel its timeout.
             return;
         }
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
-            // @ts-expect-error
             window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== element) {
             // Don't do anything if another tooltip is already visible.
             return;
@@ -1464,7 +1455,6 @@ function preLoadCss(cssUrl) {
      */
     function clearTooltipHoverTimeout(element) {
         if (element.TOOLTIP_HOVER_TIMEOUT !== undefined) {
-            // @ts-expect-error
             removeClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             clearTimeout(element.TOOLTIP_HOVER_TIMEOUT);
             delete element.TOOLTIP_HOVER_TIMEOUT;
@@ -1473,15 +1463,10 @@ function preLoadCss(cssUrl) {
 
     // @ts-expect-error
     function tooltipBlurHandler(event) {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(event.relatedTarget) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(event.relatedTarget)
         ) {
             // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
@@ -1503,30 +1488,22 @@ function preLoadCss(cssUrl) {
      *                          If set to `false`, leave keyboard focus alone.
      */
     function hideTooltip(focus) {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
-            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
                 if (focus) {
-                    // @ts-expect-error
                     window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
                 }
-                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
-            // @ts-expect-error
             document.body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
-            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
-            // @ts-expect-error
-            window.CURRENT_TOOLTIP_ELEMENT = null;
+            window.CURRENT_TOOLTIP_ELEMENT = undefined;
         }
     }
 
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = () => {
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
-            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
             } else {
@@ -1562,9 +1539,7 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            // @ts-expect-error
             if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
-                // @ts-expect-error
                 !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
                 // Tooltip pointer leave gesture:
                 //
@@ -1597,7 +1572,6 @@ function preLoadCss(cssUrl) {
                 // * https://www.nngroup.com/articles/tooltip-guidelines/
                 // * https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown
                 setTooltipHoverTimeout(e, false);
-                // @ts-expect-error
                 addClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             }
         };

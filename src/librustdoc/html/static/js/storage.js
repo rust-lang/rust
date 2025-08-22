@@ -117,7 +117,7 @@ function addClass(elem, className) {
  * Remove a class from a DOM Element. If `elem` is null,
  * does nothing. This function is idempotent.
  *
- * @param {Element|null} elem
+ * @param {Element|null|undefined} elem
  * @param {string} className
  */
 // eslint-disable-next-line no-unused-vars
