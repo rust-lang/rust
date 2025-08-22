@@ -524,8 +524,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_std_internal_symbol]`.
     StdInternalSymbol(Span),
 
-    /// Represents `#[target_feature(enable = "...")]`
-    TargetFeature(ThinVec<(Symbol, Span)>, Span),
+    /// Represents `#[target_feature(enable = "...")]` and
+    /// `#[unsafe(force_target_feature(enable = "...")]`.
+    TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

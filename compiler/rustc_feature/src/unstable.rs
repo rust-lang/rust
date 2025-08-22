@@ -480,6 +480,8 @@ declare_features! (
     (unstable, doc_cfg_hide, "1.57.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
     (unstable, doc_masked, "1.21.0", Some(44027)),
+    /// Allows features to allow target_feature to better interact with traits.
+    (incomplete, effective_target_features, "CURRENT_RUSTC_VERSION", Some(143352)),
     /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.

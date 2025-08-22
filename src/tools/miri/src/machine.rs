@@ -16,6 +16,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
 use rustc_hir::attrs::InlineAttr;
+use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -1076,7 +1077,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .target_features
                 .iter()
                 .filter(|&feature| {
-                    !feature.implied && !ecx.tcx.sess.target_features.contains(&feature.name)
+                    feature.kind != TargetFeatureKind::Implied && !ecx.tcx.sess.target_features.contains(&feature.name)
                 })
                 .fold(String::new(), |mut s, feature| {
                     if !s.is_empty() {

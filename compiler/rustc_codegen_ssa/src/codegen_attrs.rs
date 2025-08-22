@@ -193,7 +193,7 @@ fn process_builtin_attrs(
                     }
                 }
                 AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
-                AttributeKind::TargetFeature(features, attr_span) => {
+                AttributeKind::TargetFeature { features, attr_span, was_forced } => {
                     let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
                         tcx.dcx().span_delayed_bug(*attr_span, "target_feature applied to non-fn");
                         continue;
@@ -201,7 +201,7 @@ fn process_builtin_attrs(
                     let safe_target_features =
                         matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
                     codegen_fn_attrs.safe_target_features = safe_target_features;
-                    if safe_target_features {
+                    if safe_target_features && !was_forced {
                         if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                             // The `#[target_feature]` attribute is allowed on
                             // WebAssembly targets on all functions. Prior to stabilizing
@@ -232,6 +232,7 @@ fn process_builtin_attrs(
                         tcx,
                         did,
                         features,
+                        *was_forced,
                         rust_target_features,
                         &mut codegen_fn_attrs.target_features,
                     );
@@ -462,7 +463,7 @@ fn check_result(
             .collect(),
     ) {
         let span =
-            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature(_, span) => *span)
+            find_attr!(tcx.get_all_attrs(did), AttributeKind::TargetFeature{attr_span: span, ..} => *span)
                 .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
