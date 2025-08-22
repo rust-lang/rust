@@ -11,9 +11,7 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
-pub(crate) use improper_ctypes::{
-    CItemKind, ImproperCTypesDeclarations, ImproperCTypesDefinitions,
-};
+pub(crate) use improper_ctypes::{ImproperCTypesDeclarations, ImproperCTypesDefinitions};
 
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
@@ -712,14 +710,13 @@ fn ty_is_known_nonnull<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
-    mode: CItemKind,
 ) -> bool {
     let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
 
     match ty.kind() {
         ty::FnPtr(..) => true,
         ty::Ref(..) => true,
-        ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
+        ty::Adt(def, _) if def.is_box() => true,
         ty::Adt(def, args) if def.repr().transparent() && !def.is_union() => {
             let marked_non_null = nonnull_optimization_guaranteed(tcx, *def);
 
@@ -735,10 +732,10 @@ fn ty_is_known_nonnull<'tcx>(
             def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
-                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args), mode))
+                .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args)))
         }
         ty::Pat(base, pat) => {
-            ty_is_known_nonnull(tcx, typing_env, *base, mode)
+            ty_is_known_nonnull(tcx, typing_env, *base)
                 || pat_ty_is_known_nonnull(tcx, typing_env, *pat)
         }
         _ => false,
@@ -849,7 +846,6 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
-    ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(tcx, ty = {:?})", ty);
     match ty.kind() {
@@ -874,7 +870,7 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
                 _ => return None,
             };
 
-            if !ty_is_known_nonnull(tcx, typing_env, field_ty, ckind) {
+            if !ty_is_known_nonnull(tcx, typing_env, field_ty) {
                 return None;
             }
 
