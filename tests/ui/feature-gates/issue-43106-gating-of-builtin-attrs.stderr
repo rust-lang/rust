@@ -675,7 +675,7 @@ LL |     #[macro_use] fn f() { }
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, crates
+   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_use]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:197:5
@@ -684,7 +684,7 @@ LL |     #[macro_use] struct S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, crates
+   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:203:5
@@ -693,7 +693,7 @@ LL |     #[macro_use] type T = S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, crates
+   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:209:5
@@ -702,7 +702,7 @@ LL |     #[macro_use] impl S { }
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_use]` can be applied to modules, extern crates, crates
+   = help: `#[macro_use]` can be applied to modules, extern crates, and crates
 
 warning: `#[path]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:271:5
@@ -810,7 +810,7 @@ LL | #[no_mangle]
    | ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics
+   = help: `#[no_mangle]` can be applied to functions and statics
 
 warning: `#[no_mangle]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:347:17
@@ -819,7 +819,7 @@ LL |     mod inner { #![no_mangle] }
    |                 ^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics
+   = help: `#[no_mangle]` can be applied to functions and statics
 
 warning: `#[no_mangle]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:355:5
@@ -828,7 +828,7 @@ LL |     #[no_mangle] struct S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics
+   = help: `#[no_mangle]` can be applied to functions and statics
 
 warning: `#[no_mangle]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:361:5
@@ -837,7 +837,7 @@ LL |     #[no_mangle] type T = S;
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics
+   = help: `#[no_mangle]` can be applied to functions and statics
 
 warning: `#[no_mangle]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:367:5
@@ -846,7 +846,7 @@ LL |     #[no_mangle] impl S { }
    |     ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics
+   = help: `#[no_mangle]` can be applied to functions and statics
 
 warning: `#[no_mangle]` attribute cannot be used on required trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:374:9
@@ -855,7 +855,7 @@ LL |         #[no_mangle] fn foo();
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, trait methods in impl blocks
+   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, and trait methods in impl blocks
 
 warning: `#[no_mangle]` attribute cannot be used on provided trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:380:9
@@ -864,7 +864,7 @@ LL |         #[no_mangle] fn bar() {}
    |         ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, trait methods in impl blocks
+   = help: `#[no_mangle]` can be applied to functions, statics, inherent methods, and trait methods in impl blocks
 
 warning: `#[should_panic]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:388:1
@@ -963,7 +963,7 @@ LL |     #[no_implicit_prelude] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules, crates
+   = help: `#[no_implicit_prelude]` can be applied to modules and crates
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:464:5
@@ -972,7 +972,7 @@ LL |     #[no_implicit_prelude] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules, crates
+   = help: `#[no_implicit_prelude]` can be applied to modules and crates
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:470:5
@@ -981,7 +981,7 @@ LL |     #[no_implicit_prelude] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules, crates
+   = help: `#[no_implicit_prelude]` can be applied to modules and crates
 
 warning: `#[no_implicit_prelude]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:476:5
@@ -990,7 +990,7 @@ LL |     #[no_implicit_prelude] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[no_implicit_prelude]` can be applied to modules, crates
+   = help: `#[no_implicit_prelude]` can be applied to modules and crates
 
 warning: `#[macro_escape]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:510:5
@@ -999,7 +999,7 @@ LL |     #[macro_escape] fn f() { }
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, crates
+   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_escape]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:516:5
@@ -1008,7 +1008,7 @@ LL |     #[macro_escape] struct S;
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, crates
+   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_escape]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:522:5
@@ -1017,7 +1017,7 @@ LL |     #[macro_escape] type T = S;
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, crates
+   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
 
 warning: `#[macro_escape]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:528:5
@@ -1026,7 +1026,7 @@ LL |     #[macro_escape] impl S { }
    |     ^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[macro_escape]` can be applied to modules, extern crates, crates
+   = help: `#[macro_escape]` can be applied to modules, extern crates, and crates
 
 warning: `#[cold]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:571:1
@@ -1080,7 +1080,7 @@ LL | #[link_name = "1900"]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on foreign modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:611:5
@@ -1089,7 +1089,7 @@ LL |     #[link_name = "1900"]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:618:17
@@ -1098,7 +1098,7 @@ LL |     mod inner { #![link_name="1900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on functions
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:624:5
@@ -1107,7 +1107,7 @@ LL |     #[link_name = "1900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:630:5
@@ -1116,7 +1116,7 @@ LL |     #[link_name = "1900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:636:5
@@ -1125,7 +1125,7 @@ LL |     #[link_name = "1900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_name]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:642:5
@@ -1134,7 +1134,7 @@ LL |     #[link_name = "1900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_section]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:649:1
@@ -1143,7 +1143,7 @@ LL | #[link_section = "1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[link_section]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:655:17
@@ -1152,7 +1152,7 @@ LL |     mod inner { #![link_section="1800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[link_section]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:663:5
@@ -1161,7 +1161,7 @@ LL |     #[link_section = "1800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[link_section]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:669:5
@@ -1170,7 +1170,7 @@ LL |     #[link_section = "1800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[link_section]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:675:5
@@ -1179,7 +1179,7 @@ LL |     #[link_section = "1800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:736:1
@@ -1188,7 +1188,7 @@ LL | #[must_use]
    | ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, traits
+   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
 
 warning: `#[must_use]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:741:17
@@ -1197,7 +1197,7 @@ LL |     mod inner { #![must_use] }
    |                 ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, traits
+   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
 
 warning: `#[must_use]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:750:5
@@ -1206,7 +1206,7 @@ LL |     #[must_use] type T = S;
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, traits
+   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
 
 warning: `#[must_use]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:755:5
@@ -1215,7 +1215,7 @@ LL |     #[must_use] impl S { }
    |     ^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, traits
+   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
 
 warning: `#[should_panic]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:50:1
@@ -1260,7 +1260,7 @@ LL | #![link_name = "1900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_name]` can be applied to foreign functions, foreign statics
+   = help: `#[link_name]` can be applied to foreign functions and foreign statics
 
 warning: `#[link_section]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:79:1
@@ -1269,7 +1269,7 @@ LL | #![link_section = "1800"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[link_section]` can be applied to statics, functions
+   = help: `#[link_section]` can be applied to statics and functions
 
 warning: `#[must_use]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:84:1
@@ -1278,7 +1278,7 @@ LL | #![must_use]
    | ^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = help: `#[must_use]` can be applied to functions, data types, unions, traits
+   = help: `#[must_use]` can be applied to functions, data types, unions, and traits
 
 warning: 173 warnings emitted
 

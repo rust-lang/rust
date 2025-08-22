@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
+use rustc_error_messages::{DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
@@ -21,26 +21,6 @@ use crate::{
     MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
     Suggestions,
 };
-
-/// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
-/// `DiagArg` are converted to `FluentArgs` (consuming the collection) at the start of diagnostic
-/// emission.
-pub type DiagArg<'iter> = (&'iter DiagArgName, &'iter DiagArgValue);
-
-/// Name of a diagnostic argument.
-pub type DiagArgName = Cow<'static, str>;
-
-/// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
-/// to a `FluentValue` by the emitter to be used in diagnostic translation.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagArgValue {
-    Str(Cow<'static, str>),
-    // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
-    // safely fits in an `f64`. Any integers bigger than that will be converted
-    // to strings in `into_diag_arg` and stored using the `Str` variant.
-    Number(i32),
-    StrListSepByAnd(Vec<Cow<'static, str>>),
-}
 
 pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
@@ -140,36 +120,6 @@ where
 {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         self.node.into_diag(dcx, level).with_span(self.span)
-    }
-}
-
-/// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
-/// Implemented as a custom trait rather than `From` so that it is implemented on the type being
-/// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
-/// implement this.
-pub trait IntoDiagArg {
-    /// Convert `Self` into a `DiagArgValue` suitable for rendering in a diagnostic.
-    ///
-    /// It takes a `path` where "long values" could be written to, if the `DiagArgValue` is too big
-    /// for displaying on the terminal. This path comes from the `Diag` itself. When rendering
-    /// values that come from `TyCtxt`, like `Ty<'_>`, they can use `TyCtxt::short_string`. If a
-    /// value has no shortening logic that could be used, the argument can be safely ignored.
-    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue;
-}
-
-impl IntoDiagArg for DiagArgValue {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self
-    }
-}
-
-impl From<DiagArgValue> for FluentValue<'static> {
-    fn from(val: DiagArgValue) -> Self {
-        match val {
-            DiagArgValue::Str(s) => From::from(s),
-            DiagArgValue::Number(n) => From::from(n),
-            DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
-        }
     }
 }
 

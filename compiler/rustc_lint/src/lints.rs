@@ -8,7 +8,6 @@ use rustc_errors::{
     EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -2769,7 +2768,7 @@ pub(crate) struct AbsPathWithModuleSugg {
 pub(crate) struct ProcMacroDeriveResolutionFallback {
     #[label]
     pub span: Span,
-    pub ns: Namespace,
+    pub ns_descr: &'static str,
     pub ident: Ident,
 }
 

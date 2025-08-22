@@ -64,10 +64,12 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident } => {
-            lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident }
-                .decorate_lint(diag)
-        }
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
+            span: macro_span,
+            ns_descr,
+            ident,
+        } => lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns_descr, ident }
+            .decorate_lint(diag),
         BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
             lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def }
                 .decorate_lint(diag)

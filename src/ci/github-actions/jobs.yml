@@ -28,7 +28,6 @@ runners:
 
   - &job-windows
     os: windows-2025
-    free_disk: true
     <<: *base-job
 
   - &job-windows-8c

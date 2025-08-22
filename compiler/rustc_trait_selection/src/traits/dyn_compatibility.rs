@@ -106,6 +106,10 @@ fn dyn_compatibility_violations_for_trait(
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
     }
+    let spans = super_predicates_are_unconditionally_const(tcx, trait_def_id);
+    if !spans.is_empty() {
+        violations.push(DynCompatibilityViolation::SupertraitConst(spans));
+    }
 
     violations
 }
@@ -247,13 +251,28 @@ fn super_predicates_have_non_lifetime_binders(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
-    // If non_lifetime_binders is disabled, then exit early
-    if !tcx.features().non_lifetime_binders() {
-        return SmallVec::new();
-    }
     tcx.explicit_super_predicates_of(trait_def_id)
         .iter_identity_copied()
         .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
+        .collect()
+}
+
+/// Checks for `const Trait` supertraits. We're okay with `[const] Trait`,
+/// supertraits since for a non-const instantiation of that trait, the
+/// conditionally-const supertrait is also not required to be const.
+fn super_predicates_are_unconditionally_const(
+    tcx: TyCtxt<'_>,
+    trait_def_id: DefId,
+) -> SmallVec<[Span; 1]> {
+    tcx.explicit_super_predicates_of(trait_def_id)
+        .iter_identity_copied()
+        .filter_map(|(pred, span)| {
+            if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
+                Some(span)
+            } else {
+                None
+            }
+        })
         .collect()
 }
 

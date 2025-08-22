@@ -7,7 +7,7 @@ The tracking issue for this feature is: [#106764](https://github.com/rust-lang/r
 The `-Zrandomize-layout` flag changes the layout algorithm for `repr(Rust)` types defined in the current crate from its normal
 optimization goals to pseudorandomly rearranging fields within the degrees of freedom provided by the largely unspecified
 default representation. This also affects type sizes and padding.
-Downstream intantiations of generic types defined in a crate with randomization enabled will also be randomized.
+Downstream instantiations of generic types defined in a crate with randomization enabled will also be randomized.
 
 It can be used to find unsafe code that accidentally relies on unspecified behavior.
 

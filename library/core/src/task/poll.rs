@@ -125,7 +125,7 @@ impl<T, E> Poll<Result<T, E>> {
         }
     }
 
-    /// Maps a `Poll::Ready<Result<T, E>>` to `Poll::Ready<Result<T, F>>` by
+    /// Maps a `Poll::Ready<Result<T, E>>` to `Poll::Ready<Result<T, U>>` by
     /// applying a function to a contained `Poll::Ready(Err)` value, leaving all other
     /// variants untouched.
     ///

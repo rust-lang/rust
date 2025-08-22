@@ -1,13 +1,6 @@
-use rustc_feature::template;
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use super::prelude::*;
+use crate::session_diagnostics::EmptyConfusables;
 
-use super::{AcceptMapping, AttributeParser};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{AllowedTargets, FinalizeContext, Stage};
-use crate::session_diagnostics;
 #[derive(Default)]
 pub(crate) struct ConfusablesParser {
     confusables: ThinVec<Symbol>,
@@ -25,7 +18,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
             };
 
             if list.is_empty() {
-                cx.emit_err(session_diagnostics::EmptyConfusables { span: cx.attr_span });
+                cx.emit_err(EmptyConfusables { span: cx.attr_span });
             }
 
             for param in list.mixed() {

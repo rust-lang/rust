@@ -1624,7 +1624,7 @@ fn ignore_backends(
                 }
             }
         }) {
-            if config.codegen_backend == backend {
+            if config.default_codegen_backend == backend {
                 return IgnoreDecision::Ignore {
                     reason: format!("{} backend is marked as ignore", backend.as_str()),
                 };
@@ -1651,12 +1651,12 @@ fn needs_backends(
                     panic!("Invalid needs-backends value `{backend}` in `{path}`: {error}")
                 }
             })
-            .any(|backend| config.codegen_backend == backend)
+            .any(|backend| config.default_codegen_backend == backend)
         {
             return IgnoreDecision::Ignore {
                 reason: format!(
                     "{} backend is not part of required backends",
-                    config.codegen_backend.as_str()
+                    config.default_codegen_backend.as_str()
                 ),
             };
         }
