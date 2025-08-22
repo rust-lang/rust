@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::hir_id::OwnerId;
-use rustc_hir::{ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
+use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind, Node, TraitRef};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, kw};
@@ -15,10 +15,12 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, item: &ImplItem<'_>, ignored
         && let ImplItemKind::Fn(_, body_id) = item.kind
         && let parent_node = cx.tcx.parent_hir_node(item.hir_id())
         && let Node::Item(parent_item) = parent_node
-        && let ItemKind::Impl(impl_) = &parent_item.kind
-        && let Some(trait_ref) = impl_.of_trait
+        && let ItemKind::Impl(Impl {
+            of_trait: Some(of_trait),
+            ..
+        }) = &parent_item.kind
         && let Some(did) = trait_item_def_id_of_impl(cx, item.owner_id)
-        && !is_from_ignored_trait(&trait_ref, ignored_traits)
+        && !is_from_ignored_trait(&of_trait.trait_ref, ignored_traits)
     {
         let mut param_idents_iter = cx.tcx.hir_body_param_idents(body_id);
         let mut default_param_idents_iter = cx.tcx.fn_arg_idents(did).iter().copied();

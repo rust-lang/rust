@@ -130,18 +130,22 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
 
                 let mut suggestions = vec![(name_span, non_eq_mac.to_string()), (lit_span, String::new())];
 
-                if bool_value ^ eq_macro {
-                    let Some(sugg) = Sugg::hir_opt(cx, non_lit_expr) else {
-                        return;
+                if let Some(sugg) = Sugg::hir_opt(cx, non_lit_expr) {
+                    let sugg = if bool_value ^ eq_macro {
+                        !sugg.maybe_paren()
+                    } else if ty::Bool == *non_lit_ty.kind() {
+                        sugg
+                    } else {
+                        !!sugg.maybe_paren()
                     };
-                    suggestions.push((non_lit_expr.span, (!sugg).to_string()));
-                }
+                    suggestions.push((non_lit_expr.span, sugg.to_string()));
 
-                diag.multipart_suggestion(
-                    format!("replace it with `{non_eq_mac}!(..)`"),
-                    suggestions,
-                    Applicability::MachineApplicable,
-                );
+                    diag.multipart_suggestion(
+                        format!("replace it with `{non_eq_mac}!(..)`"),
+                        suggestions,
+                        Applicability::MachineApplicable,
+                    );
+                }
             },
         );
     }

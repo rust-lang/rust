@@ -7,13 +7,14 @@ use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
 use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
+// import needed to shadow `PatKind::Box` glob-imported above
+use std::boxed::Box;
 use std::cell::Cell;
 use std::mem;
 use thin_vec::{ThinVec, thin_vec};
@@ -97,7 +98,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
         return;
     }
 
-    let mut pat = P(pat.clone());
+    let mut pat = Box::new(pat.clone());
 
     // Nix all the paren patterns everywhere so that they aren't in our way.
     remove_all_parens(&mut pat);
@@ -119,7 +120,7 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 }
 
 /// Remove all `(p)` patterns in `pat`.
-fn remove_all_parens(pat: &mut P<Pat>) {
+fn remove_all_parens(pat: &mut Box<Pat>) {
     #[derive(Default)]
     struct Visitor {
         /// If is not in the outer most pattern. This is needed to avoid removing the outermost
@@ -142,7 +143,7 @@ fn remove_all_parens(pat: &mut P<Pat>) {
 }
 
 /// Insert parens where necessary according to Rust's precedence rules for patterns.
-fn insert_necessary_parens(pat: &mut P<Pat>) {
+fn insert_necessary_parens(pat: &mut Box<Pat>) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut Pat) {
@@ -154,7 +155,7 @@ fn insert_necessary_parens(pat: &mut P<Pat>) {
                 Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingMode::MUT, ..)) => p, // `&(mut x)`
                 _ => return,
             };
-            target.kind = Paren(P(take_pat(target)));
+            target.kind = Paren(Box::new(take_pat(target)));
         }
     }
     Visitor.visit_pat(pat);
@@ -162,7 +163,7 @@ fn insert_necessary_parens(pat: &mut P<Pat>) {
 
 /// Unnest or-patterns `p0 | ... | p1` in the pattern `pat`.
 /// For example, this would transform `Some(0) | FOO | Some(2)` into `Some(0 | 2) | FOO`.
-fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
+fn unnest_or_patterns(pat: &mut Box<Pat>) -> bool {
     struct Visitor {
         changed: bool,
     }
@@ -222,7 +223,7 @@ macro_rules! always_pat {
 /// Focus on `focus_idx` in `alternatives`,
 /// attempting to extend it with elements of the same constructor `C`
 /// in `alternatives[focus_idx + 1..]`.
-fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: usize) -> bool {
+fn transform_with_focus_on_idx(alternatives: &mut ThinVec<Box<Pat>>, focus_idx: usize) -> bool {
     // Extract the kind; we'll need to make some changes in it.
     let mut focus_kind = mem::replace(&mut alternatives[focus_idx].kind, Wild);
     // We'll focus on `alternatives[focus_idx]`,
@@ -283,14 +284,14 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
             |k, ps1, idx| matches!(
                 k,
                 TupleStruct(qself2, path2, ps2)
-                    if eq_maybe_qself(qself1.as_ref(), qself2.as_ref())
+                    if eq_maybe_qself(qself1.as_deref(), qself2.as_deref())
                        && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
             ),
             |k| always_pat!(k, TupleStruct(_, _, ps) => ps),
         ),
         // Transform a record pattern `S { fp_0, ..., fp_n }`.
         Struct(qself1, path1, fps1, rest1) => {
-            extend_with_struct_pat(qself1.as_ref(), path1, fps1, *rest1, start, alternatives)
+            extend_with_struct_pat(qself1.as_deref(), path1, fps1, *rest1, start, alternatives)
         },
     };
 
@@ -303,12 +304,12 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 /// So when we fixate on some `ident_k: pat_k`, we try to find `ident_k` in the other pattern
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
-    qself1: Option<&P<ast::QSelf>>,
+    qself1: Option<&ast::QSelf>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
     rest1: ast::PatFieldsRest,
     start: usize,
-    alternatives: &mut ThinVec<P<Pat>>,
+    alternatives: &mut ThinVec<Box<Pat>>,
 ) -> bool {
     (0..fps1.len()).any(|idx| {
         let pos_in_2 = Cell::new(None); // The element `k`.
@@ -318,7 +319,7 @@ fn extend_with_struct_pat(
             |k| {
                 matches!(k, Struct(qself2, path2, fps2, rest2)
                 if rest1 == *rest2 // If one struct pattern has `..` so must the other.
-                && eq_maybe_qself(qself1, qself2.as_ref())
+                && eq_maybe_qself(qself1, qself2.as_deref())
                 && eq_path(path1, path2)
                 && fps1.len() == fps2.len()
                 && fps1.iter().enumerate().all(|(idx_1, fp1)| {
@@ -346,11 +347,11 @@ fn extend_with_struct_pat(
 /// while also requiring `ps1[..n] ~ ps2[..n]` (pre) and `ps1[n + 1..] ~ ps2[n + 1..]` (post),
 /// where `~` denotes semantic equality.
 fn extend_with_matching_product(
-    targets: &mut [P<Pat>],
+    targets: &mut [Box<Pat>],
     start: usize,
-    alternatives: &mut ThinVec<P<Pat>>,
-    predicate: impl Fn(&PatKind, &[P<Pat>], usize) -> bool,
-    extract: impl Fn(PatKind) -> ThinVec<P<Pat>>,
+    alternatives: &mut ThinVec<Box<Pat>>,
+    predicate: impl Fn(&PatKind, &[Box<Pat>], usize) -> bool,
+    extract: impl Fn(PatKind) -> ThinVec<Box<Pat>>,
 ) -> bool {
     (0..targets.len()).any(|idx| {
         let tail_or = drain_matching(
@@ -377,14 +378,14 @@ fn take_pat(from: &mut Pat) -> Pat {
 
 /// Extend `target` as an or-pattern with the alternatives
 /// in `tail_or` if there are any and return if there were.
-fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<P<Pat>>) -> bool {
-    fn extend(target: &mut Pat, mut tail_or: ThinVec<P<Pat>>) {
+fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<Box<Pat>>) -> bool {
+    fn extend(target: &mut Pat, mut tail_or: ThinVec<Box<Pat>>) {
         match target {
             // On an existing or-pattern in the target, append to it.
             Pat { kind: Or(ps), .. } => ps.append(&mut tail_or),
             // Otherwise convert the target to an or-pattern.
             target => {
-                let mut init_or = thin_vec![P(take_pat(target))];
+                let mut init_or = thin_vec![Box::new(take_pat(target))];
                 init_or.append(&mut tail_or);
                 target.kind = Or(init_or);
             },
@@ -403,10 +404,10 @@ fn extend_with_tail_or(target: &mut Pat, tail_or: ThinVec<P<Pat>>) -> bool {
 // Only elements beginning with `start` are considered for extraction.
 fn drain_matching(
     start: usize,
-    alternatives: &mut ThinVec<P<Pat>>,
+    alternatives: &mut ThinVec<Box<Pat>>,
     predicate: impl Fn(&PatKind) -> bool,
-    extract: impl Fn(PatKind) -> P<Pat>,
-) -> ThinVec<P<Pat>> {
+    extract: impl Fn(PatKind) -> Box<Pat>,
+) -> ThinVec<Box<Pat>> {
     let mut tail_or = ThinVec::new();
     let mut idx = 0;
 
@@ -438,15 +439,15 @@ fn drain_matching(
 fn extend_with_matching(
     target: &mut Pat,
     start: usize,
-    alternatives: &mut ThinVec<P<Pat>>,
+    alternatives: &mut ThinVec<Box<Pat>>,
     predicate: impl Fn(&PatKind) -> bool,
-    extract: impl Fn(PatKind) -> P<Pat>,
+    extract: impl Fn(PatKind) -> Box<Pat>,
 ) -> bool {
     extend_with_tail_or(target, drain_matching(start, alternatives, predicate, extract))
 }
 
 /// Are the patterns in `ps1` and `ps2` equal save for `ps1[idx]` compared to `ps2[idx]`?
-fn eq_pre_post(ps1: &[P<Pat>], ps2: &[P<Pat>], idx: usize) -> bool {
+fn eq_pre_post(ps1: &[Box<Pat>], ps2: &[Box<Pat>], idx: usize) -> bool {
     ps1.len() == ps2.len()
         && ps1[idx].is_rest() == ps2[idx].is_rest() // Avoid `[x, ..] | [x, 0]` => `[x, .. | 0]`.
         && over(&ps1[..idx], &ps2[..idx], |l, r| eq_pat(l, r))

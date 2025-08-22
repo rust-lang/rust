@@ -20,7 +20,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
     ImplItem, ImplItemKind, IsAuto, Item, ItemKind, Lit, LoopSource, MatchSource, MutTy, Node, Path, QPath, Safety,
-    TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
+    TraitImplHeader, TraitItem, TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{EarlyContext, LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -254,7 +254,10 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, _, Safety::Unsafe, ..)
         | ItemKind::Impl(Impl {
-            safety: Safety::Unsafe, ..
+            of_trait: Some(TraitImplHeader {
+                safety: Safety::Unsafe, ..
+            }),
+            ..
         }) => (Pat::Str("unsafe"), Pat::Str("}")),
         ItemKind::Trait(_, IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
         ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
