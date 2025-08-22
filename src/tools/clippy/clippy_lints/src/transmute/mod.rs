@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub CROSSPOINTER_TRANSMUTE,
-    complexity,
+    suspicious,
     "transmutes that have to or from types that are a pointer to the other"
 }
 

@@ -89,6 +89,10 @@ fn main() {
 
     let iter: i32;
     let item: i32;
+
+    // 3 letter names are allowed to be similar
+    let kta: i32;
+    let ktv: i32;
 }
 
 fn foo() {

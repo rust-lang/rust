@@ -450,4 +450,75 @@ mod issue_12338 {
     }
 }
 
+#[allow(clippy::let_underscore_future, clippy::empty_loop)]
+mod issue_14000 {
+    use super::do_something;
+
+    async fn foo() {
+        let _ = async move {
+            loop {
+                //~^ infinite_loop
+                do_something();
+            }
+        }
+        .await;
+        let _ = async move {
+            loop {
+                //~^ infinite_loop
+                continue;
+            }
+        }
+        .await;
+    }
+
+    fn bar() {
+        let _ = async move {
+            loop {
+                do_something();
+            }
+        };
+
+        let _ = async move {
+            loop {
+                continue;
+            }
+        };
+    }
+}
+
+#[allow(clippy::let_underscore_future)]
+mod tokio_spawn_test {
+    use super::do_something;
+
+    fn install_ticker() {
+        // This should NOT trigger the lint because the async block is spawned, not awaited
+        std::thread::spawn(move || {
+            async move {
+                loop {
+                    // This loop should not trigger infinite_loop lint
+                    do_something();
+                }
+            }
+        });
+    }
+
+    fn spawn_async_block() {
+        // This should NOT trigger the lint because the async block is not awaited
+        let _handle = async move {
+            loop {
+                do_something();
+            }
+        };
+    }
+
+    fn await_async_block() {
+        // This SHOULD trigger the lint because the async block is awaited
+        let _ = async move {
+            loop {
+                do_something();
+            }
+        };
+    }
+}
+
 fn main() {}

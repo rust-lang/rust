@@ -74,7 +74,7 @@ fn test_units() {
 /// GitHub GitLab
 /// IPv4 IPv6
 /// ClojureScript CoffeeScript JavaScript PostScript PureScript TypeScript
-/// WebAssembly
+/// PowerPC WebAssembly
 /// NaN NaNs
 /// OAuth GraphQL
 /// OCaml

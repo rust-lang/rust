@@ -55,7 +55,7 @@ impl UnnecessaryBoxReturns {
         }
     }
 
-    fn check_fn_item(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId, name: Symbol) {
+    fn check_fn_item(&self, cx: &LateContext<'_>, decl: &FnDecl<'_>, def_id: LocalDefId, name: Symbol) {
         // we don't want to tell someone to break an exported function if they ask us not to
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;

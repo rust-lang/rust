@@ -106,7 +106,7 @@ enum CheckResult<'tcx> {
 
 impl<'tcx> OffendingFilterExpr<'tcx> {
     pub fn check_map_call(
-        &mut self,
+        &self,
         cx: &LateContext<'tcx>,
         map_body: &'tcx Body<'tcx>,
         map_param_id: HirId,
@@ -413,7 +413,7 @@ fn is_find_or_filter<'a>(
         }
 
         && let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind
-        && let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
+        && let Some(offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
 
         && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
         && let map_body = cx.tcx.hir_body(map_body_id)
