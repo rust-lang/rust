@@ -71,3 +71,7 @@ harness = false
 # without increasing total build times.
 [profile.dev.package.quine-mc_cluskey]
 opt-level = 3
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
