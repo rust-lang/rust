@@ -452,10 +452,10 @@ fn traverse(
                 }
                 hl
             }
-            NodeOrToken::Token(token) => {
+            NodeOrToken::Token(token) => salsa::attach(sema.db, || {
                 highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
                     .zip(Some(None))
-            }
+            }),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if is_unlinked && highlight.tag == HlTag::UnresolvedReference {

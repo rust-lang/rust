@@ -5,7 +5,7 @@ use std::mem;
 use either::Either;
 use hir::{EditionedFileId, HirFileId, InFile, Semantics, sym};
 use ide_db::{
-    SymbolKind, active_parameter::ActiveParameter, defs::Definition,
+    SymbolKind, active_parameter::ActiveParameter, base_db::salsa, defs::Definition,
     documentation::docs_with_rangemap, rust_doc::is_rust_fence,
 };
 use syntax::{
@@ -126,32 +126,34 @@ pub(super) fn doc_comment(
 
     // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = docs_with_rangemap(sema.db, &attributes) {
-        extract_definitions_from_docs(&docs)
-            .into_iter()
-            .filter_map(|(range, link, ns)| {
-                doc_mapping
-                    .map(range)
-                    .filter(|(mapping, _)| mapping.file_id == src_file_id)
-                    .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
-                        Some(mapped_range).zip(resolve_doc_path_for_def(
-                            sema.db,
-                            def,
-                            &link,
-                            ns,
-                            attr_id.is_inner_attr(),
-                        ))
-                    })
-            })
-            .for_each(|(range, def)| {
-                hl.add(HlRange {
-                    range,
-                    highlight: module_def_to_hl_tag(def)
-                        | HlMod::Documentation
-                        | HlMod::Injected
-                        | HlMod::IntraDocLink,
-                    binding_hash: None,
+        salsa::attach(sema.db, || {
+            extract_definitions_from_docs(&docs)
+                .into_iter()
+                .filter_map(|(range, link, ns)| {
+                    doc_mapping
+                        .map(range)
+                        .filter(|(mapping, _)| mapping.file_id == src_file_id)
+                        .and_then(|(InFile { value: mapped_range, .. }, attr_id)| {
+                            Some(mapped_range).zip(resolve_doc_path_for_def(
+                                sema.db,
+                                def,
+                                &link,
+                                ns,
+                                attr_id.is_inner_attr(),
+                            ))
+                        })
                 })
-            });
+                .for_each(|(range, def)| {
+                    hl.add(HlRange {
+                        range,
+                        highlight: module_def_to_hl_tag(def)
+                            | HlMod::Documentation
+                            | HlMod::Injected
+                            | HlMod::IntraDocLink,
+                        binding_hash: None,
+                    })
+                })
+        });
     }
 
     // Extract doc-test sources from the docs and calculate highlighting for them.
