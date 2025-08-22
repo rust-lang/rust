@@ -463,12 +463,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag)
         }
-        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => if is_macro {
-            lints::InnerAttributeUnstable::InnerMacroAttribute
-        } else {
-            lints::InnerAttributeUnstable::CustomInnerAttribute
-        }
-        .decorate_lint(diag),
         BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
             lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }

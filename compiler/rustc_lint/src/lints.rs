@@ -2679,14 +2679,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum InnerAttributeUnstable {
-    #[diag(lint_inner_macro_attribute_unstable)]
-    InnerMacroAttribute,
-    #[diag(lint_custom_inner_attribute_unstable)]
-    CustomInnerAttribute,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unknown_diagnostic_attribute)]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]

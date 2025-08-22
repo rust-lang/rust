@@ -800,9 +800,6 @@ pub enum BuiltinLintDiag {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
     },
-    InnerAttributeUnstable {
-        is_macro: bool,
-    },
     OutOfScopeMacroCalls {
         span: Span,
         path: String,

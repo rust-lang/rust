@@ -205,8 +205,6 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_custom_inner_attribute_unstable = custom inner attributes are unstable
-
 lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
     .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
     .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
@@ -426,8 +424,6 @@ lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
 lint_incomplete_include =
     include macro expected single expression in source
-
-lint_inner_macro_attribute_unstable = inner macro attributes are unstable
 
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
