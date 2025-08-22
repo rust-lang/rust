@@ -187,5 +187,28 @@ LL ~     #[default]
 LL ~     Bar,
    |
 
-error: aborting due to 11 previous errors
+error: this `impl` can be derived
+  --> tests/ui/derivable_impls.rs:432:5
+   |
+LL | /     impl Default for Bar {
+LL | |
+LL | |         fn default() -> Self {
+LL | |             Self::A
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: replace the manual implementation with a derive attribute and mark the default variant
+   |
+LL ~     #[derive(Default)]
+LL ~     enum Bar {
+LL ~         #[default]
+LL ~         A,
+LL |         B,
+LL |     }
+LL |
+LL ~     
+   |
+
+error: aborting due to 12 previous errors
 

@@ -352,4 +352,16 @@ mod issue15493 {
     }
 }
 
+mod issue15536 {
+    #[derive(Copy, Clone)]
+    #[derive(Default)]
+    enum Bar {
+        #[default]
+        A,
+        B,
+    }
+
+    
+}
+
 fn main() {}

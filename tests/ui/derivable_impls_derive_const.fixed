@@ -7,7 +7,7 @@ mod issue15493 {
     #[derive(Copy, Clone)]
     #[repr(transparent)]
     #[derive_const(Default)]
-struct Foo(u64);
+    struct Foo(u64);
 
     
 

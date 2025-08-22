@@ -14,7 +14,7 @@ LL | |     }
 help: replace the manual implementation with a derive attribute
    |
 LL ~     #[derive_const(Default)]
-LL ~ struct Foo(u64);
+LL ~     struct Foo(u64);
 LL |
 LL ~     
    |

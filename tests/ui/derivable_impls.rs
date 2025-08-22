@@ -422,4 +422,19 @@ mod issue15493 {
     }
 }
 
+mod issue15536 {
+    #[derive(Copy, Clone)]
+    enum Bar {
+        A,
+        B,
+    }
+
+    impl Default for Bar {
+        //~^ derivable_impls
+        fn default() -> Self {
+            Self::A
+        }
+    }
+}
+
 fn main() {}
