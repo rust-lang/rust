@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{HasSession, snippet_with_applicability};
+use clippy_utils::source::{HasSession, snippet_with_applicability, snippet_with_context};
 use rustc_ast::ast::{Expr, ExprKind, MethodCall};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -42,27 +42,28 @@ declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if expr.span.from_expansion() {
-            return;
-        }
-
         match &expr.kind {
             // ((..))
             // ^^^^^^ expr
             //  ^^^^  inner
             ExprKind::Paren(inner) if matches!(inner.kind, ExprKind::Paren(_) | ExprKind::Tup(_)) => {
                 // suggest removing the outer parens
-                let mut applicability = Applicability::MachineApplicable;
-                let sugg = snippet_with_applicability(cx.sess(), inner.span, "_", &mut applicability);
-                span_lint_and_sugg(
-                    cx,
-                    DOUBLE_PARENS,
-                    expr.span,
-                    "unnecessary parentheses",
-                    "remove them",
-                    sugg.to_string(),
-                    applicability,
-                );
+                if expr.span.eq_ctxt(inner.span) {
+                    let mut applicability = Applicability::MachineApplicable;
+                    // We don't need to use `snippet_with_context` here, because:
+                    // - if `inner`'s `ctxt` is from macro, we don't lint in the first place (see the check above)
+                    // - otherwise, calling `snippet_with_applicability` on a not-from-macro span is fine
+                    let sugg = snippet_with_applicability(cx.sess(), inner.span, "_", &mut applicability);
+                    span_lint_and_sugg(
+                        cx,
+                        DOUBLE_PARENS,
+                        expr.span,
+                        "unnecessary parentheses",
+                        "remove them",
+                        sugg.to_string(),
+                        applicability,
+                    );
+                }
             },
 
             // func((n))
@@ -74,17 +75,19 @@ impl EarlyLintPass for DoubleParens {
                     && let ExprKind::Paren(inner) = &arg.kind =>
             {
                 // suggest removing the inner parens
-                let mut applicability = Applicability::MachineApplicable;
-                let sugg = snippet_with_applicability(cx.sess(), inner.span, "_", &mut applicability);
-                span_lint_and_sugg(
-                    cx,
-                    DOUBLE_PARENS,
-                    arg.span,
-                    "unnecessary parentheses",
-                    "remove them",
-                    sugg.to_string(),
-                    applicability,
-                );
+                if expr.span.eq_ctxt(arg.span) {
+                    let mut applicability = Applicability::MachineApplicable;
+                    let sugg = snippet_with_context(cx.sess(), inner.span, arg.span.ctxt(), "_", &mut applicability).0;
+                    span_lint_and_sugg(
+                        cx,
+                        DOUBLE_PARENS,
+                        arg.span,
+                        "unnecessary parentheses",
+                        "remove them",
+                        sugg.to_string(),
+                        applicability,
+                    );
+                }
             },
             _ => {},
         }

@@ -37,5 +37,34 @@ error: unnecessary parentheses
 LL |     assert_eq!(((1, 2)), (1, 2), "Error");
    |                ^^^^^^^^ help: remove them: `(1, 2)`
 
-error: aborting due to 6 previous errors
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:84:16
+   |
+LL |         () => {((100))}
+   |                ^^^^^^^ help: remove them: `(100)`
+...
+LL |     bar!();
+   |     ------ in this macro invocation
+   |
+   = note: this error originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:91:5
+   |
+LL |     ((vec![1, 2]));
+   |     ^^^^^^^^^^^^^^ help: remove them: `(vec![1, 2])`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:93:14
+   |
+LL |     dummy_fn((vec![1, 2]));
+   |              ^^^^^^^^^^^^ help: remove them: `vec![1, 2]`
+
+error: unnecessary parentheses
+  --> tests/ui/double_parens.rs:95:20
+   |
+LL |     x.dummy_method((vec![1, 2]));
+   |                    ^^^^^^^^^^^^ help: remove them: `vec![1, 2]`
+
+error: aborting due to 10 previous errors
 
