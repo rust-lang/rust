@@ -1171,19 +1171,23 @@ fn classify_name_ref<'db>(
         Some(res)
     };
 
-    let is_in_condition = |it: &ast::Expr| {
+    fn is_in_condition(it: &ast::Expr) -> bool {
         (|| {
             let parent = it.syntax().parent()?;
             if let Some(expr) = ast::WhileExpr::cast(parent.clone()) {
                 Some(expr.condition()? == *it)
-            } else if let Some(expr) = ast::IfExpr::cast(parent) {
+            } else if let Some(expr) = ast::IfExpr::cast(parent.clone()) {
                 Some(expr.condition()? == *it)
+            } else if let Some(expr) = ast::BinExpr::cast(parent)
+                && expr.op_token()?.kind() == T![&&]
+            {
+                Some(is_in_condition(&expr.into()))
             } else {
                 None
             }
         })()
         .unwrap_or(false)
-    };
+    }
 
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
