@@ -145,7 +145,7 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, Results};
 use tracing::{debug, trace};
 
@@ -502,9 +502,7 @@ fn dest_prop_mir_dump<'tcx>(
     live: &SparseIntervalMatrix<RelevantLocal, TwoStepIndex>,
     relevant: &RelevantLocals,
 ) {
-    let locals_live_at = |location, effect| {
-        let location = points.point_from_location(location);
-        let location = TwoStepIndex::new(location, effect);
+    let locals_live_at = |location| {
         live.rows()
             .filter(|&r| live.contains(r, location))
             .map(|rl| relevant.original[rl])
@@ -514,10 +512,14 @@ fn dest_prop_mir_dump<'tcx>(
     if let Some(dumper) = MirDumper::new(tcx, "DestinationPropagation-dataflow", body) {
         let extra_data = &|pass_where, w: &mut dyn std::io::Write| {
             if let PassWhere::BeforeLocation(loc) = pass_where {
-                writeln!(w, "        // before: {:?}", locals_live_at(loc, Effect::Before))?;
+                let location = TwoStepIndex::new(points, loc, Effect::Before);
+                let live = locals_live_at(location);
+                writeln!(w, "        // before: {:?} => {:?}", location, live)?;
             }
             if let PassWhere::AfterLocation(loc) = pass_where {
-                writeln!(w, "        // after: {:?}", locals_live_at(loc, Effect::After))?;
+                let location = TwoStepIndex::new(points, loc, Effect::After);
+                let live = locals_live_at(location);
+                writeln!(w, "        // after: {:?} => {:?}", location, live)?;
             }
             Ok(())
         };
@@ -533,19 +535,25 @@ enum Effect {
 }
 
 rustc_index::newtype_index! {
-    /// A `PointIndex` but with the lower bit encoding early/late inside the statement.
+    /// A reversed `PointIndex` but with the lower bit encoding early/late inside the statement.
+    /// The reversed order allows to use the more efficient `IntervalSet::append` method while we
+    /// iterate on the statements in reverse order.
     #[orderable]
     #[debug_format = "TwoStepIndex({})"]
     struct TwoStepIndex {}
 }
 
 impl TwoStepIndex {
-    fn new(point: PointIndex, effect: Effect) -> TwoStepIndex {
+    fn new(elements: &DenseLocationMap, location: Location, effect: Effect) -> TwoStepIndex {
+        let point = elements.point_from_location(location);
         let effect = match effect {
             Effect::Before => 0,
             Effect::After => 1,
         };
-        TwoStepIndex::from_u32(2 * point.as_u32() + (effect as u32))
+        let max_index = 2 * elements.num_points() as u32 - 1;
+        let index = 2 * point.as_u32() + (effect as u32);
+        // Reverse the indexing to use more efficient `IntervalSet::append`.
+        TwoStepIndex::from_u32(max_index - index)
     }
 }
 
@@ -576,21 +584,18 @@ fn save_as_intervals<'tcx>(
     let mut state = MaybeLiveLocals.bottom_value(body);
     let reachable_blocks = traversal::reachable_as_bitset(body);
 
-    let two_step_loc = |location, effect| {
-        let point = elements.point_from_location(location);
-        TwoStepIndex::new(point, effect)
-    };
-    let prepend_at =
+    let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
+    let append_at =
         |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, twostep| {
             for (relevant, &original) in relevant.original.iter_enumerated() {
                 if state.contains(original) {
-                    values.prepend(relevant, twostep);
+                    values.append(relevant, twostep);
                 }
             }
         };
 
     // Iterate blocks in decreasing order, to visit locations in decreasing order. This
-    // allows to use the more efficient `prepend` method to interval sets.
+    // allows to use the more efficient `append` method to interval sets.
     for block in body.basic_blocks.indices().rev() {
         if !reachable_blocks.contains(block) {
             continue;
@@ -603,7 +608,7 @@ fn save_as_intervals<'tcx>(
 
         let term = block_data.terminator();
         let mut twostep = two_step_loc(loc, Effect::After);
-        prepend_at(&mut values, &state, twostep);
+        append_at(&mut values, &state, twostep);
         // Ensure we have a non-zero live range even for dead stores. This is done by marking all
         // the written-to locals as live in the second half of the statement.
         // We also ensure that operands read by terminators conflict with writes by that terminator.
@@ -618,17 +623,17 @@ fn save_as_intervals<'tcx>(
         })
         .visit_terminator(term, loc);
 
-        twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
+        twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
         debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
         MaybeLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
         MaybeLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
-        prepend_at(&mut values, &state, twostep);
+        append_at(&mut values, &state, twostep);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
+            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
-            prepend_at(&mut values, &state, twostep);
+            append_at(&mut values, &state, twostep);
             // Ensure we have a non-zero live range even for dead stores. This is done by marking
             // all the written-to locals as live in the second half of the statement.
             VisitPlacesWith(|place, ctxt| match DefUse::for_place(place, ctxt) {
@@ -641,13 +646,13 @@ fn save_as_intervals<'tcx>(
             })
             .visit_statement(stmt, loc);
 
-            twostep = TwoStepIndex::from_u32(twostep.as_u32() - 1);
+            twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
             MaybeLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
             MaybeLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
             // ... but reads from operands are marked as live here so they do not conflict with
             // the all the writes we manually marked as live in the second half of the statement.
-            prepend_at(&mut values, &state, twostep);
+            append_at(&mut values, &state, twostep);
         }
     }
 
