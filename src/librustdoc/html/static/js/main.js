@@ -1679,8 +1679,7 @@ function preLoadCss(cssUrl) {
         if (isHelpPage) {
             const help_section = document.createElement("section");
             help_section.appendChild(container);
-            // @ts-expect-error
-            document.getElementById("main-content").appendChild(help_section);
+            nonnull(document.getElementById("main-content")).appendChild(help_section);
         } else {
             onEachLazy(document.getElementsByClassName("help-menu"), menu => {
                 if (menu.offsetWidth !== 0) {
