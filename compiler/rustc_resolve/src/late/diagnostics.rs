@@ -3094,7 +3094,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         } else {
             self.suggest_introducing_lifetime(
                 &mut err,
-                Some(lifetime_ref.ident.name.as_str()),
+                Some(lifetime_ref.ident),
                 |err, _, span, message, suggestion, span_suggs| {
                     err.multipart_suggestion_verbose(
                         message,
@@ -3112,7 +3112,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_introducing_lifetime(
         &self,
         err: &mut Diag<'_>,
-        name: Option<&str>,
+        name: Option<Ident>,
         suggest: impl Fn(
             &mut Diag<'_>,
             bool,
@@ -3159,7 +3159,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let mut rm_inner_binders: FxIndexSet<Span> = Default::default();
                     let (span, sugg) = if span.is_empty() {
                         let mut binder_idents: FxIndexSet<Ident> = Default::default();
-                        binder_idents.insert(Ident::from_str(name.unwrap_or("'a")));
+                        binder_idents.insert(name.unwrap_or(Ident::from_str("'a")));
 
                         // We need to special case binders in the following situation:
                         // Change `T: for<'a> Trait<T> + 'b` to `for<'a, 'b> T: Trait<T> + 'b`
@@ -3189,16 +3189,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             }
                         }
 
-                        let binders_sugg = binder_idents.into_iter().enumerate().fold(
-                            "".to_string(),
-                            |mut binders, (i, x)| {
-                                if i != 0 {
-                                    binders += ", ";
-                                }
-                                binders += x.as_str();
-                                binders
-                            },
-                        );
+                        let binders_sugg: String = binder_idents
+                            .into_iter()
+                            .map(|ident| ident.to_string())
+                            .intersperse(", ".to_owned())
+                            .collect();
                         let sugg = format!(
                             "{}<{}>{}",
                             if higher_ranked { "for" } else { "" },
@@ -3214,7 +3209,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             .source_map()
                             .span_through_char(span, '<')
                             .shrink_to_hi();
-                        let sugg = format!("{}, ", name.unwrap_or("'a"));
+                        let sugg =
+                            format!("{}, ", name.map(|i| i.to_string()).as_deref().unwrap_or("'a"));
                         (span, sugg)
                     };
 
@@ -3222,7 +3218,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         let message = Cow::from(format!(
                             "consider making the {} lifetime-generic with a new `{}` lifetime",
                             kind.descr(),
-                            name.unwrap_or("'a"),
+                            name.map(|i| i.to_string()).as_deref().unwrap_or("'a"),
                         ));
                         should_continue = suggest(
                             err,
