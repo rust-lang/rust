@@ -14,7 +14,6 @@ struct A([u8]);
 struct B(&'static [u8]);
 
 #[derive(ConstParamTy, Eq, PartialEq)]
-//~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
 struct C(unsized_const_param::Foo);
 
 #[derive(std::marker::ConstParamTy, Eq, PartialEq)]

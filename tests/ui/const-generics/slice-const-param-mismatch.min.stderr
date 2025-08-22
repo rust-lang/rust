@@ -5,14 +5,6 @@ LL | struct ConstString<const T: &'static str>;
    |                             ^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
 
 error: `&'static [u8]` is forbidden as the type of a const generic parameter
   --> $DIR/slice-const-param-mismatch.rs:11:28
@@ -21,14 +13,6 @@ LL | struct ConstBytes<const T: &'static [u8]>;
    |                            ^^^^^^^^^^^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
-help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-   |
-LL + #![feature(adt_const_params)]
-   |
-help: add `#![feature(unsized_const_params)]` to the crate attributes to enable references to implement the `ConstParamTy` trait
-   |
-LL + #![feature(unsized_const_params)]
-   |
 
 error[E0308]: mismatched types
   --> $DIR/slice-const-param-mismatch.rs:17:35
