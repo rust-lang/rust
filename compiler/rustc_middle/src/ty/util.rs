@@ -131,9 +131,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> Hash128 {
-        // We want the type_id be independent of the types free regions, so we
-        // erase them. We also want type_id to be independnt of the names of bound
-        // regions so we anonymize them.
+        // We don't have region information, so we erase all free regions. Equal types
+        // must have the same `TypeId`, so we must anonymize all bound regions as well.
         let ty = self.erase_and_anonymize_regions(ty);
 
         self.with_stable_hashing_context(|mut hcx| {

@@ -426,9 +426,7 @@ pub(crate) mod rustc {
             assert!(def.is_enum());
 
             // Computes the layout of a variant.
-            let layout_of_variant = |index,
-                                     encoding: Option<TagEncoding<VariantIdx>>|
-             -> Result<Self, Err> {
+            let layout_of_variant = |index, encoding: Option<_>| -> Result<Self, Err> {
                 let variant_layout = ty_variant(cx, (ty, layout), index);
                 if variant_layout.is_uninhabited() {
                     return Ok(Self::uninhabited());
