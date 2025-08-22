@@ -505,7 +505,8 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
         },
         Node::Stmt(stmt) => {
             if let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id) {
-                walk_span_to_context(block.span, SyntaxContext::root()).map(Span::lo)
+                walk_span_to_context(block.span, SyntaxContext::root())
+                    .map(|sp| CommentStartBeforeItem::Offset(sp.lo()))
             } else {
                 // Problem getting the parent node. Pretend a comment was found.
                 return HasSafetyComment::Maybe;
@@ -518,10 +519,12 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     };
 
     let source_map = cx.sess().source_map();
+    // If the comment is in the first line of the file, there is no preceding line
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
-        && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && let Ok(comment_start_line) = source_map.lookup_line(comment_start.into())
+        && let include_first_line_of_file = matches!(comment_start, CommentStartBeforeItem::Start)
+        && (include_first_line_of_file || Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf))
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -529,7 +532,8 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
         } else {
             match text_has_safety_comment(
                 src,
-                &unsafe_line.sf.lines()[comment_start_line.line + 1..=unsafe_line.line],
+                &unsafe_line.sf.lines()
+                    [(comment_start_line.line + usize::from(!include_first_line_of_file))..=unsafe_line.line],
                 unsafe_line.sf.start_pos,
             ) {
                 Some(b) => HasSafetyComment::Yes(b),
@@ -592,12 +596,27 @@ fn stmt_has_safety_comment(
     HasSafetyComment::Maybe
 }
 
+#[derive(Clone, Copy, Debug)]
+enum CommentStartBeforeItem {
+    Offset(BytePos),
+    Start,
+}
+
+impl From<CommentStartBeforeItem> for BytePos {
+    fn from(value: CommentStartBeforeItem) -> Self {
+        match value {
+            CommentStartBeforeItem::Offset(loc) => loc,
+            CommentStartBeforeItem::Start => BytePos(0),
+        }
+    }
+}
+
 fn comment_start_before_item_in_mod(
     cx: &LateContext<'_>,
     parent_mod: &hir::Mod<'_>,
     parent_mod_span: Span,
     item: &hir::Item<'_>,
-) -> Option<BytePos> {
+) -> Option<CommentStartBeforeItem> {
     parent_mod.item_ids.iter().enumerate().find_map(|(idx, item_id)| {
         if *item_id == item.item_id() {
             if idx == 0 {
@@ -605,15 +624,18 @@ fn comment_start_before_item_in_mod(
                 // ^------------------------------------------^ returns the start of this span
                 // ^---------------------^ finally checks comments in this range
                 if let Some(sp) = walk_span_to_context(parent_mod_span, SyntaxContext::root()) {
-                    return Some(sp.lo());
+                    return Some(CommentStartBeforeItem::Offset(sp.lo()));
                 }
             } else {
                 // some_item /* comment */ unsafe impl T {}
                 // ^-------^ returns the end of this span
                 //         ^---------------^ finally checks comments in this range
                 let prev_item = cx.tcx.hir_item(parent_mod.item_ids[idx - 1]);
+                if prev_item.span.is_dummy() {
+                    return Some(CommentStartBeforeItem::Start);
+                }
                 if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
-                    return Some(sp.hi());
+                    return Some(CommentStartBeforeItem::Offset(sp.hi()));
                 }
             }
         }
@@ -668,7 +690,7 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
             }) => {
                 return maybe_mod_item
                     .and_then(|item| comment_start_before_item_in_mod(cx, mod_, *span, &item))
-                    .map(|comment_start| mod_.spans.inner_span.with_lo(comment_start))
+                    .map(|comment_start| mod_.spans.inner_span.with_lo(comment_start.into()))
                     .or(Some(*span));
             },
             node if let Some((span, _)) = span_and_hid_of_item_alike_node(&node)
