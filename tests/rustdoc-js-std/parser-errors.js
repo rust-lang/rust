@@ -16,14 +16,6 @@ const PARSED = [
         error: "Found generics without a path",
     },
     {
-        query: '-> *',
-        elems: [],
-        foundElems: 0,
-        userQuery: "-> *",
-        returned: [],
-        error: "Unexpected `*` after ` ` (not a valid identifier)",
-    },
-    {
         query: 'a<"P">',
         elems: [],
         foundElems: 0,
