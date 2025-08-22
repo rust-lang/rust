@@ -463,7 +463,6 @@ impl Config {
         );
 
         // Set config values based on flags.
-
         let mut exec_ctx = ExecutionContext::new(flags_verbose, flags_cmd.fail_fast());
         exec_ctx.set_dry_run(if flags_dry_run { DryRun::UserSelected } else { DryRun::Disabled });
         let mut src = {
@@ -478,8 +477,6 @@ impl Config {
 
         // Now load the TOML config, as soon as possible
         let (mut toml, toml_path) = load_toml_config(&src, flags_config, &get_toml);
-
-        let is_running_on_ci = flags_ci.unwrap_or(CiEnv::is_ci());
 
         postprocess_toml(&mut toml, &src, toml_path.clone(), &exec_ctx, &flags_set, &get_toml);
 
@@ -613,7 +610,7 @@ impl Config {
             optimize: llvm_optimize,
             thin_lto: llvm_thin_lto,
             release_debuginfo: llvm_release_debuginfo,
-            assertions: llvm_assertions_,
+            assertions: llvm_assertions,
             tests: llvm_tests,
             enzyme: llvm_enzyme,
             plugins: llvm_plugin,
@@ -678,23 +675,33 @@ impl Config {
             })
             .unwrap_or_else(|| vec![host_target]);
 
-        let llvm_assertions = llvm_assertions_.unwrap_or(false);
+        let llvm_assertions = llvm_assertions.unwrap_or(false);
         let mut target_config = HashMap::new();
         let mut channel = "dev".to_string();
-        let mut out = flags_build_dir
-            .or(build_build_dir.map(PathBuf::from))
-            .unwrap_or_else(|| PathBuf::from("build"));
-
-        if cfg!(test) {
-            // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
-            if out == Path::new("build") {
-                out = Path::new(
+        let out = flags_build_dir.or(build_build_dir.map(PathBuf::from)).unwrap_or_else(|| {
+            if cfg!(test) {
+                // Use the build directory of the original x.py invocation, so that we can set `initial_rustc` properly.
+                Path::new(
                     &env::var_os("CARGO_TARGET_DIR").expect("cargo test directly is not supported"),
                 )
                 .parent()
                 .unwrap()
-                .to_path_buf();
+                .to_path_buf()
+            } else {
+                PathBuf::from("build")
             }
+        });
+
+        // NOTE: Bootstrap spawns various commands with different working directories.
+        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        let mut out = if !out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            absolute(&out).expect("can't make empty path absolute")
+        } else {
+            out
+        };
+
+        if cfg!(test) {
             // When configuring bootstrap for tests, make sure to set the rustc and Cargo to the
             // same ones used to call the tests (if custom ones are not defined in the toml). If we
             // don't do that, bootstrap will use its own detection logic to find a suitable rustc
@@ -702,13 +709,6 @@ impl Config {
             // Cargo in their bootstrap.toml.
             build_rustc = build_rustc.take().or(std::env::var_os("RUSTC").map(|p| p.into()));
             build_cargo = build_cargo.take().or(std::env::var_os("CARGO").map(|p| p.into()));
-        }
-
-        // NOTE: Bootstrap spawns various commands with different working directories.
-        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-        if !out.is_absolute() {
-            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
-            out = absolute(&out).expect("can't make empty path absolute");
         }
 
         if !flags_skip_stage0_validation {
@@ -726,6 +726,7 @@ impl Config {
             );
         }
 
+        let is_running_on_ci = flags_ci.unwrap_or(CiEnv::is_ci());
         let dwn_ctx = DownloadContext {
             path_modification_cache: path_modification_cache.clone(),
             src: &src,
@@ -1142,192 +1143,117 @@ impl Config {
             })
             .collect();
 
-        Config {
-            change_id: toml.change_id.inner,
-            bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
-            ccache,
-            ninja_in_file: llvm_ninja.unwrap_or(true),
-            compiler_docs: build_compiler_docs.unwrap_or(false),
-            library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
-            docs_minification: build_docs_minification.unwrap_or(true),
-            docs: build_docs.unwrap_or(true),
-            locked_deps: build_locked_deps.unwrap_or(false),
-            full_bootstrap: build_full_bootstrap.unwrap_or(false),
-            bootstrap_cache_path: build_bootstrap_cache_path,
-            extended: build_extended.unwrap_or(false),
-            tools: build_tools,
-            tool: build_tool.unwrap_or_default(),
-            sanitizers: build_sanitizers.unwrap_or(false),
-            profiler: build_profiler.unwrap_or(false),
-            include_default_paths: flags_include_default_paths,
-            rustc_error_format: flags_rustc_error_format,
-            json_output: flags_json_output,
-            compile_time_deps: flags_compile_time_deps,
-            test_compare_mode: rust_test_compare_mode.unwrap_or(false),
-            color: flags_color,
-            android_ndk: build_android_ndk,
-            optimized_compiler_builtins: build_optimized_compiler_builtins
-                .unwrap_or(channel != "dev"),
-            stdout_is_tty: std::io::stdout().is_terminal(),
-            stderr_is_tty: std::io::stderr().is_terminal(),
-            on_fail: flags_on_fail,
-            explicit_stage_from_cli: flags_stage.is_some(),
-            explicit_stage_from_config,
+        let cargo_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo"));
+        let clippy_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy"));
+        let in_tree_gcc_info = git_info(&exec_ctx, false, &src.join("src/gcc"));
+        let in_tree_llvm_info = git_info(&exec_ctx, false, &src.join("src/llvm-project"));
+        let enzyme_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme"));
+        let miri_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri"));
+        let rust_analyzer_info =
+            git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rust-analyzer"));
+        let rustfmt_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
 
-            keep_stage: flags_keep_stage,
-            keep_stage_std: flags_keep_stage_std,
-            jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
-            incremental: flags_incremental || rust_incremental == Some(true),
-            dump_bootstrap_shims: flags_dump_bootstrap_shims,
-            free_args: flags_free_args,
-            deny_warnings,
+        let optimized_compiler_builtins =
+            build_optimized_compiler_builtins.unwrap_or(channel != "dev");
+        let vendor = build_vendor.unwrap_or(
+            rust_info.is_from_tarball()
+                && src.join("vendor").exists()
+                && src.join(".cargo/config.toml").exists(),
+        );
+        let verbose_tests = rust_verbose_tests.unwrap_or(exec_ctx.is_verbose());
+
+        Config {
+            // tidy-alphabetical-start
+            android_ndk: build_android_ndk,
+            backtrace: rust_backtrace.unwrap_or(true),
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
-            llvm_tests: llvm_tests.unwrap_or(false),
-            llvm_enzyme: llvm_enzyme.unwrap_or(false),
-            llvm_offload: llvm_offload.unwrap_or(false),
-            llvm_plugins: llvm_plugin.unwrap_or(false),
-            llvm_optimize: llvm_optimize.unwrap_or(true),
-            llvm_release_debuginfo: llvm_release_debuginfo.unwrap_or(false),
-            llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
-            llvm_libzstd: llvm_libzstd.unwrap_or(false),
-            llvm_clang_cl,
-            llvm_targets,
-            llvm_experimental_targets,
-            llvm_link_jobs,
-            llvm_version_suffix,
-            llvm_use_linker,
-            llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
-            llvm_polly: llvm_polly.unwrap_or(false),
-            llvm_clang: llvm_clang.unwrap_or(false),
-            llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
-            llvm_build_config: llvm_build_config.clone().unwrap_or(Default::default()),
-            llvm_tools_enabled: rust_llvm_tools.unwrap_or(true),
-            llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
-            llvm_cflags,
-            llvm_cxxflags,
-            llvm_ldflags,
-            llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
-            gcc_ci_mode,
-            rust_optimize: rust_optimize.unwrap_or(RustOptimize::Bool(true)),
-            rust_codegen_units: rust_codegen_units.map(threads_from_config),
-            rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
-            std_debug_assertions: rust_std_debug_assertions
-                .or(rust_rustc_debug_assertions)
-                .unwrap_or(rust_debug == Some(true)),
-            tools_debug_assertions: rust_tools_debug_assertions
-                .or(rust_rustc_debug_assertions)
-                .unwrap_or(rust_debug == Some(true)),
-            rust_overflow_checks_std: rust_overflow_checks_std
-                .or(rust_overflow_checks)
-                .unwrap_or(rust_debug == Some(true)),
-            rust_overflow_checks: rust_overflow_checks.unwrap_or(rust_debug == Some(true)),
-            rust_debug_logging: rust_debug_logging
-                .or(rust_rustc_debug_assertions)
-                .unwrap_or(rust_debug == Some(true)),
-            rust_debuginfo_level_rustc: with_defaults(rust_debuginfo_level_rustc),
-            rust_debuginfo_level_std: with_defaults(rust_debuginfo_level_std),
-            rust_debuginfo_level_tools: with_defaults(rust_debuginfo_level_tools),
-            rust_debuginfo_level_tests: rust_debuginfo_level_tests.unwrap_or(DebuginfoLevel::None),
-            rust_rpath: rust_rpath.unwrap_or(true),
-            rust_strip: rust_strip.unwrap_or(false),
-            rust_frame_pointers: rust_frame_pointers.unwrap_or(false),
-            rust_stack_protector,
-            rustc_default_linker: rust_default_linker,
-            rust_optimize_tests: rust_optimize_tests.unwrap_or(true),
-            rust_dist_src: dist_src_tarball.unwrap_or_else(|| rust_dist_src.unwrap_or(true)),
-            rust_codegen_backends: rust_codegen_backends
-                .map(|backends| parse_codegen_backends(backends, "rust"))
-                .unwrap_or(vec![CodegenBackendKind::Llvm]),
-            rust_verify_llvm_ir: rust_verify_llvm_ir.unwrap_or(false),
-            rust_thin_lto_import_instr_limit,
-            rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
-            rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
-            rust_new_symbol_mangling,
-            rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
-            rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
-            rust_lto: rust_lto
-                .as_deref()
-                .map(|value| RustcLto::from_str(value).unwrap())
-                .unwrap_or_default(),
-            rust_validate_mir_opts,
-            rust_std_features: rust_std_features
-                .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
-            llvm_profile_use: flags_llvm_profile_use,
-            llvm_profile_generate: flags_llvm_profile_generate,
-            llvm_libunwind_default: rust_llvm_libunwind
-                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
-            enable_bolt_settings: flags_enable_bolt_settings,
-            reproducible_artifacts: flags_reproducible_artifact,
-            local_rebuild: build_local_rebuild.unwrap_or(false),
-            jemalloc: rust_jemalloc.unwrap_or(false),
+            bindir: install_bindir.map(PathBuf::from).unwrap_or("bin".into()),
+            bootstrap_cache_path: build_bootstrap_cache_path,
+            bypass_bootstrap_lock: flags_bypass_bootstrap_lock,
+            cargo_info,
+            cargo_native_static: build_cargo_native_static.unwrap_or(false),
+            ccache,
+            change_id: toml.change_id.inner,
+            channel,
+            clippy_info,
+            cmd: flags_cmd,
+            codegen_tests: rust_codegen_tests.unwrap_or(true),
+            color: flags_color,
+            compile_time_deps: flags_compile_time_deps,
+            compiler_docs: build_compiler_docs.unwrap_or(false),
+            compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
+            compiletest_diff_tool: build_compiletest_diff_tool,
+            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest.unwrap_or(true),
+            config: toml_path,
+            configure_args: build_configure_args.unwrap_or_default(),
             control_flow_guard: rust_control_flow_guard.unwrap_or(false),
-            ehcont_guard: rust_ehcont_guard.unwrap_or(false),
-            dist_sign_folder: dist_sign_folder.map(PathBuf::from),
-            dist_upload_addr,
+            datadir: install_datadir.map(PathBuf::from),
+            deny_warnings,
+            description: build_description,
             dist_compression_formats,
             dist_compression_profile: dist_compression_profile.unwrap_or("fast".into()),
             dist_include_mingw_linker: dist_include_mingw_linker.unwrap_or(true),
-            backtrace: rust_backtrace.unwrap_or(true),
-            low_priority: build_low_priority.unwrap_or(false),
-            description: build_description,
-            verbose_tests: rust_verbose_tests.unwrap_or(exec_ctx.is_verbose()),
-            save_toolstates: rust_save_toolstates.map(PathBuf::from),
-            print_step_timings: build_print_step_timings.unwrap_or(false),
-            print_step_rusage: build_print_step_rusage.unwrap_or(false),
-            musl_root: rust_musl_root.map(PathBuf::from),
-            prefix: install_prefix.map(PathBuf::from),
-            sysconfdir: install_sysconfdir.map(PathBuf::from),
-            datadir: install_datadir.map(PathBuf::from),
-            docdir: install_docdir.map(PathBuf::from),
-            bindir: install_bindir.map(PathBuf::from).unwrap_or("bin".into()),
-            libdir: install_libdir.map(PathBuf::from),
-            mandir: install_mandir.map(PathBuf::from),
-            codegen_tests: rust_codegen_tests.unwrap_or(true),
-            nodejs: build_nodejs.map(PathBuf::from),
-            npm: build_npm.map(PathBuf::from),
-            gdb: build_gdb.map(PathBuf::from),
-            lldb: build_lldb.map(PathBuf::from),
-            python: build_python.map(PathBuf::from),
-            reuse: build_reuse.map(PathBuf::from),
-            cargo_native_static: build_cargo_native_static.unwrap_or(false),
-            configure_args: build_configure_args.unwrap_or_default(),
-            compiletest_diff_tool: build_compiletest_diff_tool,
-            compiletest_allow_stage0: build_compiletest_allow_stage0.unwrap_or(false),
-            compiletest_use_stage0_libtest: build_compiletest_use_stage0_libtest.unwrap_or(true),
-            tidy_extra_checks: build_tidy_extra_checks,
-            skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
-            cargo_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/cargo")),
-            rust_analyzer_info: git_info(
-                &exec_ctx,
-                omit_git_hash,
-                &src.join("src/tools/rust-analyzer"),
-            ),
-            clippy_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/clippy")),
-            miri_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/miri")),
-            rustfmt_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt")),
-            enzyme_info: git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/enzyme")),
-            in_tree_llvm_info: git_info(&exec_ctx, false, &src.join("src/llvm-project")),
-            in_tree_gcc_info: git_info(&exec_ctx, false, &src.join("src/gcc")),
+            dist_sign_folder: dist_sign_folder.map(PathBuf::from),
+            dist_upload_addr,
             dist_vendor: dist_vendor.unwrap_or_else(|| {
                 // If we're building from git or tarball sources, enable it by default.
                 rust_info.is_managed_git_subrepository() || rust_info.is_from_tarball()
             }),
-            targets,
-            skip,
-            paths: flags_paths,
-            config: toml_path,
-            llvm_thin_lto: llvm_thin_lto.unwrap_or(false),
-            rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
-            lld_mode: rust_lld_mode.unwrap_or_default(),
+            docdir: install_docdir.map(PathBuf::from),
+            docs: build_docs.unwrap_or(true),
+            docs_minification: build_docs_minification.unwrap_or(true),
+            download_rustc_commit,
+            dump_bootstrap_shims: flags_dump_bootstrap_shims,
+            ehcont_guard: rust_ehcont_guard.unwrap_or(false),
+            enable_bolt_settings: flags_enable_bolt_settings,
+            enzyme_info,
+            exec_ctx,
+            explicit_stage_from_cli: flags_stage.is_some(),
+            explicit_stage_from_config,
+            extended: build_extended.unwrap_or(false),
+            free_args: flags_free_args,
+            full_bootstrap: build_full_bootstrap.unwrap_or(false),
+            gcc_ci_mode,
+            gdb: build_gdb.map(PathBuf::from),
+            host_target,
+            hosts,
+            in_tree_gcc_info,
+            in_tree_llvm_info,
+            include_default_paths: flags_include_default_paths,
+            incremental: flags_incremental || rust_incremental == Some(true),
+            initial_cargo,
             initial_cargo_clippy: build_cargo_clippy,
-            vendor: build_vendor.unwrap_or(
-                rust_info.is_from_tarball()
-                    && src.join("vendor").exists()
-                    && src.join(".cargo/config.toml").exists(),
-            ),
-            patch_binaries_for_nix: build_patch_binaries_for_nix,
-            cmd: flags_cmd,
-            submodules: build_submodules,
+            initial_rustc,
+            initial_rustfmt,
+            initial_sysroot,
+            is_running_on_ci,
+            jemalloc: rust_jemalloc.unwrap_or(false),
+            jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
+            json_output: flags_json_output,
+            keep_stage: flags_keep_stage,
+            keep_stage_std: flags_keep_stage_std,
+            libdir: install_libdir.map(PathBuf::from),
+            library_docs_private_items: build_library_docs_private_items.unwrap_or(false),
+            lld_enabled,
+            lld_mode: rust_lld_mode.unwrap_or_default(),
+            lldb: build_lldb.map(PathBuf::from),
+            llvm_allow_old_toolchain: llvm_allow_old_toolchain.unwrap_or(false),
+            llvm_assertions,
+            llvm_bitcode_linker_enabled: rust_llvm_bitcode_linker.unwrap_or(false),
+            llvm_build_config: llvm_build_config.clone().unwrap_or(Default::default()),
+            llvm_cflags,
+            llvm_clang: llvm_clang.unwrap_or(false),
+            llvm_clang_cl,
+            llvm_cxxflags,
+            llvm_enable_warnings: llvm_enable_warnings.unwrap_or(false),
+            llvm_enzyme: llvm_enzyme.unwrap_or(false),
+            llvm_experimental_targets,
+            llvm_from_ci,
+            llvm_ldflags,
+            llvm_libunwind_default: rust_llvm_libunwind
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind")),
+            llvm_libzstd: llvm_libzstd.unwrap_or(false),
+            llvm_link_jobs,
             // If we're building with ThinLTO on, by default we want to link
             // to LLVM shared, to avoid re-doing ThinLTO (which happens in
             // the link step) with each stage.
@@ -1335,27 +1261,113 @@ impl Config {
                 llvm_link_shared
                     .or((!llvm_from_ci && llvm_thin_lto.unwrap_or(false)).then_some(true)),
             ),
-            exec_ctx,
-            out,
-            rust_info,
-            initial_cargo,
-            initial_rustc,
-            initial_sysroot,
-            initial_rustfmt,
-            target_config,
+            llvm_offload: llvm_offload.unwrap_or(false),
+            llvm_optimize: llvm_optimize.unwrap_or(true),
+            llvm_plugins: llvm_plugin.unwrap_or(false),
+            llvm_polly: llvm_polly.unwrap_or(false),
+            llvm_profile_generate: flags_llvm_profile_generate,
+            llvm_profile_use: flags_llvm_profile_use,
+            llvm_release_debuginfo: llvm_release_debuginfo.unwrap_or(false),
+            llvm_static_stdcpp: llvm_static_libstdcpp.unwrap_or(false),
+            llvm_targets,
+            llvm_tests: llvm_tests.unwrap_or(false),
+            llvm_thin_lto: llvm_thin_lto.unwrap_or(false),
+            llvm_tools_enabled: rust_llvm_tools.unwrap_or(true),
+            llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
+            llvm_use_linker,
+            llvm_version_suffix,
+            local_rebuild: build_local_rebuild.unwrap_or(false),
+            locked_deps: build_locked_deps.unwrap_or(false),
+            low_priority: build_low_priority.unwrap_or(false),
+            mandir: install_mandir.map(PathBuf::from),
+            miri_info,
+            musl_root: rust_musl_root.map(PathBuf::from),
+            ninja_in_file: llvm_ninja.unwrap_or(true),
+            nodejs: build_nodejs.map(PathBuf::from),
+            npm: build_npm.map(PathBuf::from),
             omit_git_hash,
-            stage,
-            src,
-            llvm_from_ci,
-            llvm_assertions,
-            lld_enabled,
-            host_target,
-            hosts,
-            channel,
-            is_running_on_ci,
+            on_fail: flags_on_fail,
+            optimized_compiler_builtins,
+            out,
+            patch_binaries_for_nix: build_patch_binaries_for_nix,
             path_modification_cache,
+            paths: flags_paths,
+            prefix: install_prefix.map(PathBuf::from),
+            print_step_rusage: build_print_step_rusage.unwrap_or(false),
+            print_step_timings: build_print_step_timings.unwrap_or(false),
+            profiler: build_profiler.unwrap_or(false),
+            python: build_python.map(PathBuf::from),
+            reproducible_artifacts: flags_reproducible_artifact,
+            reuse: build_reuse.map(PathBuf::from),
+            rust_analyzer_info,
+            rust_codegen_backends: rust_codegen_backends
+                .map(|backends| parse_codegen_backends(backends, "rust"))
+                .unwrap_or(vec![CodegenBackendKind::Llvm]),
+            rust_codegen_units: rust_codegen_units.map(threads_from_config),
+            rust_codegen_units_std: rust_codegen_units_std.map(threads_from_config),
+            rust_debug_logging: rust_debug_logging
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
+            rust_debuginfo_level_rustc: with_defaults(rust_debuginfo_level_rustc),
+            rust_debuginfo_level_std: with_defaults(rust_debuginfo_level_std),
+            rust_debuginfo_level_tests: rust_debuginfo_level_tests.unwrap_or(DebuginfoLevel::None),
+            rust_debuginfo_level_tools: with_defaults(rust_debuginfo_level_tools),
+            rust_dist_src: dist_src_tarball.unwrap_or_else(|| rust_dist_src.unwrap_or(true)),
+            rust_frame_pointers: rust_frame_pointers.unwrap_or(false),
+            rust_info,
+            rust_lto: rust_lto
+                .as_deref()
+                .map(|value| RustcLto::from_str(value).unwrap())
+                .unwrap_or_default(),
+            rust_new_symbol_mangling,
+            rust_optimize: rust_optimize.unwrap_or(RustOptimize::Bool(true)),
+            rust_optimize_tests: rust_optimize_tests.unwrap_or(true),
+            rust_overflow_checks: rust_overflow_checks.unwrap_or(rust_debug == Some(true)),
+            rust_overflow_checks_std: rust_overflow_checks_std
+                .or(rust_overflow_checks)
+                .unwrap_or(rust_debug == Some(true)),
+            rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
+            rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
+            rust_randomize_layout: rust_randomize_layout.unwrap_or(false),
+            rust_remap_debuginfo: rust_remap_debuginfo.unwrap_or(false),
+            rust_rpath: rust_rpath.unwrap_or(true),
+            rust_stack_protector,
+            rust_std_features: rust_std_features
+                .unwrap_or(BTreeSet::from([String::from("panic-unwind")])),
+            rust_strip: rust_strip.unwrap_or(false),
+            rust_thin_lto_import_instr_limit,
+            rust_validate_mir_opts,
+            rust_verify_llvm_ir: rust_verify_llvm_ir.unwrap_or(false),
+            rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
+            rustc_default_linker: rust_default_linker,
+            rustc_error_format: flags_rustc_error_format,
+            rustfmt_info,
+            sanitizers: build_sanitizers.unwrap_or(false),
+            save_toolstates: rust_save_toolstates.map(PathBuf::from),
+            skip,
+            skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
+            src,
+            stage,
             stage0_metadata,
-            download_rustc_commit,
+            std_debug_assertions: rust_std_debug_assertions
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
+            stderr_is_tty: std::io::stderr().is_terminal(),
+            stdout_is_tty: std::io::stdout().is_terminal(),
+            submodules: build_submodules,
+            sysconfdir: install_sysconfdir.map(PathBuf::from),
+            target_config,
+            targets,
+            test_compare_mode: rust_test_compare_mode.unwrap_or(false),
+            tidy_extra_checks: build_tidy_extra_checks,
+            tool: build_tool.unwrap_or_default(),
+            tools: build_tools,
+            tools_debug_assertions: rust_tools_debug_assertions
+                .or(rust_rustc_debug_assertions)
+                .unwrap_or(rust_debug == Some(true)),
+            vendor,
+            verbose_tests,
+            // tidy-alphabetical-end
         }
     }
 
