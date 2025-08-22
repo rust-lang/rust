@@ -85,15 +85,17 @@
 //! that contain `AllocId`s.
 
 use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 
 use either::Either;
+use hashbrown::hash_table::{Entry, HashTable};
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::{FxIndexSet, MutableValues};
+use rustc_data_structures::fx::FxHasher;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -151,6 +153,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 }
 
 newtype_index! {
+    #[debug_format = "_v{}"]
     struct VnIndex {}
 }
 
@@ -212,6 +215,89 @@ enum Value<'tcx> {
     },
 }
 
+/// Stores and deduplicates pairs of `(Value, Ty)` into in `VnIndex` numbered values.
+///
+/// This data structure is mostly a partial reimplementation of `FxIndexMap<VnIndex, (Value, Ty)>`.
+/// We do not use a regular `FxIndexMap` to skip hashing values that are unique by construction,
+/// like opaque values, address with provenance and non-deterministic constants.
+struct ValueSet<'tcx> {
+    indices: HashTable<VnIndex>,
+    hashes: IndexVec<VnIndex, u64>,
+    values: IndexVec<VnIndex, Value<'tcx>>,
+    types: IndexVec<VnIndex, Ty<'tcx>>,
+    /// Counter to generate different values.
+    next_opaque: usize,
+}
+
+impl<'tcx> ValueSet<'tcx> {
+    fn new(num_values: usize) -> ValueSet<'tcx> {
+        ValueSet {
+            indices: HashTable::with_capacity(num_values),
+            hashes: IndexVec::with_capacity(num_values),
+            values: IndexVec::with_capacity(num_values),
+            types: IndexVec::with_capacity(num_values),
+            next_opaque: 1,
+        }
+    }
+
+    /// Insert a `(Value, Ty)` pair to be deduplicated.
+    /// Returns `true` as second tuple field if this value did not exist previously.
+    #[allow(rustc::pass_by_value)] // closures take `&VnIndex`
+    fn insert(&mut self, ty: Ty<'tcx>, value: Value<'tcx>) -> (VnIndex, bool) {
+        let hash: u64 = {
+            let mut h = FxHasher::default();
+            value.hash(&mut h);
+            ty.hash(&mut h);
+            h.finish()
+        };
+
+        let eq = |index: &VnIndex| self.values[*index] == value && self.types[*index] == ty;
+        let hasher = |index: &VnIndex| self.hashes[*index];
+        match self.indices.entry(hash, eq, hasher) {
+            Entry::Occupied(entry) => {
+                let index = *entry.get();
+                (index, false)
+            }
+            Entry::Vacant(entry) => {
+                let index = self.hashes.push(hash);
+                entry.insert(index);
+                let _index = self.values.push(value);
+                debug_assert_eq!(index, _index);
+                let _index = self.types.push(ty);
+                debug_assert_eq!(index, _index);
+                (index, true)
+            }
+        }
+    }
+
+    /// Increment the opaque index counter return a new unique value.
+    #[inline]
+    fn next_opaque(&mut self) -> usize {
+        let next_opaque = self.next_opaque;
+        self.next_opaque += 1;
+        next_opaque
+    }
+
+    /// Return the `Value` associated with the given `VnIndex`.
+    #[inline]
+    fn value(&self, index: VnIndex) -> &Value<'tcx> {
+        &self.values[index]
+    }
+
+    /// Return the type associated with the given `VnIndex`.
+    #[inline]
+    fn ty(&self, index: VnIndex) -> Ty<'tcx> {
+        self.types[index]
+    }
+
+    /// Replace the value associated with `index` with an opaque value.
+    #[inline]
+    fn forget(&mut self, index: VnIndex) {
+        let opaque = self.next_opaque();
+        self.values[index] = Value::Opaque(opaque);
+    }
+}
+
 struct VnState<'body, 'tcx> {
     tcx: TyCtxt<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
@@ -222,11 +308,9 @@ struct VnState<'body, 'tcx> {
     /// Locals that are assigned that value.
     // This vector does not hold all the values of `VnIndex` that we create.
     rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
-    values: FxIndexSet<(Value<'tcx>, Ty<'tcx>)>,
+    values: ValueSet<'tcx>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
-    /// Counter to generate different values.
-    next_opaque: usize,
     /// Cache the deref values.
     derefs: Vec<VnIndex>,
     ssa: &'body SsaLocals,
@@ -257,9 +341,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             is_coroutine: body.coroutine.is_some(),
             locals: IndexVec::from_elem(None, local_decls),
             rev_locals: IndexVec::with_capacity(num_values),
-            values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
+            values: ValueSet::new(num_values),
             evaluated: IndexVec::with_capacity(num_values),
-            next_opaque: 1,
             derefs: Vec::new(),
             ssa,
             dominators,
@@ -273,8 +356,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'tcx>) -> VnIndex {
-        let (index, new) = self.values.insert_full((value, ty));
-        let index = VnIndex::from_usize(index);
+        let (index, new) = self.values.insert(ty, value);
         if new {
             // Grow `evaluated` and `rev_locals` here to amortize the allocations.
             let evaluated = self.eval_to_const(index);
@@ -286,17 +368,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         index
     }
 
-    fn next_opaque(&mut self) -> usize {
-        let next_opaque = self.next_opaque;
-        self.next_opaque += 1;
-        next_opaque
-    }
-
     /// Create a new `Value` for which we have no information at all, except that it is distinct
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let value = Value::Opaque(self.next_opaque());
+        let value = Value::Opaque(self.values.next_opaque());
         self.insert(ty, value)
     }
 
@@ -310,18 +386,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, pty, mutbl.to_mutbl_lossy()),
         };
-        let value = Value::Address { place, kind, provenance: self.next_opaque() };
+        let value = Value::Address { place, kind, provenance: self.values.next_opaque() };
         self.insert(ty, value)
     }
 
     #[inline]
     fn get(&self, index: VnIndex) -> &Value<'tcx> {
-        &self.values.get_index(index.as_usize()).unwrap().0
+        self.values.value(index)
     }
 
     #[inline]
     fn ty(&self, index: VnIndex) -> Ty<'tcx> {
-        self.values.get_index(index.as_usize()).unwrap().1
+        self.values.ty(index)
     }
 
     /// Record that `local` is assigned `value`. `local` must be SSA.
@@ -339,7 +415,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let disambiguator = self.next_opaque();
+            let disambiguator = self.values.next_opaque();
             // `disambiguator: 0` means deterministic.
             debug_assert_ne!(disambiguator, 0);
             disambiguator
@@ -373,8 +449,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn invalidate_derefs(&mut self) {
         for deref in std::mem::take(&mut self.derefs) {
-            let opaque = self.next_opaque();
-            self.values.get_index_mut2(deref.index()).unwrap().0 = Value::Opaque(opaque);
+            self.values.forget(deref);
         }
     }
 
