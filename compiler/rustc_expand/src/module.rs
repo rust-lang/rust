@@ -2,8 +2,9 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_attr_parsing::validate_attr;
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
+use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, sym};

@@ -24,7 +24,7 @@ pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
 pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use path::PathStyle;
+pub use path::PathStyle;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
@@ -285,7 +285,7 @@ pub enum FollowedByType {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum Trailing {
+pub enum Trailing {
     No,
     Yes,
 }
@@ -494,7 +494,7 @@ impl<'a> Parser<'a> {
     /// This method will automatically add `tok` to `expected_token_types` if `tok` is not
     /// encountered.
     #[inline]
-    fn check(&mut self, exp: ExpTokenPair<'_>) -> bool {
+    pub fn check(&mut self, exp: ExpTokenPair<'_>) -> bool {
         let is_present = self.token == *exp.tok;
         if !is_present {
             self.expected_token_types.insert(exp.token_type);
@@ -633,7 +633,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume a sequence produced by a metavar expansion, if present.
-    fn eat_metavar_seq<T>(
+    pub fn eat_metavar_seq<T>(
         &mut self,
         mv_kind: MetaVarKind,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
@@ -1094,7 +1094,7 @@ impl<'a> Parser<'a> {
     /// Parses a comma-separated sequence delimited by parentheses (e.g. `(x, y)`).
     /// The function `f` must consume tokens until reaching the next separator or
     /// closing bracket.
-    fn parse_paren_comma_seq<T>(
+    pub fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     ) -> PResult<'a, (ThinVec<T>, Trailing)> {
@@ -1355,7 +1355,8 @@ impl<'a> Parser<'a> {
             AttrArgs::Delimited(args)
         } else if self.eat(exp!(Eq)) {
             let eq_span = self.prev_token.span;
-            AttrArgs::Eq { eq_span, expr: self.parse_expr_force_collect()? }
+            let expr = self.parse_expr_force_collect()?;
+            AttrArgs::Eq { eq_span, expr }
         } else {
             AttrArgs::Empty
         })

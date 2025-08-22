@@ -1,12 +1,13 @@
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{self as ast, AttrStyle, Attribute, MetaItem, attr, token};
+use rustc_attr_parsing::validate_attr;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
 use rustc_feature::AttributeTemplate;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
-use rustc_parse::{exp, parser, validate_attr};
+use rustc_parse::{exp, parser};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
