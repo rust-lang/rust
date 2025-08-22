@@ -298,21 +298,17 @@ fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
     out.write_str(extra).unwrap();
 }
 
-fn get_next_expansion<'a>(
-    expanded_codes: Option<&'a Vec<ExpandedCode>>,
+fn get_next_expansion(
+    expanded_codes: &[ExpandedCode],
     line: u32,
     span: Span,
-) -> Option<&'a ExpandedCode> {
-    if let Some(expanded_codes) = expanded_codes {
-        expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() > span.lo())
-    } else {
-        None
-    }
+) -> Option<&ExpandedCode> {
+    expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() > span.lo())
 }
 
 fn get_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
-    expanded_codes: Option<&'a Vec<ExpandedCode>>,
+    expanded_codes: &'a [ExpandedCode],
     line: u32,
     span: Span,
 ) -> Option<&'a ExpandedCode> {
@@ -356,7 +352,7 @@ fn start_expansion(out: &mut Vec<(Cow<'_, str>, Option<Class>)>, expanded_code: 
 
 fn end_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
-    expanded_codes: Option<&'a Vec<ExpandedCode>>,
+    expanded_codes: &'a [ExpandedCode],
     expansion_start_tags: &[(&'static str, Class)],
     line: u32,
     span: Span,
@@ -467,8 +463,8 @@ pub(super) fn write_code(
         let expanded_codes = c.context.shared.expanded_codes.get(&c.file_span.lo())?;
         Some((expanded_codes, c.file_span))
     }) {
-        Some((expanded_codes, file_span)) => (Some(expanded_codes), file_span),
-        None => (None, DUMMY_SP),
+        Some((expanded_codes, file_span)) => (expanded_codes.as_slice(), file_span),
+        None => (&[] as &[ExpandedCode], DUMMY_SP),
     };
     let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line, file_span);
     token_handler.write_pending_elems(None);
@@ -1257,7 +1253,7 @@ fn string<W: Write>(
     if let Some(Class::Backline(line)) = klass {
         write_line_number_callback(out, line, "\n");
     } else if let Some(Class::Expansion) = klass {
-        // Nothing to escape here so we get the text to write it directly.
+        // This has already been escaped so we get the text to write it directly.
         out.write_str(text.0).unwrap();
     } else if let Some(closing_tag) =
         string_without_closing_tag(out, text, klass, href_context, open_tag)

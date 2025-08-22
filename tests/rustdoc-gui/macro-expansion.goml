@@ -28,86 +28,99 @@ define-function: (
 )
 
 // First we check the derive macro expansion at line 33.
-call-function: ("check-expansion", {"line": 33, "original_content": "Debug"})
+call-function: ("check-expansion", {"line": 35, "original_content": "Debug"})
 // Then we check the `bar` macro expansion at line 41.
-call-function: ("check-expansion", {"line": 41, "original_content": "bar!(y)"})
+call-function: ("check-expansion", {"line": 43, "original_content": "bar!(y)"})
 // Then we check the `println` macro expansion at line 42-44.
-call-function: ("check-expansion", {"line": 42, "original_content": 'println!("
-43    {y}
-44    ")'})
+call-function: ("check-expansion", {"line": 44, "original_content": 'println!("
+45    {y}
+46    ")'})
 
 // Then finally we check when there are two macro calls on a same line.
-assert-count: ("#expand-50 ~ .original", 2)
-assert-count: ("#expand-50 ~ .expanded", 2)
+assert-count: ("#expand-52 ~ .original", 2)
+assert-count: ("#expand-52 ~ .expanded", 2)
 
 store-value: (repeat_o, '/following-sibling::*[@class="original"]')
 store-value: (repeat_e, '/following-sibling::*[@class="expanded"]')
-assert-text: ('//*[@id="expand-50"]' + |repeat_o|, "stringify!(foo)")
-assert-text: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, "stringify!(bar)")
-assert-text: ('//*[@id="expand-50"]' + |repeat_e|, '"foo"')
-assert-text: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, '"bar"')
+store-value: (expand_id, "expand-52")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, "stringify!(foo)")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, "stringify!(bar)")
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, '"foo"')
+assert-text: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, '"bar"')
 
 // The "original" content should be expanded.
-assert-css: ('//*[@id="expand-50"]' + |repeat_o|, {"display": "inline"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
 // The expanded macro should be hidden.
-assert-css: ('//*[@id="expand-50"]' + |repeat_e|, {"display": "none"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "none"})
 
 // We "expand" the macro (because the line starts with a string, the label is not at the "top
 // level" of the `<code>`, so we need to use a different selector).
-click: "#expand-50"
+click: "#" + |expand_id|
 // The "original" content is hidden.
-assert-css: ('//*[@id="expand-50"]' + |repeat_o|, {"display": "none"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "none"})
 // The expanded macro is visible.
-assert-css: ('//*[@id="expand-50"]' + |repeat_e|, {"display": "inline"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "inline"})
 
 // We collapse the macro.
-click: "#expand-50"
+click: "#" + |expand_id|
 // The "original" content is expanded.
-assert-css: ('//*[@id="expand-50"]' + |repeat_o|, {"display": "inline"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
 // The expanded macro is hidden.
-assert-css: ('//*[@id="expand-50"]' + |repeat_e|, {"display": "none"})
-assert-css: ('//*[@id="expand-50"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="' + |expand_id| + '"]' + |repeat_e| + |repeat_e|, {"display": "none"})
 
-// Checking the line 46 `println` which needs to be handled differently because the line number is
+// Checking the line 48 `println` which needs to be handled differently because the line number is
 // inside a "comment" span.
-assert-text: ("#expand-46 ~ .original", 'println!("
-47    {y}
-48    ")')
+store-value: (expand_id, "expand-48")
+assert-text: ("#" + |expand_id| + " ~ .original", 'println!("
+49    {y}
+50    ")')
 // The "original" content should be expanded.
-assert-css: ("#expand-46 ~ .original", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
 // The expanded macro should be hidden.
-assert-css: ("#expand-46 ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
 
 // We "expand" the macro.
-click: "#expand-46"
+click: "#" + |expand_id|
 // The "original" content is hidden.
-assert-css: ("#expand-46 ~ .original", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
 // The expanded macro is visible.
-assert-css: ("#expand-46 ~ .expanded", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
 
 // We collapse the macro.
-click: "#expand-46"
+click: "#" + |expand_id|
 // The "original" content is expanded.
-assert-css: ("#expand-46 ~ .original", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
 // The expanded macro is hidden.
-assert-css: ("#expand-46 ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
 
 // Ensure that the toggles are focusable and can be interacted with keyboard.
-focus: "//a[@id='27']"
+focus: "//a[@id='29']"
 press-key: "Tab"
-assert: "#expand-27:focus"
-assert-css: ("#expand-27 ~ .expanded", {"display": "none"})
-assert-css: ("#expand-27 ~ .original", {"display": "inline"})
+store-value: (expand_id, "expand-29")
+assert: "#" + |expand_id| + ":focus"
+assert-css: ("#" + |expand_id| +" ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| +" ~ .original", {"display": "inline"})
 // We now expand the macro.
 press-key: "Space"
-assert-css: ("#expand-27 ~ .expanded", {"display": "inline"})
-assert-css: ("#expand-27 ~ .original", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
 // We collapse the macro.
 press-key: "Space"
-assert-css: ("#expand-27 ~ .expanded", {"display": "none"})
-assert-css: ("#expand-27 ~ .original", {"display": "inline"})
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "none"})
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "inline"})
+
+// Now we check a macro coming from another file.
+store-value: (expand_id, "expand-55")
+// We "expand" the macro.
+click: "#" + |expand_id|
+// The "original" content is hidden.
+assert-css: ("#" + |expand_id| + " ~ .original", {"display": "none"})
+// The expanded macro is visible.
+assert-css: ("#" + |expand_id| + " ~ .expanded", {"display": "inline"})
+assert-text: ("#" + |expand_id| + " ~ .expanded", "{ y += 2; };")

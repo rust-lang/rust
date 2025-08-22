@@ -665,6 +665,14 @@ fn opts() -> Vec<RustcOptGroup> {
             "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
             "",
         ),
+        opt(
+            Unstable,
+            Flag,
+            "",
+            "generate-macro-expansion",
+            "Add possibility to expand macros in the HTML source code pages",
+            "",
+        ),
         // deprecated / removed options
         opt(
             Stable,
@@ -705,14 +713,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "input-format",
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
-        ),
-        opt(
-            Unstable,
-            Flag,
-            "",
-            "generate-macro-expansion",
-            "Add possibility to expand macros in the HTML source code pages",
-            "",
         ),
     ]
 }
@@ -958,15 +958,7 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     )
                 }),
                 config::OutputFormat::Json => sess.time("render_json", || {
-                    run_renderer(
-                        krate,
-                        render_opts,
-                        cache,
-                        tcx,
-                        |krate, render_opts, cache, tcx| {
-                            json::JsonRenderer::init(krate, render_opts, cache, tcx)
-                        },
-                    )
+                    run_renderer(krate, render_opts, cache, tcx, json::JsonRenderer::init)
                 }),
                 // Already handled above with doctest runners.
                 config::OutputFormat::Doctest => unreachable!(),

@@ -45,16 +45,16 @@ pub(crate) struct ExpandedCode {
 struct ExpandedCodeInfo {
     /// Callsite of the macro.
     span: Span,
-    /// Expanded macro source code.
+    /// Expanded macro source code (HTML escaped).
     code: String,
-    /// Expanded span
+    /// Span of macro-generated code.
     expanded_span: Span,
 }
 
 /// HIR visitor which retrieves expanded macro.
 ///
 /// Once done, the `expanded_codes` will be transformed into a vec of [`ExpandedCode`]
-/// which contains more information needed when running the source code highlighter.
+/// which contains the information needed when running the source code highlighter.
 pub(crate) struct ExpandedCodeVisitor<'ast> {
     expanded_codes: Vec<ExpandedCodeInfo>,
     source_map: &'ast SourceMap,
@@ -71,7 +71,7 @@ impl<'ast> ExpandedCodeVisitor<'ast> {
         {
             let info = &mut self.expanded_codes[index];
             if new_span.contains(info.expanded_span) {
-                // We replace the item.
+                // New macro expansion recursively contains the old one, so replace it.
                 info.span = callsite_span;
                 info.expanded_span = new_span;
                 info.code = f();

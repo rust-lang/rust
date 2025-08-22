@@ -1,6 +1,8 @@
 // Test crate used to check the `--generate-macro-expansion` option.
 //@ compile-flags: -Zunstable-options --generate-macro-expansion --generate-link-to-definition
 
+mod other;
+
 #[macro_export]
 macro_rules! bar {
     ($x:ident) => {{
@@ -48,4 +50,7 @@ fn foo() {
     ");
     let s = y_f("\
 bla", stringify!(foo), stringify!(bar));
+
+    // Macro from another file.
+    other_macro!(y);
 }
