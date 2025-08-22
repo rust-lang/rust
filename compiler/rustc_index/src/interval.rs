@@ -140,42 +140,20 @@ impl<I: Idx> IntervalSet<I> {
         result
     }
 
-    /// Specialized version of `insert` when we know that the inserted point is *before* any
-    /// contained.
-    pub fn prepend(&mut self, point: I) {
-        let point = point.index() as u32;
-
-        if let Some((first_start, _)) = self.map.first_mut() {
-            assert!(point <= *first_start);
-            if point == *first_start {
-                // The point is already present in the set.
-            } else if point + 1 == *first_start {
-                // Just extend the first range.
-                *first_start = point;
-            } else {
-                self.map.insert(0, (point, point));
-            }
-        } else {
-            // If the map is empty, push is faster than insert.
-            self.map.push((point, point));
-        }
-
-        debug_assert!(
-            self.check_invariants(),
-            "wrong intervals after prepend {point:?} to {self:?}"
-        );
-    }
-
     /// Specialized version of `insert` when we know that the inserted point is *after* any
     /// contained.
     pub fn append(&mut self, point: I) {
         let point = point.index() as u32;
 
-        if let Some((_, last_end)) = self.map.last_mut()
-            && let _ = assert!(*last_end < point)
-            && point == *last_end + 1
-        {
-            *last_end = point;
+        if let Some((_, last_end)) = self.map.last_mut() {
+            assert!(*last_end <= point);
+            if point == *last_end {
+                // The point is already in the set.
+            } else if point == *last_end + 1 {
+                *last_end = point;
+            } else {
+                self.map.push((point, point));
+            }
         } else {
             self.map.push((point, point));
         }
@@ -395,10 +373,6 @@ impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
 
     pub fn insert(&mut self, row: R, point: C) -> bool {
         self.ensure_row(row).insert(point)
-    }
-
-    pub fn prepend(&mut self, row: R, point: C) {
-        self.ensure_row(row).prepend(point)
     }
 
     pub fn append(&mut self, row: R, point: C) {
