@@ -113,6 +113,10 @@ ast_passes_extern_without_abi = `extern` declarations without an explicit ABI ar
     .suggestion = specify an ABI
     .help = prior to Rust 2024, a default ABI was inferred
 
+ast_passes_extern_without_abi_sugg = `extern` declarations without an explicit ABI are deprecated
+    .label = ABI should be specified here
+    .suggestion = explicitly specify the {$default_abi} ABI
+
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute
     .stable_since = the feature `{$name}` has been stable since `{$since}` and no longer requires an attribute to enable

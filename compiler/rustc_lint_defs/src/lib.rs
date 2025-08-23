@@ -1,10 +1,8 @@
 use std::borrow::Cow;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::node_id::NodeId;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
@@ -648,7 +646,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    MissingAbi(Span, ExternAbi),
     UnusedDocComment(Span),
     UnusedBuiltinAttribute {
         attr_name: Symbol,
@@ -670,14 +667,6 @@ pub enum BuiltinLintDiag {
     ReservedString {
         is_string: bool,
         suggestion: Span,
-    },
-    HiddenUnicodeCodepoints {
-        label: String,
-        count: usize,
-        span_label: Span,
-        labels: Option<Vec<(char, Span)>>,
-        escape: bool,
-        spans: Vec<(char, Span)>,
     },
     TrailingMacro(bool, Ident),
     BreakWithLabelAndLoop(Span),
@@ -803,68 +792,11 @@ pub enum BuiltinLintDiag {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
     },
-    InnerAttributeUnstable {
-        is_macro: bool,
-    },
     OutOfScopeMacroCalls {
         span: Span,
         path: String,
         location: String,
     },
-    UnexpectedBuiltinCfg {
-        cfg: String,
-        cfg_name: Symbol,
-        controlled_by: &'static str,
-    },
-}
-
-/// Lints that are buffered up early on in the `Session` before the
-/// `LintLevels` is calculated.
-#[derive(Debug)]
-pub struct BufferedEarlyLint {
-    /// The span of code that we are linting on.
-    pub span: Option<MultiSpan>,
-
-    /// The `NodeId` of the AST node that generated the lint.
-    pub node_id: NodeId,
-
-    /// A lint Id that can be passed to
-    /// `rustc_lint::early::EarlyContextAndPass::check_id`.
-    pub lint_id: LintId,
-
-    /// Customization of the `Diag<'_>` for the lint.
-    pub diagnostic: BuiltinLintDiag,
-}
-
-#[derive(Default, Debug)]
-pub struct LintBuffer {
-    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
-}
-
-impl LintBuffer {
-    pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
-        self.map.entry(early_lint.node_id).or_default().push(early_lint);
-    }
-
-    pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
-        // FIXME(#120456) - is `swap_remove` correct?
-        self.map.swap_remove(&id).unwrap_or_default()
-    }
-
-    pub fn buffer_lint(
-        &mut self,
-        lint: &'static Lint,
-        node_id: NodeId,
-        span: impl Into<MultiSpan>,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.add_early_lint(BufferedEarlyLint {
-            lint_id: LintId::of(lint),
-            node_id,
-            span: Some(span.into()),
-            diagnostic,
-        });
-    }
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

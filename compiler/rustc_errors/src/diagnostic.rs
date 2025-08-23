@@ -138,8 +138,18 @@ where
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
 #[rustc_diagnostic_item = "LintDiagnostic"]
 pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate and emit a lint.
+    /// Decorate a lint with the information from this type.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
+}
+
+pub trait LintDiagnosticBox<'a, G: EmissionGuarantee> {
+    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>);
+}
+
+impl<'a, G: EmissionGuarantee, D: LintDiagnostic<'a, G>> LintDiagnosticBox<'a, G> for D {
+    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>) {
+        self.decorate_lint(diag);
+    }
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]

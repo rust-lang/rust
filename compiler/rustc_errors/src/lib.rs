@@ -40,9 +40,10 @@ use std::{fmt, panic};
 
 use Level::*;
 pub use codes::*;
+pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
     BugAbort, Diag, DiagArgMap, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee,
-    FatalAbort, LintDiagnostic, StringPart, Subdiag, Subdiagnostic,
+    FatalAbort, LintDiagnostic, LintDiagnosticBox, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
     DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
@@ -80,6 +81,7 @@ use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
+mod decorate_diag;
 mod diagnostic;
 mod diagnostic_impls;
 pub mod emitter;

@@ -8,8 +8,9 @@ use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
+    SuggestionStyle,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::{Ident, Span, Symbol};
@@ -3600,4 +3601,77 @@ pub(crate) struct AsmExpectedStringLiteral {
 pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(parse_hidden_unicode_codepoints)]
+#[note]
+pub(crate) struct HiddenUnicodeCodepointsDiag {
+    pub label: String,
+    pub count: usize,
+    #[label]
+    pub span_label: Span,
+    #[subdiagnostic]
+    pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
+    #[subdiagnostic]
+    pub sub: HiddenUnicodeCodepointsDiagSub,
+}
+
+pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
+    pub spans: Vec<(char, Span)>,
+}
+
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        for (c, span) in self.spans {
+            diag.span_label(span, format!("{c:?}"));
+        }
+    }
+}
+
+pub(crate) enum HiddenUnicodeCodepointsDiagSub {
+    Escape { spans: Vec<(char, Span)> },
+    NoEscape { spans: Vec<(char, Span)> },
+}
+
+// Used because of multiple multipart_suggestion and note
+impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        match self {
+            HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
+                diag.multipart_suggestion_with_style(
+                    fluent::parse_suggestion_remove,
+                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
+                    Applicability::MachineApplicable,
+                    SuggestionStyle::HideCodeAlways,
+                );
+                diag.multipart_suggestion(
+                    fluent::parse_suggestion_escape,
+                    spans
+                        .into_iter()
+                        .map(|(c, span)| {
+                            let c = format!("{c:?}");
+                            (span, c[1..c.len() - 1].to_string())
+                        })
+                        .collect(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
+                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
+                // should do the same here to provide the same good suggestions as we do for
+                // literals above.
+                diag.arg(
+                    "escaped",
+                    spans
+                        .into_iter()
+                        .map(|(c, _)| format!("{c:?}"))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                );
+                diag.note(fluent::parse_suggestion_remove);
+                diag.note(fluent::parse_no_suggestion_note_escape);
+            }
+        }
+    }
 }

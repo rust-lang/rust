@@ -3797,6 +3797,7 @@ dependencies = [
  "annotate-snippets 0.11.5",
  "derive_setters",
  "rustc_abi",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_error_messages",
@@ -4134,7 +4135,6 @@ dependencies = [
 name = "rustc_lint_defs"
 version = "0.0.0"
 dependencies = [
- "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_error_messages",
