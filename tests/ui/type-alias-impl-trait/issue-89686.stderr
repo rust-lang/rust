@@ -6,8 +6,8 @@ LL |         async move { self.f().await }
    |
 help: consider restricting type parameter `T` with trait `Trait`
    |
-LL | type G<'a, T: Trait> = impl Future<Output = ()>;
-   |             +++++++
+LL | type G<'a, T: crate::Trait> = impl Future<Output = ()>;
+   |             ++++++++++++++
 
 error: aborting due to 1 previous error
 

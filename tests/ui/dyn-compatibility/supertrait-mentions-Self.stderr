@@ -11,8 +11,8 @@ LL | trait Bar<T> {
    |           ^ required by the implicit `Sized` requirement on this type parameter in `Bar`
 help: consider further restricting `Self`
    |
-LL | trait Baz : Bar<Self> + Sized {
-   |                       +++++++
+LL | trait Baz : Bar<Self> + std::marker::Sized {
+   |                       ++++++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | trait Bar<T: ?Sized> {

@@ -11,8 +11,8 @@ LL |     type This = Self;
    |     ^^^^^^^^^^^^^^^^^ required by this bound in `MyTrait::This`
 help: consider further restricting `Self`
    |
-LL | trait MyTrait: Sized {
-   |              +++++++
+LL | trait MyTrait: std::marker::Sized {
+   |              ++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
