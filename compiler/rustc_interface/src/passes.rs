@@ -1080,7 +1080,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if !tcx.is_typeck_child(def_id.to_def_id()) {
                 // Child unsafety and borrowck happens together with the parent
                 tcx.ensure_ok().check_unsafety(def_id);
-                tcx.ensure_ok().mir_borrowck(def_id)
+                tcx.ensure_ok().mir_borrowck(def_id);
+                tcx.ensure_ok().check_transmutes(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
