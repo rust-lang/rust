@@ -11,7 +11,7 @@ use base_db::Crate;
 use chalk_ir::{BoundVar, Safety, TyKind};
 use either::Either;
 use hir_def::{
-    GeneralConstId, GenericDefId, HasModule, ImportPathConfig, LocalFieldId, Lookup, ModuleDefId,
+    FindPathConfig, GeneralConstId, GenericDefId, HasModule, LocalFieldId, Lookup, ModuleDefId,
     ModuleId, TraitId,
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
@@ -1433,7 +1433,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                             PrefixKind::Plain,
                             false,
                             // FIXME: no_std Cfg?
-                            ImportPathConfig {
+                            FindPathConfig {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,

@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    AssocItem, HirDisplay, ImportPathConfig, InFile, Type,
+    AssocItem, FindPathConfig, HirDisplay, InFile, Type,
     db::{ExpandDatabase, HirDatabase},
     sym,
 };
@@ -132,7 +132,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         let type_path = current_module?.find_path(
                             ctx.sema.db,
                             item_for_path_search(ctx.sema.db, item_in_ns)?,
-                            ImportPathConfig {
+                            FindPathConfig {
                                 prefer_no_std: ctx.config.prefer_no_std,
                                 prefer_prelude: ctx.config.prefer_prelude,
                                 prefer_absolute: ctx.config.prefer_absolute,

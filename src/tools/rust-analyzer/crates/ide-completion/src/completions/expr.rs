@@ -254,7 +254,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
-                                ctx.config.import_path_config(ctx.is_nightly),
+                                ctx.config.find_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -276,7 +276,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
-                                ctx.config.import_path_config(ctx.is_nightly),
+                                ctx.config.find_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 

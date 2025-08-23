@@ -130,7 +130,7 @@ pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
         Complete,
-        ImportPathConfig,
+        FindPathConfig,
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         find_path::PrefixKind,
         import_map,
@@ -957,7 +957,7 @@ impl Module {
         self,
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
-        cfg: ImportPathConfig,
+        cfg: FindPathConfig,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path(
             db,
@@ -976,7 +976,7 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
-        cfg: ImportPathConfig,
+        cfg: FindPathConfig,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path(db, item.into().into(), self.into(), prefix_kind, true, cfg)
     }

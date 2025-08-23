@@ -1,7 +1,7 @@
 //! This diagnostic provides an assist for creating a struct definition from a JSON
 //! example.
 
-use hir::{ImportPathConfig, PathResolution, Semantics};
+use hir::{FindPathConfig, PathResolution, Semantics};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     EditionedFileId, FileRange, FxHashMap, RootDatabase,
@@ -141,7 +141,7 @@ pub(crate) fn json_in_items(
                         let scope = scb.make_import_scope_mut(import_scope);
                         let current_module = semantics_scope.module();
 
-                        let cfg = ImportPathConfig {
+                        let cfg = FindPathConfig {
                             prefer_no_std: config.prefer_no_std,
                             prefer_prelude: config.prefer_prelude,
                             prefer_absolute: config.prefer_absolute,

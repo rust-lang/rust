@@ -299,7 +299,7 @@ pub(crate) fn render_expr(
             .unwrap_or_else(|| String::from("..."))
     };
 
-    let cfg = ctx.config.import_path_config(ctx.is_nightly);
+    let cfg = ctx.config.find_path_config(ctx.is_nightly);
 
     let label =
         expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.display_target).ok()?;
