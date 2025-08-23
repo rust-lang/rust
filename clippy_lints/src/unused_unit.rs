@@ -6,8 +6,8 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, Node, PolyTraitRef, Term,
-    Ty, TyKind,
+    AssocItemConstraintKind, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArgsParentheses, PolyTraitRef, Term, Ty,
+    TyKind,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -49,19 +49,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
         decl: &'tcx FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         span: Span,
-        def_id: LocalDefId,
+        _def_id: LocalDefId,
     ) {
         if let FnRetTy::Return(hir_ty) = decl.output
             && is_unit_ty(hir_ty)
             && !hir_ty.span.from_expansion()
             && get_def(span) == get_def(hir_ty.span)
         {
-            // implicit types in closure signatures are forbidden when `for<...>` is present
-            if let FnKind::Closure = kind
-                && let Node::Expr(expr) = cx.tcx.hir_node_by_def_id(def_id)
-                && let ExprKind::Closure(closure) = expr.kind
-                && !closure.bound_generic_params.is_empty()
-            {
+            // The explicit `-> ()` in the closure signature might be necessary for multiple reasons:
+            // - Implicit types in closure signatures are forbidden when `for<...>` is present
+            // - If the closure body ends with a function call, and that function's return type is generic, the
+            //   `-> ()` could be required for it to be inferred
+            //
+            // There could be more reasons to have it, and, in general, we shouldn't discourage the users from
+            // writing more type annotations than strictly necessary, because it can help readability and
+            // maintainability
+            if let FnKind::Closure = kind {
                 return;
             }
 
