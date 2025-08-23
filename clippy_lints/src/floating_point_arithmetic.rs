@@ -11,6 +11,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_span::source_map::Spanned;
 use std::f32::consts as f32_consts;
 use std::f64::consts as f64_consts;
@@ -517,8 +518,8 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
 fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right) && eq_expr_value(cx, left, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left) && eq_expr_value(cx, right, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
             _ => false,
         }
     } else {
@@ -530,8 +531,8 @@ fn is_testing_positive(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -> bool {
     if let ExprKind::Binary(Spanned { node: op, .. }, left, right) = expr.kind {
         match op {
-            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left) && eq_expr_value(cx, right, test),
-            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right) && eq_expr_value(cx, left, test),
+            BinOpKind::Gt | BinOpKind::Ge => is_zero(cx, left, expr.span.ctxt()) && eq_expr_value(cx, right, test),
+            BinOpKind::Lt | BinOpKind::Le => is_zero(cx, right, expr.span.ctxt()) && eq_expr_value(cx, left, test),
             _ => false,
         }
     } else {
@@ -540,8 +541,8 @@ fn is_testing_negative(cx: &LateContext<'_>, expr: &Expr<'_>, test: &Expr<'_>) -
 }
 
 /// Returns true iff expr is some zero literal
-fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match ConstEvalCtxt::new(cx).eval_simple(expr) {
+fn is_zero(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
+    match ConstEvalCtxt::new(cx).eval_local(expr, ctxt) {
         Some(Int(i)) => i == 0,
         Some(F32(f)) => f == 0.0,
         Some(F64(f)) => f == 0.0,

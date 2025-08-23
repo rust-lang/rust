@@ -190,7 +190,7 @@ impl ArithmeticSideEffects {
         lhs: &'tcx hir::Expr<'_>,
         rhs: &'tcx hir::Expr<'_>,
     ) {
-        if ConstEvalCtxt::new(cx).eval_simple(expr).is_some() {
+        if ConstEvalCtxt::new(cx).eval_local(expr, expr.span.ctxt()).is_some() {
             return;
         }
         if !matches!(
@@ -283,7 +283,7 @@ impl ArithmeticSideEffects {
         let Some(arg) = args.first() else {
             return;
         };
-        if ConstEvalCtxt::new(cx).eval_simple(receiver).is_some() {
+        if ConstEvalCtxt::new(cx).eval_local(receiver, expr.span.ctxt()).is_some() {
             return;
         }
         let instance_ty = cx.typeck_results().expr_ty_adjusted(receiver);

@@ -18,12 +18,13 @@ pub(crate) fn check<'tcx>(
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
         let ecx = ConstEvalCtxt::new(cx);
-        let left_is_local = match ecx.eval_with_source(left) {
+        let ctxt = expr.span.ctxt();
+        let left_is_local = match ecx.eval_with_source(left, ctxt) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
             None => true,
         };
-        let right_is_local = match ecx.eval_with_source(right) {
+        let right_is_local = match ecx.eval_with_source(right, ctxt) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
             None => true,

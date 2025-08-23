@@ -387,6 +387,7 @@ pub struct ConstEvalCtxt<'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
     typeck: &'tcx TypeckResults<'tcx>,
     source: Cell<ConstantSource>,
+    ctxt: Cell<SyntaxContext>,
 }
 
 impl<'tcx> ConstEvalCtxt<'tcx> {
@@ -398,6 +399,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             typing_env: cx.typing_env(),
             typeck: cx.typeck_results(),
             source: Cell::new(ConstantSource::Local),
+            ctxt: Cell::new(SyntaxContext::root()),
         }
     }
 
@@ -408,13 +410,15 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             typing_env,
             typeck,
             source: Cell::new(ConstantSource::Local),
+            ctxt: Cell::new(SyntaxContext::root()),
         }
     }
 
     /// Attempts to evaluate the expression and returns both the value and whether it's dependant on
     /// other items.
-    pub fn eval_with_source(&self, e: &Expr<'_>) -> Option<(Constant<'tcx>, ConstantSource)> {
+    pub fn eval_with_source(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<(Constant<'tcx>, ConstantSource)> {
         self.source.set(ConstantSource::Local);
+        self.ctxt.set(ctxt);
         self.expr(e).map(|c| (c, self.source.get()))
     }
 
@@ -424,16 +428,16 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     }
 
     /// Attempts to evaluate the expression without accessing other items.
-    pub fn eval_simple(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
-        match self.eval_with_source(e) {
+    pub fn eval_local(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<Constant<'tcx>> {
+        match self.eval_with_source(e, ctxt) {
             Some((x, ConstantSource::Local)) => Some(x),
             _ => None,
         }
     }
 
     /// Attempts to evaluate the expression as an integer without accessing other items.
-    pub fn eval_full_int(&self, e: &Expr<'_>) -> Option<FullInt> {
-        match self.eval_with_source(e) {
+    pub fn eval_full_int(&self, e: &Expr<'_>, ctxt: SyntaxContext) -> Option<FullInt> {
+        match self.eval_with_source(e, ctxt) {
             Some((x, ConstantSource::Local)) => x.int_value(self.tcx, self.typeck.expr_ty(e)),
             _ => None,
         }
@@ -453,6 +457,14 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
         }
+    }
+
+    fn check_ctxt(&self, ctxt: SyntaxContext) {
+        self.source.set(if self.ctxt.get() != ctxt {
+            ConstantSource::Constant
+        } else {
+            self.source.get()
+        });
     }
 
     fn qpath(&self, qpath: &QPath<'_>, hir_id: HirId) -> Option<Constant<'tcx>> {
@@ -477,17 +489,18 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
 
     /// Simple constant folding: Insert an expression, get a constant or none.
     fn expr(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
+        self.check_ctxt(e.span.ctxt());
         match e.kind {
             ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
-            ExprKind::Block(block, _) => self.block(block),
+            ExprKind::Block(block, _) => {
+                self.check_ctxt(block.span.ctxt());
+                self.block(block)
+            },
             ExprKind::Lit(lit) => {
-                if is_direct_expn_of(e.span, sym::cfg).is_some() {
-                    None
-                } else {
-                    Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
-                }
+                self.check_ctxt(lit.span.ctxt());
+                Some(lit_to_mir_constant(&lit.node, self.typeck.expr_ty_opt(e)))
             },
             ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
             ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
@@ -504,7 +517,10 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
             ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
-            ExprKind::Binary(op, left, right) => self.binop(op.node, left, right),
+            ExprKind::Binary(op, left, right) => {
+                self.check_ctxt(e.span.ctxt());
+                self.binop(op.node, left, right)
+            },
             ExprKind::Call(callee, []) => {
                 // We only handle a few const functions for now.
                 if let ExprKind::Path(qpath) = &callee.kind
@@ -525,6 +541,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             ExprKind::Index(arr, index, _) => self.index(arr, index),
             ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
             ExprKind::Field(local_expr, ref field) => {
+                self.check_ctxt(field.span.ctxt());
                 let result = self.expr(local_expr);
                 if let Some(Constant::Adt(constant)) = &self.expr(local_expr)
                     && let ty::Adt(adt_def, _) = constant.ty().kind()
@@ -958,8 +975,8 @@ fn field_of_struct<'tcx>(
 }
 
 /// If `expr` evaluates to an integer constant, return its value.
-pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
-    if let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_simple(expr) {
+pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> Option<u128> {
+    if let Some(Constant::Int(value)) = ConstEvalCtxt::new(cx).eval_local(expr, ctxt) {
         Some(value)
     } else {
         None
@@ -968,6 +985,6 @@ pub fn integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
 
 /// Check if `expr` evaluates to an integer constant of 0.
 #[inline]
-pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    integer_const(cx, expr) == Some(0)
+pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: SyntaxContext) -> bool {
+    integer_const(cx, expr, ctxt) == Some(0)
 }

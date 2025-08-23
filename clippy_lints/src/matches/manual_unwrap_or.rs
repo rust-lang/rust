@@ -155,7 +155,7 @@ fn handle(
             && cx.typeck_results().expr_adjustments(body_some).is_empty()
             && let Some(or_body_snippet) = peel_blocks(body_none).span.get_source_text(cx)
             && let Some(indent) = indent_of(cx, expr.span)
-            && ConstEvalCtxt::new(cx).eval_simple(body_none).is_some()
+            && ConstEvalCtxt::new(cx).eval_local(body_none, expr.span.ctxt()).is_some()
         {
             let reindented_or_body = reindent_multiline(&or_body_snippet, true, Some(indent));
             let mut app = Applicability::MachineApplicable;
