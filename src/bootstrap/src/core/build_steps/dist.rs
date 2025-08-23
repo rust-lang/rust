@@ -791,12 +791,14 @@ impl Step for Std {
             return None;
         }
 
-        builder.std(build_compiler, target);
+        // It's possible that std was uplifted and thus built with a different build compiler
+        // So we need to read the stamp that was actually generated when std was built
+        let stamp =
+            builder.std(build_compiler, target).expect("Standard library has to be built for dist");
 
         let mut tarball = Tarball::new(builder, "rust-std", &target.triple);
         tarball.include_target_in_component_name(true);
 
-        let stamp = build_stamp::libstd_stamp(builder, build_compiler, target);
         verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
