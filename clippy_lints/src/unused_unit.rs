@@ -12,7 +12,7 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Pos as _, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -160,17 +160,15 @@ fn get_def(span: Span) -> Option<Span> {
 
 fn lint_unneeded_unit_return(cx: &LateContext<'_>, ty_span: Span, span: Span) {
     let (ret_span, appl) =
-        span.with_hi(ty_span.hi())
-            .get_source_text(cx)
-            .map_or((ty_span, Applicability::MaybeIncorrect), |src| {
-                position_before_rarrow(&src).map_or((ty_span, Applicability::MaybeIncorrect), |rpos| {
-                    (
-                        #[expect(clippy::cast_possible_truncation)]
-                        ty_span.with_lo(BytePos(span.lo().0 + rpos as u32)),
-                        Applicability::MachineApplicable,
-                    )
-                })
-            });
+        if let Some(Some(rpos)) = span.with_hi(ty_span.hi()).with_source_text(cx, position_before_rarrow) {
+            (
+                ty_span.with_lo(span.lo() + BytePos::from_usize(rpos)),
+                Applicability::MachineApplicable,
+            )
+        } else {
+            (ty_span, Applicability::MaybeIncorrect)
+        };
+
     span_lint_and_sugg(
         cx,
         UNUSED_UNIT,
