@@ -178,8 +178,8 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
                 Node::Expr(expr) if let ExprKind::AddrOf(_, Mutability::Not, _) = expr.kind => {},
                 Node::Expr(expr)
                     if let Some(fn_did) = fn_def_id(self.cx, expr)
-                        && (self.cx.tcx.is_diagnostic_item(sym::child_id, fn_did)
-                            || self.cx.tcx.is_diagnostic_item(sym::child_kill, fn_did)) => {},
+                        && let Some(fn_name) = self.cx.tcx.get_diagnostic_name(fn_did)
+                        && matches!(fn_name, sym::child_id | sym::child_kill) => {},
 
                 // Conservatively assume that all other kinds of nodes call `.wait()` somehow.
                 _ => return Break(MaybeWait(ex.span)),
@@ -352,9 +352,14 @@ fn check<'tcx>(cx: &LateContext<'tcx>, spawn_expr: &'tcx Expr<'tcx>, cause: Caus
 
 /// Checks if the given expression exits the process.
 fn is_exit_expression(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    fn_def_id(cx, expr).is_some_and(|fn_did| {
-        cx.tcx.is_diagnostic_item(sym::process_exit, fn_did) || cx.tcx.is_diagnostic_item(sym::process_abort, fn_did)
-    })
+    if let Some(fn_did) = fn_def_id(cx, expr)
+        && let Some(fn_name) = cx.tcx.get_diagnostic_name(fn_did)
+        && matches!(fn_name, sym::process_exit | sym::process_abort)
+    {
+        true
+    } else {
+        false
+    }
 }
 
 #[derive(Debug)]

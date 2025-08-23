@@ -62,12 +62,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Msrv)
             && let ExprKind::Path(ref qpath @ QPath::Resolved(None, path)) = func.kind
             && let Some(method_defid) = path.res.opt_def_id()
         {
-            if cx.tcx.is_diagnostic_item(sym::ptr_null, method_defid) {
-                OmitFollowedCastReason::Null(qpath)
-            } else if cx.tcx.is_diagnostic_item(sym::ptr_null_mut, method_defid) {
-                OmitFollowedCastReason::NullMut(qpath)
-            } else {
-                OmitFollowedCastReason::None
+            match cx.tcx.get_diagnostic_name(method_defid) {
+                Some(sym::ptr_null) => OmitFollowedCastReason::Null(qpath),
+                Some(sym::ptr_null_mut) => OmitFollowedCastReason::NullMut(qpath),
+                _ => OmitFollowedCastReason::None,
             }
         } else {
             OmitFollowedCastReason::None

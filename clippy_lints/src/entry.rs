@@ -264,35 +264,28 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
         _ => None,
     });
 
-    match expr.kind {
-        ExprKind::MethodCall(
-            _,
+    if let ExprKind::MethodCall(_, map, [arg], _) = expr.kind
+        && let Expr {
+            kind: ExprKind::AddrOf(_, _, key),
+            span: key_span,
+            ..
+        } = arg
+        && key_span.eq_ctxt(expr.span)
+    {
+        let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
+        let expr = ContainsExpr {
+            negated,
             map,
-            [
-                Expr {
-                    kind: ExprKind::AddrOf(_, _, key),
-                    span: key_span,
-                    ..
-                },
-            ],
-            _,
-        ) if key_span.eq_ctxt(expr.span) => {
-            let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
-            let expr = ContainsExpr {
-                negated,
-                map,
-                key,
-                call_ctxt: expr.span.ctxt(),
-            };
-            if cx.tcx.is_diagnostic_item(sym::btreemap_contains_key, id) {
-                Some((MapType::BTree, expr))
-            } else if cx.tcx.is_diagnostic_item(sym::hashmap_contains_key, id) {
-                Some((MapType::Hash, expr))
-            } else {
-                None
-            }
-        },
-        _ => None,
+            key,
+            call_ctxt: expr.span.ctxt(),
+        };
+        match cx.tcx.get_diagnostic_name(id) {
+            Some(sym::btreemap_contains_key) => Some((MapType::BTree, expr)),
+            Some(sym::hashmap_contains_key) => Some((MapType::Hash, expr)),
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 
