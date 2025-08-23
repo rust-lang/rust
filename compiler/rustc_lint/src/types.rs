@@ -11,7 +11,7 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
-pub(crate) use improper_ctypes::{ImproperCTypesDeclarations, ImproperCTypesDefinitions};
+pub(crate) use improper_ctypes::ImproperCTypesLint;
 
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
