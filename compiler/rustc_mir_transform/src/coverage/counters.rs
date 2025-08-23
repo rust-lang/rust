@@ -16,7 +16,6 @@ use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 mod balanced_flow;
 pub(crate) mod node_flow;
-mod union_find;
 
 /// Struct containing the results of [`prepare_bcb_counters_data`].
 pub(crate) struct BcbCountersData {
