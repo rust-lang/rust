@@ -784,7 +784,7 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg(Kind::Doc, description, None, build_compiler, target);
+    let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
 
     cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
