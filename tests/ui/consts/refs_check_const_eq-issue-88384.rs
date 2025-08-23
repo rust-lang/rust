@@ -1,6 +1,5 @@
 #![feature(fn_traits)]
 #![feature(adt_const_params, unsized_const_params)]
-//~^ WARNING the feature `unsized_const_params` is incomplete
 
 #[derive(PartialEq, Eq)]
 struct CompileTimeSettings {

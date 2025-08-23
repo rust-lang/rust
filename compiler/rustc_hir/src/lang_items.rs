@@ -370,7 +370,6 @@ language_item_table! {
     CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
 
     ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
-    UnsizedConstParamTy,     sym::unsized_const_param_ty, unsized_const_param_ty_trait, Target::Trait, GenericRequirement::Exact(0);
 
     Poll,                    sym::Poll,                poll,                       Target::Enum,           GenericRequirement::None;
     PollReady,               sym::Ready,               poll_ready_variant,         Target::Variant,        GenericRequirement::None;

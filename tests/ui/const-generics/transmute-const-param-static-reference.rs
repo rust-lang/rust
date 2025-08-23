@@ -8,7 +8,7 @@
 
 struct Const<const P: &'static ()>;
 //[min]~^ ERROR `&'static ()` is forbidden as the type of a const generic parameter
-//[adt_const_params]~^^ ERROR `&'static ()` can't be used as a const parameter type
+//[adt_const_params]~^^ ERROR use of unstable library feature `unsized_const_params`
 
 fn main() {
     const A: &'static () = unsafe { std::mem::transmute(10 as *const ()) };

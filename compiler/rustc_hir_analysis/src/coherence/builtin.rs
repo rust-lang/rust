@@ -42,9 +42,6 @@ pub(super) fn check_trait<'tcx>(
     checker.check(lang_items.const_param_ty_trait(), |checker| {
         visit_implementation_of_const_param_ty(checker, LangItem::ConstParamTy)
     })?;
-    checker.check(lang_items.unsized_const_param_ty_trait(), |checker| {
-        visit_implementation_of_const_param_ty(checker, LangItem::UnsizedConstParamTy)
-    })?;
     checker.check(lang_items.coerce_unsized_trait(), visit_implementation_of_coerce_unsized)?;
     checker
         .check(lang_items.dispatch_from_dyn_trait(), visit_implementation_of_dispatch_from_dyn)?;
@@ -142,7 +139,7 @@ fn visit_implementation_of_const_param_ty(
     checker: &Checker<'_>,
     kind: LangItem,
 ) -> Result<(), ErrorGuaranteed> {
-    assert_matches!(kind, LangItem::ConstParamTy | LangItem::UnsizedConstParamTy);
+    assert_matches!(kind, LangItem::ConstParamTy);
 
     let tcx = checker.tcx;
     let header = checker.impl_header;
