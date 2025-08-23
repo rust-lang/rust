@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_with_context};
-use clippy_utils::{higher, is_from_proc_macro};
+use clippy_utils::higher;
+use clippy_utils::source::{indent_of, snippet_block, snippet_with_context};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, LoopSource, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
+use rustc_span::{ExpnKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -132,7 +132,9 @@ declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessContinue {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !expr.span.in_external_macro(cx.sess().source_map()) && !is_from_proc_macro(cx, expr) {
+        // We cannot use `from_expansion` because for loops, while loops and while let loops are desugared
+        // into `loop` expressions.
+        if !matches!(expr.span.ctxt().outer_expn_data().kind, ExpnKind::Macro(..)) {
             check_and_warn(cx, expr);
         }
     }
@@ -193,7 +195,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessContinue {
 /// - The expression node is a block with the first statement being a `continue`.
 fn needless_continue_in_else(else_expr: &Expr<'_>, label: Option<&Label>) -> bool {
     match else_expr.kind {
-        ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block, label),
+        ExprKind::Block(else_block, _) => is_first_block_stmt_continue(else_block, label),
         ExprKind::Continue(l) => compare_labels(label, l.label.as_ref()),
         _ => false,
     }
@@ -201,8 +203,8 @@ fn needless_continue_in_else(else_expr: &Expr<'_>, label: Option<&Label>) -> boo
 
 fn is_first_block_stmt_continue(block: &Block<'_>, label: Option<&Label>) -> bool {
     block.stmts.first().is_some_and(|stmt| match stmt.kind {
-        StmtKind::Semi(ref e) | StmtKind::Expr(ref e) => {
-            if let ExprKind::Continue(ref l) = e.kind {
+        StmtKind::Semi(e) | StmtKind::Expr(e) => {
+            if let ExprKind::Continue(l) = e.kind {
                 compare_labels(label, l.label.as_ref())
             } else {
                 false
@@ -225,10 +227,10 @@ fn compare_labels(loop_label: Option<&Label>, continue_label: Option<&Label>) ->
 }
 
 /// If `expr` is a loop expression (while/while let/for/loop), calls `func` with
-/// the AST object representing the loop block of `expr`.
-fn with_loop_block<'tcx, F>(expr: &Expr<'tcx>, mut func: F)
+/// the HIR object representing the loop block of `expr`.
+fn with_loop_block<F>(expr: &Expr<'_>, mut func: F)
 where
-    F: FnMut(&Block<'tcx>, Option<&Label>),
+    F: FnMut(&Block<'_>, Option<&Label>),
 {
     if let Some(higher::ForLoop { body, label, .. }) = higher::ForLoop::hir(expr)
         && let ExprKind::Block(block, _) = &body.kind
@@ -264,9 +266,9 @@ where
 /// - The `if` condition expression,
 /// - The `then` block, and
 /// - The `else` expression.
-fn with_if_expr<'tcx, F>(expr: &Expr<'tcx>, mut func: F)
+fn with_if_expr<F>(expr: &Expr<'_>, mut func: F)
 where
-    F: FnMut(&Expr<'tcx>, &Expr<'tcx>, &Block<'tcx>, &Expr<'tcx>),
+    F: FnMut(&Expr<'_>, &Expr<'_>, &Block<'_>, &Expr<'_>),
 {
     if let Some(higher::If {
         cond,
@@ -288,20 +290,20 @@ enum LintType {
 
 /// Data we pass around for construction of help messages.
 #[derive(Debug)]
-struct LintData<'tcx> {
+struct LintData<'hir> {
     /// The `if` expression encountered in the above loop.
-    if_expr: &'tcx Expr<'tcx>,
+    if_expr: &'hir Expr<'hir>,
     /// The condition expression for the above `if`.
-    if_cond: &'tcx Expr<'tcx>,
+    if_cond: &'hir Expr<'hir>,
     /// The `then` block of the `if` statement.
-    if_block: &'tcx Block<'tcx>,
+    if_block: &'hir Block<'hir>,
     /// The `else` block of the `if` statement.
     /// Note that we only work with `if` exprs that have an `else` branch.
-    else_expr: &'tcx Expr<'tcx>,
+    else_expr: &'hir Expr<'hir>,
     /// The 0-based index of the `if` statement in the containing loop block.
     stmt_idx: Option<usize>,
     /// The statements of the loop block.
-    loop_block: &'tcx Block<'tcx>,
+    loop_block: &'hir Block<'hir>,
 }
 
 const MSG_REDUNDANT_CONTINUE_EXPRESSION: &str = "this `continue` expression is redundant";
@@ -366,7 +368,14 @@ fn suggestion_snippet_for_continue_inside_if(cx: &LateContext<'_>, data: &LintDa
 }
 
 fn suggestion_snippet_for_continue_inside_else(cx: &LateContext<'_>, data: &LintData<'_>) -> String {
-    let cond_code = snippet(cx, data.if_cond.span, "..");
+    let mut applicability = Applicability::MachineApplicable;
+    let (cond_code, _) = snippet_with_context(
+        cx,
+        data.if_cond.span,
+        data.if_expr.span.ctxt(),
+        "..",
+        &mut applicability,
+    );
 
     // Region B
     let block_code = erode_from_back(&snippet_block(cx, data.if_block.span, "..", Some(data.if_expr.span)));
@@ -402,7 +411,7 @@ fn suggestion_snippet_for_continue_inside_else(cx: &LateContext<'_>, data: &Lint
         }
         lines.join("\n")
     } else {
-        "".to_string()
+        String::new()
     };
 
     let indent_if = indent_of(cx, data.if_expr.span).unwrap_or(0);
@@ -417,7 +426,7 @@ fn check_last_stmt_in_expr<F>(cx: &LateContext<'_>, inner_expr: &Expr<'_>, func:
 where
     F: Fn(Option<&Label>, Span),
 {
-    match &inner_expr.kind {
+    match inner_expr.kind {
         ExprKind::Continue(continue_label) => {
             func(continue_label.label.as_ref(), inner_expr.span);
         },
@@ -432,7 +441,7 @@ where
             if !match_ty.is_unit() && !match_ty.is_never() {
                 return;
             }
-            for arm in arms.iter() {
+            for arm in arms {
                 check_last_stmt_in_expr(cx, arm.body, func);
             }
         },
