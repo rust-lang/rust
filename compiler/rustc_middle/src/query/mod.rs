@@ -696,6 +696,22 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
+    /// Used in case `mir_borrowck` fails to prove an obligation. We generally assume that
+    /// all goals we prove in MIR type check hold as we've already checked them in HIR typeck.
+    ///
+    /// However, we replace each free region in the MIR body with a unique region inference
+    /// variable. As we may rely on structural identity when proving goals this may cause a
+    /// goal to no longer hold. We store obligations for which this may happen during HIR
+    /// typeck in the `TypeckResults`. We then uniquify and reprove them in case MIR typeck
+    /// encounters an unexpected error. We expect this to result in an error when used and
+    /// delay a bug if it does not.
+    query check_potentially_region_dependent_goals(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc {
+            |tcx| "reproving potentially region dependent HIR typeck goals for `{}",
+            tcx.def_path_str(key)
+        }
+    }
+
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for codegen. This is also the only query that can fetch non-local MIR, at present.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {

@@ -158,7 +158,8 @@ pub struct InferCtxtInner<'tcx> {
     region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 
     /// `-Znext-solver`: Successfully proven goals during HIR typeck which
-    /// reference inference variables and get reproven after writeback.
+    /// reference inference variables and get reproven in case MIR type check
+    /// fails to prove something.
     ///
     /// See the documentation of `InferCtxt::in_hir_typeck` for more details.
     hir_typeck_potentially_region_dependent_goals: Vec<PredicateObligation<'tcx>>,
