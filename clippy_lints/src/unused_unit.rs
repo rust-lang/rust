@@ -97,16 +97,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
     }
 
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>) {
-        let segments = &poly.trait_ref.path.segments;
-
-        if segments.len() == 1
-            && matches!(segments[0].ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
-            && let Some(args) = segments[0].args
+        if let [segment] = &poly.trait_ref.path.segments
+            && matches!(segment.ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
+            && let Some(args) = segment.args
             && args.parenthesized == GenericArgsParentheses::ParenSugar
-            && let constraints = &args.constraints
-            && constraints.len() == 1
-            && constraints[0].ident.name == sym::Output
-            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraints[0].kind
+            && let [constraint] = &args.constraints
+            && constraint.ident.name == sym::Output
+            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraint.kind
             && args.span_ext.hi() != poly.span.hi()
             && !hir_ty.span.from_expansion()
             && args.span_ext.hi() != hir_ty.span.hi()
