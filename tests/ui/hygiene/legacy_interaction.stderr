@@ -1,0 +1,11 @@
+error[E0425]: cannot find function `g` in this scope
+  --> $DIR/legacy_interaction.rs:33:9
+   |
+LL |         ::def_site::m2!();
+   |         ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: this error originates in the macro `::legacy_interaction::m` which comes from the expansion of the macro `::def_site::m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

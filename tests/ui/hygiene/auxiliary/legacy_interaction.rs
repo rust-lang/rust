@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! m {
     () => {
-        fn f() {} // (2)
-        g(); // (1)
+        fn f() {}
+        g(); // g is not defined at macro definition site
     }
 }

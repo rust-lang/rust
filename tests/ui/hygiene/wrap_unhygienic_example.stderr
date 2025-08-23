@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `g` in this scope
+  --> $DIR/wrap_unhygienic_example.rs:25:5
+   |
+LL |     hygienic_macro!();
+   |     ^^^^^^^^^^^^^^^^^ not found in this scope
+   |
+   = note: this error originates in the macro `::unhygienic_example::unhygienic_macro` which comes from the expansion of the macro `hygienic_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this function
+   |
+LL + use unhygienic_example::g;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
