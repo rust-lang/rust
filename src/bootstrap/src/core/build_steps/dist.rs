@@ -2230,11 +2230,12 @@ fn maybe_install_llvm(
             builder.install(&llvm_dylib_path, dst_libdir, FileType::NativeLibrary);
         }
         !builder.config.dry_run()
-    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
-        llvm::prebuilt_llvm_config(builder, target, true)
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult {
+        host_llvm_config, ..
+    }) = llvm::prebuilt_llvm_config(builder, target, true)
     {
         trace!("LLVM already built, installing LLVM files");
-        let mut cmd = command(llvm_config);
+        let mut cmd = command(host_llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();

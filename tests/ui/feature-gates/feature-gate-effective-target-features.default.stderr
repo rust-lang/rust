@@ -1,0 +1,37 @@
+error[E0658]: the `#[force_target_feature]` attribute is an experimental feature
+  --> $DIR/feature-gate-effective-target-features.rs:13:5
+   |
+LL |     #[unsafe(force_target_feature(enable = "avx2"))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #143352 <https://github.com/rust-lang/rust/issues/143352> for more information
+   = help: add `#![feature(effective_target_features)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[target_feature(..)]` cannot be applied to safe trait method
+  --> $DIR/feature-gate-effective-target-features.rs:21:5
+   |
+LL |     #[target_feature(enable = "avx2")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
+LL |
+LL |     fn foo(&self) {}
+   |     ------------- not an `unsafe` function
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/feature-gate-effective-target-features.rs:23:5
+   |
+LL |     fn foo(&self) {}
+   |     ^^^^^^^^^^^^^ expected safe fn, found unsafe fn
+   |
+note: type in trait
+  --> $DIR/feature-gate-effective-target-features.rs:7:5
+   |
+LL |     fn foo(&self);
+   |     ^^^^^^^^^^^^^^
+   = note: expected signature `fn(&Bar2)`
+              found signature `#[target_features] fn(&Bar2)`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0053, E0658.
+For more information about an error, try `rustc --explain E0053`.

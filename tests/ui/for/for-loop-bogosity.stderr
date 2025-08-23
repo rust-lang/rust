@@ -4,7 +4,11 @@ error[E0277]: `MyStruct` is not an iterator
 LL |     for x in bogus {
    |              ^^^^^ `MyStruct` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `MyStruct`
+help: the trait `Iterator` is not implemented for `MyStruct`
+  --> $DIR/for-loop-bogosity.rs:1:1
+   |
+LL | struct MyStruct {
+   | ^^^^^^^^^^^^^^^
    = note: required for `MyStruct` to implement `IntoIterator`
 
 error: aborting due to 1 previous error

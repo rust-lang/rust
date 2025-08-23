@@ -2,8 +2,13 @@ error[E0277]: the trait bound `X: Foo<X>` is not satisfied
   --> $DIR/where-clause-method-substituion.rs:20:16
    |
 LL |     1.method::<X>();
-   |                ^ the trait `Foo<X>` is not implemented for `X`
+   |                ^ unsatisfied trait bound
    |
+help: the trait `Foo<X>` is not implemented for `X`
+  --> $DIR/where-clause-method-substituion.rs:10:1
+   |
+LL | struct X;
+   | ^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/where-clause-method-substituion.rs:1:1
    |

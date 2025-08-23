@@ -2,10 +2,15 @@ error[E0277]: the trait bound `MyRef: Test` is not satisfied
   --> $DIR/deref-argument.rs:29:18
    |
 LL |     consume_test(my_ref);
-   |     ------------ ^^^^^^ the trait `Test` is not implemented for `MyRef`
+   |     ------------ ^^^^^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
+help: the trait `Test` is not implemented for `MyRef`
+  --> $DIR/deref-argument.rs:14:1
+   |
+LL | struct MyRef(u32);
+   | ^^^^^^^^^^^^
 note: required by a bound in `consume_test`
   --> $DIR/deref-argument.rs:9:25
    |

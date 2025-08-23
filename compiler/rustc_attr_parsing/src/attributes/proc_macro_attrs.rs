@@ -100,7 +100,7 @@ fn parse_derive_like<S: Stage>(
             return None;
         };
         if !attr_list.path().word_is(sym::attributes) {
-            cx.expected_specific_argument(attrs.span(), vec!["attributes"]);
+            cx.expected_specific_argument(attrs.span(), &[sym::attributes]);
             return None;
         }
         let Some(attr_list) = attr_list.args().list() else {

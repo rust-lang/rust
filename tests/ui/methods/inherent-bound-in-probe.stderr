@@ -4,7 +4,11 @@ error[E0277]: `Helper<'a, T>` is not an iterator
 LL |     type IntoIter = Helper<'a, T>;
    |                     ^^^^^^^^^^^^^ `Helper<'a, T>` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `Helper<'a, T>`
+help: the trait `Iterator` is not implemented for `Helper<'a, T>`
+  --> $DIR/inherent-bound-in-probe.rs:15:1
+   |
+LL | struct Helper<'a, T>
+   | ^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `std::iter::IntoIterator::IntoIter`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 

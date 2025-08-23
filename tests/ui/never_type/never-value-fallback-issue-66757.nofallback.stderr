@@ -2,7 +2,7 @@ error[E0277]: the trait bound `E: From<()>` is not satisfied
   --> $DIR/never-value-fallback-issue-66757.rs:28:6
    |
 LL |     <E as From<_>>::from(never);
-   |      ^ the trait `From<()>` is not implemented for `E`
+   |      ^ unsatisfied trait bound
    |
    = help: the trait `From<()>` is not implemented for `E`
            but trait `From<!>` is implemented for it

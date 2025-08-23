@@ -16,8 +16,13 @@ error[E0277]: the type `CantParam` does not `#[derive(PartialEq)]`
   --> $DIR/const_param_ty_impl_no_structural_eq.rs:10:43
    |
 LL | impl std::marker::UnsizedConstParamTy for CantParam {}
-   |                                           ^^^^^^^^^ the trait `StructuralPartialEq` is not implemented for `CantParam`
+   |                                           ^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `StructuralPartialEq` is not implemented for `CantParam`
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:8:1
+   |
+LL | struct CantParam(ImplementsConstParamTy);
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `UnsizedConstParamTy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 
@@ -39,8 +44,13 @@ error[E0277]: the type `CantParamDerive` does not `#[derive(PartialEq)]`
   --> $DIR/const_param_ty_impl_no_structural_eq.rs:14:10
    |
 LL | #[derive(std::marker::UnsizedConstParamTy)]
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `StructuralPartialEq` is not implemented for `CantParamDerive`
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `StructuralPartialEq` is not implemented for `CantParamDerive`
+  --> $DIR/const_param_ty_impl_no_structural_eq.rs:17:1
+   |
+LL | struct CantParamDerive(ImplementsConstParamTy);
+   | ^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `UnsizedConstParamTy`
   --> $SRC_DIR/core/src/marker.rs:LL:COL
 

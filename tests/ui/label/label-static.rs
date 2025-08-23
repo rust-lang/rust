@@ -1,5 +1,5 @@
 fn main() {
-    'static: loop { //~ ERROR invalid label name `'static`
-        break 'static //~ ERROR invalid label name `'static`
+    'static: loop { //~ ERROR labels cannot use keyword names
+        break 'static //~ ERROR labels cannot use keyword names
     }
 }

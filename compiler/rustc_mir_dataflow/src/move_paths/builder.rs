@@ -7,7 +7,6 @@ use rustc_middle::{bug, span_bug};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-use super::abs_domain::Lift;
 use super::{
     Init, InitIndex, InitKind, InitLocation, LocationMap, LookupResult, MoveData, MoveOut,
     MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
@@ -241,7 +240,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =
-                    *data.rev_lookup.projections.entry((base, elem.lift())).or_insert_with(|| {
+                    *data.rev_lookup.projections.entry((base, elem.kind())).or_insert_with(|| {
                         new_move_path(
                             &mut data.move_paths,
                             &mut data.path_map,
@@ -272,7 +271,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             tcx,
             ..
         } = self;
-        *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
+        *rev_lookup.projections.entry((base, elem.kind())).or_insert_with(move || {
             new_move_path(move_paths, path_map, init_path_map, Some(base), mk_place(*tcx))
         })
     }

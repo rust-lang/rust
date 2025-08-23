@@ -1394,8 +1394,8 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm::LlvmResult { llvm_config, .. } = builder.ensure(llvm::Llvm { target });
-    cargo.env("LLVM_CONFIG", &llvm_config);
+    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+    cargo.env("LLVM_CONFIG", &host_llvm_config);
 
     // Some LLVM linker flags (-L and -l) may be needed to link `rustc_llvm`. Its build script
     // expects these to be passed via the `LLVM_LINKER_FLAGS` env variable, separated by
@@ -2001,14 +2001,52 @@ impl Step for Assemble {
         if builder.config.llvm_enabled(target_compiler.host) {
             trace!("target_compiler.host" = ?target_compiler.host, "LLVM enabled");
 
-            let llvm::LlvmResult { llvm_config, .. } =
-                builder.ensure(llvm::Llvm { target: target_compiler.host });
+            let target = target_compiler.host;
+            let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 trace!("LLVM tools enabled");
 
-                let llvm_bin_dir =
-                    command(llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
-                let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
+                let host_llvm_bin_dir = command(&host_llvm_config)
+                    .arg("--bindir")
+                    .run_capture_stdout(builder)
+                    .stdout()
+                    .trim()
+                    .to_string();
+
+                let llvm_bin_dir = if target == builder.host_target {
+                    PathBuf::from(host_llvm_bin_dir)
+                } else {
+                    // If we're cross-compiling, we cannot run the target llvm-config in order to
+                    // figure out where binaries are located. We thus have to guess.
+                    let external_llvm_config = builder
+                        .config
+                        .target_config
+                        .get(&target)
+                        .and_then(|t| t.llvm_config.clone());
+                    if let Some(external_llvm_config) = external_llvm_config {
+                        // If we have an external LLVM, just hope that the bindir is the directory
+                        // where the LLVM config is located
+                        external_llvm_config.parent().unwrap().to_path_buf()
+                    } else {
+                        // If we have built LLVM locally, then take the path of the host bindir
+                        // relative to its output build directory, and then apply it to the target
+                        // LLVM output build directory.
+                        let host_llvm_out = builder.llvm_out(builder.host_target);
+                        let target_llvm_out = builder.llvm_out(target);
+                        if let Ok(relative_path) =
+                            Path::new(&host_llvm_bin_dir).strip_prefix(host_llvm_out)
+                        {
+                            target_llvm_out.join(relative_path)
+                        } else {
+                            // This is the most desperate option, just replace the host target with
+                            // the actual target in the directory path...
+                            PathBuf::from(
+                                host_llvm_bin_dir
+                                    .replace(&*builder.host_target.triple, &target.triple),
+                            )
+                        }
+                    }
+                };
 
                 // Since we've already built the LLVM tools, install them to the sysroot.
                 // This is the equivalent of installing the `llvm-tools-preview` component via

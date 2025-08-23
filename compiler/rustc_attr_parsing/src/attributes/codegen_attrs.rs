@@ -35,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
             _ => {
-                cx.expected_specific_argument(single.span(), vec!["size", "speed", "none"]);
+                cx.expected_specific_argument(single.span(), &[sym::size, sym::speed, sym::none]);
                 OptimizeAttr::Default
             }
         };
@@ -82,7 +82,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
-            cx.expected_specific_argument_and_list(cx.attr_span, vec!["on", "off"]);
+            cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
             return None;
         };
 
@@ -91,7 +91,8 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
             return None;
         };
 
-        let fail_incorrect_argument = |span| cx.expected_specific_argument(span, vec!["on", "off"]);
+        let fail_incorrect_argument =
+            |span| cx.expected_specific_argument(span, &[sym::on, sym::off]);
 
         let Some(arg) = arg.meta_item() else {
             fail_incorrect_argument(args.span);
@@ -343,7 +344,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                             UsedBy::Linker
                         }
                         _ => {
-                            cx.expected_specific_argument(l.span(), vec!["compiler", "linker"]);
+                            cx.expected_specific_argument(l.span(), &[sym::compiler, sym::linker]);
                             return;
                         }
                     }
@@ -376,57 +377,68 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
     }
 }
 
+fn parse_tf_attribute<'c, S: Stage>(
+    cx: &'c mut AcceptContext<'_, '_, S>,
+    args: &'c ArgParser<'_>,
+) -> impl IntoIterator<Item = (Symbol, Span)> + 'c {
+    let mut features = Vec::new();
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return features;
+    };
+    if list.is_empty() {
+        cx.warn_empty_attribute(cx.attr_span);
+        return features;
+    }
+    for item in list.mixed() {
+        let Some(name_value) = item.meta_item() else {
+            cx.expected_name_value(item.span(), Some(sym::enable));
+            return features;
+        };
+
+        // Validate name
+        let Some(name) = name_value.path().word_sym() else {
+            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            return features;
+        };
+        if name != sym::enable {
+            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            return features;
+        }
+
+        // Use value
+        let Some(name_value) = name_value.args().name_value() else {
+            cx.expected_name_value(item.span(), Some(sym::enable));
+            return features;
+        };
+        let Some(value_str) = name_value.value_as_str() else {
+            cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+            return features;
+        };
+        for feature in value_str.as_str().split(",") {
+            features.push((Symbol::intern(feature), item.span()));
+        }
+    }
+    features
+}
+
 pub(crate) struct TargetFeatureParser;
 
 impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
-    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature(items, span);
+    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
+        features: items,
+        attr_span: span,
+        was_forced: false,
+    };
     const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &'c ArgParser<'_>,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
-        let mut features = Vec::new();
-        let ArgParser::List(list) = args else {
-            cx.expected_list(cx.attr_span);
-            return features;
-        };
-        if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
-            return features;
-        }
-        for item in list.mixed() {
-            let Some(name_value) = item.meta_item() else {
-                cx.expected_name_value(item.span(), Some(sym::enable));
-                return features;
-            };
-
-            // Validate name
-            let Some(name) = name_value.path().word_sym() else {
-                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
-                return features;
-            };
-            if name != sym::enable {
-                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
-                return features;
-            }
-
-            // Use value
-            let Some(name_value) = name_value.args().name_value() else {
-                cx.expected_name_value(item.span(), Some(sym::enable));
-                return features;
-            };
-            let Some(value_str) = name_value.value_as_str() else {
-                cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
-                return features;
-            };
-            for feature in value_str.as_str().split(",") {
-                features.push((Symbol::intern(feature), item.span()));
-            }
-        }
-        features
+        parse_tf_attribute(cx, args)
     }
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -438,5 +450,32 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         Warn(Target::Field),
         Warn(Target::Arm),
         Warn(Target::MacroDef),
+    ]);
+}
+
+pub(crate) struct ForceTargetFeatureParser;
+
+impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
+    type Item = (Symbol, Span);
+    const PATH: &[Symbol] = &[sym::force_target_feature];
+    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
+        features: items,
+        attr_span: span,
+        was_forced: true,
+    };
+    const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
+
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+        parse_tf_attribute(cx, args)
+    }
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
 }

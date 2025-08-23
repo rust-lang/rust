@@ -359,6 +359,20 @@ parse_generics_in_path = unexpected generic arguments in path
 
 parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+
+parse_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
+    .label = this {$label} contains {$count ->
+        [one] an invisible
+        *[other] invisible
+    } unicode text flow control {$count ->
+        [one] codepoint
+        *[other] codepoints
+    }
+    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+    .suggestion_remove = if their presence wasn't intentional, you can remove them
+    .suggestion_escape = if you want to keep them but make them visible in your source code, you can escape them
+    .no_suggestion_note_escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}
+
 parse_if_expression_missing_condition = missing condition for `if` expression
     .condition_label = expected condition here
     .block_label = if this block is the condition of the `if` expression, then it must be followed by another block
@@ -463,9 +477,6 @@ parse_invalid_dyn_keyword = invalid `dyn` keyword
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_identifier_with_leading_number = identifiers cannot start with a number
 
-parse_invalid_label =
-    invalid label name `{$name}`
-
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`
     .tuple_exception_line_1 = `{$suffix}` is *temporarily* accepted on tuple index fields as it was incorrectly accepted on stable for a few releases
@@ -494,6 +505,8 @@ parse_invalid_unicode_escape = invalid unicode character escape
 
 parse_invalid_variable_declaration =
     invalid variable declaration
+
+parse_keyword_label = labels cannot use keyword names
 
 parse_keyword_lifetime =
     lifetimes cannot use keyword names

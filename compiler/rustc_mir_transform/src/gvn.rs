@@ -447,26 +447,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             Projection(base, elem) => {
                 let base = self.evaluated[base].as_ref()?;
-                let elem = match elem {
-                    ProjectionElem::Deref => ProjectionElem::Deref,
-                    ProjectionElem::Downcast(name, read_variant) => {
-                        ProjectionElem::Downcast(name, read_variant)
-                    }
-                    ProjectionElem::Field(f, ()) => ProjectionElem::Field(f, ty.ty),
-                    ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                        ProjectionElem::ConstantIndex { offset, min_length, from_end }
-                    }
-                    ProjectionElem::Subslice { from, to, from_end } => {
-                        ProjectionElem::Subslice { from, to, from_end }
-                    }
-                    ProjectionElem::OpaqueCast(()) => ProjectionElem::OpaqueCast(ty.ty),
-                    ProjectionElem::Subtype(()) => ProjectionElem::Subtype(ty.ty),
-                    ProjectionElem::UnwrapUnsafeBinder(()) => {
-                        ProjectionElem::UnwrapUnsafeBinder(ty.ty)
-                    }
-                    // This should have been replaced by a `ConstantIndex` earlier.
-                    ProjectionElem::Index(_) => return None,
-                };
+                // `Index` by constants should have been replaced by `ConstantIndex` by
+                // `simplify_place_projection`.
+                let elem = elem.try_map(|_| None, |()| ty.ty)?;
                 self.ecx.project(base, elem).discard_err()?
             }
             Address { place, kind: _, provenance: _ } => {
@@ -476,13 +459,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let local = self.locals[place.local]?;
                 let pointer = self.evaluated[local].as_ref()?;
                 let mut mplace = self.ecx.deref_pointer(pointer).discard_err()?;
-                for proj in place.projection.iter().skip(1) {
-                    // We have no call stack to associate a local with a value, so we cannot
-                    // interpret indexing.
-                    if matches!(proj, ProjectionElem::Index(_)) {
-                        return None;
-                    }
-                    mplace = self.ecx.project(&mplace, proj).discard_err()?;
+                for elem in place.projection.iter().skip(1) {
+                    // `Index` by constants should have been replaced by `ConstantIndex` by
+                    // `simplify_place_projection`.
+                    let elem = elem.try_map(|_| None, |ty| ty)?;
+                    mplace = self.ecx.project(&mplace, elem).discard_err()?;
                 }
                 let pointer = mplace.to_ref(&self.ecx);
                 ImmTy::from_immediate(pointer, ty).into()
@@ -902,27 +883,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         proj: ProjectionElem<VnIndex, ()>,
         loc: Location,
     ) -> Option<PlaceElem<'tcx>> {
-        Some(match proj {
-            ProjectionElem::Deref => ProjectionElem::Deref,
-            ProjectionElem::Field(idx, ()) => ProjectionElem::Field(idx, ty),
-            ProjectionElem::Index(idx) => {
-                let Some(local) = self.try_as_local(idx, loc) else {
-                    return None;
-                };
+        proj.try_map(
+            |value| {
+                let local = self.try_as_local(value, loc)?;
                 self.reused_locals.insert(local);
-                ProjectionElem::Index(local)
-            }
-            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                ProjectionElem::ConstantIndex { offset, min_length, from_end }
-            }
-            ProjectionElem::Subslice { from, to, from_end } => {
-                ProjectionElem::Subslice { from, to, from_end }
-            }
-            ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
-            ProjectionElem::OpaqueCast(()) => ProjectionElem::OpaqueCast(ty),
-            ProjectionElem::Subtype(()) => ProjectionElem::Subtype(ty),
-            ProjectionElem::UnwrapUnsafeBinder(()) => ProjectionElem::UnwrapUnsafeBinder(ty),
-        })
+                Some(local)
+            },
+            |()| ty,
+        )
     }
 
     fn simplify_aggregate_to_copy(
