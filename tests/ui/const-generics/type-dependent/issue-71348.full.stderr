@@ -1,8 +1,8 @@
 warning: hiding a lifetime that's named elsewhere is confusing
-  --> $DIR/issue-71348.rs:18:40
+  --> $DIR/issue-71348.rs:18:56
    |
 LL |     fn ask<'a, const N: &'static str>(&'a self) -> &'a <Self as Get<N>>::Target
-   |                                        ^^           -- ------------------------ the same lifetime is hidden here
+   |                                        --           -- ^^^^^^^^^^^^^^^^^^^^^^^^ the same lifetime is hidden here
    |                                        |            |
    |                                        |            the same lifetime is named here
    |                                        the lifetime is named here

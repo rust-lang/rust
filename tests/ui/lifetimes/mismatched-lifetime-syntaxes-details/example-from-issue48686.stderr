@@ -1,8 +1,8 @@
 error: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/example-from-issue48686.rs:6:21
+  --> $DIR/example-from-issue48686.rs:6:50
    |
 LL |     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
-   |                     ^^^^^^^                      ------- the same lifetime is elided here
+   |                     -------                      ^^^^^^^ the same lifetime is elided here
    |                     |
    |                     the lifetime is named here
    |
