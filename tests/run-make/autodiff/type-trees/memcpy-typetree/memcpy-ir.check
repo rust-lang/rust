@@ -1,0 +1,8 @@
+; Check that enzyme_type attributes are present in the LLVM IR function definition
+; This verifies our TypeTree system correctly attaches metadata for Enzyme
+
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@double}"{{.*}}@test_memcpy({{.*}}"enzyme_type"="{[]:Pointer}"
+
+; Check that llvm.memcpy exists (either call or declare)
+CHECK: {{(call|declare).*}}@llvm.memcpy
+

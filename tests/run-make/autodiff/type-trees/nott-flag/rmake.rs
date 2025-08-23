@@ -23,14 +23,8 @@ fn main() {
         .run();
 
     // Verify NoTT version does NOT have enzyme_type attributes
-    llvm_filecheck()
-        .patterns("nott.check")
-        .stdin_buf(rfs::read("nott.ll"))
-        .run();
-    
+    llvm_filecheck().patterns("nott.check").stdin_buf(rfs::read("nott.ll")).run();
+
     // Verify TypeTree version DOES have enzyme_type attributes
-    llvm_filecheck()
-        .patterns("with_tt.check")
-        .stdin_buf(rfs::read("with_tt.ll"))
-        .run();
+    llvm_filecheck().patterns("with_tt.check").stdin_buf(rfs::read("with_tt.ll")).run();
 }
