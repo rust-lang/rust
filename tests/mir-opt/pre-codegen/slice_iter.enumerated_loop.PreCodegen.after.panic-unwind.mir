@@ -70,7 +70,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _4 = &raw const (*_1);
         StorageLive(_5);
         _5 = copy _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: move _5 };
+        _6 = NonNull::<T> { pointer: copy _5 };
         StorageDead(_5);
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
@@ -82,7 +82,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _7 = copy _4 as *mut T (PtrToPtr);
         _8 = Offset(copy _7, copy _3);
         StorageDead(_7);
-        _9 = move _8 as *const T (PtrToPtr);
+        _9 = copy _8 as *const T (PtrToPtr);
         StorageDead(_8);
         goto -> bb3;
     }
@@ -95,7 +95,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb3: {
         StorageLive(_10);
         _10 = copy _9;
-        _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
+        _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: copy _10, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
         StorageDead(_9);
         StorageDead(_4);
