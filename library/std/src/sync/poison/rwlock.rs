@@ -813,8 +813,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// `downgrade` takes ownership of the `RwLockWriteGuard` and returns a [`RwLockReadGuard`].
     ///
     /// ```
-    /// #![feature(rwlock_downgrade)]
-    ///
     /// use std::sync::{RwLock, RwLockWriteGuard};
     ///
     /// let rw = RwLock::new(0);
@@ -831,8 +829,6 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// thread calling `downgrade` and any reads it performs after downgrading.
     ///
     /// ```
-    /// #![feature(rwlock_downgrade)]
-    ///
     /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
     ///
     /// let rw = Arc::new(RwLock::new(1));
@@ -863,7 +859,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// # let final_check = rw.read().unwrap();
     /// # assert_eq!(*final_check, 3);
     /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
+    #[stable(feature = "rwlock_downgrade", since = "CURRENT_RUSTC_VERSION")]
     pub fn downgrade(s: Self) -> RwLockReadGuard<'rwlock, T> {
         let lock = s.lock;
 
