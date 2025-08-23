@@ -3677,19 +3677,13 @@ impl_cmp_os_str!(<'a> Cow<'a, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
-    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+        "prefix not found".fmt(f)
     }
 }
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
-impl Error for StripPrefixError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "prefix not found"
-    }
-}
+impl Error for StripPrefixError {}
 
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 impl fmt::Display for NormalizeError {
