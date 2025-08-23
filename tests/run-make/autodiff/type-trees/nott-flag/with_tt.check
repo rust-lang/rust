@@ -1,3 +1,4 @@
-// TODO(KMJ-007): Update this test when TypeTree integration is complete
-// CHECK: square - {[-1]:Float@double} |{[-1]:Pointer}:{}
-// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double}
+// Check that enzyme_type attributes are present when TypeTree is enabled
+// This verifies our TypeTree metadata attachment is working
+
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@double}"{{.*}}@square{{.*}}"enzyme_type"="{[]:Pointer}"
