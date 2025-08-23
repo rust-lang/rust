@@ -5279,9 +5279,7 @@ if (typeof window !== "undefined") {
             // search.index/root is loaded by main.js, so
             // this script doesn't need to launch it, but
             // must pick it up
-            // @ts-ignore
             if (window.searchIndex) {
-                // @ts-ignore
                 window.rr_(window.searchIndex);
             }
         },
