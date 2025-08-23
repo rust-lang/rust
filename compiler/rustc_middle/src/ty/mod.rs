@@ -2251,36 +2251,29 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
 
 /// Generate TypeTree for a specific type.
 /// This function analyzes a Rust type and creates appropriate TypeTree metadata.
-fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
-    // Handle basic scalar types
+pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
     if ty.is_scalar() {
         let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
             (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
         } else if ty.is_floating_point() {
             match ty {
+                x if x == tcx.types.f16 => (Kind::Half, 2),
                 x if x == tcx.types.f32 => (Kind::Float, 4),
                 x if x == tcx.types.f64 => (Kind::Double, 8),
-                _ => return TypeTree::new(), // Unknown float type
+                x if x == tcx.types.f128 => (Kind::F128, 16),
+                _ => return TypeTree::new(),
             }
         } else {
-            // TODO(KMJ-007): Handle other scalar types if needed
             return TypeTree::new();
         };
-        
-        return TypeTree(vec![Type { 
-            offset: -1, 
-            size, 
-            kind, 
-            child: TypeTree::new() 
-        }]);
+
+        return TypeTree(vec![Type { offset: -1, size, kind, child: TypeTree::new() }]);
     }
 
-    // Handle references and pointers
     if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
         let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
             inner
         } else {
-            // TODO(KMJ-007): Handle complex pointer types
             return TypeTree::new();
         };
 
