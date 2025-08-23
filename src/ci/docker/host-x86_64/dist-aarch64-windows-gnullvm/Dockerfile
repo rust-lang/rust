@@ -35,14 +35,10 @@ ENV HOST=aarch64-pc-windows-gnullvm
 ENV NO_DOWNLOAD_CI_LLVM 1
 
 ENV RUST_CONFIGURE_ARGS \
-    --enable-extended \
+    --enable-full-tools \
     --enable-profiler \
     --enable-sanitizers \
     --disable-docs \
-    --set llvm.download-ci-llvm=false \
-    --set rust.llvm-tools=false
-# LLVM cross tools are not installed into expected location so copying fails.
-# Probably will solve itself once this target can host itself on Windows.
-# --enable-full-tools \
+    --set llvm.download-ci-llvm=false
 
 ENV SCRIPT python3 ../x.py dist --host $HOST --target $HOST
