@@ -1,8 +1,6 @@
 //! Logic for lowering higher-kinded outlives constraints
 //! (with placeholders and universes) and turn them into regular
 //! outlives constraints.
-use core::cmp;
-
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::scc;
@@ -96,9 +94,9 @@ impl PlaceholderReachability {
                 },
                 Placeholders { min_placeholder, max_placeholder, max_universe },
             ) => Placeholders {
-                min_placeholder: cmp::min(min_pl, min_placeholder),
-                max_placeholder: cmp::max(max_pl, max_placeholder),
-                max_universe: cmp::max(max_u, max_universe),
+                min_placeholder: min_pl.min(min_placeholder),
+                max_placeholder: max_pl.max(max_placeholder),
+                max_universe: max_u.max(max_universe),
             },
         }
     }
@@ -190,17 +188,15 @@ impl scc::Annotation for RegionTracker {
         trace!("{:?} << {:?}", self.representative, other.representative);
 
         Self {
-            representative: self.representative.merge_scc(other.representative),
-            ..self.merge_reached(other)
+            representative: self.representative.min(other.representative),
+            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
+            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
         }
     }
 
     fn merge_reached(self, other: Self) -> Self {
         Self {
-            max_nameable_universe: cmp::min(
-                self.max_nameable_universe,
-                other.max_nameable_universe,
-            ),
+            max_nameable_universe: self.max_nameable_universe.min(other.max_nameable_universe),
             reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
             representative: self.representative,
         }

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::scc::{self, Sccs};
+use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -71,18 +71,6 @@ impl Representative {
             NllRegionVariableOrigin::Placeholder(_) => Representative::Placeholder(r),
             NllRegionVariableOrigin::Existential { .. } => Representative::Existential(r),
         }
-    }
-}
-
-impl scc::Annotation for Representative {
-    fn merge_scc(self, other: Self) -> Self {
-        // Just pick the smallest one. Note that we order by tag first!
-        std::cmp::min(self, other)
-    }
-
-    // For reachability, we do nothing since the representative doesn't change.
-    fn merge_reached(self, _other: Self) -> Self {
-        self
     }
 }
 
