@@ -327,59 +327,6 @@ pub struct Config {
 }
 
 impl Config {
-    #[cfg_attr(
-        feature = "tracing",
-        instrument(target = "CONFIG_HANDLING", level = "trace", name = "Config::default_opts")
-    )]
-    pub fn default_opts() -> Config {
-        #[cfg(feature = "tracing")]
-        span!(target: "CONFIG_HANDLING", tracing::Level::TRACE, "constructing default config");
-
-        Config {
-            bypass_bootstrap_lock: false,
-            llvm_optimize: true,
-            ninja_in_file: true,
-            llvm_static_stdcpp: false,
-            llvm_libzstd: false,
-            backtrace: true,
-            rust_optimize: RustOptimize::Bool(true),
-            rust_optimize_tests: true,
-            rust_randomize_layout: false,
-            submodules: None,
-            docs: true,
-            docs_minification: true,
-            rust_rpath: true,
-            rust_strip: false,
-            channel: "dev".to_string(),
-            codegen_tests: true,
-            rust_dist_src: true,
-            rust_codegen_backends: vec![CodegenBackendKind::Llvm],
-            deny_warnings: true,
-            bindir: "bin".into(),
-            dist_include_mingw_linker: true,
-            dist_compression_profile: "fast".into(),
-
-            stdout_is_tty: std::io::stdout().is_terminal(),
-            stderr_is_tty: std::io::stderr().is_terminal(),
-
-            // set by build.rs
-            host_target: get_host_target(),
-
-            src: {
-                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                // Undo `src/bootstrap`
-                manifest_dir.parent().unwrap().parent().unwrap().to_owned()
-            },
-            out: PathBuf::from("build"),
-
-            // This is needed by codegen_ssa on macOS to ship `llvm-objcopy` aliased to
-            // `rust-objcopy` to workaround bad `strip`s on macOS.
-            llvm_tools_enabled: true,
-
-            ..Default::default()
-        }
-    }
-
     pub fn set_dry_run(&mut self, dry_run: DryRun) {
         self.exec_ctx.set_dry_run(dry_run);
     }
