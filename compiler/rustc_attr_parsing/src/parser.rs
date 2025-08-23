@@ -328,14 +328,14 @@ fn expr_to_lit(
         match res {
             Ok(lit) => {
                 if token_lit.suffix.is_some() {
-                    should_emit.emit_err_or_delay(
+                    should_emit.emit_err(
                         psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
                     );
                     None
                 } else {
                     if !lit.kind.is_unsuffixed() {
                         // Emit error and continue, we can still parse the attribute as if the suffix isn't there
-                        should_emit.maybe_emit_err(
+                        should_emit.emit_err(
                             psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
                         );
                     }
@@ -355,6 +355,10 @@ fn expr_to_lit(
             }
         }
     } else {
+        if matches!(should_emit, ShouldEmit::Nothing) {
+            return None;
+        }
+
         // Example cases:
         // - `#[foo = 1+1]`: results in `ast::ExprKind::BinOp`.
         // - `#[foo = include_str!("nonexistent-file.rs")]`:
@@ -362,12 +366,8 @@ fn expr_to_lit(
         //   the error because an earlier error will have already
         //   been reported.
         let msg = "attribute value must be a literal";
-        let mut err = psess.dcx().struct_span_err(span, msg);
-        if let ExprKind::Err(_) = expr.kind {
-            err.downgrade_to_delayed_bug();
-        }
-
-        should_emit.emit_err_or_delay(err);
+        let err = psess.dcx().struct_span_err(span, msg);
+        should_emit.emit_err(err);
         None
     }
 }
@@ -400,7 +400,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
 
         if !lit.kind.is_unsuffixed() {
             // Emit error and continue, we can still parse the attribute as if the suffix isn't there
-            self.should_emit.maybe_emit_err(
+            self.should_emit.emit_err(
                 self.parser.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }),
             );
         }
@@ -542,7 +542,7 @@ impl<'a> MetaItemListParser<'a> {
         ) {
             Ok(s) => Some(s),
             Err(e) => {
-                should_emit.emit_err_or_delay(e);
+                should_emit.emit_err(e);
                 None
             }
         }
