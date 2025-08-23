@@ -198,7 +198,8 @@ fn check_version(config: &Config) -> Option<String> {
         Some(ChangeId::Id(id)) if id == latest_change_id => return None,
         Some(ChangeId::Ignore) => return None,
         Some(ChangeId::Id(id)) => id,
-        None => {
+        // The warning is only useful for development, not release tarballs
+        None if !config.rust_info.is_from_tarball() => {
             msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
             msg.push_str("NOTE: to silence this warning, ");
             msg.push_str(&format!(
@@ -206,6 +207,7 @@ fn check_version(config: &Config) -> Option<String> {
             ));
             return Some(msg);
         }
+        None => return None,
     };
 
     // Always try to use `change-id` from .last-warned-change-id first. If it doesn't exist,
