@@ -296,12 +296,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let span = this.machine.current_span();
 
-        // Store initial permissions for the "inside" part.
-        let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
-            ptr_size,
-            LocationState::new_accessed(Permission::new_disabled(), IdempotentForeignAccess::None), // this will be overwritten
-        );
-
         // When adding a new node, the SIFA of its parents needs to be updated, potentially across
         // the entire memory range. For the parts that are being accessed below, the access itself
         // trivially takes care of that. However, we have to do some more work to also deal with
@@ -329,58 +323,48 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             .get_tree_borrows_params()
             .precise_interior_mut;
 
-        // Set "inside" permissions.
-        if !precise_interior_mut {
-            let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
-            let (perm, access) = if ty_is_freeze {
+        // Compute initial "inside" permissions.
+        let loc_state = |frozen: bool| -> LocationState {
+            let (perm, access) = if frozen {
                 (new_perm.freeze_perm, new_perm.freeze_access)
             } else {
-                // Just pretend the entire thing is an `UnsafeCell`.
                 (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
             };
             let sifa = perm.strongest_idempotent_foreign_access(protected);
-            let new_loc = if access {
+            if access {
                 LocationState::new_accessed(perm, sifa)
             } else {
                 LocationState::new_non_accessed(perm, sifa)
-            };
-
-            for (_loc_range, loc) in perms_map.iter_mut_all() {
-                *loc = new_loc;
             }
+        };
+        let perms_map = if !precise_interior_mut {
+            // For `!Freeze` types, just pretend the entire thing is an `UnsafeCell`.
+            let ty_is_freeze = place.layout.ty.is_freeze(*this.tcx, this.typing_env());
+            let state = loc_state(ty_is_freeze);
+            DedupRangeMap::new(ptr_size, state)
         } else {
+            // The initial state will be overwritten by the visitor below.
+            let mut perms_map: DedupRangeMap<LocationState> = DedupRangeMap::new(
+                ptr_size,
+                LocationState::new_accessed(
+                    Permission::new_disabled(),
+                    IdempotentForeignAccess::None,
+                ),
+            );
             this.visit_freeze_sensitive(place, ptr_size, |range, frozen| {
-                // We are only ever `Frozen` inside the frozen bits.
-                let (perm, access) = if frozen {
-                    (new_perm.freeze_perm, new_perm.freeze_access)
-                } else {
-                    (new_perm.nonfreeze_perm, new_perm.nonfreeze_access)
-                };
-                let sifa = perm.strongest_idempotent_foreign_access(protected);
-                // NOTE: Currently, `access` is false if and only if `perm` is Cell, so this `if`
-                // doesn't not change whether any code is UB or not. We could just always use
-                // `new_accessed` and everything would stay the same. But that seems conceptually
-                // odd, so we keep the initial "accessed" bit of the `LocationState` in sync with whether
-                // a read access is performed below.
-                let new_loc = if access {
-                    LocationState::new_accessed(perm, sifa)
-                } else {
-                    LocationState::new_non_accessed(perm, sifa)
-                };
-
-                // Store initial permissions.
+                let state = loc_state(frozen);
                 for (_loc_range, loc) in perms_map.iter_mut(range.start, range.size) {
-                    *loc = new_loc;
+                    *loc = state;
                 }
-
                 interp_ok(())
             })?;
+            perms_map
         };
 
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
-        for (perm_range, perm) in perms_map.iter_mut_all() {
+        for (perm_range, perm) in perms_map.iter_all() {
             if perm.is_accessed() {
                 // Some reborrows incur a read access to the parent.
                 // Adjust range to be relative to allocation start (rather than to `place`).
