@@ -84,6 +84,7 @@ mod attrs;
 mod await_holding_invalid;
 mod blocks_in_conditions;
 mod bool_assert_comparison;
+mod bool_comparison;
 mod bool_to_int_with_if;
 mod booleans;
 mod borrow_deref_ref;
@@ -477,7 +478,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(float_literal::FloatLiteral));
     store.register_late_pass(|_| Box::new(ptr::Ptr));
     store.register_late_pass(|_| Box::new(needless_bool::NeedlessBool));
-    store.register_late_pass(|_| Box::new(needless_bool::BoolComparison));
+    store.register_late_pass(|_| Box::new(bool_comparison::BoolComparison));
     store.register_late_pass(|_| Box::new(needless_for_each::NeedlessForEach));
     store.register_late_pass(|_| Box::new(misc::LintPass));
     store.register_late_pass(|_| Box::new(eta_reduction::EtaReduction));
