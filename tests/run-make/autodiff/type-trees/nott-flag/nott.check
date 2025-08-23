@@ -1,3 +1,5 @@
-// TODO(KMJ-007): Update this test when TypeTree integration is complete
-// CHECK: square - {[-1]:Float@double} |{[-1]:Pointer}:{}
-// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double}
+// Check that enzyme_type attributes are NOT present when NoTT flag is used
+// This verifies the NoTT flag correctly disables TypeTree metadata
+
+CHECK: define{{.*}}@square
+CHECK-NOT: "enzyme_type"
