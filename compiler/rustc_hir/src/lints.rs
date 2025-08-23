@@ -35,4 +35,5 @@ pub enum AttributeLintKind {
     IllFormedAttributeInput { suggestions: Vec<String> },
     EmptyAttribute { first_span: Span },
     InvalidTarget { name: AttrPath, target: Target, applied: Vec<String>, only: &'static str },
+    InvalidStyle { name: AttrPath, is_used_as_inner: bool, target: Target, target_span: Span },
 }

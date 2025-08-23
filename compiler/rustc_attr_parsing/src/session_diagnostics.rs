@@ -6,7 +6,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
 };
 use rustc_feature::AttributeTemplate;
-use rustc_hir::AttrPath;
+use rustc_hir::{AttrPath, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -825,4 +825,14 @@ pub(crate) struct InvalidMetaItemRemoveNegSugg {
 pub(crate) struct SuffixedLiteralInAttribute {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_invalid_style)]
+pub(crate) struct InvalidAttrStyle {
+    pub name: AttrPath,
+    pub is_used_as_inner: bool,
+    #[note]
+    pub target_span: Option<Span>,
+    pub target: Target,
 }
