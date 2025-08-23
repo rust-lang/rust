@@ -595,7 +595,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
     store.register_late_pass(move |_| Box::new(unnecessary_wraps::UnnecessaryWraps::new(conf)));
-    store.register_late_pass(|_| Box::new(assertions_on_constants::AssertionsOnConstants));
+    store.register_late_pass(|_| Box::new(assertions_on_constants::AssertionsOnConstants::new(conf)));
     store.register_late_pass(|_| Box::new(assertions_on_result_states::AssertionsOnResultStates));
     store.register_late_pass(|_| Box::new(inherent_to_string::InherentToString));
     store.register_late_pass(move |_| Box::new(trait_bounds::TraitBounds::new(conf)));

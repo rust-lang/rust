@@ -1,100 +1,132 @@
-error: `assert!(true)` will be optimized out by the compiler
+error: this assertion is always `true`
   --> tests/ui/assertions_on_constants.rs:10:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
    = note: `-D clippy::assertions-on-constants` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
 
-error: `assert!(false)` should probably be replaced
+error: this assertion is always `false`
   --> tests/ui/assertions_on_constants.rs:13:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^
    |
-   = help: use `panic!()` or `unreachable!()`
+   = help: replace this with `panic!()` or `unreachable!()`
 
-error: `assert!(true)` will be optimized out by the compiler
+error: this assertion is always `true`
   --> tests/ui/assertions_on_constants.rs:16:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
 
-error: `assert!(false, ..)` should probably be replaced
+error: this assertion is always `false`
   --> tests/ui/assertions_on_constants.rs:19:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!(..)` or `unreachable!(..)`
+   = help: replace this with `panic!()` or `unreachable!()`
 
-error: `assert!(false, ..)` should probably be replaced
+error: this assertion is always `false`
   --> tests/ui/assertions_on_constants.rs:23:5
    |
 LL |     assert!(false, "{}", msg.to_uppercase());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!(..)` or `unreachable!(..)`
+   = help: replace this with `panic!()` or `unreachable!()`
 
-error: `assert!(true)` will be optimized out by the compiler
+error: this assertion has a constant value
   --> tests/ui/assertions_on_constants.rs:27:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^
    |
-   = help: remove it
+   = help: consider moving this into a const block: `const { assert!(..) }`
 
-error: `assert!(false)` should probably be replaced
+error: this assertion has a constant value
   --> tests/ui/assertions_on_constants.rs:31:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
    |
-   = help: use `panic!()` or `unreachable!()`
+   = help: consider moving this into a const block: `const { assert!(..) }`
 
-error: `assert!(false, ..)` should probably be replaced
+error: this assertion has a constant value
   --> tests/ui/assertions_on_constants.rs:34:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: use `panic!(..)` or `unreachable!(..)`
+   = help: consider moving this into a const block: `const { assert!(..) }`
 
-error: `debug_assert!(true)` will be optimized out by the compiler
+error: this assertion is always `true`
   --> tests/ui/assertions_on_constants.rs:37:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
 
-error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:54:19
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:53:19
    |
 LL |     const _: () = assert!(true);
    |                   ^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
 
-error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:57:5
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:56:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
 
-error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:66:5
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:67:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^
    |
-   = help: remove it
+   = help: remove the assertion
 
-error: aborting due to 12 previous errors
+error: this assertion is always `true`
+  --> tests/ui/assertions_on_constants.rs:70:5
+   |
+LL |     assert!(8 == (7 + 1));
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the assertion
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:78:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:89:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this into a const block: `const { assert!(..) }`
+
+error: this assertion has a constant value
+  --> tests/ui/assertions_on_constants.rs:95:5
+   |
+LL |     assert!(C);
+   |     ^^^^^^^^^^
+   |
+   = help: consider moving this to an anonymous constant: `const _: () = { assert!(..); }`
+
+error: aborting due to 16 previous errors
 
