@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -441,7 +441,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
     fn print_ident(&mut self, ident: Ident) {
-        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
+        self.word(IdentPrinter::for_ast_ident(ident, ident.guess_print_mode()).to_string());
         self.ann_post(ident)
     }
 
@@ -1015,17 +1015,16 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
             /* Name components */
             token::Ident(name, is_raw) => {
-                IdentPrinter::new(name, is_raw.into(), convert_dollar_crate).to_string().into()
+                IdentPrinter::new(name, is_raw.to_print_mode_ident(), convert_dollar_crate)
+                    .to_string()
+                    .into()
             }
             token::NtIdent(ident, is_raw) => {
-                IdentPrinter::for_ast_ident(ident, is_raw.into()).to_string().into()
+                IdentPrinter::for_ast_ident(ident, is_raw.to_print_mode_ident()).to_string().into()
             }
 
-            token::Lifetime(name, IdentIsRaw::No)
-            | token::NtLifetime(Ident { name, .. }, IdentIsRaw::No) => name.to_string().into(),
-            token::Lifetime(name, IdentIsRaw::Yes)
-            | token::NtLifetime(Ident { name, .. }, IdentIsRaw::Yes) => {
-                format!("'r#{}", &name.as_str()[1..]).into()
+            token::Lifetime(name, is_raw) | token::NtLifetime(Ident { name, .. }, is_raw) => {
+                IdentPrinter::new(name, is_raw.to_print_mode_lifetime(), None).to_string().into()
             }
 
             /* Other */

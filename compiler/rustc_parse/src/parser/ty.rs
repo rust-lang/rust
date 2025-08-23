@@ -1502,8 +1502,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             if matches!(is_raw, IdentIsRaw::No)
-                && ident.without_first_quote().is_reserved()
-                && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
+                && ident.without_first_quote().is_reserved_lifetime()
             {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
             }

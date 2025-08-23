@@ -3094,7 +3094,7 @@ impl<'a> Parser<'a> {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             // Disallow `'fn`, but with a better error message than `expect_lifetime`.
             if matches!(is_raw, IdentIsRaw::No) && ident.without_first_quote().is_reserved() {
-                self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
+                self.dcx().emit_err(errors::KeywordLabel { span: ident.span });
             }
 
             self.bump();
