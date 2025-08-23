@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                         Some(AttributeKind::Inline(InlineAttr::Never, cx.attr_span))
                     }
                     _ => {
-                        cx.expected_specific_argument(l.span(), vec!["always", "never"]);
+                        cx.expected_specific_argument(l.span(), &[sym::always, sym::never]);
                         return None;
                     }
                 }

@@ -206,16 +206,16 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
             _ => {
                 cx.expected_specific_argument(
                     name_value.value_span,
-                    vec![
-                        "available_externally",
-                        "common",
-                        "extern_weak",
-                        "external",
-                        "internal",
-                        "linkonce",
-                        "linkonce_odr",
-                        "weak",
-                        "weak_odr",
+                    &[
+                        sym::available_externally,
+                        sym::common,
+                        sym::extern_weak,
+                        sym::external,
+                        sym::internal,
+                        sym::linkonce,
+                        sym::linkonce_odr,
+                        sym::weak,
+                        sym::weak_odr,
                     ],
                 );
                 return None;

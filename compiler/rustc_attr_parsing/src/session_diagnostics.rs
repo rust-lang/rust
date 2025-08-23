@@ -558,7 +558,7 @@ pub(crate) struct LinkOrdinalOutOfRange {
     pub ordinal: u128,
 }
 
-pub(crate) enum AttributeParseErrorReason {
+pub(crate) enum AttributeParseErrorReason<'a> {
     ExpectedNoArgs,
     ExpectedStringLiteral {
         byte_string: Option<Span>,
@@ -571,7 +571,7 @@ pub(crate) enum AttributeParseErrorReason {
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument {
-        possibilities: Vec<&'static str>,
+        possibilities: &'a [Symbol],
         strings: bool,
         /// Should we tell the user to write a list when they didn't?
         list: bool,
@@ -579,16 +579,16 @@ pub(crate) enum AttributeParseErrorReason {
     ExpectedIdentifier,
 }
 
-pub(crate) struct AttributeParseError {
+pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
     pub(crate) attr_span: Span,
     pub(crate) attr_style: AttrStyle,
     pub(crate) template: AttributeTemplate,
     pub(crate) attribute: AttrPath,
-    pub(crate) reason: AttributeParseErrorReason,
+    pub(crate) reason: AttributeParseErrorReason<'a>,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let name = self.attribute.to_string();
 
@@ -657,7 +657,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 list: false,
             } => {
                 let quote = if strings { '"' } else { '`' };
-                match possibilities.as_slice() {
+                match possibilities {
                     &[] => {}
                     &[x] => {
                         diag.span_label(
@@ -687,7 +687,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 list: true,
             } => {
                 let quote = if strings { '"' } else { '`' };
-                match possibilities.as_slice() {
+                match possibilities {
                     &[] => {}
                     &[x] => {
                         diag.span_label(

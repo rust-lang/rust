@@ -35,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
             _ => {
-                cx.expected_specific_argument(single.span(), vec!["size", "speed", "none"]);
+                cx.expected_specific_argument(single.span(), &[sym::size, sym::speed, sym::none]);
                 OptimizeAttr::Default
             }
         };
@@ -82,7 +82,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
-            cx.expected_specific_argument_and_list(cx.attr_span, vec!["on", "off"]);
+            cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
             return None;
         };
 
@@ -91,7 +91,8 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
             return None;
         };
 
-        let fail_incorrect_argument = |span| cx.expected_specific_argument(span, vec!["on", "off"]);
+        let fail_incorrect_argument =
+            |span| cx.expected_specific_argument(span, &[sym::on, sym::off]);
 
         let Some(arg) = arg.meta_item() else {
             fail_incorrect_argument(args.span);
@@ -343,7 +344,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                             UsedBy::Linker
                         }
                         _ => {
-                            cx.expected_specific_argument(l.span(), vec!["compiler", "linker"]);
+                            cx.expected_specific_argument(l.span(), &[sym::compiler, sym::linker]);
                             return;
                         }
                     }

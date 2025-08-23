@@ -81,7 +81,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
                         return None;
                     };
                     if !single.path().word_is(sym::expected) {
-                        cx.expected_specific_argument_strings(list.span, vec!["expected"]);
+                        cx.expected_specific_argument_strings(list.span, &[sym::expected]);
                         return None;
                     }
                     let Some(nv) = single.args().name_value() else {

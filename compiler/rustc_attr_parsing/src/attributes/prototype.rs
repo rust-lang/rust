@@ -109,7 +109,7 @@ fn parse_dialect<S: Stage>(
         sym::runtime => MirDialect::Runtime,
 
         _ => {
-            cx.expected_specific_argument(span, vec!["analysis", "built", "runtime"]);
+            cx.expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
             *failed = true;
             return None;
         }
@@ -131,7 +131,7 @@ fn parse_phase<S: Stage>(
         sym::optimized => MirPhase::Optimized,
 
         _ => {
-            cx.expected_specific_argument(span, vec!["initial", "post-cleanup", "optimized"]);
+            cx.expected_specific_argument(span, &[sym::initial, sym::post_cleanup, sym::optimized]);
             *failed = true;
             return None;
         }
