@@ -88,7 +88,7 @@ cfg_select! {
         => {
         // abc
     }
-    _ => {
+    anything( "some other long long long long long thing long long long long long long long long long long long",) => {}
         // abc
     }
 }
