@@ -943,9 +943,14 @@ fn classify_name_ref<'db>(
             };
             let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
 
-            ast::ExprStmt::cast(prev_sibling.clone())
-                .and_then(|it| it.expr())
-                .or_else(|| ast::Expr::cast(prev_sibling))
+            match_ast! {
+                match prev_sibling {
+                    ast::ExprStmt(stmt) => stmt.expr().filter(|_| stmt.semicolon_token().is_none()),
+                    ast::LetStmt(stmt) => stmt.initializer().filter(|_| stmt.semicolon_token().is_none()),
+                    ast::Expr(expr) => Some(expr),
+                    _ => None,
+                }
+            }
         })();
         matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
     };
