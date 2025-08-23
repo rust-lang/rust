@@ -31,6 +31,6 @@ where
 }
 
 /// Normalizes Windows-style path delimiters to Unix-style paths.
-pub fn normalize_path_delimiters(name: &str) -> Cow<str> {
+pub fn normalize_path_delimiters(name: &str) -> Cow<'_, str> {
     if name.contains("\\") { name.replace('\\', "/").into() } else { name.into() }
 }
