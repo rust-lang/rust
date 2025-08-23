@@ -139,9 +139,8 @@ get an optimized toolchain as fast as possible, for a crater run or performance 
 even if it might not be working fully correctly.
 
 If you want to run a custom CI job in a try build and make sure that it passes all tests and does
-not produce any compilation warnings, you can select CI jobs to be executed by adding lines
-containing `try-job: <job pattern>` to the PR description. All such specified jobs will be executed
-in the try build once the `@bors try` command is used on the PR.
+not produce any compilation warnings, you can select CI jobs to be executed by providing them in
+the bors command like so: `@bors try jobs=<job pattern>`.
 
 Each pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
