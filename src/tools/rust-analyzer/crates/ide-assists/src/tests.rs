@@ -469,7 +469,6 @@ pub fn test_some_range(a: int) -> bool {
     let expected = labels(&assists);
 
     expect![[r#"
-        Convert integer base
         Extract into...
         Replace if let with match
     "#]]
@@ -502,7 +501,6 @@ pub fn test_some_range(a: int) -> bool {
         let expected = labels(&assists);
 
         expect![[r#"
-            Convert integer base
             Extract into...
             Replace if let with match
         "#]]
