@@ -34,16 +34,6 @@ fn lazy_default() {
 }
 
 #[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn lazy_poisoning() {
-    let x: LazyCell<String> = LazyCell::new(|| panic!("kaboom"));
-    for _ in 0..2 {
-        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| x.len()));
-        assert!(res.is_err());
-    }
-}
-
-#[test]
 #[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn sync_lazy_new() {
     static CALLED: AtomicUsize = AtomicUsize::new(0);
@@ -123,16 +113,6 @@ fn static_sync_lazy_via_fn() {
     assert_eq!(xs(), &vec![1, 2, 3]);
 }
 
-#[test]
-#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
-fn sync_lazy_poisoning() {
-    let x: LazyLock<String> = LazyLock::new(|| panic!("kaboom"));
-    for _ in 0..2 {
-        let res = panic::catch_unwind(|| x.len());
-        assert!(res.is_err());
-    }
-}
-
 // Check that we can infer `T` from closure's type.
 #[test]
 fn lazy_type_inference() {
@@ -146,17 +126,6 @@ fn is_sync_send() {
 }
 
 #[test]
-#[should_panic = "has previously been poisoned"]
-fn lazy_force_mut_panic() {
-    let mut lazy = LazyLock::<String>::new(|| panic!());
-    panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        let _ = LazyLock::force_mut(&mut lazy);
-    }))
-    .unwrap_err();
-    let _ = &*lazy;
-}
-
-#[test]
 fn lazy_force_mut() {
     let s = "abc".to_owned();
     let mut lazy = LazyLock::new(move || s);
@@ -164,4 +133,57 @@ fn lazy_force_mut() {
     let p = LazyLock::force_mut(&mut lazy);
     p.clear();
     LazyLock::force_mut(&mut lazy);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn lazy_poisoning() {
+    let x: LazyCell<String> = LazyCell::new(|| panic!("kaboom"));
+    for _ in 0..2 {
+        let res = panic::catch_unwind(panic::AssertUnwindSafe(|| x.len()));
+        assert!(res.is_err());
+    }
+}
+
+/// Verifies that when a `LazyLock` is poisoned, it panics with the correct error message ("LazyLock
+/// instance has previously been poisoned") instead of the underlying `Once` error message.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[should_panic(expected = "LazyLock instance has previously been poisoned")]
+fn lazy_lock_deref_panic() {
+    let lazy: LazyLock<String> = LazyLock::new(|| panic!("initialization failed"));
+
+    // First access will panic during initialization.
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        let _ = &*lazy;
+    }));
+
+    // Second access should panic with the poisoned message.
+    let _ = &*lazy;
+}
+
+#[test]
+#[should_panic(expected = "LazyLock instance has previously been poisoned")]
+fn lazy_lock_deref_mut_panic() {
+    let mut lazy: LazyLock<String> = LazyLock::new(|| panic!("initialization failed"));
+
+    // First access will panic during initialization.
+    let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        let _ = LazyLock::force_mut(&mut lazy);
+    }));
+
+    // Second access should panic with the poisoned message.
+    let _ = &*lazy;
+}
+
+/// Verifies that when the initialization closure panics with a custom message, that message is
+/// preserved and not overridden by `LazyLock`.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+#[should_panic(expected = "custom panic message from closure")]
+fn lazy_lock_preserves_closure_panic_message() {
+    let lazy: LazyLock<String> = LazyLock::new(|| panic!("custom panic message from closure"));
+
+    // This should panic with the original message from the closure.
+    let _ = &*lazy;
 }
