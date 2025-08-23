@@ -1087,7 +1087,8 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
-    if let Some(features) = find_attr!(attrs, AttributeKind::TargetFeature(features, _) => features)
+    if let Some(features) =
+        find_attr!(attrs, AttributeKind::TargetFeature { features, .. } => features)
     {
         for (feature, _) in features {
             cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));

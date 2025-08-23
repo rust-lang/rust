@@ -72,13 +72,23 @@ pub struct CodegenFnAttrs {
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
 }
 
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, PartialEq, Eq)]
+pub enum TargetFeatureKind {
+    /// The feature is implied by another feature, rather than explicitly added by the
+    /// `#[target_feature]` attribute
+    Implied,
+    /// The feature is added by the regular `target_feature` attribute.
+    Enabled,
+    /// The feature is added by the unsafe `force_target_feature` attribute.
+    Forced,
+}
+
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct TargetFeature {
     /// The name of the target feature (e.g. "avx")
     pub name: Symbol,
-    /// The feature is implied by another feature, rather than explicitly added by the
-    /// `#[target_feature]` attribute
-    pub implied: bool,
+    /// The way this feature was enabled.
+    pub kind: TargetFeatureKind,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
