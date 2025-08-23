@@ -1059,5 +1059,8 @@ lint_useless_ptr_null_checks_ref = references are not nullable, so checking them
 
 lint_uses_power_alignment = repr(C) does not follow the power alignment rule. This may affect platform C ABI compatibility for this type
 
+lint_varargs_without_pattern = missing pattern for `...` argument
+    .suggestion = name the argument, or use `_` to continue ignoring it
+
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest

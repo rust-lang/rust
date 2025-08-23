@@ -3233,6 +3233,13 @@ pub(crate) struct ReservedMultihash {
     pub suggestion: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_varargs_without_pattern)]
+pub(crate) struct VarargsWithoutPattern {
+    #[suggestion(code = "_: ...", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
 #[derive(Debug)]
 pub(crate) struct MismatchedLifetimeSyntaxes {
     pub inputs: LifetimeSyntaxCategories<Vec<Span>>,

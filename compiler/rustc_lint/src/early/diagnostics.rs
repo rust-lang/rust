@@ -478,5 +478,8 @@ pub fn decorate_builtin_lint(
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
+        BuiltinLintDiag::VarargsWithoutPattern { span } => {
+            lints::VarargsWithoutPattern { span }.decorate_lint(diag)
+        }
     }
 }

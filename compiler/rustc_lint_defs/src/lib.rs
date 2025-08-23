@@ -816,6 +816,9 @@ pub enum BuiltinLintDiag {
         cfg_name: Symbol,
         controlled_by: &'static str,
     },
+    VarargsWithoutPattern {
+        span: Span,
+    },
 }
 
 /// Lints that are buffered up early on in the `Session` before the
