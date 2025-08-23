@@ -85,8 +85,10 @@
 //! that contain `AllocId`s.
 
 use std::borrow::Cow;
+use std::hash::{Hash, Hasher};
 
 use either::Either;
+use hashbrown::hash_table::{Entry, HashTable};
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
@@ -94,7 +96,7 @@ use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet, MutableValues};
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -149,8 +151,16 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
 }
 
 newtype_index! {
+    #[debug_format = "_v{}"]
     struct VnIndex {}
 }
+
+newtype_index! {
+    #[debug_format = "_o{}"]
+    struct VnOpaque {}
+}
+
+const DETERMINISTIC: VnOpaque = VnOpaque::MAX;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressKind {
@@ -171,14 +181,14 @@ enum Value<'a, 'tcx> {
     // Root values.
     /// Used to represent values we know nothing about.
     /// The `usize` is a counter incremented by `new_opaque`.
-    Opaque(usize),
+    Opaque(VnOpaque),
     /// Evaluated or unevaluated constant value.
     Constant {
         value: Const<'tcx>,
         /// Some constants do not have a deterministic value. To avoid merging two instances of the
         /// same `Const`, we assign them an additional integer index.
-        // `disambiguator` is 0 iff the constant is deterministic.
-        disambiguator: usize,
+        // `disambiguator` is `DETERMINISTIC` iff the constant is deterministic.
+        disambiguator: VnOpaque,
     },
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
@@ -200,7 +210,7 @@ enum Value<'a, 'tcx> {
         projection: &'a [ProjectionElem<VnIndex, Ty<'tcx>>],
         kind: AddressKind,
         /// Give each borrow and pointer a different provenance, so we don't merge them.
-        provenance: usize,
+        provenance: VnOpaque,
     },
 
     // Extractions.
@@ -221,6 +231,85 @@ enum Value<'a, 'tcx> {
     },
 }
 
+struct ValueSet<'a, 'tcx> {
+    indices: HashTable<VnIndex>,
+    hashes: IndexVec<VnIndex, u64>,
+    values: IndexVec<VnIndex, Value<'a, 'tcx>>,
+    types: IndexVec<VnIndex, Ty<'tcx>>,
+    opaques: IndexVec<VnOpaque, VnIndex>,
+}
+
+impl<'a, 'tcx> ValueSet<'a, 'tcx> {
+    fn new(num_values: usize) -> ValueSet<'a, 'tcx> {
+        ValueSet {
+            indices: HashTable::with_capacity(num_values),
+            hashes: IndexVec::with_capacity(num_values),
+            values: IndexVec::with_capacity(num_values),
+            types: IndexVec::with_capacity(num_values),
+            opaques: IndexVec::with_capacity(num_values),
+        }
+    }
+
+    #[inline]
+    fn insert_unique(
+        &mut self,
+        ty: Ty<'tcx>,
+        value: impl FnOnce(VnOpaque) -> Value<'a, 'tcx>,
+    ) -> VnIndex {
+        let index = self.hashes.push(0);
+        let _index = self.types.push(ty);
+        debug_assert_eq!(index, _index);
+        let opaque = self.opaques.push(index);
+        let _index = self.values.push(value(opaque));
+        debug_assert_eq!(index, _index);
+        index
+    }
+
+    #[allow(rustc::pass_by_value)]
+    fn insert(&mut self, value: Value<'a, 'tcx>, ty: Ty<'tcx>) -> (VnIndex, bool) {
+        let hash: u64 = {
+            let mut h = FxHasher::default();
+            value.hash(&mut h);
+            ty.hash(&mut h);
+            h.finish()
+        };
+
+        let eq = |index: &VnIndex| self.values[*index] == value && self.types[*index] == ty;
+        let hasher = |index: &VnIndex| self.hashes[*index];
+        match self.indices.entry(hash, eq, hasher) {
+            Entry::Occupied(entry) => {
+                let index = *entry.get();
+                (index, false)
+            }
+            Entry::Vacant(entry) => {
+                let index = self.hashes.push(hash);
+                entry.insert(index);
+                let _index = self.values.push(value);
+                debug_assert_eq!(index, _index);
+                let _index = self.types.push(ty);
+                debug_assert_eq!(index, _index);
+                (index, true)
+            }
+        }
+    }
+
+    #[inline]
+    fn value(&self, index: VnIndex) -> Value<'a, 'tcx> {
+        self.values[index]
+    }
+
+    #[inline]
+    fn ty(&self, index: VnIndex) -> Ty<'tcx> {
+        self.types[index]
+    }
+
+    #[inline]
+    fn forget(&mut self, index: VnIndex) {
+        let opaque = self.opaques.push(index);
+        self.values[index] = Value::Opaque(opaque);
+    }
+}
+
 struct VnState<'body, 'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     ecx: InterpCx<'tcx, DummyMachine>,
@@ -233,11 +322,9 @@ struct VnState<'body, 'a, 'tcx> {
     rev_locals_ssa: IndexVec<VnIndex, SmallVec<[(Local, Location); 1]>>,
     // This vector holds the locals that are not SSA.
     rev_locals_non_ssa: FxHashMap<VnIndex, SmallVec<[(Local, Location); 1]>>,
-    values: FxIndexSet<(Value<'a, 'tcx>, Ty<'tcx>)>,
+    values: ValueSet<'a, 'tcx>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
-    /// Counter to generate different values.
-    next_opaque: usize,
     /// Cache the deref values.
     derefs: Vec<VnIndex>,
     ssa: &'body SsaLocals,
@@ -271,9 +358,8 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             locals: IndexVec::with_capacity(body.local_decls.len()),
             rev_locals_ssa: IndexVec::with_capacity(num_values),
             rev_locals_non_ssa: FxHashMap::default(),
-            values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
+            values: ValueSet::new(num_values),
             evaluated: IndexVec::with_capacity(num_values),
-            next_opaque: 1,
             derefs: Vec::new(),
             ssa,
             dominators,
@@ -299,10 +385,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn insert(&mut self, ty: Ty<'tcx>, value: Value<'a, 'tcx>) -> VnIndex {
-        let (index, new) = self.values.insert_full((value, ty));
-        let index = VnIndex::from_usize(index);
+        let (index, new) = self.values.insert(value, ty);
         if new {
-            // Grow `evaluated` and `rev_locals` here to amortize the allocations.
+            // Grow `evaluated` and `rev_locals_ssa` here to amortize the allocations.
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
@@ -312,18 +397,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         index
     }
 
-    fn next_opaque(&mut self) -> usize {
-        let next_opaque = self.next_opaque;
-        self.next_opaque += 1;
-        next_opaque
-    }
-
     /// Create a new `Value` for which we have no information at all, except that it is distinct
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
     fn new_opaque(&mut self, ty: Ty<'tcx>) -> VnIndex {
-        let value = Value::Opaque(self.next_opaque());
-        self.insert(ty, value)
+        let index = self.values.insert_unique(ty, Value::Opaque);
+        let _index = self.evaluated.push(None);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals_ssa.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        index
     }
 
     /// Create a new `Value::Address` distinct from all the others.
@@ -352,25 +435,57 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             AddressBase::Local(place.local)
         };
         // Do not try evaluating inside `Index`, this has been done by `simplify_place_value`.
-        let projection = self
-            .arena
-            .try_alloc_from_iter(
-                projection
-                    .map(|proj| proj.try_map(|value| Some(self.locals[value]), |ty| ty).ok_or(())),
-            )
-            .ok()?;
-        let value = Value::Address { base, projection, kind, provenance: self.next_opaque() };
-        Some(self.insert(ty, value))
+        let projection = projection
+            .map(|proj| proj.try_map(|value| Some(self.locals[value]), |ty| ty).ok_or(()));
+        let projection = self.arena.try_alloc_from_iter(projection).ok()?;
+
+        let index = self.values.insert_unique(ty, |provenance| Value::Address {
+            base,
+            projection,
+            kind,
+            provenance,
+        });
+        let evaluated = self.eval_to_const(index);
+        let _index = self.evaluated.push(evaluated);
+        debug_assert_eq!(index, _index);
+        let _index = self.rev_locals_ssa.push(SmallVec::new());
+        debug_assert_eq!(index, _index);
+        Some(index)
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
+        let (index, new) = if value.is_deterministic() {
+            // The constant is deterministic, no need to disambiguate.
+            let constant = Value::Constant { value, disambiguator: DETERMINISTIC };
+            self.values.insert(constant, value.ty())
+        } else {
+            // Multiple mentions of this constant will yield different values,
+            // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
+            let index = self.values.insert_unique(value.ty(), |disambiguator| {
+                debug_assert_ne!(disambiguator, DETERMINISTIC);
+                Value::Constant { value, disambiguator }
+            });
+            (index, true)
+        };
+        if new {
+            let evaluated = self.eval_to_const(index);
+            let _index = self.evaluated.push(evaluated);
+            debug_assert_eq!(index, _index);
+            let _index = self.rev_locals_ssa.push(SmallVec::new());
+            debug_assert_eq!(index, _index);
+        }
+        index
     }
 
     #[inline]
     fn get(&self, index: VnIndex) -> Value<'a, 'tcx> {
-        self.values.get_index(index.as_usize()).unwrap().0
+        self.values.value(index)
     }
 
     #[inline]
     fn ty(&self, index: VnIndex) -> Ty<'tcx> {
-        self.values.get_index(index.as_usize()).unwrap().1
+        self.values.ty(index)
     }
 
     /// Record that `local` is assigned `value`.
@@ -406,33 +521,18 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
-    fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
-        let disambiguator = if value.is_deterministic() {
-            // The constant is deterministic, no need to disambiguate.
-            0
-        } else {
-            // Multiple mentions of this constant will yield different values,
-            // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let disambiguator = self.next_opaque();
-            // `disambiguator: 0` means deterministic.
-            debug_assert_ne!(disambiguator, 0);
-            disambiguator
-        };
-        self.insert(value.ty(), Value::Constant { value, disambiguator })
-    }
-
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
         debug_assert!(value.is_deterministic());
-        self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: 0 })
+        self.insert(self.tcx.types.bool, Value::Constant { value, disambiguator: DETERMINISTIC })
     }
 
     fn insert_scalar(&mut self, ty: Ty<'tcx>, scalar: Scalar) -> VnIndex {
         // Scalars are deterministic.
         let value = Const::from_scalar(self.tcx, scalar, ty);
         debug_assert!(value.is_deterministic());
-        self.insert(ty, Value::Constant { value, disambiguator: 0 })
+        self.insert(ty, Value::Constant { value, disambiguator: DETERMINISTIC })
     }
 
     fn insert_tuple(&mut self, ty: Ty<'tcx>, values: &[VnIndex]) -> VnIndex {
@@ -447,8 +547,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     fn invalidate_derefs(&mut self) {
         for deref in std::mem::take(&mut self.derefs) {
-            let opaque = self.next_opaque();
-            self.values.get_index_mut2(deref.index()).unwrap().0 = Value::Opaque(opaque);
+            self.values.forget(deref);
         }
     }
 
@@ -1714,7 +1813,7 @@ impl<'tcx> VnState<'_, '_, 'tcx> {
         // This was already constant in MIR, do not change it. If the constant is not
         // deterministic, adding an additional mention of it in MIR will not give the same value as
         // the former mention.
-        if let Value::Constant { value, disambiguator: 0 } = self.get(index) {
+        if let Value::Constant { value, disambiguator: DETERMINISTIC } = self.get(index) {
             debug_assert!(value.is_deterministic());
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
