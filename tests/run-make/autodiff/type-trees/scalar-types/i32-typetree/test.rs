@@ -1,0 +1,14 @@
+#![feature(autodiff)]
+
+use std::autodiff::autodiff_reverse;
+
+#[autodiff_reverse(d_test, Const, Active)]
+#[no_mangle]
+fn test_i32(x: i32) -> i32 {
+    x * x
+}
+
+fn main() {
+    let x = 5_i32;
+    let _result = d_test(x, 1);
+}
