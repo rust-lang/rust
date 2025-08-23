@@ -117,7 +117,15 @@ cfg_select! {
 }
 
 cfg_select! {
-    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff" => {}
-    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff" => {}
-    _ => {}
+    feature
+        = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
+    => {
+        println!();
+    }
+    feature
+        = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
+    => {}
+    anything(
+        "some other long long long long long thing long long long long long long long long long long long",
+    ) => {}
 }

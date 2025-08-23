@@ -20,6 +20,7 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol};
 use tracing::debug;
 
 use crate::Config;
+use crate::attr::rewrite_meta_item_inner_result;
 use crate::comment::{
     CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment,
 };
@@ -1513,6 +1514,39 @@ fn format_lazy_static(
     Ok(result)
 }
 
+fn format_cfg_select_rule(
+    rule: &ast::MetaItemInner,
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    span: Span,
+) -> RewriteResult {
+    let mut result = String::with_capacity(128);
+
+    // The cfg plus ` => {` should stay within the line length.
+    let rule_shape = shape
+        .sub_width(" => {".len())
+        .max_width_error(shape.width, span)?;
+
+    let formatted = rewrite_meta_item_inner_result(rule, context, rule_shape, true)?;
+    result.push_str(&formatted);
+
+    let is_key_value = match rule {
+        ast::MetaItemInner::MetaItem(ref meta_item) => {
+            matches!(meta_item.kind, ast::MetaItemKind::NameValue(_))
+        }
+        _ => false,
+    };
+
+    if is_key_value && formatted.contains('\n') {
+        result.push_str(&shape.indent.to_string_with_newline(context.config));
+        result.push_str("=>");
+    } else {
+        result.push_str(" =>");
+    }
+
+    Ok(result)
+}
+
 fn format_cfg_select(
     context: &RewriteContext<'_>,
     shape: Shape,
@@ -1529,16 +1563,10 @@ fn format_cfg_select(
         .block_indent(context.config.tab_spaces())
         .with_max_width(context.config);
 
-    // The cfg plus ` => {` should stay within the line length.
-    let rule_shape = shape
-        .sub_width(" => {".len())
-        .max_width_error(shape.width, span)?;
-
     result.push_str(&shape.indent.to_string_with_newline(context.config));
 
     for (rule, rhs, _) in branches.reachable {
-        result.push_str(&rule.rewrite_result(context, rule_shape)?);
-        result.push_str(" =>");
+        result.push_str(&format_cfg_select_rule(&rule, context, shape, span)?);
         result.push_str(&format_cfg_select_rhs(context, shape, rhs)?);
     }
 
@@ -1552,14 +1580,13 @@ fn format_cfg_select(
 
         match lhs {
             CfgSelectPredicate::Cfg(rule) => {
-                result.push_str(&rule.rewrite_result(context, rule_shape)?);
+                result.push_str(&format_cfg_select_rule(&rule, context, shape, span)?);
             }
             CfgSelectPredicate::Wildcard(_) => {
-                result.push('_');
+                result.push_str("_ =>");
             }
         }
 
-        result.push_str(" =>");
         result.push_str(&format_cfg_select_rhs(context, shape, rhs)?);
     }
 

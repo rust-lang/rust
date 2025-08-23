@@ -355,7 +355,8 @@ pub(crate) fn rewrite_meta_item_result(
                         // Insert a line break before the `=`.
                         let mut result = String::new();
                         result.push_str(&path);
-                        result.push_str(&shape.indent.to_string_with_newline(context.config));
+                        let indented = shape.indent.block_indent(context.config);
+                        result.push_str(&indented.to_string_with_newline(context.config));
                         result.push_str("= ");
                         result.push_str(context.snippet(lit.span));
 
