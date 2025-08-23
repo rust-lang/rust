@@ -1,0 +1,3 @@
+// TODO(KMJ-007): Update this test when TypeTree integration is complete
+// CHECK: square - {[-1]:Float@double} |{[-1]:Pointer}:{}
+// CHECK: ptr %{{[0-9]+}}: {[-1]:Pointer, [-1,0]:Float@double}
