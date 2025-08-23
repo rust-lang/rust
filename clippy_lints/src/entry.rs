@@ -314,7 +314,9 @@ struct InsertExpr<'tcx> {
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
     if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
-        if cx.tcx.is_diagnostic_item(sym::btreemap_insert, id) || cx.tcx.is_diagnostic_item(sym::hashmap_insert, id) {
+        if let Some(insert) = cx.tcx.get_diagnostic_name(id)
+            && matches!(insert, sym::btreemap_insert | sym::hashmap_insert)
+        {
             Some(InsertExpr { map, key, value })
         } else {
             None

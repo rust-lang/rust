@@ -233,18 +233,16 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym::is_some {
-                Some(Self::IsSome {
+            match (cx.tcx.get_diagnostic_name(recv_ty.did()), path.ident.name) {
+                (Some(sym::Option), sym::is_some) => Some(Self::IsSome {
                     receiver,
                     side_effect_expr_span,
-                })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym::is_ok {
-                Some(Self::IsOk {
+                }),
+                (Some(sym::Result), sym::is_ok) => Some(Self::IsOk {
                     receiver,
                     side_effect_expr_span,
-                })
-            } else {
-                None
+                }),
+                _ => None,
             }
         } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             // we know for a fact that the wildcard pattern is the second arm
