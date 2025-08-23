@@ -265,7 +265,7 @@ impl Stage for Early {
         sess: &'sess Session,
         diag: impl for<'x> Diagnostic<'x>,
     ) -> ErrorGuaranteed {
-        self.should_emit().emit_err_or_delay(sess.dcx().create_err(diag))
+        self.should_emit().emit_err(sess.dcx().create_err(diag))
     }
 
     fn should_emit(&self) -> ShouldEmit {
@@ -667,29 +667,12 @@ pub enum ShouldEmit {
 }
 
 impl ShouldEmit {
-    pub(crate) fn emit_err_or_delay(&self, diag: Diag<'_>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(&self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
             ShouldEmit::EarlyFatal if diag.level() == Level::DelayedBug => diag.emit(),
             ShouldEmit::EarlyFatal => diag.upgrade_to_fatal().emit(),
             ShouldEmit::ErrorsAndLints => diag.emit(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
-        }
-    }
-
-    pub(crate) fn maybe_emit_err(&self, diag: Diag<'_>) {
-        match self {
-            ShouldEmit::EarlyFatal if diag.level() == Level::DelayedBug => {
-                diag.emit();
-            }
-            ShouldEmit::EarlyFatal => {
-                diag.upgrade_to_fatal().emit();
-            }
-            ShouldEmit::ErrorsAndLints => {
-                diag.emit();
-            }
-            ShouldEmit::Nothing => {
-                diag.cancel();
-            }
         }
     }
 }
