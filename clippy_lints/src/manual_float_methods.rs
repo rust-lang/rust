@@ -202,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
     }
 }
 
-fn is_infinity(constant: &Constant<'_>) -> bool {
+fn is_infinity(constant: &Constant) -> bool {
     match constant {
         // FIXME(f16_f128): add f16 and f128 when constants are available
         Constant::F32(float) => *float == f32::INFINITY,
@@ -211,7 +211,7 @@ fn is_infinity(constant: &Constant<'_>) -> bool {
     }
 }
 
-fn is_neg_infinity(constant: &Constant<'_>) -> bool {
+fn is_neg_infinity(constant: &Constant) -> bool {
     match constant {
         // FIXME(f16_f128): add f16 and f128 when constants are available
         Constant::F32(float) => *float == f32::NEG_INFINITY,
