@@ -244,3 +244,18 @@ mod issue_4077 {
         true
     }
 }
+
+#[allow(clippy::let_unit_value)]
+fn issue14550(mut producer: impl Iterator<Item = Result<i32, u32>>) -> Result<u32, u32> {
+    let mut counter = 2;
+    loop {
+        match producer.next().unwrap() {
+            Ok(ok) => break Ok((ok + 1) as u32),
+            Err(12) => {
+                counter -= 1;
+                continue;
+            },
+            err => err?,
+        };
+    }
+}

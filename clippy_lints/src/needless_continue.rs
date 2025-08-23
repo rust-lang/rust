@@ -413,7 +413,7 @@ fn suggestion_snippet_for_continue_inside_else(cx: &LateContext<'_>, data: &Lint
     )
 }
 
-fn check_last_stmt_in_expr<F>(inner_expr: &Expr<'_>, func: &F)
+fn check_last_stmt_in_expr<F>(cx: &LateContext<'_>, inner_expr: &Expr<'_>, func: &F)
 where
     F: Fn(Option<&Label>, Span),
 {
@@ -422,36 +422,40 @@ where
             func(continue_label.label.as_ref(), inner_expr.span);
         },
         ExprKind::If(_, then_block, else_block) if let ExprKind::Block(then_block, _) = then_block.kind => {
-            check_last_stmt_in_block(then_block, func);
+            check_last_stmt_in_block(cx, then_block, func);
             if let Some(else_block) = else_block {
-                check_last_stmt_in_expr(else_block, func);
+                check_last_stmt_in_expr(cx, else_block, func);
             }
         },
         ExprKind::Match(_, arms, _) => {
+            let match_ty = cx.typeck_results().expr_ty(inner_expr);
+            if !match_ty.is_unit() && !match_ty.is_never() {
+                return;
+            }
             for arm in arms.iter() {
-                check_last_stmt_in_expr(arm.body, func);
+                check_last_stmt_in_expr(cx, arm.body, func);
             }
         },
         ExprKind::Block(b, _) => {
-            check_last_stmt_in_block(b, func);
+            check_last_stmt_in_block(cx, b, func);
         },
         _ => {},
     }
 }
 
-fn check_last_stmt_in_block<F>(b: &Block<'_>, func: &F)
+fn check_last_stmt_in_block<F>(cx: &LateContext<'_>, b: &Block<'_>, func: &F)
 where
     F: Fn(Option<&Label>, Span),
 {
     if let Some(expr) = b.expr {
-        check_last_stmt_in_expr(expr, func);
+        check_last_stmt_in_expr(cx, expr, func);
         return;
     }
 
     if let Some(last_stmt) = b.stmts.last()
         && let StmtKind::Expr(inner_expr) | StmtKind::Semi(inner_expr) = last_stmt.kind
     {
-        check_last_stmt_in_expr(inner_expr, func);
+        check_last_stmt_in_expr(cx, inner_expr, func);
     }
 }
 
@@ -501,7 +505,7 @@ fn check_and_warn(cx: &LateContext<'_>, expr: &Expr<'_>) {
             }
 
             if i == stmts.len() - 1 && loop_block.expr.is_none() && !maybe_emitted_in_if {
-                check_last_stmt_in_block(loop_block, &p);
+                check_last_stmt_in_block(cx, loop_block, &p);
             }
         }
 
@@ -534,7 +538,7 @@ fn check_and_warn(cx: &LateContext<'_>, expr: &Expr<'_>) {
             });
 
             if !maybe_emitted_in_if {
-                check_last_stmt_in_block(loop_block, &p);
+                check_last_stmt_in_block(cx, loop_block, &p);
             }
         }
     });
