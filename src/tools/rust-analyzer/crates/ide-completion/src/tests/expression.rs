@@ -2622,3 +2622,13 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn let_in_condition() {
+    check_edit("let", r#"fn f() { if $0 {} }"#, r#"fn f() { if let $1 = $0 {} }"#);
+}
+
+#[test]
+fn let_in_let_chain() {
+    check_edit("let", r#"fn f() { if true && $0 {} }"#, r#"fn f() { if true && let $1 = $0 {} }"#);
+}
