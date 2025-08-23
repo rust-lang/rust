@@ -436,11 +436,7 @@ where
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
         if let Some(stalled_on) = stalled_on
-            && !stalled_on.stalled_vars.iter().any(|value| self.delegate.is_changed_arg(*value))
-            && !self
-                .delegate
-                .opaque_types_storage_num_entries()
-                .needs_reevaluation(stalled_on.num_opaques)
+            && self.delegate.is_still_stalled(&stalled_on)
         {
             return Ok((
                 NestedNormalizationGoals::empty(),
@@ -643,15 +639,24 @@ where
     ///
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
+        if self.nested_goals.is_empty() {
+            return Ok(Some(Certainty::Yes));
+        }
+
         let cx = self.cx();
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
+
+        let mut nested_goals = mem::take(&mut self.nested_goals);
+        let mut pending_goals = vec![];
+        for (source, goal, stalled_on) in nested_goals.extract_if(.., |(_, _, stalled_on)| {
+            stalled_on.as_ref().is_none_or(|s| !self.delegate.is_still_stalled(s))
+        }) {
             if let Some(certainty) = self.delegate.compute_goal_fast_path(goal, self.origin_span) {
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
-                        self.nested_goals.push((source, goal, None));
+                        pending_goals.push((source, goal, None));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
@@ -688,7 +693,7 @@ where
                 )?;
                 // Add the nested goals from normalization to our own nested goals.
                 trace!(?nested_goals);
-                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
+                pending_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
 
                 // Finally, equate the goal's RHS with the unconstrained var.
                 //
@@ -732,7 +737,7 @@ where
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
-                        self.nested_goals.push((source, with_resolved_vars, stalled_on));
+                        pending_goals.push((source, with_resolved_vars, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
@@ -746,12 +751,24 @@ where
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
-                        self.nested_goals.push((source, goal, stalled_on));
+                        pending_goals.push((source, goal, stalled_on));
                         unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             }
         }
+
+        // Nested goals still need to be accounted for in the `unchanged_certainty`.
+        for (_, _, stalled_on) in &nested_goals {
+            if let Some(GoalStalledOn { stalled_cause, .. }) = stalled_on {
+                unchanged_certainty =
+                    unchanged_certainty.map(|c| c.and(Certainty::Maybe(*stalled_cause)));
+            }
+        }
+
+        debug_assert!(self.nested_goals.is_empty());
+        nested_goals.extend(pending_goals);
+        self.nested_goals = nested_goals;
 
         Ok(unchanged_certainty)
     }
