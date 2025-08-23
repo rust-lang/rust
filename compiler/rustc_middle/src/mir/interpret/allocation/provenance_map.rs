@@ -120,6 +120,17 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         }
     }
 
+    /// Gets the provenances of all bytes (including from pointers) in a range.
+    pub fn get_range(
+        &self,
+        cx: &impl HasDataLayout,
+        range: AllocRange,
+    ) -> impl Iterator<Item = Prov> {
+        let ptr_provs = self.range_ptrs_get(range, cx).iter().map(|(_, p)| *p);
+        let byte_provs = self.range_bytes_get(range).iter().map(|(_, (p, _))| *p);
+        ptr_provs.chain(byte_provs)
+    }
+
     /// Attempt to merge per-byte provenance back into ptr chunks, if the right fragments
     /// sit next to each other. Return `false` is that is not possible due to partial pointers.
     pub fn merge_bytes(&mut self, cx: &impl HasDataLayout) -> bool {
