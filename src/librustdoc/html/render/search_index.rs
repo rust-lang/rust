@@ -1494,7 +1494,9 @@ pub(crate) fn build_index(
             let search_unbox = match id {
                 RenderTypeId::Mut => false,
                 RenderTypeId::DefId(defid) => utils::has_doc_flag(tcx, defid, sym::search_unbox),
-                RenderTypeId::Primitive(PrimitiveType::Reference | PrimitiveType::Tuple) => true,
+                RenderTypeId::Primitive(
+                    PrimitiveType::Reference | PrimitiveType::RawPointer | PrimitiveType::Tuple,
+                ) => true,
                 RenderTypeId::Primitive(..) => false,
                 RenderTypeId::AssociatedType(..) => false,
                 // this bool is only used by `insert_into_map`, so it doesn't matter what we set here
@@ -1855,7 +1857,7 @@ fn get_index_type_id(
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
         clean::BorrowedRef { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::Reference)),
-        clean::RawPointer(_, ref type_) => get_index_type_id(type_, rgen),
+        clean::RawPointer { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::RawPointer)),
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
@@ -2113,7 +2115,8 @@ fn simplify_fn_type<'a, 'tcx>(
                 generics: Some(ty_generics),
             });
         }
-        Type::BorrowedRef { lifetime: _, mutability, ref type_ } => {
+        Type::BorrowedRef { lifetime: _, mutability, ref type_ }
+        | Type::RawPointer(mutability, ref type_) => {
             let mut ty_generics = Vec::new();
             if mutability.is_mut() {
                 ty_generics.push(RenderType {
