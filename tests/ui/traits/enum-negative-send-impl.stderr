@@ -6,7 +6,11 @@ LL |     requires_send(container);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Container`, the trait `Send` is not implemented for `NoSend`
+help: within `Container`, the trait `Send` is not implemented for `NoSend`
+  --> $DIR/enum-negative-send-impl.rs:9:1
+   |
+LL | struct NoSend;
+   | ^^^^^^^^^^^^^
 note: required because it appears within the type `Container`
   --> $DIR/enum-negative-send-impl.rs:12:6
    |

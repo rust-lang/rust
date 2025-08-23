@@ -12,7 +12,11 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `derived_drop::Client`
+help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `derived_drop::Client`
+  --> $DIR/drop-tracking-parent-expression.rs:51:46
+   |
+LL |         derived_drop => { #[derive(Default)] pub struct Client { pub nickname: String } };
+   |                                              ^^^^^^^^^^^^^^^^^
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:23:22
    |
@@ -50,7 +54,11 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `significant_drop::Client`
+help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `significant_drop::Client`
+  --> $DIR/drop-tracking-parent-expression.rs:55:13
+   |
+LL |             pub struct Client;
+   |             ^^^^^^^^^^^^^^^^^
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:23:22
    |
@@ -88,7 +96,11 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:19:34: 19:41}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+  --> $DIR/drop-tracking-parent-expression.rs:64:13
+   |
+LL |             pub struct Client;
+   |             ^^^^^^^^^^^^^^^^^
 note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:23:22
    |

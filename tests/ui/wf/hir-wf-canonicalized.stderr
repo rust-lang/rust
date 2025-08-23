@@ -2,8 +2,13 @@ error[E0277]: the trait bound `Bar<'a, T>: Foo` is not satisfied
   --> $DIR/hir-wf-canonicalized.rs:10:15
    |
 LL |     callback: Box<dyn Callback<dyn Callback<Bar<'a, T>>>>,
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bar<'a, T>`
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Foo` is not implemented for `Bar<'a, T>`
+  --> $DIR/hir-wf-canonicalized.rs:9:1
+   |
+LL | struct Bar<'a, T> {
+   | ^^^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/hir-wf-canonicalized.rs:3:1
    |
