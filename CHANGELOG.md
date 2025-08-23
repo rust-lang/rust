@@ -6798,6 +6798,7 @@ Released 2018-09-13
 [`vec_resize_to_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#vec_resize_to_zero
 [`verbose_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#verbose_bit_mask
 [`verbose_file_reads`]: https://rust-lang.github.io/rust-clippy/master/index.html#verbose_file_reads
+[`volatile_composites`]: https://rust-lang.github.io/rust-clippy/master/index.html#volatile_composites
 [`vtable_address_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#vtable_address_comparisons
 [`waker_clone_wake`]: https://rust-lang.github.io/rust-clippy/master/index.html#waker_clone_wake
 [`while_float`]: https://rust-lang.github.io/rust-clippy/master/index.html#while_float
