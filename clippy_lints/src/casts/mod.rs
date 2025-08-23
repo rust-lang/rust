@@ -911,6 +911,9 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         if self.msrv.meets(cx, msrvs::RAW_REF_OP) {
             borrow_as_ptr::check_implicit_cast(cx, expr);
         }
+        if self.msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS) {
+            cast_slice_from_raw_parts::check_implicit_cast(cx, expr);
+        }
         cast_ptr_alignment::check(cx, expr);
         ptr_as_ptr::check(cx, expr, self.msrv);
         cast_slice_different_sizes::check(cx, expr, self.msrv);
