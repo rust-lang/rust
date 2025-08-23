@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_expr;
@@ -194,7 +194,17 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
         if let Some(sugg) = sugg {
             span_lint_and_sugg(cx, MAP_ENTRY, expr.span, lint_msg, "try", sugg, app);
         } else {
-            span_lint(cx, MAP_ENTRY, expr.span, lint_msg);
+            span_lint_and_help(
+                cx,
+                MAP_ENTRY,
+                expr.span,
+                lint_msg,
+                None,
+                format!(
+                    "consider using the `Entry` API: https://doc.rust-lang.org/std/collections/struct.{}.html#entry-api",
+                    map_ty.name()
+                ),
+            );
         }
     }
 }
