@@ -937,7 +937,7 @@ pub enum PatKind {
 #[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Walkable)]
 pub enum PatFieldsRest {
     /// `module::StructName { field, ..}`
-    Rest,
+    Rest(Span),
     /// `module::StructName { field, syntax error }`
     Recovered(ErrorGuaranteed),
     /// `module::StructName { field }`
@@ -4051,8 +4051,8 @@ mod size_asserts {
     static_assert_size!(Local, 96);
     static_assert_size!(MetaItemLit, 40);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 72);
-    static_assert_size!(PatKind, 48);
+    static_assert_size!(Pat, 80);
+    static_assert_size!(PatKind, 56);
     static_assert_size!(Path, 24);
     static_assert_size!(PathSegment, 24);
     static_assert_size!(Stmt, 32);

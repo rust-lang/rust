@@ -1516,7 +1516,7 @@ impl<'a> Parser<'a> {
                 || self.check_noexpect(&token::DotDotDot)
                 || self.check_keyword(exp!(Underscore))
             {
-                etc = PatFieldsRest::Rest;
+                etc = PatFieldsRest::Rest(self.token.span);
                 let mut etc_sp = self.token.span;
                 if first_etc_and_maybe_comma_span.is_none() {
                     if let Some(comma_tok) =
