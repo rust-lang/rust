@@ -898,7 +898,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if path.len() == 1 {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
-                if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
+                if let RibKind::Module(module) | RibKind::Block { module: Some(module), .. } =
+                    rib.kind
                     && let Some(did) = find_doc_alias_name(self.r, module, item.name)
                 {
                     return Some((did, item));
@@ -2438,7 +2439,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) -> TypoCandidate {
         let mut names = Vec::new();
         if let [segment] = path {
-            let mut ctxt = segment.ident.span.ctxt();
+            let ctxt = segment.ident.span.ctxt();
 
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
@@ -2456,7 +2457,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
 
-                if let RibKind::Block(Some(module)) = rib.kind {
+                if let RibKind::Block { module: Some(module), .. } = rib.kind {
                     self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
                 } else if let RibKind::Module(module) = rib.kind {
                     // Encountered a module item, abandon ribs and look into that module and preludes.
@@ -2469,14 +2470,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         filter_fn,
                     );
                     break;
-                }
-
-                if let RibKind::MacroDefinition(def) = rib.kind
-                    && def == self.r.macro_def(ctxt)
-                {
-                    // If an invocation of this macro created `ident`, give up on `ident`
-                    // and switch to `ident`'s source from the macro definition.
-                    ctxt.remove_mark();
                 }
             }
         } else {
