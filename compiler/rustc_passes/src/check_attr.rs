@@ -18,7 +18,7 @@ use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP,
     BuiltinAttribute,
 };
-use rustc_hir::attrs::{AttributeKind, InlineAttr, MirDialect, MirPhase, ReprAttr};
+use rustc_hir::attrs::{AttributeKind, InlineAttr, MirDialect, MirPhase, ReprAttr, SanitizerSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -197,6 +197,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::CustomMir(dialect, phase, attr_span)) => {
                     self.check_custom_mir(dialect, phase, attr_span)
                 }
+                &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, span: attr_span}) => {
+                    self.check_sanitize(attr_span, on_set | off_set, span, target);
+                },
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -257,9 +260,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
-                        }
-                        [sym::sanitize, ..] => {
-                            self.check_sanitize(attr, span, target)
                         }
                         [sym::thread_local, ..] => self.check_thread_local(attr, span, target),
                         [sym::doc, ..] => self.check_doc_attrs(
@@ -483,42 +483,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that the `#[sanitize(..)]` attribute is applied to a
     /// function/closure/method, or to an impl block or module.
-    fn check_sanitize(&self, attr: &Attribute, target_span: Span, target: Target) {
+    fn check_sanitize(
+        &self,
+        attr_span: Span,
+        set: SanitizerSet,
+        target_span: Span,
+        target: Target,
+    ) {
         let mut not_fn_impl_mod = None;
         let mut no_body = None;
 
-        if let Some(list) = attr.meta_item_list() {
-            for item in list.iter() {
-                let MetaItemInner::MetaItem(set) = item else {
-                    return;
-                };
-                let segments = set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
-                match target {
-                    Target::Fn
-                    | Target::Closure
-                    | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
-                    | Target::Impl { .. }
-                    | Target::Mod => return,
-                    Target::Static if matches!(segments.as_slice(), [sym::address]) => return,
-
-                    // These are "functions", but they aren't allowed because they don't
-                    // have a body, so the usual explanation would be confusing.
-                    Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
-                        no_body = Some(target_span);
-                    }
-
-                    _ => {
-                        not_fn_impl_mod = Some(target_span);
-                    }
-                }
+        match target {
+            Target::Fn
+            | Target::Closure
+            | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Impl { .. }
+            | Target::Mod => return,
+            Target::Static
+                // if we mask out the address bits, i.e. *only* address was set,
+                // we allow it
+                if set & !(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS)
+                    == SanitizerSet::empty() =>
+            {
+                return;
             }
-            self.dcx().emit_err(errors::SanitizeAttributeNotAllowed {
-                attr_span: attr.span(),
-                not_fn_impl_mod,
-                no_body,
-                help: (),
-            });
+
+            // These are "functions", but they aren't allowed because they don't
+            // have a body, so the usual explanation would be confusing.
+            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
+                no_body = Some(target_span);
+            }
+
+            _ => {
+                not_fn_impl_mod = Some(target_span);
+            }
         }
+
+        self.dcx().emit_err(errors::SanitizeAttributeNotAllowed {
+            attr_span,
+            not_fn_impl_mod,
+            no_body,
+            help: (),
+        });
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
