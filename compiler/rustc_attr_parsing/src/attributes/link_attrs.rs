@@ -110,8 +110,11 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::ForeignFn), Allow(Target::ForeignStatic)]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Warn(Target::MacroCall),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(
         List: &["ordinal"],
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
