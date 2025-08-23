@@ -79,16 +79,26 @@ cfg_select! {
     _ => {}
 }
 
+// When there is no way to make the line fit, formatting bails.
 cfg_select! {
     feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
     => {
         // abc
+        println!();
     }
     feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
         => {
         // abc
     }
-    _ => {
-        // abc
+    anything("some other long long long long long thing long long long long long long long long long long long") => {
+    }
+}
+
+// Unfortunately comments are dropped.
+cfg_select! {
+    _ => { /* a comment */ }
+    false => {
+        /* a comment */
+        { 1 }
     }
 }

@@ -116,8 +116,27 @@ cfg_select! {
     _ => {}
 }
 
+// When there is no way to make the cfg fit, formatting bails.
 cfg_select! {
-    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff" => {}
-    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff" => {}
+    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
+    => {
+        // abc
+        println!();
+    }
+    feature = "debug-with-rustfmt-long-long-long-long-loooooooonnnnnnnnnnnnnnnggggggffffffffffffffff"
+        => {
+        // abc
+    }
+    anything("some other long long long long long thing long long long long long long long long long long long") => {
+    }
+}
+
+// Unfortunately comments are dropped.
+cfg_select! {
     _ => {}
+    false => {
+        {
+            1
+        }
+    }
 }
