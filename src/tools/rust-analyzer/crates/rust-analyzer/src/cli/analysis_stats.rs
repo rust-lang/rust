@@ -1137,6 +1137,7 @@ impl flags::AnalysisStats {
                     },
                     chaining_hints: true,
                     adjustment_hints: ide::AdjustmentHints::Always,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: ide::AdjustmentHintsMode::Postfix,
                     adjustment_hints_hide_outside_unsafe: false,
                     closure_return_type_hints: ide::ClosureReturnTypeHints::Always,

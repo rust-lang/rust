@@ -959,6 +959,17 @@ Default: `"never"`
 Show enum variant discriminant hints.
 
 
+## rust-analyzer.inlayHints.expressionAdjustmentHints.disableReborrows {#inlayHints.expressionAdjustmentHints.disableReborrows}
+
+Default: `true`
+
+Disable reborrows in expression adjustments inlay hints.
+
+Reborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.
+
+Note: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.
+
+
 ## rust-analyzer.inlayHints.expressionAdjustmentHints.enable {#inlayHints.expressionAdjustmentHints.enable}
 
 Default: `"never"`

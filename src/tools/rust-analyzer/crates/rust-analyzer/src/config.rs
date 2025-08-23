@@ -226,6 +226,14 @@ config_data! {
         inlayHints_discriminantHints_enable: DiscriminantHintsDef =
             DiscriminantHintsDef::Never,
 
+        /// Disable reborrows in expression adjustments inlay hints.
+        ///
+        /// Reborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.
+        ///
+        /// Note: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.
+        inlayHints_expressionAdjustmentHints_disableReborrows: bool =
+            true,
+
         /// Show inlay hints for type adjustments.
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef =
             AdjustmentHintsDef::Never,
@@ -1888,12 +1896,14 @@ impl Config {
                 AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
                 AdjustmentHintsDef::Never => match self.inlayHints_reborrowHints_enable() {
                     ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
-                        ide::AdjustmentHints::ReborrowOnly
+                        ide::AdjustmentHints::BorrowsOnly
                     }
                     ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
                 },
-                AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
+                AdjustmentHintsDef::Borrows => ide::AdjustmentHints::BorrowsOnly,
             },
+            adjustment_hints_disable_reborrows: *self
+                .inlayHints_expressionAdjustmentHints_disableReborrows(),
             adjustment_hints_mode: match self.inlayHints_expressionAdjustmentHints_mode() {
                 AdjustmentHintsModeDef::Prefix => ide::AdjustmentHintsMode::Prefix,
                 AdjustmentHintsModeDef::Postfix => ide::AdjustmentHintsMode::Postfix,
@@ -2822,7 +2832,8 @@ enum ReborrowHintsDef {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum AdjustmentHintsDef {
-    Reborrow,
+    #[serde(alias = "Reborrow")]
+    Borrows,
     #[serde(with = "true_or_always")]
     #[serde(untagged)]
     Always,

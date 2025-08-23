@@ -2212,6 +2212,16 @@
             {
                 "title": "Inlay Hints",
                 "properties": {
+                    "rust-analyzer.inlayHints.expressionAdjustmentHints.disableReborrows": {
+                        "markdownDescription": "Disable reborrows in expression adjustments inlay hints.\n\nReborrows are a pair of a builtin deref then borrow, i.e. `&*`. They are inserted by the compiler but are mostly useless to the programmer.\n\nNote: if the deref is not builtin (an overloaded deref), or the borrow is `&raw const`/`&raw mut`, they are not removed.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "Inlay Hints",
+                "properties": {
                     "rust-analyzer.inlayHints.expressionAdjustmentHints.enable": {
                         "markdownDescription": "Show inlay hints for type adjustments.",
                         "default": "never",
