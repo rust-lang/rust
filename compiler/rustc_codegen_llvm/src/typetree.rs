@@ -1,8 +1,11 @@
-use std::ffi::{CString, c_char, c_uint};
+use rustc_ast::expand::typetree::FncTree;
+#[cfg(llvm_enzyme)]
+use {
+    crate::attributes,
+    rustc_ast::expand::typetree::TypeTree as RustTypeTree,
+    std::ffi::{CString, c_char, c_uint},
+};
 
-use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
-
-use crate::attributes;
 use crate::llvm::{self, Value};
 
 /// Converts a Rust TypeTree to Enzyme's internal TypeTree format
@@ -48,15 +51,6 @@ fn to_enzyme_typetree(
     }
 
     enzyme_tt
-}
-
-#[cfg(not(llvm_enzyme))]
-fn to_enzyme_typetree(
-    _rust_typetree: RustTypeTree,
-    _data_layout: &str,
-    _llcx: &llvm::Context,
-) -> ! {
-    unimplemented!("TypeTree conversion not available without llvm_enzyme support")
 }
 
 // Attaches TypeTree information to LLVM function as enzyme_type attributes.

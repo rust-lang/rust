@@ -2286,12 +2286,12 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
         let child = typetree_from_ty(tcx, inner_ty);
         return TypeTree(vec![Type {
             offset: -1,
-            size: 8, // TODO(KMJ-007): Get actual pointer size from target
+            size: tcx.data_layout.pointer_size().bytes_usize(),
             kind: Kind::Pointer,
             child,
         }]);
     }
 
-    // TODO(KMJ-007): Handle arrays, slices, structs, and other complex types
+    // FIXME(KMJ-007): Handle arrays, slices, structs, and other complex types
     TypeTree::new()
 }
