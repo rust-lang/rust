@@ -247,7 +247,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ShouldPanic { .. }
                     | AttributeKind::Coroutine(..)
                     | AttributeKind::Linkage(..)
-                    | AttributeKind::MustUse { .. },
+                    | AttributeKind::MustUse { .. }
+                    | AttributeKind::CrateName { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -367,22 +368,49 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let builtin = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
 
             if hir_id != CRATE_HIR_ID {
-                if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
-                    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
-                {
-                    match style {
-                        Some(ast::AttrStyle::Outer) => self.tcx.emit_node_span_lint(
+                match attr {
+                    // FIXME(jdonszelmann) move to attribute parsing when validation gets better there
+                    &Attribute::Parsed(AttributeKind::CrateName {
+                        attr_span: span, style, ..
+                    }) => match style {
+                        ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            attr.span(),
+                            span,
                             errors::OuterCrateLevelAttr,
                         ),
-                        Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
+                        ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            attr.span(),
+                            span,
                             errors::InnerCrateLevelAttr,
                         ),
+                    },
+                    Attribute::Parsed(_) => { /* not crate-level */ }
+                    Attribute::Unparsed(attr) => {
+                        // FIXME(jdonszelmann): remove once all crate-level attrs are parsed and caught by
+                        // the above
+                        if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
+                            attr.path
+                                .segments
+                                .first()
+                                .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                        {
+                            match attr.style {
+                                ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
+                                    UNUSED_ATTRIBUTES,
+                                    hir_id,
+                                    attr.span,
+                                    errors::OuterCrateLevelAttr,
+                                ),
+                                ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
+                                    UNUSED_ATTRIBUTES,
+                                    hir_id,
+                                    attr.span,
+                                    errors::InnerCrateLevelAttr,
+                                ),
+                            }
+                        }
                     }
                 }
             }
