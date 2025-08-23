@@ -7,8 +7,8 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
-    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item,
+    ItemKind, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -1453,6 +1453,70 @@ impl<'a> Parser<'a> {
         let mk_err_expr =
             |this: &Self, span, guar| Ok(Some(this.mk_expr(span, ExprKind::Err(guar))));
 
+        // Helper function to check if we should attempt turbofish recovery and resynthesize
+        // FIXME: Check more cases
+        let mk_turbofish_expr = |this: &Self,
+                                 span: Span,
+                                 l1: &P<Expr>,
+                                 r1: &P<Expr>,
+                                 as_call: bool|
+         -> Option<P<Expr>> {
+            // First, actually check that the two expressions in the binop are paths.
+            // Only proceed if both sides are simple paths.
+            let (func_path, type_arg_path) = match (&l1.kind, &r1.kind) {
+                (ExprKind::Path(None, func_path), ExprKind::Path(None, type_arg_path)) => {
+                    // Ensure both paths have no existing generic arguments to avoid confusion
+                    let func_has_generics = func_path.segments.iter().any(|seg| seg.args.is_some());
+                    let type_has_generics =
+                        type_arg_path.segments.iter().any(|seg| seg.args.is_some());
+                    if func_has_generics || type_has_generics {
+                        return None;
+                    }
+                    (func_path, type_arg_path)
+                }
+                _ => return None,
+            };
+
+            // Only handle simple function calls (not complex paths)
+            if func_path.segments.len() != 1 || type_arg_path.segments.len() != 1 {
+                return None;
+            }
+
+            // Build the corrected turbofish expression
+            let type_arg = P(Ty {
+                id: DUMMY_NODE_ID,
+                kind: TyKind::Path(None, type_arg_path.clone()),
+                span: r1.span,
+                tokens: None,
+            });
+
+            let generic_arg = GenericArg::Type(type_arg);
+            let angle_bracketed_arg = AngleBracketedArg::Arg(generic_arg);
+            let angle_bracketed_args = AngleBracketedArgs {
+                span: l1.span.to(r1.span),
+                args: thin_vec![angle_bracketed_arg],
+            };
+            let generic_args = GenericArgs::AngleBracketed(angle_bracketed_args);
+
+            // Create the function path with generic arguments
+            let mut func_path_with_generics = func_path.clone();
+            if let Some(last_segment) = func_path_with_generics.segments.last_mut() {
+                last_segment.args = Some(P(generic_args));
+            }
+
+            // Create the appropriate expression based on context
+            if as_call {
+                // For `foo<bar>()` case - create a function call expression
+                let func_expr = this
+                    .mk_expr(l1.span.to(r1.span), ExprKind::Path(None, func_path_with_generics));
+                let args = thin_vec![]; // Empty arguments since they were already consumed
+                Some(this.mk_expr(span, ExprKind::Call(func_expr, args)))
+            } else {
+                // For `foo<bar>::` case - create a path expression
+                Some(this.mk_expr(span, ExprKind::Path(None, func_path_with_generics)))
+            }
+        };
+
         match &inner_op.kind {
             ExprKind::Binary(op, l1, r1) if op.node.is_comparison() => {
                 let mut err = ComparisonOperatorsCannotBeChained {
@@ -1496,13 +1560,84 @@ impl<'a> Parser<'a> {
 
                         // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
                         match self.parse_expr() {
-                            Ok(_) => {
+                            Ok(parsed_expr) => {
                                 // 99% certain that the suggestion is correct, continue parsing.
                                 let guar = self.dcx().emit_err(err);
-                                // FIXME: actually check that the two expressions in the binop are
-                                // paths and resynthesize new fn call expression instead of using
-                                // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
+                                // Check if we can resynthesize the complete expression combining
+                                // the corrected path with the parsed suffix
+                                if let Some(corrected_path_expr) =
+                                    mk_turbofish_expr(self, l1.span.to(r1.span), l1, r1, false)
+                                {
+                                    // We have a corrected path (e.g., Vec::<i32>), now combine it with
+                                    // the parsed expression (e.g., new()) to form the complete expression
+                                    // (e.g., Vec::<i32>::new())
+
+                                    // Try to construct the complete path expression
+                                    if let ExprKind::Path(qself, corrected_path) =
+                                        corrected_path_expr.kind
+                                    {
+                                        // Combine the corrected path with the parsed expression
+                                        // The parsed_expr should be handled as a continuation of the path
+                                        match &parsed_expr.kind {
+                                            ExprKind::Call(func, args) => {
+                                                // Handle case like Vec::<i32>::new()
+                                                if let ExprKind::Path(None, method_path) =
+                                                    &func.kind
+                                                {
+                                                    // Extend the corrected path with the method path
+                                                    let mut extended_path = corrected_path;
+                                                    extended_path
+                                                        .segments
+                                                        .extend(method_path.segments.clone());
+                                                    let extended_func = self.mk_expr(
+                                                        l1.span.to(func.span),
+                                                        ExprKind::Path(qself, extended_path),
+                                                    );
+                                                    let complete_expr = self.mk_expr(
+                                                        inner_op.span.to(self.prev_token.span),
+                                                        ExprKind::Call(extended_func, args.clone()),
+                                                    );
+                                                    Ok(Some(complete_expr))
+                                                } else {
+                                                    mk_err_expr(
+                                                        self,
+                                                        inner_op.span.to(self.prev_token.span),
+                                                        guar,
+                                                    )
+                                                }
+                                            }
+                                            ExprKind::Path(None, method_path) => {
+                                                // Handle case like Vec::<i32>::CONSTANT
+                                                let mut extended_path = corrected_path;
+                                                extended_path
+                                                    .segments
+                                                    .extend(method_path.segments.clone());
+                                                let complete_expr = self.mk_expr(
+                                                    inner_op.span.to(self.prev_token.span),
+                                                    ExprKind::Path(qself, extended_path),
+                                                );
+                                                Ok(Some(complete_expr))
+                                            }
+                                            _ => {
+                                                // For other cases, fall back to error expr
+                                                mk_err_expr(
+                                                    self,
+                                                    inner_op.span.to(self.prev_token.span),
+                                                    guar,
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        mk_err_expr(
+                                            self,
+                                            inner_op.span.to(self.prev_token.span),
+                                            guar,
+                                        )
+                                    }
+                                } else {
+                                    // Validation failed: not both paths, use error expr
+                                    mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
+                                }
                             }
                             Err(expr_err) => {
                                 expr_err.cancel();
@@ -1527,10 +1662,18 @@ impl<'a> Parser<'a> {
                             Err(()) => Err(self.dcx().create_err(err)),
                             Ok(()) => {
                                 let guar = self.dcx().emit_err(err);
-                                // FIXME: actually check that the two expressions in the binop are
-                                // paths and resynthesize new fn call expression instead of using
-                                // `ExprKind::Err` placeholder.
-                                mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
+                                // Try to resynthesize the function call expression (for `foo<bar>()` case)
+                                if let Some(call_expr) = mk_turbofish_expr(
+                                    self,
+                                    inner_op.span.to(self.prev_token.span),
+                                    l1,
+                                    r1,
+                                    true,
+                                ) {
+                                    Ok(Some(call_expr))
+                                } else {
+                                    mk_err_expr(self, inner_op.span.to(self.prev_token.span), guar)
+                                }
                             }
                         }
                     } else {
