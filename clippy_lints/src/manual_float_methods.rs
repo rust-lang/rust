@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::consts::{ConstEvalCtxt, Constant};
+use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
@@ -146,13 +146,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             )
             && let [first, second, const_1, const_2] = exprs
             && let ecx = ConstEvalCtxt::new(cx)
-            && let Some(const_1) = ecx.eval(const_1)
-            && let Some(const_2) = ecx.eval(const_2)
+            && let ctxt = expr.span.ctxt()
+            && let Some(const_1) = ecx.eval_local(const_1, ctxt)
+            && let Some(const_2) = ecx.eval_local(const_2, ctxt)
             && path_to_local(first).is_some_and(|f| path_to_local(second).is_some_and(|s| f == s))
             // The actual infinity check, we also allow `NEG_INFINITY` before` INFINITY` just in
             // case somebody does that for some reason
-            && (is_infinity(&const_1) && is_neg_infinity(&const_2)
-                || is_neg_infinity(&const_1) && is_infinity(&const_2))
+            && (const_1.is_pos_infinity() && const_2.is_neg_infinity()
+                || const_1.is_neg_infinity() && const_2.is_pos_infinity())
             && let Some(local_snippet) = first.span.get_source_text(cx)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
@@ -199,23 +200,5 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                 }
             });
         }
-    }
-}
-
-fn is_infinity(constant: &Constant) -> bool {
-    match constant {
-        // FIXME(f16_f128): add f16 and f128 when constants are available
-        Constant::F32(float) => *float == f32::INFINITY,
-        Constant::F64(float) => *float == f64::INFINITY,
-        _ => false,
-    }
-}
-
-fn is_neg_infinity(constant: &Constant) -> bool {
-    match constant {
-        // FIXME(f16_f128): add f16 and f128 when constants are available
-        Constant::F32(float) => *float == f32::NEG_INFINITY,
-        Constant::F64(float) => *float == f64::NEG_INFINITY,
-        _ => false,
     }
 }

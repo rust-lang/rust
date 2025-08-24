@@ -111,8 +111,8 @@ declare_lint_pass!(FloatingPointArithmetic => [
 
 // Returns the specialized log method for a given base if base is constant
 // and is one of 2, 10 and e
-fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>) -> Option<&'static str> {
-    if let Some(value) = ConstEvalCtxt::new(cx).eval(base) {
+fn get_specialized_log_method(cx: &LateContext<'_>, base: &Expr<'_>, ctxt: SyntaxContext) -> Option<&'static str> {
+    if let Some(value) = ConstEvalCtxt::new(cx).eval_local(base, ctxt) {
         if F32(2.0) == value || F64(2.0) == value {
             return Some("log2");
         } else if F32(10.0) == value || F64(10.0) == value {
@@ -158,7 +158,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
 }
 
 fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
-    if let Some(method) = get_specialized_log_method(cx, &args[0]) {
+    if let Some(method) = get_specialized_log_method(cx, &args[0], expr.span.ctxt()) {
         span_lint_and_sugg(
             cx,
             SUBOPTIMAL_FLOPS,

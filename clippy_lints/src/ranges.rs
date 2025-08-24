@@ -312,7 +312,7 @@ struct RangeBounds<'a> {
 // Takes a binary expression such as x <= 2 as input
 // Breaks apart into various pieces, such as the value of the number,
 // hir id of the variable, and direction/inclusiveness of the operator
-fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
+fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),

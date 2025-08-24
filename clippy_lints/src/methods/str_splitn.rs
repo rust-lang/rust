@@ -304,7 +304,7 @@ fn parse_iter_usage<'tcx>(
                     };
                 },
                 (sym::nth | sym::skip, [idx_expr]) if cx.tcx.trait_of_assoc(did) == Some(iter_id) => {
-                    if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval(idx_expr) {
+                    if let Some(Constant::Int(idx)) = ConstEvalCtxt::new(cx).eval_local(idx_expr, ctxt) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
                         } else if let Some((_, Node::Expr(next_expr))) = iter.next()

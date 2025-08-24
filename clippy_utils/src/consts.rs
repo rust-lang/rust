@@ -128,15 +128,11 @@ impl PartialEq for Constant {
             (&Self::Char(l), &Self::Char(r)) => l == r,
             (&Self::Int(l), &Self::Int(r)) => l == r,
             (&Self::F64(l), &Self::F64(r)) => {
-                // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
-                // `Fw32 == Fw64`, so don’t compare them.
-                // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
+                // `to_bits` is required to catch non-matching `0.0` and `-0.0`.
                 l.to_bits() == r.to_bits() && !l.is_nan()
             },
             (&Self::F32(l), &Self::F32(r)) => {
-                // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
-                // `Fw32 == Fw64`, so don’t compare them.
-                // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
+                // `to_bits` is required to catch non-matching `0.0` and `-0.0`.
                 l.to_bits() == r.to_bits() && !l.is_nan()
             },
             (&Self::Bool(l), &Self::Bool(r)) => l == r,
