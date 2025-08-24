@@ -281,6 +281,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ObjcClass { .. }
                     | AttributeKind::ObjcSelector { .. }
                     | AttributeKind::RustcCoherenceIsCore(..)
+                    | AttributeKind::Feature(..)
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
@@ -1874,75 +1875,82 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute, style: Option<AttrStyle>) {
         // Warn on useless empty attributes.
         // FIXME(jdonszelmann): this lint should be moved to attribute parsing, see `AcceptContext::warn_empty_attribute`
-        let note = if attr.has_any_name(&[
-            sym::allow,
-            sym::expect,
-            sym::warn,
-            sym::deny,
-            sym::forbid,
-            sym::feature,
-        ]) && attr.meta_item_list().is_some_and(|list| list.is_empty())
-        {
-            errors::UnusedNote::EmptyList { name: attr.name().unwrap() }
-        } else if attr.has_any_name(&[sym::allow, sym::warn, sym::deny, sym::forbid, sym::expect])
-            && let Some(meta) = attr.meta_item_list()
-            && let [meta] = meta.as_slice()
-            && let Some(item) = meta.meta_item()
-            && let MetaItemKind::NameValue(_) = &item.kind
-            && item.path == sym::reason
-        {
-            errors::UnusedNote::NoLints { name: attr.name().unwrap() }
-        } else if attr.has_any_name(&[sym::allow, sym::warn, sym::deny, sym::forbid, sym::expect])
-            && let Some(meta) = attr.meta_item_list()
-            && meta.iter().any(|meta| {
-                meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
-            })
-        {
-            if hir_id != CRATE_HIR_ID {
-                match style {
-                    Some(ast::AttrStyle::Outer) => {
-                        let attr_span = attr.span();
-                        let bang_position = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_until_char(attr_span, '[')
-                            .shrink_to_hi();
+        let note =
+            if attr.has_any_name(&[sym::allow, sym::expect, sym::warn, sym::deny, sym::forbid])
+                && attr.meta_item_list().is_some_and(|list| list.is_empty())
+            {
+                errors::UnusedNote::EmptyList { name: attr.name().unwrap() }
+            } else if attr.has_any_name(&[
+                sym::allow,
+                sym::warn,
+                sym::deny,
+                sym::forbid,
+                sym::expect,
+            ]) && let Some(meta) = attr.meta_item_list()
+                && let [meta] = meta.as_slice()
+                && let Some(item) = meta.meta_item()
+                && let MetaItemKind::NameValue(_) = &item.kind
+                && item.path == sym::reason
+            {
+                errors::UnusedNote::NoLints { name: attr.name().unwrap() }
+            } else if attr.has_any_name(&[
+                sym::allow,
+                sym::warn,
+                sym::deny,
+                sym::forbid,
+                sym::expect,
+            ]) && let Some(meta) = attr.meta_item_list()
+                && meta.iter().any(|meta| {
+                    meta.meta_item().map_or(false, |item| item.path == sym::linker_messages)
+                })
+            {
+                if hir_id != CRATE_HIR_ID {
+                    match style {
+                        Some(ast::AttrStyle::Outer) => {
+                            let attr_span = attr.span();
+                            let bang_position = self
+                                .tcx
+                                .sess
+                                .source_map()
+                                .span_until_char(attr_span, '[')
+                                .shrink_to_hi();
 
-                        self.tcx.emit_node_span_lint(
+                            self.tcx.emit_node_span_lint(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                attr_span,
+                                errors::OuterCrateLevelAttr {
+                                    suggestion: errors::OuterCrateLevelAttrSuggestion {
+                                        bang_position,
+                                    },
+                                },
+                            )
+                        }
+                        Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
-                            attr_span,
-                            errors::OuterCrateLevelAttr {
-                                suggestion: errors::OuterCrateLevelAttrSuggestion { bang_position },
-                            },
-                        )
-                    }
-                    Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span(),
-                        errors::InnerCrateLevelAttr,
-                    ),
-                };
-                return;
-            } else {
-                let never_needs_link = self
-                    .tcx
-                    .crate_types()
-                    .iter()
-                    .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
-                if never_needs_link {
-                    errors::UnusedNote::LinkerMessagesBinaryCrateOnly
-                } else {
+                            attr.span(),
+                            errors::InnerCrateLevelAttr,
+                        ),
+                    };
                     return;
+                } else {
+                    let never_needs_link = self
+                        .tcx
+                        .crate_types()
+                        .iter()
+                        .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
+                    if never_needs_link {
+                        errors::UnusedNote::LinkerMessagesBinaryCrateOnly
+                    } else {
+                        return;
+                    }
                 }
-            }
-        } else if attr.has_name(sym::default_method_body_is_const) {
-            errors::UnusedNote::DefaultMethodBodyConst
-        } else {
-            return;
-        };
+            } else if attr.has_name(sym::default_method_body_is_const) {
+                errors::UnusedNote::DefaultMethodBodyConst
+            } else {
+                return;
+            };
 
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
