@@ -1943,29 +1943,55 @@ pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
     },
 }
 
+pub(crate) struct ImproperCTypesLayer<'a> {
+    pub ty: Ty<'a>,
+    pub inner_ty: Option<Ty<'a>>,
+    pub note: DiagMessage,
+    pub span_note: Option<Span>,
+    pub help: Option<DiagMessage>,
+}
+
+impl<'a> Subdiagnostic for ImproperCTypesLayer<'a> {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.arg("ty", self.ty);
+        if let Some(ty) = self.inner_ty {
+            diag.arg("inner_ty", ty);
+        }
+
+        if let Some(help) = self.help {
+            diag.help(diag.eagerly_translate(help));
+        }
+
+        diag.note(diag.eagerly_translate(self.note));
+        if let Some(note) = self.span_note {
+            diag.span_note(note, fluent::lint_note);
+        };
+
+        diag.remove_arg("ty");
+        if self.inner_ty.is_some() {
+            diag.remove_arg("inner_ty");
+        }
+    }
+}
+
 pub(crate) struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,
     pub label: Span,
-    pub help: Option<DiagMessage>,
-    pub note: DiagMessage,
-    pub span_note: Option<Span>,
+    pub reasons: Vec<ImproperCTypesLayer<'a>>,
 }
 
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
 impl<'a> LintDiagnostic<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, ()>) {
         diag.primary_message(fluent::lint_improper_ctypes);
+        diag.span_label(self.label, fluent::lint_label);
+        for reason in self.reasons.into_iter() {
+            diag.subdiagnostic(reason);
+        }
+        // declare the arguments at the end to avoid them being clobbered in the subdiagnostics
         diag.arg("ty", self.ty);
         diag.arg("desc", self.desc);
-        diag.span_label(self.label, fluent::lint_label);
-        if let Some(help) = self.help {
-            diag.help(help);
-        }
-        diag.note(self.note);
-        if let Some(note) = self.span_note {
-            diag.span_note(note, fluent::lint_note);
-        }
     }
 }
 
