@@ -2,7 +2,9 @@
 use std::iter;
 
 use hir::{ExpandResult, InFile, Semantics, Type, TypeInfo, Variant};
-use ide_db::{RootDatabase, active_parameter::ActiveParameter};
+use ide_db::{
+    RootDatabase, active_parameter::ActiveParameter, syntax_helpers::node_ext::find_loops,
+};
 use itertools::Either;
 use stdx::always;
 use syntax::{
@@ -778,6 +780,12 @@ fn expected_type_and_name<'db>(
                         },
                     });
                     (ty, None)
+                },
+                ast::BreakExpr(it) => {
+                    let ty = it.break_token()
+                        .and_then(|it| find_loops(sema, &it)?.next())
+                        .and_then(|expr| sema.type_of_expr(&expr));
+                    (ty.map(TypeInfo::original), None)
                 },
                 ast::ClosureExpr(it) => {
                     let ty = sema.type_of_expr(&it.into());
@@ -2059,7 +2067,8 @@ fn prev_special_biased_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
         | T![|]
         | T![return]
         | T![break]
-        | T![continue] = prev.kind()
+        | T![continue]
+        | T![lifetime_ident] = prev.kind()
     {
         token = prev
     }
