@@ -176,3 +176,15 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
         })
     }
 }
+
+pub(crate) struct NoCoreParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {
+    const PATH: &[Symbol] = &[sym::no_core];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    // FIXME: recursion limit is allowed on all targets and ignored,
+    //        even though it should only be valid on crates of course
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoCore;
+    const TYPE: AttributeType = AttributeType::CrateLevel;
+}

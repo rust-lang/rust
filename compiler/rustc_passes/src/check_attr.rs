@@ -274,6 +274,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::MoveSizeLimit { .. }
                     | AttributeKind::TypeLengthLimit { .. }
                     | AttributeKind::PatternComplexityLimit { .. }
+                    | AttributeKind::NoCore { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);

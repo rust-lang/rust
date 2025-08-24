@@ -579,6 +579,9 @@ pub enum AttributeKind {
     /// Represents `#[naked]`
     Naked(Span),
 
+    /// Represents `#[no_core]`
+    NoCore(Span),
+
     /// Represents `#[no_implicit_prelude]`
     NoImplicitPrelude(Span),
 

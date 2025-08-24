@@ -64,6 +64,7 @@ impl AttributeKind {
             MoveSizeLimit { .. } => No,
             MustUse { .. } => Yes,
             Naked(..) => No,
+            NoCore(..) => No,
             NoImplicitPrelude(..) => No,
             NoMangle(..) => Yes,      // Needed for rustdoc
             NonExhaustive(..) => Yes, // Needed for rustdoc
