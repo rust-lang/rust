@@ -61,6 +61,7 @@ impl AttributeKind {
             MacroUse { .. } => No,
             Marker(..) => No,
             MayDangle(..) => No,
+            MoveSizeLimit { .. } => No,
             MustUse { .. } => Yes,
             Naked(..) => No,
             NoImplicitPrelude(..) => No,
