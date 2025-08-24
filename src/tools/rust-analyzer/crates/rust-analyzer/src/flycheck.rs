@@ -588,6 +588,7 @@ impl FlycheckActor {
                     cmd.arg("--manifest-path");
                     cmd.arg(manifest_path);
                     if manifest_path.extension() == Some("rs") {
+                        cmd.env("__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS", "nightly");
                         cmd.arg("-Zscript");
                     }
                 }
