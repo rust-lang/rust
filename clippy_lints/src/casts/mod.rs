@@ -875,6 +875,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             cast_slice_from_raw_parts::check(cx, expr, cast_from_expr, cast_to, self.msrv);
             cast_ptr_alignment::check(cx, expr, cast_from, cast_to);
             ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
+            ptr_as_ptr::check(cx, expr, cast_from_expr, cast_from, cast_to_hir, cast_to, self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
             confusing_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
@@ -916,7 +917,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             cast_slice_from_raw_parts::check_implicit_cast(cx, expr);
         }
         cast_ptr_alignment::check_cast_method(cx, expr);
-        ptr_as_ptr::check(cx, expr, self.msrv);
         cast_slice_different_sizes::check(cx, expr, self.msrv);
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
     }
