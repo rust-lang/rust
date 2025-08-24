@@ -9,6 +9,9 @@ macro_rules! detect_feature {
         $(cfg!(target_feature = $target_feature_lit) ||)*
             $crate::detect::__is_feature_detected::$feature()
     };
+    ($feature:tt, $feature_lit:tt : cfg($target_feature_cfg:meta)) => {
+        cfg!($target_feature_cfg) || $crate::detect::__is_feature_detected::$feature()
+    };
     ($feature:tt, $feature_lit:tt, without cfg check: true) => {
         $crate::detect::__is_feature_detected::$feature()
     };
@@ -21,6 +24,9 @@ macro_rules! check_cfg_feature {
     };
     ($feature:tt, $feature_lit:tt : $($target_feature_lit:tt),*) => {
         $(cfg!(target_feature = $target_feature_lit);)*
+    };
+    ($feature:tt, $feature_lit:tt : cfg($target_feature_cfg:meta)) => {
+        cfg!($target_feature_cfg);
     };
     ($feature:tt, $feature_lit:tt, without cfg check: $feature_cfg_check:literal) => {
         #[allow(unexpected_cfgs, reason = $feature_lit)]
@@ -42,6 +48,7 @@ macro_rules! features {
       $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
           $(without cfg check: $feature_cfg_check:tt;)?
           $(implied by target_features: [$($target_feature_lit:tt),*];)?
+          $(implied by cfg($target_feature_cfg:meta);)?
           $(#[$feature_comment:meta])*)*
     ) => {
         #[macro_export]
@@ -57,6 +64,7 @@ macro_rules! features {
                         $feature_lit
                         $(, without cfg check: $feature_cfg_check)?
                         $(: $($target_feature_lit),*)?
+                        $(: cfg($target_feature_cfg))?
                     )
                 };
             )*
@@ -147,6 +155,7 @@ macro_rules! features {
                     $feature_lit
                     $(, without cfg check: $feature_cfg_check)?
                     $(: $($target_feature_lit),*)?
+                    $(: cfg($target_feature_cfg))?
                 );
             )*
         };
