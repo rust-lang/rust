@@ -2149,37 +2149,48 @@ TrivialTypeTraversalImpls! {
     Placeholder<BoundVar>,
 }
 
-pub(crate) use tls_cache::with_new_cache;
 mod tls_cache {
     use crate::db::HirDatabase;
 
     use super::DbInterner;
+    use base_db::Nonce;
     use rustc_type_ir::search_graph::GlobalCache;
+    use salsa::Revision;
     use std::cell::RefCell;
 
-    scoped_tls::scoped_thread_local!(static GLOBAL_CACHE: RefCell<rustc_type_ir::search_graph::GlobalCache<DbInterner<'static>>>);
+    struct Cache {
+        cache: GlobalCache<DbInterner<'static>>,
+        revision: Revision,
+        db_nonce: Nonce,
+    }
 
-    pub(crate) fn with_new_cache<T>(f: impl FnOnce() -> T) -> T {
-        GLOBAL_CACHE.set(&RefCell::new(GlobalCache::default()), f)
+    thread_local! {
+        static GLOBAL_CACHE: RefCell<Option<Cache>> = const { RefCell::new(None) };
     }
 
     pub(super) fn with_cache<'db, T>(
-        _db: &'db dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
     ) -> T {
-        // SAFETY: No idea
-        let call = move |slot: &RefCell<_>| {
+        GLOBAL_CACHE.with_borrow_mut(|handle| {
+            let (db_nonce, revision) = db.nonce_and_revision();
+            let handle = match handle {
+                Some(handle) => {
+                    if handle.revision != revision || db_nonce != handle.db_nonce {
+                        *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
+                    }
+                    handle
+                }
+                None => handle.insert(Cache { cache: GlobalCache::default(), revision, db_nonce }),
+            };
+
+            // SAFETY: No idea
             f(unsafe {
                 std::mem::transmute::<
                     &mut GlobalCache<DbInterner<'static>>,
                     &mut GlobalCache<DbInterner<'db>>,
-                >(&mut *slot.borrow_mut())
+                >(&mut handle.cache)
             })
-        };
-        if GLOBAL_CACHE.is_set() {
-            GLOBAL_CACHE.with(call)
-        } else {
-            GLOBAL_CACHE.set(&RefCell::new(GlobalCache::default()), || GLOBAL_CACHE.with(call))
-        }
+        })
     }
 }
