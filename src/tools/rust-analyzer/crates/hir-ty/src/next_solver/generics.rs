@@ -12,7 +12,7 @@ use hir_def::{
     },
 };
 use hir_expand::name::Name;
-use intern::Symbol;
+use intern::{Symbol, sym};
 use la_arena::Arena;
 use rustc_type_ir::inherent::Ty as _;
 use triomphe::Arc;
@@ -24,18 +24,13 @@ use super::{Const, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, Solver
 use super::{DbInterner, GenericArg};
 
 pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
-    let mk_lt = |(index, (_, lt)): (usize, (_, &LifetimeParamData))| {
+    let mk_lt = |index, lt: &LifetimeParamData| {
         let name = lt.name.symbol().clone();
-        let index = index as u32;
         let kind = GenericParamDefKind::Lifetime;
         GenericParamDef { name, index, kind }
     };
-    let mk_ty = |len_lt, (index, p): (usize, &TypeOrConstParamData)| {
-        let name = p
-            .name()
-            .map(|n| n.symbol().clone())
-            .unwrap_or_else(|| Name::missing().symbol().clone());
-        let index = (len_lt + index) as u32;
+    let mk_ty = |index, p: &TypeOrConstParamData| {
+        let name = p.name().map(|n| n.symbol().clone()).unwrap_or_else(|| sym::MISSING_NAME);
         let kind = match p {
             TypeOrConstParamData::TypeParamData(_) => GenericParamDefKind::Type,
             TypeOrConstParamData::ConstParamData(_) => GenericParamDefKind::Const,
@@ -43,33 +38,25 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
         GenericParamDef { name, index, kind }
     };
     let own_params_for_generic_params = |params: &GenericParams| {
-        if params.trait_self_param().is_some() {
-            let len_lt = params.len_lifetimes() + 1;
-            params
-                .iter_type_or_consts()
-                .take(1)
-                .enumerate()
-                .map(|t| mk_ty(0, (t.0, t.1.1)))
-                .chain(params.iter_lt().enumerate().map(mk_lt))
-                .chain(
-                    params
-                        .iter_type_or_consts()
-                        .skip(1)
-                        .enumerate()
-                        .map(|t| mk_ty(len_lt, (t.0, t.1.1))),
-                )
-                .collect()
-        } else {
-            let len_lt = params.len_lifetimes();
-            params
-                .iter_lt()
-                .enumerate()
-                .map(mk_lt)
-                .chain(
-                    params.iter_type_or_consts().enumerate().map(|t| mk_ty(len_lt, (t.0, t.1.1))),
-                )
-                .collect()
+        let mut result = Vec::with_capacity(params.len());
+        let mut type_and_consts = params.iter_type_or_consts();
+        let mut index = 0;
+        if let Some(self_param) = params.trait_self_param() {
+            result.push(mk_ty(0, &params[self_param]));
+            type_and_consts.next();
+            index += 1;
         }
+        result.extend(params.iter_lt().map(|(_, data)| {
+            let lt = mk_lt(index, data);
+            index += 1;
+            lt
+        }));
+        result.extend(type_and_consts.map(|(_, data)| {
+            let ty = mk_ty(index, data);
+            index += 1;
+            ty
+        }));
+        result
     };
 
     let (parent, own_params) = match (def.try_into(), def) {
@@ -82,12 +69,9 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                     // The opaque type itself does not have generics - only the parent function
                     (Some(GenericDefId::FunctionId(function_id)), vec![])
                 }
-                crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => (
-                    None,
-                    own_params_for_generic_params(
-                        &db.generic_params(GenericDefId::TypeAliasId(type_alias_id)),
-                    ),
-                ),
+                crate::ImplTraitId::TypeAliasImplTrait(type_alias_id, _) => {
+                    (Some(type_alias_id.into()), Vec::new())
+                }
                 crate::ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
                     let param = TypeOrConstParamData::TypeParamData(TypeParamData {
                         name: None,
@@ -95,7 +79,7 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                         provenance: TypeParamProvenance::TypeParamList,
                     });
                     // Yes, there is a parent but we don't include it in the generics
-                    (None, vec![mk_ty(0, (0, &param))])
+                    (None, vec![mk_ty(0, &param)])
                 }
             }
         }

@@ -685,7 +685,6 @@ pub fn explicit_item_bounds<'db>(
                 LifetimeElisionKind::AnonymousReportError,
             );
 
-            let trait_args = GenericArgs::identity_for_item(interner, trait_.into());
             let item_args = GenericArgs::identity_for_item(interner, def_id);
             let interner_ty = Ty::new_projection_from_args(interner, def_id, item_args);
 
