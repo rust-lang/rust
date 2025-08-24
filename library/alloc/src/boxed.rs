@@ -2128,11 +2128,6 @@ impl<F: ?Sized + Future + Unpin, A: Allocator> Future for Box<F, A> {
 
 #[stable(feature = "box_error", since = "1.8.0")]
 impl<E: Error> Error for Box<E> {
-    #[allow(deprecated, deprecated_in_future)]
-    fn description(&self) -> &str {
-        Error::description(&**self)
-    }
-
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
