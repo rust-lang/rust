@@ -565,6 +565,9 @@ pub enum AttributeKind {
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
     MayDangle(Span),
 
+    /// Represents `#[move_size_limit]`
+    MoveSizeLimit { attr_span: Span, limit_span: Span, limit: usize },
+
     /// Represents `#[must_use]`.
     MustUse {
         span: Span,
