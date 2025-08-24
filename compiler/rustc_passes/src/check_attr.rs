@@ -272,6 +272,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CrateName { .. }
                     | AttributeKind::RecursionLimit { .. }
                     | AttributeKind::MoveSizeLimit { .. }
+                    | AttributeKind::TypeLengthLimit { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
