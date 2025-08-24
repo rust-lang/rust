@@ -42,18 +42,6 @@ const ALIGNED_FN_PTR: *const () = {
     unsafe { std::mem::transmute(aligned_foo as fn()) }
 };
 
-// Only on armv5te-* and armv4t-*
-#[cfg(all(
-    target_arch = "arm",
-    not(target_feature = "v6"),
-))]
-const ALIGNED_THUMB_FN_PTR: *const () = {
-    #[rustc_align(2)]
-    #[instruction_set(arm::t32)]
-    fn aligned_thumb_foo() {}
-    unsafe { std::mem::transmute(aligned_thumb_foo as fn()) }
-};
-
 trait Trait {
     #[allow(unused)]
     fn method(&self) -> u8;
@@ -204,14 +192,10 @@ do_test!(VTABLE_PTR_1, VTABLE_PTR_2, None);
 // due to platform-specific semantics.
 // See https://github.com/rust-lang/rust/issues/144661
 // FIXME: This could return `Some` on platforms where function pointers' addresses actually
-// correspond to function addresses including alignment, or on ARM if t32 function pointers
-// have their low bit set for consteval.
+// correspond to function addresses including alignment, or on platforms where all functions
+// are aligned to some amount (e.g. ARM where a32 function pointers are at least 4-aligned,
+// and t32 function pointers are 2-aligned-offset-by-1).
 do_test!(ALIGNED_FN_PTR, ALIGNED_FN_PTR.wrapping_byte_offset(1), None);
-#[cfg(all(
-    target_arch = "arm",
-    not(target_feature = "v6"),
-))]
-do_test!(ALIGNED_THUMB_FN_PTR, ALIGNED_THUMB_FN_PTR.wrapping_byte_offset(1), None);
 
 // Conservatively say we don't know.
 do_test!(FN_PTR, VTABLE_PTR_1, None);
