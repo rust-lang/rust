@@ -242,9 +242,6 @@ pub(crate) enum RibKind<'ra> {
     /// We passed through a module item.
     Module(Module<'ra>),
 
-    /// We passed through a `macro_rules!` statement
-    MacroDefinition(DefId),
-
     /// All bindings in this rib are generic parameters that can't be used
     /// from the default of a generic parameter because they're not declared
     /// before said generic parameter. Also see the `visit_generics` override.
@@ -275,7 +272,6 @@ impl RibKind<'_> {
             | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
-            | RibKind::MacroDefinition(_)
             | RibKind::InlineAsmSym => false,
             RibKind::ConstParamTy
             | RibKind::AssocItem
@@ -287,7 +283,7 @@ impl RibKind<'_> {
     /// This rib forbids referring to labels defined in upwards ribs.
     fn is_label_barrier(self) -> bool {
         match self {
-            RibKind::Normal | RibKind::MacroDefinition(..) => false,
+            RibKind::Normal | RibKind::Block { .. } => false,
             RibKind::FnOrCoroutine | RibKind::ConstantItem(..) => true,
             kind => bug!("unexpected rib kind: {kind:?}"),
         }
@@ -2487,12 +2483,18 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for i in (0..self.label_ribs.len()).rev() {
             let rib = &self.label_ribs[i];
 
-            if let RibKind::MacroDefinition(def) = rib.kind
-                // If an invocation of this macro created `ident`, give up on `ident`
-                // and switch to `ident`'s source from the macro definition.
-                && def == self.r.macro_def(label.span.ctxt())
+            if let RibKind::Block { id, .. } = rib.kind
+                && let Some(items) = self.r.lookahead_items_in_block.get(&id)
             {
-                label.span.remove_mark();
+                for (_, item) in items.iter().rev() {
+                    if let LookaheadItemInBlock::MacroDef { def_id, .. } = item
+                        && *def_id == self.r.macro_def(label.span.ctxt())
+                    {
+                        // If an invocation of this macro created `ident`, give up on `ident`
+                        // and switch to `ident`'s source from the macro definition.
+                        label.span.remove_mark();
+                    }
+                }
             }
 
             let ident = label.normalize_to_macro_rules();
@@ -4761,36 +4763,27 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let orig_module = self.parent_scope.module;
         let anonymous_module = self.r.block_map.get(&block.id).copied();
 
-        let mut num_macro_definition_ribs = 0;
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
             let rib_kind = RibKind::Block { module: Some(anonymous_module), id: block.id };
             self.ribs[ValueNS].push(Rib::new(rib_kind));
             self.ribs[TypeNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
             self.parent_scope.module = anonymous_module;
         } else {
-            self.ribs[ValueNS].push(Rib::new(RibKind::Block { module: None, id: block.id }));
+            let rib_kind = RibKind::Block { module: None, id: block.id };
+            self.ribs[ValueNS].push(Rib::new(rib_kind));
+            self.label_ribs.push(Rib::new(rib_kind));
         }
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.kind
-                && let ItemKind::MacroDef(..) = item.kind
-            {
-                num_macro_definition_ribs += 1;
-                let res = self.r.local_def_id(item.id).to_def_id();
-                self.label_ribs.push(Rib::new(RibKind::MacroDefinition(res)));
-            }
-
             self.visit_stmt(stmt);
         }
 
         // Move back up.
         self.parent_scope.module = orig_module;
-        for _ in 0..num_macro_definition_ribs {
-            // pop `MacroDefinition`
-            self.label_ribs.pop();
-        }
+        self.label_ribs.pop();
         self.last_block_rib = self.ribs[ValueNS].pop();
         if anonymous_module.is_some() {
             self.ribs[TypeNS].pop();

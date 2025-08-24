@@ -484,14 +484,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .ok()
                     .map(LexicalScopeBinding::Item);
             }
-
-            if let RibKind::MacroDefinition(def) = rib.kind
-                && def == self.macro_def(ident.span.ctxt())
-            {
-                // If an invocation of this macro created `ident`, give up on `ident`
-                // and switch to `ident`'s source from the macro definition.
-                ident.span.remove_mark();
-            }
         }
 
         unreachable!()
@@ -1290,7 +1282,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
-                        | RibKind::MacroDefinition(..)
                         | RibKind::ForwardGenericParamBan(_) => {
                             // Nothing to do. Continue.
                         }
@@ -1383,7 +1374,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
-                        | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
                         | RibKind::AssocItem
                         | RibKind::ForwardGenericParamBan(_) => {
@@ -1477,7 +1467,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         | RibKind::Block { .. }
                         | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
-                        | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
                         | RibKind::AssocItem
                         | RibKind::ForwardGenericParamBan(_) => continue,
