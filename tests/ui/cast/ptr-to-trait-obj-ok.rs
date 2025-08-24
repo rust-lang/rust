@@ -6,7 +6,9 @@ fn remove_auto<'a>(x: *mut (dyn Trait<'a> + Send)) -> *mut dyn Trait<'a> {
     x as _
 }
 
-fn cast_inherent_lt<'a: 'b, 'b>(x: *mut (dyn Trait<'static> + 'a)) -> *mut (dyn Trait<'static> + 'b) {
+fn cast_inherent_lt<'a: 'b, 'b>(
+    x: *mut (dyn Trait<'static> + 'a)
+) -> *mut (dyn Trait<'static> + 'b) {
     x as _
 }
 

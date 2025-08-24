@@ -1529,12 +1529,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                     // Trait parameters are Invariant, the only part that actually has subtyping
                                     // here is the lifetime bound of the dyn-type.
                                     //
-                                    // For example in `dyn Trait<'a> + 'b <: dyn Trait<'c> + 'd`  we would require 
+                                    // For example in `dyn Trait<'a> + 'b <: dyn Trait<'c> + 'd`  we would require
                                     // that `'a == 'c` but only that `'b: 'd`.
                                     //
                                     // We must not allow freely casting lifetime bounds of dyn-types as it may allow
                                     // for inaccessible VTable methods being callable: #136702
-                                    // 
+                                    //
                                     // We don't enforce this for casts of principal-less dyn types as their VTables do
                                     // not contain any functions with `Self: 'a` bounds that could start holding after
                                     // a pointer cast.
