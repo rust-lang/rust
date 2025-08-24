@@ -53,37 +53,37 @@ impl MyStruct {
 #[warn(clippy::unnecessary_mut_passed)]
 fn main() {
     // Functions
-    takes_ref(&mut 42);
+    takes_ref(&42);
     //~^ unnecessary_mut_passed
-    takes_ref_ref(&mut &42);
+    takes_ref_ref(&&42);
     //~^ unnecessary_mut_passed
-    takes_ref_refmut(&mut &mut 42);
+    takes_ref_refmut(&&mut 42);
     //~^ unnecessary_mut_passed
-    takes_raw_const(&mut 42);
+    takes_raw_const(&42);
     //~^ unnecessary_mut_passed
 
     let as_ptr: fn(&i32) = takes_ref;
-    as_ptr(&mut 42);
+    as_ptr(&42);
     //~^ unnecessary_mut_passed
     let as_ptr: fn(&&i32) = takes_ref_ref;
-    as_ptr(&mut &42);
+    as_ptr(&&42);
     //~^ unnecessary_mut_passed
     let as_ptr: fn(&&mut i32) = takes_ref_refmut;
-    as_ptr(&mut &mut 42);
+    as_ptr(&&mut 42);
     //~^ unnecessary_mut_passed
     let as_ptr: fn(*const i32) = takes_raw_const;
-    as_ptr(&mut 42);
+    as_ptr(&42);
     //~^ unnecessary_mut_passed
 
     // Methods
     let my_struct = MyStruct;
-    my_struct.takes_ref(&mut 42);
+    my_struct.takes_ref(&42);
     //~^ unnecessary_mut_passed
-    my_struct.takes_ref_ref(&mut &42);
+    my_struct.takes_ref_ref(&&42);
     //~^ unnecessary_mut_passed
-    my_struct.takes_ref_refmut(&mut &mut 42);
+    my_struct.takes_ref_refmut(&&mut 42);
     //~^ unnecessary_mut_passed
-    my_struct.takes_raw_const(&mut 42);
+    my_struct.takes_raw_const(&42);
     //~^ unnecessary_mut_passed
 
     // No error
