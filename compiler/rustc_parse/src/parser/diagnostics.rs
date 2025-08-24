@@ -463,8 +463,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expected_one_of_not_found(
         &mut self,
-        edible: &[ExpTokenPair<'_>],
-        inedible: &[ExpTokenPair<'_>],
+        edible: &[ExpTokenPair],
+        inedible: &[ExpTokenPair],
     ) -> PResult<'a, ErrorGuaranteed> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
@@ -1092,7 +1092,7 @@ impl<'a> Parser<'a> {
 
     /// Eats and discards tokens until one of `closes` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    pub(super) fn eat_to_tokens(&mut self, closes: &[ExpTokenPair<'_>]) {
+    pub(super) fn eat_to_tokens(&mut self, closes: &[ExpTokenPair]) {
         if let Err(err) = self
             .parse_seq_to_before_tokens(closes, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
         {
@@ -1113,7 +1113,7 @@ impl<'a> Parser<'a> {
     pub(super) fn check_trailing_angle_brackets(
         &mut self,
         segment: &PathSegment,
-        end: &[ExpTokenPair<'_>],
+        end: &[ExpTokenPair],
     ) -> Option<ErrorGuaranteed> {
         if !self.may_recover() {
             return None;
@@ -1196,7 +1196,7 @@ impl<'a> Parser<'a> {
         // second case.
         if self.look_ahead(position, |t| {
             trace!("check_trailing_angle_brackets: t={:?}", t);
-            end.iter().any(|exp| exp.tok == &t.kind)
+            end.iter().any(|exp| exp.tok == t.kind)
         }) {
             // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
@@ -2120,8 +2120,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_seq_parse_error(
         &mut self,
-        open: ExpTokenPair<'_>,
-        close: ExpTokenPair<'_>,
+        open: ExpTokenPair,
+        close: ExpTokenPair,
         lo: Span,
         err: Diag<'a>,
     ) -> Box<Expr> {
@@ -2386,8 +2386,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn consume_block(
         &mut self,
-        open: ExpTokenPair<'_>,
-        close: ExpTokenPair<'_>,
+        open: ExpTokenPair,
+        close: ExpTokenPair,
         consume_close: ConsumeClosingDelim,
     ) {
         let mut brace_depth = 0;
