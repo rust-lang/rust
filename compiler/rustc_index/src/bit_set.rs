@@ -491,18 +491,14 @@ pub struct ChunkedBitSet<T> {
     marker: PhantomData<T>,
 }
 
-// Note: the chunk domain size is duplicated in each variant. This is a bit
-// inconvenient, but it allows the type size to be smaller than if we had an
-// outer struct containing a chunk domain size plus the `Chunk`, because the
-// compiler can place the chunk domain size after the tag.
+// NOTE: The chunk size is computed on-the-fly on each manipulation of a chunk.
+// This avoids storing it, as it's almost always CHUNK_BITS except for the last one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Chunk {
     /// A chunk that is all zeros; we don't represent the zeros explicitly.
-    /// The `ChunkSize` is always non-zero.
     Zeros,
 
     /// A chunk that is all ones; we don't represent the ones explicitly.
-    /// `ChunkSize` is always non-zero.
     Ones,
 
     /// A chunk that has a mix of zeros and ones, which are represented
@@ -514,9 +510,7 @@ enum Chunk {
     /// to store the length, which would make this type larger. These excess
     /// words are always zero, as are any excess bits in the final in-use word.
     ///
-    /// The first `ChunkSize` field is always non-zero.
-    ///
-    /// The second `ChunkSize` field is the count of 1s set in the chunk, and
+    /// The `ChunkSize` field is the count of 1s set in the chunk, and
     /// must satisfy `0 < count < chunk_domain_size`.
     ///
     /// The words are within an `Rc` because it's surprisingly common to
