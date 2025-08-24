@@ -1,18 +1,19 @@
 use std::num::IntErrorKind;
 
-use crate::session_diagnostics::LimitInvalid;
+use rustc_hir::limit::Limit;
 
 use super::prelude::*;
+use crate::session_diagnostics::LimitInvalid;
 
 impl<S: Stage> AcceptContext<'_, '_, S> {
-    fn parse_limit_int(&self, nv: &NameValueParser) -> Option<usize> {
+    fn parse_limit_int(&self, nv: &NameValueParser) -> Option<Limit> {
         let Some(limit) = nv.value_as_str() else {
             self.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
 
         let error_str = match limit.as_str().parse() {
-            Ok(i) => return Some(i),
+            Ok(i) => return Some(Limit::new(i)),
             Err(e) => match e.kind() {
                 IntErrorKind::PosOverflow => "`limit` is too large",
                 IntErrorKind::Empty => "`limit` must be a non-negative integer",
@@ -44,8 +45,8 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const TYPE: AttributeType = AttributeType::CrateLevel;
 
-    // FIXME: crate name is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -77,8 +78,8 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const TYPE: AttributeType = AttributeType::CrateLevel;
 
-    // FIXME: recursion limit is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -102,10 +103,11 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
+    const TYPE: AttributeType = AttributeType::CrateLevel;
 
-    // FIXME: move size limit is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
@@ -130,9 +132,9 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const TYPE: AttributeType = AttributeType::CrateLevel;
 
-    // FIXME: recursion limit is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[Target::Crate]);
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
@@ -157,9 +159,9 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const TYPE: AttributeType = AttributeType::CrateLevel;
 
-    // FIXME: recursion limit is allowed on all targets and ignored,
-    //        even though it should only be valid on crates of course
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    // because it's a crate-level attribute, we already warn about it.
+    // Putting target limitations here would give duplicate warnings
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {

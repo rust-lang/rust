@@ -6,7 +6,7 @@ use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
-use rustc_attr_parsing::{AttributeParser, ShouldEmit, validate_attr};
+use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::steal::Steal;
@@ -19,6 +19,7 @@ use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
+use rustc_hir::limit::Limit;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -30,12 +31,12 @@ use rustc_middle::util::Providers;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
+use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
-use rustc_session::{Limit, Session};
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
     Symbol, sym,
@@ -1246,7 +1247,8 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     // in all code paths that require the crate name very early on, namely before
     // macro expansion.
 
-    let attr_crate_name = parse_crate_name(sess, krate_attrs, ShouldEmit::EarlyFatal);
+    let attr_crate_name =
+        parse_crate_name(sess, krate_attrs, ShouldEmit::EarlyFatal { also_emit_lints: true });
 
     let validate = |name, span| {
         rustc_session::output::validate_crate_name(sess, name, span);
@@ -1307,36 +1309,18 @@ pub(crate) fn parse_crate_name(
 }
 
 fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit {
-    // We don't permit macro calls inside of the attribute (e.g., #![recursion_limit = `expand!()`])
-    // because that would require expanding this while in the middle of expansion, which needs to
-    // know the limit before expanding.
-    let _ = validate_and_find_value_str_builtin_attr(sym::recursion_limit, sess, krate_attrs);
-    crate::limits::get_recursion_limit(krate_attrs, sess)
-}
-
-/// Validate *all* occurrences of the given "[value-str]" built-in attribute and return the first find.
-///
-/// This validator is intended for built-in attributes whose value needs to be known very early
-/// during compilation (namely, before macro expansion) and it mainly exists to reject macro calls
-/// inside of the attributes, such as in `#![name = expand!()]`. Normal attribute validation happens
-/// during semantic analysis via [`TyCtxt::check_mod_attrs`] which happens *after* macro expansion
-/// when such macro calls (here: `expand`) have already been expanded and we can no longer check for
-/// their presence.
-///
-/// [value-str]: ast::Attribute::value_str
-fn validate_and_find_value_str_builtin_attr(
-    name: Symbol,
-    sess: &Session,
-    krate_attrs: &[ast::Attribute],
-) -> Option<(Symbol, Span)> {
-    let mut result = None;
-    // Validate *all* relevant attributes, not just the first occurrence.
-    for attr in ast::attr::filter_by_name(krate_attrs, name) {
-        let Some(value) = attr.value_str() else {
-            validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, attr, name)
-        };
-        // Choose the first occurrence as our result.
-        result.get_or_insert((value, attr.span));
-    }
-    result
+    let attr = AttributeParser::parse_limited_should_emit(
+        sess,
+        &krate_attrs,
+        sym::recursion_limit,
+        DUMMY_SP,
+        rustc_ast::node_id::CRATE_NODE_ID,
+        None,
+        // errors are fatal here, but lints aren't.
+        // If things aren't fatal we continue, and will parse this again.
+        // That makes the same lint trigger again.
+        // So, no lints here to avoid duplicates.
+        ShouldEmit::EarlyFatal { also_emit_lints: false },
+    );
+    crate::limits::get_recursion_limit(attr.as_slice())
 }

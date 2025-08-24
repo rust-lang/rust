@@ -92,7 +92,7 @@ impl AttributeKind {
             TargetFeature { .. } => No,
             TrackCaller(..) => Yes,
             TypeConst(..) => Yes,
-            TypeLengthLimit { .. } => Yes,
+            TypeLengthLimit { .. } => No,
             UnsafeSpecializationMarker(..) => No,
             UnstableFeatureBound(..) => No,
             Used { .. } => No,
