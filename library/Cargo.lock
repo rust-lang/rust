@@ -394,6 +394,7 @@ dependencies = [
 [[package]]
 name = "vex-sdk"
 version = "0.27.0"
+source = "git+https://github.com/vexide/vex-sdk.git#67771319f730557693b2aa1e84c7ecd4831efb13"
 dependencies = [
  "rustc-std-workspace-core",
 ]

@@ -60,4 +60,4 @@ rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
 
-vex-sdk = { path = "../../vex-sdk/packages/vex-sdk" }
+vex-sdk = { git = "https://github.com/vexide/vex-sdk.git" }
