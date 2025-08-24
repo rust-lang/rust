@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
-  --> $DIR/maybe-bounds-in-traits.rs:52:20
+  --> $DIR/maybe-bounds-in-traits.rs:49:20
    |
 LL |     impl LeakT for NonLeakS {}
    |                    ^^^^^^^^ unsatisfied trait bound
@@ -10,13 +10,13 @@ help: the trait `Leak` is not implemented for `NonLeakS`
 LL | struct NonLeakS;
    | ^^^^^^^^^^^^^^^
 note: required by a bound in `LeakT`
-  --> $DIR/maybe-bounds-in-traits.rs:51:5
+  --> $DIR/maybe-bounds-in-traits.rs:48:5
    |
 LL |     trait LeakT {}
    |     ^^^^^^^^^^^^^^ required by this bound in `LeakT`
 
 error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
-  --> $DIR/maybe-bounds-in-traits.rs:61:22
+  --> $DIR/maybe-bounds-in-traits.rs:58:22
    |
 LL |         type Leak2 = NonLeakS;
    |                      ^^^^^^^^ unsatisfied trait bound
@@ -27,13 +27,13 @@ help: the trait `Leak` is not implemented for `NonLeakS`
 LL | struct NonLeakS;
    | ^^^^^^^^^^^^^^^
 note: required by a bound in `Test1::Leak2`
-  --> $DIR/maybe-bounds-in-traits.rs:61:9
+  --> $DIR/maybe-bounds-in-traits.rs:58:9
    |
 LL |         type Leak2 = NonLeakS;
    |         ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Test1::Leak2`
 
 error[E0658]: `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types` feature
-  --> $DIR/maybe-bounds-in-traits.rs:80:20
+  --> $DIR/maybe-bounds-in-traits.rs:77:20
    |
 LL |         fn mut_foo(&mut self) {}
    |                    ^^^^^^^^^

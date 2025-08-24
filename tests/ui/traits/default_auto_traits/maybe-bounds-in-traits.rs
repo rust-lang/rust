@@ -42,11 +42,8 @@ struct LeakS;
 mod supertraits {
     use crate::*;
 
-    trait MaybeLeakT1: ?Leak {}
-    trait MaybeLeakT2 where Self: ?Leak {}
-
-    impl MaybeLeakT1 for NonLeakS {}
-    impl MaybeLeakT2 for NonLeakS {}
+    trait MaybeLeak: ?Leak {}
+    impl MaybeLeak for NonLeakS {}
 
     trait LeakT {}
     impl LeakT for NonLeakS {}

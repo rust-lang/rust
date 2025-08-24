@@ -1,3 +1,27 @@
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:23:37
+   |
+LL | fn baz<T>() where T: Iterator<Item: ?Trait1> {}
+   |                                     ^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:29:21
+   |
+LL |     fn f() where T: ?Trait1 {}
+   |                     ^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
+error: this relaxed bound is not permitted here
+  --> $DIR/more_maybe_bounds.rs:35:34
+   |
+LL | struct S2<T>(T) where for<'a> T: ?Trait5<'a>;
+   |                                  ^^^^^^^^^^^
+   |
+   = note: in this context, relaxed bounds are only allowed on type parameters defined by the closest item
+
 error: bound modifier `?` can only be applied to default traits like `Sized`
   --> $DIR/more_maybe_bounds.rs:17:20
    |
@@ -16,5 +40,11 @@ error: bound modifier `?` can only be applied to default traits like `Sized`
 LL | fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
    |                                        ^^^^^^^
 
-error: aborting due to 3 previous errors
+error: bound modifier `?` can only be applied to default traits like `Sized`
+  --> $DIR/more_maybe_bounds.rs:35:34
+   |
+LL | struct S2<T>(T) where for<'a> T: ?Trait5<'a>;
+   |                                  ^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 
