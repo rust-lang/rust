@@ -12,7 +12,7 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Pos as _, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -97,16 +97,13 @@ impl<'tcx> LateLintPass<'tcx> for UnusedUnit {
     }
 
     fn check_poly_trait_ref(&mut self, cx: &LateContext<'tcx>, poly: &'tcx PolyTraitRef<'tcx>) {
-        let segments = &poly.trait_ref.path.segments;
-
-        if segments.len() == 1
-            && matches!(segments[0].ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
-            && let Some(args) = segments[0].args
+        if let [segment] = &poly.trait_ref.path.segments
+            && matches!(segment.ident.name, sym::Fn | sym::FnMut | sym::FnOnce)
+            && let Some(args) = segment.args
             && args.parenthesized == GenericArgsParentheses::ParenSugar
-            && let constraints = &args.constraints
-            && constraints.len() == 1
-            && constraints[0].ident.name == sym::Output
-            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraints[0].kind
+            && let [constraint] = &args.constraints
+            && constraint.ident.name == sym::Output
+            && let AssocItemConstraintKind::Equality { term: Term::Ty(hir_ty) } = constraint.kind
             && args.span_ext.hi() != poly.span.hi()
             && !hir_ty.span.from_expansion()
             && args.span_ext.hi() != hir_ty.span.hi()
@@ -160,17 +157,15 @@ fn get_def(span: Span) -> Option<Span> {
 
 fn lint_unneeded_unit_return(cx: &LateContext<'_>, ty_span: Span, span: Span) {
     let (ret_span, appl) =
-        span.with_hi(ty_span.hi())
-            .get_source_text(cx)
-            .map_or((ty_span, Applicability::MaybeIncorrect), |src| {
-                position_before_rarrow(&src).map_or((ty_span, Applicability::MaybeIncorrect), |rpos| {
-                    (
-                        #[expect(clippy::cast_possible_truncation)]
-                        ty_span.with_lo(BytePos(span.lo().0 + rpos as u32)),
-                        Applicability::MachineApplicable,
-                    )
-                })
-            });
+        if let Some(Some(rpos)) = span.with_hi(ty_span.hi()).with_source_text(cx, position_before_rarrow) {
+            (
+                ty_span.with_lo(span.lo() + BytePos::from_usize(rpos)),
+                Applicability::MachineApplicable,
+            )
+        } else {
+            (ty_span, Applicability::MaybeIncorrect)
+        };
+
     span_lint_and_sugg(
         cx,
         UNUSED_UNIT,
