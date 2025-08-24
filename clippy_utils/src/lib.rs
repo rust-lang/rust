@@ -2133,17 +2133,11 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_std))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoStd(..))
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx
-        .hir_attrs(hir::CRATE_HIR_ID)
-        .iter()
-        .any(|attr| attr.has_name(sym::no_core))
+    find_attr!(cx.tcx.hir_attrs(hir::CRATE_HIR_ID), AttributeKind::NoCore(..))
 }
 
 /// Check if parent of a hir node is a trait implementation block.
