@@ -3,8 +3,8 @@ name: rustc-pull
 on:
   workflow_dispatch:
   schedule:
-    # Run at 04:00 UTC every Monday and Thursday
-    - cron: '0 4 * * 1,4'
+    # Run at 04:00 UTC every Monday
+    - cron: '0 4 * * 1'
 
 jobs:
   pull:
