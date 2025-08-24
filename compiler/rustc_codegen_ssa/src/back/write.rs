@@ -1,5 +1,6 @@
 use std::assert_matches::assert_matches;
 use std::marker::PhantomData;
+use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -14,8 +15,8 @@ use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
-    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, Level, MultiSpan, Style,
-    Suggestions,
+    Diag, DiagArgMap, DiagCtxt, DiagMessage, ErrCode, FatalError, FatalErrorMarker, Level,
+    MultiSpan, Style, Suggestions,
 };
 use rustc_fs_util::link_or_copy;
 use rustc_incremental::{
@@ -1722,37 +1723,10 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
     let cgcx = cgcx.clone();
 
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
-        // Set up a destructor which will fire off a message that we're done as
-        // we exit.
-        struct Bomb<B: ExtraBackendMethods> {
-            coordinator_send: Sender<Message<B>>,
-            result: Option<Result<WorkItemResult<B>, FatalError>>,
-        }
-        impl<B: ExtraBackendMethods> Drop for Bomb<B> {
-            fn drop(&mut self) {
-                let msg = match self.result.take() {
-                    Some(Ok(result)) => Message::WorkItem::<B> { result: Ok(result) },
-                    Some(Err(FatalError)) => {
-                        Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)) }
-                    }
-                    None => Message::WorkItem::<B> { result: Err(None) },
-                };
-                drop(self.coordinator_send.send(msg));
-            }
-        }
-
-        let mut bomb = Bomb::<B> { coordinator_send, result: None };
-
-        // Execute the work itself, and if it finishes successfully then flag
-        // ourselves as a success as well.
-        //
-        // Note that we ignore any `FatalError` coming out of `execute_work_item`,
-        // as a diagnostic was already sent off to the main thread - just
-        // surface that there was an error in this worker.
-        bomb.result = {
+        let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
             let module_config = cgcx.config(work.module_kind());
 
-            Some(match work {
+            match work {
                 WorkItem::Optimize(m) => {
                     let _timer =
                         cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name);
@@ -1788,8 +1762,23 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
                         cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
                     execute_thin_lto_work_item(&cgcx, m, module_config)
                 }
-            })
+            }
+        }));
+
+        let msg = match result {
+            Ok(Ok(result)) => Message::WorkItem::<B> { result: Ok(result) },
+
+            // We ignore any `FatalError` coming out of `execute_work_item`, as a
+            // diagnostic was already sent off to the main thread - just surface
+            // that there was an error in this worker.
+            Ok(Err(FatalError)) => Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)) },
+            Err(err) if err.is::<FatalErrorMarker>() => {
+                Message::WorkItem::<B> { result: Err(Some(WorkerFatalError)) }
+            }
+
+            Err(_) => Message::WorkItem::<B> { result: Err(None) },
         };
+        drop(coordinator_send.send(msg));
     })
     .expect("failed to spawn work thread");
 }
