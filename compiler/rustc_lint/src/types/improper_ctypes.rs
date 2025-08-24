@@ -19,7 +19,7 @@ use rustc_span::{Span, sym};
 use tracing::debug;
 
 use super::repr_nullable_ptr;
-use crate::lints::{ImproperCTypes, UsesPowerAlignment};
+use crate::lints::{ImproperCTypes, ImproperCTypesLayer, UsesPowerAlignment};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
 
 declare_lint! {
@@ -190,10 +190,184 @@ enum CItemKind {
     Definition,
 }
 
+#[derive(Clone, Debug)]
+struct FfiUnsafeReason<'tcx> {
+    ty: Ty<'tcx>,
+    note: DiagMessage,
+    help: Option<DiagMessage>,
+    inner: Option<Box<FfiUnsafeReason<'tcx>>>,
+}
+
+/// A single explanation (out of possibly multiple)
+/// telling why a given element is rendered FFI-unsafe.
+/// This goes as deep as the 'core cause', but it might be located elsewhere, possibly in a different crate.
+/// So, we also track the 'smallest' type in the explanation that appears in the span of the unsafe element.
+/// (we call this the 'cause' or the 'local cause' of the unsafety)
+#[derive(Clone, Debug)]
+struct FfiUnsafeExplanation<'tcx> {
+    /// A stack of incrementally "smaller" types, justifications and help messages,
+    /// ending with the 'core reason' why something is FFI-unsafe, making everything around it also unsafe.
+    reason: Box<FfiUnsafeReason<'tcx>>,
+    /// Override the type considered the local cause of the FFI-unsafety.
+    /// (e.g.: even if the lint goes into detail as to why a struct used as a function argument
+    /// is unsafe, have the first lint line say that the fault lies in the use of said struct.)
+    override_cause_ty: Option<Ty<'tcx>>,
+}
+
+/// The result describing the safety (or lack thereof) of a given type.
+#[derive(Clone, Debug)]
 enum FfiResult<'tcx> {
+    /// The type is known to be safe.
     FfiSafe,
+    /// The type is only a phantom annotation.
+    /// (Safe in some contexts, unsafe in others.)
     FfiPhantom(Ty<'tcx>),
-    FfiUnsafe { ty: Ty<'tcx>, reason: DiagMessage, help: Option<DiagMessage> },
+    /// The type is not safe.
+    /// there might be any number of "explanations" as to why,
+    /// each being a stack of "reasons" going from the type
+    /// to a core cause of FFI-unsafety.
+    FfiUnsafe(Vec<FfiUnsafeExplanation<'tcx>>),
+}
+
+impl<'tcx> FfiResult<'tcx> {
+    /// Simplified creation of the FfiUnsafe variant for a single unsafety reason.
+    fn new_with_reason(ty: Ty<'tcx>, note: DiagMessage, help: Option<DiagMessage>) -> Self {
+        Self::FfiUnsafe(vec![FfiUnsafeExplanation {
+            override_cause_ty: None,
+            reason: Box::new(FfiUnsafeReason { ty, help, note, inner: None }),
+        }])
+    }
+
+    /// If the FfiUnsafe variant, 'wraps' all reasons,
+    /// creating new `FfiUnsafeReason`s, putting the originals as their `inner` fields.
+    /// Otherwise, keep unchanged.
+    #[expect(unused)]
+    fn wrap_all(self, ty: Ty<'tcx>, note: DiagMessage, help: Option<DiagMessage>) -> Self {
+        match self {
+            Self::FfiUnsafe(this) => {
+                let unsafeties = this
+                    .into_iter()
+                    .map(|FfiUnsafeExplanation { reason, override_cause_ty }| {
+                        let reason = Box::new(FfiUnsafeReason {
+                            ty,
+                            help: help.clone(),
+                            note: note.clone(),
+                            inner: Some(reason),
+                        });
+                        FfiUnsafeExplanation { reason, override_cause_ty }
+                    })
+                    .collect::<Vec<_>>();
+                Self::FfiUnsafe(unsafeties)
+            }
+            r @ _ => r,
+        }
+    }
+    /// If the FfiPhantom variant, turns it into a FfiUnsafe version.
+    /// Otherwise, keep unchanged.
+    #[expect(unused)]
+    fn forbid_phantom(self) -> Self {
+        match self {
+            Self::FfiPhantom(ty) => {
+                Self::new_with_reason(ty, fluent::lint_improper_ctypes_only_phantomdata, None)
+            }
+            _ => self,
+        }
+    }
+
+    /// Selectively "pluck" some explanations out of a FfiResult::FfiUnsafe,
+    /// if the note at their core reason is one in a provided list.
+    /// If the FfiResult is not FfiUnsafe, or if no reasons are plucked,
+    /// then return FfiSafe.
+    #[expect(unused)]
+    fn take_with_core_note(&mut self, notes: &[DiagMessage]) -> Self {
+        match self {
+            Self::FfiUnsafe(this) => {
+                let mut remaining_explanations = vec![];
+                std::mem::swap(this, &mut remaining_explanations);
+                let mut filtered_explanations = vec![];
+                let mut remaining_explanations = remaining_explanations
+                    .into_iter()
+                    .filter_map(|explanation| {
+                        let mut reason = explanation.reason.as_ref();
+                        while let Some(ref inner) = reason.inner {
+                            reason = inner.as_ref();
+                        }
+                        let mut does_remain = true;
+                        for note_match in notes {
+                            if note_match == &reason.note {
+                                does_remain = false;
+                                break;
+                            }
+                        }
+                        if does_remain {
+                            Some(explanation)
+                        } else {
+                            filtered_explanations.push(explanation);
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                std::mem::swap(this, &mut remaining_explanations);
+                if filtered_explanations.len() > 0 {
+                    Self::FfiUnsafe(filtered_explanations)
+                } else {
+                    Self::FfiSafe
+                }
+            }
+            _ => Self::FfiSafe,
+        }
+    }
+
+    /// Wrap around code that generates FfiResults "from a different cause".
+    /// For instance, if we have a repr(C) struct in a function's argument, FFI unsafeties inside the struct
+    /// are to be blamed on the struct and not the members.
+    /// This is where we use this wrapper, to tell "all FFI-unsafeties in there are caused by this `ty`"
+    #[expect(unused)]
+    fn with_overrides(mut self, override_cause_ty: Option<Ty<'tcx>>) -> FfiResult<'tcx> {
+        use FfiResult::*;
+
+        if let FfiUnsafe(ref mut explanations) = self {
+            explanations.iter_mut().for_each(|explanation| {
+                explanation.override_cause_ty = override_cause_ty;
+            });
+        }
+        self
+    }
+}
+
+impl<'tcx> std::ops::AddAssign<FfiResult<'tcx>> for FfiResult<'tcx> {
+    fn add_assign(&mut self, other: Self) {
+        // note: we shouldn't really encounter FfiPhantoms here, they should be dealt with beforehand
+        // still, this function deals with them in a reasonable way, I think
+
+        match (self, other) {
+            (Self::FfiUnsafe(myself), Self::FfiUnsafe(mut other_reasons)) => {
+                myself.append(&mut other_reasons);
+            }
+            (Self::FfiUnsafe(_), _) => {
+                // nothing to do
+            }
+            (myself, other @ Self::FfiUnsafe(_)) => {
+                *myself = other;
+            }
+            (Self::FfiPhantom(ty1), Self::FfiPhantom(ty2)) => {
+                debug!("whoops, both FfiPhantom: self({:?}) += other({:?})", ty1, ty2);
+            }
+            (myself @ Self::FfiSafe, other @ Self::FfiPhantom(_)) => {
+                *myself = other;
+            }
+            (_, Self::FfiSafe) => {
+                // nothing to do
+            }
+        }
+    }
+}
+impl<'tcx> std::ops::Add<FfiResult<'tcx>> for FfiResult<'tcx> {
+    type Output = FfiResult<'tcx>;
+    fn add(mut self, other: Self) -> Self::Output {
+        self += other;
+        self
+    }
 }
 
 /// The result when a type has been checked but perhaps not completely. `None` indicates that
@@ -331,11 +505,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // ...they probably are still unsafe on i686 and other x86_32 architectures
             ty::Int(..) | ty::Uint(..) | ty::Float(..) => FfiResult::FfiSafe,
 
-            ty::Char => FfiResult::FfiUnsafe {
+            ty::Char => FfiResult::new_with_reason(
                 ty,
-                reason: fluent::lint_improper_ctypes_char_reason,
-                help: Some(fluent::lint_improper_ctypes_char_help),
-            },
+                fluent::lint_improper_ctypes_char_reason,
+                Some(fluent::lint_improper_ctypes_char_help),
+            ),
             _ => bug!("visit_numeric is to be called with numeric (char, int, float) types"),
         }
     }
@@ -360,11 +534,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     if inner_ty.is_sized(tcx, self.cx.typing_env()) {
                         return FfiSafe;
                     } else {
-                        return FfiUnsafe {
+                        return FfiResult::new_with_reason(
                             ty,
-                            reason: fluent::lint_improper_ctypes_box,
-                            help: None,
-                        };
+                            fluent::lint_improper_ctypes_box,
+                            None,
+                        );
                     }
                 } else {
                     // (mid-retcon-commit-chain comment:)
@@ -403,12 +577,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
                 let field_ty = get_type_from_field(self.cx, field, args);
-                match self.visit_type(state, Some(ty), field_ty) {
-                    FfiUnsafe { ty, .. } if ty.is_unit() => (),
-                    r => return r,
-                }
-
-                false
+                return self.visit_type(state, Some(ty), field_ty);
             } else {
                 // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
                 // `PhantomData`).
@@ -425,7 +594,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             all_phantom &= match self.visit_type(state, Some(ty), field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
-                FfiUnsafe { ty, .. } if ty.is_unit() => false,
                 FfiPhantom(..) => true,
                 r @ FfiUnsafe { .. } => return r,
             }
@@ -434,7 +602,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if all_phantom {
             FfiPhantom(ty)
         } else if transparent_with_all_zst_fields {
-            FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_struct_zst, help: None }
+            FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_struct_zst, None)
         } else {
             FfiSafe
         }
@@ -448,51 +616,50 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
-        use FfiResult::*;
 
         if !def.repr().c() && !def.repr().transparent() {
-            return FfiUnsafe {
+            return FfiResult::new_with_reason(
                 ty,
-                reason: if def.is_struct() {
+                if def.is_struct() {
                     fluent::lint_improper_ctypes_struct_layout_reason
                 } else {
                     fluent::lint_improper_ctypes_union_layout_reason
                 },
-                help: if def.is_struct() {
+                if def.is_struct() {
                     Some(fluent::lint_improper_ctypes_struct_layout_help)
                 } else {
                     // (FIXME(ctypes): confirm that this makes sense for unions once #60405 / RFC2645 stabilises)
                     Some(fluent::lint_improper_ctypes_union_layout_help)
                 },
-            };
+            );
         }
 
         if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
-            return FfiUnsafe {
+            return FfiResult::new_with_reason(
                 ty,
-                reason: if def.is_struct() {
+                if def.is_struct() {
                     fluent::lint_improper_ctypes_struct_non_exhaustive
                 } else {
                     fluent::lint_improper_ctypes_union_non_exhaustive
                 },
-                help: None,
-            };
+                None,
+            );
         }
 
         if def.non_enum_variant().fields.is_empty() {
-            return FfiUnsafe {
+            FfiResult::new_with_reason(
                 ty,
-                reason: if def.is_struct() {
+                if def.is_struct() {
                     fluent::lint_improper_ctypes_struct_fieldless_reason
                 } else {
                     fluent::lint_improper_ctypes_union_fieldless_reason
                 },
-                help: if def.is_struct() {
+                if def.is_struct() {
                     Some(fluent::lint_improper_ctypes_struct_fieldless_help)
                 } else {
                     Some(fluent::lint_improper_ctypes_union_fieldless_help)
                 },
-            };
+            )
         } else {
             self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
         }
@@ -520,18 +687,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 return self.visit_type(state, Some(ty), inner_ty);
             }
 
-            return FfiUnsafe {
+            return FfiResult::new_with_reason(
                 ty,
-                reason: fluent::lint_improper_ctypes_enum_repr_reason,
-                help: Some(fluent::lint_improper_ctypes_enum_repr_help),
-            };
+                fluent::lint_improper_ctypes_enum_repr_reason,
+                Some(fluent::lint_improper_ctypes_enum_repr_help),
+            );
         }
+
+        // FIXME(ctypes): connect `def.repr().int` to visit_numeric
+        // (for now it's OK, `repr(char)` doesn't exist and visit_numeric doesn't warn on anything else)
 
         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
         // Check the contained variants.
         let ret = def.variants().iter().try_for_each(|variant| {
             check_non_exhaustive_variant(non_exhaustive, variant)
-                .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
+                .map_break(|reason| FfiResult::new_with_reason(ty, reason, None))?;
 
             match self.visit_variant_fields(state, ty, def, variant, args) {
                 FfiSafe => ControlFlow::Continue(()),
@@ -583,11 +753,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             tcx.get_diagnostic_name(def.did())
                             && !self.base_ty.is_mutable_ptr()
                         {
-                            return FfiUnsafe {
+                            return FfiResult::new_with_reason(
                                 ty,
-                                reason: fluent::lint_improper_ctypes_cstr_reason,
-                                help: Some(fluent::lint_improper_ctypes_cstr_help),
-                            };
+                                fluent::lint_improper_ctypes_cstr_reason,
+                                Some(fluent::lint_improper_ctypes_cstr_help),
+                            );
                         }
                         self.visit_struct_or_union(state, ty, def, args)
                     }
@@ -608,21 +778,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Primitive types with a stable representation.
             ty::Bool => FfiSafe,
 
-            ty::Slice(_) => FfiUnsafe {
+            ty::Slice(_) => FfiResult::new_with_reason(
                 ty,
-                reason: fluent::lint_improper_ctypes_slice_reason,
-                help: Some(fluent::lint_improper_ctypes_slice_help),
-            },
+                fluent::lint_improper_ctypes_slice_reason,
+                Some(fluent::lint_improper_ctypes_slice_help),
+            ),
 
             ty::Dynamic(..) => {
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_dyn, help: None }
+                FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_dyn, None)
             }
 
-            ty::Str => FfiUnsafe {
+            ty::Str => FfiResult::new_with_reason(
                 ty,
-                reason: fluent::lint_improper_ctypes_str_reason,
-                help: Some(fluent::lint_improper_ctypes_str_help),
-            },
+                fluent::lint_improper_ctypes_str_reason,
+                Some(fluent::lint_improper_ctypes_str_help),
+            ),
 
             ty::Tuple(tuple) => {
                 let empty_and_safe = if tuple.is_empty() {
@@ -643,11 +813,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if empty_and_safe {
                     FfiSafe
                 } else {
-                    FfiUnsafe {
+                    FfiResult::new_with_reason(
                         ty,
-                        reason: fluent::lint_improper_ctypes_tuple_reason,
-                        help: Some(fluent::lint_improper_ctypes_tuple_help),
-                    }
+                        fluent::lint_improper_ctypes_tuple_reason,
+                        Some(fluent::lint_improper_ctypes_tuple_help),
+                    )
                 }
             }
 
@@ -671,11 +841,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if state.is_in_function() && matches!(outer_ty.map(|ty| ty.kind()), None) {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
-                    FfiResult::FfiUnsafe {
+                    FfiResult::new_with_reason(
                         ty,
-                        reason: fluent::lint_improper_ctypes_array_reason,
-                        help: Some(fluent::lint_improper_ctypes_array_help),
-                    }
+                        fluent::lint_improper_ctypes_array_reason,
+                        Some(fluent::lint_improper_ctypes_array_help),
+                    )
                 } else {
                     // let's allow phantoms to go through,
                     // since an array of 1-ZSTs is also a 1-ZST
@@ -686,11 +856,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
                 if sig.abi().is_rustic_abi() {
-                    return FfiUnsafe {
+                    return FfiResult::new_with_reason(
                         ty,
-                        reason: fluent::lint_improper_ctypes_fnptr_reason,
-                        help: Some(fluent::lint_improper_ctypes_fnptr_help),
-                    };
+                        fluent::lint_improper_ctypes_fnptr_reason,
+                        Some(fluent::lint_improper_ctypes_fnptr_help),
+                    );
                 }
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
@@ -713,7 +883,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
             ty::Alias(ty::Opaque, ..) => {
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_opaque, help: None }
+                FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_opaque, None)
             }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
@@ -758,11 +928,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        ty.visit_with(&mut ProhibitOpaqueTypes).break_value().map(|ty| FfiResult::FfiUnsafe {
-            ty,
-            reason: fluent::lint_improper_ctypes_opaque,
-            help: None,
-        })
+        ty.visit_with(&mut ProhibitOpaqueTypes)
+            .break_value()
+            .map(|ty| FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_opaque, None))
     }
 
     fn check_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
@@ -990,15 +1158,53 @@ impl<'tcx> ImproperCTypesLint {
             FfiResult::FfiPhantom(ty) => {
                 self.emit_ffi_unsafe_type_lint(
                     cx,
-                    ty,
+                    ty.clone(),
                     sp,
-                    fluent::lint_improper_ctypes_only_phantomdata,
-                    None,
+                    vec![ImproperCTypesLayer {
+                        ty,
+                        note: fluent::lint_improper_ctypes_only_phantomdata,
+                        span_note: None, // filled later
+                        help: None,
+                        inner_ty: None,
+                    }],
                     fn_mode,
                 );
             }
-            FfiResult::FfiUnsafe { ty, reason, help } => {
-                self.emit_ffi_unsafe_type_lint(cx, ty, sp, reason, help, fn_mode);
+            FfiResult::FfiUnsafe(explanations) => {
+                for explanation in explanations {
+                    let mut ffiresult_recursor = ControlFlow::Continue(explanation.reason.as_ref());
+                    let mut cimproper_layers: Vec<ImproperCTypesLayer<'_>> = vec![];
+
+                    // this whole while block converts the arbitrarily-deep
+                    // FfiResult stack to an ImproperCTypesLayer Vec
+                    while let ControlFlow::Continue(FfiUnsafeReason { ty, note, help, inner }) =
+                        ffiresult_recursor
+                    {
+                        if let Some(layer) = cimproper_layers.last_mut() {
+                            layer.inner_ty = Some(ty.clone());
+                        }
+                        cimproper_layers.push(ImproperCTypesLayer {
+                            ty: ty.clone(),
+                            inner_ty: None,
+                            help: help.clone(),
+                            note: note.clone(),
+                            span_note: None, // filled later
+                        });
+
+                        if let Some(inner) = inner {
+                            ffiresult_recursor = ControlFlow::Continue(inner.as_ref());
+                        } else {
+                            ffiresult_recursor = ControlFlow::Break(());
+                        }
+                    }
+                    let cause_ty = if let Some(cause_ty) = explanation.override_cause_ty {
+                        cause_ty
+                    } else {
+                        // should always have at least one type
+                        cimproper_layers.last().unwrap().ty.clone()
+                    };
+                    self.emit_ffi_unsafe_type_lint(cx, cause_ty, sp, cimproper_layers, fn_mode);
+                }
             }
         }
     }
@@ -1008,8 +1214,7 @@ impl<'tcx> ImproperCTypesLint {
         cx: &LateContext<'tcx>,
         ty: Ty<'tcx>,
         sp: Span,
-        note: DiagMessage,
-        help: Option<DiagMessage>,
+        mut reasons: Vec<ImproperCTypesLayer<'tcx>>,
         fn_mode: CItemKind,
     ) {
         let lint = match fn_mode {
@@ -1020,14 +1225,17 @@ impl<'tcx> ImproperCTypesLint {
             CItemKind::Declaration => "block",
             CItemKind::Definition => "fn",
         };
-        let span_note = if let ty::Adt(def, _) = ty.kind()
-            && let Some(sp) = cx.tcx.hir_span_if_local(def.did())
-        {
-            Some(sp)
-        } else {
-            None
-        };
-        cx.emit_span_lint(lint, sp, ImproperCTypes { ty, desc, label: sp, help, note, span_note });
+        for reason in reasons.iter_mut() {
+            reason.span_note = if let ty::Adt(def, _) = reason.ty.kind()
+                && let Some(sp) = cx.tcx.hir_span_if_local(def.did())
+            {
+                Some(sp)
+            } else {
+                None
+            };
+        }
+
+        cx.emit_span_lint(lint, sp, ImproperCTypes { ty, desc, label: sp, reasons });
     }
 }
 
