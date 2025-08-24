@@ -970,8 +970,10 @@ pub(crate) struct LimitInvalid<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_feature_single_word)]
-pub(crate) struct FeatureExpectedSingleWord {
+#[diag(attr_parsing_single_word)]
+pub(crate) struct ExpectedSingleWord {
+    pub description: &'static str,
+
     #[primary_span]
     pub span: Span,
 

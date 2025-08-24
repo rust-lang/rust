@@ -84,6 +84,7 @@ impl AttributeKind {
             ProcMacroDerive { .. } => No,
             PubTransparent(..) => Yes,
             RecursionLimit { .. } => No,
+            RegisterTool(..) => No,
             Repr { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcCoherenceIsCore(..) => No,
