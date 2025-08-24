@@ -2348,13 +2348,40 @@ pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
     },
 }
 
+pub(crate) struct ImproperCTypesLayer<'a> {
+    pub ty: Ty<'a>,
+    pub inner_ty: Option<Ty<'a>>,
+    pub note: DiagMessage,
+    pub span_note: Option<Span>,
+    pub help: Option<DiagMessage>,
+}
+
+impl<'a> Subdiagnostic for ImproperCTypesLayer<'a> {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        let add_args = |msg: DiagMessage| {
+            let mut msg_with_args = msg.arg("ty", self.ty);
+            if let Some(ty) = self.inner_ty {
+                msg_with_args = msg_with_args.arg("inner_ty", ty);
+            }
+            msg_with_args.format()
+        };
+
+        if let Some(help) = self.help {
+            diag.help(add_args(help));
+        }
+
+        diag.note(add_args(self.note));
+        if let Some(note) = self.span_note {
+            diag.span_note(note, msg!("the type is defined here"));
+        };
+    }
+}
+
 pub(crate) struct ImproperCTypes<'a> {
     pub ty: Ty<'a>,
     pub desc: &'a str,
     pub label: Span,
-    pub help: Option<DiagMessage>,
-    pub note: DiagMessage,
-    pub span_note: Option<Span>,
+    pub reasons: Vec<ImproperCTypesLayer<'a>>,
 }
 
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
@@ -2365,16 +2392,12 @@ impl<'a> Diagnostic<'a, ()> for ImproperCTypes<'_> {
             level,
             msg!("`extern` {$desc} uses type `{$ty}`, which is not FFI-safe"),
         )
-        .with_arg("ty", self.ty)
-        .with_arg("desc", self.desc)
         .with_span_label(self.label, msg!("not FFI-safe"));
-        if let Some(help) = self.help {
-            diag.help(help);
+        for reason in self.reasons.into_iter() {
+            diag.subdiagnostic(reason);
         }
-        diag.note(self.note);
-        if let Some(note) = self.span_note {
-            diag.span_note(note, msg!("the type is defined here"));
-        }
+        diag.arg("ty", self.ty);
+        diag.arg("desc", self.desc);
         diag
     }
 }
