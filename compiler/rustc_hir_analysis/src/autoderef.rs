@@ -1,7 +1,7 @@
+use rustc_hir::limit::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_session::Limit;
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;

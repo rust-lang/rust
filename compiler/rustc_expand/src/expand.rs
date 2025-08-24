@@ -19,14 +19,15 @@ use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
+use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
     token_descr,
 };
+use rustc_session::Session;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
-use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
 use smallvec::SmallVec;
@@ -2529,6 +2530,7 @@ impl ExpansionConfig<'_> {
         ExpansionConfig {
             crate_name,
             features,
+            // FIXME should this limit be configurable?
             recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,

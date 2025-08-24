@@ -1,18 +1,19 @@
 use std::num::IntErrorKind;
 
-use crate::session_diagnostics::LimitInvalid;
+use rustc_hir::limit::Limit;
 
 use super::prelude::*;
+use crate::session_diagnostics::LimitInvalid;
 
 impl<S: Stage> AcceptContext<'_, '_, S> {
-    fn parse_limit_int(&self, nv: &NameValueParser) -> Option<usize> {
+    fn parse_limit_int(&self, nv: &NameValueParser) -> Option<Limit> {
         let Some(limit) = nv.value_as_str() else {
             self.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
 
         let error_str = match limit.as_str().parse() {
-            Ok(i) => return Some(i),
+            Ok(i) => return Some(Limit::new(i)),
             Err(e) => match e.kind() {
                 IntErrorKind::PosOverflow => "`limit` is too large",
                 IntErrorKind::Empty => "`limit` must be a non-negative integer",
