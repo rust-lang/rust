@@ -658,30 +658,34 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
-        let proj = match proj {
-            ProjectionElem::Deref => {
-                if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
-                    && projection_ty.ty.is_freeze(self.tcx, self.typing_env())
-                {
-                    if let Value::Address { base, projection, .. } = self.get(value)
-                        && let Some(value) = self.dereference_address(base, projection)
-                    {
-                        return Some((projection_ty, value));
-                    }
+        let proj = proj.try_map(Some, |_| ())?;
 
-                    // An immutable borrow `_x` always points to the same value for the
-                    // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
-                } else {
-                    return None;
-                }
+        if let ProjectionElem::Deref = proj
+            // An immutable borrow `_x` always points to the same value for the
+            // lifetime of the borrow, so we can merge all instances of `*_x`.
+            && !(place_ty.ty.ref_mutability() == Some(Mutability::Not)
+                && projection_ty.ty.is_freeze(self.tcx, self.typing_env()))
+        {
+            return None;
+        }
+
+        match (proj, self.get(value)) {
+            (ProjectionElem::Deref, Value::Address { base, projection, .. })
+                if let Some(deref) = self.dereference_address(base, projection) =>
+            {
+                return Some((projection_ty, deref));
             }
-            ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
-            ProjectionElem::Field(f, _) => {
-                if let Value::Aggregate(_, fields) = self.get(value) {
-                    return Some((projection_ty, fields[f.as_usize()]));
-                } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
-                    && let Value::Aggregate(written_variant, fields) = self.get(outer_value)
+            (ProjectionElem::Deref, _) => {
+                return Some((projection_ty, self.insert_deref(projection_ty.ty, value)));
+            }
+            (ProjectionElem::Field(f, _), Value::Aggregate(_, fields)) => {
+                return Some((projection_ty, fields[f.as_usize()]));
+            }
+            (
+                ProjectionElem::Field(f, _),
+                Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)),
+            ) => {
+                if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -701,39 +705,30 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 {
                     return Some((projection_ty, fields[f.as_usize()]));
                 }
-                ProjectionElem::Field(f, ())
             }
-            ProjectionElem::Index(idx) => {
-                if let Value::Repeat(inner, _) = self.get(value) {
-                    return Some((projection_ty, inner));
-                }
-                ProjectionElem::Index(idx)
+            (ProjectionElem::Index(_), Value::Repeat(inner, _)) => {
+                return Some((projection_ty, inner));
             }
-            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                match self.get(value) {
-                    Value::Repeat(inner, _) => {
-                        return Some((projection_ty, inner));
-                    }
-                    Value::Aggregate(_, operands) => {
-                        let offset = if from_end {
-                            operands.len() - offset as usize
-                        } else {
-                            offset as usize
-                        };
-                        let value = operands.get(offset).copied()?;
-                        return Some((projection_ty, value));
-                    }
-                    _ => {}
-                };
-                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            (ProjectionElem::ConstantIndex { .. }, Value::Repeat(inner, _)) => {
+                return Some((projection_ty, inner));
             }
-            ProjectionElem::Subslice { from, to, from_end } => {
-                ProjectionElem::Subslice { from, to, from_end }
+            (
+                ProjectionElem::ConstantIndex { offset, from_end: false, .. },
+                Value::Aggregate(_, operands),
+            ) => {
+                let value = operands.get(offset as usize).copied()?;
+                return Some((projection_ty, value));
             }
-            ProjectionElem::OpaqueCast(_) => ProjectionElem::OpaqueCast(()),
-            ProjectionElem::Subtype(_) => ProjectionElem::Subtype(()),
-            ProjectionElem::UnwrapUnsafeBinder(_) => ProjectionElem::UnwrapUnsafeBinder(()),
-        };
+            (
+                ProjectionElem::ConstantIndex { offset, from_end: true, .. },
+                Value::Aggregate(_, operands),
+            ) => {
+                let offset = operands.len().checked_sub(offset as usize)?;
+                let value = operands[offset];
+                return Some((projection_ty, value));
+            }
+            _ => {}
+        }
 
         let value = self.insert(projection_ty.ty, Value::Projection(value, proj));
         Some((projection_ty, value))
