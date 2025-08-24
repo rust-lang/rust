@@ -76,7 +76,8 @@ where
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
-                | TypingMode::PostAnalysis => return Err(NoSolution),
+                | TypingMode::PostAnalysis
+                | TypingMode::Codegen => return Err(NoSolution),
             },
 
             // Impl matches polarity
@@ -1330,7 +1331,8 @@ where
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {}
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen => {}
         }
 
         if candidates
@@ -1485,6 +1487,7 @@ where
                 }
                 TypingMode::Coherence
                 | TypingMode::PostAnalysis
+                | TypingMode::Codegen
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
             }

@@ -12,11 +12,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // Avoid query cycles (coroutines require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
-            return;
-        }
-
         let typing_env = body.typing_env(tcx);
         let local_decls = &body.local_decls;
         let mut replacer = Replacer { tcx, typing_env, local_decls };
