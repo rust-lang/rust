@@ -743,6 +743,7 @@ function preLoadCss(cssUrl) {
                 if (shortty === "mod") {
                     path = `${modpath}${name}/index.html`;
                 } else {
+                    // FIXME: Take into account override
                     path = `${modpath}${shortty}.${name}.html`;
                 }
                 let current_page = document.location.href.toString();

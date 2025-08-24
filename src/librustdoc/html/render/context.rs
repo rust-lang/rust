@@ -303,10 +303,11 @@ impl<'tcx> Context<'tcx> {
     }
 
     /// Construct a map of items shown in the sidebar to a plain-text summary of their docs.
+    // FIXME: Propagate xx_url_name_override_xx, it's gonna be nasty tho
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<String>> {
         // BTreeMap instead of HashMap to get a sorted output
-        let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
-        let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
+        let mut map = BTreeMap::<_, Vec<_>>::new();
+        let mut inserted = FxHashMap::<_, FxHashSet<_>>::default();
 
         for item in &m.items {
             if item.is_stripped() {
@@ -849,7 +850,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let buf = self.render_item(item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
-            let name = item.name.as_ref().unwrap();
+            let name = match item.kind {
+                clean::ItemKind::KeywordItem { xx_url_name_override_xx } => {
+                    xx_url_name_override_xx
+                }
+                _ => None,
+            }.or(item.name)
+            .unwrap();
             let item_type = item.type_();
             let file_name = print_item_path(item_type, name.as_str()).to_string();
             self.shared.ensure_dir(&self.dst)?;

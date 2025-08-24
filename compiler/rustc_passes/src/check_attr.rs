@@ -677,6 +677,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
+    #[expect(dead_code)] // FIXME: remove fn etc. entirely
     fn doc_attr_str_error(&self, meta: &MetaItemInner, attr_name: &str) {
         self.dcx().emit_err(errors::DocExpectStr { attr_span: meta.span(), attr_name });
     }
@@ -821,17 +822,60 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_keyword(&self, meta: &MetaItemInner, hir_id: HirId) {
+        
         fn is_doc_keyword(s: Symbol) -> bool {
-            // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
-            // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
-            // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
-            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
+            s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak()
         }
 
-        let doc_keyword = match meta.value_str() {
-            Some(value) if value != sym::empty => value,
-            _ => return self.doc_attr_str_error(meta, "keyword"),
-        };
+        // FIXME: Reject unsafe in various places.
+        if let Some(values) = meta.meta_item_list() {
+            let mut keyword = None;
+            // XXX XXX XXX docs
+            let mut xx_url_name_override_xx = None;
+            for value in values {
+                match value {
+                    MetaItemInner::MetaItem(meta) => {
+                        if meta.has_name(sym::encode)
+                            && let Some(x) = meta.value_str()
+                        {
+                            if xx_url_name_override_xx.is_some() {
+                                self.dcx()
+                                    .span_err(meta.span, "[[ encoding provided more than once ]]");
+                            }
+                            xx_url_name_override_xx = Some(x);
+                        } else {
+                            self.dcx().span_err(meta.span, "[[ invalid format ]]");
+                        }
+                    }
+                    MetaItemInner::Lit(lit) => {
+                        if let Some(kw) = lit.value_str() {
+                            if keyword.is_some() {
+                                self.dcx()
+                                    .span_err(meta.span(), "[[ keyword provided more than once ]]");
+                            }
+                            keyword = Some(kw);
+                        } else {
+                            self.dcx().span_err(meta.span(), "[[ invalid format ]]");
+                        }
+                    }
+                }
+            }
+
+            _ = xx_url_name_override_xx;
+
+            if let Some(keyword) = keyword {
+                if !is_doc_keyword(keyword) {
+                    self.dcx().emit_err(errors::DocKeywordNotKeyword {
+                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                        keyword,
+                    });
+                }
+            } else {
+                self.dcx().span_err(meta.span(), "[[ no keyword provided ]]");
+            }
+        } else {
+            self.dcx().span_err(meta.span(), "[[ invalid format ]]");
+        }
 
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
@@ -848,12 +892,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.dcx().emit_err(errors::DocKeywordNotMod { span: meta.span() });
                 return;
             }
-        }
-        if !is_doc_keyword(doc_keyword) {
-            self.dcx().emit_err(errors::DocKeywordNotKeyword {
-                span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                keyword: doc_keyword,
-            });
         }
     }
 

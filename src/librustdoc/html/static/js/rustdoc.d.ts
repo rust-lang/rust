@@ -236,6 +236,7 @@ declare namespace rustdoc {
         parent: number?,
         deprecated: boolean,
         associatedItemDisambiguator: string?,
+        xxUrlNameOverrideXx: string?,
     }
 
     /**
@@ -338,7 +339,7 @@ declare namespace rustdoc {
         returned: rustdoc.QueryElement[],
         is_alias: boolean,
         alias?: string,
-        original?: rustdoc.Rlow,
+        original?: rustdoc.Row,
     }
 
     /**

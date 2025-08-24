@@ -372,7 +372,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem => {
+            | clean::KeywordItem { .. } => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -591,6 +591,10 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         ty: item.type_(),
         defid: Some(defid),
         name,
+        xx_url_name_override_xx: match item.kind {
+            clean::ItemKind::KeywordItem { xx_url_name_override_xx: x } => x,
+            _ => None,
+        },
         module_path: parent_path.to_vec(),
         desc,
         parent: parent_did,

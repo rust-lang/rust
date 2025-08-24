@@ -70,8 +70,13 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
                 cx,
             )
         }));
-        m.items.extend(keywords.map(|(def_id, kw)| {
-            Item::from_def_id_and_parts(def_id, Some(kw), ItemKind::KeywordItem, cx)
+        m.items.extend(keywords.map(|(def_id, kw, xx_url_name_override_xx)| {
+            Item::from_def_id_and_parts(
+                def_id,
+                Some(kw),
+                ItemKind::KeywordItem { xx_url_name_override_xx },
+                cx,
+            )
         }));
     }
 
