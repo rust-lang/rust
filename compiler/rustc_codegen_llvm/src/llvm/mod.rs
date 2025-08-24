@@ -215,7 +215,7 @@ pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
 }
 
 pub(crate) fn set_global_constant(llglobal: &Value, is_constant: bool) {
-    LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
+    LLVMSetGlobalConstant(llglobal, is_constant.to_llvm_bool());
 }
 
 pub(crate) fn get_linkage(llglobal: &Value) -> Linkage {
@@ -229,7 +229,7 @@ pub(crate) fn set_linkage(llglobal: &Value, linkage: Linkage) {
 }
 
 pub(crate) fn is_declaration(llglobal: &Value) -> bool {
-    unsafe { LLVMIsDeclaration(llglobal) == ffi::True }
+    unsafe { LLVMIsDeclaration(llglobal) }.is_true()
 }
 
 pub(crate) fn get_visibility(llglobal: &Value) -> Visibility {
