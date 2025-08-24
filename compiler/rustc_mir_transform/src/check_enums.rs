@@ -48,6 +48,21 @@ impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
                     let new_block = split_block(basic_blocks, location);
 
                     match check {
+                        EnumCheckType::Direct { op_size, .. }
+                        | EnumCheckType::WithNiche { op_size, .. }
+                            if op_size.bytes() == 0 =>
+                        {
+                            // It is never valid to use a ZST as a discriminant for an inhabited enum, but that will
+                            // have been caught by the type checker. Do nothing but ensure that a bug has been signaled.
+                            tcx.dcx().span_delayed_bug(
+                                source_info.span,
+                                "cannot build enum discriminant from zero-sized type",
+                            );
+                            basic_blocks[block].terminator = Some(Terminator {
+                                source_info,
+                                kind: TerminatorKind::Goto { target: new_block },
+                            });
+                        }
                         EnumCheckType::Direct { source_op, discr, op_size, valid_discrs } => {
                             insert_direct_enum_check(
                                 tcx,

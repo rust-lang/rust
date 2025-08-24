@@ -53,7 +53,7 @@ help: use `::<...>` instead of `<...>` to specify lifetime, type, or const argum
 LL |     let _ = f::<u8, i8>();
    |              ++
 
-error: invalid label name `'_`
+error: labels cannot use keyword names
   --> $DIR/require-parens-for-chained-comparison.rs:22:15
    |
 LL |     let _ = f<'_, i8>();
@@ -81,7 +81,7 @@ help: use `::<...>` instead of `<...>` to specify lifetime, type, or const argum
 LL |     let _ = f::<'_, i8>();
    |              ++
 
-error: invalid label name `'_`
+error: labels cannot use keyword names
   --> $DIR/require-parens-for-chained-comparison.rs:29:7
    |
 LL |     f<'_>();

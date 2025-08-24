@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for TransparencyParser {
             Some(_) => {
                 cx.expected_specific_argument_strings(
                     nv.value_span,
-                    vec!["transparent", "semitransparent", "opaque"],
+                    &[sym::transparent, sym::semitransparent, sym::opaque],
                 );
                 None
             }

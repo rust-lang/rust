@@ -1029,6 +1029,7 @@ fn assoc_const(
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
     fmt::from_fn(move |w| {
+        render_attributes_in_code(w, it, &" ".repeat(indent), cx);
         write!(
             w,
             "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
@@ -1136,10 +1137,10 @@ fn assoc_method(
         let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
             header_len += 4;
             let indent_str = "    ";
-            write!(w, "{}", render_attributes_in_pre(meth, indent_str, cx))?;
+            render_attributes_in_code(w, meth, indent_str, cx);
             (4, indent_str, Ending::NoNewline)
         } else {
-            render_attributes_in_code(w, meth, cx);
+            render_attributes_in_code(w, meth, "", cx);
             (0, "", Ending::Newline)
         };
         write!(
@@ -1309,28 +1310,28 @@ fn render_assoc_item(
     })
 }
 
-// When an attribute is rendered inside a `<pre>` tag, it is formatted using
-// a whitespace prefix and newline.
-fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
-    fmt::from_fn(move |f| {
-        for a in it.attributes(cx.tcx(), cx.cache()) {
-            writeln!(f, "{prefix}{a}")?;
-        }
-        Ok(())
-    })
-}
-
 struct CodeAttribute(String);
 
-fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
-    write!(w, "<div class=\"code-attribute\">{}</div>", code_attr.0).unwrap();
+fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
+    write!(
+        w,
+        "<div class=\"code-attribute\">{prefix}{attr}</div>",
+        prefix = prefix,
+        attr = code_attr.0
+    )
+    .unwrap();
 }
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
-fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
+fn render_attributes_in_code(
+    w: &mut impl fmt::Write,
+    it: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+) {
     for attr in it.attributes(cx.tcx(), cx.cache()) {
-        render_code_attribute(CodeAttribute(attr), w);
+        render_code_attribute(prefix, CodeAttribute(attr), w);
     }
 }
 
@@ -1342,7 +1343,7 @@ fn render_repr_attributes_in_code(
     item_type: ItemType,
 ) {
     if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        render_code_attribute(CodeAttribute(repr), w);
+        render_code_attribute("", CodeAttribute(repr), w);
     }
 }
 

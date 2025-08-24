@@ -2,6 +2,8 @@
 //!
 //! The main entry point is the `step` method.
 
+use std::iter;
+
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
@@ -426,6 +428,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[Spanned<mir::Operand<'tcx>>],
+        dest: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, EvaluatedCalleeAndArgs<'tcx, M>> {
         let func = self.eval_operand(func, None)?;
 
@@ -435,14 +438,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // protection, but then we'd force *a lot* of arguments into memory. So we do some syntactic
         // pre-processing here where if all `move` arguments are syntactically distinct local
         // variables (and none is indirect), we can skip the in-memory forcing.
+        // We have to include `dest` in that list so that we can detect aliasing of an in-place
+        // argument with the return place.
         let move_definitely_disjoint = 'move_definitely_disjoint: {
             let mut previous_locals = FxHashSet::<mir::Local>::default();
-            for arg in args {
-                let mir::Operand::Move(place) = arg.node else {
-                    continue; // we can skip non-`Move` arguments.
-                };
+            for place in args
+                .iter()
+                .filter_map(|a| {
+                    // We only have to care about `Move` arguments.
+                    if let mir::Operand::Move(place) = &a.node { Some(place) } else { None }
+                })
+                .chain(iter::once(dest))
+            {
                 if place.is_indirect_first_projection() {
-                    // An indirect `Move` argument could alias with anything else...
+                    // An indirect in-place argument could alias with anything else...
                     break 'move_definitely_disjoint false;
                 }
                 if !previous_locals.insert(place.local) {
@@ -544,7 +553,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_loc = self.frame().loc;
 
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
-                    self.eval_callee_and_args(terminator, func, args)?;
+                    self.eval_callee_and_args(terminator, func, args, &destination)?;
 
                 let destination = self.eval_place(destination)?;
                 self.init_fn_call(
@@ -567,7 +576,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let old_frame_idx = self.frame_idx();
 
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
-                    self.eval_callee_and_args(terminator, func, args)?;
+                    self.eval_callee_and_args(terminator, func, args, &mir::Place::return_place())?;
 
                 self.init_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
 

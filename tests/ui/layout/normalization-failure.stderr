@@ -4,7 +4,7 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |         std::mem::transmute::<_, ()>(opaque::<T>().get());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `<impl Project2 as Project2>::Assoc2` (unable to determine layout for `<impl Project2 as Project2>::Assoc2` because `<impl Project2 as Project2>::Assoc2` cannot be normalized)
+   = note: source type: `{type error}` (the type has an unknown layout)
    = note: target type: `()` (0 bits)
 
 error: aborting due to 1 previous error

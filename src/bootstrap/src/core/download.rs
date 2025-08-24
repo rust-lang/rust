@@ -9,9 +9,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 use build_helper::git::PathFreshness;
 use xz2::bufread::XzDecoder;
 
-use crate::core::config::{BUILDER_CONFIG_FILENAME, Target, TargetSelection};
+use crate::core::config::{BUILDER_CONFIG_FILENAME, TargetSelection};
 use crate::utils::build_stamp::BuildStamp;
-use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
 use crate::utils::helpers::{exe, hex_encode, move_file};
 use crate::{Config, t};
@@ -73,7 +72,7 @@ impl Config {
 
     fn download_file(&self, url: &str, dest_path: &Path, help_on_error: &str) {
         let dwn_ctx: DownloadContext<'_> = self.into();
-        download_file(dwn_ctx, url, dest_path, help_on_error);
+        download_file(dwn_ctx, &self.out, url, dest_path, help_on_error);
     }
 
     fn unpack(&self, tarball: &Path, dst: &Path, pattern: &str) {
@@ -238,7 +237,7 @@ impl Config {
         destination: &str,
     ) {
         let dwn_ctx: DownloadContext<'_> = self.into();
-        download_component(dwn_ctx, mode, filename, prefix, key, destination);
+        download_component(dwn_ctx, &self.out, mode, filename, prefix, key, destination);
     }
 
     #[cfg(test)]
@@ -403,13 +402,8 @@ impl Config {
 pub(crate) struct DownloadContext<'a> {
     pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
     pub src: &'a Path,
-    pub rust_info: &'a channel::GitInfo,
     pub submodules: &'a Option<bool>,
-    pub download_rustc_commit: &'a Option<String>,
     pub host_target: TargetSelection,
-    pub llvm_from_ci: bool,
-    pub target_config: &'a HashMap<TargetSelection, Target>,
-    pub out: &'a Path,
     pub patch_binaries_for_nix: Option<bool>,
     pub exec_ctx: &'a ExecutionContext,
     pub stage0_metadata: &'a build_helper::stage0_parser::Stage0,
@@ -430,12 +424,7 @@ impl<'a> From<&'a Config> for DownloadContext<'a> {
             path_modification_cache: value.path_modification_cache.clone(),
             src: &value.src,
             host_target: value.host_target,
-            rust_info: &value.rust_info,
-            download_rustc_commit: &value.download_rustc_commit,
             submodules: &value.submodules,
-            llvm_from_ci: value.llvm_from_ci,
-            target_config: &value.target_config,
-            out: &value.out,
             patch_binaries_for_nix: value.patch_binaries_for_nix,
             exec_ctx: &value.exec_ctx,
             stage0_metadata: &value.stage0_metadata,
@@ -495,6 +484,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 #[cfg(test)]
 pub(crate) fn maybe_download_rustfmt<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    out: &Path,
 ) -> Option<PathBuf> {
     Some(PathBuf::new())
 }
@@ -504,6 +494,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 #[cfg(not(test))]
 pub(crate) fn maybe_download_rustfmt<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    out: &Path,
 ) -> Option<PathBuf> {
     use build_helper::stage0_parser::VersionMetadata;
 
@@ -517,7 +508,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     let channel = format!("{version}-{date}");
 
     let host = dwn_ctx.host_target;
-    let bin_root = dwn_ctx.out.join(host).join("rustfmt");
+    let bin_root = out.join(host).join("rustfmt");
     let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
     let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
     if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
@@ -526,6 +517,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 
     download_component(
         dwn_ctx,
+        out,
         DownloadSource::Dist,
         format!("rustfmt-{version}-{build}.tar.xz", build = host.triple),
         "rustfmt-preview",
@@ -535,6 +527,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 
     download_component(
         dwn_ctx,
+        out,
         DownloadSource::Dist,
         format!("rustc-{version}-{build}.tar.xz", build = host.triple),
         "rustc",
@@ -543,13 +536,13 @@ pub(crate) fn maybe_download_rustfmt<'a>(
     );
 
     if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-        fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
-        fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("rustfmt"), dwn_ctx.exec_ctx);
+        fix_bin_or_dylib(out, &bin_root.join("bin").join("cargo-fmt"), dwn_ctx.exec_ctx);
         let lib_dir = bin_root.join("lib");
         for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
             let lib = t!(lib);
             if path_is_dylib(&lib.path()) {
-                fix_bin_or_dylib(dwn_ctx.out, &lib.path(), dwn_ctx.exec_ctx);
+                fix_bin_or_dylib(out, &lib.path(), dwn_ctx.exec_ctx);
             }
         }
     }
@@ -559,10 +552,10 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 }
 
 #[cfg(test)]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {}
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {}
 
 #[cfg(not(test))]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>) {
+pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {
     let dwn_ctx = dwn_ctx.as_ref();
     dwn_ctx.exec_ctx.verbose(|| {
         println!("downloading stage0 beta artifacts");
@@ -574,6 +567,7 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
     let sysroot = "stage0";
     download_toolchain(
         dwn_ctx,
+        out,
         &version,
         sysroot,
         &date,
@@ -583,8 +577,10 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn download_toolchain<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    out: &Path,
     version: &str,
     sysroot: &str,
     stamp_key: &str,
@@ -594,7 +590,7 @@ fn download_toolchain<'a>(
 ) {
     let dwn_ctx = dwn_ctx.as_ref();
     let host = dwn_ctx.host_target.triple;
-    let bin_root = dwn_ctx.out.join(host).join(sysroot);
+    let bin_root = out.join(host).join(sysroot);
     let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
 
     if !bin_root.join("bin").join(exe("rustc", dwn_ctx.host_target)).exists()
@@ -605,20 +601,28 @@ fn download_toolchain<'a>(
         }
         let filename = format!("rust-std-{version}-{host}.tar.xz");
         let pattern = format!("rust-std-{host}");
-        download_component(dwn_ctx, mode.clone(), filename, &pattern, stamp_key, destination);
+        download_component(dwn_ctx, out, mode.clone(), filename, &pattern, stamp_key, destination);
         let filename = format!("rustc-{version}-{host}.tar.xz");
-        download_component(dwn_ctx, mode.clone(), filename, "rustc", stamp_key, destination);
+        download_component(dwn_ctx, out, mode.clone(), filename, "rustc", stamp_key, destination);
 
         for component in extra_components {
             let filename = format!("{component}-{version}-{host}.tar.xz");
-            download_component(dwn_ctx, mode.clone(), filename, component, stamp_key, destination);
+            download_component(
+                dwn_ctx,
+                out,
+                mode.clone(),
+                filename,
+                component,
+                stamp_key,
+                destination,
+            );
         }
 
         if should_fix_bins_and_dylibs(dwn_ctx.patch_binaries_for_nix, dwn_ctx.exec_ctx) {
-            fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("rustc"), dwn_ctx.exec_ctx);
-            fix_bin_or_dylib(dwn_ctx.out, &bin_root.join("bin").join("rustdoc"), dwn_ctx.exec_ctx);
+            fix_bin_or_dylib(out, &bin_root.join("bin").join("rustc"), dwn_ctx.exec_ctx);
+            fix_bin_or_dylib(out, &bin_root.join("bin").join("rustdoc"), dwn_ctx.exec_ctx);
             fix_bin_or_dylib(
-                dwn_ctx.out,
+                out,
                 &bin_root.join("libexec").join("rust-analyzer-proc-macro-srv"),
                 dwn_ctx.exec_ctx,
             );
@@ -626,7 +630,7 @@ fn download_toolchain<'a>(
             for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
                 let lib = t!(lib);
                 if path_is_dylib(&lib.path()) {
-                    fix_bin_or_dylib(dwn_ctx.out, &lib.path(), dwn_ctx.exec_ctx);
+                    fix_bin_or_dylib(out, &lib.path(), dwn_ctx.exec_ctx);
                 }
             }
         }
@@ -750,6 +754,7 @@ fn should_fix_bins_and_dylibs(
 
 fn download_component<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    out: &Path,
     mode: DownloadSource,
     filename: String,
     prefix: &str,
@@ -763,14 +768,14 @@ fn download_component<'a>(
     }
 
     let cache_dst =
-        dwn_ctx.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| dwn_ctx.out.join("cache"));
+        dwn_ctx.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| out.join("cache"));
 
     let cache_dir = cache_dst.join(key);
     if !cache_dir.exists() {
         t!(fs::create_dir_all(&cache_dir));
     }
 
-    let bin_root = dwn_ctx.out.join(dwn_ctx.host_target).join(destination);
+    let bin_root = out.join(dwn_ctx.host_target).join(destination);
     let tarball = cache_dir.join(&filename);
     let (base_url, url, should_verify) = match mode {
         DownloadSource::CI => {
@@ -835,7 +840,7 @@ HELP: if trying to compile an old commit of rustc, disable `download-rustc` in b
 download-rustc = false
 ";
     }
-    download_file(dwn_ctx, &format!("{base_url}/{url}"), &tarball, help_on_error);
+    download_file(dwn_ctx, out, &format!("{base_url}/{url}"), &tarball, help_on_error);
     if let Some(sha256) = checksum
         && !verify(dwn_ctx.exec_ctx, &tarball, sha256)
     {
@@ -953,6 +958,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
 
 fn download_file<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    out: &Path,
     url: &str,
     dest_path: &Path,
     help_on_error: &str,
@@ -963,7 +969,7 @@ fn download_file<'a>(
         println!("download {url}");
     });
     // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
-    let tempfile = tempdir(dwn_ctx.out).join(dest_path.file_name().unwrap());
+    let tempfile = tempdir(out).join(dest_path.file_name().unwrap());
     // While bootstrap itself only supports http and https downloads, downstream forks might
     // need to download components from other protocols. The match allows them adding more
     // protocols without worrying about merge conflicts if we change the HTTP implementation.

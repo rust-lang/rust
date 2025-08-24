@@ -543,21 +543,21 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             })
             .collect();
 
+        let label = label.to_string();
         let count = spans.len();
-        let labels = point_at_inner_spans.then_some(spans.clone());
+        let labels = point_at_inner_spans
+            .then_some(errors::HiddenUnicodeCodepointsDiagLabels { spans: spans.clone() });
+        let sub = if point_at_inner_spans && !spans.is_empty() {
+            errors::HiddenUnicodeCodepointsDiagSub::Escape { spans }
+        } else {
+            errors::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
+        };
 
         self.psess.buffer_lint(
             TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::HiddenUnicodeCodepoints {
-                label: label.to_string(),
-                count,
-                span_label: span,
-                labels,
-                escape: point_at_inner_spans && !spans.is_empty(),
-                spans,
-            },
+            errors::HiddenUnicodeCodepointsDiag { label, count, span_label: span, labels, sub },
         );
     }
 

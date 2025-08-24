@@ -305,11 +305,12 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
             for e in reduced {
                 if let Some(snip) = e.span.get_source_text(cx) {
                     snippet.push_str(&snip);
-                    snippet.push(';');
+                    snippet.push_str("; ");
                 } else {
                     return;
                 }
             }
+            snippet.pop(); // remove the last space
             span_lint_hir_and_then(
                 cx,
                 UNNECESSARY_OPERATION,

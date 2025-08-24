@@ -8,7 +8,6 @@ use std::mem;
 use hir::def_id::{LocalDefIdMap, LocalDefIdSet};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
@@ -79,7 +78,7 @@ struct MarkSymbolVisitor<'tcx> {
     worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    scanned: UnordSet<(LocalDefId, ComesFromAllowExpect)>,
+    scanned: LocalDefIdSet,
     live_symbols: LocalDefIdSet,
     repr_unconditionally_treats_fields_as_live: bool,
     repr_has_repr_simd: bool,
@@ -321,17 +320,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn mark_live_symbols(&mut self) {
         while let Some(work) = self.worklist.pop() {
-            if !self.scanned.insert(work) {
-                continue;
-            }
-
             let (mut id, comes_from_allow_expect) = work;
-
-            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
-            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
-                self.live_symbols.insert(id);
-                continue;
-            }
 
             // in the case of tuple struct constructors we want to check the item,
             // not the generated tuple struct constructor function
@@ -360,9 +349,23 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // this "duplication" is essential as otherwise a function with `#[expect]`
             // called from a `pub fn` may be falsely reported as not live, falsely
             // triggering the `unfulfilled_lint_expectations` lint.
-            if comes_from_allow_expect != ComesFromAllowExpect::Yes {
-                self.live_symbols.insert(id);
+            match comes_from_allow_expect {
+                ComesFromAllowExpect::Yes => {}
+                ComesFromAllowExpect::No => {
+                    self.live_symbols.insert(id);
+                }
             }
+
+            if !self.scanned.insert(id) {
+                continue;
+            }
+
+            // Avoid accessing the HIR for the synthesized associated type generated for RPITITs.
+            if self.tcx.is_impl_trait_in_trait(id.to_def_id()) {
+                self.live_symbols.insert(id);
+                continue;
+            }
+
             self.visit_node(self.tcx.hir_node_by_def_id(id));
         }
     }

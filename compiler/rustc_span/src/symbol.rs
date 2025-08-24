@@ -901,6 +901,7 @@ symbols! {
         dynamic_no_pic: "dynamic-no-pic",
         e,
         edition_panic,
+        effective_target_features,
         effects,
         eh_catch_typeinfo,
         eh_personality,
@@ -1061,6 +1062,7 @@ symbols! {
         fn_ptr_addr,
         fn_ptr_trait,
         forbid,
+        force_target_feature,
         forget,
         format,
         format_args,
@@ -1754,6 +1756,7 @@ symbols! {
         readonly,
         realloc,
         reason,
+        reborrow,
         receiver,
         receiver_target,
         recursion_limit,
@@ -2533,8 +2536,14 @@ impl fmt::Debug for Ident {
 /// except that AST identifiers don't keep the rawness flag, so we have to guess it.
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&IdentPrinter::new(self.name, self.is_raw_guess(), None), f)
+        fmt::Display::fmt(&IdentPrinter::new(self.name, self.guess_print_mode(), None), f)
     }
+}
+
+pub enum IdentPrintMode {
+    Normal,
+    RawIdent,
+    RawLifetime,
 }
 
 /// The most general type to print identifiers.
@@ -2552,7 +2561,7 @@ impl fmt::Display for Ident {
 /// done for a token stream or a single token.
 pub struct IdentPrinter {
     symbol: Symbol,
-    is_raw: bool,
+    mode: IdentPrintMode,
     /// Span used for retrieving the crate name to which `$crate` refers to,
     /// if this field is `None` then the `$crate` conversion doesn't happen.
     convert_dollar_crate: Option<Span>,
@@ -2560,32 +2569,51 @@ pub struct IdentPrinter {
 
 impl IdentPrinter {
     /// The most general `IdentPrinter` constructor. Do not use this.
-    pub fn new(symbol: Symbol, is_raw: bool, convert_dollar_crate: Option<Span>) -> IdentPrinter {
-        IdentPrinter { symbol, is_raw, convert_dollar_crate }
+    pub fn new(
+        symbol: Symbol,
+        mode: IdentPrintMode,
+        convert_dollar_crate: Option<Span>,
+    ) -> IdentPrinter {
+        IdentPrinter { symbol, mode, convert_dollar_crate }
     }
 
     /// This implementation is supposed to be used when printing identifiers
     /// as a part of pretty-printing for larger AST pieces.
     /// Do not use this either.
-    pub fn for_ast_ident(ident: Ident, is_raw: bool) -> IdentPrinter {
-        IdentPrinter::new(ident.name, is_raw, Some(ident.span))
+    pub fn for_ast_ident(ident: Ident, mode: IdentPrintMode) -> IdentPrinter {
+        IdentPrinter::new(ident.name, mode, Some(ident.span))
     }
 }
 
 impl fmt::Display for IdentPrinter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_raw {
-            f.write_str("r#")?;
-        } else if self.symbol == kw::DollarCrate {
-            if let Some(span) = self.convert_dollar_crate {
+        let s = match self.mode {
+            IdentPrintMode::Normal
+                if self.symbol == kw::DollarCrate
+                    && let Some(span) = self.convert_dollar_crate =>
+            {
                 let converted = span.ctxt().dollar_crate_name();
                 if !converted.is_path_segment_keyword() {
                     f.write_str("::")?;
                 }
-                return fmt::Display::fmt(&converted, f);
+                converted
             }
-        }
-        fmt::Display::fmt(&self.symbol, f)
+            IdentPrintMode::Normal => self.symbol,
+            IdentPrintMode::RawIdent => {
+                f.write_str("r#")?;
+                self.symbol
+            }
+            IdentPrintMode::RawLifetime => {
+                f.write_str("'r#")?;
+                let s = self
+                    .symbol
+                    .as_str()
+                    .strip_prefix("'")
+                    .expect("only lifetime idents should be passed with RawLifetime mode");
+                Symbol::intern(s)
+            }
+        };
+        s.fmt(f)
     }
 }
 
@@ -3018,6 +3046,29 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+
+    /// Given the name of a lifetime without the first quote (`'`),
+    /// returns whether the lifetime name is reserved (therefore invalid)
+    pub fn is_reserved_lifetime(self) -> bool {
+        self.is_reserved() && ![kw::Underscore, kw::Static].contains(&self.name)
+    }
+
+    pub fn is_raw_lifetime_guess(self) -> bool {
+        let name_without_apostrophe = self.without_first_quote();
+        name_without_apostrophe.name != self.name
+            && name_without_apostrophe.name.can_be_raw()
+            && name_without_apostrophe.is_reserved_lifetime()
+    }
+
+    pub fn guess_print_mode(self) -> IdentPrintMode {
+        if self.is_raw_lifetime_guess() {
+            IdentPrintMode::RawLifetime
+        } else if self.is_raw_guess() {
+            IdentPrintMode::RawIdent
+        } else {
+            IdentPrintMode::Normal
+        }
     }
 
     /// Whether this would be the identifier for a tuple field like `self.0`, as

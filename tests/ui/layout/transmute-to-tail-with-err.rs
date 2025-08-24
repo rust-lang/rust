@@ -5,4 +5,5 @@ struct Bar(Box<dyn Trait<T>>);
 
 fn main() {
     let x: Bar = unsafe { std::mem::transmute(()) };
+    //~^ ERROR cannot transmute between types of different size
 }

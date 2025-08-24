@@ -206,9 +206,24 @@ pub struct TypeckResults<'tcx> {
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
+    /// Goals proven during HIR typeck which may be potentially region dependent.
+    ///
+    /// Borrowck *uniquifies* regions which may cause these goal to be ambiguous in MIR
+    /// type check. We ICE if goals fail in borrowck to detect bugs during MIR building or
+    /// missed checks in HIR typeck. To avoid ICE due to region dependence we store all
+    /// goals which may be region dependent and reprove them in case borrowck encounters
+    /// an error.
+    pub potentially_region_dependent_goals:
+        FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
+
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
+
+    /// Stores the types involved in calls to `transmute` intrinsic. These are meant to be checked
+    /// outside of typeck and borrowck to avoid cycles with opaque types and coroutine layout
+    /// computation.
+    pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
 
     /// Container types and field indices of `offset_of!` expressions
     offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
@@ -240,7 +255,9 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
+            potentially_region_dependent_goals: Default::default(),
             closure_size_eval: Default::default(),
+            transmutes_to_check: Default::default(),
             offset_of_data: Default::default(),
         }
     }

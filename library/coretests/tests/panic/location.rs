@@ -48,10 +48,18 @@ fn location_const_column() {
 }
 
 #[test]
+fn location_file_lifetime<'x>() {
+    // Verify that the returned `&str`s lifetime is derived from the generic
+    // lifetime 'a, not the lifetime of `&self`, when calling `Location::file`.
+    // Test failure is indicated by a compile failure, not a runtime panic.
+    let _: for<'a> fn(&'a Location<'x>) -> &'x str = Location::file;
+}
+
+#[test]
 fn location_debug() {
     let f = format!("{:?}", Location::caller());
     assert!(f.contains(&format!("{:?}", file!())));
-    assert!(f.contains("52"));
+    assert!(f.contains("60"));
     assert!(f.contains("29"));
 }
 

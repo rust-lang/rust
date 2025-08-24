@@ -170,3 +170,22 @@ attr_parsing_unused_multiple =
 
 -attr_parsing_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+attr_parsing_meta_bad_delim = wrong meta list delimiters
+attr_parsing_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
+
+attr_parsing_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
+    .label = usage of unsafe attribute
+attr_parsing_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+attr_parsing_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
+    .label = this is not an unsafe attribute
+    .suggestion = remove the `unsafe(...)`
+    .note = extraneous unsafe is not allowed in attributes
+
+attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
+    .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
+    .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+
+attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
+    .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)

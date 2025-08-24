@@ -137,14 +137,37 @@ impl<'a> Parser<'a> {
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, Box<Ty>> {
-        self.parse_ty_common(
+        let ty = self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-        )
+        )?;
+
+        // Recover a trailing `= EXPR` if present.
+        if self.may_recover()
+            && self.check_noexpect(&token::Eq)
+            && self.look_ahead(1, |tok| tok.can_begin_expr())
+        {
+            let snapshot = self.create_snapshot_for_diagnostic();
+            self.bump();
+            let eq_span = self.prev_token.span;
+            match self.parse_expr() {
+                Ok(e) => {
+                    self.dcx()
+                        .struct_span_err(eq_span.to(e.span), "parameter defaults are not supported")
+                        .emit();
+                }
+                Err(diag) => {
+                    diag.cancel();
+                    self.restore_snapshot(snapshot);
+                }
+            }
+        }
+
+        Ok(ty)
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
@@ -1479,8 +1502,7 @@ impl<'a> Parser<'a> {
     pub(super) fn expect_lifetime(&mut self) -> Lifetime {
         if let Some((ident, is_raw)) = self.token.lifetime() {
             if matches!(is_raw, IdentIsRaw::No)
-                && ident.without_first_quote().is_reserved()
-                && ![kw::UnderscoreLifetime, kw::StaticLifetime].contains(&ident.name)
+                && ident.without_first_quote().is_reserved_lifetime()
             {
                 self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
             }

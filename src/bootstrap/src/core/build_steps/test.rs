@@ -2038,12 +2038,14 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(compiler.host) {
-            let llvm::LlvmResult { llvm_config, .. } =
+            let llvm::LlvmResult { host_llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_version = get_llvm_version(builder, &llvm_config);
-                let llvm_components =
-                    command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
+                let llvm_version = get_llvm_version(builder, &host_llvm_config);
+                let llvm_components = command(&host_llvm_config)
+                    .arg("--components")
+                    .run_capture_stdout(builder)
+                    .stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
                     .arg(llvm_version.trim())
@@ -2061,7 +2063,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
-                    command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                    command(&host_llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
                 let link_llvm = if target.is_msvc() {
                     format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
@@ -2075,7 +2077,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
                 // coverage reports.)
-                let llvm_bin_path = llvm_config
+                let llvm_bin_path = host_llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());

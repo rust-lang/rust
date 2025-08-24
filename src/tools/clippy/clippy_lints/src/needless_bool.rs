@@ -166,7 +166,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     applicability,
                 );
             };
-            if let Some((a, b)) = fetch_bool_block(then).and_then(|a| Some((a, fetch_bool_block(else_expr)?))) {
+            if let Some(a) = fetch_bool_block(then)
+                && let Some(b) = fetch_bool_block(else_expr)
+            {
                 match (a, b) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(

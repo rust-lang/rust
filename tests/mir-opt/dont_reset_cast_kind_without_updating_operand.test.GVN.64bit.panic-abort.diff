@@ -112,7 +112,7 @@
           StorageDead(_17);
           StorageDead(_16);
           StorageDead(_14);
-          _3 = ShallowInitBox(move _13, ());
+          _3 = ShallowInitBox(copy _13, ());
           StorageDead(_13);
           StorageDead(_12);
           StorageDead(_11);

@@ -120,7 +120,7 @@ pub(crate) fn type_check<'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(infcx, infcx.param_env, universal_regions, &mut constraints);
+    } = free_region_relations::create(infcx, universal_regions, &mut constraints);
 
     let pre_obligations = infcx.take_registered_region_obligations();
     assert!(
@@ -408,7 +408,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.infcx,
             self.universal_regions,
             self.region_bound_pairs,
-            self.infcx.param_env,
             self.known_type_outlives_obligations,
             locations,
             locations.span(self.body),
@@ -2458,12 +2457,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
+        let root_def_id = self.root_cx.root_def_id();
         if let Some(closure_requirements) = &self.root_cx.closure_requirements(def_id) {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
                 self.region_bound_pairs,
-                self.infcx.param_env,
                 self.known_type_outlives_obligations,
                 locations,
                 self.body.span,             // irrelevant; will be overridden.
@@ -2473,9 +2472,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .apply_closure_requirements(closure_requirements, def_id, args);
         }
 
-        // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.body.source.def_id());
-        let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+        // Now equate closure args to regions inherited from `root_def_id`. Fixes #98589.
+        let typeck_root_args = ty::GenericArgs::identity_for_item(tcx, root_def_id);
 
         let parent_args = match tcx.def_kind(def_id) {
             // We don't want to dispatch on 3 different kind of closures here, so take
@@ -2550,17 +2548,14 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
     fn fully_perform(
         mut self,
         infcx: &InferCtxt<'tcx>,
+        root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
-        let (mut output, region_constraints) = scrape_region_constraints(
-            infcx,
-            |ocx| {
+        let (mut output, region_constraints) =
+            scrape_region_constraints(infcx, root_def_id, "InstantiateOpaqueType", span, |ocx| {
                 ocx.register_obligations(self.obligations.clone());
                 Ok(())
-            },
-            "InstantiateOpaqueType",
-            span,
-        )?;
+            })?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);
         Ok(output)

@@ -6,7 +6,11 @@ LL |     let x = call_it(&S, 22);
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `Fn(isize)` is not implemented for `S`
+help: the trait `Fn(isize)` is not implemented for `S`
+  --> $DIR/unboxed-closures-fnmut-as-fn.rs:8:1
+   |
+LL | struct S;
+   | ^^^^^^^^
    = note: `S` implements `FnMut`, but it must implement `Fn`, which is more general
 note: required by a bound in `call_it`
   --> $DIR/unboxed-closures-fnmut-as-fn.rs:22:14

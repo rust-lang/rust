@@ -39,7 +39,7 @@ where
     let old_universe = infcx.universe();
 
     let TypeOpOutput { output, constraints: query_constraints, error_info } =
-        op.fully_perform(infcx, locations.span(body))?;
+        op.fully_perform(infcx, infcx.root_def_id, locations.span(body))?;
     if cfg!(debug_assertions) {
         let data = infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
@@ -54,7 +54,6 @@ where
             infcx,
             universal_regions,
             region_bound_pairs,
-            infcx.param_env,
             known_type_outlives_obligations,
             locations,
             locations.span(body),

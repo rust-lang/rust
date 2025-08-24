@@ -73,8 +73,13 @@ error[E0277]: the trait bound `NotClone: IsU8<NotClone>` is not satisfied
   --> $DIR/defaults-suitability.rs:59:18
    |
 LL |     type Assoc = NotClone;
-   |                  ^^^^^^^^ the trait `IsU8<NotClone>` is not implemented for `NotClone`
+   |                  ^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `IsU8<NotClone>` is not implemented for `NotClone`
+  --> $DIR/defaults-suitability.rs:12:1
+   |
+LL | struct NotClone;
+   | ^^^^^^^^^^^^^^^
 note: required by a bound in `D::Assoc`
   --> $DIR/defaults-suitability.rs:56:18
    |

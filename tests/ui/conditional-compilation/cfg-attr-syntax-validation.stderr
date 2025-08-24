@@ -81,7 +81,7 @@ LL | #[cfg(a = b"hi")]
    |
    = note: expected a normal string literal, not a byte string literal
 
-error: expected unsuffixed literal, found `expr` metavariable
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `expr` metavariable
   --> $DIR/cfg-attr-syntax-validation.rs:45:25
    |
 LL |         #[cfg(feature = $expr)]

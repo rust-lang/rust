@@ -20,8 +20,8 @@ use super::{
     AssocItemLink, AssocItemRender, Context, ImplRenderingParameters, RenderMode,
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
+    render_assoc_item, render_assoc_items, render_attributes_in_code, render_impl,
+    render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -104,13 +104,6 @@ macro_rules! item_template_methods {
             let (item, cx) = self.item_and_cx();
             let def_id = item.item_id.expect_def_id();
             document_type_layout(cx, def_id)
-        }
-        item_template_methods!($($rest)*);
-    };
-    (render_attributes_in_pre $($rest:tt)*) => {
-        fn render_attributes_in_pre(&self) -> impl fmt::Display {
-            let (item, cx) = self.item_and_cx();
-            render_attributes_in_pre(item, "", cx)
         }
         item_template_methods!($($rest)*);
     };
@@ -457,7 +450,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                     write!(
                         w,
                         "<dt{id}>\
-                            <code>{vis}{imp}</code>{stab_tags}\
+                            <code>"
+                    )?;
+                    render_attributes_in_code(w, myitem, "", cx);
+                    write!(
+                        w,
+                        "{vis}{imp}</code>{stab_tags}\
                         </dt>",
                         vis = visibility_print_with_space(myitem, cx),
                         imp = import.print(cx)
@@ -625,11 +623,11 @@ fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> imp
         let notable_traits = notable_traits_button(&f.decl.output, cx).maybe_display();
 
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}{constness}{asyncness}{safety}{abi}fn \
+                "{vis}{constness}{asyncness}{safety}{abi}fn \
                 {name}{generics}{decl}{notable_traits}{where_clause}",
-                attrs = render_attributes_in_pre(it, "", cx),
                 vis = visibility,
                 constness = constness,
                 asyncness = asyncness,
@@ -666,10 +664,10 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
 
         // Output the trait definition
         wrap_item(w, |mut w| {
+            render_attributes_in_code(&mut w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "{vis}{safety}{is_auto}trait {name}{generics}{bounds}",
                 vis = visibility_print_with_space(it, cx),
                 safety = t.safety(tcx).print_with_space(),
                 is_auto = if t.is_auto(tcx) { "auto " } else { "" },
@@ -1240,10 +1238,10 @@ fn item_trait_alias(
 ) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}trait {name}{generics} = {bounds}{where_clause};",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "trait {name}{generics} = {bounds}{where_clause};",
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
                 bounds = print_bounds(&t.bounds, true, cx),
@@ -1268,10 +1266,10 @@ fn item_trait_alias(
 fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
-                "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
-                attrs = render_attributes_in_pre(it, "", cx),
+                "{vis}type {name}{generics}{where_clause} = {type_};",
                 vis = visibility_print_with_space(it, cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
@@ -1452,7 +1450,14 @@ item_template!(
 
 impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
     fn render_union(&self) -> impl Display {
-        render_union(self.it, Some(self.generics), self.fields, self.cx)
+        render_union(
+            self.it,
+            Some(self.generics),
+            self.fields,
+            self.def_id,
+            self.is_type_alias,
+            self.cx,
+        )
     }
 
     fn document_field(&self, field: &'a clean::Item) -> impl Display {
@@ -1477,27 +1482,6 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         self.fields.iter().filter_map(|f| match f.kind {
             clean::StructFieldItem(ref ty) => Some((f, ty)),
             _ => None,
-        })
-    }
-
-    fn render_attributes_in_pre(&self) -> impl fmt::Display {
-        fmt::from_fn(move |f| {
-            if self.is_type_alias {
-                // For now the only attributes we render for type aliases are `repr` attributes.
-                if let Some(repr) = clean::repr_attributes(
-                    self.cx.tcx(),
-                    self.cx.cache(),
-                    self.def_id,
-                    ItemType::Union,
-                ) {
-                    writeln!(f, "{repr}")?;
-                };
-            } else {
-                for a in self.it.attributes(self.cx.tcx(), self.cx.cache()) {
-                    writeln!(f, "{a}")?;
-                }
-            }
-            Ok(())
         })
     }
 }
@@ -1563,7 +1547,7 @@ impl<'clean> DisplayEnum<'clean> {
                 // For now the only attributes we render for type aliases are `repr` attributes.
                 render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
             } else {
-                render_attributes_in_code(w, it, cx);
+                render_attributes_in_code(w, it, "", cx);
             }
             write!(
                 w,
@@ -1702,7 +1686,7 @@ fn render_enum_fields(
                 if v.is_stripped() {
                     continue;
                 }
-                write!(w, "{}", render_attributes_in_pre(v, TAB, cx))?;
+                render_attributes_in_code(w, v, TAB, cx);
                 w.write_str(TAB)?;
                 match v.kind {
                     clean::VariantItem(ref var) => match var.kind {
@@ -1882,6 +1866,7 @@ fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt:
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
+            render_attributes_in_code(w, it, "", cx);
             if !t.macro_rules {
                 write!(w, "{}", visibility_print_with_space(it, cx))?;
             }
@@ -1950,7 +1935,7 @@ fn item_constant(
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             let tcx = cx.tcx();
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
 
             write!(
                 w,
@@ -2018,7 +2003,7 @@ impl<'a> DisplayStruct<'a> {
                 // For now the only attributes we render for type aliases are `repr` attributes.
                 render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
             } else {
-                render_attributes_in_code(w, it, cx);
+                render_attributes_in_code(w, it, "", cx);
             }
             write!(
                 w,
@@ -2115,7 +2100,7 @@ fn item_static(
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         wrap_item(w, |w| {
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
             write!(
                 w,
                 "{vis}{safe}static {mutability}{name}: {typ}",
@@ -2135,7 +2120,7 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             w.write_str("extern {\n")?;
-            render_attributes_in_code(w, it, cx);
+            render_attributes_in_code(w, it, "", cx);
             write!(w, "    {}type {};\n}}", visibility_print_with_space(it, cx), it.name.unwrap(),)
         })?;
 
@@ -2358,9 +2343,17 @@ fn render_union(
     it: &clean::Item,
     g: Option<&clean::Generics>,
     fields: &[clean::Item],
+    def_id: DefId,
+    is_type_alias: bool,
     cx: &Context<'_>,
 ) -> impl Display {
     fmt::from_fn(move |mut f| {
+        if is_type_alias {
+            // For now the only attributes we render for type aliases are `repr` attributes.
+            render_repr_attributes_in_code(f, cx, def_id, ItemType::Union);
+        } else {
+            render_attributes_in_code(f, it, "", cx);
+        }
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 
         let where_displayed = if let Some(generics) = g {
@@ -2390,6 +2383,7 @@ fn render_union(
 
         for field in fields {
             if let clean::StructFieldItem(ref ty) = field.kind {
+                render_attributes_in_code(&mut f, field, "    ", cx);
                 writeln!(
                     f,
                     "    {}{}: {},",
@@ -2481,11 +2475,15 @@ fn render_struct_fields(
                 if toggle {
                     toggle_open(&mut *w, format_args!("{count_fields} fields"));
                 }
+                if has_visible_fields {
+                    writeln!(w)?;
+                }
                 for field in fields {
                     if let clean::StructFieldItem(ref ty) = field.kind {
-                        write!(
+                        render_attributes_in_code(w, field, &format!("{tab}    "), cx);
+                        writeln!(
                             w,
-                            "\n{tab}    {vis}{name}: {ty},",
+                            "{tab}    {vis}{name}: {ty},",
                             vis = visibility_print_with_space(field, cx),
                             name = field.name.unwrap(),
                             ty = ty.print(cx)
@@ -2495,12 +2493,12 @@ fn render_struct_fields(
 
                 if has_visible_fields {
                     if has_stripped_entries {
-                        write!(
+                        writeln!(
                             w,
-                            "\n{tab}    <span class=\"comment\">/* private fields */</span>"
+                            "{tab}    <span class=\"comment\">/* private fields */</span>"
                         )?;
                     }
-                    write!(w, "\n{tab}")?;
+                    write!(w, "{tab}")?;
                 } else if has_stripped_entries {
                     write!(w, " <span class=\"comment\">/* private fields */</span> ")?;
                 }

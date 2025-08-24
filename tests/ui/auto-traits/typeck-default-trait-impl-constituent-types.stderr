@@ -2,8 +2,13 @@ error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied
   --> $DIR/typeck-default-trait-impl-constituent-types.rs:21:18
    |
 LL |     is_mytrait::<MyS2>();
-   |                  ^^^^ the trait `MyTrait` is not implemented for `MyS2`
+   |                  ^^^^ unsatisfied trait bound
    |
+help: the trait `MyTrait` is not implemented for `MyS2`
+  --> $DIR/typeck-default-trait-impl-constituent-types.rs:10:1
+   |
+LL | struct MyS2;
+   | ^^^^^^^^^^^
 note: required by a bound in `is_mytrait`
   --> $DIR/typeck-default-trait-impl-constituent-types.rs:16:18
    |
