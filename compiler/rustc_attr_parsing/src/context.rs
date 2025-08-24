@@ -24,7 +24,9 @@ use crate::attributes::codegen_attrs::{
     UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
-use crate::attributes::crate_level::{CrateNameParser, MoveSizeLimitParser, RecursionLimitParser};
+use crate::attributes::crate_level::{
+    CrateNameParser, MoveSizeLimitParser, RecursionLimitParser, TypeLengthLimitParser,
+};
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -196,6 +198,7 @@ attribute_parsers!(
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
+        Single<TypeLengthLimitParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,

@@ -667,6 +667,9 @@ pub enum AttributeKind {
     /// Represents `#[type_const]`.
     TypeConst(Span),
 
+    /// Represents `#[type_length_limit]`
+    TypeLengthLimit { attr_span: Span, limit_span: Span, limit: usize },
+
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),
 
