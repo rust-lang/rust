@@ -1,8 +1,8 @@
 warning: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/not-tied-to-crate.rs:8:16
+  --> $DIR/not-tied-to-crate.rs:8:31
    |
 LL |     fn bar(x: &'static u8) -> &u8 {
-   |                ^^^^^^^        --- the same lifetime is elided here
+   |                -------        ^^^ the same lifetime is elided here
    |                |
    |                the lifetime is named here
    |
@@ -18,10 +18,10 @@ LL |     fn bar(x: &'static u8) -> &'static u8 {
    |                                +++++++
 
 error: eliding a lifetime that's named elsewhere is confusing
-  --> $DIR/not-tied-to-crate.rs:14:16
+  --> $DIR/not-tied-to-crate.rs:14:31
    |
 LL |     fn baz(x: &'static u8) -> &u8 {
-   |                ^^^^^^^        --- the same lifetime is elided here
+   |                -------        ^^^ the same lifetime is elided here
    |                |
    |                the lifetime is named here
    |
