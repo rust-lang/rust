@@ -127,6 +127,7 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::Pat>;
+    type Visibility: Visibility<Self>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
@@ -190,6 +191,8 @@ pub trait Interner:
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
+
+    type FieldDef: FieldDef<Self>;
 
     fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
 

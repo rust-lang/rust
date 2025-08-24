@@ -400,6 +400,19 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 ty::BoundConstness::Const
             }
         };
+
+        // Only elaborate host-effect destruct obligations when comparing impl method bounds
+        // against the corresponding trait method bounds.
+        let elaborate = matches!(
+            tcx.hir_node_by_def_id(body_id),
+            hir::Node::ImplItem(hir::ImplItem {
+                trait_item_def_id: Some(did),
+                ..
+            }) if *did == callee,
+        );
+        let param_env =
+            if elaborate { param_env.elaborate_host_effect_destruct(tcx) } else { param_env };
+
         let const_conditions =
             ocx.normalize(&ObligationCause::misc(call_span, body_id), param_env, const_conditions);
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, span)| {
