@@ -14,6 +14,7 @@ pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
+use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
@@ -566,7 +567,7 @@ pub enum AttributeKind {
     MayDangle(Span),
 
     /// Represents `#[move_size_limit]`
-    MoveSizeLimit { attr_span: Span, limit_span: Span, limit: usize },
+    MoveSizeLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents `#[must_use]`.
     MustUse {
@@ -600,7 +601,7 @@ pub enum AttributeKind {
     Path(Symbol, Span),
 
     /// Represents `#[pattern_complexity_limit]`
-    PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: usize },
+    PatternComplexityLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents `#[pointee]`
     Pointee(Span),
@@ -618,7 +619,7 @@ pub enum AttributeKind {
     PubTransparent(Span),
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
-    RecursionLimit { attr_span: Span, limit_span: Span, limit: usize },
+    RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },
@@ -671,7 +672,7 @@ pub enum AttributeKind {
     TypeConst(Span),
 
     /// Represents `#[type_length_limit]`
-    TypeLengthLimit { attr_span: Span, limit_span: Span, limit: usize },
+    TypeLengthLimit { attr_span: Span, limit_span: Span, limit: Limit },
 
     /// Represents `#[rustc_unsafe_specialization_marker]`.
     UnsafeSpecializationMarker(Span),

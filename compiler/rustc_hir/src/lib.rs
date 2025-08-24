@@ -25,6 +25,7 @@ mod hir;
 pub use rustc_hir_id::{self as hir_id, *};
 pub mod intravisit;
 pub mod lang_items;
+pub mod limit;
 pub mod lints;
 pub mod pat_util;
 mod stability;
