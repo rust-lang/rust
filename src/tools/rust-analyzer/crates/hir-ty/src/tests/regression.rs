@@ -1,3 +1,5 @@
+mod new_solver;
+
 use expect_test::expect;
 
 use super::{check_infer, check_no_mismatches, check_types};
