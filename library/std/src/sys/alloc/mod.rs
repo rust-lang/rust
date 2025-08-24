@@ -92,6 +92,9 @@ cfg_select! {
     target_os = "uefi" => {
         mod uefi;
     }
+    target_os = "vexos" => {
+        mod vexos;
+    }
     target_family = "wasm" => {
         mod wasm;
     }
