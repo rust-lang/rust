@@ -24,7 +24,9 @@ macro_rules! check_cfg_feature {
     };
     ($feature:tt, $feature_lit:tt, without cfg check: $feature_cfg_check:literal) => {
         #[allow(unexpected_cfgs, reason = $feature_lit)]
-        { cfg!(target_feature = $feature_lit) }
+        {
+            cfg!(target_feature = $feature_lit)
+        }
     };
 }
 
@@ -50,7 +52,12 @@ macro_rules! features {
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
-                    $crate::detect_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?)
+                    $crate::detect_feature!(
+                        $feature,
+                        $feature_lit
+                        $(, without cfg check: $feature_cfg_check)?
+                        $(: $($target_feature_lit),*)?
+                    )
                 };
             )*
             $(
@@ -135,7 +142,12 @@ macro_rules! features {
         #[deny(unfulfilled_lint_expectations)]
         const _: () = {
             $(
-                check_cfg_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?);
+                check_cfg_feature!(
+                    $feature,
+                    $feature_lit
+                    $(, without cfg check: $feature_cfg_check)?
+                    $(: $($target_feature_lit),*)?
+                );
             )*
         };
 
