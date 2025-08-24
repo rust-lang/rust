@@ -29,7 +29,7 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_session::config::Lto;
@@ -51,12 +51,11 @@ fn prepare_lto(
     cgcx: &CodegenContext<GccCodegenBackend>,
     each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
-) -> Result<LtoData, FatalError> {
+) -> LtoData {
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
         Err(error) => {
-            eprintln!("Cannot create temporary directory: {}", error);
-            return Err(FatalError);
+            dcx.fatal(format!("Cannot create temporary directory: {}", error));
         }
     };
 
@@ -91,15 +90,14 @@ fn prepare_lto(
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
                     Err(e) => {
-                        dcx.emit_err(e);
-                        return Err(FatalError);
+                        dcx.emit_fatal(e);
                     }
                 }
             }
         }
     }
 
-    Ok(LtoData { upstream_modules, tmp_path })
+    LtoData { upstream_modules, tmp_path }
 }
 
 fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
@@ -114,10 +112,10 @@ pub(crate) fn run_fat(
     cgcx: &CodegenContext<GccCodegenBackend>,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
-) -> Result<ModuleCodegen<GccContext>, FatalError> {
+) -> ModuleCodegen<GccContext> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx)?;
+    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
@@ -137,7 +135,7 @@ fn fat_lto(
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
-) -> Result<ModuleCodegen<GccContext>, FatalError> {
+) -> ModuleCodegen<GccContext> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
 
@@ -261,7 +259,7 @@ fn fat_lto(
     // of now.
     module.module_llvm.temp_dir = Some(tmp_path);
 
-    Ok(module)
+    module
 }
 
 pub struct ModuleBuffer(PathBuf);
@@ -286,10 +284,10 @@ pub(crate) fn run_thin(
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-) -> Result<(Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
+) -> (Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>) {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx)?;
+    let lto_data = prepare_lto(cgcx, each_linked_rlib_for_lto, dcx);
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
         unreachable!(
             "We should never reach this case if the LTO step \
@@ -355,7 +353,7 @@ fn thin_lto(
     tmp_path: TempDir,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     //_symbols_below_threshold: &[String],
-) -> Result<(Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
+) -> (Vec<ThinModule<GccCodegenBackend>>, Vec<WorkProduct>) {
     let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
     info!("going for that thin, thin LTO");
 
@@ -518,13 +516,13 @@ fn thin_lto(
     // TODO: save the directory so that it gets deleted later.
     std::mem::forget(tmp_path);
 
-    Ok((opt_jobs, copy_jobs))
+    (opt_jobs, copy_jobs)
 }
 
 pub fn optimize_thin_module(
     thin_module: ThinModule<GccCodegenBackend>,
     _cgcx: &CodegenContext<GccCodegenBackend>,
-) -> Result<ModuleCodegen<GccContext>, FatalError> {
+) -> ModuleCodegen<GccContext> {
     //let dcx = cgcx.create_dcx();
 
     //let module_name = &thin_module.shared.module_names[thin_module.idx];
@@ -634,7 +632,8 @@ pub fn optimize_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }*/
-    Ok(module)
+    #[allow(clippy::let_and_return)]
+    module
 }
 
 pub struct ThinBuffer {
