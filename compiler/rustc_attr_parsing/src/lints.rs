@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
 use rustc_errors::{DiagArgValue, LintEmitter};
+use rustc_hir::Target;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
-use rustc_hir::{HirId, Target};
 use rustc_span::sym;
 
 use crate::session_diagnostics;
 
-pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emitter: L) {
+pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emitter: L) {
     let AttributeLint { id, span, kind } = lint;
 
     match kind {
@@ -51,7 +51,7 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
                 *id,
                 *span,
                 session_diagnostics::InvalidTargetLint {
-                    name,
+                    name: name.clone(),
                     target: target.plural_name(),
                     applied: DiagArgValue::StrListSepByAnd(
                         applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),

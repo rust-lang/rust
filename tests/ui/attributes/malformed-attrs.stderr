@@ -41,14 +41,6 @@ LL | #![windows_subsystem = "console"]
 LL | #![windows_subsystem = "windows"]
    |                      +++++++++++
 
-error: malformed `crate_name` attribute input
-  --> $DIR/malformed-attrs.rs:74:1
-   |
-LL | #[crate_name]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/crates-and-source-files.html#the-crate_name-attribute>
-
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:106:1
    |
@@ -477,6 +469,12 @@ LL | #[used()]
    | ^^^^^^^^^
    |
    = help: `#[used]` can only be applied to statics
+
+error[E0539]: malformed `crate_name` attribute input
+  --> $DIR/malformed-attrs.rs:74:1
+   |
+LL | #[crate_name]
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/malformed-attrs.rs:79:1
