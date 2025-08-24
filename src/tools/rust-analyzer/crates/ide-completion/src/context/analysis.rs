@@ -20,12 +20,15 @@ use syntax::{
     match_ast,
 };
 
-use crate::context::{
-    AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
-    DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
-    NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind,
-    PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
-    TypeLocation,
+use crate::{
+    completions::postfix::is_in_condition,
+    context::{
+        AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
+        DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
+        NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx,
+        PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+        TypeAscriptionTarget, TypeLocation,
+    },
 };
 
 #[derive(Debug)]
@@ -1215,24 +1218,6 @@ fn classify_name_ref<'db>(
         };
         Some(res)
     };
-
-    fn is_in_condition(it: &ast::Expr) -> bool {
-        (|| {
-            let parent = it.syntax().parent()?;
-            if let Some(expr) = ast::WhileExpr::cast(parent.clone()) {
-                Some(expr.condition()? == *it)
-            } else if let Some(expr) = ast::IfExpr::cast(parent.clone()) {
-                Some(expr.condition()? == *it)
-            } else if let Some(expr) = ast::BinExpr::cast(parent)
-                && expr.op_token()?.kind() == T![&&]
-            {
-                Some(is_in_condition(&expr.into()))
-            } else {
-                None
-            }
-        })()
-        .unwrap_or(false)
-    }
 
     let make_path_kind_expr = |expr: ast::Expr| {
         let it = expr.syntax();
