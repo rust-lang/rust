@@ -661,8 +661,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::VariableNotBoundInPattern(binding_error, parent_scope) => {
                 let BindingError { name, target, origin, could_be_path } = binding_error;
 
-                let target_sp = target.iter().copied().collect::<Vec<_>>();
-                let origin_sp = origin.iter().copied().collect::<Vec<_>>();
+                let mut target_sp = target.iter().map(|pat| pat.span).collect::<Vec<_>>();
+                target_sp.sort();
+                target_sp.dedup();
+                let mut origin_sp = origin.iter().map(|(span, _)| *span).collect::<Vec<_>>();
+                origin_sp.sort();
+                origin_sp.dedup();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
                 let mut err = self
@@ -671,8 +675,29 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for sp in target_sp {
                     err.subdiagnostic(errors::PatternDoesntBindName { span: sp, name });
                 }
-                for sp in origin_sp {
-                    err.subdiagnostic(errors::VariableNotInAllPatterns { span: sp });
+                for sp in &origin_sp {
+                    err.subdiagnostic(errors::VariableNotInAllPatterns { span: *sp });
+                }
+                let mut target_visitor = BindingVisitor::default();
+                for pat in &target {
+                    target_visitor.visit_pat(pat);
+                }
+                target_visitor.identifiers.sort();
+                target_visitor.identifiers.dedup();
+                let mut origin_visitor = BindingVisitor::default();
+                for (_, pat) in &origin {
+                    origin_visitor.visit_pat(pat);
+                }
+                origin_visitor.identifiers.sort();
+                origin_visitor.identifiers.dedup();
+                // Find if the binding could have been a typo
+                let mut suggested_typo = false;
+                if let Some(typo) =
+                    find_best_match_for_name(&target_visitor.identifiers, name.name, None)
+                    && !origin_visitor.identifiers.contains(&typo)
+                {
+                    err.subdiagnostic(errors::PatternBindingTypo { spans: origin_sp, typo });
+                    suggested_typo = true;
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
@@ -693,7 +718,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         },
                     );
 
-                    if import_suggestions.is_empty() {
+                    if import_suggestions.is_empty() && !suggested_typo {
                         let help_msg = format!(
                             "if you meant to match on a variant or a `const` item, consider \
                              making the path in the pattern qualified: `path::to::ModOrType::{name}`",
@@ -3395,7 +3420,7 @@ impl UsePlacementFinder {
     }
 }
 
-impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_crate(&mut self, c: &Crate) {
         if self.target_module == CRATE_NODE_ID {
             let inject = c.spans.inject_use_span;
@@ -3420,6 +3445,22 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
         } else {
             visit::walk_item(self, item);
         }
+    }
+}
+
+#[derive(Default)]
+struct BindingVisitor {
+    identifiers: Vec<Symbol>,
+    spans: FxHashMap<Symbol, Vec<Span>>,
+}
+
+impl<'tcx> Visitor<'tcx> for BindingVisitor {
+    fn visit_pat(&mut self, pat: &ast::Pat) {
+        if let ast::PatKind::Ident(_, ident, _) = pat.kind {
+            self.identifiers.push(ident.name);
+            self.spans.entry(ident.name).or_default().push(ident.span);
+        }
+        visit::walk_pat(self, pat);
     }
 }
 
