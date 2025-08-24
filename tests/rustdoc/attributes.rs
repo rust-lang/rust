@@ -28,12 +28,15 @@ macro_rules! macro_rule {
 #[unsafe(link_section = "enum")]
 pub enum Enum {
     //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "a")]'
+    //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "a")]'
     #[unsafe(link_section = "a")]
     A,
     //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "quz")]'
+    //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "quz")]'
     #[unsafe(link_section = "quz")]
     Quz {
         //@ has 'foo/enum.Enum.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "b")]'
+        //@ has - '//*[@class="variants"]//*[@class="code-attribute"]' '#[unsafe(link_section = "b")]'
         #[unsafe(link_section = "b")]
         b: (),
     },
@@ -66,6 +69,7 @@ pub union Union {
 #[unsafe(link_section = "struct")]
 pub struct Struct {
     //@ has 'foo/struct.Struct.html' '//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
+    //@ has - '//*[@id="structfield.x"]//*[@class="code-attribute"]' '#[unsafe(link_section = "x")]'
     #[unsafe(link_section = "x")]
     pub x: u32,
     y: f32,
