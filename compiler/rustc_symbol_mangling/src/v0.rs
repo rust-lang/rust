@@ -342,7 +342,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             )
         } else {
             assert!(
-                !args.has_non_region_param(),
+                !args.has_non_region_param() && !args.has_free_regions(),
                 "should not be mangling partially substituted \
                 polymorphic instance: {impl_def_id:?} {args:?}"
             );
