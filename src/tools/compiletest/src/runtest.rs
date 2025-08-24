@@ -2754,7 +2754,11 @@ impl<'test> TestCx<'test> {
         // Wrapper tools set by `runner` might provide extra output on failure,
         // for example a WebAssembly runtime might print the stack trace of an
         // `unreachable` instruction by default.
-        let compare_output_by_lines = self.config.runner.is_some();
+        //
+        // Also, some tests like `ui/parallel-rustc` have non-deterministic
+        // orders of output, so we need to compare by lines.
+        let compare_output_by_lines =
+            self.props.compare_output_by_lines || self.config.runner.is_some();
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {
