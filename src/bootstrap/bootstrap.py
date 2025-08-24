@@ -313,9 +313,9 @@ def default_build_triple(verbose):
     kernel, cputype, processor = uname.decode(default_encoding).split(maxsplit=2)
 
     # ON NetBSD, use `uname -p` to set the CPU type
-    if kernel == 'NetBSD':
+    if kernel == "NetBSD":
         cputype = (
-            subprocess.check_output(['uname', '-p']).strip().decode(default_encoding)
+            subprocess.check_output(["uname", "-p"]).strip().decode(default_encoding)
         )
 
     # The goal here is to come up with the same triple as LLVM would,
