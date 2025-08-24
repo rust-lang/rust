@@ -270,14 +270,22 @@ features! {
     /// "Zhinxmin" Extension for Minimal Half-Precision Floating-Point in Integer Registers
 
     @FEATURE: #[stable(feature = "riscv_ratified", since = "1.78.0")] c: "c";
+    implied by cfg(any(
+        target_feature = "c",
+        all(
+            not(target_feature = "d"),
+            any(not(target_arch = "riscv32"), not(target_feature = "f")),
+            target_feature = "zca",
+        )
+    ));
     /// "C" Extension for Compressed Instructions
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zca: "zca";
     /// "Zca" Compressed Instructions excluding Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcf: "zcf";
-    without cfg check: true;
+    implied by cfg(all(target_arch = "riscv32", target_feature = "c", target_feature = "f"));
     /// "Zcf" Compressed Instructions for Single-Precision Floating-Point Loads/Stores on RV32
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcd: "zcd";
-    without cfg check: true;
+    implied by cfg(all(target_feature = "c", target_feature = "d"));
     /// "Zcd" Compressed Instructions for Double-Precision Floating-Point Loads/Stores
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] zcb: "zcb";
     /// "Zcb" Simple Code-size Saving Compressed Instructions
