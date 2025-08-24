@@ -104,10 +104,10 @@ jobs:
 # These jobs automatically inherit envs.pr, to avoid repeating it in each job
 # definition.
 #
-# PR CI jobs will be automatically registered as Auto CI jobs or overriden. When
+# PR CI jobs will be automatically registered as Auto CI jobs or overridden. When
 # automatically registered, the PR CI job configuration will be copied as an
-# Auto CI job but with `continue_on_error` overriden to `false` (to fail-fast).
-# When overriden, `citool` will check for equivalence between the PR and CI job
+# Auto CI job but with `continue_on_error` overridden to `false` (to fail-fast).
+# When overridden, `citool` will check for equivalence between the PR and CI job
 # of the same name modulo `continue_on_error` and `env`.
 pr:
   - name: pr-check-1
@@ -166,7 +166,7 @@ optional:
 #
 # Auto jobs may not specify `continue_on_error: true`, and thus will fail-fast.
 #
-# Unless explicitly overriden, PR CI jobs will be automatically registered as
+# Unless explicitly overridden, PR CI jobs will be automatically registered as
 # Auto CI jobs.
 auto:
   #############################
