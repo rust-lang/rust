@@ -372,6 +372,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
+            | clean::AttrMacroItem
+            | clean::DeriveMacroItem
             | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
