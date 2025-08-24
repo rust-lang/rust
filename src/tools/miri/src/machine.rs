@@ -1077,7 +1077,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .target_features
                 .iter()
                 .filter(|&feature| {
-                    feature.kind != TargetFeatureKind::Implied && !ecx.tcx.sess.target_features.contains(&feature.name)
+                    feature.kind != TargetFeatureKind::Implied
+                        && !ecx.tcx.sess.target_features.contains(&feature.name)
                 })
                 .fold(String::new(), |mut s, feature| {
                     if !s.is_empty() {
