@@ -1,8 +1,6 @@
 use std::fs;
 use std::path::Path;
 
-use super::verify_inside_clippy_dir;
-
 const VSCODE_DIR: &str = ".vscode";
 const TASK_SOURCE_FILE: &str = "util/etc/vscode-tasks.json";
 const TASK_TARGET_FILE: &str = ".vscode/tasks.json";
@@ -22,10 +20,6 @@ pub fn install_tasks(force_override: bool) {
 }
 
 fn check_install_precondition(force_override: bool) -> bool {
-    if !verify_inside_clippy_dir() {
-        return false;
-    }
-
     let vs_dir_path = Path::new(VSCODE_DIR);
     if vs_dir_path.exists() {
         // verify the target will be valid

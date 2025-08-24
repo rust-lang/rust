@@ -587,6 +587,45 @@ function getNextElem(query, parserState, elems, isInGenerics) {
     /** @type {rustdoc.ParserQueryElement[]} */
     const generics = [];
 
+    /** @type {function(string, string): void} */
+    const handleRefOrPtr = (chr, name) => {
+            if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
+            throw [
+                "Invalid search type: primitive ",
+                chr,
+                " and ",
+                parserState.typeFilter,
+                " both specified",
+            ];
+        }
+        parserState.typeFilter = null;
+        parserState.pos += 1;
+        let c = parserState.userQuery[parserState.pos];
+        while (c === " " && parserState.pos < parserState.length) {
+            parserState.pos += 1;
+            c = parserState.userQuery[parserState.pos];
+        }
+        const generics = [];
+        const pos = parserState.pos;
+        if (parserState.userQuery.slice(pos, pos + 3) === "mut") {
+            generics.push(makePrimitiveElement("mut", { typeFilter: "keyword" }));
+            parserState.pos += 3;
+            c = parserState.userQuery[parserState.pos];
+        } else if (chr === "*" && parserState.userQuery.slice(pos, pos + 5) === "const") {
+            // make *const T parse the same as *T
+            parserState.pos += 5;
+            c = parserState.userQuery[parserState.pos];
+        }
+        while (c === " " && parserState.pos < parserState.length) {
+            parserState.pos += 1;
+            c = parserState.userQuery[parserState.pos];
+        }
+        if (!isEndCharacter(c) && parserState.pos < parserState.length) {
+            getFilteredNextElem(query, parserState, generics, isInGenerics);
+        }
+        elems.push(makePrimitiveElement(name, { generics }));
+    };
+
     skipWhitespace(parserState);
     let start = parserState.pos;
     let end;
@@ -636,36 +675,9 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             elems.push(makePrimitiveElement(name, { bindingName, generics }));
         }
     } else if (parserState.userQuery[parserState.pos] === "&") {
-        if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
-            throw [
-                "Invalid search type: primitive ",
-                "&",
-                " and ",
-                parserState.typeFilter,
-                " both specified",
-            ];
-        }
-        parserState.typeFilter = null;
-        parserState.pos += 1;
-        let c = parserState.userQuery[parserState.pos];
-        while (c === " " && parserState.pos < parserState.length) {
-            parserState.pos += 1;
-            c = parserState.userQuery[parserState.pos];
-        }
-        const generics = [];
-        if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
-            generics.push(makePrimitiveElement("mut", { typeFilter: "keyword" }));
-            parserState.pos += 3;
-            c = parserState.userQuery[parserState.pos];
-        }
-        while (c === " " && parserState.pos < parserState.length) {
-            parserState.pos += 1;
-            c = parserState.userQuery[parserState.pos];
-        }
-        if (!isEndCharacter(c) && parserState.pos < parserState.length) {
-            getFilteredNextElem(query, parserState, generics, isInGenerics);
-        }
-        elems.push(makePrimitiveElement("reference", { generics }));
+        handleRefOrPtr("&", "reference");
+    } else if (parserState.userQuery[parserState.pos] === "*") {
+        handleRefOrPtr("*", "pointer");
     } else {
         const isStringElem = parserState.userQuery[start] === "\"";
         // We handle the strings on their own mostly to make code easier to follow.
@@ -1185,6 +1197,7 @@ class DocSearch {
         this.typeNameIdOfUnit = -1;
         this.typeNameIdOfTupleOrUnit = -1;
         this.typeNameIdOfReference = -1;
+        this.typeNameIdOfPointer = -1;
         this.typeNameIdOfHof = -1;
 
         this.utf8decoder = new TextDecoder();
@@ -1224,6 +1237,7 @@ class DocSearch {
             tupleOrUnit,
             // reference matches `&`
             reference,
+            pointer,
             // never matches `!`
             never,
         ] = await Promise.all([
@@ -1239,6 +1253,7 @@ class DocSearch {
             nn.search("unit"),
             nn.search("()"),
             nn.search("reference"),
+            nn.search("pointer"),
             nn.search("never"),
         ]);
         /**
@@ -1270,6 +1285,7 @@ class DocSearch {
         this.typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
         this.typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
         this.typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
+        this.typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
         this.typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
         this.typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
     }
@@ -2295,6 +2311,25 @@ class DocSearch {
                     return true;
                 } else if (fnType.id === this.typeNameIdOfReference) {
                     pushText({ name: "&", highlighted: fnType.highlighted }, result);
+                    let prevHighlighted = false;
+                    await onEachBtwnAsync(
+                        fnType.generics,
+                        async value => {
+                            prevHighlighted = !!value.highlighted;
+                            await writeFn(value, result);
+                        },
+                        // @ts-expect-error
+                        value => pushText({
+                            name: " ",
+                            highlighted: prevHighlighted && value.highlighted,
+                        }, result),
+                    );
+                    return true;
+                } else if (fnType.id === this.typeNameIdOfPointer) {
+                    pushText({ name: "*", highlighted: fnType.highlighted }, result);
+                    if (fnType.generics.length < 2) {
+                        pushText({ name: "const ", highlighted: fnType.highlighted }, result);
+                    }
                     let prevHighlighted = false;
                     await onEachBtwnAsync(
                         fnType.generics,
@@ -5244,9 +5279,7 @@ if (typeof window !== "undefined") {
             // search.index/root is loaded by main.js, so
             // this script doesn't need to launch it, but
             // must pick it up
-            // @ts-ignore
             if (window.searchIndex) {
-                // @ts-ignore
                 window.rr_(window.searchIndex);
             }
         },

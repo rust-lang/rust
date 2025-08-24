@@ -258,7 +258,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         })
     }
 
-    fn should_ignore(&mut self, expr: &Expr<'_>) -> bool {
+    fn should_ignore(&self, expr: &Expr<'_>) -> bool {
         macro_backtrace(expr.span).last().is_some_and(|macro_call| {
             matches!(
                 self.inner.cx.tcx.get_diagnostic_name(macro_call.def_id),

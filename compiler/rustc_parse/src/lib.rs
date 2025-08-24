@@ -16,7 +16,7 @@ use std::str::Utf8Error;
 use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{AttrItem, Attribute, MetaItemInner, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Diag, EmissionGuarantee, FatalError, PResult, pluralize};
@@ -31,8 +31,9 @@ pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 #[macro_use]
 pub mod parser;
 use parser::Parser;
+use rustc_ast::token::Delimiter;
+
 pub mod lexer;
-pub mod validate_attr;
 
 mod errors;
 
@@ -235,7 +236,7 @@ pub fn parse_cfg_attr(
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
             if !tokens.is_empty() =>
         {
-            crate::validate_attr::check_cfg_attr_bad_delim(psess, dspan, delim);
+            check_cfg_attr_bad_delim(psess, dspan, delim);
             match parse_in(psess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(e) => {
@@ -253,4 +254,14 @@ pub fn parse_cfg_attr(
         }
     }
     None
+}
+
+fn check_cfg_attr_bad_delim(psess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
+        return;
+    }
+    psess.dcx().emit_err(errors::CfgAttrBadDelim {
+        span: span.entire(),
+        sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
+    });
 }

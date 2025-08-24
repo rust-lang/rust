@@ -78,25 +78,25 @@ fn main() {
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation
-    5;get_number();
+    5; get_number();
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation
-    5;6;get_number();
+    5; 6; get_number();
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation
-    5;get_number();
+    5; get_number();
     //~^ unnecessary_operation
-    42;get_number();
+    42; get_number();
     //~^ unnecessary_operation
     assert!([42, 55].len() > get_usize());
     //~^ unnecessary_operation
-    42;get_number();
+    42; get_number();
     //~^ unnecessary_operation
     get_number();
     //~^ unnecessary_operation

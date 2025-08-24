@@ -148,10 +148,6 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
-    fn in_hir_typeck(&self) -> bool {
-        false
-    }
-
     fn typing_mode(&self) -> TypingMode<Self::Interner>;
 
     fn universe(&self) -> ty::UniverseIndex;

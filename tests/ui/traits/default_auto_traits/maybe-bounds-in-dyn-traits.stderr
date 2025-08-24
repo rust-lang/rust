@@ -2,8 +2,13 @@ error[E0277]: the trait bound `NonLeakS: Leak` is not satisfied
   --> $DIR/maybe-bounds-in-dyn-traits.rs:59:25
    |
 LL |     let _: &dyn Trait = &NonLeakS;
-   |                         ^^^^^^^^^ the trait `Leak` is not implemented for `NonLeakS`
+   |                         ^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Leak` is not implemented for `NonLeakS`
+  --> $DIR/maybe-bounds-in-dyn-traits.rs:46:1
+   |
+LL | struct NonLeakS;
+   | ^^^^^^^^^^^^^^^
    = note: required for the cast from `&NonLeakS` to `&dyn Trait + Leak`
 
 error[E0277]: the trait bound `dyn Trait: Leak` is not satisfied

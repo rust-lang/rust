@@ -1438,9 +1438,8 @@ fallback = [
 ]
 style-team = [
     "@calebcartwright",
-    "@compiler-errors",
     "@joshtriplett",
-    "@yaahc",
+    "@traviscross",
 ]
 project-const-traits = [
     "@compiler-errors",

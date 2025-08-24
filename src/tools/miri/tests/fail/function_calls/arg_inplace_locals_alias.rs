@@ -1,3 +1,5 @@
+//! Ensure we detect aliasing of two in-place arguments for the tricky case where they do not
+//! live in memory.
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // Validation forces more things into memory, which we can't have here.

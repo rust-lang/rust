@@ -19,8 +19,9 @@ use crate::attributes::allow_unstable::{
 };
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
-    ColdParser, CoverageParser, ExportNameParser, NakedParser, NoMangleParser, OptimizeParser,
-    TargetFeatureParser, TrackCallerParser, UsedParser,
+    ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
+    NoMangleParser, OptimizeParser, SanitizeParser, TargetFeatureParser, TrackCallerParser,
+    UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
@@ -157,6 +158,7 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
+        Combine<ForceTargetFeatureParser>,
         Combine<ReprParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
@@ -183,6 +185,7 @@ attribute_parsers!(
         Single<RustcLayoutScalarValidRangeEnd>,
         Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
+        Single<SanitizeParser>,
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
@@ -502,10 +505,11 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of [foo, meow]`
     pub(crate) fn expected_specific_argument(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
@@ -521,10 +525,12 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of [foo, meow] as an argument`.
+    /// i.e. slightly different wording to [`expected_specific_argument`](Self::expected_specific_argument).
     pub(crate) fn expected_specific_argument_and_list(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
@@ -540,10 +546,11 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
+    /// produces an error along the lines of `expected one of ["foo", "meow"]`
     pub(crate) fn expected_specific_argument_strings(
         &self,
         span: Span,
-        possibilities: Vec<&'static str>,
+        possibilities: &[Symbol],
     ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,

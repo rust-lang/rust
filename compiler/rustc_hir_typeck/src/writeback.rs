@@ -74,7 +74,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_coroutine_interior();
+        wbcx.visit_transmutes();
         wbcx.visit_offset_of_container_types();
+        wbcx.visit_potentially_region_dependent_goals();
 
         wbcx.typeck_results.rvalue_scopes =
             mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
@@ -532,6 +534,18 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_transmutes(&mut self) {
+        let tcx = self.tcx();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for &(from, to, hir_id) in self.fcx.deferred_transmute_checks.borrow().iter() {
+            let span = tcx.hir_span(hir_id);
+            let from = self.resolve(from, &span);
+            let to = self.resolve(to, &span);
+            self.typeck_results.transmutes_to_check.push((from, to, hir_id));
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
         let tcx = self.tcx();
@@ -759,6 +773,32 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hir_id = HirId { owner: common_hir_owner, local_id };
             let container = self.resolve(container, &hir_id);
             self.typeck_results.offset_of_data_mut().insert(hir_id, (container, indices.clone()));
+        }
+    }
+
+    fn visit_potentially_region_dependent_goals(&mut self) {
+        let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
+        if let None = self.fcx.tainted_by_errors() {
+            for obligation in obligations {
+                let (predicate, mut cause) =
+                    self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
+                if predicate.has_non_region_infer() {
+                    self.fcx.dcx().span_delayed_bug(
+                        cause.span,
+                        format!("unexpected inference variable after writeback: {predicate:?}"),
+                    );
+                } else {
+                    let predicate = self.tcx().erase_regions(predicate);
+                    if cause.has_infer() || cause.has_placeholders() {
+                        // We can't use the the obligation cause as it references
+                        // information local to this query.
+                        cause = self.fcx.misc(cause.span);
+                    }
+                    self.typeck_results
+                        .potentially_region_dependent_goals
+                        .insert((predicate, cause));
+                }
+            }
         }
     }
 

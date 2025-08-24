@@ -9,7 +9,7 @@ mod tests;
 /// Simple implementation of a union-find data structure, i.e. a disjoint-set
 /// forest.
 #[derive(Debug)]
-pub(crate) struct UnionFind<Key: Idx> {
+pub struct UnionFind<Key: Idx> {
     table: IndexVec<Key, UnionFindEntry<Key>>,
 }
 
@@ -28,7 +28,7 @@ struct UnionFindEntry<Key> {
 impl<Key: Idx> UnionFind<Key> {
     /// Creates a new disjoint-set forest containing the keys `0..num_keys`.
     /// Initially, every key is part of its own one-element set.
-    pub(crate) fn new(num_keys: usize) -> Self {
+    pub fn new(num_keys: usize) -> Self {
         // Initially, every key is the root of its own set, so its parent is itself.
         Self { table: IndexVec::from_fn_n(|key| UnionFindEntry { parent: key, rank: 0 }, num_keys) }
     }
@@ -38,7 +38,7 @@ impl<Key: Idx> UnionFind<Key> {
     ///
     /// Also updates internal data structures to make subsequent `find`
     /// operations faster.
-    pub(crate) fn find(&mut self, key: Key) -> Key {
+    pub fn find(&mut self, key: Key) -> Key {
         // Loop until we find a key that is its own parent.
         let mut curr = key;
         while let parent = self.table[curr].parent
@@ -60,7 +60,7 @@ impl<Key: Idx> UnionFind<Key> {
     /// Merges the set containing `a` and the set containing `b` into one set.
     ///
     /// Returns the common root of both keys, after the merge.
-    pub(crate) fn unify(&mut self, a: Key, b: Key) -> Key {
+    pub fn unify(&mut self, a: Key, b: Key) -> Key {
         let mut a = self.find(a);
         let mut b = self.find(b);
 
@@ -90,7 +90,7 @@ impl<Key: Idx> UnionFind<Key> {
 
     /// Takes a "snapshot" of the current state of this disjoint-set forest, in
     /// the form of a vector that directly maps each key to its current root.
-    pub(crate) fn snapshot(&mut self) -> IndexVec<Key, Key> {
+    pub fn snapshot(&mut self) -> IndexVec<Key, Key> {
         self.table.indices().map(|key| self.find(key)).collect()
     }
 }

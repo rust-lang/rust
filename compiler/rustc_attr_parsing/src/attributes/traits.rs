@@ -42,7 +42,7 @@ impl<S: Stage> SingleAttributeParser<S> for SkipDuringMethodDispatchParser {
                 Some(key @ sym::array) => (key, &mut array),
                 Some(key @ sym::boxed_slice) => (key, &mut boxed_slice),
                 _ => {
-                    cx.expected_specific_argument(path.span(), vec!["array", "boxed_slice"]);
+                    cx.expected_specific_argument(path.span(), &[sym::array, sym::boxed_slice]);
                     continue;
                 }
             };

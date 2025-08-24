@@ -141,43 +141,45 @@ fn collect_unwrap_info<'tcx>(
         is_type_diagnostic_item(cx, ty, sym::Result) && matches!(method_name, sym::is_err | sym::is_ok)
     }
 
-    if let ExprKind::Binary(op, left, right) = &expr.kind {
-        match (invert, op.node) {
-            (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr) => {
-                let mut unwrap_info = collect_unwrap_info(cx, if_expr, left, branch, invert, false);
-                unwrap_info.append(&mut collect_unwrap_info(cx, if_expr, right, branch, invert, false));
-                return unwrap_info;
-            },
-            _ => (),
-        }
-    } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
-        return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
-    } else if let ExprKind::MethodCall(method_name, receiver, [], _) = &expr.kind
-        && let Some(local_id) = path_to_local(receiver)
-        && let ty = cx.typeck_results().expr_ty(receiver)
-        && let name = method_name.ident.name
-        && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
-    {
-        let unwrappable = matches!(name, sym::is_some | sym::is_ok);
-        let safe_to_unwrap = unwrappable != invert;
-        let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
-            UnwrappableKind::Option
-        } else {
-            UnwrappableKind::Result
-        };
+    match expr.kind {
+        ExprKind::Binary(op, left, right)
+            if matches!(
+                (invert, op.node),
+                (false, BinOpKind::And | BinOpKind::BitAnd) | (true, BinOpKind::Or | BinOpKind::BitOr)
+            ) =>
+        {
+            let mut unwrap_info = collect_unwrap_info(cx, if_expr, left, branch, invert, false);
+            unwrap_info.extend(collect_unwrap_info(cx, if_expr, right, branch, invert, false));
+            unwrap_info
+        },
+        ExprKind::Unary(UnOp::Not, expr) => collect_unwrap_info(cx, if_expr, expr, branch, !invert, false),
+        ExprKind::MethodCall(method_name, receiver, [], _)
+            if let Some(local_id) = path_to_local(receiver)
+                && let ty = cx.typeck_results().expr_ty(receiver)
+                && let name = method_name.ident.name
+                && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name)) =>
+        {
+            let unwrappable = matches!(name, sym::is_some | sym::is_ok);
+            let safe_to_unwrap = unwrappable != invert;
+            let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
+                UnwrappableKind::Option
+            } else {
+                UnwrappableKind::Result
+            };
 
-        return vec![UnwrapInfo {
-            local_id,
-            if_expr,
-            check: expr,
-            check_name: name,
-            branch,
-            safe_to_unwrap,
-            kind,
-            is_entire_condition,
-        }];
+            vec![UnwrapInfo {
+                local_id,
+                if_expr,
+                check: expr,
+                check_name: name,
+                branch,
+                safe_to_unwrap,
+                kind,
+                is_entire_condition,
+            }]
+        },
+        _ => vec![],
     }
-    Vec::new()
 }
 
 /// A HIR visitor delegate that checks if a local variable of type `Option` or `Result` is mutated,

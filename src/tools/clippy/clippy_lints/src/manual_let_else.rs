@@ -49,7 +49,7 @@ declare_clippy_lint! {
 }
 
 impl<'tcx> QuestionMark {
-    pub(crate) fn check_manual_let_else(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) {
+    pub(crate) fn check_manual_let_else(&self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) {
         if let StmtKind::Let(local) = stmt.kind
             && let Some(init) = local.init
             && local.els.is_none()

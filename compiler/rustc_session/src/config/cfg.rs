@@ -26,13 +26,12 @@ use std::iter;
 use rustc_abi::Align;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
-use crate::Session;
 use crate::config::{CrateType, FmtDebug};
+use crate::{Session, errors};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -99,7 +98,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             None,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
+            errors::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
         )
     };
 

@@ -7,7 +7,7 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
@@ -54,7 +54,7 @@ where
 
     fn with_replaced_self_ty(self, cx: I, self_ty: I::Ty) -> Self;
 
-    fn trait_def_id(self, cx: I) -> I::DefId;
+    fn trait_def_id(self, cx: I) -> I::TraitId;
 
     /// Consider a clause, which consists of a "assumption" and some "requirements",
     /// to satisfy a goal. If the requirements hold, then attempt to satisfy our
@@ -516,80 +516,80 @@ where
         } else if cx.trait_is_alias(trait_def_id) {
             G::consider_trait_alias_candidate(self, goal)
         } else {
-            match cx.as_lang_item(trait_def_id) {
-                Some(TraitSolverLangItem::Sized) => {
+            match cx.as_trait_lang_item(trait_def_id) {
+                Some(SolverTraitLangItem::Sized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::Sized)
                 }
-                Some(TraitSolverLangItem::MetaSized) => {
+                Some(SolverTraitLangItem::MetaSized) => {
                     G::consider_builtin_sizedness_candidates(self, goal, SizedTraitKind::MetaSized)
                 }
-                Some(TraitSolverLangItem::PointeeSized) => {
+                Some(SolverTraitLangItem::PointeeSized) => {
                     unreachable!("`PointeeSized` is removed during lowering");
                 }
-                Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
+                Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
                     G::consider_builtin_copy_clone_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Fn) => {
+                Some(SolverTraitLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
-                Some(TraitSolverLangItem::FnMut) => {
+                Some(SolverTraitLangItem::FnMut) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnMut)
                 }
-                Some(TraitSolverLangItem::FnOnce) => {
+                Some(SolverTraitLangItem::FnOnce) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::FnOnce)
                 }
-                Some(TraitSolverLangItem::AsyncFn) => {
+                Some(SolverTraitLangItem::AsyncFn) => {
                     G::consider_builtin_async_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
-                Some(TraitSolverLangItem::AsyncFnMut) => {
+                Some(SolverTraitLangItem::AsyncFnMut) => {
                     G::consider_builtin_async_fn_trait_candidates(
                         self,
                         goal,
                         ty::ClosureKind::FnMut,
                     )
                 }
-                Some(TraitSolverLangItem::AsyncFnOnce) => {
+                Some(SolverTraitLangItem::AsyncFnOnce) => {
                     G::consider_builtin_async_fn_trait_candidates(
                         self,
                         goal,
                         ty::ClosureKind::FnOnce,
                     )
                 }
-                Some(TraitSolverLangItem::FnPtrTrait) => {
+                Some(SolverTraitLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::AsyncFnKindHelper) => {
+                Some(SolverTraitLangItem::AsyncFnKindHelper) => {
                     G::consider_builtin_async_fn_kind_helper_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
-                Some(TraitSolverLangItem::PointeeTrait) => {
+                Some(SolverTraitLangItem::Tuple) => G::consider_builtin_tuple_candidate(self, goal),
+                Some(SolverTraitLangItem::PointeeTrait) => {
                     G::consider_builtin_pointee_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Future) => {
+                Some(SolverTraitLangItem::Future) => {
                     G::consider_builtin_future_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Iterator) => {
+                Some(SolverTraitLangItem::Iterator) => {
                     G::consider_builtin_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::FusedIterator) => {
+                Some(SolverTraitLangItem::FusedIterator) => {
                     G::consider_builtin_fused_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::AsyncIterator) => {
+                Some(SolverTraitLangItem::AsyncIterator) => {
                     G::consider_builtin_async_iterator_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Coroutine) => {
+                Some(SolverTraitLangItem::Coroutine) => {
                     G::consider_builtin_coroutine_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::DiscriminantKind) => {
+                Some(SolverTraitLangItem::DiscriminantKind) => {
                     G::consider_builtin_discriminant_kind_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::Destruct) => {
+                Some(SolverTraitLangItem::Destruct) => {
                     G::consider_builtin_destruct_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::TransmuteTrait) => {
+                Some(SolverTraitLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::BikeshedGuaranteedNoDrop) => {
+                Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
                 }
                 _ => Err(NoSolution),
@@ -600,7 +600,7 @@ where
 
         // There may be multiple unsize candidates for a trait with several supertraits:
         // `trait Foo: Bar<A> + Bar<B>` and `dyn Foo: Unsize<dyn Bar<_>>`
-        if cx.is_lang_item(trait_def_id, TraitSolverLangItem::Unsize) {
+        if cx.is_trait_lang_item(trait_def_id, SolverTraitLangItem::Unsize) {
             candidates.extend(G::consider_structural_builtin_unsize_candidates(self, goal));
         }
     }

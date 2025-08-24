@@ -789,7 +789,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            let binding = self.reborrow().early_resolve_ident_in_lexical_scope(
+            let binding = self.reborrow().resolve_ident_in_scope_set(
                 path[0].ident,
                 ScopeSet::Macro(kind),
                 parent_scope,
@@ -951,7 +951,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // FIXME: Should be an output of Speculative Resolution.
         let macro_resolutions = self.single_segment_macro_resolutions.take();
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
-            match self.cm().early_resolve_ident_in_lexical_scope(
+            match self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
@@ -1006,7 +1006,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
-            let _ = self.cm().early_resolve_ident_in_lexical_scope(
+            let _ = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
@@ -1112,7 +1112,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // If such resolution is successful and gives the same result
             // (e.g. if the macro is re-imported), then silence the lint.
             let no_macro_rules = self.arenas.alloc_macro_rules_scope(MacroRulesScope::Empty);
-            let fallback_binding = self.reborrow().early_resolve_ident_in_lexical_scope(
+            let fallback_binding = self.reborrow().resolve_ident_in_scope_set(
                 path.segments[0].ident,
                 ScopeSet::Macro(MacroKind::Bang),
                 &ParentScope { macro_rules: no_macro_rules, ..*parent_scope },

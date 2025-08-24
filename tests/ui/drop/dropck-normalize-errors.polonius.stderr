@@ -2,8 +2,13 @@ error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not
   --> $DIR/dropck-normalize-errors.rs:19:28
    |
 LL | fn make_a_decoder<'a>() -> ADecoder<'a> {
-   |                            ^^^^^^^^^^^^ within `ADecoder<'a>`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |                            ^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: within `ADecoder<'a>`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+  --> $DIR/dropck-normalize-errors.rs:14:1
+   |
+LL | struct NonImplementedStruct;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/dropck-normalize-errors.rs:11:1
    |
@@ -25,8 +30,13 @@ error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not
   --> $DIR/dropck-normalize-errors.rs:27:20
    |
 LL |     type Decoder = BDecoder;
-   |                    ^^^^^^^^ within `BDecoder`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |                    ^^^^^^^^ unsatisfied trait bound
    |
+help: within `BDecoder`, the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+  --> $DIR/dropck-normalize-errors.rs:14:1
+   |
+LL | struct NonImplementedStruct;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/dropck-normalize-errors.rs:11:1
    |
@@ -51,8 +61,13 @@ error[E0277]: the trait bound `NonImplementedStruct: NonImplementedTrait` is not
   --> $DIR/dropck-normalize-errors.rs:31:22
    |
 LL |     non_implemented: <NonImplementedStruct as NonImplementedTrait>::Assoc,
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `NonImplementedTrait` is not implemented for `NonImplementedStruct`
+  --> $DIR/dropck-normalize-errors.rs:14:1
+   |
+LL | struct NonImplementedStruct;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/dropck-normalize-errors.rs:11:1
    |

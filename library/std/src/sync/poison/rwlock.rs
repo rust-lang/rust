@@ -80,15 +80,23 @@ use crate::sys::sync as sys;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
 pub struct RwLock<T: ?Sized> {
+    /// The inner [`sys::RwLock`] that synchronizes thread access to the protected data.
     inner: sys::RwLock,
+    /// A flag denoting if this `RwLock` has been poisoned.
     poison: poison::Flag,
+    /// The lock-protected data.
     data: UnsafeCell<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send> Send for RwLock<T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Guards
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
@@ -105,13 +113,15 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLockReadGuard")]
-pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    // NB: we use a pointer instead of `&'a T` to avoid `noalias` violations, because a
-    // `RwLockReadGuard` argument doesn't hold immutability for its whole scope, only until it drops.
-    // `NonNull` is also covariant over `T`, just like we would have with `&T`. `NonNull`
-    // is preferable over `const* T` to allow for niche optimization.
+pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
+    /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
+    /// `&'rwlock T` to avoid `noalias` violations, because a `RwLockReadGuard` instance only holds
+    /// immutability until it drops, not for its whole scope.
+    /// `NonNull` is preferable over `*const T` to allow for niche optimizations. `NonNull` is also
+    /// covariant over `T`, just like we would have with `&T`.
     data: NonNull<T>,
-    inner_lock: &'a sys::RwLock,
+    /// A reference to the internal [`sys::RwLock`] that we have read-locked.
+    inner_lock: &'rwlock sys::RwLock,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -135,8 +145,10 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLockWriteGuard")]
-pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
-    lock: &'a RwLock<T>,
+pub struct RwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
+    /// A reference to the [`RwLock`] that we have write-locked.
+    lock: &'rwlock RwLock<T>,
+    /// The poison guard. See the [`poison`] module for more information.
     poison: poison::Guard,
 }
 
@@ -160,13 +172,15 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockWriteGuard<'_, T> {}
                       and cause Futures to not implement `Send`"]
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[clippy::has_significant_drop]
-pub struct MappedRwLockReadGuard<'a, T: ?Sized + 'a> {
-    // NB: we use a pointer instead of `&'a T` to avoid `noalias` violations, because a
-    // `MappedRwLockReadGuard` argument doesn't hold immutability for its whole scope, only until it drops.
-    // `NonNull` is also covariant over `T`, just like we would have with `&T`. `NonNull`
-    // is preferable over `const* T` to allow for niche optimization.
+pub struct MappedRwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
+    /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
+    /// `&'rwlock T` to avoid `noalias` violations, because a `MappedRwLockReadGuard` instance only
+    /// holds immutability until it drops, not for its whole scope.
+    /// `NonNull` is preferable over `*const T` to allow for niche optimizations. `NonNull` is also
+    /// covariant over `T`, just like we would have with `&T`.
     data: NonNull<T>,
-    inner_lock: &'a sys::RwLock,
+    /// A reference to the internal [`sys::RwLock`] that we have read-locked.
+    inner_lock: &'rwlock sys::RwLock,
 }
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
@@ -189,16 +203,21 @@ unsafe impl<T: ?Sized + Sync> Sync for MappedRwLockReadGuard<'_, T> {}
                       and cause Future's to not implement `Send`"]
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[clippy::has_significant_drop]
-pub struct MappedRwLockWriteGuard<'a, T: ?Sized + 'a> {
-    // NB: we use a pointer instead of `&'a mut T` to avoid `noalias` violations, because a
-    // `MappedRwLockWriteGuard` argument doesn't hold uniqueness for its whole scope, only until it drops.
-    // `NonNull` is covariant over `T`, so we add a `PhantomData<&'a mut T>` field
-    // below for the correct variance over `T` (invariance).
+pub struct MappedRwLockWriteGuard<'rwlock, T: ?Sized + 'rwlock> {
+    /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
+    /// `&'rwlock T` to avoid `noalias` violations, because a `MappedRwLockWriteGuard` instance only
+    /// holds uniquneness until it drops, not for its whole scope.
+    /// `NonNull` is preferable over `*const T` to allow for niche optimizations.
     data: NonNull<T>,
-    inner_lock: &'a sys::RwLock,
-    poison_flag: &'a poison::Flag,
-    poison: poison::Guard,
-    _variance: PhantomData<&'a mut T>,
+    /// `NonNull` is covariant over `T`, so we add a `PhantomData<&'rwlock mut T>` field here to
+    /// enforce the correct invariance over `T`.
+    _variance: PhantomData<&'rwlock mut T>,
+    /// A reference to the internal [`sys::RwLock`] that we have write-locked.
+    inner_lock: &'rwlock sys::RwLock,
+    /// A reference to the original `RwLock`'s poison state.
+    poison_flag: &'rwlock poison::Flag,
+    /// The poison guard. See the [`poison`] module for more information.
+    poison_guard: poison::Guard,
 }
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
@@ -206,6 +225,10 @@ impl<T: ?Sized> !Send for MappedRwLockWriteGuard<'_, T> {}
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
 unsafe impl<T: ?Sized + Sync> Sync for MappedRwLockWriteGuard<'_, T> {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Implementations
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
@@ -611,8 +634,8 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// Since this call borrows the `RwLock` mutably, no actual locking needs to
     /// take place -- the mutable borrow statically guarantees no new locks can be acquired
-    /// while this reference exists. Note that this method does not clear any previously abandoned locks
-    /// (e.g., via [`forget()`] on a [`RwLockReadGuard`] or [`RwLockWriteGuard`]).
+    /// while this reference exists. Note that this method does not clear any previously abandoned
+    /// locks (e.g., via [`forget()`] on a [`RwLockReadGuard`] or [`RwLockWriteGuard`]).
     ///
     /// # Errors
     ///
@@ -700,70 +723,422 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
             inner_lock: &lock.inner,
         })
     }
+
+    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data, e.g.
+    /// an enum variant.
+    ///
+    /// The `RwLock` is already locked for reading, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RwLockReadGuard::map(...)`. A method would interfere with methods of
+    /// the same name on the contents of the `RwLockReadGuard` used through
+    /// `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be
+    /// poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockReadGuard<'rwlock, U>
+    where
+        F: FnOnce(&T) -> &U,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
+        let orig = ManuallyDrop::new(orig);
+        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
+    }
+
+    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data. The
+    /// original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RwLock` is already locked for reading, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RwLockReadGuard::filter_map(...)`. A method would interfere with methods
+    /// of the same name on the contents of the `RwLockReadGuard` used through
+    /// `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be
+    /// poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockReadGuard<'rwlock, U>, Self>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { orig.data.as_ref() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
+            }
+            None => Err(orig),
+        }
+    }
 }
 
 impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     /// Creates a new instance of `RwLockWriteGuard<T>` from a `RwLock<T>`.
-    // SAFETY: if and only if `lock.inner.write()` (or `lock.inner.try_write()`) has been
-    // successfully called from the same thread before instantiating this object.
+    ///
+    /// # Safety
+    ///
+    /// This function is safe if and only if the same thread has successfully and safely called
+    /// `lock.inner.write()`, `lock.inner.try_write()`, or `lock.inner.try_upgrade` before
+    /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.guard(), |guard| RwLockWriteGuard { lock, poison: guard })
     }
-}
 
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+    /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
+    ///
+    /// Since we have the `RwLockWriteGuard`, the [`RwLock`] must already be locked for writing, so
+    /// this method cannot fail.
+    ///
+    /// After downgrading, other readers will be allowed to read the protected data.
+    ///
+    /// # Examples
+    ///
+    /// `downgrade` takes ownership of the `RwLockWriteGuard` and returns a [`RwLockReadGuard`].
+    ///
+    /// ```
+    /// #![feature(rwlock_downgrade)]
+    ///
+    /// use std::sync::{RwLock, RwLockWriteGuard};
+    ///
+    /// let rw = RwLock::new(0);
+    ///
+    /// let mut write_guard = rw.write().unwrap();
+    /// *write_guard = 42;
+    ///
+    /// let read_guard = RwLockWriteGuard::downgrade(write_guard);
+    /// assert_eq!(42, *read_guard);
+    /// ```
+    ///
+    /// `downgrade` will _atomically_ change the state of the [`RwLock`] from exclusive mode into
+    /// shared mode. This means that it is impossible for another writing thread to get in between a
+    /// thread calling `downgrade` and any reads it performs after downgrading.
+    ///
+    /// ```
+    /// #![feature(rwlock_downgrade)]
+    ///
+    /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
+    ///
+    /// let rw = Arc::new(RwLock::new(1));
+    ///
+    /// // Put the lock in write mode.
+    /// let mut main_write_guard = rw.write().unwrap();
+    ///
+    /// let rw_clone = rw.clone();
+    /// let evil_handle = std::thread::spawn(move || {
+    ///     // This will not return until the main thread drops the `main_read_guard`.
+    ///     let mut evil_guard = rw_clone.write().unwrap();
+    ///
+    ///     assert_eq!(*evil_guard, 2);
+    ///     *evil_guard = 3;
+    /// });
+    ///
+    /// *main_write_guard = 2;
+    ///
+    /// // Atomically downgrade the write guard into a read guard.
+    /// let main_read_guard = RwLockWriteGuard::downgrade(main_write_guard);
+    ///
+    /// // Since `downgrade` is atomic, the writer thread cannot have changed the protected data.
+    /// assert_eq!(*main_read_guard, 2, "`downgrade` was not atomic");
+    /// #
+    /// # drop(main_read_guard);
+    /// # evil_handle.join().unwrap();
+    /// #
+    /// # let final_check = rw.read().unwrap();
+    /// # assert_eq!(*final_check, 3);
+    /// ```
+    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
+    pub fn downgrade(s: Self) -> RwLockReadGuard<'rwlock, T> {
+        let lock = s.lock;
+
+        // We don't want to call the destructor since that calls `write_unlock`.
+        forget(s);
+
+        // SAFETY: We take ownership of a write guard, so we must already have the `RwLock` in write
+        // mode, satisfying the `downgrade` contract.
+        unsafe { lock.inner.downgrade() };
+
+        // SAFETY: We have just successfully called `downgrade`, so we fulfill the safety contract.
+        unsafe { RwLockReadGuard::new(lock).unwrap_or_else(PoisonError::into_inner) }
+    }
+
+    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data, e.g.
+    /// an enum variant.
+    ///
+    /// The `RwLock` is already locked for writing, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RwLockWriteGuard::map(...)`. A method would interfere with methods of
+    /// the same name on the contents of the `RwLockWriteGuard` used through
+    /// `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockWriteGuard<'rwlock, U>
+    where
+        F: FnOnce(&mut T) -> &mut U,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { &mut *orig.lock.data.get() }));
+        let orig = ManuallyDrop::new(orig);
+        MappedRwLockWriteGuard {
+            data,
+            inner_lock: &orig.lock.inner,
+            poison_flag: &orig.lock.poison,
+            poison_guard: orig.poison.clone(),
+            _variance: PhantomData,
+        }
+    }
+
+    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data. The
+    /// original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RwLock` is already locked for writing, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `RwLockWriteGuard::filter_map(...)`. A method would interfere with methods
+    /// of the same name on the contents of the `RwLockWriteGuard` used through
+    /// `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockWriteGuard<'rwlock, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { &mut *orig.lock.data.get() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedRwLockWriteGuard {
+                    data,
+                    inner_lock: &orig.lock.inner,
+                    poison_flag: &orig.lock.poison,
+                    poison_guard: orig.poison.clone(),
+                    _variance: PhantomData,
+                })
+            }
+            None => Err(orig),
+        }
     }
 }
 
-#[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+impl<'rwlock, T: ?Sized> MappedRwLockReadGuard<'rwlock, T> {
+    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data,
+    /// e.g. an enum variant.
+    ///
+    /// The `RwLock` is already locked for reading, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MappedRwLockReadGuard::map(...)`. A method would interfere with
+    /// methods of the same name on the contents of the `MappedRwLockReadGuard`
+    /// used through `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be
+    /// poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockReadGuard<'rwlock, U>
+    where
+        F: FnOnce(&T) -> &U,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
+        let orig = ManuallyDrop::new(orig);
+        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
+    }
+
+    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data.
+    /// The original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RwLock` is already locked for reading, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MappedRwLockReadGuard::filter_map(...)`. A method would interfere with
+    /// methods of the same name on the contents of the `MappedRwLockReadGuard`
+    /// used through `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be
+    /// poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockReadGuard<'rwlock, U>, Self>
+    where
+        F: FnOnce(&T) -> Option<&U>,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { orig.data.as_ref() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
+            }
+            None => Err(orig),
+        }
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+impl<'rwlock, T: ?Sized> MappedRwLockWriteGuard<'rwlock, T> {
+    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data,
+    /// e.g. an enum variant.
+    ///
+    /// The `RwLock` is already locked for writing, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MappedRwLockWriteGuard::map(...)`. A method would interfere with
+    /// methods of the same name on the contents of the `MappedRwLockWriteGuard`
+    /// used through `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn map<U, F>(mut orig: Self, f: F) -> MappedRwLockWriteGuard<'rwlock, U>
+    where
+        F: FnOnce(&mut T) -> &mut U,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { orig.data.as_mut() }));
+        let orig = ManuallyDrop::new(orig);
+        MappedRwLockWriteGuard {
+            data,
+            inner_lock: orig.inner_lock,
+            poison_flag: orig.poison_flag,
+            poison_guard: orig.poison_guard.clone(),
+            _variance: PhantomData,
+        }
+    }
+
+    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data.
+    /// The original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `RwLock` is already locked for writing, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MappedRwLockWriteGuard::filter_map(...)`. A method would interfere with
+    /// methods of the same name on the contents of the `MappedRwLockWriteGuard`
+    /// used through `Deref`.
+    ///
+    /// # Panics
+    ///
+    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
+    pub fn filter_map<U, F>(
+        mut orig: Self,
+        f: F,
+    ) -> Result<MappedRwLockWriteGuard<'rwlock, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+        U: ?Sized,
+    {
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the
+        // reference passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { orig.data.as_mut() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedRwLockWriteGuard {
+                    data,
+                    inner_lock: orig.inner_lock,
+                    poison_flag: orig.poison_flag,
+                    poison_guard: orig.poison_guard.clone(),
+                    _variance: PhantomData,
+                })
+            }
+            None => Err(orig),
+        }
     }
 }
 
-#[stable(feature = "std_guard_impls", since = "1.20.0")]
-impl<T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
+    fn drop(&mut self) {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
+        unsafe {
+            self.inner_lock.read_unlock();
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
+    fn drop(&mut self) {
+        self.lock.poison.done(&self.poison);
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
+        unsafe {
+            self.lock.inner.write_unlock();
+        }
     }
 }
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedRwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+impl<T: ?Sized> Drop for MappedRwLockReadGuard<'_, T> {
+    fn drop(&mut self) {
+        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        unsafe {
+            self.inner_lock.read_unlock();
+        }
     }
 }
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized + fmt::Display> fmt::Display for MappedRwLockReadGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
-    }
-}
-
-#[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedRwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
-    }
-}
-
-#[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized + fmt::Display> fmt::Display for MappedRwLockWriteGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (**self).fmt(f)
+impl<T: ?Sized> Drop for MappedRwLockWriteGuard<'_, T> {
+    fn drop(&mut self) {
+        self.poison_flag.done(&self.poison_guard);
+        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `filter_map`.
+        unsafe {
+            self.inner_lock.write_unlock();
+        }
     }
 }
 
@@ -826,388 +1201,58 @@ impl<T: ?Sized> DerefMut for MappedRwLockWriteGuard<'_, T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
-    fn drop(&mut self) {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
-        unsafe {
-            self.inner_lock.read_unlock();
-        }
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
-    fn drop(&mut self) {
-        self.lock.poison.done(&self.poison);
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when created.
-        unsafe {
-            self.lock.inner.write_unlock();
-        }
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
+impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized> Drop for MappedRwLockReadGuard<'_, T> {
-    fn drop(&mut self) {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        unsafe {
-            self.inner_lock.read_unlock();
-        }
+#[stable(feature = "std_debug", since = "1.16.0")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
+impl<T: ?Sized + fmt::Display> fmt::Display for RwLockWriteGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-impl<T: ?Sized> Drop for MappedRwLockWriteGuard<'_, T> {
-    fn drop(&mut self) {
-        self.poison_flag.done(&self.poison);
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        unsafe {
-            self.inner_lock.write_unlock();
-        }
+impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedRwLockReadGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
-impl<'a, T: ?Sized> RwLockReadGuard<'a, T> {
-    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data, e.g.
-    /// an enum variant.
-    ///
-    /// The `RwLock` is already locked for reading, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `RwLockReadGuard::map(...)`. A method would interfere with methods of
-    /// the same name on the contents of the `RwLockReadGuard` used through
-    /// `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockReadGuard<'a, U>
-    where
-        F: FnOnce(&T) -> &U,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
-        let orig = ManuallyDrop::new(orig);
-        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
-    }
-
-    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data. The
-    /// original guard is returned as an `Err(...)` if the closure returns
-    /// `None`.
-    ///
-    /// The `RwLock` is already locked for reading, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `RwLockReadGuard::filter_map(...)`. A method would interfere with methods
-    /// of the same name on the contents of the `RwLockReadGuard` used through
-    /// `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockReadGuard<'a, U>, Self>
-    where
-        F: FnOnce(&T) -> Option<&U>,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        match f(unsafe { orig.data.as_ref() }) {
-            Some(data) => {
-                let data = NonNull::from(data);
-                let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
-            }
-            None => Err(orig),
-        }
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+impl<T: ?Sized + fmt::Display> fmt::Display for MappedRwLockReadGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
-impl<'a, T: ?Sized> MappedRwLockReadGuard<'a, T> {
-    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data,
-    /// e.g. an enum variant.
-    ///
-    /// The `RwLock` is already locked for reading, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `MappedRwLockReadGuard::map(...)`. A method would interfere with
-    /// methods of the same name on the contents of the `MappedRwLockReadGuard`
-    /// used through `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockReadGuard<'a, U>
-    where
-        F: FnOnce(&T) -> &U,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
-        let orig = ManuallyDrop::new(orig);
-        MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock }
-    }
-
-    /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data.
-    /// The original guard is returned as an `Err(...)` if the closure returns
-    /// `None`.
-    ///
-    /// The `RwLock` is already locked for reading, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `MappedRwLockReadGuard::filter_map(...)`. A method would interfere with
-    /// methods of the same name on the contents of the `MappedRwLockReadGuard`
-    /// used through `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will not be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockReadGuard<'a, U>, Self>
-    where
-        F: FnOnce(&T) -> Option<&U>,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        match f(unsafe { orig.data.as_ref() }) {
-            Some(data) => {
-                let data = NonNull::from(data);
-                let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.inner_lock })
-            }
-            None => Err(orig),
-        }
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedRwLockWriteGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }
 
-impl<'a, T: ?Sized> RwLockWriteGuard<'a, T> {
-    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data, e.g.
-    /// an enum variant.
-    ///
-    /// The `RwLock` is already locked for writing, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `RwLockWriteGuard::map(...)`. A method would interfere with methods of
-    /// the same name on the contents of the `RwLockWriteGuard` used through
-    /// `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn map<U, F>(orig: Self, f: F) -> MappedRwLockWriteGuard<'a, U>
-    where
-        F: FnOnce(&mut T) -> &mut U,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        let data = NonNull::from(f(unsafe { &mut *orig.lock.data.get() }));
-        let orig = ManuallyDrop::new(orig);
-        MappedRwLockWriteGuard {
-            data,
-            inner_lock: &orig.lock.inner,
-            poison_flag: &orig.lock.poison,
-            poison: orig.poison.clone(),
-            _variance: PhantomData,
-        }
-    }
-
-    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data. The
-    /// original guard is returned as an `Err(...)` if the closure returns
-    /// `None`.
-    ///
-    /// The `RwLock` is already locked for writing, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `RwLockWriteGuard::filter_map(...)`. A method would interfere with methods
-    /// of the same name on the contents of the `RwLockWriteGuard` used through
-    /// `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn filter_map<U, F>(orig: Self, f: F) -> Result<MappedRwLockWriteGuard<'a, U>, Self>
-    where
-        F: FnOnce(&mut T) -> Option<&mut U>,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        match f(unsafe { &mut *orig.lock.data.get() }) {
-            Some(data) => {
-                let data = NonNull::from(data);
-                let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockWriteGuard {
-                    data,
-                    inner_lock: &orig.lock.inner,
-                    poison_flag: &orig.lock.poison,
-                    poison: orig.poison.clone(),
-                    _variance: PhantomData,
-                })
-            }
-            None => Err(orig),
-        }
-    }
-
-    /// Downgrades a write-locked `RwLockWriteGuard` into a read-locked [`RwLockReadGuard`].
-    ///
-    /// This method will atomically change the state of the [`RwLock`] from exclusive mode into
-    /// shared mode. This means that it is impossible for a writing thread to get in between a
-    /// thread calling `downgrade` and the same thread reading whatever it wrote while it had the
-    /// [`RwLock`] in write mode.
-    ///
-    /// Note that since we have the `RwLockWriteGuard`, we know that the [`RwLock`] is already
-    /// locked for writing, so this method cannot fail.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// #![feature(rwlock_downgrade)]
-    /// use std::sync::{Arc, RwLock, RwLockWriteGuard};
-    ///
-    /// // The inner value starts as 0.
-    /// let rw = Arc::new(RwLock::new(0));
-    ///
-    /// // Put the lock in write mode.
-    /// let mut main_write_guard = rw.write().unwrap();
-    ///
-    /// let evil = rw.clone();
-    /// let handle = std::thread::spawn(move || {
-    ///     // This will not return until the main thread drops the `main_read_guard`.
-    ///     let mut evil_guard = evil.write().unwrap();
-    ///
-    ///     assert_eq!(*evil_guard, 1);
-    ///     *evil_guard = 2;
-    /// });
-    ///
-    /// // After spawning the writer thread, set the inner value to 1.
-    /// *main_write_guard = 1;
-    ///
-    /// // Atomically downgrade the write guard into a read guard.
-    /// let main_read_guard = RwLockWriteGuard::downgrade(main_write_guard);
-    ///
-    /// // Since `downgrade` is atomic, the writer thread cannot have set the inner value to 2.
-    /// assert_eq!(*main_read_guard, 1, "`downgrade` was not atomic");
-    ///
-    /// // Clean up everything now
-    /// drop(main_read_guard);
-    /// handle.join().unwrap();
-    ///
-    /// let final_check = rw.read().unwrap();
-    /// assert_eq!(*final_check, 2);
-    /// ```
-    #[unstable(feature = "rwlock_downgrade", issue = "128203")]
-    pub fn downgrade(s: Self) -> RwLockReadGuard<'a, T> {
-        let lock = s.lock;
-
-        // We don't want to call the destructor since that calls `write_unlock`.
-        forget(s);
-
-        // SAFETY: We take ownership of a write guard, so we must already have the `RwLock` in write
-        // mode, satisfying the `downgrade` contract.
-        unsafe { lock.inner.downgrade() };
-
-        // SAFETY: We have just successfully called `downgrade`, so we fulfill the safety contract.
-        unsafe { RwLockReadGuard::new(lock).unwrap_or_else(PoisonError::into_inner) }
-    }
-}
-
-impl<'a, T: ?Sized> MappedRwLockWriteGuard<'a, T> {
-    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data,
-    /// e.g. an enum variant.
-    ///
-    /// The `RwLock` is already locked for writing, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `MappedRwLockWriteGuard::map(...)`. A method would interfere with
-    /// methods of the same name on the contents of the `MappedRwLockWriteGuard`
-    /// used through `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn map<U, F>(mut orig: Self, f: F) -> MappedRwLockWriteGuard<'a, U>
-    where
-        F: FnOnce(&mut T) -> &mut U,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        let data = NonNull::from(f(unsafe { orig.data.as_mut() }));
-        let orig = ManuallyDrop::new(orig);
-        MappedRwLockWriteGuard {
-            data,
-            inner_lock: orig.inner_lock,
-            poison_flag: orig.poison_flag,
-            poison: orig.poison.clone(),
-            _variance: PhantomData,
-        }
-    }
-
-    /// Makes a [`MappedRwLockWriteGuard`] for a component of the borrowed data.
-    /// The original guard is returned as an `Err(...)` if the closure returns
-    /// `None`.
-    ///
-    /// The `RwLock` is already locked for writing, so this cannot fail.
-    ///
-    /// This is an associated function that needs to be used as
-    /// `MappedRwLockWriteGuard::filter_map(...)`. A method would interfere with
-    /// methods of the same name on the contents of the `MappedRwLockWriteGuard`
-    /// used through `Deref`.
-    ///
-    /// # Panics
-    ///
-    /// If the closure panics, the guard will be dropped (unlocked) and the RwLock will be poisoned.
-    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn filter_map<U, F>(mut orig: Self, f: F) -> Result<MappedRwLockWriteGuard<'a, U>, Self>
-    where
-        F: FnOnce(&mut T) -> Option<&mut U>,
-        U: ?Sized,
-    {
-        // SAFETY: the conditions of `RwLockWriteGuard::new` were satisfied when the original guard
-        // was created, and have been upheld throughout `map` and/or `filter_map`.
-        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
-        // passed to it. If the closure panics, the guard will be dropped.
-        match f(unsafe { orig.data.as_mut() }) {
-            Some(data) => {
-                let data = NonNull::from(data);
-                let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockWriteGuard {
-                    data,
-                    inner_lock: orig.inner_lock,
-                    poison_flag: orig.poison_flag,
-                    poison: orig.poison.clone(),
-                    _variance: PhantomData,
-                })
-            }
-            None => Err(orig),
-        }
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+impl<T: ?Sized + fmt::Display> fmt::Display for MappedRwLockWriteGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
     }
 }

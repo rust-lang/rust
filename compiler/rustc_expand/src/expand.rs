@@ -1,27 +1,28 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{iter, mem};
+use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, DUMMY_NODE_ID,
-    ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, CRATE_NODE_ID,
+    DUMMY_NODE_ID, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle,
+    MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, EvalConfigResult, ShouldEmit, validate_attr};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
+use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
     token_descr,
 };
-use rustc_parse::validate_attr;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
@@ -2158,6 +2159,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 attr,
                 self.cx.current_expansion.lint_node_id,
             );
+            AttributeParser::parse_limited_all(
+                self.cx.sess,
+                slice::from_ref(attr),
+                None,
+                Target::MacroCall,
+                call.span(),
+                CRATE_NODE_ID,
+                Some(self.cx.ecfg.features),
+                ShouldEmit::ErrorsAndLints,
+            );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -2469,7 +2480,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        self.visit_node(node)
+        ensure_sufficient_stack(|| self.visit_node(node))
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {

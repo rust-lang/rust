@@ -540,11 +540,11 @@ impl Cursor<'_> {
         // whitespace between the opening and the infostring.
         self.eat_while(|ch| ch != '\n' && is_whitespace(ch));
 
-        // copied from `eat_identifier`, but allows `.` in infostring to allow something like
+        // copied from `eat_identifier`, but allows `-` and `.` in infostring to allow something like
         // `---Cargo.toml` as a valid opener
         if is_id_start(self.first()) {
             self.bump();
-            self.eat_while(|c| is_id_continue(c) || c == '.');
+            self.eat_while(|c| is_id_continue(c) || c == '-' || c == '.');
         }
 
         self.eat_while(|ch| ch != '\n' && is_whitespace(ch));

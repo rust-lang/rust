@@ -38,6 +38,10 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         }
     }
 
+    pub(super) fn root_def_id(&self) -> LocalDefId {
+        self.root_def_id
+    }
+
     /// Collect all defining uses of opaque types inside of this typeck root. This
     /// expects the hidden type to be mapped to the definition parameters of the opaque
     /// and errors if we end up with distinct hidden types.

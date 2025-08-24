@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
@@ -813,6 +813,14 @@ pub(crate) struct MissingAbi {
     #[primary_span]
     #[suggestion(code = "extern \"<abi>\"", applicability = "has-placeholders")]
     pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_extern_without_abi_sugg)]
+pub(crate) struct MissingAbiSugg {
+    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub default_abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]

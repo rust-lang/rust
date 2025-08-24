@@ -75,7 +75,7 @@ fn format_build_step_diffs(current: &BuildStep, parent: &BuildStep) -> String {
         }
     }
 
-    fn get_steps(step: &BuildStep) -> Vec<StepByName> {
+    fn get_steps(step: &BuildStep) -> Vec<StepByName<'_>> {
         step.linearize_steps().into_iter().map(|v| StepByName(v)).collect()
     }
 

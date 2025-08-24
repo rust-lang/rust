@@ -3,10 +3,10 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
-use rustc_type_ir::{self as ty, Interner, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -33,7 +33,7 @@ where
         self.with_replaced_self_ty(cx, self_ty)
     }
 
-    fn trait_def_id(self, _: I) -> I::DefId {
+    fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
     }
 
@@ -135,12 +135,16 @@ where
         }
 
         let impl_polarity = cx.impl_polarity(impl_def_id);
-        match impl_polarity {
+        let certainty = match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution),
-            ty::ImplPolarity::Reservation => {
-                unimplemented!("reservation impl for const trait: {:?}", goal)
-            }
-            ty::ImplPolarity::Positive => {}
+            ty::ImplPolarity::Reservation => match ecx.typing_mode() {
+                TypingMode::Coherence => Certainty::AMBIGUOUS,
+                TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => return Err(NoSolution),
+            },
+            ty::ImplPolarity::Positive => Certainty::Yes,
         };
 
         if !cx.impl_is_const(impl_def_id) {
@@ -171,7 +175,7 @@ where
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
     }
 
@@ -233,7 +237,7 @@ where
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
         });
         let requirements = cx
             .const_conditions(def_id)
