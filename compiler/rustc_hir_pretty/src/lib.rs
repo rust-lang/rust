@@ -1958,12 +1958,12 @@ impl<'a> State<'a> {
                 self.print_qpath(qpath, true);
                 self.nbsp();
                 self.word("{");
-                let empty = fields.is_empty() && !etc;
+                let empty = fields.is_empty() && etc.is_none();
                 if !empty {
                     self.space();
                 }
                 self.commasep_cmnt(Consistent, fields, |s, f| s.print_patfield(f), |f| f.pat.span);
-                if etc {
+                if etc.is_some() {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }

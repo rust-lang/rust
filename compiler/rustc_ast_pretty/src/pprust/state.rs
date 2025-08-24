@@ -1769,7 +1769,7 @@ impl<'a> State<'a> {
                     },
                     |f| f.pat.span,
                 );
-                if let ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) = etc {
+                if let ast::PatFieldsRest::Rest(_) | ast::PatFieldsRest::Recovered(_) = etc {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
