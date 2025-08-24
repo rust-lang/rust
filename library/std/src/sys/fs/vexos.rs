@@ -505,11 +505,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
-    // VEX presumably uses a derivative of FatFs (most likely the xilffs library)
-    // for sdcard filesystem functions.
-    //
-    // Documentation for each FRESULT originates from here:
-    // <http://elm-chan.org/fsw/ff/doc/rc.html>
+    // VEX uses a derivative of FatFs (Xilinx's xilffs library) for filesystem operations.
     match fresult {
         vex_sdk::FRESULT::FR_OK => Ok(()),
         vex_sdk::FRESULT::FR_DISK_ERR => Err(io::Error::new(

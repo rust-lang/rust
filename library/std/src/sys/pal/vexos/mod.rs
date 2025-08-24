@@ -1,16 +1,7 @@
-pub mod env;
-pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
-#[path = "../unsupported/net.rs"]
-pub mod net;
 #[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod time;
 
@@ -39,36 +30,16 @@ pub unsafe extern "C" fn _start() -> ! {
         fn main() -> i32;
     }
 
-    // VEXos doesn't explicitly clean out .bss.
-    ptr::slice_from_raw_parts_mut(
-        addr_of_mut!(__bss_start),
-        addr_of_mut!(__bss_end).offset_from(addr_of_mut!(__bss_start)) as usize,
-    )
-    .as_mut()
-    .unwrap_unchecked()
-    .fill(0);
+    // Clear the .bss (uninitialized statics) section by filling it with zeroes.
+    // This is required, since the compiler assumes it will be zeroed on first access.
+    ptr::write_bytes(
+        &raw mut __bss_start,
+        0,
+        (&raw mut __bss_end).offset_from(&raw mut __bss_start) as usize,
+    );
 
     main();
 
-    abort_internal()
-}
-
-// The code signature is a 32 byte header at the start of user programs that
-// identifies the owner and type of the program, as well as certain flags for
-// program behavior dictated by the OS. In the event that the user wants to
-// change this header, we use weak linkage so it can be overwritten.
-#[link_section = ".code_signature"]
-#[linkage = "weak"]
-#[used]
-static CODE_SIGNATURE: vex_sdk::vcodesig =
-    vex_sdk::vcodesig { magic: u32::from_le_bytes(*b"XVX5"), r#type: 0, owner: 2, options: 0 };
-
-// This function is needed by the panic runtime. The symbol is named in
-// pre-link args for the target specification, so keep that in sync.
-#[cfg(not(test))]
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub extern "C" fn __rust_abort() -> ! {
     abort_internal()
 }
 

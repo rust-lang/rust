@@ -1,14 +1,14 @@
 use crate::io;
 
-pub struct Stdin(());
-pub struct Stdout(());
-pub struct Stderr(());
+pub struct Stdin;
+pub struct Stdout;
+pub type Stderr = Stdout;
 
-pub const STDIO_CHANNEL: u32 = 1;
+const STDIO_CHANNEL: u32 = 1;
 
 impl Stdin {
     pub const fn new() -> Stdin {
-        Stdin(())
+        Stdin
     }
 }
 
@@ -34,43 +34,11 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout(())
+        Stdout
     }
 }
 
 impl io::Write for Stdout {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let written =
-            unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, buf.as_ptr(), buf.len() as u32) };
-
-        if written < 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Internal write error occurred.",
-            ));
-        }
-
-        Ok(written as usize)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        unsafe {
-            while (vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize) != STDOUT_BUF_SIZE {
-                vex_sdk::vexTasksRun();
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl Stderr {
-    pub const fn new() -> Stderr {
-        Stderr(())
-    }
-}
-
-impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let written =
             unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, buf.as_ptr(), buf.len() as u32) };
