@@ -12,7 +12,7 @@ use smallvec::SmallVec;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, False, True, Type, Value};
+use crate::llvm::{self, FALSE, TRUE, Type, Value};
 use crate::{SimpleCx, attributes, debuginfo, llvm_util};
 
 pub(crate) unsafe fn codegen(
@@ -80,7 +80,7 @@ pub(crate) unsafe fn codegen(
             &cx,
             &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
             &i8,
-            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, False),
+            &llvm::LLVMConstInt(i8, tcx.sess.opts.unstable_opts.oom.should_panic() as u64, FALSE),
         );
 
         // __rust_no_alloc_shim_is_unstable_v2
@@ -201,7 +201,7 @@ fn create_wrapper_function(
             .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
             .collect::<Vec<_>>();
         let ret = bx.call(ty, callee, &args, None);
-        llvm::LLVMSetTailCall(ret, True);
+        llvm::LLVMSetTailCall(ret, TRUE);
         if output.is_some() {
             bx.ret(ret);
         } else {

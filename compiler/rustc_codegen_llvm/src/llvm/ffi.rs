@@ -11,7 +11,6 @@
 //! the need for an extra cast from `*const u8` on the Rust side.
 
 #![allow(non_camel_case_types)]
-#![allow(non_upper_case_globals)]
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -42,8 +41,8 @@ pub(crate) struct Bool {
     value: c_int,
 }
 
-pub(crate) const True: Bool = Bool::TRUE;
-pub(crate) const False: Bool = Bool::FALSE;
+pub(crate) const TRUE: Bool = Bool::TRUE;
+pub(crate) const FALSE: Bool = Bool::FALSE;
 
 impl Bool {
     pub(crate) const TRUE: Self = Self { value: 1 };

@@ -35,7 +35,7 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, ToLlvmBool, True,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, TRUE, ToLlvmBool,
 };
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -493,8 +493,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let add = llvm::LLVMBuildAdd(self.llbuilder, a, b, UNNAMED);
             if llvm::LLVMIsAInstruction(add).is_some() {
-                llvm::LLVMSetNUW(add, True);
-                llvm::LLVMSetNSW(add, True);
+                llvm::LLVMSetNUW(add, TRUE);
+                llvm::LLVMSetNSW(add, TRUE);
             }
             add
         }
@@ -503,8 +503,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let sub = llvm::LLVMBuildSub(self.llbuilder, a, b, UNNAMED);
             if llvm::LLVMIsAInstruction(sub).is_some() {
-                llvm::LLVMSetNUW(sub, True);
-                llvm::LLVMSetNSW(sub, True);
+                llvm::LLVMSetNUW(sub, TRUE);
+                llvm::LLVMSetNSW(sub, TRUE);
             }
             sub
         }
@@ -513,8 +513,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let mul = llvm::LLVMBuildMul(self.llbuilder, a, b, UNNAMED);
             if llvm::LLVMIsAInstruction(mul).is_some() {
-                llvm::LLVMSetNUW(mul, True);
-                llvm::LLVMSetNSW(mul, True);
+                llvm::LLVMSetNUW(mul, TRUE);
+                llvm::LLVMSetNSW(mul, TRUE);
             }
             mul
         }
@@ -528,7 +528,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // an instruction, so we need to check before setting the flag.
             // (See also `LLVMBuildNUWNeg` which also needs a check.)
             if llvm::LLVMIsAInstruction(or).is_some() {
-                llvm::LLVMSetIsDisjoint(or, True);
+                llvm::LLVMSetIsDisjoint(or, TRUE);
             }
             or
         }
@@ -629,7 +629,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn volatile_load(&mut self, ty: &'ll Type, ptr: &'ll Value) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
-            llvm::LLVMSetVolatile(load, llvm::True);
+            llvm::LLVMSetVolatile(load, llvm::TRUE);
             load
         }
     }
@@ -838,7 +838,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() as c_uint };
             llvm::LLVMSetAlignment(store, align);
             if flags.contains(MemFlags::VOLATILE) {
-                llvm::LLVMSetVolatile(store, llvm::True);
+                llvm::LLVMSetVolatile(store, llvm::TRUE);
             }
             if flags.contains(MemFlags::NONTEMPORAL) {
                 // Make sure that the current target architectures supports "sane" non-temporal
@@ -956,7 +956,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let trunc = self.trunc(val, dest_ty);
         unsafe {
             if llvm::LLVMIsAInstruction(trunc).is_some() {
-                llvm::LLVMSetNUW(trunc, True);
+                llvm::LLVMSetNUW(trunc, TRUE);
             }
         }
         trunc
@@ -968,7 +968,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let trunc = self.trunc(val, dest_ty);
         unsafe {
             if llvm::LLVMIsAInstruction(trunc).is_some() {
-                llvm::LLVMSetNSW(trunc, True);
+                llvm::LLVMSetNSW(trunc, TRUE);
             }
         }
         trunc
@@ -1223,7 +1223,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let ty = self.type_struct(&[self.type_ptr(), self.type_i32()], false);
         let landing_pad = self.landing_pad(ty, pers_fn, 0);
         unsafe {
-            llvm::LLVMSetCleanup(landing_pad, llvm::True);
+            llvm::LLVMSetCleanup(landing_pad, llvm::TRUE);
         }
         (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
     }
@@ -1319,7 +1319,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 src,
                 AtomicOrdering::from_generic(order),
                 AtomicOrdering::from_generic(failure_order),
-                llvm::False, // SingleThreaded
+                llvm::FALSE, // SingleThreaded
             );
             llvm::LLVMSetWeak(value, weak.to_llvm_bool());
             let val = self.extract_value(value, 0);
@@ -1346,7 +1346,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 dst,
                 src,
                 AtomicOrdering::from_generic(order),
-                llvm::False, // SingleThreaded
+                llvm::FALSE, // SingleThreaded
             )
         };
         if ret_ptr && self.val_ty(res) != self.type_ptr() {

@@ -1110,7 +1110,7 @@ fn embed_bitcode(
 
         llvm::set_section(llglobal, bitcode_section_name(cgcx));
         llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-        llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
+        llvm::LLVMSetGlobalConstant(llglobal, llvm::TRUE);
 
         let llconst = common::bytes_in_context(llcx, &[]);
         let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
