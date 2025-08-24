@@ -489,3 +489,39 @@ fn foo() {
         expect![[r#"ty: State, name: ?"#]],
     );
 }
+
+#[test]
+fn expected_type_return_expr() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() -> State {
+    let _: i32 = if true {
+        8
+    } else {
+        return $0;
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}
+
+#[test]
+fn expected_type_return_expr_in_closure() {
+    check_expected_type_and_name(
+        r#"
+enum State { Stop }
+fn foo() {
+    let _f: fn() -> State = || {
+        let _: i32 = if true {
+            8
+        } else {
+            return $0;
+        };
+    };
+}
+"#,
+        expect![[r#"ty: State, name: ?"#]],
+    );
+}

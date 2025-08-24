@@ -559,7 +559,7 @@ fn expected_type_and_name<'db>(
     token: &SyntaxToken,
     name_like: &ast::NameLike,
 ) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
-    let token = prev_assign_token_at_trivia(token.clone());
+    let token = prev_special_biased_token_at_trivia(token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
         None => return (None, None),
@@ -723,6 +723,18 @@ fn expected_type_and_name<'db>(
                     cov_mark::hit!(expected_type_fn_ret_without_leading_char);
                     let def = sema.to_def(&it);
                     (def.map(|def| def.ret_type(sema.db)), None)
+                },
+                ast::ReturnExpr(it) => {
+                    let fn_ = sema.ancestors_with_macros(it.syntax().clone())
+                        .find_map(Either::<ast::Fn, ast::ClosureExpr>::cast);
+                    let ty = fn_.and_then(|f| match f {
+                        Either::Left(f) => Some(sema.to_def(&f)?.ret_type(sema.db)),
+                        Either::Right(f) => {
+                            let ty = sema.type_of_expr(&f.into())?.original.as_callable(sema.db)?;
+                            Some(ty.return_type())
+                        },
+                    });
+                    (ty, None)
                 },
                 ast::ClosureExpr(it) => {
                     let ty = sema.type_of_expr(&it.into());
@@ -1877,7 +1889,7 @@ fn next_non_trivia_sibling(ele: SyntaxElement) -> Option<SyntaxElement> {
     None
 }
 
-fn prev_assign_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
+fn prev_special_biased_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
     while token.kind().is_trivia()
         && let Some(prev) = token.prev_token()
         && let T![=]
@@ -1890,7 +1902,10 @@ fn prev_assign_token_at_trivia(mut token: SyntaxToken) -> SyntaxToken {
         | T![-=]
         | T![|=]
         | T![&=]
-        | T![^=] = prev.kind()
+        | T![^=]
+        | T![return]
+        | T![break]
+        | T![continue] = prev.kind()
     {
         token = prev
     }
