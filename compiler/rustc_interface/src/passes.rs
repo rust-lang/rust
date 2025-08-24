@@ -21,7 +21,6 @@ use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
-use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
@@ -1196,15 +1195,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, EncodedMetadata) {
+) -> Box<dyn Any> {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
-
-    // Hook for tests.
-    if let Some((def_id, _)) = tcx.entry_fn(())
-        && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
-    {
-        tcx.ensure_ok().trigger_delayed_bug(def_id);
-    }
 
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
@@ -1212,16 +1204,7 @@ pub(crate) fn start_codegen<'tcx>(
         rustc_symbol_mangling::test::report_symbol_names(tcx);
     }
 
-    // Don't do code generation if there were any errors. Likewise if
-    // there were any delayed bugs, because codegen will likely cause
-    // more ICEs, obscuring the original problem.
-    if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
-        guar.raise_fatal();
-    }
-
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
-
-    let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
     let codegen = tcx.sess.time("codegen_crate", move || codegen_backend.codegen_crate(tcx));
 
@@ -1233,7 +1216,7 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    (codegen, metadata)
+    codegen
 }
 
 /// Compute and validate the crate name.
