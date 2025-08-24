@@ -588,6 +588,9 @@ pub enum AttributeKind {
     /// Represents `#[no_mangle]`
     NoMangle(Span),
 
+    /// Represents `#[no_std]`
+    NoStd(Span),
+
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
