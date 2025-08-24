@@ -35,7 +35,7 @@ use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
-    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, GEPNoWrapFlags, Metadata, True,
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, GEPNoWrapFlags, Metadata, ToLlvmBool, True,
 };
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -717,7 +717,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
             if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
-                if llvm::LLVMIsGlobalConstant(global) == llvm::True {
+                if llvm::LLVMIsGlobalConstant(global).is_true() {
                     if let Some(init) = llvm::LLVMGetInitializer(global) {
                         if self.val_ty(init) == llty {
                             const_llval = Some(init);
@@ -1067,13 +1067,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn intcast(&mut self, val: &'ll Value, dest_ty: &'ll Type, is_signed: bool) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildIntCast2(
-                self.llbuilder,
-                val,
-                dest_ty,
-                if is_signed { True } else { False },
-                UNNAMED,
-            )
+            llvm::LLVMBuildIntCast2(self.llbuilder, val, dest_ty, is_signed.to_llvm_bool(), UNNAMED)
         }
     }
 
@@ -1317,7 +1311,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         failure_order: rustc_middle::ty::AtomicOrdering,
         weak: bool,
     ) -> (&'ll Value, &'ll Value) {
-        let weak = if weak { llvm::True } else { llvm::False };
         unsafe {
             let value = llvm::LLVMBuildAtomicCmpXchg(
                 self.llbuilder,
@@ -1328,7 +1321,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 AtomicOrdering::from_generic(failure_order),
                 llvm::False, // SingleThreaded
             );
-            llvm::LLVMSetWeak(value, weak);
+            llvm::LLVMSetWeak(value, weak.to_llvm_bool());
             let val = self.extract_value(value, 0);
             let success = self.extract_value(value, 1);
             (val, success)
@@ -1368,14 +1361,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         scope: SynchronizationScope,
     ) {
         let single_threaded = match scope {
-            SynchronizationScope::SingleThread => llvm::True,
-            SynchronizationScope::CrossThread => llvm::False,
+            SynchronizationScope::SingleThread => true,
+            SynchronizationScope::CrossThread => false,
         };
         unsafe {
             llvm::LLVMBuildFence(
                 self.llbuilder,
                 AtomicOrdering::from_generic(order),
-                single_threaded,
+                single_threaded.to_llvm_bool(),
                 UNNAMED,
             );
         }

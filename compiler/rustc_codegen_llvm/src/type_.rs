@@ -15,7 +15,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::context::{CodegenCx, GenericCx, SCx};
 pub(crate) use crate::llvm::Type;
-use crate::llvm::{Bool, False, Metadata, True};
+use crate::llvm::{False, Metadata, ToLlvmBool, True};
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use crate::{common, llvm};
@@ -53,7 +53,9 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
-        unsafe { llvm::LLVMStructSetBody(ty, els.as_ptr(), els.len() as c_uint, packed as Bool) }
+        unsafe {
+            llvm::LLVMStructSetBody(ty, els.as_ptr(), els.len() as c_uint, packed.to_llvm_bool())
+        }
     }
     pub(crate) fn type_void(&self) -> &'ll Type {
         unsafe { llvm::LLVMVoidTypeInContext(self.llcx()) }
@@ -152,7 +154,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
                 self.llcx(),
                 els.as_ptr(),
                 els.len() as c_uint,
-                packed as Bool,
+                packed.to_llvm_bool(),
             )
         }
     }
