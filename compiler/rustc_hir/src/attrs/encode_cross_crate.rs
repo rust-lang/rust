@@ -71,6 +71,7 @@ impl AttributeKind {
             ParenSugar(..) => No,
             PassByValue(..) => Yes,
             Path(..) => No,
+            PatternComplexityLimit { .. } => No,
             Pointee(..) => No,
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
