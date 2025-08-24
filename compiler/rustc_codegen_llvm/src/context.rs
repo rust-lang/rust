@@ -701,7 +701,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
-        unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
+        unsafe { llvm::LLVMConstInt(ty, val, llvm::FALSE) }
     }
 
     pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
