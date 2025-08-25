@@ -50,15 +50,15 @@ pub enum Constant {
     /// `true` or `false`.
     Bool(bool),
     /// An array of constants.
-    Vec(Vec<Constant>),
+    Vec(Vec<Self>),
     /// Also an array, but with only one constant, repeated N times.
-    Repeat(Box<Constant>, u64),
+    Repeat(Box<Self>, u64),
     /// A tuple of constants.
-    Tuple(Vec<Constant>),
+    Tuple(Vec<Self>),
     /// A raw pointer.
     RawPtr(u128),
     /// A reference
-    Ref(Box<Constant>),
+    Ref(Box<Self>),
     /// A literal with syntax error.
     Err,
 }

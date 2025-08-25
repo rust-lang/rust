@@ -33,7 +33,7 @@ pub enum Sugg<'a> {
     /// or `-`, but only if the type with and without the operator is kept identical.
     /// It means that doubling the operator can be used to remove it instead, in
     /// order to provide better suggestions.
-    UnOp(UnOp, Box<Sugg<'a>>),
+    UnOp(UnOp, Box<Self>),
 }
 
 /// Literal constant `0`, for convenience.

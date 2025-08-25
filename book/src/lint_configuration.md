@@ -927,6 +927,16 @@ exported visibility, or whether they are marked as "pub".
 * [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
 
 
+## `recursive-self-in-type-definitions`
+Whether the type itself in a struct or enum should be replaced with `Self` when encountering recursive types.
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`use_self`](https://rust-lang.github.io/rust-clippy/master/index.html#use_self)
+
+
 ## `semicolon-inside-block-ignore-singleline`
 Whether to lint only if it's multiline.
 
