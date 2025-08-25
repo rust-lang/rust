@@ -462,6 +462,14 @@ lint_invalid_reference_casting_note_book = for more information, visit <https://
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
 
+lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
+    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
+    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
+    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
+    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
+    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
+    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
+
 lint_legacy_derive_helpers = derive helper attribute is used before it is introduced
     .label = the attribute is introduced here
 

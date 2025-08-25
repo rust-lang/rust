@@ -1460,6 +1460,13 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         )
     }
 
+    fn print_field_attrs(&self, field: &'a clean::Item) -> impl Display {
+        fmt::from_fn(move |w| {
+            render_attributes_in_code(w, field, "", self.cx);
+            Ok(())
+        })
+    }
+
     fn document_field(&self, field: &'a clean::Item) -> impl Display {
         document(self.cx, field, Some(self.it), HeadingOffset::H3)
     }
@@ -1770,6 +1777,7 @@ fn item_variants(
                 )
                 .maybe_display()
             )?;
+            render_attributes_in_code(w, variant, "", cx);
             if let clean::VariantItem(ref var) = variant.kind
                 && let clean::VariantKind::CLike = var.kind
             {
@@ -1843,7 +1851,12 @@ fn item_variants(
                                 "<div class=\"sub-variant-field\">\
                                     <span id=\"{id}\" class=\"section-header\">\
                                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                        <code>{f}: {t}</code>\
+                                        <code>"
+                            )?;
+                            render_attributes_in_code(w, field, "", cx);
+                            write!(
+                                w,
+                                "{f}: {t}</code>\
                                     </span>\
                                     {doc}\
                                 </div>",
@@ -2079,10 +2092,15 @@ fn item_fields(
                     w,
                     "<span id=\"{id}\" class=\"{item_type} section-header\">\
                         <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                        <code>{field_name}: {ty}</code>\
+                        <code>",
+                    item_type = ItemType::StructField,
+                )?;
+                render_attributes_in_code(w, field, "", cx);
+                write!(
+                    w,
+                    "{field_name}: {ty}</code>\
                     </span>\
                     {doc}",
-                    item_type = ItemType::StructField,
                     ty = ty.print(cx),
                     doc = document(cx, field, Some(it), HeadingOffset::H3),
                 )?;

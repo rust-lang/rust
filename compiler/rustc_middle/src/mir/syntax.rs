@@ -1371,12 +1371,7 @@ pub enum Rvalue<'tcx> {
 
     /// Creates an array where each element is the value of the operand.
     ///
-    /// This is the cause of a bug in the case where the repetition count is zero because the value
-    /// is not dropped, see [#74836].
-    ///
     /// Corresponds to source code like `[x; 32]`.
-    ///
-    /// [#74836]: https://github.com/rust-lang/rust/issues/74836
     Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
     /// Creates a reference of the indicated kind to the place.

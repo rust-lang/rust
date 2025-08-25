@@ -956,6 +956,40 @@ rustdoc-topbar {
 .example-wrap.digits-8 { --example-wrap-digits-count: 8ch; }
 .example-wrap.digits-9 { --example-wrap-digits-count: 9ch; }
 
+.example-wrap .expansion {
+	position: relative;
+	display: inline;
+}
+.example-wrap .expansion > input {
+	display: block;
+	position: absolute;
+	appearance: none;
+	content: '↕';
+	left: -20px;
+	top: 0;
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--main-color);
+	padding: 0 2px;
+	line-height: 20px;
+}
+.example-wrap .expansion > input::after {
+	content: "↕";
+}
+.example-wrap .expansion .expanded {
+	display: none;
+	color: var(--main-color);
+}
+.example-wrap .expansion > input:checked ~ .expanded,
+.example-wrap .expansion > input:checked ~ * .expanded {
+	display: inherit;
+}
+.example-wrap .expansion > input:checked ~ .original,
+.example-wrap .expansion > input:checked ~ * .original {
+	display: none;
+}
+
 .example-wrap [data-nosnippet] {
 	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
@@ -963,6 +997,17 @@ rustdoc-topbar {
 	padding-left: calc(
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin));
+}
+.src .example-wrap .expansion [data-nosnippet] {
+	/* FIXME: Once <https://bugzilla.mozilla.org/show_bug.cgi?id=1949948> is solved, uncomment
+	   next line and remove the two other rules. */
+	/*left: calc((
+		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+		+ var(--line-number-right-margin)) * -1);*/
+	position: initial;
+	margin-left: calc((
+		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
+		+ var(--line-number-right-margin)) * -1);
 }
 
 .example-wrap [data-nosnippet] {
@@ -978,9 +1023,6 @@ rustdoc-topbar {
 	position: absolute;
 	left: 0;
 }
-.example-wrap .line-highlighted[data-nosnippet] {
-	background-color: var(--src-line-number-highlighted-background-color);
-}
 .example-wrap pre > code {
 	position: relative;
 	display: block;
@@ -994,6 +1036,9 @@ rustdoc-topbar {
 }
 .example-wrap [data-nosnippet]:target {
 	border-right: none;
+}
+.example-wrap .line-highlighted[data-nosnippet] {
+	background-color: var(--src-line-number-highlighted-background-color);
 }
 .example-wrap.hide-lines [data-nosnippet] {
 	display: none;

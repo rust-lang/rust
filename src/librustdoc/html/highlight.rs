@@ -5,6 +5,7 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display, Write};
 
@@ -17,6 +18,7 @@ use rustc_span::{BytePos, DUMMY_SP, Span};
 use super::format::{self, write_str};
 use crate::clean::PrimitiveType;
 use crate::html::escape::EscapeBodyText;
+use crate::html::macro_expansion::ExpandedCode;
 use crate::html::render::{Context, LinkFromSrc};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
@@ -163,9 +165,20 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     current_class: Option<Class>,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
-    pending_elems: Vec<(&'a str, Option<Class>)>,
+    pending_elems: Vec<(Cow<'a, str>, Option<Class>)>,
     href_context: Option<HrefContext<'a, 'tcx>>,
     write_line_number: fn(&mut F, u32, &'static str),
+}
+
+impl<F: Write> std::fmt::Debug for TokenHandler<'_, '_, F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TokenHandler")
+            .field("closing_tags", &self.closing_tags)
+            .field("pending_exit_span", &self.pending_exit_span)
+            .field("current_class", &self.current_class)
+            .field("pending_elems", &self.pending_elems)
+            .finish()
+    }
 }
 
 impl<F: Write> TokenHandler<'_, '_, F> {
@@ -220,6 +233,10 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             } else {
                 None
             };
+            // To prevent opening a macro expansion span being closed right away because
+            // the currently open item is replaced by a new class.
+            let last_pending =
+                self.pending_elems.pop_if(|(_, class)| *class == Some(Class::Expansion));
             for (text, class) in self.pending_elems.iter() {
                 string(
                     self.out,
@@ -232,6 +249,16 @@ impl<F: Write> TokenHandler<'_, '_, F> {
             }
             if let Some(close_tag) = close_tag {
                 exit_span(self.out, close_tag);
+            }
+            if let Some((text, class)) = last_pending {
+                string(
+                    self.out,
+                    EscapeBodyText(&text),
+                    class,
+                    &self.href_context,
+                    close_tag.is_none(),
+                    self.write_line_number,
+                );
             }
         }
         self.pending_elems.clear();
@@ -269,6 +296,100 @@ fn write_line_number(out: &mut impl Write, line: u32, extra: &'static str) {
 
 fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
     out.write_str(extra).unwrap();
+}
+
+fn get_next_expansion(
+    expanded_codes: &[ExpandedCode],
+    line: u32,
+    span: Span,
+) -> Option<&ExpandedCode> {
+    expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() > span.lo())
+}
+
+fn get_expansion<'a, W: Write>(
+    token_handler: &mut TokenHandler<'_, '_, W>,
+    expanded_codes: &'a [ExpandedCode],
+    line: u32,
+    span: Span,
+) -> Option<&'a ExpandedCode> {
+    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
+        let (closing, reopening) = if let Some(current_class) = token_handler.current_class
+            && let class = current_class.as_html()
+            && !class.is_empty()
+        {
+            ("</span>", format!("<span class=\"{class}\">"))
+        } else {
+            ("", String::new())
+        };
+        let id = format!("expand-{line}");
+        token_handler.pending_elems.push((
+            Cow::Owned(format!(
+                "{closing}\
+<span class=expansion>\
+    <input id={id} \
+           tabindex=0 \
+           type=checkbox \
+           aria-label=\"Collapse/expand macro\" \
+           title=\"\"Collapse/expand macro\">{reopening}",
+            )),
+            Some(Class::Expansion),
+        ));
+        Some(expanded_code)
+    } else {
+        None
+    }
+}
+
+fn start_expansion(out: &mut Vec<(Cow<'_, str>, Option<Class>)>, expanded_code: &ExpandedCode) {
+    out.push((
+        Cow::Owned(format!(
+            "<span class=expanded>{}</span><span class=original>",
+            expanded_code.code,
+        )),
+        Some(Class::Expansion),
+    ));
+}
+
+fn end_expansion<'a, W: Write>(
+    token_handler: &mut TokenHandler<'_, '_, W>,
+    expanded_codes: &'a [ExpandedCode],
+    expansion_start_tags: &[(&'static str, Class)],
+    line: u32,
+    span: Span,
+) -> Option<&'a ExpandedCode> {
+    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
+        // We close the current "original" content.
+        token_handler.pending_elems.push((Cow::Borrowed("</span>"), Some(Class::Expansion)));
+        return Some(expanded_code);
+    }
+    if expansion_start_tags.is_empty() && token_handler.closing_tags.is_empty() {
+        // No need tag opened so we can just close expansion.
+        token_handler.pending_elems.push((Cow::Borrowed("</span></span>"), Some(Class::Expansion)));
+        return None;
+    }
+
+    // If tags were opened inside the expansion, we need to close them and re-open them outside
+    // of the expansion span.
+    let mut out = String::new();
+    let mut end = String::new();
+
+    let mut closing_tags = token_handler.closing_tags.iter().peekable();
+    let mut start_closing_tags = expansion_start_tags.iter().peekable();
+
+    while let (Some(tag), Some(start_tag)) = (closing_tags.peek(), start_closing_tags.peek())
+        && tag == start_tag
+    {
+        closing_tags.next();
+        start_closing_tags.next();
+    }
+    for (tag, class) in start_closing_tags.chain(closing_tags) {
+        out.push_str(tag);
+        end.push_str(&format!("<span class=\"{}\">", class.as_html()));
+    }
+    token_handler
+        .pending_elems
+        .push((Cow::Owned(format!("</span></span>{out}{end}")), Some(Class::Expansion)));
+    None
 }
 
 #[derive(Clone, Copy)]
@@ -317,7 +438,7 @@ pub(super) fn write_code(
         closing_tags: Vec::new(),
         pending_exit_span: None,
         current_class: None,
-        pending_elems: Vec::new(),
+        pending_elems: Vec::with_capacity(20),
         href_context,
         write_line_number: match line_info {
             Some(line_info) => {
@@ -338,12 +459,23 @@ pub(super) fn write_code(
         (0, u32::MAX)
     };
 
+    let (expanded_codes, file_span) = match token_handler.href_context.as_ref().and_then(|c| {
+        let expanded_codes = c.context.shared.expanded_codes.get(&c.file_span.lo())?;
+        Some((expanded_codes, c.file_span))
+    }) {
+        Some((expanded_codes, file_span)) => (expanded_codes.as_slice(), file_span),
+        None => (&[] as &[ExpandedCode], DUMMY_SP),
+    };
+    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line, file_span);
+    token_handler.write_pending_elems(None);
+    let mut expansion_start_tags = Vec::new();
+
     Classifier::new(
         &src,
         token_handler.href_context.as_ref().map(|c| c.file_span).unwrap_or(DUMMY_SP),
         decoration_info,
     )
-    .highlight(&mut |highlight| {
+    .highlight(&mut |span, highlight| {
         match highlight {
             Highlight::Token { text, class } => {
                 // If we received a `ExitSpan` event and then have a non-compatible `Class`, we
@@ -369,10 +501,42 @@ pub(super) fn write_code(
                 if text == "\n" {
                     line += 1;
                     if line < max_lines {
-                        token_handler.pending_elems.push((text, Some(Class::Backline(line))));
+                        token_handler
+                            .pending_elems
+                            .push((Cow::Borrowed(text), Some(Class::Backline(line))));
+                    }
+                    if current_expansion.is_none() {
+                        current_expansion =
+                            get_expansion(&mut token_handler, expanded_codes, line, span);
+                        expansion_start_tags = token_handler.closing_tags.clone();
+                    }
+                    if let Some(ref current_expansion) = current_expansion
+                        && current_expansion.span.lo() == span.hi()
+                    {
+                        start_expansion(&mut token_handler.pending_elems, current_expansion);
                     }
                 } else {
-                    token_handler.pending_elems.push((text, class));
+                    token_handler.pending_elems.push((Cow::Borrowed(text), class));
+
+                    let mut need_end = false;
+                    if let Some(ref current_expansion) = current_expansion {
+                        if current_expansion.span.lo() == span.hi() {
+                            start_expansion(&mut token_handler.pending_elems, current_expansion);
+                        } else if current_expansion.end_line == line
+                            && span.hi() >= current_expansion.span.hi()
+                        {
+                            need_end = true;
+                        }
+                    }
+                    if need_end {
+                        current_expansion = end_expansion(
+                            &mut token_handler,
+                            expanded_codes,
+                            &expansion_start_tags,
+                            line,
+                            span,
+                        );
+                    }
                 }
             }
             Highlight::EnterSpan { class } => {
@@ -440,6 +604,8 @@ enum Class {
     QuestionMark,
     Decoration(&'static str),
     Backline(u32),
+    /// Macro expansion.
+    Expansion,
 }
 
 impl Class {
@@ -489,6 +655,7 @@ impl Class {
             Class::QuestionMark => "question-mark",
             Class::Decoration(kind) => kind,
             Class::Backline(_) => "",
+            Class::Expansion => "",
         }
     }
 
@@ -513,7 +680,8 @@ impl Class {
             | Self::Lifetime
             | Self::QuestionMark
             | Self::Decoration(_)
-            | Self::Backline(_) => None,
+            | Self::Backline(_)
+            | Self::Expansion => None,
         }
     }
 }
@@ -628,6 +796,13 @@ impl Decorations {
     }
 }
 
+/// Convenient wrapper to create a [`Span`] from a position in the file.
+fn new_span(lo: u32, text: &str, file_span: Span) -> Span {
+    let hi = lo + text.len() as u32;
+    let file_lo = file_span.lo();
+    file_span.with_lo(file_lo + BytePos(lo)).with_hi(file_lo + BytePos(hi))
+}
+
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'src> {
@@ -658,13 +833,6 @@ impl<'src> Classifier<'src> {
             src,
             decorations,
         }
-    }
-
-    /// Convenient wrapper to create a [`Span`] from a position in the file.
-    fn new_span(&self, lo: u32, text: &str) -> Span {
-        let hi = lo + text.len() as u32;
-        let file_lo = self.file_span.lo();
-        self.file_span.with_lo(file_lo + BytePos(lo)).with_hi(file_lo + BytePos(hi))
     }
 
     /// Concatenate colons and idents as one when possible.
@@ -735,18 +903,18 @@ impl<'src> Classifier<'src> {
     /// The general structure for this method is to iterate over each token,
     /// possibly giving it an HTML span with a class specifying what flavor of
     /// token is used.
-    fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'src>)) {
+    fn highlight(mut self, sink: &mut dyn FnMut(Span, Highlight<'src>)) {
         loop {
             if let Some(decs) = self.decorations.as_mut() {
                 let byte_pos = self.byte_pos;
                 let n_starts = decs.starts.iter().filter(|(i, _)| byte_pos >= *i).count();
                 for (_, kind) in decs.starts.drain(0..n_starts) {
-                    sink(Highlight::EnterSpan { class: Class::Decoration(kind) });
+                    sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Decoration(kind) });
                 }
 
                 let n_ends = decs.ends.iter().filter(|i| byte_pos >= **i).count();
                 for _ in decs.ends.drain(0..n_ends) {
-                    sink(Highlight::ExitSpan);
+                    sink(DUMMY_SP, Highlight::ExitSpan);
                 }
             }
 
@@ -784,14 +952,22 @@ impl<'src> Classifier<'src> {
         &mut self,
         token: TokenKind,
         text: &'src str,
-        sink: &mut dyn FnMut(Highlight<'src>),
+        sink: &mut dyn FnMut(Span, Highlight<'src>),
         before: u32,
     ) {
         let lookahead = self.peek();
-        let no_highlight = |sink: &mut dyn FnMut(_)| sink(Highlight::Token { text, class: None });
-        let whitespace = |sink: &mut dyn FnMut(_)| {
+        let file_span = self.file_span;
+        let no_highlight = |sink: &mut dyn FnMut(_, _)| {
+            sink(new_span(before, text, file_span), Highlight::Token { text, class: None })
+        };
+        let whitespace = |sink: &mut dyn FnMut(_, _)| {
+            let mut start = 0u32;
             for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
-                sink(Highlight::Token { text: part, class: None });
+                sink(
+                    new_span(before + start, part, file_span),
+                    Highlight::Token { text: part, class: None },
+                );
+                start += part.len() as u32;
             }
         };
         let class = match token {
@@ -807,8 +983,8 @@ impl<'src> Classifier<'src> {
             // leading identifier.
             TokenKind::Bang if self.in_macro => {
                 self.in_macro = false;
-                sink(Highlight::Token { text, class: None });
-                sink(Highlight::ExitSpan);
+                sink(new_span(before, text, file_span), Highlight::Token { text, class: None });
+                sink(DUMMY_SP, Highlight::ExitSpan);
                 return;
             }
 
@@ -819,12 +995,18 @@ impl<'src> Classifier<'src> {
                 Some((TokenKind::Whitespace, _)) => return whitespace(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
-                    sink(Highlight::Token { text: "*mut", class: Some(Class::RefKeyWord) });
+                    sink(
+                        DUMMY_SP,
+                        Highlight::Token { text: "*mut", class: Some(Class::RefKeyWord) },
+                    );
                     return;
                 }
                 Some((TokenKind::Ident, "const")) => {
                     self.next();
-                    sink(Highlight::Token { text: "*const", class: Some(Class::RefKeyWord) });
+                    sink(
+                        DUMMY_SP,
+                        Highlight::Token { text: "*const", class: Some(Class::RefKeyWord) },
+                    );
                     return;
                 }
                 _ => Class::RefKeyWord,
@@ -832,18 +1014,21 @@ impl<'src> Classifier<'src> {
             TokenKind::And => match self.tokens.peek() {
                 Some((TokenKind::And, _)) => {
                     self.next();
-                    sink(Highlight::Token { text: "&&", class: None });
+                    sink(DUMMY_SP, Highlight::Token { text: "&&", class: None });
                     return;
                 }
                 Some((TokenKind::Eq, _)) => {
                     self.next();
-                    sink(Highlight::Token { text: "&=", class: None });
+                    sink(DUMMY_SP, Highlight::Token { text: "&=", class: None });
                     return;
                 }
                 Some((TokenKind::Whitespace, _)) => return whitespace(sink),
                 Some((TokenKind::Ident, "mut")) => {
                     self.next();
-                    sink(Highlight::Token { text: "&mut", class: Some(Class::RefKeyWord) });
+                    sink(
+                        DUMMY_SP,
+                        Highlight::Token { text: "&mut", class: Some(Class::RefKeyWord) },
+                    );
                     return;
                 }
                 _ => Class::RefKeyWord,
@@ -853,19 +1038,19 @@ impl<'src> Classifier<'src> {
             TokenKind::Eq => match lookahead {
                 Some(TokenKind::Eq) => {
                     self.next();
-                    sink(Highlight::Token { text: "==", class: None });
+                    sink(DUMMY_SP, Highlight::Token { text: "==", class: None });
                     return;
                 }
                 Some(TokenKind::Gt) => {
                     self.next();
-                    sink(Highlight::Token { text: "=>", class: None });
+                    sink(DUMMY_SP, Highlight::Token { text: "=>", class: None });
                     return;
                 }
                 _ => return no_highlight(sink),
             },
             TokenKind::Minus if lookahead == Some(TokenKind::Gt) => {
                 self.next();
-                sink(Highlight::Token { text: "->", class: None });
+                sink(DUMMY_SP, Highlight::Token { text: "->", class: None });
                 return;
             }
 
@@ -916,16 +1101,22 @@ impl<'src> Classifier<'src> {
                         self.next();
                         if let Some(TokenKind::OpenBracket) = self.peek() {
                             self.in_attribute = true;
-                            sink(Highlight::EnterSpan { class: Class::Attribute });
+                            sink(
+                                new_span(before, text, file_span),
+                                Highlight::EnterSpan { class: Class::Attribute },
+                            );
                         }
-                        sink(Highlight::Token { text: "#", class: None });
-                        sink(Highlight::Token { text: "!", class: None });
+                        sink(DUMMY_SP, Highlight::Token { text: "#", class: None });
+                        sink(DUMMY_SP, Highlight::Token { text: "!", class: None });
                         return;
                     }
                     // Case 2: #[outer_attribute]
                     Some(TokenKind::OpenBracket) => {
                         self.in_attribute = true;
-                        sink(Highlight::EnterSpan { class: Class::Attribute });
+                        sink(
+                            new_span(before, text, file_span),
+                            Highlight::EnterSpan { class: Class::Attribute },
+                        );
                     }
                     _ => (),
                 }
@@ -934,8 +1125,11 @@ impl<'src> Classifier<'src> {
             TokenKind::CloseBracket => {
                 if self.in_attribute {
                     self.in_attribute = false;
-                    sink(Highlight::Token { text: "]", class: None });
-                    sink(Highlight::ExitSpan);
+                    sink(
+                        new_span(before, text, file_span),
+                        Highlight::Token { text: "]", class: None },
+                    );
+                    sink(DUMMY_SP, Highlight::ExitSpan);
                     return;
                 }
                 return no_highlight(sink);
@@ -956,15 +1150,16 @@ impl<'src> Classifier<'src> {
             TokenKind::GuardedStrPrefix => return no_highlight(sink),
             TokenKind::Ident | TokenKind::RawIdent if lookahead == Some(TokenKind::Bang) => {
                 self.in_macro = true;
-                sink(Highlight::EnterSpan { class: Class::Macro(self.new_span(before, text)) });
-                sink(Highlight::Token { text, class: None });
+                let span = new_span(before, text, file_span);
+                sink(DUMMY_SP, Highlight::EnterSpan { class: Class::Macro(span) });
+                sink(span, Highlight::Token { text, class: None });
                 return;
             }
             TokenKind::Ident => match get_real_ident_class(text, false) {
                 None => match text {
-                    "Option" | "Result" => Class::PreludeTy(self.new_span(before, text)),
+                    "Option" | "Result" => Class::PreludeTy(new_span(before, text, file_span)),
                     "Some" | "None" | "Ok" | "Err" => {
-                        Class::PreludeVal(self.new_span(before, text))
+                        Class::PreludeVal(new_span(before, text, file_span))
                     }
                     // "union" is a weak keyword and is only considered as a keyword when declaring
                     // a union type.
@@ -973,13 +1168,13 @@ impl<'src> Classifier<'src> {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
                     }
-                    "self" | "Self" => Class::Self_(self.new_span(before, text)),
-                    _ => Class::Ident(self.new_span(before, text)),
+                    "self" | "Self" => Class::Self_(new_span(before, text, file_span)),
+                    _ => Class::Ident(new_span(before, text, file_span)),
                 },
                 Some(c) => c,
             },
             TokenKind::RawIdent | TokenKind::UnknownPrefix | TokenKind::InvalidIdent => {
-                Class::Ident(self.new_span(before, text))
+                Class::Ident(new_span(before, text, file_span))
             }
             TokenKind::Lifetime { .. }
             | TokenKind::RawLifetime
@@ -988,8 +1183,13 @@ impl<'src> Classifier<'src> {
         };
         // Anything that didn't return above is the simple case where we the
         // class just spans a single token, so we can use the `string` method.
+        let mut start = 0u32;
         for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
-            sink(Highlight::Token { text: part, class: Some(class) });
+            sink(
+                new_span(before + start, part, file_span),
+                Highlight::Token { text: part, class: Some(class) },
+            );
+            start += part.len() as u32;
         }
     }
 
@@ -1042,9 +1242,9 @@ fn exit_span(out: &mut impl Write, closing_tag: &str) {
 /// Note that if `context` is not `None` and that the given `klass` contains a `Span`, the function
 /// will then try to find this `span` in the `span_correspondence_map`. If found, it'll then
 /// generate a link for this element (which corresponds to where its definition is located).
-fn string<T: Display, W: Write>(
+fn string<W: Write>(
     out: &mut W,
-    text: T,
+    text: EscapeBodyText<'_>,
     klass: Option<Class>,
     href_context: &Option<HrefContext<'_, '_>>,
     open_tag: bool,
@@ -1052,6 +1252,9 @@ fn string<T: Display, W: Write>(
 ) {
     if let Some(Class::Backline(line)) = klass {
         write_line_number_callback(out, line, "\n");
+    } else if let Some(Class::Expansion) = klass {
+        // This has already been escaped so we get the text to write it directly.
+        out.write_str(text.0).unwrap();
     } else if let Some(closing_tag) =
         string_without_closing_tag(out, text, klass, href_context, open_tag)
     {
