@@ -77,7 +77,7 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         indirect_offsets: &[Size],
         // Byte range in the `dbg_var` covered by this fragment,
         // if this is a fragment of a composite `DIVariable`.
-        fragment: Option<Range<Size>>,
+        fragment: &Option<Range<Size>>,
     );
     fn dbg_var_value(
         &mut self,
@@ -89,7 +89,7 @@ pub trait DebugInfoBuilderMethods: BackendTypes {
         indirect_offsets: &[Size],
         // Byte range in the `dbg_var` covered by this fragment,
         // if this is a fragment of a composite `DIVariable`.
-        fragment: Option<Range<Size>>,
+        fragment: &Option<Range<Size>>,
     );
     fn set_dbg_loc(&mut self, dbg_loc: Self::DILocation);
     fn clear_dbg_loc(&mut self);

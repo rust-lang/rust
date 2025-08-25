@@ -29,7 +29,7 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
         _variable_alloca: Self::Value,
         _direct_offset: Size,
         _indirect_offsets: &[Size],
-        _fragment: Option<Range<Size>>,
+        _fragment: &Option<Range<Size>>,
     ) {
         // FIXME(tempdragon): Not sure if this is correct, probably wrong but still keep it here.
         #[cfg(feature = "master")]
@@ -38,15 +38,12 @@ impl<'a, 'gcc, 'tcx> DebugInfoBuilderMethods for Builder<'a, 'gcc, 'tcx> {
 
     fn dbg_var_value(
         &mut self,
-        dbg_var: Self::DIVariable,
-        dbg_loc: Self::DILocation,
-        value: Self::Value,
-        direct_offset: Size,
-        // NB: each offset implies a deref (i.e. they're steps in a pointer chain).
-        indirect_offsets: &[Size],
-        // Byte range in the `dbg_var` covered by this fragment,
-        // if this is a fragment of a composite `DIVariable`.
-        fragment: Option<Range<Size>>,
+        _dbg_var: Self::DIVariable,
+        _dbg_loc: Self::DILocation,
+        _value: Self::Value,
+        _direct_offset: Size,
+        _indirect_offsets: &[Size],
+        _fragment: &Option<Range<Size>>,
     ) {
     }
 

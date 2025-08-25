@@ -163,7 +163,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         variable_alloca: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
-        fragment: Option<Range<Size>>,
+        fragment: &Option<Range<Size>>,
     ) {
         use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
 
@@ -209,7 +209,7 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         value: Self::Value,
         direct_offset: Size,
         indirect_offsets: &[Size],
-        fragment: Option<Range<Size>>,
+        fragment: &Option<Range<Size>>,
     ) {
         use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst, DW_OP_stack_value};
 
