@@ -10,7 +10,7 @@ note: the type is defined here
    |
 LL | struct TransparentCustomZst(());
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(improper_ctypes)]` on by default
+   = note: `#[warn(improper_ctypes)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: 1 warning emitted
 

@@ -6,7 +6,7 @@ LL |     extern "C" fn foo_(&self, _: ()) -> i64 {
    |
    = help: consider using a struct instead
    = note: tuples have unspecified layout
-   = note: `#[warn(improper_ctypes_definitions)]` on by default
+   = note: `#[warn(improper_c_fn_definitions)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: 1 warning emitted
 

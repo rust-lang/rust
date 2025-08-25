@@ -335,6 +335,17 @@ fn register_builtins(store: &mut LintStore) {
         REFINING_IMPL_TRAIT_INTERNAL
     );
 
+    add_lint_group!(
+        "improper_c_boundaries",
+        IMPROPER_C_CALLBACKS,
+        IMPROPER_C_FN_DEFINITIONS,
+        IMPROPER_CTYPES
+    );
+
+    // FIXME(ctypes, migration): when should this retrocompatibility-borne
+    // lint group disappear, if at all? Should it turn into a register_renamed?
+    add_lint_group!("improper_ctypes_definitions", IMPROPER_C_CALLBACKS, IMPROPER_C_FN_DEFINITIONS);
+
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
     add_lint_group!(

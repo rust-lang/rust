@@ -1,4 +1,4 @@
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_c_fn_definitions)]
 
 #[repr(C)]
 pub struct Foo {

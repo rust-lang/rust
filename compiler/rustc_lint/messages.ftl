@@ -350,7 +350,7 @@ lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dere
     .method_def = method calls to `{$method_name}` require a reference
     .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
 
-lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
+lint_improper_ctypes = {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
 

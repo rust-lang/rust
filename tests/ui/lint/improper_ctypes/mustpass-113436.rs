@@ -1,5 +1,5 @@
 //@ check-pass
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_c_fn_definitions, improper_c_callbacks)]
 
 #[repr(C)]
 pub struct Wrap<T>(T);

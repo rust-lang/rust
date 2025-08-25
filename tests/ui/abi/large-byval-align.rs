@@ -5,7 +5,7 @@
 #[repr(align(536870912))]
 pub struct A(i64);
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn foo(x: A) {}
 
 fn main() {

@@ -6,7 +6,7 @@ pub struct Foo {
 }
 
 impl Foo {
-    #[allow(improper_ctypes_definitions)]
+    #[allow(improper_c_fn_definitions)]
     pub extern "C" fn foo_new() -> Foo {
         Foo { x: 21, y: 33 }
     }
