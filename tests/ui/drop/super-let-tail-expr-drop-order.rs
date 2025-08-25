@@ -22,9 +22,12 @@
 //@ [e2024] edition: 2024
 
 #![feature(super_let)]
+#![allow(unused_braces)]
 
 use std::cell::RefCell;
 use std::pin::pin;
+
+fn f<T>(_: LogDrop<'_>, x: T) -> T { x }
 
 fn main() {
     // Test block arguments to `pin!` in non-extending expressions.
@@ -89,6 +92,73 @@ fn main() {
     assert_drop_order(1..=2, |o| {
         let _ =  { super let _ = { &o.log(2) as *const LogDrop<'_> }; };
         drop(o.log(1));
+    });
+
+    // We have extending borrow expressions within an extending block
+    // expression (within an extending borrow expression) within a
+    // non-extending expresion within the initializer expression.
+    #[cfg(e2021)]
+    {
+        // These two should be the same.
+        assert_drop_order(1..=3, |e| {
+            let _v = f(e.log(1), &{ &raw const *&e.log(2) });
+            drop(e.log(3));
+        });
+        assert_drop_order(1..=3, |e| {
+            let _v = f(e.log(1), {
+                super let v = &{ &raw const *&e.log(2) };
+                v
+            });
+            drop(e.log(3));
+        });
+    }
+    #[cfg(e2024)]
+    {
+        // These two should be the same.
+        assert_drop_order(1..=3, |e| {
+            let _v = f(e.log(2), &{ &raw const *&e.log(1) });
+            drop(e.log(3));
+        });
+        assert_drop_order(1..=3, |e| {
+            let _v = f(e.log(2), {
+                super let v = &{ &raw const *&e.log(1) };
+                v
+            });
+            drop(e.log(3));
+        });
+    }
+
+    // We have extending borrow expressions within a non-extending
+    // expression within the initializer expression.
+    //
+    // These two should be the same.
+    assert_drop_order(1..=3, |e| {
+        let _v = f(e.log(1), &&raw const *&e.log(2));
+        drop(e.log(3));
+    });
+    assert_drop_order(1..=3, |e| {
+        let _v = f(e.log(1), {
+            super let v = &&raw const *&e.log(2);
+            v
+        });
+        drop(e.log(3));
+    });
+
+    // We have extending borrow expressions within an extending block
+    // expression (within an extending borrow expression) within the
+    // initializer expression.
+    //
+    // These two should be the same.
+    assert_drop_order(1..=2, |e| {
+        let _v = &{ &raw const *&e.log(2) };
+        drop(e.log(1));
+    });
+    assert_drop_order(1..=2, |e| {
+        let _v = {
+            super let v = &{ &raw const *&e.log(2) };
+            v
+        };
+        drop(e.log(1));
     });
 }
 
