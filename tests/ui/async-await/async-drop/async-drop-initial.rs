@@ -18,8 +18,8 @@ use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
 use core::pin::{Pin, pin};
-use core::task::{Context, Poll, Waker};
 use core::sync::atomic::{AtomicBool, Ordering};
+use core::task::{Context, Poll, Waker};
 
 static PASS: AtomicBool = AtomicBool::new(false);
 
@@ -34,7 +34,10 @@ async fn test_async_drop<T>(x: T, #[allow(unused)] expect: usize) {
     let got = mem::size_of_val(&*dtor);
     #[cfg(target_pointer_width = "64")]
     if expect != got {
-        println!("sizes did not match for async destructor of type {}, expect {expect}, got {got}", core::any::type_name::<T>());
+        println!(
+            "sizes did not match for async destructor of type {}, expect {expect}, got {got}",
+            core::any::type_name::<T>()
+        );
         PASS.store(false, Ordering::Relaxed);
     }
 
@@ -69,12 +72,9 @@ fn main() {
         test_async_drop(&j, [16, 24][cfg!(classic) as usize]).await;
         test_async_drop(
             AsyncStruct { b: AsyncInt(8), a: AsyncInt(7), i: 6 },
-            if cfg!(panic = "unwind") {
-                [128, 192][cfg!(classic) as usize]
-            } else {
-                136
-            },
-        ).await;
+            if cfg!(panic = "unwind") { [128, 192][cfg!(classic) as usize] } else { 136 },
+        )
+        .await;
         test_async_drop(ManuallyDrop::new(AsyncInt(9)), [16, 24][cfg!(classic) as usize]).await;
 
         let foo = AsyncInt(10);
@@ -241,19 +241,13 @@ union AsyncUnion {
 
 impl Drop for AsyncUnion {
     fn drop(&mut self) {
-        println!(
-            "AsyncUnion::drop: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::drop: {}, {}", unsafe { self.signed }, unsafe { self.unsigned },);
     }
 }
 impl AsyncDrop for AsyncUnion {
     async fn drop(self: Pin<&mut Self>) {
-        println!(
-            "AsyncUnion::Dropper::poll: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::Dropper::poll: {}, {}", unsafe { self.signed }, unsafe {
+            self.unsigned
+        },);
     }
 }

@@ -38,7 +38,7 @@ async fn async_fn_test() {
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "3", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 14,
+// CHECK-SAME: file: [[FILE]], line: 15,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      [[S0:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend0", scope: [[GEN]],
@@ -48,7 +48,7 @@ async fn async_fn_test() {
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "4", scope: [[VARIANT]],
-// CHECK-SAME: file: [[FILE]], line: 12,
+// CHECK-SAME: file: [[FILE]], line: 13,
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      [[DISC]] = !DIDerivedType(tag: DW_TAG_member, name: "__state", scope: [[GEN]],

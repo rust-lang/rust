@@ -1,6 +1,6 @@
 // MIR for `main::{closure#0}` before RelocateUpvars
 
-fn main::{closure#0}(_1: {coroutine@$DIR/coroutine-relocate-upvars.rs:12:5: 12:7}, _2: ()) -> ()
+fn main::{closure#0}(_1: {coroutine@$DIR/coroutine_relocate_upvars.rs:12:5: 12:7}, _2: ()) -> ()
 yields ()
  {
     debug x => (*(_1.0: &mut std::string::String));
