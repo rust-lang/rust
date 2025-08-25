@@ -2022,6 +2022,7 @@ impl Step for Assemble {
 
                 let host_llvm_bin_dir = command(&host_llvm_config)
                     .arg("--bindir")
+                    .cached()
                     .run_capture_stdout(builder)
                     .stdout()
                     .trim()

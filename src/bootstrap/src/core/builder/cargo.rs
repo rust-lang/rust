@@ -1082,7 +1082,7 @@ impl Builder<'_> {
             && let Some(llvm_config) = self.llvm_config(target)
         {
             let llvm_libdir =
-                command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
+                command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
             } else {
