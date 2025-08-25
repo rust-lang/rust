@@ -207,8 +207,10 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
     doc_only: bool,
 ) -> (Vec<DocFragment>, ThinVec<A>) {
-    let mut doc_fragments = Vec::new();
-    let mut other_attrs = ThinVec::<A>::new();
+    let (min_size, max_size) = attrs.size_hint();
+    let size_hint = max_size.unwrap_or(min_size);
+    let mut doc_fragments = Vec::with_capacity(size_hint);
+    let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
@@ -229,6 +231,9 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
             other_attrs.push(attr.clone());
         }
     }
+
+    doc_fragments.shrink_to_fit();
+    other_attrs.shrink_to_fit();
 
     unindent_doc_fragments(&mut doc_fragments);
 
