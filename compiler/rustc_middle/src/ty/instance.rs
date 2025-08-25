@@ -544,7 +544,9 @@ impl<'tcx> Instance<'tcx> {
 
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
-        tcx.resolve_instance_raw(tcx.erase_regions(typing_env.as_query_input((def_id, args))))
+        tcx.resolve_instance_raw(
+            tcx.erase_and_anonymize_regions(typing_env.as_query_input((def_id, args))),
+        )
     }
 
     pub fn expect_resolve(

@@ -891,7 +891,7 @@ pub fn iter_fields<'tcx>(
                     let field_ty = f_def.ty(tcx, args);
                     let field_ty = tcx
                         .try_normalize_erasing_regions(typing_env, field_ty)
-                        .unwrap_or_else(|_| tcx.erase_regions(field_ty));
+                        .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(field_ty));
                     f(variant, f_index.into(), field_ty);
                 }
             }

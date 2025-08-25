@@ -401,7 +401,10 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 match tail.kind() {
                     ty::Param(_) | ty::Alias(ty::Projection | ty::Inherent, _) => {
                         debug_assert!(tail.has_non_region_param());
-                        Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero,
+                            tail: tcx.erase_and_anonymize_regions(tail),
+                        })
                     }
                     ty::Error(guar) => {
                         // Fixes ICE #124031

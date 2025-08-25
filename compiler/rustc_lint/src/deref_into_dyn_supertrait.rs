@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
         {
             // erase regions in self type for better diagnostic presentation
             let (self_ty, target_principal, supertrait_principal) =
-                tcx.erase_regions((self_ty, target_principal, supertrait_principal));
+                tcx.erase_and_anonymize_regions((self_ty, target_principal, supertrait_principal));
             let label2 = tcx
                 .associated_items(item.owner_id)
                 .find_by_ident_and_kind(

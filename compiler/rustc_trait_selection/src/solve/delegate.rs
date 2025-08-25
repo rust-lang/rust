@@ -300,7 +300,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Result<Certainty, NoSolution> {
         // Erase regions because we compute layouts in `rustc_transmute`,
         // which will ICE for region vars.
-        let (dst, src) = self.tcx.erase_regions((dst, src));
+        let (dst, src) = self.tcx.erase_and_anonymize_regions((dst, src));
 
         let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
             return Err(NoSolution);

@@ -426,24 +426,23 @@ pub(crate) mod rustc {
             assert!(def.is_enum());
 
             // Computes the layout of a variant.
-            let layout_of_variant =
-                |index, encoding: Option<TagEncoding<VariantIdx>>| -> Result<Self, Err> {
-                    let variant_layout = ty_variant(cx, (ty, layout), index);
-                    if variant_layout.is_uninhabited() {
-                        return Ok(Self::uninhabited());
-                    }
-                    let tag = cx.tcx().tag_for_variant(
-                        cx.typing_env.as_query_input((cx.tcx().erase_regions(ty), index)),
-                    );
-                    let variant_def = Def::Variant(def.variant(index));
-                    Self::from_variant(
-                        variant_def,
-                        tag.map(|tag| (tag, index, encoding.unwrap())),
-                        (ty, variant_layout),
-                        layout.size,
-                        cx,
-                    )
-                };
+            let layout_of_variant = |index, encoding: Option<_>| -> Result<Self, Err> {
+                let variant_layout = ty_variant(cx, (ty, layout), index);
+                if variant_layout.is_uninhabited() {
+                    return Ok(Self::uninhabited());
+                }
+                let tag = cx.tcx().tag_for_variant(
+                    cx.typing_env.as_query_input((cx.tcx().erase_and_anonymize_regions(ty), index)),
+                );
+                let variant_def = Def::Variant(def.variant(index));
+                Self::from_variant(
+                    variant_def,
+                    tag.map(|tag| (tag, index, encoding.unwrap())),
+                    (ty, variant_layout),
+                    layout.size,
+                    cx,
+                )
+            };
 
             match layout.variants() {
                 Variants::Empty => Ok(Self::uninhabited()),
@@ -634,7 +633,7 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: VariantIdx,
     ) -> Layout<'tcx> {
-        let ty = cx.tcx().erase_regions(ty);
+        let ty = cx.tcx().erase_and_anonymize_regions(ty);
         TyAndLayout { ty, layout }.for_variant(&cx, i).layout
     }
 }

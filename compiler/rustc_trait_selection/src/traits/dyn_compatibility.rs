@@ -759,7 +759,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                                     )),
                                 )
                                 .map(|trait_ref| {
-                                    self.tcx.erase_regions(
+                                    self.tcx.erase_and_anonymize_regions(
                                         self.tcx.instantiate_bound_regions_with_erased(trait_ref),
                                     )
                                 })

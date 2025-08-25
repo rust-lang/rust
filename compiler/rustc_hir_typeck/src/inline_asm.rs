@@ -44,7 +44,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if ty.has_non_region_infer() {
             Ty::new_misc_error(self.tcx())
         } else {
-            self.tcx().erase_regions(ty)
+            self.tcx().erase_and_anonymize_regions(ty)
         }
     }
 
