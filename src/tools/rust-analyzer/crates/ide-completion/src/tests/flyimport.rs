@@ -119,7 +119,7 @@ fn main() {
 }
 "#,
         r#"
-use dep::{some_module::{SecondStruct, ThirdStruct}, FirstStruct};
+use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
 
 fn main() {
     ThirdStruct
