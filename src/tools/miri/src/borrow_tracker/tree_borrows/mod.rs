@@ -298,18 +298,18 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // When adding a new node, the SIFA of its parents needs to be updated, potentially across
         // the entire memory range. For the parts that are being accessed below, the access itself
-        // trivially takes care of that. However, we have to do some more work to also deal with
-        // the parts that are not being accessed. Specifically what we do is that we
-        // call `update_last_accessed_after_retag` on the SIFA of the permission set for the part of
-        // memory outside `perm_map` -- so that part is definitely taken care of. The remaining concern
-        // is the part of memory that is in the range of `perms_map`, but not accessed below.
-        // There we have two cases:
-        // * If we do have an `UnsafeCell` (`has_unsafe_cell` becomes true), then the non-accessed part
-        //   uses `nonfreeze_perm`, so the `nonfreeze_perm` initialized parts are also fine. We enforce
-        //   the `freeze_perm` parts to be accessed, and thus everything is taken care of.
-        // * If there is no `UnsafeCell`, then `freeze_perm` is used everywhere (both inside and outside the initial range),
-        //   and we update everything to have the `freeze_perm`'s SIFA, so there are no issues. (And this assert below is not
-        //   actually needed in this case).
+        // trivially takes care of that. However, we have to do some more work to also deal with the
+        // parts that are not being accessed. Specifically what we do is that we call
+        // `update_last_accessed_after_retag` on the SIFA of the permission set for the part of
+        // memory outside `perm_map` -- so that part is definitely taken care of. The remaining
+        // concern is the part of memory that is in the range of `perms_map`, but not accessed
+        // below. There we have two cases:
+        // * If the type is `!Freeze`, then the non-accessed part uses `nonfreeze_perm`, so the
+        //   `nonfreeze_perm` initialized parts are also fine. We enforce the `freeze_perm` parts to
+        //   be accessed via the assert below, and thus everything is taken care of.
+        // * If the type is `Freeze`, then `freeze_perm` is used everywhere (both inside and outside
+        //   the initial range), and we update everything to have the `freeze_perm`'s SIFA, so there
+        //   are no issues. (And this assert below is not actually needed in this case).
         assert!(new_perm.freeze_access);
 
         let protected = new_perm.protector.is_some();
