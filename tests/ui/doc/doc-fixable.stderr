@@ -145,7 +145,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:90:5
+  --> tests/ui/doc/doc-fixable.rs:91:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:108:5
+  --> tests/ui/doc/doc-fixable.rs:109:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,7 +169,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:117:8
+  --> tests/ui/doc/doc-fixable.rs:118:8
    |
 LL | /// ## CamelCaseThing
    |        ^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL + /// ## `CamelCaseThing`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:121:7
+  --> tests/ui/doc/doc-fixable.rs:122:7
    |
 LL | /// # CamelCaseThing
    |       ^^^^^^^^^^^^^^
@@ -193,7 +193,7 @@ LL + /// # `CamelCaseThing`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:124:22
+  --> tests/ui/doc/doc-fixable.rs:125:22
    |
 LL | /// Not a title #897 CamelCaseThing
    |                      ^^^^^^^^^^^^^^
@@ -205,7 +205,7 @@ LL + /// Not a title #897 `CamelCaseThing`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:126:5
+  --> tests/ui/doc/doc-fixable.rs:127:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -217,7 +217,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:134:5
+  --> tests/ui/doc/doc-fixable.rs:135:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -229,7 +229,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:148:5
+  --> tests/ui/doc/doc-fixable.rs:149:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -241,7 +241,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:160:43
+  --> tests/ui/doc/doc-fixable.rs:161:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
    |                                           ^^^^^^
@@ -253,7 +253,7 @@ LL + /** E.g., serialization of an empty list: `FooBar`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:165:5
+  --> tests/ui/doc/doc-fixable.rs:166:5
    |
 LL | And BarQuz too.
    |     ^^^^^^
@@ -265,7 +265,7 @@ LL + And `BarQuz` too.
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:166:1
+  --> tests/ui/doc/doc-fixable.rs:167:1
    |
 LL | be_sure_we_got_to_the_end_of_it
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -277,7 +277,7 @@ LL + `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:174:43
+  --> tests/ui/doc/doc-fixable.rs:175:43
    |
 LL | /** E.g., serialization of an empty list: FooBar
    |                                           ^^^^^^
@@ -289,7 +289,7 @@ LL + /** E.g., serialization of an empty list: `FooBar`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:179:5
+  --> tests/ui/doc/doc-fixable.rs:180:5
    |
 LL | And BarQuz too.
    |     ^^^^^^
@@ -301,7 +301,7 @@ LL + And `BarQuz` too.
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:180:1
+  --> tests/ui/doc/doc-fixable.rs:181:1
    |
 LL | be_sure_we_got_to_the_end_of_it
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -313,7 +313,7 @@ LL + `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:194:5
+  --> tests/ui/doc/doc-fixable.rs:195:5
    |
 LL | /// be_sure_we_got_to_the_end_of_it
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -325,7 +325,7 @@ LL + /// `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:214:22
+  --> tests/ui/doc/doc-fixable.rs:215:22
    |
 LL | /// An iterator over mycrate::Collection's values.
    |                      ^^^^^^^^^^^^^^^^^^^
@@ -337,7 +337,7 @@ LL + /// An iterator over `mycrate::Collection`'s values.
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:239:34
+  --> tests/ui/doc/doc-fixable.rs:240:34
    |
 LL | /// Foo \[bar\] \[baz\] \[qux\]. DocMarkdownLint
    |                                  ^^^^^^^^^^^^^^^
@@ -349,7 +349,7 @@ LL + /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:263:22
+  --> tests/ui/doc/doc-fixable.rs:264:22
    |
 LL | /// There is no try (do() or do_not()).
    |                      ^^^^
@@ -361,7 +361,7 @@ LL + /// There is no try (`do()` or do_not()).
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:263:30
+  --> tests/ui/doc/doc-fixable.rs:264:30
    |
 LL | /// There is no try (do() or do_not()).
    |                              ^^^^^^^^
@@ -373,7 +373,7 @@ LL + /// There is no try (do() or `do_not()`).
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:268:5
+  --> tests/ui/doc/doc-fixable.rs:269:5
    |
 LL | /// ABes
    |     ^^^^
@@ -385,7 +385,7 @@ LL + /// `ABes`
    |
 
 error: item in documentation is missing backticks
-  --> tests/ui/doc/doc-fixable.rs:275:9
+  --> tests/ui/doc/doc-fixable.rs:276:9
    |
 LL |     /// foo()
    |         ^^^^^
@@ -397,7 +397,7 @@ LL +     /// `foo()`
    |
 
 error: you should put bare URLs between `<`/`>` or make a proper Markdown link
-  --> tests/ui/doc/doc-fixable.rs:280:5
+  --> tests/ui/doc/doc-fixable.rs:281:5
    |
 LL | /// https://github.com/rust-lang/rust-clippy/pull/12836
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<https://github.com/rust-lang/rust-clippy/pull/12836>`
