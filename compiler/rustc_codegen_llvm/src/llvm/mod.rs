@@ -112,17 +112,27 @@ pub(crate) fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &
 
 pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
     let lower = range.start;
+    // LLVM treats the upper bound as exclusive, but allows wrapping.
     let upper = range.end.wrapping_add(1);
-    let lower_words = [lower as u64, (lower >> 64) as u64];
-    let upper_words = [upper as u64, (upper >> 64) as u64];
-    unsafe {
-        LLVMRustCreateRangeAttribute(
-            llcx,
-            size.bits().try_into().unwrap(),
-            lower_words.as_ptr(),
-            upper_words.as_ptr(),
-        )
-    }
+
+    // Split each endpoint into a pair of u64 values to make FFI easier.
+    let as_lo_hi_pair = |x: u128| (x as u64, (x >> 64) as u64);
+    let (lower_bound_lo, lower_bound_hi) = as_lo_hi_pair(lower);
+    let (upper_bound_lo, upper_bound_hi) = as_lo_hi_pair(upper);
+
+    // Endpoints are given as u128, so make sure the given size isn't larger than that.
+    let size_bits = size.bits();
+    assert!(size_bits <= 128);
+    let size_bits = size_bits.try_into().unwrap();
+
+    LLVMRustCreateRangeAttribute(
+        llcx,
+        size_bits,
+        lower_bound_lo,
+        lower_bound_hi,
+        upper_bound_lo,
+        upper_bound_hi,
+    )
 }
 
 #[derive(Copy, Clone)]

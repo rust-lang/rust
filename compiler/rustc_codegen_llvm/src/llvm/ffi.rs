@@ -1881,12 +1881,15 @@ unsafe extern "C" {
         C: &Context,
         effects: MemoryEffects,
     ) -> &Attribute;
-    pub(crate) fn LLVMRustCreateRangeAttribute(
-        C: &Context,
-        num_bits: c_uint,
-        lower_words: *const u64,
-        upper_words: *const u64,
-    ) -> &Attribute;
+    /// Lower and upper bounds are each passed as a `u128` broken into low and high 64-bit parts.
+    pub(crate) safe fn LLVMRustCreateRangeAttribute<'ll>(
+        C: &'ll Context,
+        NumBits: c_uint,
+        LowerBoundLo: u64,
+        LowerBoundHi: u64,
+        UpperBoundLo: u64,
+        UpperBoundHi: u64,
+    ) -> &'ll Attribute;
 
     // Operations on functions
     pub(crate) fn LLVMRustGetOrInsertFunction<'a>(

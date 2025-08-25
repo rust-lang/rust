@@ -486,10 +486,15 @@ LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
 
 extern "C" LLVMAttributeRef
 LLVMRustCreateRangeAttribute(LLVMContextRef C, unsigned NumBits,
-                             const uint64_t LowerWords[],
-                             const uint64_t UpperWords[]) {
-  return LLVMCreateConstantRangeAttribute(C, Attribute::Range, NumBits,
-                                          LowerWords, UpperWords);
+                             uint64_t LowerBoundLo, uint64_t LowerBoundHi,
+                             uint64_t UpperBoundLo, uint64_t UpperBoundHi) {
+  // For both endpoints, reassemble the lo/hi parts into into APInt values.
+  // APInt will automatically discard any excess bits.
+  ConstantRange RangeValue = {
+      APInt(NumBits, ArrayRef{LowerBoundLo, LowerBoundHi}),
+      APInt(NumBits, ArrayRef{UpperBoundLo, UpperBoundHi}),
+  };
+  return wrap(Attribute::get(*unwrap(C), llvm::Attribute::Range, RangeValue));
 }
 
 // These values **must** match ffi::AllocKindFlags.
