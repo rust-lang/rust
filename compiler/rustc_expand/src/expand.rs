@@ -1,26 +1,28 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{iter, mem};
+use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, DUMMY_NODE_ID,
-    ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, CRATE_NODE_ID,
+    DUMMY_NODE_ID, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle,
+    MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{EvalConfigResult, ShouldEmit};
+use rustc_attr_parsing::{AttributeParser, EvalConfigResult, ShouldEmit, validate_attr};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
+use rustc_hir::Target;
+use rustc_hir::def::MacroKinds;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
     token_descr,
 };
-use rustc_parse::validate_attr;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
@@ -565,6 +567,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 .map(|DeriveResolution { path, item, exts: _, is_const }| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
+                                    // Note that this can result in duplicate diagnostics.
                                     let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
@@ -799,7 +802,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     ItemKind::Mod(
                                         _,
                                         _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
+                                        ModKind::Unloaded
+                                            | ModKind::Loaded(_, Inline::No { .. }, _),
                                     )
                                 ) =>
                         {
@@ -922,6 +926,35 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                     fragment
                 }
+                SyntaxExtensionKind::MacroRules(expander)
+                    if expander.kinds().contains(MacroKinds::DERIVE) =>
+                {
+                    if is_const {
+                        let guar = self
+                            .cx
+                            .dcx()
+                            .span_err(span, "macro `derive` does not support const derives");
+                        return ExpandResult::Ready(fragment_kind.dummy(span, guar));
+                    }
+                    let body = item.to_tokens();
+                    match expander.expand_derive(self.cx, span, &body) {
+                        Ok(tok_result) => {
+                            let fragment =
+                                self.parse_ast_fragment(tok_result, fragment_kind, &path, span);
+                            if macro_stats {
+                                update_derive_macro_stats(
+                                    self.cx,
+                                    fragment_kind,
+                                    span,
+                                    &path,
+                                    &fragment,
+                                );
+                            }
+                            fragment
+                        }
+                        Err(guar) => return ExpandResult::Ready(fragment_kind.dummy(span, guar)),
+                    }
+                }
                 _ => unreachable!(),
             },
             InvocationKind::GlobDelegation { item, of_trait } => {
@@ -1004,7 +1037,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ItemKind::Mod(_, _, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
+                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
                         feature_err(
                             self.sess,
@@ -1315,7 +1348,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
         let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
-            ModKind::Loaded(_, inline, _, _) => {
+            ModKind::Loaded(_, inline, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
@@ -1329,7 +1362,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 // This lets `parse_external_mod` catch cycles if it's self-referential.
                 let file_path = match inline {
                     Inline::Yes => None,
-                    Inline::No => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
                 };
                 node.attrs = attrs;
                 (file_path, dir_path, dir_ownership)
@@ -1365,7 +1398,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans, had_parse_error);
+                *mod_kind = ModKind::Loaded(items, Inline::No { had_parse_error }, spans);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
@@ -2126,6 +2159,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 attr,
                 self.cx.current_expansion.lint_node_id,
             );
+            AttributeParser::parse_limited_all(
+                self.cx.sess,
+                slice::from_ref(attr),
+                None,
+                Target::MacroCall,
+                call.span(),
+                CRATE_NODE_ID,
+                Some(self.cx.ecfg.features),
+                ShouldEmit::ErrorsAndLints,
+            );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -2437,7 +2480,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
         }
-        self.visit_node(node)
+        ensure_sufficient_stack(|| self.visit_node(node))
     }
 
     fn visit_method_receiver_expr(&mut self, node: &mut ast::Expr) {

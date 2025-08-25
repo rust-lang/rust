@@ -1,4 +1,5 @@
 //@ compile-flags: -Z unstable-options
+//@ ignore-stage1
 
 #![feature(rustc_private)]
 #![deny(rustc::potential_query_instability)]
@@ -34,4 +35,16 @@ fn main() {
         //~^ ERROR using `values_mut` can result in unstable query results
         *val = *val + 10;
     }
+
+    FxHashMap::<u32, i32>::default().extend(x);
+    //~^ ERROR using `into_iter` can result in unstable query results
+}
+
+fn hide_into_iter<T>(x: impl IntoIterator<Item = T>) -> impl Iterator<Item = T> {
+    x.into_iter()
+}
+
+fn take(map: std::collections::HashMap<i32, i32>) {
+    _ = hide_into_iter(map);
+    //~^ ERROR using `into_iter` can result in unstable query results
 }

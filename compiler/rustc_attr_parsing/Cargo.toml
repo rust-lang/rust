@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
@@ -15,6 +14,7 @@ rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"

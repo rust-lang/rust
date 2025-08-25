@@ -1,15 +1,5 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use super::prelude::*;
 
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
@@ -110,7 +100,7 @@ fn parse_derive_like<S: Stage>(
             return None;
         };
         if !attr_list.path().word_is(sym::attributes) {
-            cx.expected_specific_argument(attrs.span(), vec!["attributes"]);
+            cx.expected_specific_argument(attrs.span(), &[sym::attributes]);
             return None;
         }
         let Some(attr_list) = attr_list.args().list() else {

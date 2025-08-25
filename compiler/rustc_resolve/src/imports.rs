@@ -30,7 +30,7 @@ use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub,
+    ConsiderAddingMacroExport, ConsiderMarkingAsPub, ConsiderMarkingAsPubCrate,
 };
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, CmResolver, Determinacy, Finalize, ImportSuggestion,
@@ -184,6 +184,9 @@ pub(crate) struct ImportData<'ra> {
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'ra>>>,
     pub vis: Visibility,
+
+    /// Span of the visibility.
+    pub vis_span: Span,
 }
 
 /// All imports are unique and allocated on a same arena,
@@ -866,7 +869,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             ImportKind::Glob { .. } => {
                 // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                // specualtive resolution.
+                // speculative resolution.
                 self.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
             }
@@ -903,7 +906,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We need the `target`, `source` can be extracted.
                         let imported_binding = this.import(binding, import);
                         // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                        // specualtive resolution.
+                        // speculative resolution.
                         this.get_mut_unchecked().define_binding_local(
                             parent,
                             target,
@@ -917,7 +920,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(target, ns);
                             // FIXME: Use mutable resolver directly as a hack, this should be an output of
-                            // specualtive resolution.
+                            // speculative resolution.
                             this.get_mut_unchecked().update_local_resolution(
                                 parent,
                                 key,
@@ -1368,6 +1371,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             err.subdiagnostic( ConsiderAddingMacroExport {
                                 span: binding.span,
                             });
+                            err.subdiagnostic( ConsiderMarkingAsPubCrate {
+                                vis_span: import.vis_span,
+                            });
                         }
                         _ => {
                             err.subdiagnostic( ConsiderMarkingAsPub {
@@ -1440,7 +1446,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     return;
                 }
 
-                match this.cm().early_resolve_ident_in_lexical_scope(
+                match this.cm().resolve_ident_in_scope_set(
                     target,
                     ScopeSet::All(ns),
                     &import.parent_scope,

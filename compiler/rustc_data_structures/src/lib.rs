@@ -77,6 +77,7 @@ pub mod thinvec;
 pub mod thousands;
 pub mod transitive_relation;
 pub mod unhash;
+pub mod union_find;
 pub mod unord;
 pub mod vec_cache;
 pub mod work_queue;

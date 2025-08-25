@@ -5,6 +5,7 @@ LL |     unsafe { ptr.read() };
    |              ^^^^^^^^^^ Undefined Behavior occurred here
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
    = help: the accessed tag <TAG> (root of the allocation) is foreign to the protected tag <TAG> (i.e., it is not a child)
    = help: this foreign read access would cause the protected tag <TAG> (currently Active) to become Disabled
    = help: protected tags must never be Disabled
@@ -13,8 +14,8 @@ help: the accessed tag <TAG> was created here
    |
 LL | /     mir! {
 LL | |         {
-LL | |             let x = 0;
-LL | |             let ptr = &raw mut x;
+LL | |             let _x = 0;
+LL | |             let ptr = &raw mut _x;
 ...  |
 LL | |     }
    | |_____^
@@ -34,8 +35,8 @@ LL |     unsafe { ptr.read() };
 note: inside `main`
   --> tests/fail/function_calls/return_pointer_aliasing_read.rs:LL:CC
    |
-LL |             Call(*ptr = myfun(ptr), ReturnTo(after_call), UnwindContinue())
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_x = myfun(ptr), ReturnTo(after_call), UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

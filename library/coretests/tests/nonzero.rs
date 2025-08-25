@@ -462,3 +462,111 @@ fn test_nonzero_fmt() {
 
     assert_eq!(i, nz);
 }
+
+#[test]
+fn test_nonzero_highest_one() {
+    macro_rules! nonzero_int_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    for i in 0..<$T>::BITS {
+                        // Set single bit.
+                        assert_eq!(NonZero::<$T>::new(1 << i).unwrap().highest_one(), i);
+                        if i > <$T>::BITS {
+                            // Set lowest bits.
+                            assert_eq!(
+                                NonZero::<$T>::new(<$T>::MAX >> i).unwrap().highest_one(),
+                                <$T>::BITS - i - 2,
+                            );
+                        }
+                        // Set highest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(-1 << i).unwrap().highest_one(),
+                            <$T>::BITS - 1,
+                        );
+                    }
+                }
+            )+
+        };
+    }
+
+    macro_rules! nonzero_uint_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    for i in 0..<$T>::BITS {
+                        // Set single bit.
+                        assert_eq!(NonZero::<$T>::new(1 << i).unwrap().highest_one(), i);
+                        // Set lowest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(<$T>::MAX >> i).unwrap().highest_one(),
+                            <$T>::BITS - i - 1,
+                        );
+                        // Set highest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(<$T>::MAX << i).unwrap().highest_one(),
+                            <$T>::BITS - 1,
+                        );
+                    }
+                }
+            )+
+        };
+    }
+
+    nonzero_int_impl!(i8, i16, i32, i64, i128, isize);
+    nonzero_uint_impl!(u8, u16, u32, u64, u128, usize);
+}
+
+#[test]
+fn test_nonzero_lowest_one() {
+    macro_rules! nonzero_int_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    for i in 0..<$T>::BITS {
+                        // Set single bit.
+                        assert_eq!(NonZero::<$T>::new(1 << i).unwrap().lowest_one(), i);
+                        if i > <$T>::BITS {
+                            // Set lowest bits.
+                            assert_eq!(
+                                NonZero::<$T>::new(<$T>::MAX >> i).unwrap().lowest_one(),
+                                0,
+                            );
+                        }
+                        // Set highest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(-1 << i).unwrap().lowest_one(),
+                            i,
+                        );
+                    }
+                }
+            )+
+        };
+    }
+
+    macro_rules! nonzero_uint_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    for i in 0..<$T>::BITS {
+                        // Set single bit.
+                        assert_eq!(NonZero::<$T>::new(1 << i).unwrap().lowest_one(), i);
+                        // Set lowest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(<$T>::MAX >> i).unwrap().lowest_one(),
+                            0,
+                        );
+                        // Set highest bits.
+                        assert_eq!(
+                            NonZero::<$T>::new(<$T>::MAX << i).unwrap().lowest_one(),
+                            i,
+                        );
+                    }
+                }
+            )+
+        };
+    }
+
+    nonzero_int_impl!(i8, i16, i32, i64, i128, isize);
+    nonzero_uint_impl!(u8, u16, u32, u64, u128, usize);
+}

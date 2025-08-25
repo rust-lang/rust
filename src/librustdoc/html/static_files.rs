@@ -80,6 +80,7 @@ static_files! {
     normalize_css => "static/css/normalize.css",
     main_js => "static/js/main.js",
     search_js => "static/js/search.js",
+    stringdex_js => "static/js/stringdex.js",
     settings_js => "static/js/settings.js",
     src_script_js => "static/js/src-script.js",
     storage_js => "static/js/storage.js",

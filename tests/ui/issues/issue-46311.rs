@@ -1,4 +1,4 @@
 fn main() {
-    'break: loop { //~ ERROR invalid label name `'break`
+    'break: loop { //~ ERROR labels cannot use keyword names
     }
 }

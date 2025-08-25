@@ -3,6 +3,6 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn check(_: TokenStream) -> TokenStream {
-    assert!("---\n---".parse::<TokenStream>().unwrap().is_empty());
+    assert_eq!(6, "---\n---".parse::<TokenStream>().unwrap().into_iter().count());
     Default::default()
 }

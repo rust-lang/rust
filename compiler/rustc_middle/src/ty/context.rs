@@ -33,7 +33,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, LintEmitter, MultiSpan,
 };
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
@@ -445,7 +445,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn fn_is_const(self, def_id: DefId) -> bool {
-        debug_assert_matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn);
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(CtorOf::Struct, CtorKind::Fn)
+        );
         self.is_conditionally_const(def_id)
     }
 
@@ -1418,6 +1421,8 @@ pub struct TyCtxt<'tcx> {
 }
 
 impl<'tcx> LintEmitter for TyCtxt<'tcx> {
+    type Id = HirId;
+
     fn emit_node_span_lint(
         self,
         lint: &'static Lint,

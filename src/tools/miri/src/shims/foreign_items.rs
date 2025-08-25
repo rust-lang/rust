@@ -5,6 +5,7 @@ use std::path::Path;
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
 use rustc_apfloat::Float;
 use rustc_ast::expand::allocator::alloc_error_handler_name;
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -138,7 +139,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Entry::Occupied(e) => e.into_mut(),
             Entry::Vacant(e) => {
                 // Find it if it was not cached.
-                let mut instance_and_crate: Option<(ty::Instance<'_>, CrateNum)> = None;
+
+                struct SymbolTarget<'tcx> {
+                    instance: ty::Instance<'tcx>,
+                    cnum: CrateNum,
+                    is_weak: bool,
+                }
+                let mut symbol_target: Option<SymbolTarget<'tcx>> = None;
                 helpers::iter_exported_symbols(tcx, |cnum, def_id| {
                     let attrs = tcx.codegen_fn_attrs(def_id);
                     // Skip over imports of items.
@@ -146,7 +153,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         return interp_ok(());
                     }
                     // Skip over items without an explicitly defined symbol name.
-                    if !(attrs.export_name.is_some()
+                    if !(attrs.symbol_name.is_some()
                         || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
                         || attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
                     {
@@ -155,40 +162,80 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     let instance = Instance::mono(tcx, def_id);
                     let symbol_name = tcx.symbol_name(instance).name;
+                    let is_weak = attrs.linkage == Some(Linkage::WeakAny);
                     if symbol_name == link_name.as_str() {
-                        if let Some((original_instance, original_cnum)) = instance_and_crate {
-                            // Make sure we are consistent wrt what is 'first' and 'second'.
-                            let original_span = tcx.def_span(original_instance.def_id()).data();
-                            let span = tcx.def_span(def_id).data();
-                            if original_span < span {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: original_span,
-                                    first_crate: tcx.crate_name(original_cnum),
-                                    second: span,
-                                    second_crate: tcx.crate_name(cnum),
-                                });
-                            } else {
-                                throw_machine_stop!(TerminationInfo::MultipleSymbolDefinitions {
-                                    link_name,
-                                    first: span,
-                                    first_crate: tcx.crate_name(cnum),
-                                    second: original_span,
-                                    second_crate: tcx.crate_name(original_cnum),
-                                });
+                        if let Some(original) = &symbol_target {
+                            // There is more than one definition with this name. What we do now
+                            // depends on whether one or both definitions are weak.
+                            match (is_weak, original.is_weak) {
+                                (false, true) => {
+                                    // Original definition is a weak definition. Override it.
+
+                                    symbol_target = Some(SymbolTarget {
+                                        instance: ty::Instance::mono(tcx, def_id),
+                                        cnum,
+                                        is_weak,
+                                    });
+                                }
+                                (true, false) => {
+                                    // Current definition is a weak definition. Keep the original one.
+                                }
+                                (true, true) | (false, false) => {
+                                    // Either both definitions are non-weak or both are weak. In
+                                    // either case return an error. For weak definitions we error
+                                    // because it is unspecified which definition would have been
+                                    // picked by the linker.
+
+                                    // Make sure we are consistent wrt what is 'first' and 'second'.
+                                    let original_span =
+                                        tcx.def_span(original.instance.def_id()).data();
+                                    let span = tcx.def_span(def_id).data();
+                                    if original_span < span {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: original_span,
+                                                first_crate: tcx.crate_name(original.cnum),
+                                                second: span,
+                                                second_crate: tcx.crate_name(cnum),
+                                            }
+                                        );
+                                    } else {
+                                        throw_machine_stop!(
+                                            TerminationInfo::MultipleSymbolDefinitions {
+                                                link_name,
+                                                first: span,
+                                                first_crate: tcx.crate_name(cnum),
+                                                second: original_span,
+                                                second_crate: tcx.crate_name(original.cnum),
+                                            }
+                                        );
+                                    }
+                                }
                             }
+                        } else {
+                            symbol_target = Some(SymbolTarget {
+                                instance: ty::Instance::mono(tcx, def_id),
+                                cnum,
+                                is_weak,
+                            });
                         }
-                        if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-                            throw_ub_format!(
-                                "attempt to call an exported symbol that is not defined as a function"
-                            );
-                        }
-                        instance_and_crate = Some((ty::Instance::mono(tcx, def_id), cnum));
                     }
                     interp_ok(())
                 })?;
 
-                e.insert(instance_and_crate.map(|ic| ic.0))
+                // Once we identified the instance corresponding to the symbol, ensure
+                // it is a function. It is okay to encounter non-functions in the search above
+                // as long as the final instance we arrive at is a function.
+                if let Some(SymbolTarget { instance, .. }) = symbol_target {
+                    if !matches!(tcx.def_kind(instance.def_id()), DefKind::Fn | DefKind::AssocFn) {
+                        throw_ub_format!(
+                            "attempt to call an exported symbol that is not defined as a function"
+                        );
+                    }
+                }
+
+                e.insert(symbol_target.map(|SymbolTarget { instance, .. }| instance))
             }
         };
         match instance {

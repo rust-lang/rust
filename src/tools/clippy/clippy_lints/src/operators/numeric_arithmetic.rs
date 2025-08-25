@@ -13,7 +13,7 @@ pub struct Context {
     const_span: Option<Span>,
 }
 impl Context {
-    fn skip_expr(&mut self, e: &hir::Expr<'_>) -> bool {
+    fn skip_expr(&self, e: &hir::Expr<'_>) -> bool {
         self.expr_id.is_some() || self.const_span.is_some_and(|span| span.contains(e.span))
     }
 

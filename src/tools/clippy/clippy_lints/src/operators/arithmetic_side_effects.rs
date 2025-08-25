@@ -325,7 +325,7 @@ impl ArithmeticSideEffects {
         self.issue_lint(cx, expr);
     }
 
-    fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
+    fn should_skip_expr<'tcx>(&self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
             || self.expr_span.is_some()
             || self.const_span.is_some_and(|sp| sp.contains(expr.span))

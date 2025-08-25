@@ -78,7 +78,6 @@ mod dataflow;
 mod def_use;
 mod diagnostics;
 mod handle_placeholders;
-mod member_constraints;
 mod nll;
 mod path_utils;
 mod place_ext;
@@ -301,7 +300,7 @@ fn do_mir_borrowck<'tcx>(
     def: LocalDefId,
 ) -> PropagatedBorrowCheckResults<'tcx> {
     let tcx = root_cx.tcx;
-    let infcx = BorrowckInferCtxt::new(tcx, def);
+    let infcx = BorrowckInferCtxt::new(tcx, def, root_cx.root_def_id());
     let (input_body, promoted) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
@@ -335,9 +334,10 @@ fn do_mir_borrowck<'tcx>(
 
     // Run the MIR type-checker.
     let MirTypeckResults {
-        constraints,
+        mut constraints,
         universal_region_relations,
-        opaque_type_values,
+        region_bound_pairs,
+        known_type_outlives_obligations,
         polonius_context,
     } = type_check::type_check(
         root_cx,
@@ -350,6 +350,17 @@ fn do_mir_borrowck<'tcx>(
         &mut polonius_facts,
         &move_data,
         Rc::clone(&location_map),
+    );
+
+    let opaque_type_errors = region_infer::opaque_types::handle_opaque_type_uses(
+        root_cx,
+        &infcx,
+        &body,
+        &universal_region_relations,
+        &region_bound_pairs,
+        &known_type_outlives_obligations,
+        &location_map,
+        &mut constraints,
     );
 
     // Compute non-lexical lifetimes using the constraints computed
@@ -374,8 +385,6 @@ fn do_mir_borrowck<'tcx>(
         polonius_facts,
         polonius_context,
     );
-
-    let opaque_type_errors = regioncx.infer_opaque_types(root_cx, &infcx, opaque_type_values);
 
     // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
@@ -581,12 +590,13 @@ fn get_flow_results<'a, 'tcx>(
 
 pub(crate) struct BorrowckInferCtxt<'tcx> {
     pub(crate) infcx: InferCtxt<'tcx>,
-    pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
+    pub(crate) root_def_id: LocalDefId,
     pub(crate) param_env: ParamEnv<'tcx>,
+    pub(crate) reg_var_to_origin: RefCell<FxIndexMap<ty::RegionVid, RegionCtxt>>,
 }
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, root_def_id: LocalDefId) -> Self {
         let typing_mode = if tcx.use_typing_mode_borrowck() {
             TypingMode::borrowck(tcx, def_id)
         } else {
@@ -594,7 +604,12 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         };
         let infcx = tcx.infer_ctxt().build(typing_mode);
         let param_env = tcx.param_env(def_id);
-        BorrowckInferCtxt { infcx, reg_var_to_origin: RefCell::new(Default::default()), param_env }
+        BorrowckInferCtxt {
+            infcx,
+            root_def_id,
+            reg_var_to_origin: RefCell::new(Default::default()),
+            param_env,
+        }
     }
 
     pub(crate) fn next_region_var<F>(

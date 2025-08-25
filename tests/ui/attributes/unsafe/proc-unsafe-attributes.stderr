@@ -28,17 +28,6 @@ LL | #[unsafe(proc_macro_derive(Foo))]
    |
    = note: extraneous unsafe is not allowed in attributes
 
-error: expected identifier, found keyword `unsafe`
-  --> $DIR/proc-unsafe-attributes.rs:12:21
-   |
-LL | #[proc_macro_derive(unsafe(Foo))]
-   |                     ^^^^^^ expected identifier, found keyword
-   |
-help: escape `unsafe` to use it as an identifier
-   |
-LL | #[proc_macro_derive(r#unsafe(Foo))]
-   |                     ++
-
 error: `proc_macro_attribute` is not an unsafe attribute
   --> $DIR/proc-unsafe-attributes.rs:18:3
    |
@@ -113,6 +102,17 @@ LL | #[unsafe(allow(unsafe(dead_code)))]
    |                ^^^^^^^^^^^^^^^^^ bad attribute argument
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/proc-unsafe-attributes.rs:12:21
+   |
+LL | #[proc_macro_derive(unsafe(Foo))]
+   |                     ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL | #[proc_macro_derive(r#unsafe(Foo))]
+   |                     ++
 
 error[E0565]: malformed `proc_macro_derive` attribute input
   --> $DIR/proc-unsafe-attributes.rs:12:1

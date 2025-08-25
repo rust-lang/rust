@@ -279,7 +279,7 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
     poison: poison::Guard,
 }
 
-/// A [`MutexGuard`] is not `Send` to maximize platform portablity.
+/// A [`MutexGuard`] is not `Send` to maximize platform portability.
 ///
 /// On platforms that use POSIX threads (commonly referred to as pthreads) there is a requirement to
 /// release mutex locks on the same thread they were acquired.

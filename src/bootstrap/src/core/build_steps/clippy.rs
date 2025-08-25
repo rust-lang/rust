@@ -18,7 +18,7 @@ use build_helper::exit;
 use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use crate::builder::{Builder, ShouldRun};
-use crate::core::build_steps::check::prepare_compiler_for_check;
+use crate::core::build_steps::check::{CompilerForCheck, prepare_compiler_for_check};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{Alias, Kind, RunConfig, Step, StepMetadata, crate_description};
@@ -231,7 +231,7 @@ impl Step for Std {
 /// in-tree rustc.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
-    build_compiler: Compiler,
+    build_compiler: CompilerForCheck,
     target: TargetSelection,
     config: LintConfig,
     /// Whether to lint only a subset of crates.
@@ -271,7 +271,7 @@ impl Step for Rustc {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let build_compiler = self.build_compiler;
+        let build_compiler = self.build_compiler.build_compiler();
         let target = self.target;
 
         let mut cargo = builder::Cargo::new(
@@ -284,6 +284,7 @@ impl Step for Rustc {
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
+        self.build_compiler.configure_cargo(&mut cargo);
 
         // Explicitly pass -p for all compiler crates -- this will force cargo
         // to also lint the tests/benches/examples for these crates, rather
@@ -312,13 +313,16 @@ impl Step for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::clippy("rustc", self.target).built_by(self.build_compiler))
+        Some(
+            StepMetadata::clippy("rustc", self.target)
+                .built_by(self.build_compiler.build_compiler()),
+        )
     }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CodegenGcc {
-    build_compiler: Compiler,
+    build_compiler: CompilerForCheck,
     target: TargetSelection,
     config: LintConfig,
 }
@@ -347,10 +351,10 @@ impl Step for CodegenGcc {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let build_compiler = self.build_compiler;
+        let build_compiler = self.build_compiler.build_compiler();
         let target = self.target;
 
-        let cargo = prepare_tool_cargo(
+        let mut cargo = prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::Codegen,
@@ -360,6 +364,7 @@ impl Step for CodegenGcc {
             SourceType::InTree,
             &[],
         );
+        self.build_compiler.configure_cargo(&mut cargo);
 
         let _guard =
             builder.msg(Kind::Clippy, "rustc_codegen_gcc", Mode::ToolRustc, build_compiler, target);
@@ -379,7 +384,10 @@ impl Step for CodegenGcc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::clippy("rustc_codegen_gcc", self.target).built_by(self.build_compiler))
+        Some(
+            StepMetadata::clippy("rustc_codegen_gcc", self.target)
+                .built_by(self.build_compiler.build_compiler()),
+        )
     }
 }
 
@@ -396,7 +404,7 @@ macro_rules! lint_any {
 
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            build_compiler: Compiler,
+            build_compiler: CompilerForCheck,
             target: TargetSelection,
             config: LintConfig,
         }
@@ -419,9 +427,9 @@ macro_rules! lint_any {
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let build_compiler = self.build_compiler;
+                let build_compiler = self.build_compiler.build_compiler();
                 let target = self.target;
-                let cargo = prepare_tool_cargo(
+                let mut cargo = prepare_tool_cargo(
                     builder,
                     build_compiler,
                     $mode,
@@ -431,6 +439,7 @@ macro_rules! lint_any {
                     SourceType::InTree,
                     &[],
                 );
+                self.build_compiler.configure_cargo(&mut cargo);
 
                 let _guard = builder.msg(
                     Kind::Clippy,
@@ -456,7 +465,7 @@ macro_rules! lint_any {
             }
 
             fn metadata(&self) -> Option<StepMetadata> {
-                Some(StepMetadata::clippy($readable_name, self.target).built_by(self.build_compiler))
+                Some(StepMetadata::clippy($readable_name, self.target).built_by(self.build_compiler.build_compiler()))
             }
         }
         )+

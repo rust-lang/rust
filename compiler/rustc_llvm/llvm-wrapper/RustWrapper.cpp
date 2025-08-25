@@ -278,6 +278,7 @@ enum class LLVMRustAttributeKind {
   Writable = 42,
   DeadOnUnwind = 43,
   DeadOnReturn = 44,
+  CapturesReadOnly = 45,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -376,6 +377,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
 #else
     report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
 #endif
+  case LLVMRustAttributeKind::CapturesReadOnly:
+    report_fatal_error("Should be handled separately");
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
@@ -429,6 +432,11 @@ LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
   // LLVM 21 replaced the NoCapture attribute with Captures(none).
   if (RustAttr == LLVMRustAttributeKind::NoCapture) {
     return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  }
+  if (RustAttr == LLVMRustAttributeKind::CapturesReadOnly) {
+    return wrap(Attribute::getWithCaptureInfo(
+        *unwrap(C), CaptureInfo(CaptureComponents::Address |
+                                CaptureComponents::ReadProvenance)));
   }
 #endif
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
@@ -1460,60 +1468,6 @@ LLVMRustGetDiagInfoKind(LLVMDiagnosticInfoRef DI) {
   return toRust((DiagnosticKind)unwrap(DI)->getKind());
 }
 
-// This is kept distinct from LLVMGetTypeKind, because when
-// a new type kind is added, the Rust-side enum must be
-// updated or UB will result.
-extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
-  switch (unwrap(Ty)->getTypeID()) {
-  case Type::VoidTyID:
-    return LLVMVoidTypeKind;
-  case Type::HalfTyID:
-    return LLVMHalfTypeKind;
-  case Type::FloatTyID:
-    return LLVMFloatTypeKind;
-  case Type::DoubleTyID:
-    return LLVMDoubleTypeKind;
-  case Type::X86_FP80TyID:
-    return LLVMX86_FP80TypeKind;
-  case Type::FP128TyID:
-    return LLVMFP128TypeKind;
-  case Type::PPC_FP128TyID:
-    return LLVMPPC_FP128TypeKind;
-  case Type::LabelTyID:
-    return LLVMLabelTypeKind;
-  case Type::MetadataTyID:
-    return LLVMMetadataTypeKind;
-  case Type::IntegerTyID:
-    return LLVMIntegerTypeKind;
-  case Type::FunctionTyID:
-    return LLVMFunctionTypeKind;
-  case Type::StructTyID:
-    return LLVMStructTypeKind;
-  case Type::ArrayTyID:
-    return LLVMArrayTypeKind;
-  case Type::PointerTyID:
-    return LLVMPointerTypeKind;
-  case Type::FixedVectorTyID:
-    return LLVMVectorTypeKind;
-  case Type::TokenTyID:
-    return LLVMTokenTypeKind;
-  case Type::ScalableVectorTyID:
-    return LLVMScalableVectorTypeKind;
-  case Type::BFloatTyID:
-    return LLVMBFloatTypeKind;
-  case Type::X86_AMXTyID:
-    return LLVMX86_AMXTypeKind;
-  default: {
-    std::string error;
-    auto stream = llvm::raw_string_ostream(error);
-    stream << "Rust does not support the TypeID: " << unwrap(Ty)->getTypeID()
-           << " for the type: " << *unwrap(Ty);
-    stream.flush();
-    report_fatal_error(error.c_str());
-  }
-  }
-}
-
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 
 extern "C" LLVMSMDiagnosticRef LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
@@ -1992,30 +1946,4 @@ extern "C" void LLVMRustSetNoSanitizeHWAddress(LLVMValueRef Global) {
     MD = GV.getSanitizerMetadata();
   MD.NoHWAddress = true;
   GV.setSanitizerMetadata(MD);
-}
-
-enum class LLVMRustTailCallKind {
-  None = 0,
-  Tail = 1,
-  MustTail = 2,
-  NoTail = 3
-};
-
-extern "C" void LLVMRustSetTailCallKind(LLVMValueRef Call,
-                                        LLVMRustTailCallKind Kind) {
-  CallInst *CI = unwrap<CallInst>(Call);
-  switch (Kind) {
-  case LLVMRustTailCallKind::None:
-    CI->setTailCallKind(CallInst::TCK_None);
-    break;
-  case LLVMRustTailCallKind::Tail:
-    CI->setTailCallKind(CallInst::TCK_Tail);
-    break;
-  case LLVMRustTailCallKind::MustTail:
-    CI->setTailCallKind(CallInst::TCK_MustTail);
-    break;
-  case LLVMRustTailCallKind::NoTail:
-    CI->setTailCallKind(CallInst::TCK_NoTail);
-    break;
-  }
 }

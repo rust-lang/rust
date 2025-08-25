@@ -2,17 +2,10 @@
 //                      note: need to model better how duplicate attr errors work when not using
 //                      SingleAttributeParser which is what we have two of here.
 
-use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_hir::lints::AttributeLintKind;
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Symbol, sym};
 
-use super::{AcceptContext, AttributeOrder, OnDuplicate};
-use crate::attributes::SingleAttributeParser;
-use crate::context::MaybeWarn::{Allow, Warn};
-use crate::context::{AllowedTargets, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
+
 pub(crate) struct InlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for InlineParser {
@@ -56,14 +49,14 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                         Some(AttributeKind::Inline(InlineAttr::Never, cx.attr_span))
                     }
                     _ => {
-                        cx.expected_specific_argument(l.span(), vec!["always", "never"]);
+                        cx.expected_specific_argument(l.span(), &[sym::always, sym::never]);
                         return None;
                     }
                 }
             }
             ArgParser::NameValue(_) => {
-                let suggestions =
-                    <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "inline");
+                let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
+                    .suggestions(cx.attr_style, "inline");
                 let span = cx.attr_span;
                 cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                 return None;

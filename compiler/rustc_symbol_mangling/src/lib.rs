@@ -193,29 +193,20 @@ fn compute_symbol_name<'tcx>(
         // defining crate.
         // Weak lang items automatically get #[rustc_std_internal_symbol]
         // applied by the code computing the CodegenFnAttrs.
-        // We are mangling all #[rustc_std_internal_symbol] items that don't
-        // also have #[no_mangle] as a combination of the rustc version and the
-        // unmangled linkage name. This is to ensure that if we link against a
-        // staticlib compiled by a different rustc version, we don't get symbol
-        // conflicts or even UB due to a different implementation/ABI. Rust
-        // staticlibs currently export all symbols, including those that are
-        // hidden in cdylibs.
+        // We are mangling all #[rustc_std_internal_symbol] items as a
+        // combination of the rustc version and the unmangled linkage name.
+        // This is to ensure that if we link against a staticlib compiled by a
+        // different rustc version, we don't get symbol conflicts or even UB
+        // due to a different implementation/ABI. Rust staticlibs currently
+        // export all symbols, including those that are hidden in cdylibs.
         // We are using the v0 symbol mangling scheme here as we need to be
         // consistent across all crates and in some contexts the legacy symbol
         // mangling scheme can't be used. For example both the GCC backend and
         // Rust-for-Linux don't support some of the characters used by the
         // legacy symbol mangling scheme.
-        let name = if tcx.is_foreign_item(def_id) {
-            if let Some(name) = attrs.link_name { name } else { tcx.item_name(def_id) }
-        } else {
-            if let Some(name) = attrs.export_name { name } else { tcx.item_name(def_id) }
-        };
+        let name = if let Some(name) = attrs.symbol_name { name } else { tcx.item_name(def_id) };
 
-        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-            return name.to_string();
-        } else {
-            return v0::mangle_internal_symbol(tcx, name.as_str());
-        }
+        return v0::mangle_internal_symbol(tcx, name.as_str());
     }
 
     let wasm_import_module_exception_force_mangling = {
@@ -240,23 +231,16 @@ fn compute_symbol_name<'tcx>(
             && tcx.wasm_import_module_map(LOCAL_CRATE).contains_key(&def_id.into())
     };
 
-    if let Some(name) = attrs.link_name
-        && !wasm_import_module_exception_force_mangling
-    {
-        // Use provided name
-        return name.to_string();
-    }
+    if !wasm_import_module_exception_force_mangling {
+        if let Some(name) = attrs.symbol_name {
+            // Use provided name
+            return name.to_string();
+        }
 
-    if let Some(name) = attrs.export_name {
-        // Use provided name
-        return name.to_string();
-    }
-
-    if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-        && !wasm_import_module_exception_force_mangling
-    {
-        // Don't mangle
-        return tcx.item_name(def_id).to_string();
+        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+            // Don't mangle
+            return tcx.item_name(def_id).to_string();
+        }
     }
 
     // If we're dealing with an instance of a function that's inlined from

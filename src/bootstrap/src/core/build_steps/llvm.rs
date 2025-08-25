@@ -29,7 +29,7 @@ use crate::{CLang, GitRepo, Kind, trace};
 pub struct LlvmResult {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
-    pub llvm_config: PathBuf,
+    pub host_llvm_config: PathBuf,
     /// Path to LLVM cmake directory for the target.
     pub llvm_cmake_dir: PathBuf,
 }
@@ -109,14 +109,14 @@ pub fn prebuilt_llvm_config(
         && let Some(ref s) = config.llvm_config
     {
         check_llvm_version(builder, s);
-        let llvm_config = s.to_path_buf();
-        let mut llvm_cmake_dir = llvm_config.clone();
+        let host_llvm_config = s.to_path_buf();
+        let mut llvm_cmake_dir = host_llvm_config.clone();
         llvm_cmake_dir.pop();
         llvm_cmake_dir.pop();
         llvm_cmake_dir.push("lib");
         llvm_cmake_dir.push("cmake");
         llvm_cmake_dir.push("llvm");
-        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { llvm_config, llvm_cmake_dir });
+        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { host_llvm_config, llvm_cmake_dir });
     }
 
     if handle_submodule_when_needed {
@@ -141,7 +141,7 @@ pub fn prebuilt_llvm_config(
     };
 
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
-    let res = LlvmResult { llvm_config: build_llvm_config, llvm_cmake_dir };
+    let res = LlvmResult { host_llvm_config: build_llvm_config, llvm_cmake_dir };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -220,10 +220,6 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("armv7-unknown-linux-gnueabihf", false),
         ("loongarch64-unknown-linux-gnu", false),
         ("loongarch64-unknown-linux-musl", false),
-        ("mips-unknown-linux-gnu", false),
-        ("mips64-unknown-linux-gnuabi64", false),
-        ("mips64el-unknown-linux-gnuabi64", false),
-        ("mipsel-unknown-linux-gnu", false),
         ("powerpc-unknown-linux-gnu", false),
         ("powerpc64-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-gnu", false),
@@ -487,11 +483,11 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let LlvmResult { llvm_config, .. } =
+            let LlvmResult { host_llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_bindir =
-                    command(&llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                    command(&host_llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -500,7 +496,7 @@ impl Step for Llvm {
                 // LLVM_NM is required for cross compiling using MSVC
                 cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
             }
-            cfg.define("LLVM_CONFIG_PATH", llvm_config);
+            cfg.define("LLVM_CONFIG_PATH", host_llvm_config);
             if builder.config.llvm_clang {
                 let build_bin =
                     builder.llvm_out(builder.config.host_target).join("build").join("bin");
@@ -542,7 +538,7 @@ impl Step for Llvm {
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let major = get_llvm_version_major(builder, &res.llvm_config);
+            let major = get_llvm_version_major(builder, &res.host_llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -919,7 +915,7 @@ impl Step for Enzyme {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: self.target });
+        let LlvmResult { host_llvm_config, .. } = builder.ensure(Llvm { target: self.target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -973,7 +969,7 @@ impl Step for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &llvm_config)
+            .env("LLVM_CONFIG_REAL", &host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -1010,13 +1006,13 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
         // subfolder. We check if that's the case, and if LLD's binary already exists there next to
         // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
-        let ci_llvm_bin = llvm_config.parent().unwrap();
+        let ci_llvm_bin = host_llvm_config.parent().unwrap();
         if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
             let lld_path = ci_llvm_bin.join(exe("lld", target));
             if lld_path.exists() {
@@ -1099,7 +1095,7 @@ impl Step for Lld {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
+                host_llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
             );
         }
 
@@ -1140,7 +1136,7 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let LlvmResult { llvm_config, .. } =
+        let LlvmResult { host_llvm_config, .. } =
             builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1180,7 +1176,7 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_BUILD_XRAY", "OFF");
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
-        cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+        cfg.define("LLVM_CONFIG_PATH", &host_llvm_config);
 
         if self.target.contains("ohos") {
             cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");

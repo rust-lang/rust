@@ -84,18 +84,31 @@
 // tidy-alphabetical-end
 
 #[macro_use]
+/// All the individual attribute parsers for each of rustc's built-in attributes.
 mod attributes;
+
+/// All the important types given to attribute parsers when parsing
 pub(crate) mod context;
-mod lints;
+
+/// Code that other crates interact with, to actually parse a list (or sometimes single)
+/// attribute.
+mod interface;
+
+/// Despite this entire module called attribute parsing and the term being a little overloaded,
+/// in this module the code lives that actually breaks up tokenstreams into semantic pieces of attributes,
+/// like lists or name-value pairs.
 pub mod parser;
+
+mod lints;
 mod session_diagnostics;
+mod target_checking;
+pub mod validate_attr;
 
 pub use attributes::cfg::{CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg_attr};
 pub use attributes::cfg_old::*;
-pub use attributes::util::{
-    find_crate_name, is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version,
-};
-pub use context::{AttributeParser, Early, Late, OmitDoc, ShouldEmit};
+pub use attributes::util::{is_builtin_attr, is_doc_alias_attrs_contain_symbol, parse_version};
+pub use context::{Early, Late, OmitDoc, ShouldEmit};
+pub use interface::AttributeParser;
 pub use lints::emit_attribute_lint;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

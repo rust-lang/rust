@@ -909,6 +909,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         debug_assert_matches!(param_ty.kind(), ty::Param(_));
 
         let tcx = self.tcx;
+
+        // We use `DeepRejectCtxt` here which may return false positive on where clauses
+        // with alias self types. We need to later on reject these as inherent candidates
+        // in `consider_probe`.
         let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
             let bound_predicate = predicate.kind();
             match bound_predicate.skip_binder() {
@@ -1945,6 +1949,29 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     );
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
+
+                    if matches!(probe.kind, WhereClauseCandidate(_)) {
+                        // `WhereClauseCandidate` requires that the self type is a param,
+                        // because it has special behavior with candidate preference as an
+                        // inherent pick.
+                        match ocx.structurally_normalize_ty(
+                            cause,
+                            self.param_env,
+                            trait_ref.self_ty(),
+                        ) {
+                            Ok(ty) => {
+                                if !matches!(ty.kind(), ty::Param(_)) {
+                                    debug!("--> not a param ty: {xform_self_ty:?}");
+                                    return ProbeResult::NoMatch;
+                                }
+                            }
+                            Err(errors) => {
+                                debug!("--> cannot relate self-types {:?}", errors);
+                                return ProbeResult::NoMatch;
+                            }
+                        }
+                    }
+
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
                     match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
                     {

@@ -141,7 +141,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         if let ast::ItemKind::Mod(
             _,
             _,
-            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }, _),
+            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }),
         ) = item.kind
         {
             let prev_tests = mem::take(&mut self.tests);

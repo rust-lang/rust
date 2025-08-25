@@ -3,6 +3,8 @@
 
 #![feature(derive_from)]
 
+use core::from::From;
+
 #[derive(From)]
 struct TupleSimple(u32);
 

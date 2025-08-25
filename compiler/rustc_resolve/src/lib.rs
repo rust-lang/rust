@@ -49,7 +49,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::StrippedCfgItem;
@@ -72,8 +72,8 @@ use rustc_middle::ty::{
     ResolverGlobalCtxt, TyCtxt, TyCtxtFeed, Visibility,
 };
 use rustc_query_system::ich::StableHashingContext;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
-use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Macros20NormalizedIdent, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -156,11 +156,8 @@ enum ScopeSet<'ra> {
     ModuleAndExternPrelude(Namespace, Module<'ra>),
     /// Just two extern prelude scopes.
     ExternPrelude,
-    /// All scopes with macro namespace and the given macro kind restriction.
+    /// Same as `All(MacroNS)`, but with the given macro kind restriction.
     Macro(MacroKind),
-    /// All scopes with the given namespace, used for partially performing late resolution.
-    /// The node id enables lints and is used for reporting them.
-    Late(Namespace, Module<'ra>, Option<NodeId>),
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -781,7 +778,10 @@ impl<'ra> std::ops::Deref for Module<'ra> {
 
 impl<'ra> fmt::Debug for Module<'ra> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.res())
+        match self.kind {
+            ModuleKind::Block => write!(f, "block"),
+            ModuleKind::Def(..) => write!(f, "{:?}", self.res()),
+        }
     }
 }
 
@@ -1266,6 +1266,10 @@ pub struct Resolver<'ra, 'tcx> {
     current_crate_outer_attr_insert_span: Span,
 
     mods_with_parse_errors: FxHashSet<DefId>,
+
+    /// Whether `Resolver::register_macros_for_all_crates` has been called once already, as we
+    /// don't need to run it more than once.
+    all_crate_macros_already_registered: bool = false,
 
     // Stores pre-expansion and pre-placeholder-fragment-insertion names for `impl Trait` types
     // that were encountered during resolution. These names are used to generate item names
@@ -1881,7 +1885,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        self.cm().visit_scopes(ScopeSet::All(TypeNS), parent_scope, ctxt, |this, scope, _, _| {
+        let scope_set = ScopeSet::All(TypeNS);
+        self.cm().visit_scopes(scope_set, parent_scope, ctxt, None, |this, scope, _, _| {
             match scope {
                 Scope::Module(module, _) => {
                     this.get_mut().traits_in_module(module, assoc_item, &mut found_traits);
@@ -2448,6 +2453,17 @@ fn module_to_string(mut module: Module<'_>) -> Option<String> {
     Some(names_to_string(names.iter().rev().copied()))
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+enum Stage {
+    /// Resolving an import or a macro.
+    /// Used when macro expansion is either not yet finished, or we are finalizing its results.
+    /// Used by default as a more restrictive variant that can produce additional errors.
+    Early,
+    /// Resolving something in late resolution when all imports are resolved
+    /// and all macros are expanded.
+    Late,
+}
+
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
     /// Node ID for linting.
@@ -2460,9 +2476,11 @@ struct Finalize {
     root_span: Span,
     /// Whether to report privacy errors or silently return "no resolution" for them,
     /// similarly to speculative resolution.
-    report_private: bool,
+    report_private: bool = true,
     /// Tracks whether an item is used in scope or used relatively to a module.
-    used: Used,
+    used: Used = Used::Other,
+    /// Finalizing early or late resolution.
+    stage: Stage = Stage::Early,
 }
 
 impl Finalize {
@@ -2471,7 +2489,7 @@ impl Finalize {
     }
 
     fn with_root_span(node_id: NodeId, path_span: Span, root_span: Span) -> Finalize {
-        Finalize { node_id, path_span, root_span, report_private: true, used: Used::Other }
+        Finalize { node_id, path_span, root_span, .. }
     }
 }
 

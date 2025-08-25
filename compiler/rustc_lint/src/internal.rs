@@ -1,10 +1,10 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use rustc_hir::HirId;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
+use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_middle::ty::{self, GenericArgsRef, PredicatePolarity, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{Span, sym};
@@ -56,25 +56,6 @@ impl LateLintPass<'_> for DefaultHashTypes {
     }
 }
 
-/// Helper function for lints that check for expressions with calls and use typeck results to
-/// get the `DefId` and `GenericArgsRef` of the function.
-fn typeck_results_of_method_fn<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &hir::Expr<'_>,
-) -> Option<(Span, DefId, ty::GenericArgsRef<'tcx>)> {
-    match expr.kind {
-        hir::ExprKind::MethodCall(segment, ..)
-            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
-        {
-            Some((segment.ident.span, def_id, cx.typeck_results().node_args(expr.hir_id)))
-        }
-        _ => match cx.typeck_results().node_type(expr.hir_id).kind() {
-            &ty::FnDef(def_id, args) => Some((expr.span, def_id, args)),
-            _ => None,
-        },
-    }
-}
-
 declare_tool_lint! {
     /// The `potential_query_instability` lint detects use of methods which can lead to
     /// potential query instability, such as iterating over a `HashMap`.
@@ -101,10 +82,12 @@ declare_tool_lint! {
 
 declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY, UNTRACKED_QUERY_INFORMATION]);
 
-impl LateLintPass<'_> for QueryStability {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        let Some((span, def_id, args)) = typeck_results_of_method_fn(cx, expr) else { return };
-        if let Ok(Some(instance)) = ty::Instance::try_resolve(cx.tcx, cx.typing_env(), def_id, args)
+impl<'tcx> LateLintPass<'tcx> for QueryStability {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        if let Some((callee_def_id, span, generic_args, _recv, _args)) =
+            get_callee_span_generic_args_and_args(cx, expr)
+            && let Ok(Some(instance)) =
+                ty::Instance::try_resolve(cx.tcx, cx.typing_env(), callee_def_id, generic_args)
         {
             let def_id = instance.def_id();
             if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
@@ -113,7 +96,15 @@ impl LateLintPass<'_> for QueryStability {
                     span,
                     QueryInstability { query: cx.tcx.item_name(def_id) },
                 );
+            } else if has_unstable_into_iter_predicate(cx, callee_def_id, generic_args) {
+                let call_span = span.with_hi(expr.span.hi());
+                cx.emit_span_lint(
+                    POTENTIAL_QUERY_INSTABILITY,
+                    call_span,
+                    QueryInstability { query: sym::into_iter },
+                );
             }
+
             if cx.tcx.has_attr(def_id, sym::rustc_lint_untracked_query_information) {
                 cx.emit_span_lint(
                     UNTRACKED_QUERY_INFORMATION,
@@ -123,6 +114,69 @@ impl LateLintPass<'_> for QueryStability {
             }
         }
     }
+}
+
+fn has_unstable_into_iter_predicate<'tcx>(
+    cx: &LateContext<'tcx>,
+    callee_def_id: DefId,
+    generic_args: GenericArgsRef<'tcx>,
+) -> bool {
+    let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
+        return false;
+    };
+    let Some(into_iter_fn_def_id) = cx.tcx.lang_items().into_iter_fn() else {
+        return false;
+    };
+    let predicates = cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args);
+    for (predicate, _) in predicates {
+        let Some(trait_pred) = predicate.as_trait_clause() else {
+            continue;
+        };
+        if trait_pred.def_id() != into_iterator_def_id
+            || trait_pred.polarity() != PredicatePolarity::Positive
+        {
+            continue;
+        }
+        // `IntoIterator::into_iter` has no additional method args.
+        let into_iter_fn_args =
+            cx.tcx.instantiate_bound_regions_with_erased(trait_pred).trait_ref.args;
+        let Ok(Some(instance)) = ty::Instance::try_resolve(
+            cx.tcx,
+            cx.typing_env(),
+            into_iter_fn_def_id,
+            into_iter_fn_args,
+        ) else {
+            continue;
+        };
+        // Does the input type's `IntoIterator` implementation have the
+        // `rustc_lint_query_instability` attribute on its `into_iter` method?
+        if cx.tcx.has_attr(instance.def_id(), sym::rustc_lint_query_instability) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Checks whether an expression is a function or method call and, if so, returns its `DefId`,
+/// `Span`, `GenericArgs`, and arguments. This is a slight augmentation of a similarly named Clippy
+/// function, `get_callee_generic_args_and_args`.
+fn get_callee_span_generic_args_and_args<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+) -> Option<(DefId, Span, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+    if let ExprKind::Call(callee, args) = expr.kind
+        && let callee_ty = cx.typeck_results().expr_ty(callee)
+        && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
+    {
+        return Some((*callee_def_id, callee.span, generic_args, None, args));
+    }
+    if let ExprKind::MethodCall(segment, recv, args, _) = expr.kind
+        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    {
+        let generic_args = cx.typeck_results().node_args(expr.hir_id);
+        return Some((method_def_id, segment.ident.span, generic_args, Some(recv), args));
+    }
+    None
 }
 
 declare_tool_lint! {
@@ -461,33 +515,22 @@ declare_tool_lint! {
 declare_lint_pass!(Diagnostics => [UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL]);
 
 impl LateLintPass<'_> for Diagnostics {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
+    fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         let collect_args_tys_and_spans = |args: &[hir::Expr<'_>], reserve_one_extra: bool| {
             let mut result = Vec::with_capacity(args.len() + usize::from(reserve_one_extra));
             result.extend(args.iter().map(|arg| (cx.typeck_results().expr_ty(arg), arg.span)));
             result
         };
         // Only check function calls and method calls.
-        let (span, def_id, fn_gen_args, arg_tys_and_spans) = match expr.kind {
-            hir::ExprKind::Call(callee, args) => {
-                match cx.typeck_results().node_type(callee.hir_id).kind() {
-                    &ty::FnDef(def_id, fn_gen_args) => {
-                        (callee.span, def_id, fn_gen_args, collect_args_tys_and_spans(args, false))
-                    }
-                    _ => return, // occurs for fns passed as args
-                }
-            }
-            hir::ExprKind::MethodCall(_segment, _recv, args, _span) => {
-                let Some((span, def_id, fn_gen_args)) = typeck_results_of_method_fn(cx, expr)
-                else {
-                    return;
-                };
-                let mut args = collect_args_tys_and_spans(args, true);
-                args.insert(0, (cx.tcx.types.self_param, _recv.span)); // dummy inserted for `self`
-                (span, def_id, fn_gen_args, args)
-            }
-            _ => return,
+        let Some((def_id, span, fn_gen_args, recv, args)) =
+            get_callee_span_generic_args_and_args(cx, expr)
+        else {
+            return;
         };
+        let mut arg_tys_and_spans = collect_args_tys_and_spans(args, recv.is_some());
+        if let Some(recv) = recv {
+            arg_tys_and_spans.insert(0, (cx.tcx.types.self_param, recv.span)); // dummy inserted for `self`
+        }
 
         Self::diagnostic_outside_of_impl(cx, span, expr.hir_id, def_id, fn_gen_args);
         Self::untranslatable_diagnostic(cx, def_id, &arg_tys_and_spans);
@@ -496,7 +539,7 @@ impl LateLintPass<'_> for Diagnostics {
 
 impl Diagnostics {
     // Is the type `{D,Subd}iagMessage`?
-    fn is_diag_message<'cx>(cx: &LateContext<'cx>, ty: MiddleTy<'cx>) -> bool {
+    fn is_diag_message<'cx>(cx: &LateContext<'cx>, ty: Ty<'cx>) -> bool {
         if let Some(adt_def) = ty.ty_adt_def()
             && let Some(name) = cx.tcx.get_diagnostic_name(adt_def.did())
             && matches!(name, sym::DiagMessage | sym::SubdiagMessage)
@@ -510,7 +553,7 @@ impl Diagnostics {
     fn untranslatable_diagnostic<'cx>(
         cx: &LateContext<'cx>,
         def_id: DefId,
-        arg_tys_and_spans: &[(MiddleTy<'cx>, Span)],
+        arg_tys_and_spans: &[(Ty<'cx>, Span)],
     ) {
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
         let predicates = cx.tcx.predicates_of(def_id).instantiate_identity(cx.tcx).predicates;

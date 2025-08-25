@@ -120,7 +120,7 @@ impl PassByRefOrValue {
         }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
+    fn check_poly_fn(&self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }

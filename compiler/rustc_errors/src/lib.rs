@@ -40,13 +40,13 @@ use std::{fmt, panic};
 
 use Level::*;
 pub use codes::*;
+pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
 pub use diagnostic::{
-    BugAbort, Diag, DiagArg, DiagArgMap, DiagArgName, DiagArgValue, DiagInner, DiagStyledString,
-    Diagnostic, EmissionGuarantee, FatalAbort, IntoDiagArg, LintDiagnostic, StringPart, Subdiag,
-    Subdiagnostic,
+    BugAbort, Diag, DiagArgMap, DiagInner, DiagStyledString, Diagnostic, EmissionGuarantee,
+    FatalAbort, LintDiagnostic, LintDiagnosticBox, StringPart, Subdiag, Subdiagnostic,
 };
 pub use diagnostic_impls::{
-    DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
+    DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
@@ -56,11 +56,11 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
-    DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
-    SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
+    DiagArg, DiagArgFromDisplay, DiagArgName, DiagArgValue, DiagMessage, FluentBundle, IntoDiagArg,
+    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagMessage,
+    fallback_fluent_bundle, fluent_bundle, into_diag_arg_using_display,
 };
 use rustc_hashes::Hash128;
-use rustc_hir::HirId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
@@ -80,6 +80,7 @@ use crate::timings::TimingRecord;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
+mod decorate_diag;
 mod diagnostic;
 mod diagnostic_impls;
 pub mod emitter;
@@ -108,13 +109,14 @@ rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
 /// Used to avoid depending on `rustc_middle` in `rustc_attr_parsing`.
 /// Always the `TyCtxt`.
 pub trait LintEmitter: Copy {
+    type Id: Copy;
     #[track_caller]
     fn emit_node_span_lint(
         self,
         lint: &'static Lint,
-        hir_id: HirId,
+        hir_id: Self::Id,
         span: impl Into<MultiSpan>,
-        decorator: impl for<'a> LintDiagnostic<'a, ()>,
+        decorator: impl for<'a> LintDiagnostic<'a, ()> + DynSend + 'static,
     );
 }
 
@@ -1996,6 +1998,12 @@ impl Level {
 
             Warning | Note | Help | OnceNote | OnceHelp => true,
         }
+    }
+}
+
+impl IntoDiagArg for Level {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::from(self.to_string()))
     }
 }
 

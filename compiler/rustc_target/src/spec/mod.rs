@@ -50,6 +50,7 @@ use rustc_abi::{
     Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -875,6 +876,12 @@ impl FromStr for PanicStrategy {
 
 crate::json::serde_deserialize_from_str!(PanicStrategy);
 
+impl IntoDiagArg for PanicStrategy {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.desc().to_string()))
+    }
+}
+
 impl ToJson for PanicStrategy {
     fn to_json(&self) -> Json {
         match *self {
@@ -1518,6 +1525,8 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
+into_diag_arg_using_display!(SplitDebuginfo);
+
 #[derive(Clone, Debug, PartialEq, Eq, serde_derive::Deserialize)]
 #[serde(tag = "kind")]
 #[serde(rename_all = "kebab-case")]
@@ -1794,6 +1803,8 @@ impl fmt::Display for StackProtector {
         f.write_str(self.as_str())
     }
 }
+
+into_diag_arg_using_display!(StackProtector);
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum BinaryFormat {
@@ -2105,6 +2116,7 @@ supported_targets! {
 
     ("msp430-none-elf", msp430_none_elf),
 
+    ("aarch64_be-unknown-hermit", aarch64_be_unknown_hermit),
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("riscv64gc-unknown-hermit", riscv64gc_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
@@ -3806,3 +3818,5 @@ impl fmt::Display for TargetTuple {
         write!(f, "{}", self.debug_tuple())
     }
 }
+
+into_diag_arg_using_display!(&TargetTuple);

@@ -480,6 +480,8 @@ declare_features! (
     (unstable, doc_cfg_hide, "1.57.0", Some(43781)),
     /// Allows `#[doc(masked)]`.
     (unstable, doc_masked, "1.21.0", Some(44027)),
+    /// Allows features to allow target_feature to better interact with traits.
+    (incomplete, effective_target_features, "CURRENT_RUSTC_VERSION", Some(143352)),
     /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
@@ -556,6 +558,8 @@ declare_features! (
     (incomplete, loop_match, "1.90.0", Some(132306)),
     /// Allow `macro_rules!` attribute rules
     (unstable, macro_attr, "CURRENT_RUSTC_VERSION", Some(83527)),
+    /// Allow `macro_rules!` derive rules
+    (unstable, macro_derive, "CURRENT_RUSTC_VERSION", Some(143549)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
@@ -592,8 +596,6 @@ declare_features! (
     (unstable, new_range, "1.86.0", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
-    /// Allows the use of `no_sanitize` attribute.
-    (unstable, no_sanitize, "1.42.0", Some(39699)),
     /// Allows using the `non_exhaustive_omitted_patterns` lint.
     (unstable, non_exhaustive_omitted_patterns_lint, "1.57.0", Some(89554)),
     /// Allows `for<T>` binders in where-clauses
@@ -614,6 +616,7 @@ declare_features! (
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms
     (incomplete, raw_dylib_elf, "1.87.0", Some(135694)),
+    (unstable, reborrow, "CURRENT_RUSTC_VERSION", Some(145612)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -626,6 +629,8 @@ declare_features! (
     (unstable, return_type_notation, "1.70.0", Some(109417)),
     /// Allows `extern "rust-cold"`.
     (unstable, rust_cold_cc, "1.63.0", Some(97544)),
+    /// Allows the use of the `sanitize` attribute.
+    (unstable, sanitize, "CURRENT_RUSTC_VERSION", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
     (unstable, simd_ffi, "1.0.0", Some(27731)),
     /// Allows specialization of implementations (RFC 1210).

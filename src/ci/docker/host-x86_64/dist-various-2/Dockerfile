@@ -59,6 +59,10 @@ ENV \
     CXX_i686_unknown_uefi=clang++-11 \
     CC_x86_64_unknown_uefi=clang-11 \
     CXX_x86_64_unknown_uefi=clang++-11 \
+    CC_wasm32_unknown_unknown=clang-11 \
+    CXX_wasm32_unknown_unknown=clang++-11 \
+    CC_wasm32v1_none=clang-11 \
+    CXX_wasm32v1_none=clang++-11 \
     CC=gcc-9 \
     CXX=g++-9
 

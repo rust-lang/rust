@@ -1087,7 +1087,8 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
-    if let Some(features) = find_attr!(attrs, AttributeKind::TargetFeature(features, _) => features)
+    if let Some(features) =
+        find_attr!(attrs, AttributeKind::TargetFeature { features, .. } => features)
     {
         for (feature, _) in features {
             cfg &= Cfg::Cfg(sym::target_feature, Some(*feature));
@@ -1552,10 +1553,10 @@ impl Type {
         matches!(self, Type::Path { path: Path { res: Res::Def(DefKind::TyAlias, _), .. } })
     }
 
-    /// Check if two types are "the same" for documentation purposes.
+    /// Check if this type is a subtype of another type for documentation purposes.
     ///
     /// This is different from `Eq`, because it knows that things like
-    /// `Placeholder` are possible matches for everything.
+    /// `Infer` and generics have special subtyping rules.
     ///
     /// This relation is not commutative when generics are involved:
     ///
@@ -1566,8 +1567,8 @@ impl Type {
     /// let cache = Cache::new(false);
     /// let generic = Type::Generic(rustc_span::symbol::sym::Any);
     /// let unit = Type::Primitive(PrimitiveType::Unit);
-    /// assert!(!generic.is_same(&unit, &cache));
-    /// assert!(unit.is_same(&generic, &cache));
+    /// assert!(!generic.is_doc_subtype_of(&unit, &cache));
+    /// assert!(unit.is_doc_subtype_of(&generic, &cache));
     /// ```
     ///
     /// An owned type is also the same as its borrowed variants (this is commutative),

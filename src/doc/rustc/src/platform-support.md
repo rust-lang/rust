@@ -36,7 +36,6 @@ target | notes
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.1+, glibc 2.17+)
 [`i686-pc-windows-msvc`](platform-support/windows-msvc.md) | 32-bit MSVC (Windows 10+, Windows Server 2016+, Pentium 4) [^x86_32-floats-return-ABI] [^win32-msvc-alignment]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 3.2+, glibc 2.17+, Pentium 4) [^x86_32-floats-return-ABI]
-[`x86_64-apple-darwin`](platform-support/apple-darwin.md) | 64-bit macOS (10.12+, Sierra+)
 [`x86_64-pc-windows-gnu`](platform-support/windows-gnu.md) | 64-bit MinGW (Windows 10+, Windows Server 2016+)
 [`x86_64-pc-windows-msvc`](platform-support/windows-msvc.md) | 64-bit MSVC (Windows 10+, Windows Server 2016+)
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 3.2+, glibc 2.17+)
@@ -106,6 +105,7 @@ target | notes
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc-unknown-linux-gnu.md) | RISC-V Linux (kernel 4.20+, glibc 2.29)
 [`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | RISC-V Linux (kernel 4.20+, musl 1.2.3)
 [`s390x-unknown-linux-gnu`](platform-support/s390x-unknown-linux-gnu.md) | S390x Linux (kernel 3.2+, glibc 2.17)
+[`x86_64-apple-darwin`](platform-support/apple-darwin.md) | 64-bit macOS (10.12+, Sierra+)
 [`x86_64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | 64-bit x86 MinGW (Windows 10+), LLVM ABI
 [`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit x86 FreeBSD
 [`x86_64-unknown-illumos`](platform-support/illumos.md) | illumos
@@ -270,6 +270,7 @@ target | std | host | notes
 [`aarch64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 [`aarch64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | ARM64 VxWorks OS
+[`aarch64_be-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit (big-endian)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)

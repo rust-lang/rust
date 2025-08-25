@@ -1,14 +1,11 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation};
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
+use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 
+use super::prelude::*;
 use super::util::parse_version;
-use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::MaybeWarn::{Allow, Error};
-use crate::context::{AcceptContext, AllowedTargets, Stage};
-use crate::parser::ArgParser;
-use crate::session_diagnostics;
+use crate::session_diagnostics::{
+    DeprecatedItemSuggestion, InvalidSince, MissingNote, MissingSince,
+};
+
 pub(crate) struct DeprecationParser;
 
 fn get<S: Stage>(
@@ -54,6 +51,8 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         Allow(Target::TyAlias),
         Allow(Target::Use),
         Allow(Target::ForeignFn),
+        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignTy),
         Allow(Target::Field),
         Allow(Target::Trait),
         Allow(Target::AssocTy),
@@ -100,7 +99,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                         }
                         Some(name @ sym::suggestion) => {
                             if !features.deprecated_suggestion() {
-                                cx.emit_err(session_diagnostics::DeprecatedItemSuggestion {
+                                cx.emit_err(DeprecatedItemSuggestion {
                                     span: param.span(),
                                     is_nightly: cx.sess().is_nightly_build(),
                                     details: (),
@@ -142,18 +141,18 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
             } else if let Some(version) = parse_version(since) {
                 DeprecatedSince::RustcVersion(version)
             } else {
-                cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+                cx.emit_err(InvalidSince { span: cx.attr_span });
                 DeprecatedSince::Err
             }
         } else if is_rustc {
-            cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+            cx.emit_err(MissingSince { span: cx.attr_span });
             DeprecatedSince::Err
         } else {
             DeprecatedSince::Unspecified
         };
 
         if is_rustc && note.is_none() {
-            cx.emit_err(session_diagnostics::MissingNote { span: cx.attr_span });
+            cx.emit_err(MissingNote { span: cx.attr_span });
             return None;
         }
 

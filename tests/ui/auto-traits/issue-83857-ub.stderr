@@ -4,7 +4,11 @@ error[E0277]: `Foo<T, U>` cannot be sent between threads safely
 LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
    |
-   = help: the trait `Send` is not implemented for `Foo<T, U>`
+help: the trait `Send` is not implemented for `Foo<T, U>`
+  --> $DIR/issue-83857-ub.rs:6:1
+   |
+LL | struct Foo<T, U>(Always<T, U>);
+   | ^^^^^^^^^^^^^^^^
 note: required for `Foo<T, U>` to implement `WithAssoc`
   --> $DIR/issue-83857-ub.rs:14:15
    |
@@ -23,7 +27,11 @@ error[E0277]: `Foo<T, U>` cannot be sent between threads safely
 LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
    |
-   = help: the trait `Send` is not implemented for `Foo<T, U>`
+help: the trait `Send` is not implemented for `Foo<T, U>`
+  --> $DIR/issue-83857-ub.rs:6:1
+   |
+LL | struct Foo<T, U>(Always<T, U>);
+   | ^^^^^^^^^^^^^^^^
 note: required for `Foo<T, U>` to implement `WithAssoc`
   --> $DIR/issue-83857-ub.rs:14:15
    |
@@ -44,7 +52,11 @@ LL |     f(foo(v));
    |       |
    |       required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `Foo<T, U>`
+help: the trait `Send` is not implemented for `Foo<T, U>`
+  --> $DIR/issue-83857-ub.rs:6:1
+   |
+LL | struct Foo<T, U>(Always<T, U>);
+   | ^^^^^^^^^^^^^^^^
 note: required by a bound in `foo`
   --> $DIR/issue-83857-ub.rs:28:11
    |

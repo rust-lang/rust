@@ -1,11 +1,13 @@
+use std::borrow::Cow;
+
 use rustc_errors::{DiagArgValue, LintEmitter};
+use rustc_hir::Target;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
-use rustc_hir::{HirId, Target};
 use rustc_span::sym;
 
 use crate::session_diagnostics;
 
-pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emitter: L) {
+pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emitter: L) {
     let AttributeLint { id, span, kind } = lint;
 
     match kind {
@@ -35,12 +37,12 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
             *first_span,
             session_diagnostics::EmptyAttributeList { attr_span: *first_span },
         ),
-        &AttributeLintKind::InvalidTarget { name, target, ref applied, only } => lint_emitter
+        AttributeLintKind::InvalidTarget { name, target, applied, only } => lint_emitter
             .emit_node_span_lint(
                 // This check is here because `deprecated` had its own lint group and removing this would be a breaking change
-                if name == sym::deprecated
+                if name.segments[0].name == sym::deprecated
                     && ![Target::Closure, Target::Expression, Target::Statement, Target::Arm]
-                        .contains(&target)
+                        .contains(target)
                 {
                     rustc_session::lint::builtin::USELESS_DEPRECATED
                 } else {
@@ -49,10 +51,13 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<HirId>, lint_emi
                 *id,
                 *span,
                 session_diagnostics::InvalidTargetLint {
-                    name,
+                    name: name.clone(),
                     target: target.plural_name(),
-                    applied: applied.clone(),
+                    applied: DiagArgValue::StrListSepByAnd(
+                        applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),
+                    ),
                     only,
+                    attr_span: *span,
                 },
             ),
     }

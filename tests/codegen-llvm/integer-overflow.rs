@@ -10,7 +10,7 @@ pub struct S1<'a> {
 // CHECK-LABEL: @slice_no_index_order
 #[no_mangle]
 pub fn slice_no_index_order<'a>(s: &'a mut S1, n: usize) -> &'a [u8] {
-    // CHECK-NOT: slice_index_order_fail
+    // CHECK-COUNT-1: slice_index_fail
     let d = &s.data[s.position..s.position + n];
     s.position += n;
     return d;
@@ -19,6 +19,6 @@ pub fn slice_no_index_order<'a>(s: &'a mut S1, n: usize) -> &'a [u8] {
 // CHECK-LABEL: @test_check
 #[no_mangle]
 pub fn test_check<'a>(s: &'a mut S1, x: usize, y: usize) -> &'a [u8] {
-    // CHECK: slice_index_order_fail
+    // CHECK-COUNT-1: slice_index_fail
     &s.data[x..y]
 }

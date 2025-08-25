@@ -13,6 +13,7 @@ use crate::errors::NonGenericOpaqueTypeParam;
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::ObligationCtxt;
 
+#[derive(Debug)]
 pub enum InvalidOpaqueTypeArgs<'tcx> {
     AlreadyReported(ErrorGuaranteed),
     NotAParam { opaque_type_key: OpaqueTypeKey<'tcx>, param_index: usize, span: Span },

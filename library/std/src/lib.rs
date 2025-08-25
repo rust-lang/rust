@@ -15,7 +15,7 @@
 //!
 //! If you already know the name of what you are looking for, the fastest way to
 //! find it is to use the <a href="#" onclick="window.searchState.focus();">search
-//! bar</a> at the top of the page.
+//! button</a> at the top of the page.
 //!
 //! Otherwise, you may want to jump to one of these useful sections:
 //!
@@ -330,6 +330,7 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
+#![feature(cfg_select)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_cmp)]
@@ -736,6 +737,14 @@ pub use core::{
     assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
     unreachable, write, writeln,
 };
+
+// Re-export unstable derive macro defined through core.
+#[unstable(feature = "derive_from", issue = "144889")]
+/// Unstable module containing the unstable `From` derive macro.
+pub mod from {
+    #[unstable(feature = "derive_from", issue = "144889")]
+    pub use core::from::From;
+}
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

@@ -1,0 +1,115 @@
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:3:1
+   |
+LL | #[sanitize(brontosaurus = "off")]
+   | ^^^^^^^^^^^------------^^^^^^^^^^
+   |            |
+   |            valid arguments are "address", "cfi", "kcfi", "memory", "memtag", "shadow_call_stack", "thread" or "hwaddress"
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[sanitize(brontosaurus = "off")]
+LL + #[sanitize(address = "on|off")]
+   |
+LL - #[sanitize(brontosaurus = "off")]
+LL + #[sanitize(cfi = "on|off")]
+   |
+LL - #[sanitize(brontosaurus = "off")]
+LL + #[sanitize(hwaddress = "on|off")]
+   |
+LL - #[sanitize(brontosaurus = "off")]
+LL + #[sanitize(kcfi = "on|off")]
+   |
+   = and 5 other candidates
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:6:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:7:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `sanitize` attributes
+  --> $DIR/invalid-sanitize.rs:10:1
+   |
+LL | #[sanitize(address = "on")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/invalid-sanitize.rs:11:1
+   |
+LL | #[sanitize(address = "off")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:14:1
+   |
+LL | #[sanitize(address = "bogus")]
+   | ^^^^^^^^^^^^^^^^^^^^^-------^^
+   |                      |
+   |                      valid arguments are "on" or "off"
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[sanitize(address = "bogus")]
+LL + #[sanitize(address = "on|off")]
+   |
+LL - #[sanitize(address = "bogus")]
+LL + #[sanitize(cfi = "on|off")]
+   |
+LL - #[sanitize(address = "bogus")]
+LL + #[sanitize(hwaddress = "on|off")]
+   |
+LL - #[sanitize(address = "bogus")]
+LL + #[sanitize(kcfi = "on|off")]
+   |
+   = and 5 other candidates
+
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:17:1
+   |
+LL | #[sanitize = "off"]
+   | ^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(address = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(cfi = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(hwaddress = "on|off")]
+   |
+LL - #[sanitize = "off"]
+LL + #[sanitize(kcfi = "on|off")]
+   |
+   = and 5 other candidates
+
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/invalid-sanitize.rs:20:1
+   |
+LL | #[sanitize]
+   | ^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[sanitize(address = "on|off")]
+   |           ++++++++++++++++++++
+LL | #[sanitize(cfi = "on|off")]
+   |           ++++++++++++++++
+LL | #[sanitize(hwaddress = "on|off")]
+   |           ++++++++++++++++++++++
+LL | #[sanitize(kcfi = "on|off")]
+   |           +++++++++++++++++
+   = and 5 other candidates
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

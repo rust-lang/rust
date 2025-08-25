@@ -2878,7 +2878,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 // we check if `TraitB` can be reachable from `S`
                                 // to determine whether to note `TraitA` is sealed trait.
                                 if let ty::Adt(adt, _) = ty.kind() {
-                                    let visibilities = tcx.effective_visibilities(());
+                                    let visibilities = &tcx.resolutions(()).effective_visibilities;
                                     visibilities.effective_vis(local).is_none_or(|v| {
                                         v.at_level(Level::Reexported)
                                             .is_accessible_from(adt.did(), tcx)
@@ -3853,59 +3853,71 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn can_suggest_derive(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        if trait_pred.polarity() == ty::PredicatePolarity::Negative {
+            return false;
+        }
+        let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
+            return false;
+        };
+        let (adt, args) = match trait_pred.skip_binder().self_ty().kind() {
+            ty::Adt(adt, args) if adt.did().is_local() => (adt, args),
+            _ => return false,
+        };
+        let is_derivable_trait = match diagnostic_name {
+            sym::Default => !adt.is_enum(),
+            sym::PartialEq | sym::PartialOrd => {
+                let rhs_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
+                trait_pred.skip_binder().self_ty() == rhs_ty
+            }
+            sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+            _ => false,
+        };
+        is_derivable_trait &&
+            // Ensure all fields impl the trait.
+            adt.all_fields().all(|field| {
+                let field_ty = ty::GenericArg::from(field.ty(self.tcx, args));
+                let trait_args = match diagnostic_name {
+                    sym::PartialEq | sym::PartialOrd => {
+                        Some(field_ty)
+                    }
+                    _ => None,
+                };
+                let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
+                    trait_ref: ty::TraitRef::new(self.tcx,
+                        trait_pred.def_id(),
+                        [field_ty].into_iter().chain(trait_args),
+                    ),
+                    ..*tr
+                });
+                let field_obl = Obligation::new(
+                    self.tcx,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_pred,
+                );
+                self.predicate_must_hold_modulo_regions(&field_obl)
+            })
+    }
+
     pub fn suggest_derive(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
-        if trait_pred.polarity() == ty::PredicatePolarity::Negative {
-            return;
-        }
         let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
             return;
         };
-        let (adt, args) = match trait_pred.skip_binder().self_ty().kind() {
-            ty::Adt(adt, args) if adt.did().is_local() => (adt, args),
+        let adt = match trait_pred.skip_binder().self_ty().kind() {
+            ty::Adt(adt, _) if adt.did().is_local() => adt,
             _ => return,
         };
-        let can_derive = {
-            let is_derivable_trait = match diagnostic_name {
-                sym::Default => !adt.is_enum(),
-                sym::PartialEq | sym::PartialOrd => {
-                    let rhs_ty = trait_pred.skip_binder().trait_ref.args.type_at(1);
-                    trait_pred.skip_binder().self_ty() == rhs_ty
-                }
-                sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
-                _ => false,
-            };
-            is_derivable_trait &&
-                // Ensure all fields impl the trait.
-                adt.all_fields().all(|field| {
-                    let field_ty = ty::GenericArg::from(field.ty(self.tcx, args));
-                    let trait_args = match diagnostic_name {
-                        sym::PartialEq | sym::PartialOrd => {
-                            Some(field_ty)
-                        }
-                        _ => None,
-                    };
-                    let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
-                        trait_ref: ty::TraitRef::new(self.tcx,
-                            trait_pred.def_id(),
-                            [field_ty].into_iter().chain(trait_args),
-                        ),
-                        ..*tr
-                    });
-                    let field_obl = Obligation::new(
-                        self.tcx,
-                        obligation.cause.clone(),
-                        obligation.param_env,
-                        trait_pred,
-                    );
-                    self.predicate_must_hold_modulo_regions(&field_obl)
-                })
-        };
-        if can_derive {
+        if self.can_suggest_derive(obligation, trait_pred) {
             err.span_suggestion_verbose(
                 self.tcx.def_span(adt.did()).shrink_to_lo(),
                 format!(

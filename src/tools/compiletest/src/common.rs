@@ -692,7 +692,9 @@ pub struct Config {
     pub minicore_path: Utf8PathBuf,
 
     /// Current codegen backend used.
-    pub codegen_backend: CodegenBackend,
+    pub default_codegen_backend: CodegenBackend,
+    /// Name/path of the backend to use instead of `default_codegen_backend`.
+    pub override_codegen_backend: Option<String>,
 }
 
 impl Config {
@@ -796,7 +798,8 @@ impl Config {
             profiler_runtime: Default::default(),
             diff_command: Default::default(),
             minicore_path: Default::default(),
-            codegen_backend: CodegenBackend::Llvm,
+            default_codegen_backend: CodegenBackend::Llvm,
+            override_codegen_backend: None,
         }
     }
 

@@ -1,6 +1,9 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
+//@ revisions: aarch64_be_unknown_hermit
+//@ [aarch64_be_unknown_hermit] compile-flags: --target aarch64_be-unknown-hermit
+//@ [aarch64_be_unknown_hermit] needs-llvm-components: aarch64
 //@ revisions: aarch64_be_unknown_linux_gnu
 //@ [aarch64_be_unknown_linux_gnu] compile-flags: --target aarch64_be-unknown-linux-gnu
 //@ [aarch64_be_unknown_linux_gnu] needs-llvm-components: aarch64

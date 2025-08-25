@@ -5,14 +5,15 @@ use std::sync::{Arc, OnceLock};
 use std::{env, thread};
 
 use rustc_ast as ast;
+use rustc_attr_parsing::{ShouldEmit, validate_attr};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
+use rustc_errors::LintBuffer;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
-use rustc_parse::validate_attr;
 use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple};
-use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
+use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -23,6 +24,7 @@ use rustc_target::spec::Target;
 use tracing::info;
 
 use crate::errors;
+use crate::passes::parse_crate_name;
 
 /// Function pointer type that constructs a new CodegenBackend.
 type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -519,11 +521,10 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         sess.dcx().emit_fatal(errors::MultipleOutputTypesToStdout);
     }
 
-    let crate_name = sess
-        .opts
-        .crate_name
-        .clone()
-        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
+    let crate_name =
+        sess.opts.crate_name.clone().or_else(|| {
+            parse_crate_name(sess, attrs, ShouldEmit::Nothing).map(|i| i.0.to_string())
+        });
 
     match sess.io.output_file {
         None => {

@@ -1,15 +1,9 @@
 use rustc_errors::DiagArgValue;
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::Target;
-use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
-use rustc_span::{Span, Symbol, sym};
-use thin_vec::ThinVec;
+use rustc_hir::attrs::MacroUseArgs;
 
-use crate::attributes::{AcceptMapping, AttributeParser, NoArgsAttributeParser, OnDuplicate};
-use crate::context::MaybeWarn::{Allow, Error, Warn};
-use crate::context::{AcceptContext, AllowedTargets, FinalizeContext, Stage};
-use crate::parser::ArgParser;
-use crate::session_diagnostics;
+use super::prelude::*;
+use crate::session_diagnostics::IllFormedAttributeInputLint;
+
 pub(crate) struct MacroEscapeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
@@ -107,8 +101,8 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
                     }
                 }
                 ArgParser::NameValue(_) => {
-                    let suggestions = MACRO_USE_TEMPLATE.suggestions(false, sym::macro_use);
-                    cx.emit_err(session_diagnostics::IllFormedAttributeInputLint {
+                    let suggestions = MACRO_USE_TEMPLATE.suggestions(cx.attr_style, sym::macro_use);
+                    cx.emit_err(IllFormedAttributeInputLint {
                         num_suggestions: suggestions.len(),
                         suggestions: DiagArgValue::StrListSepByAnd(
                             suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
