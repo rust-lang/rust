@@ -102,9 +102,9 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
-    CoroutineKind, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
-    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
+    CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
+    HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId,
+    OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
     TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
@@ -3630,4 +3630,18 @@ pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) 
             Adjust::Deref(Some(_)) | Adjust::Pointer(PointerCoercion::Unsize) | Adjust::NeverToAny
         )
     })
+}
+
+/// Checks if the expression is an async block (i.e., `async { ... }`).
+pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
+    matches!(
+        expr.kind,
+        ExprKind::Closure(Closure {
+            kind: hir::ClosureKind::Coroutine(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                CoroutineSource::Block
+            )),
+            ..
+        })
+    )
 }
