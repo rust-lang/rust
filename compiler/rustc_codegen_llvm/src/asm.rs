@@ -16,6 +16,7 @@ use tracing::debug;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
+use crate::llvm::ToLlvmBool;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -470,10 +471,6 @@ pub(crate) fn inline_asm_call<'ll>(
     dest: Option<&'ll llvm::BasicBlock>,
     catch_funclet: Option<(&'ll llvm::BasicBlock, Option<&Funclet<'ll>>)>,
 ) -> Option<&'ll Value> {
-    let volatile = if volatile { llvm::True } else { llvm::False };
-    let alignstack = if alignstack { llvm::True } else { llvm::False };
-    let can_throw = if unwind { llvm::True } else { llvm::False };
-
     let argtys = inputs
         .iter()
         .map(|v| {
@@ -500,10 +497,10 @@ pub(crate) fn inline_asm_call<'ll>(
             asm.len(),
             cons.as_ptr(),
             cons.len(),
-            volatile,
-            alignstack,
+            volatile.to_llvm_bool(),
+            alignstack.to_llvm_bool(),
             dia,
-            can_throw,
+            unwind.to_llvm_bool(),
         )
     };
 
