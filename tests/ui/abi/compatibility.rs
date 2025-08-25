@@ -63,7 +63,8 @@
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]
-#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![allow(unused, internal_features)]
+#![allow(improper_ctypes_definitions, improper_ctypes)]
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.

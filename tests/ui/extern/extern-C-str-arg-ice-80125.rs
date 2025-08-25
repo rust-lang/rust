@@ -1,7 +1,7 @@
 // issue: rust-lang/rust#80125
 //@ check-pass
 type ExternCallback = extern "C" fn(*const u8, u32, str);
-//~^ WARN `extern` fn uses type `str`, which is not FFI-safe
+//~^ WARN `extern` callback uses type `str`, which is not FFI-safe
 
 pub struct Struct(ExternCallback);
 

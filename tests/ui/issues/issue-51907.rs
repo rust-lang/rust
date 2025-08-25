@@ -1,6 +1,8 @@
 //@ run-pass
 trait Foo {
+    #[allow(improper_ctypes_definitions)]
     extern "C" fn borrow(&self);
+    #[allow(improper_ctypes_definitions)]
     extern "C" fn take(self: Box<Self>);
 }
 

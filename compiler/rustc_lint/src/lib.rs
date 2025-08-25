@@ -335,6 +335,8 @@ fn register_builtins(store: &mut LintStore) {
         REFINING_IMPL_TRAIT_INTERNAL
     );
 
+    add_lint_group!("improper_c_boundaries", IMPROPER_CTYPES_DEFINITIONS, IMPROPER_CTYPES);
+
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
     add_lint_group!(
