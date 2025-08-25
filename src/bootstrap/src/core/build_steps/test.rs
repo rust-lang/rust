@@ -3129,7 +3129,7 @@ impl Step for Distcheck {
 
         let configure_args: Vec<String> = std::env::var("DISTCHECK_CONFIGURE_ARGS")
             .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
 
         command("tar")
             .arg("-xf")
@@ -3146,6 +3146,9 @@ impl Step for Distcheck {
             .run(builder);
         command(helpers::make(&builder.config.host_target.triple))
             .arg("check")
+            // Do not run the build as if we were in CI, otherwise git would be assumed to be
+            // present, but we build from a tarball here
+            .env("GITHUB_ACTIONS", "0")
             .current_dir(&plain_src_dir)
             .run(builder);
 
