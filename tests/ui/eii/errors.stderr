@@ -1,56 +1,56 @@
 error: `#[eii_extern_target(...)]` is only valid on macros
   --> $DIR/errors.rs:8:1
    |
-LL | #[eii_macro_for(bar)]
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target(bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_extern_target(...)]` is only valid on macros
   --> $DIR/errors.rs:10:5
    |
-LL |     #[eii_macro_for(bar)]
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     #[eii_extern_target(bar)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:14:1
    |
-LL | #[eii_macro_for]
-   | ^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target]
+   | ^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_extern_target(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:15:1
    |
-LL | #[eii_macro_for()]
-   | ^^^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target()]
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: expected this argument to be "unsafe"
-  --> $DIR/errors.rs:15:22
+  --> $DIR/errors.rs:16:26
    |
-LL | #[eii_macro_for(bar, hello)]
-   |                      ^^^^^
+LL | #[eii_extern_target(bar, hello)]
+   |                          ^^^^^
    |
 note: the second argument is optional
-  --> $DIR/errors.rs:15:22
+  --> $DIR/errors.rs:16:26
    |
-LL | #[eii_macro_for(bar, hello)]
-   |                      ^^^^^
+LL | #[eii_extern_target(bar, hello)]
+   |                          ^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:17:1
    |
-LL | #[eii_macro_for(bar, "unsafe", hello)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target(bar, "unsafe", hello)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:18:1
    |
-LL | #[eii_macro_for(bar, hello, "unsafe")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target(bar, hello, "unsafe")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_extern_target(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:19:1
    |
-LL | #[eii_macro_for = "unsafe"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_extern_target = "unsafe"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[foo]` is only valid on functions
   --> $DIR/errors.rs:28:1

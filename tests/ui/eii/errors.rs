@@ -11,13 +11,13 @@ fn hello() {
     let x = 3 + 3;
 }
 
-#[eii_macro_for] //~ ERROR `#[eii_macro_for(...)]` expects a list of one or two elements
-#[eii_macro_for()] //~ ERROR `#[eii_macro_for(...)]` expects a list of one or two elements
-#[eii_macro_for(bar, hello)] //~ ERROR expected this argument to be "unsafe"
-#[eii_macro_for(bar, "unsafe", hello)] //~ ERROR `#[eii_macro_for(...)]` expects a list of one or two elements
-#[eii_macro_for(bar, hello, "unsafe")] //~ ERROR `#[eii_macro_for(...)]` expects a list of one or two elements
-#[eii_macro_for = "unsafe"] //~ ERROR `#[eii_macro_for(...)]` expects a list of one or two elements
-#[eii_macro_for(bar)]
+#[eii_extern_target] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
+#[eii_extern_target()] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
+#[eii_extern_target(bar, hello)] //~ ERROR expected this argument to be "unsafe"
+#[eii_extern_target(bar, "unsafe", hello)] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
+#[eii_extern_target(bar, hello, "unsafe")] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
+#[eii_extern_target = "unsafe"] //~ ERROR `#[eii_extern_target(...)]` expects a list of one or two elements
+#[eii_extern_target(bar)]
 #[rustc_builtin_macro(eii_macro)]
 macro foo() {}
 
