@@ -1293,6 +1293,8 @@ impl Step for RustcBook {
         // functional sysroot.
         builder.std(self.build_compiler, self.target);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
+        cmd.arg("--build-rustc-stage");
+        cmd.arg(self.build_compiler.stage.to_string());
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
         cmd.arg("--out");

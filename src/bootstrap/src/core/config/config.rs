@@ -1012,9 +1012,7 @@ impl Config {
         }
 
         if flags_compile_time_deps && !matches!(flags_cmd, Subcommand::Check { .. }) {
-            eprintln!(
-                "ERROR: Can't use --compile-time-deps with any subcommand other than check."
-            );
+            eprintln!("ERROR: Can't use --compile-time-deps with any subcommand other than check.");
             exit!(1);
         }
 

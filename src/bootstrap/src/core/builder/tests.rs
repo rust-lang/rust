@@ -2078,7 +2078,7 @@ mod snapshot {
         [test] Pretty <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> std 0 <host>
-        [test] CrateLibrustc <host>
+        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
         [test] crate-bootstrap <host> src/tools/coverage-dump
         [test] crate-bootstrap <host> src/tools/jsondoclint
@@ -2212,6 +2212,40 @@ mod snapshot {
     }
 
     #[test]
+    fn test_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> std 0 <host>
+        [build] rustdoc 0 <host>
+        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [test] rustc 1 <host> -> CrateLibrustc 2 <host>
+        ");
+    }
+
+    #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
@@ -2228,13 +2262,15 @@ mod snapshot {
 
         let get_steps = |args: &[&str]| ctx.config("test").args(args).get_steps();
 
+        let rustc_metadata =
+            || StepMetadata::test("CrateLibrustc", host).built_by(Compiler::new(0, host));
         // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
-        get_steps(&[]).assert_contains(StepMetadata::test("CrateLibrustc", host));
+        get_steps(&[]).assert_contains(rustc_metadata());
 
         let steps = get_steps(&["--skip", "compiler/rustc_data_structures"]);
 
         // Ensure tests for rustc are not skipped.
-        steps.assert_contains(StepMetadata::test("CrateLibrustc", host));
+        steps.assert_contains(rustc_metadata());
         steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
     }
 

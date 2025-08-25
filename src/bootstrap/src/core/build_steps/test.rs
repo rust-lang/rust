@@ -2730,7 +2730,7 @@ impl Step for CrateLibrustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        Some(StepMetadata::test("CrateLibrustc", self.target))
+        Some(StepMetadata::test("CrateLibrustc", self.target).built_by(self.build_compiler))
     }
 }
 
