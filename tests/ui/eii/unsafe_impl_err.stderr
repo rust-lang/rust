@@ -1,5 +1,5 @@
 error: `#[foo]` is unsafe to implement
-  --> $DIR/unsafe_impl_err.rs:17:1
+  --> $DIR/unsafe_impl_err.rs:16:1
    |
 LL | #[foo]
    | ^^^^^^
