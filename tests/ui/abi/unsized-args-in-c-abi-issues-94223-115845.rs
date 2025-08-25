@@ -1,5 +1,5 @@
 //@ check-pass
-#![expect(improper_ctypes_definitions)]
+#![expect(improper_ctypes_definitions, improper_ctypes)]
 #![feature(unsized_fn_params)]
 #![crate_type = "lib"]
 
@@ -17,8 +17,7 @@ pub fn bad(f: extern "C" fn([u8])) {}
 pub extern "C" fn declare_bad(_x: str) {}
 
 #[no_mangle]
-pub extern "system" fn declare_more_bad(f: dyn FnOnce()) {
-}
+pub extern "system" fn declare_more_bad(f: dyn FnOnce()) {}
 
 fn make_bad() -> extern "C" fn(Fat<[u8]>) {
     todo!()
