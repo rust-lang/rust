@@ -719,7 +719,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Projection | ty::Inherent => {
                     format!("the associated type `{bound_kind}`")
                 }
-                ty::Free => format!("the type alias `{bound_kind}`"),
+                ty::Unresolved | ty::Free => format!("the type alias `{bound_kind}`"),
                 ty::Opaque => format!("the opaque type `{bound_kind}`"),
             },
         };

@@ -277,6 +277,8 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                 ty::AliasTermKind::ProjectionTy
                 | ty::AliasTermKind::FreeConst
                 | ty::AliasTermKind::FreeTy
+                | ty::AliasTermKind::UnresolvedTy
+                | ty::AliasTermKind::UnresolvedConst
                 | ty::AliasTermKind::InherentTy
                 | ty::AliasTermKind::InherentConst
                 | ty::AliasTermKind::UnevaluatedConst
