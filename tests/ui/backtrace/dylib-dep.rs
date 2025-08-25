@@ -16,7 +16,7 @@
 //@ run-pass
 
 #![allow(improper_ctypes)]
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_c_fn_definitions)]
 
 extern crate dylib_dep_helper;
 extern crate auxiliary;

@@ -3,7 +3,7 @@
 #![crate_type = "cdylib"]
 #![crate_type = "rlib"]
 
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_c_fn_definitions)]
 
 type Pos = (&'static str, u32);
 
