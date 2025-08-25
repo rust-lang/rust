@@ -221,6 +221,8 @@ declare_features! (
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
+    /// Implementation details of externally implementatble items
+    (internal, eii_internals, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the #[rustc_intrinsic] attribute.
@@ -491,6 +493,8 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows features to allow target_feature to better interact with traits.
     (incomplete, effective_target_features, "1.91.0", Some(143352)),
+    /// Externally implementatble items
+    (unstable, extern_item_impls, "CURRENT_RUSTC_VERSION", Some(125418)),
     /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.

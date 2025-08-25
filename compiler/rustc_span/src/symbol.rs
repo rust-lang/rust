@@ -933,6 +933,7 @@ symbols! {
         eii_extern_target,
         eii_impl,
         eii_internals,
+        extern_item_impls,
         eii_shared_macro,
         emit,
         emit_enum,
