@@ -1,5 +1,4 @@
 use rustc_hir::def::DefKind;
-use rustc_hir_analysis::errors::TaitForwardCompat2;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::{
     self, DefiningScopeKind, EarlyBinder, OpaqueHiddenType, OpaqueTypeKey, TypeVisitableExt,
@@ -7,7 +6,7 @@ use rustc_middle::ty::{
 };
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
-    NonDefiningUseReason, opaque_type_has_defining_use_args,
+    NonDefiningUseReason, opaque_type_has_defining_use_args, report_item_does_not_constrain_error,
 };
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
@@ -43,7 +42,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
 enum UsageKind<'tcx> {
     None,
-    NonDefiningUse(OpaqueHiddenType<'tcx>),
+    NonDefiningUse(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>),
     UnconstrainedHiddenType(OpaqueHiddenType<'tcx>),
     HasDefiningUse,
 }
@@ -106,18 +105,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     if let Some(guar) = self.tainted_by_errors() {
                         guar
                     } else {
-                        self.tcx.dcx().emit_err(TaitForwardCompat2 {
-                            span: self
-                                .tcx
-                                .def_ident_span(self.body_id)
-                                .unwrap_or_else(|| self.tcx.def_span(self.body_id)),
-                            opaque_type_span: self.tcx.def_span(def_id),
-                            opaque_type: self.tcx.def_path_str(def_id),
-                        })
+                        report_item_does_not_constrain_error(self.tcx, self.body_id, def_id, None)
                     }
                 }
-                UsageKind::NonDefiningUse(hidden_type) => {
-                    tcx.dcx().span_err(hidden_type.span, "non-defining use in the defining scope")
+                UsageKind::NonDefiningUse(opaque_type_key, hidden_type) => {
+                    report_item_does_not_constrain_error(
+                        self.tcx,
+                        self.body_id,
+                        def_id,
+                        Some((opaque_type_key, hidden_type.span)),
+                    )
                 }
                 UsageKind::UnconstrainedHiddenType(hidden_type) => {
                     let infer_var = hidden_type
@@ -166,7 +163,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     );
                     return UsageKind::HasDefiningUse;
                 }
-                _ => return UsageKind::NonDefiningUse(hidden_type),
+                _ => return UsageKind::NonDefiningUse(opaque_type_key, hidden_type),
             };
         }
 

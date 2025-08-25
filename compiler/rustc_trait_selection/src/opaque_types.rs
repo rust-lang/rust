@@ -4,8 +4,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, TyCtxt, TypeVisitableExt,
-    TypingMode, fold_regions,
+    self, DefiningScopeKind, GenericArgKind, GenericArgs, OpaqueTypeKey, Ty, TyCtxt,
+    TypeVisitableExt, TypingMode, fold_regions,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 
@@ -207,4 +207,28 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         self.canonical_args.set(canonical_args).unwrap();
         canonical_args
     }
+}
+
+pub fn report_item_does_not_constrain_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item_def_id: LocalDefId,
+    def_id: LocalDefId,
+    non_defining_use: Option<(OpaqueTypeKey<'tcx>, Span)>,
+) -> ErrorGuaranteed {
+    let span = tcx.def_ident_span(item_def_id).unwrap_or_else(|| tcx.def_span(item_def_id));
+    let opaque_type_span = tcx.def_span(def_id);
+    let opaque_type_name = tcx.def_path_str(def_id);
+
+    let mut err =
+        tcx.dcx().struct_span_err(span, format!("item does not constrain `{opaque_type_name}`"));
+    err.note("consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`");
+    err.span_note(opaque_type_span, "this opaque type is supposed to be constrained");
+    if let Some((key, span)) = non_defining_use {
+        let opaque_ty = Ty::new_opaque(tcx, key.def_id.into(), key.args);
+        err.span_note(
+            span,
+            format!("this use of `{opaque_ty}` does not have unique universal generic arguments"),
+        );
+    }
+    err.emit()
 }

@@ -4,9 +4,10 @@ use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def, intravi
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, DefiningScopeKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_trait_selection::opaque_types::report_item_does_not_constrain_error;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{TaitForwardCompat2, UnconstrainedOpaqueType};
+use crate::errors::UnconstrainedOpaqueType;
 
 /// Checks "defining uses" of opaque `impl Trait` in associated types.
 /// These can only be defined by associated items of the same trait.
@@ -131,14 +132,7 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
         // type checking the defining scope, so this error is unreachable
         // with the new solver.
         assert!(!self.tcx.next_trait_solver_globally());
-        let guar = self.tcx.dcx().emit_err(TaitForwardCompat2 {
-            span: self
-                .tcx
-                .def_ident_span(item_def_id)
-                .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
-            opaque_type_span: self.tcx.def_span(self.def_id),
-            opaque_type: self.tcx.def_path_str(self.def_id),
-        });
+        let guar = report_item_does_not_constrain_error(self.tcx, item_def_id, self.def_id, None);
         self.insert_found(ty::OpaqueHiddenType::new_error(self.tcx, guar));
     }
 

@@ -42,7 +42,6 @@ use region_ctxt::RegionCtxt;
 /// if there are no `RegionErrors`. If there are region errors, it's likely
 /// that errors here are caused by them and don't need to be handled separately.
 pub(crate) enum DeferredOpaqueTypeError<'tcx> {
-    /// FIXME(-Znext-solver=no): Only used by the old solver.
     InvalidOpaqueTypeArgs(NonDefiningUseReason<'tcx>),
     LifetimeMismatchOpaqueParam(LifetimeMismatchOpaqueParam<'tcx>),
     UnexpectedHiddenRegion {
