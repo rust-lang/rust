@@ -14,7 +14,9 @@ use rustc_span::{DUMMY_SP, Span, Symbol, bug, sym};
 use tracing::debug;
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
-pub(crate) use improper_ctypes::ImproperCTypesLint;
+pub(crate) use improper_ctypes::{
+    IMPROPER_CTYPES, IMPROPER_CTYPES_DEFINITIONS, ImproperCTypesLint,
+};
 
 use crate::diagnostics::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,

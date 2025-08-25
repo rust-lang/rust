@@ -89,7 +89,7 @@
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
 #![no_core]
-#![expect(unused, improper_ctypes_definitions, internal_features)]
+#![allow(unused, internal_features)]
 
 // FIXME: some targets are broken in various ways.
 // Hence there are `cfg` throughout this test to disable parts of it on those targets.
@@ -164,6 +164,7 @@ macro_rules! test_abi_compatible {
             #[rustc_abi(assert_eq)]
             type TestRust = (fn($t1) -> $t1, fn($t2) -> $t2);
             #[rustc_abi(assert_eq)]
+            #[allow(improper_ctypes)]
             type TestC = (extern "C" fn($t1) -> $t1, extern "C" fn($t2) -> $t2);
         }
     };
