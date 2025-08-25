@@ -578,8 +578,11 @@ impl Builder {
         let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        let main =
-            unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + Send + 'static)) };
+        let main = unsafe {
+            let ptr = Box::into_raw(main) as *mut (dyn FnOnce() + Send + '_);
+            let ptr: *mut (dyn FnOnce() + Send + 'static) = crate::mem::transmute(ptr);
+            Box::from_raw(ptr)
+        };
 
         Ok(JoinInner {
             // SAFETY:
