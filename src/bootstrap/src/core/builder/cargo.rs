@@ -132,10 +132,7 @@ impl Cargo {
     }
 
     pub fn into_cmd(self) -> BootstrapCommand {
-        let mut cmd: BootstrapCommand = self.into();
-        // Disable caching for commands originating from Cargo-related operations.
-        cmd.do_not_cache();
-        cmd
+        self.into()
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with

@@ -1581,10 +1581,6 @@ impl Builder<'_> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> BootstrapCommand {
         let mut cmd = command(self.tool_exe(tool));
-
-        // Do not cache tool invocations, as they can have side effects
-        cmd.do_not_cache();
-
         let compiler = self.compiler(0, self.config.host_target);
         let host = &compiler.host;
         // Prepares the `cmd` provided to be able to run the `compiler` provided.
