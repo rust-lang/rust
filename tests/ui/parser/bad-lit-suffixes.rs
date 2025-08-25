@@ -38,6 +38,7 @@ fn g() {}
 
 #[link(name = "string"suffix)]
 //~^ ERROR suffixes on string literals are invalid
+//~| ERROR malformed `link` attribute input
 extern "C" {}
 
 #[rustc_layout_scalar_valid_range_start(0suffix)]

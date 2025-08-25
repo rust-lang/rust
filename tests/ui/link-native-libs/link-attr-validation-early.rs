@@ -1,8 +1,6 @@
 // Top-level ill-formed
-#[link] //~ ERROR valid forms for the attribute are
-        //~| WARN this was previously accepted
-#[link = "foo"] //~ ERROR valid forms for the attribute are
-                //~| WARN this was previously accepted
+#[link] //~ ERROR malformed
+#[link = "foo"] //~ ERROR malformed
 extern "C" {}
 
 fn main() {}
