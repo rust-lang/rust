@@ -33,4 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+# Make distcheck builds faster
+ENV DISTCHECK_CONFIGURE_ARGS "--enable-sccache"
+
 ENV SCRIPT python3 ../x.py test distcheck

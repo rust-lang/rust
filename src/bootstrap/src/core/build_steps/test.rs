@@ -3127,6 +3127,10 @@ impl Step for Distcheck {
         let plain_src_dir = root_dir.join("distcheck-plain-src");
         builder.clear_dir(&plain_src_dir);
 
+        let configure_args: Vec<String> = std::env::var("DISTCHECK_CONFIGURE_ARGS")
+            .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
+            .unwrap_or(vec![]);
+
         command("tar")
             .arg("-xf")
             .arg(plain_src_tarball.tarball())
@@ -3136,7 +3140,7 @@ impl Step for Distcheck {
         command("./configure")
             .arg("--set")
             .arg("rust.omit-git-hash=false")
-            .args(&builder.config.configure_args)
+            .args(&configure_args)
             .arg("--enable-vendor")
             .current_dir(&plain_src_dir)
             .run(builder);
