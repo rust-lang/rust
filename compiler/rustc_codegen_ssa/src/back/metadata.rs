@@ -329,7 +329,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             // Source: https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/079772828bd10933d34121117a222b4cc0ee2200/riscv-elf.adoc
             let mut e_flags: u32 = 0x0;
 
-            // Check if compressed is enabled
+            // Check if compression is enabled
             // `unstable_target_features` is used here because "c" is gated behind riscv_target_feature.
             if sess.unstable_target_features.contains(&sym::c) {
                 e_flags |= elf::EF_RISCV_RVC;
