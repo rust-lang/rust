@@ -621,6 +621,9 @@ impl<'a> InferenceTable<'a> {
     where
         T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
     {
+        let t = self.resolve_with_fallback(t, &|_, _, d, _| d);
+        let t = self.normalize_associated_types_in(t);
+        // Resolve again, because maybe normalization inserted infer vars.
         self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
 
