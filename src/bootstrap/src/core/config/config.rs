@@ -988,6 +988,14 @@ impl Config {
                 eprintln!("ERROR: cannot run clippy on stage 0. Use at least stage 1.");
                 exit!(1);
             }
+            (0, Subcommand::Dist) => {
+                eprintln!("ERROR: cannot dist anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
+            (0, Subcommand::Install) => {
+                eprintln!("ERROR: cannot install anything on stage 0. Use at least stage 1.");
+                exit!(1);
+            }
             _ => {}
         }
 

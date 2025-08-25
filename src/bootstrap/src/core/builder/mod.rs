@@ -22,6 +22,7 @@ use crate::core::build_steps::{
 };
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
@@ -1308,8 +1309,9 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
 
-    pub fn default_doc(&self, paths: &[PathBuf]) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
+    /// Run all default documentation steps to build documentation.
+    pub fn run_default_doc_steps(&self) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1411,6 +1413,8 @@ impl<'a> Builder<'a> {
     /// The standard library will be linked to the sysroot of the passed compiler.
     ///
     /// Prefer using this method rather than manually invoking `Std::new`.
+    ///
+    /// Returns an optional build stamp, if libstd was indeed built.
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1424,7 +1428,7 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
-    pub fn std(&self, compiler: Compiler, target: TargetSelection) {
+    pub fn std(&self, compiler: Compiler, target: TargetSelection) -> Option<BuildStamp> {
         // FIXME: make the `Std` step return some type-level "proof" that std was indeed built,
         // and then require passing that to all Cargo invocations that we do.
 
@@ -1443,10 +1447,11 @@ You have to build a stage1 compiler for `{}` first, and then use it to build a s
 
             // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
             self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
+            None
         } else {
             // This step both compiles the std and links it into the compiler's sysroot.
             // Yes, it's quite magical and side-effecty.. would be nice to refactor later.
-            self.ensure(Std::new(compiler, target));
+            self.ensure(Std::new(compiler, target))
         }
     }
 

@@ -96,10 +96,36 @@ impl Std {
         }
         deps
     }
+
+    /// Returns true if the standard library will be uplifted from stage 1 for the given
+    /// `build_compiler` (which determines the stdlib stage) and `target`.
+    ///
+    /// Uplifting is enabled if we're building a stage2+ libstd, full bootstrap is
+    /// disabled and we have a stage1 libstd already compiled for the given target.
+    pub fn should_be_uplifted_from_stage_1(
+        builder: &Builder<'_>,
+        stage: u32,
+        target: TargetSelection,
+    ) -> bool {
+        stage > 1
+            && !builder.config.full_bootstrap
+            // This estimates if a stage1 libstd exists for the given target. If we're not
+            // cross-compiling, it should definitely exist by the time we're building a stage2
+            // libstd.
+            // Or if we are cross-compiling, and we are building a cross-compiled rustc, then that
+            // rustc needs to link to a cross-compiled libstd, so again we should have a stage1
+            // libstd for the given target prepared.
+            // Even if we guess wrong in the cross-compiled case, the worst that should happen is
+            // that we build a fresh stage1 libstd below, and then we immediately uplift it, so we
+            // don't pay the libstd build cost twice.
+            && (target == builder.host_target || builder.config.hosts.contains(&target))
+    }
 }
 
 impl Step for Std {
-    type Output = ();
+    /// Build stamp of std, if it was indeed built or uplifted.
+    type Output = Option<BuildStamp>;
+
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -136,7 +162,7 @@ impl Step for Std {
     /// This will build the standard library for a particular stage of the build
     /// using the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
 
         // We already have std ready to be used for stage 0.
@@ -144,7 +170,7 @@ impl Step for Std {
             let compiler = self.build_compiler;
             builder.ensure(StdLink::from_std(self, compiler));
 
-            return;
+            return None;
         }
 
         let build_compiler = if builder.download_rustc() && self.force_recompile {
@@ -169,7 +195,7 @@ impl Step for Std {
                 &sysroot,
                 builder.config.ci_rust_std_contents(),
             );
-            return;
+            return None;
         }
 
         if builder.config.keep_stage.contains(&build_compiler.stage)
@@ -185,7 +211,7 @@ impl Step for Std {
             self.copy_extra_objects(builder, &build_compiler, target);
 
             builder.ensure(StdLink::from_std(self, build_compiler));
-            return;
+            return Some(build_stamp::libstd_stamp(builder, build_compiler, target));
         }
 
         let mut target_deps = builder.ensure(StartupObjects { compiler: build_compiler, target });
@@ -193,24 +219,9 @@ impl Step for Std {
         // Stage of the stdlib that we're building
         let stage = build_compiler.stage;
 
-        // If we're building a stage2+ libstd, full bootstrap is
-        // disabled and we have a stage1 libstd already compiled for the given target,
-        // then simply uplift a previously built stage1 library.
-        if build_compiler.stage > 1
-            && !builder.config.full_bootstrap
-            // This estimates if a stage1 libstd exists for the given target. If we're not
-            // cross-compiling, it should definitely exist by the time we're building a stage2
-            // libstd.
-            // Or if we are cross-compiling, and we are building a cross-compiled rustc, then that
-            // rustc needs to link to a cross-compiled libstd, so again we should have a stage1
-            // libstd for the given target prepared.
-            // Even if we guess wrong in the cross-compiled case, the worst that should happen is
-            // that we build a fresh stage1 libstd below, and then we immediately uplift it, so we
-            // don't pay the libstd build cost twice.
-            && (target == builder.host_target || builder.config.hosts.contains(&target))
-        {
+        if Self::should_be_uplifted_from_stage_1(builder, build_compiler.stage, target) {
             let build_compiler_for_std_to_uplift = builder.compiler(1, builder.host_target);
-            builder.std(build_compiler_for_std_to_uplift, target);
+            let stage_1_stamp = builder.std(build_compiler_for_std_to_uplift, target);
 
             let msg = if build_compiler_for_std_to_uplift.host == target {
                 format!(
@@ -231,7 +242,7 @@ impl Step for Std {
             self.copy_extra_objects(builder, &build_compiler, target);
 
             builder.ensure(StdLink::from_std(self, build_compiler_for_std_to_uplift));
-            return;
+            return stage_1_stamp;
         }
 
         target_deps.extend(self.copy_extra_objects(builder, &build_compiler, target));
@@ -284,11 +295,13 @@ impl Step for Std {
             build_compiler,
             target,
         );
+
+        let stamp = build_stamp::libstd_stamp(builder, build_compiler, target);
         run_cargo(
             builder,
             cargo,
             vec![],
-            &build_stamp::libstd_stamp(builder, build_compiler, target),
+            &stamp,
             target_deps,
             self.is_for_mir_opt_tests, // is_check
             false,
@@ -298,6 +311,7 @@ impl Step for Std {
             self,
             builder.compiler(build_compiler.stage, builder.config.host_target),
         ));
+        Some(stamp)
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
