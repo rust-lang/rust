@@ -18,10 +18,6 @@
 #![no_std]
 #![allow(unused_features)]
 #![allow(internal_features)]
-// We use `u128` in a whole bunch of places which we currently agree with the
-// compiler on ABIs and such, so we should be "good enough" for now and changes
-// to the `u128` ABI will be reflected here.
-#![allow(improper_ctypes, improper_ctypes_definitions)]
 // `mem::swap` cannot be used because it may generate references to memcpy in unoptimized code.
 #![allow(clippy::manual_swap)]
 // Support compiling on both stage0 and stage1 which may differ in supported stable features.

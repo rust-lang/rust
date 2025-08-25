@@ -30,6 +30,11 @@ static GROUP_DESCRIPTIONS: &[(&str, &str)] = &[
         "unknown-or-malformed-diagnostic-attributes",
         "detects unknown or malformed diagnostic attributes",
     ),
+    ("improper-c-boundaries", "Lints for points where rust code interacts with non-rust code"),
+    (
+        "improper-ctypes-definitions",
+        "Former lint that was since split intoimproper-c-fn-definitions and improper-c-callbacks",
+    ),
 ];
 
 type LintGroups = BTreeMap<String, BTreeSet<String>>;

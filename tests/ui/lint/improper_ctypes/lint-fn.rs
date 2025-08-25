@@ -1,5 +1,5 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_c_fn_definitions, improper_c_callbacks)]
 
 use std::default::Default;
 use std::marker::PhantomData;
@@ -149,7 +149,7 @@ pub extern "C" fn good16(p: TransparentUnit<ZeroSize>) { }
 
 pub extern "C" fn good17(p: TransparentCustomZst) { }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn good18(_: &String) { }
 
 pub extern "C" fn good_i128_type(p: i128) { }

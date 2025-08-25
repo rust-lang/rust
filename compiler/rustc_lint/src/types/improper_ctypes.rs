@@ -70,10 +70,17 @@ fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
     !matches!(variant.ctor_kind(), Some(CtorKind::Const))
 }
 
-#[derive(Clone, Copy)]
+/// A way to keep track of what we want to lint for FFI-safety.
+/// In other words, the nature of the "original item" being checked, and its relation
+/// to FFI boundaries.
+#[derive(Clone, Copy, Debug)]
 enum CItemKind {
-    Declaration,
-    Definition,
+    /// Imported items in an `extern "C"` block (function declarations, static variables) -> IMPROPER_CTYPES
+    ImportedExtern,
+    /// `extern "C"` function definitions, to be used elsewhere -> IMPROPER_C_FN_DEFINITIONS,
+    ExportedFunction,
+    /// `extern "C"` function pointers -> IMPROPER_C_CALLBACKS,
+    Callback,
 }
 
 #[derive(Clone, Debug)]
@@ -301,16 +308,22 @@ impl VisitorState {
     /// Get the proper visitor state for a given function's arguments.
     fn argument_from_fnmode(fn_mode: CItemKind) -> Self {
         match fn_mode {
-            CItemKind::Definition => VisitorState::ArgumentTyInDefinition,
-            CItemKind::Declaration => VisitorState::ArgumentTyInDeclaration,
+            CItemKind::ExportedFunction => VisitorState::ArgumentTyInDefinition,
+            CItemKind::ImportedExtern => VisitorState::ArgumentTyInDeclaration,
+            // we could also deal with CItemKind::Callback,
+            // but we bake an assumption from this function's call sites here.
+            _ => bug!("cannot be called with CItemKind::{:?}", fn_mode),
         }
     }
 
     /// Get the proper visitor state for a given function's return type.
     fn return_from_fnmode(fn_mode: CItemKind) -> Self {
         match fn_mode {
-            CItemKind::Definition => VisitorState::ReturnTyInDefinition,
-            CItemKind::Declaration => VisitorState::ReturnTyInDeclaration,
+            CItemKind::ExportedFunction => VisitorState::ReturnTyInDefinition,
+            CItemKind::ImportedExtern => VisitorState::ReturnTyInDeclaration,
+            // we could also deal with CItemKind::Callback,
+            // but we bake an assumption from this function's call sites here.
+            _ => bug!("cannot be called with CItemKind::{:?}", fn_mode),
         }
     }
 
@@ -440,7 +453,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             IndirectionType::Box => {
                 // TODO: this logic is broken, but it still fits the current tests
                 if state.is_in_defined_function()
-                    || (state.is_in_fnptr() && matches!(self.base_fn_mode, CItemKind::Definition))
+                    || (state.is_in_fnptr()
+                        && matches!(self.base_fn_mode, CItemKind::ExportedFunction))
                 {
                     if inner_ty.is_sized(tcx, self.cx.typing_env()) {
                         return FfiSafe;
@@ -981,7 +995,7 @@ impl<'tcx> ImproperCTypesLint {
             // TODO: make a check_for_fnptr
             let ffi_res = visitor.check_for_type(state, fn_ptr_ty);
 
-            self.process_ffi_result(cx, span, ffi_res, fn_mode)
+            self.process_ffi_result(cx, span, ffi_res, CItemKind::Callback)
         });
     }
 
@@ -1027,9 +1041,9 @@ impl<'tcx> ImproperCTypesLint {
 
     fn check_foreign_static(&self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
-        let visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
+        let visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::ImportedExtern);
         let ffi_res = visitor.check_for_type(VisitorState::StaticTy, ty);
-        self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
 
     /// Check if a function's argument types and result type are "ffi-safe".
@@ -1044,16 +1058,16 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let state = VisitorState::argument_from_fnmode(fn_mode);
+            let visit_state = VisitorState::argument_from_fnmode(fn_mode);
             let visitor = ImproperCTypesVisitor::new(cx, *input_ty, fn_mode);
-            let ffi_res = visitor.check_for_type(state, *input_ty);
+            let ffi_res = visitor.check_for_type(visit_state, *input_ty);
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let state = VisitorState::return_from_fnmode(fn_mode);
+            let visit_state = VisitorState::return_from_fnmode(fn_mode);
             let visitor = ImproperCTypesVisitor::new(cx, sig.output(), fn_mode);
-            let ffi_res = visitor.check_for_type(state, sig.output());
+            let ffi_res = visitor.check_for_type(visit_state, sig.output());
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
         }
     }
@@ -1130,12 +1144,14 @@ impl<'tcx> ImproperCTypesLint {
         fn_mode: CItemKind,
     ) {
         let lint = match fn_mode {
-            CItemKind::Declaration => IMPROPER_CTYPES,
-            CItemKind::Definition => IMPROPER_CTYPES_DEFINITIONS,
+            CItemKind::ImportedExtern => IMPROPER_CTYPES,
+            CItemKind::ExportedFunction => IMPROPER_C_FN_DEFINITIONS,
+            CItemKind::Callback => IMPROPER_C_CALLBACKS,
         };
         let desc = match fn_mode {
-            CItemKind::Declaration => "block",
-            CItemKind::Definition => "fn",
+            CItemKind::ImportedExtern => "`extern` block",
+            CItemKind::ExportedFunction => "`extern` fn",
+            CItemKind::Callback => "`extern` callback",
         };
         for reason in reasons.iter_mut() {
             reason.span_note = if let ty::Adt(def, _) = reason.ty.kind()
@@ -1151,13 +1167,21 @@ impl<'tcx> ImproperCTypesLint {
     }
 }
 
-/// `ImproperCTypesDefinitions` checks items outside of foreign items (e.g. stuff that isn't in
-/// `extern "C" { }` blocks):
+/// IMPROPER_CTYPES checks items that are part of a header to a non-rust library
+/// Namely, functions and static variables in `extern "<abi>" { }`,
+/// if `<abi>` is external (e.g. "C").
 ///
-/// - `extern "<abi>" fn` definitions are checked in the same way as the
-///   `ImproperCtypesDeclarations` visitor checks functions if `<abi>` is external (e.g. "C").
-/// - All other items which contain types (e.g. other functions, struct definitions, etc) are
-///   checked for extern fn-ptrs with external ABIs.
+/// `IMPROPER_C_CALLBACKS` checks for function pointers marked with an external ABI.
+/// (fields of type `extern "<abi>" fn`, where e.g. `<abi>` is `C`)
+/// These pointers are searched in all other items which contain types
+/// (e.g.functions, struct definitions, etc)
+///
+/// `IMPROPER_C_FN_DEFINITIONS` checks rust-defined functions that are marked
+/// to be used from the other side of a FFI boundary.
+/// In other words, `extern "<abi>" fn` definitions and trait-method declarations.
+/// This only matters if `<abi>` is external (e.g. `C`).
+///
+/// and now combinatorics for pointees
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_foreign_item(&mut self, cx: &LateContext<'tcx>, it: &hir::ForeignItem<'tcx>) {
         let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
@@ -1168,11 +1192,16 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                 // "the element rendered unsafe" because their unsafety doesn't affect
                 // their surroundings, and their type is often declared inline
                 if !abi.is_rustic_abi() {
-                    self.check_foreign_fn(cx, CItemKind::Declaration, it.owner_id.def_id, sig.decl);
+                    self.check_foreign_fn(
+                        cx,
+                        CItemKind::ImportedExtern,
+                        it.owner_id.def_id,
+                        sig.decl,
+                    );
                 } else {
                     self.check_fn_for_external_abi_fnptr(
                         cx,
-                        CItemKind::Declaration,
+                        CItemKind::ImportedExtern,
                         it.owner_id.def_id,
                         sig.decl,
                     );
@@ -1195,7 +1224,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     VisitorState::StaticTy,
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
-                    CItemKind::Definition,
+                    CItemKind::ExportedFunction, // TODO: for some reason, this is the value that reproduces old behaviour
                 );
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
@@ -1229,7 +1258,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             VisitorState::StaticTy,
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity(),
-            CItemKind::Definition,
+            CItemKind::ImportedExtern,
         );
     }
 
@@ -1254,9 +1283,9 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         // "the element rendered unsafe" because their unsafety doesn't affect
         // their surroundings, and their type is often declared inline
         if !abi.is_rustic_abi() {
-            self.check_foreign_fn(cx, CItemKind::Definition, id, decl);
+            self.check_foreign_fn(cx, CItemKind::ExportedFunction, id, decl);
         } else {
-            self.check_fn_for_external_abi_fnptr(cx, CItemKind::Definition, id, decl);
+            self.check_fn_for_external_abi_fnptr(cx, CItemKind::ExportedFunction, id, decl);
         }
     }
 }
@@ -1264,12 +1293,14 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
 declare_lint! {
     /// The `improper_ctypes` lint detects incorrect use of types in foreign
     /// modules.
+    /// (In other words, declarations of items defined in foreign code.)
     ///
     /// ### Example
     ///
     /// ```rust
     /// unsafe extern "C" {
     ///     static STATIC: String;
+    ///     fn some_func(a:String);
     /// }
     /// ```
     ///
@@ -1283,14 +1314,15 @@ declare_lint! {
     /// detects a probable mistake in a definition. The lint usually should
     /// provide a description of the issue, along with possibly a hint on how
     /// to resolve it.
-    IMPROPER_CTYPES,
+    pub(crate) IMPROPER_CTYPES,
     Warn,
     "proper use of libc types in foreign modules"
 }
 
 declare_lint! {
-    /// The `improper_ctypes_definitions` lint detects incorrect use of
+    /// The `improper_c_fn_definitions` lint detects incorrect use of
     /// [`extern` function] definitions.
+    /// (In other words, functions to be used by foreign code.)
     ///
     /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
     ///
@@ -1310,9 +1342,37 @@ declare_lint! {
     /// lint is an alert that these types should not be used. The lint usually
     /// should provide a description of the issue, along with possibly a hint
     /// on how to resolve it.
-    IMPROPER_CTYPES_DEFINITIONS,
+    pub(crate) IMPROPER_C_FN_DEFINITIONS,
     Warn,
     "proper use of libc types in foreign item definitions"
+}
+
+declare_lint! {
+    /// The `improper_c_callbacks` lint detects incorrect use of
+    /// [`extern` function] pointers.
+    /// (In other words, function signatures for callbacks.)
+    ///
+    /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![allow(unused)]
+    /// pub fn str_emmiter(call_me_back: extern "C" fn(&str)) { }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// There are many parameter and return types that may be specified in an
+    /// `extern` function that are not compatible with the given ABI. This
+    /// lint is an alert that these types should not be used. The lint usually
+    /// should provide a description of the issue, along with possibly a hint
+    /// on how to resolve it.
+    pub(crate) IMPROPER_C_CALLBACKS,
+    Warn,
+    "proper use of libc types in foreign-code-compatible callbacks"
 }
 
 declare_lint! {
@@ -1372,6 +1432,7 @@ declare_lint! {
 
 declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
-    IMPROPER_CTYPES_DEFINITIONS,
-    USES_POWER_ALIGNMENT
+    IMPROPER_C_FN_DEFINITIONS,
+    IMPROPER_C_CALLBACKS,
+    USES_POWER_ALIGNMENT,
 ]);
