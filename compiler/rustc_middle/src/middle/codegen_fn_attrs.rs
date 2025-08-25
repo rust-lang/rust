@@ -2,7 +2,6 @@ use std::borrow::Cow;
 
 use rustc_abi::Align;
 use rustc_hir::attrs::{InlineAttr, InstructionSetAttr, Linkage, OptimizeAttr};
-use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -161,6 +160,8 @@ bitflags::bitflags! {
         const ALLOCATOR_ZEROED          = 1 << 14;
         /// `#[no_builtins]`: indicates that disable implicit builtin knowledge of functions for the function.
         const NO_BUILTINS               = 1 << 15;
+        /// Marks foreign items, to make `contains_extern_indicator` cheaper.
+        const FOREIGN_ITEM              = 1 << 16;
     }
 }
 rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
@@ -194,8 +195,8 @@ impl CodegenFnAttrs {
     /// * `#[linkage]` is present
     ///
     /// Keep this in sync with the logic for the unused_attributes for `#[inline]` lint.
-    pub fn contains_extern_indicator(&self, tcx: TyCtxt<'_>, did: DefId) -> bool {
-        if tcx.is_foreign_item(did) {
+    pub fn contains_extern_indicator(&self) -> bool {
+        if self.flags.contains(CodegenFnAttrFlags::FOREIGN_ITEM) {
             return false;
         }
 

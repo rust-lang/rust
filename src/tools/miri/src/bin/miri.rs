@@ -279,7 +279,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                                 return None;
                             }
                             let codegen_fn_attrs = tcx.codegen_fn_attrs(local_def_id);
-                            if codegen_fn_attrs.contains_extern_indicator(tcx, local_def_id.into())
+                            if codegen_fn_attrs.contains_extern_indicator()
                                 || codegen_fn_attrs
                                     .flags
                                     .contains(CodegenFnAttrFlags::USED_COMPILER)
