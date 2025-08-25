@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
@@ -1540,6 +1542,48 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
         diag.primary_message(fluent::lint_drop_glue);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
+}
+
+// transmute.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_int_to_ptr_transmutes)]
+#[note]
+#[note(lint_note_exposed_provenance)]
+#[help(lint_suggestion_without_provenance_mut)]
+#[help(lint_help_transmute)]
+#[help(lint_help_exposed_provenance)]
+pub(crate) struct IntegerToPtrTransmutes<'tcx> {
+    #[subdiagnostic]
+    pub suggestion: IntegerToPtrTransmutesSuggestion<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToPtr {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        start_call: Span,
+    },
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToRef {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        ref_mutbl: &'static str,
+        #[suggestion_part(
+            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+        )]
+        start_call: Span,
+    },
 }
 
 // types.rs

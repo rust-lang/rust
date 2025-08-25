@@ -1,0 +1,287 @@
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:8:15
+   |
+LL | fn elided(_: &impl Copy + 'a) -> _ { x }
+   |               ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn elided(_: &(impl Copy + 'a)) -> _ { x }
+   |               +              +
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:13:24
+   |
+LL | fn explicit<'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |                        ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn explicit<'b>(_: &'a (impl Copy + 'a)) -> impl 'a { x }
+   |                        +              +
+
+error: expected identifier, found keyword `impl`
+  --> $DIR/ty-variance-issue-124423.rs:20:13
+   |
+LL | fn elided2( impl 'b) -> impl 'a + 'a { x }
+   |             ^^^^ expected identifier, found keyword
+
+error: expected one of `:` or `|`, found `'b`
+  --> $DIR/ty-variance-issue-124423.rs:20:18
+   |
+LL | fn elided2( impl 'b) -> impl 'a + 'a { x }
+   |                  ^^ expected one of `:` or `|`
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:27:25
+   |
+LL | fn explicit2<'a>(_: &'a impl Copy + 'a) -> impl Copy + 'a { x }
+   |                         ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn explicit2<'a>(_: &'a (impl Copy + 'a)) -> impl Copy + 'a { x }
+   |                         +              +
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:30:16
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |                ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn foo<'a>(_: &(impl Copy + 'a)) -> impl 'b + 'a { x }
+   |                +              +
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:35:16
+   |
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn elided3(_: &(impl Copy + 'a)) -> Box<dyn 'a> { Box::new(x) }
+   |                +              +
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:41:17
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                 ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn x<'b>(_: &'a (impl Copy + 'a)) -> Box<dyn 'b> { Box::u32(x) }
+   |                 +              +
+
+error: ambiguous `+` in a type
+  --> $DIR/ty-variance-issue-124423.rs:48:16
+   |
+LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
+   |                ^^^^^^^^^^^^^^
+   |
+help: try adding parentheses
+   |
+LL | fn elided4(_: &(impl Copy + 'a)) ->  new  { x(x) }
+   |                +              +
+
+error: at least one trait must be specified
+  --> $DIR/ty-variance-issue-124423.rs:13:43
+   |
+LL | fn explicit<'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |                                           ^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/ty-variance-issue-124423.rs:20:25
+   |
+LL | fn elided2( impl 'b) -> impl 'a + 'a { x }
+   |                         ^^^^^^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/ty-variance-issue-124423.rs:30:35
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |                                   ^^^^^^^^^^^^
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:8:27
+   |
+LL | fn elided(_: &impl Copy + 'a) -> _ { x }
+   |                           ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided<'a>(_: &impl Copy + 'a) -> _ { x }
+   |          ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:13:21
+   |
+LL | fn explicit<'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn explicit<'a, 'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |             +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:13:36
+   |
+LL | fn explicit<'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |                                    ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn explicit<'a, 'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |             +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:13:48
+   |
+LL | fn explicit<'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |                                                ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn explicit<'a, 'b>(_: &'a impl Copy + 'a) -> impl 'a { x }
+   |             +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:20:30
+   |
+LL | fn elided2( impl 'b) -> impl 'a + 'a { x }
+   |                              ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided2<'a>( impl 'b) -> impl 'a + 'a { x }
+   |           ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:20:35
+   |
+LL | fn elided2( impl 'b) -> impl 'a + 'a { x }
+   |                                   ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided2<'a>( impl 'b) -> impl 'a + 'a { x }
+   |           ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/ty-variance-issue-124423.rs:30:40
+   |
+LL | fn foo<'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |                                        ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'b` here
+   |
+LL | fn foo<'b, 'a>(_: &impl Copy + 'a) -> impl 'b + 'a { x }
+   |        +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:35:28
+   |
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided3<'a>(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |           ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:35:43
+   |
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                                           ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided3<'a>(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |           ++++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:41:14
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |              ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn x<'a, 'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:41:29
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                             ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn x<'a, 'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |      +++
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/ty-variance-issue-124423.rs:48:28
+   |
+LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
+   |                            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn elided4<'a>(_: &impl Copy + 'a) ->  new  { x(x) }
+   |           ++++
+
+error[E0412]: cannot find type `new` in this scope
+  --> $DIR/ty-variance-issue-124423.rs:48:36
+   |
+LL | fn elided4(_: &impl Copy + 'a) ->  new  { x(x) }
+   |                                    ^^^ not found in this scope
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/ty-variance-issue-124423.rs:35:39
+   |
+LL | fn elided3(_: &impl Copy + 'a) -> Box<dyn 'a> { Box::new(x) }
+   |                                       ^^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/ty-variance-issue-124423.rs:41:40
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                                        ^^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/ty-variance-issue-124423.rs:55:40
+   |
+LL | impl<'a> LifetimeTrait<'a> for &'a Box<dyn 'a> {}
+   |                                        ^^^^^^
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/ty-variance-issue-124423.rs:8:34
+   |
+LL | fn elided(_: &impl Copy + 'a) -> _ { x }
+   |                                  ^ not allowed in type signatures
+
+error[E0599]: no function or associated item named `u32` found for struct `Box<_, _>` in the current scope
+  --> $DIR/ty-variance-issue-124423.rs:41:55
+   |
+LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
+   |                                                       ^^^ function or associated item not found in `Box<_, _>`
+   |
+note: if you're trying to build a new `Box<_, _>` consider using one of the following associated functions:
+      Box::<T>::new
+      Box::<T>::new_uninit
+      Box::<T>::new_zeroed
+      Box::<T>::try_new
+      and 22 others
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
+error: aborting due to 30 previous errors
+
+Some errors have detailed explanations: E0121, E0224, E0261, E0412, E0599.
+For more information about an error, try `rustc --explain E0121`.

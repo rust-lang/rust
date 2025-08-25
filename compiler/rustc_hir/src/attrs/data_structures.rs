@@ -367,6 +367,9 @@ pub enum AttributeKind {
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
 
+    /// Represents `#[crate_name = ...]`
+    CrateName { name: Symbol, name_span: Span, attr_span: Span, style: AttrStyle },
+
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 

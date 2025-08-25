@@ -51,6 +51,27 @@ impl<'sess> AttributeParser<'sess, Early> {
         target_node_id: NodeId,
         features: Option<&'sess Features>,
     ) -> Option<Attribute> {
+        Self::parse_limited_should_emit(
+            sess,
+            attrs,
+            sym,
+            target_span,
+            target_node_id,
+            features,
+            ShouldEmit::Nothing,
+        )
+    }
+
+    /// Usually you want `parse_limited`, which defaults to no errors.
+    pub fn parse_limited_should_emit(
+        sess: &'sess Session,
+        attrs: &[ast::Attribute],
+        sym: Symbol,
+        target_span: Span,
+        target_node_id: NodeId,
+        features: Option<&'sess Features>,
+        should_emit: ShouldEmit,
+    ) -> Option<Attribute> {
         let mut parsed = Self::parse_limited_all(
             sess,
             attrs,
@@ -59,7 +80,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             target_span,
             target_node_id,
             features,
-            ShouldEmit::Nothing,
+            should_emit,
         );
         assert!(parsed.len() <= 1);
         parsed.pop()
@@ -84,9 +105,8 @@ impl<'sess> AttributeParser<'sess, Early> {
             target,
             OmitDoc::Skip,
             std::convert::identity,
-            |_lint| {
-                // FIXME: Can't emit lints here for now
-                // This branch can be hit when an attribute produces a warning during early parsing (such as attributes on macro calls)
+            |lint| {
+                crate::lints::emit_attribute_lint(&lint, sess);
             },
         )
     }
@@ -121,8 +141,8 @@ impl<'sess> AttributeParser<'sess, Early> {
                 cx: &mut parser,
                 target_span,
                 target_id: target_node_id,
-                emit_lint: &mut |_lint| {
-                    panic!("can't emit lints here for now (nothing uses this atm)");
+                emit_lint: &mut |lint| {
+                    crate::lints::emit_attribute_lint(&lint, sess);
                 },
             },
             attr_span: attr.span,
@@ -252,7 +272,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
 
                             (accept.accept_fn)(&mut cx, args);
 
-                            if self.stage.should_emit().should_emit() {
+                            if !matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
                                 self.check_target(
                                     path.get_attribute_path(),
                                     attr.span,
