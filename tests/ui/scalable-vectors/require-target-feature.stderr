@@ -11,7 +11,7 @@ note: the type is defined here
    |
 LL | pub struct svint32_t(i32);
    | ^^^^^^^^^^^^^^^^^^^^
-   = note: `#[warn(improper_ctypes)]` on by default
+   = note: `#[warn(improper_ctypes)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 error: this function definition requires the `sve` target feature, which is not enabled
   --> $DIR/require-target-feature.rs:36:1

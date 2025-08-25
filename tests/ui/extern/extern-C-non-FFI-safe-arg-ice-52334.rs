@@ -7,7 +7,7 @@
 #![allow(function_casts_as_integer)]
 
 type Foo = extern "C" fn(::std::ffi::CStr);
-//~^ WARN `extern` fn uses type
+//~^ WARN `extern` callback uses type
 extern "C" {
     fn meh(blah: Foo);
     //~^ WARN `extern` block uses type
