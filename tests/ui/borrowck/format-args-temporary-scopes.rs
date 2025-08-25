@@ -17,4 +17,5 @@ fn main() {
     // arguments when provided with two or more arguments. This caused the result of `temp()` to
     // outlive the result of the block, making this compile.
     println!("{:?}{:?}", { &temp() }, ());
+    //[e2024]~^ ERROR: temporary value dropped while borrowed [E0716]
 }

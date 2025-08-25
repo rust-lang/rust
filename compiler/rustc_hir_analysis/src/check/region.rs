@@ -467,6 +467,7 @@ fn resolve_local<'tcx>(
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
 
+    let mut extend_initializer = true;
     if let_kind == LetKind::Super {
         if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
             // This expression was lifetime-extended by a parent let binding. E.g.
@@ -497,10 +498,17 @@ fn resolve_local<'tcx>(
                 }
                 visitor.cx.var_parent = parent;
             }
+            // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
+            // the initializer when this `super let` is not itself extended by a parent `let`
+            // (#145784). Block tail expressions are temporary drop scopes in Editions 2024 and
+            // later, their temps shouldn't outlive the block in e.g. `f(pin!({ &temp() }))`.
+            extend_initializer = false;
         }
     }
 
-    if let Some(expr) = init {
+    if let Some(expr) = init
+        && extend_initializer
+    {
         record_rvalue_scope_if_borrow_expr(visitor, expr, visitor.cx.var_parent);
 
         if let Some(pat) = pat {

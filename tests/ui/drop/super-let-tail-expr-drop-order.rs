@@ -45,10 +45,10 @@ fn main() {
         #[cfg(e2024)]
         (
             pin!((
-                pin!({ &o.log(3) as *const LogDrop<'_> }),
-                drop(o.log(1)),
+                pin!({ &o.log(1) as *const LogDrop<'_> }),
+                drop(o.log(2)),
             )),
-            drop(o.log(2)),
+            drop(o.log(3)),
         );
     });
 
@@ -69,12 +69,12 @@ fn main() {
         (
             {
                 super let _ = {
-                    super let _ = { &o.log(4) as *const LogDrop<'_> };
-                    drop(o.log(1))
+                    super let _ = { &o.log(1) as *const LogDrop<'_> };
+                    drop(o.log(2))
                 };
-                drop(o.log(2))
+                drop(o.log(3))
             },
-            drop(o.log(3)),
+            drop(o.log(4)),
         );
     });
 
