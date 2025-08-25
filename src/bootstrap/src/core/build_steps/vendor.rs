@@ -19,6 +19,7 @@ pub const VENDOR_DIR: &str = "vendor";
 pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'static str>)> {
     [
         ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
+        ("src/tools/clippy/clippy_test_deps/Cargo.toml", vec![]),
         ("src/tools/rust-analyzer/Cargo.toml", vec![]),
         ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
         ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
