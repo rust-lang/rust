@@ -40,30 +40,15 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
 /// An ordered map based on a [B-Tree].
 ///
-/// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
-/// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
-/// choice for a sorted map, as a perfectly balanced BST performs the theoretical minimum amount of
-/// comparisons necessary to find an element (log<sub>2</sub>n). However, in practice the way this
-/// is done is *very* inefficient for modern computer architectures. In particular, every element
-/// is stored in its own individually heap-allocated node. This means that every single insertion
-/// triggers a heap-allocation, and every single comparison should be a cache-miss. Since these
-/// are both notably expensive things to do in practice, we are forced to, at the very least,
-/// reconsider the BST strategy.
+/// Given a key type with a [total order], an ordered map stores its entries in key order.
+/// That means that keys must be of a type that implements the [`Ord`] trait,
+/// such that two keys can always be compared to determine their [`Ordering`].
+/// Examples of keys with a total order are strings with lexicographical order,
+/// and numbers with their natural order.
 ///
-/// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
-/// this, we reduce the number of allocations by a factor of B, and improve cache efficiency in
-/// searches. However, this does mean that searches will have to do *more* comparisons on average.
-/// The precise number of comparisons depends on the node search strategy used. For optimal cache
-/// efficiency, one could search the nodes linearly. For optimal comparisons, one could search
-/// the node using binary search. As a compromise, one could also perform a linear search
-/// that initially only checks every i<sup>th</sup> element for some choice of i.
-///
-/// Currently, our implementation simply performs naive linear search. This provides excellent
-/// performance on *small* nodes of elements which are cheap to compare. However in the future we
-/// would like to further explore choosing the optimal search strategy based on the choice of B,
-/// and possibly other factors. Using linear search, searching for a random element is expected
-/// to take B * log(n) comparisons, which is generally worse than a BST. In practice,
-/// however, performance is excellent.
+/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::into_iter`], [`BTreeMap::values`], or
+/// [`BTreeMap::keys`] produce their items in key order, and take worst-case logarithmic and
+/// amortized constant time per item returned.
 ///
 /// It is a logic error for a key to be modified in such a way that the key's ordering relative to
 /// any other key, as determined by the [`Ord`] trait, changes while it is in the map. This is
@@ -71,14 +56,6 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// The behavior resulting from such a logic error is not specified, but will be encapsulated to the
 /// `BTreeMap` that observed the logic error and not result in undefined behavior. This could
 /// include panics, incorrect results, aborts, memory leaks, and non-termination.
-///
-/// Iterators obtained from functions such as [`BTreeMap::iter`], [`BTreeMap::into_iter`], [`BTreeMap::values`], or
-/// [`BTreeMap::keys`] produce their items in order by key, and take worst-case logarithmic and
-/// amortized constant time per item returned.
-///
-/// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
-/// [`Cell`]: core::cell::Cell
-/// [`RefCell`]: core::cell::RefCell
 ///
 /// # Examples
 ///
@@ -169,6 +146,43 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// // modify an entry before an insert with in-place mutation
 /// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
+///
+/// # Background
+///
+/// A B-tree is (like) a [binary search tree], but adapted to the natural granularity that modern
+/// machines like to consume data at. This means that each node contains an entire array of elements,
+/// instead of just a single element.
+///
+/// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
+/// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
+/// choice for a sorted map, as a perfectly balanced BST performs the theoretical minimum number of
+/// comparisons necessary to find an element (log<sub>2</sub>n). However, in practice the way this
+/// is done is *very* inefficient for modern computer architectures. In particular, every element
+/// is stored in its own individually heap-allocated node. This means that every single insertion
+/// triggers a heap-allocation, and every comparison is a potential cache-miss due to the indirection.
+/// Since both heap-allocations and cache-misses are notably expensive in practice, we are forced to,
+/// at the very least, reconsider the BST strategy.
+///
+/// A B-Tree instead makes each node contain B-1 to 2B-1 elements in a contiguous array. By doing
+/// this, we reduce the number of allocations by a factor of B, and improve cache efficiency in
+/// searches. However, this does mean that searches will have to do *more* comparisons on average.
+/// The precise number of comparisons depends on the node search strategy used. For optimal cache
+/// efficiency, one could search the nodes linearly. For optimal comparisons, one could search
+/// the node using binary search. As a compromise, one could also perform a linear search
+/// that initially only checks every i<sup>th</sup> element for some choice of i.
+///
+/// Currently, our implementation simply performs naive linear search. This provides excellent
+/// performance on *small* nodes of elements which are cheap to compare. However in the future we
+/// would like to further explore choosing the optimal search strategy based on the choice of B,
+/// and possibly other factors. Using linear search, searching for a random element is expected
+/// to take B * log(n) comparisons, which is generally worse than a BST. In practice,
+/// however, performance is excellent.
+///
+/// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
+/// [binary search tree]: https://en.wikipedia.org/wiki/Binary_search_tree
+/// [total order]: https://en.wikipedia.org/wiki/Total_order
+/// [`Cell`]: core::cell::Cell
+/// [`RefCell`]: core::cell::RefCell
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "BTreeMap")]
 #[rustc_insignificant_dtor]

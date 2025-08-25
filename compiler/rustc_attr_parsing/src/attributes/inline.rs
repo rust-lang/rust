@@ -25,6 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
         Warn(Target::MacroDef),
         Warn(Target::Arm),
         Warn(Target::AssocConst),
+        Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word,

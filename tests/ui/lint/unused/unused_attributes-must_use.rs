@@ -65,7 +65,7 @@ extern "Rust" {
     fn foreign_foo() -> i64;
 }
 
-#[must_use] //~ ERROR unused attribute
+#[must_use]
 //~^ ERROR `#[must_use]` attribute cannot be used on macro calls
 //~| WARN this was previously accepted by the compiler but is being phased out
 global_asm!("");

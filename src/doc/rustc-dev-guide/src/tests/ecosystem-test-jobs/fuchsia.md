@@ -18,12 +18,8 @@ Fuchsia builds as part of the suite of bors tests that run before a pull request
 is merged.
 
 If you are worried that a pull request might break the Fuchsia builder and want
-to test it out before submitting it to the bors queue, simply add this line to
-your PR description:
-
-> try-job: x86_64-fuchsia
-
-Then when you `@bors try` it will pick the job that builds Fuchsia.
+to test it out before submitting it to the bors queue, simply ask bors to run
+the try job that builds the Fuchsia integration: `@bors try jobs=x86_64-fuchsia`.
 
 ## Building Fuchsia locally
 
