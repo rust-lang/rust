@@ -1,6 +1,3 @@
-use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
-
-use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
@@ -12,9 +9,12 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(errno: i32) -> String {
-    if errno == RESULT_SUCCESS {
+    use fortanix_sgx_abi as abi;
+
+    if errno == abi::RESULT_SUCCESS {
         "operation successful".into()
-    } else if ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&errno) {
+    } else if ((abi::Error::UserRangeStart as _)..=(abi::Error::UserRangeEnd as _)).contains(&errno)
+    {
         format!("user-specified error {errno:08x}")
     } else {
         decode_error_kind(errno).as_str().into()
@@ -59,12 +59,7 @@ impl fmt::Display for JoinPathsError {
     }
 }
 
-impl StdError for JoinPathsError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "not supported in SGX yet"
-    }
-}
+impl crate::error::Error for JoinPathsError {}
 
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
