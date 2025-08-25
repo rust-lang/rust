@@ -202,6 +202,21 @@ LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    | |                                       expected an integer literal here
    | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
 
-error: aborting due to 23 previous errors; 2 warnings emitted
+error: suffixes on string literals are invalid
+  --> $DIR/bad-lit-suffixes.rs:50:25
+   |
+LL |     #[rustc_confusables("blah"suffix)]
+   |                         ^^^^^^^^^^^^ invalid suffix `suffix`
+
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/bad-lit-suffixes.rs:50:5
+   |
+LL |     #[rustc_confusables("blah"suffix)]
+   |     ^^^^^^^^^^^^^^^^^^^^------------^^
+   |     |                   |
+   |     |                   expected a string literal here
+   |     help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+
+error: aborting due to 25 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0539`.
