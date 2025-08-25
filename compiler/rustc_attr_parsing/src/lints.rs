@@ -41,8 +41,14 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
             .emit_node_span_lint(
                 // This check is here because `deprecated` had its own lint group and removing this would be a breaking change
                 if name.segments[0].name == sym::deprecated
-                    && ![Target::Closure, Target::Expression, Target::Statement, Target::Arm]
-                        .contains(target)
+                    && ![
+                        Target::Closure,
+                        Target::Expression,
+                        Target::Statement,
+                        Target::Arm,
+                        Target::MacroCall,
+                    ]
+                    .contains(target)
                 {
                     rustc_session::lint::builtin::USELESS_DEPRECATED
                 } else {

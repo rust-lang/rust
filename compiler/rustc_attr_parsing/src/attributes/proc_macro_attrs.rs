@@ -1,11 +1,13 @@
 use super::prelude::*;
 
+const PROC_MACRO_ALLOWED_TARGETS: AllowedTargets =
+    AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate), Warn(Target::MacroCall)]);
+
 pub(crate) struct ProcMacroParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
 }
 
@@ -13,8 +15,7 @@ pub(crate) struct ProcMacroAttributeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
 }
 
@@ -23,8 +24,7 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets =
-        AllowedTargets::AllowList(&[Allow(Target::Fn), Warn(Target::Crate)]);
+    const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"

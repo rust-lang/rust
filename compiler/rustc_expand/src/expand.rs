@@ -7,12 +7,12 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, CRATE_NODE_ID,
-    DUMMY_NODE_ID, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle,
-    MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, DUMMY_NODE_ID,
+    ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
+    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{AttributeParser, EvalConfigResult, ShouldEmit, validate_attr};
+use rustc_attr_parsing::{AttributeParser, Early, EvalConfigResult, ShouldEmit, validate_attr};
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
@@ -2165,7 +2165,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 None,
                 Target::MacroCall,
                 call.span(),
-                CRATE_NODE_ID,
+                self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints,
             );
@@ -2184,7 +2184,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
-            } else if rustc_attr_parsing::is_builtin_attr(attr) {
+            } else if rustc_attr_parsing::is_builtin_attr(attr)
+                && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
+            {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
