@@ -164,7 +164,7 @@ pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
     //
     // Note that when cross-compiling from e.g. Linux, the `xcrun` binary may sometimes be provided
     // as a shim by a cross-compilation helper tool. It usually isn't, but we still try nonetheless.
-    match xcrun_show_sdk_path(sdk_name, sess.verbose_internals()) {
+    match xcrun_show_sdk_path(sdk_name, false) {
         Ok((path, stderr)) => {
             // Emit extra stderr, such as if `-verbose` was passed, or if `xcrun` emitted a warning.
             if !stderr.is_empty() {
