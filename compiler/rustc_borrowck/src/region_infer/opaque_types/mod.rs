@@ -17,7 +17,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::{
-    InvalidOpaqueTypeArgs, check_opaque_type_parameter_valid,
+    NonDefiningUseReason, opaque_type_has_defining_use_args,
 };
 use rustc_trait_selection::solve::NoSolution;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -42,7 +42,7 @@ use region_ctxt::RegionCtxt;
 /// if there are no `RegionErrors`. If there are region errors, it's likely
 /// that errors here are caused by them and don't need to be handled separately.
 pub(crate) enum DeferredOpaqueTypeError<'tcx> {
-    InvalidOpaqueTypeArgs(InvalidOpaqueTypeArgs<'tcx>),
+    InvalidOpaqueTypeArgs(NonDefiningUseReason<'tcx>),
     LifetimeMismatchOpaqueParam(LifetimeMismatchOpaqueParam<'tcx>),
     UnexpectedHiddenRegion {
         /// The opaque type.
@@ -238,7 +238,7 @@ fn collect_defining_uses<'tcx>(
         let non_nll_opaque_type_key = opaque_type_key.fold_captured_lifetime_args(infcx.tcx, |r| {
             nll_var_to_universal_region(&rcx, r.as_var()).unwrap_or(r)
         });
-        if let Err(err) = check_opaque_type_parameter_valid(
+        if let Err(err) = opaque_type_has_defining_use_args(
             infcx,
             non_nll_opaque_type_key,
             hidden_type.span,
@@ -248,11 +248,10 @@ fn collect_defining_uses<'tcx>(
             // with `TypingMode::Borrowck`.
             if infcx.tcx.use_typing_mode_borrowck() {
                 match err {
-                    InvalidOpaqueTypeArgs::AlreadyReported(guar) => root_cx
-                        .add_concrete_opaque_type(
-                            opaque_type_key.def_id,
-                            OpaqueHiddenType::new_error(infcx.tcx, guar),
-                        ),
+                    NonDefiningUseReason::Tainted(guar) => root_cx.add_concrete_opaque_type(
+                        opaque_type_key.def_id,
+                        OpaqueHiddenType::new_error(infcx.tcx, guar),
+                    ),
                     _ => debug!(?non_nll_opaque_type_key, ?err, "ignoring non-defining use"),
                 }
             } else {
@@ -676,8 +675,8 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         instantiated_ty: OpaqueHiddenType<'tcx>,
-    ) -> Result<Ty<'tcx>, InvalidOpaqueTypeArgs<'tcx>> {
-        check_opaque_type_parameter_valid(
+    ) -> Result<Ty<'tcx>, NonDefiningUseReason<'tcx>> {
+        opaque_type_has_defining_use_args(
             self,
             opaque_type_key,
             instantiated_ty.span,

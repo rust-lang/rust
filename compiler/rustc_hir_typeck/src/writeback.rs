@@ -27,7 +27,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
-use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
+use rustc_trait_selection::opaque_types::opaque_type_has_defining_use_args;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
 
@@ -546,8 +546,24 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_opaque_types_next(&mut self) {
+        let mut fcx_typeck_results = self.fcx.typeck_results.borrow_mut();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for hidden_ty in fcx_typeck_results.concrete_opaque_types.values() {
+            assert!(!hidden_ty.has_infer());
+        }
+
+        assert_eq!(self.typeck_results.concrete_opaque_types.len(), 0);
+        self.typeck_results.concrete_opaque_types =
+            mem::take(&mut fcx_typeck_results.concrete_opaque_types);
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
+        if self.fcx.next_trait_solver() {
+            return self.visit_opaque_types_next();
+        }
+
         let tcx = self.tcx();
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
@@ -558,17 +574,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-
-            if !self.fcx.next_trait_solver() {
-                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                    && alias_ty.args == opaque_type_key.args
-                {
-                    continue;
-                }
+            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
             }
 
-            if let Err(err) = check_opaque_type_parameter_valid(
+            if let Err(err) = opaque_type_has_defining_use_args(
                 &self.fcx,
                 opaque_type_key,
                 hidden_type.span,
@@ -923,6 +936,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, outer_exclusive_binder, new_err))]
     fn handle_term<T>(
         &mut self,
         value: T,
