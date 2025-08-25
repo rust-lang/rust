@@ -1,17 +1,3 @@
-error: expected unsuffixed literal, found `-`
-  --> $DIR/malformed-fn-align.rs:29:15
-   |
-LL | #[rustc_align(-1)]
-   |               ^
-
-error: suffixed literals are not allowed in attributes
-  --> $DIR/malformed-fn-align.rs:35:15
-   |
-LL | #[rustc_align(4usize)]
-   |               ^^^^^^
-   |
-   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
-
 error[E0539]: malformed `rustc_align` attribute input
   --> $DIR/malformed-fn-align.rs:10:5
    |
@@ -51,11 +37,31 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(0)]
    |               ^
 
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `-`
+  --> $DIR/malformed-fn-align.rs:29:15
+   |
+LL | #[rustc_align(-1)]
+   |               ^
+   |
+help: negative numbers are not literals, try removing the `-` sign
+   |
+LL - #[rustc_align(-1)]
+LL + #[rustc_align(1)]
+   |
+
 error[E0589]: invalid alignment value: not a power of two
   --> $DIR/malformed-fn-align.rs:32:15
    |
 LL | #[rustc_align(3)]
    |               ^
+
+error: suffixed literals are not allowed in attributes
+  --> $DIR/malformed-fn-align.rs:35:15
+   |
+LL | #[rustc_align(4usize)]
+   |               ^^^^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
 error[E0589]: invalid alignment value: not an unsuffixed integer
   --> $DIR/malformed-fn-align.rs:35:15

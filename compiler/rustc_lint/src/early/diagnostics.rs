@@ -64,10 +64,12 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident } => {
-            lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns, ident }
-                .decorate_lint(diag)
-        }
+        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
+            span: macro_span,
+            ns_descr,
+            ident,
+        } => lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns_descr, ident }
+            .decorate_lint(diag),
         BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
             lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def }
                 .decorate_lint(diag)
@@ -156,9 +158,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::MissingAbi(label_span, default_abi) => {
-            lints::MissingAbi { span: label_span, default_abi }.decorate_lint(diag);
-        }
         BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
             lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);
         }
@@ -183,27 +182,6 @@ pub fn decorate_builtin_lint(
             } else {
                 lints::ReservedMultihash { suggestion }.decorate_lint(diag);
             }
-        }
-        BuiltinLintDiag::HiddenUnicodeCodepoints {
-            label,
-            count,
-            span_label,
-            labels,
-            escape,
-            spans,
-        } => {
-            lints::HiddenUnicodeCodepointsDiag {
-                label: &label,
-                count,
-                span_label,
-                labels: labels.map(|spans| lints::HiddenUnicodeCodepointsDiagLabels { spans }),
-                sub: if escape {
-                    lints::HiddenUnicodeCodepointsDiagSub::Escape { spans }
-                } else {
-                    lints::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
-                },
-            }
-            .decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedBuiltinAttribute {
             attr_name,
@@ -464,17 +442,8 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag)
         }
-        BuiltinLintDiag::InnerAttributeUnstable { is_macro } => if is_macro {
-            lints::InnerAttributeUnstable::InnerMacroAttribute
-        } else {
-            lints::InnerAttributeUnstable::CustomInnerAttribute
-        }
-        .decorate_lint(diag),
         BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
             lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
-        }
-        BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
-            lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)
         }
     }
 }

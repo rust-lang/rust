@@ -83,14 +83,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         *self.deferred_cast_checks.borrow_mut() = deferred_cast_checks;
     }
 
-    pub(in super::super) fn check_transmutes(&self) {
-        let mut deferred_transmute_checks = self.deferred_transmute_checks.borrow_mut();
-        debug!("FnCtxt::check_transmutes: {} deferred checks", deferred_transmute_checks.len());
-        for (from, to, hir_id) in deferred_transmute_checks.drain(..) {
-            self.check_transmute(from, to, hir_id);
-        }
-    }
-
     pub(in super::super) fn check_asms(&self) {
         let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());

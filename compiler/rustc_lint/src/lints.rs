@@ -1,14 +1,14 @@
+// ignore-tidy-filelength
+
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
-use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
@@ -817,80 +817,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     },
 }
 
-// hidden_unicode_codepoints.rs
-#[derive(LintDiagnostic)]
-#[diag(lint_hidden_unicode_codepoints)]
-#[note]
-pub(crate) struct HiddenUnicodeCodepointsDiag<'a> {
-    pub label: &'a str,
-    pub count: usize,
-    #[label]
-    pub span_label: Span,
-    #[subdiagnostic]
-    pub labels: Option<HiddenUnicodeCodepointsDiagLabels>,
-    #[subdiagnostic]
-    pub sub: HiddenUnicodeCodepointsDiagSub,
-}
-
-pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
-    pub spans: Vec<(char, Span)>,
-}
-
-impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        for (c, span) in self.spans {
-            diag.span_label(span, format!("{c:?}"));
-        }
-    }
-}
-
-pub(crate) enum HiddenUnicodeCodepointsDiagSub {
-    Escape { spans: Vec<(char, Span)> },
-    NoEscape { spans: Vec<(char, Span)> },
-}
-
-// Used because of multiple multipart_suggestion and note
-impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        match self {
-            HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
-                diag.multipart_suggestion_with_style(
-                    fluent::lint_suggestion_remove,
-                    spans.iter().map(|(_, span)| (*span, "".to_string())).collect(),
-                    Applicability::MachineApplicable,
-                    SuggestionStyle::HideCodeAlways,
-                );
-                diag.multipart_suggestion(
-                    fluent::lint_suggestion_escape,
-                    spans
-                        .into_iter()
-                        .map(|(c, span)| {
-                            let c = format!("{c:?}");
-                            (span, c[1..c.len() - 1].to_string())
-                        })
-                        .collect(),
-                    Applicability::MachineApplicable,
-                );
-            }
-            HiddenUnicodeCodepointsDiagSub::NoEscape { spans } => {
-                // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
-                // should do the same here to provide the same good suggestions as we do for
-                // literals above.
-                diag.arg(
-                    "escaped",
-                    spans
-                        .into_iter()
-                        .map(|(c, _)| format!("{c:?}"))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                );
-                diag.note(fluent::lint_suggestion_remove);
-                diag.note(fluent::lint_no_suggestion_note_escape);
-            }
-        }
-    }
-}
-
 // map_unit_fn.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_map_unit_fn)]
@@ -1616,6 +1542,48 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
         diag.primary_message(fluent::lint_drop_glue);
         diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
+}
+
+// transmute.rs
+#[derive(LintDiagnostic)]
+#[diag(lint_int_to_ptr_transmutes)]
+#[note]
+#[note(lint_note_exposed_provenance)]
+#[help(lint_suggestion_without_provenance_mut)]
+#[help(lint_help_transmute)]
+#[help(lint_help_exposed_provenance)]
+pub(crate) struct IntegerToPtrTransmutes<'tcx> {
+    #[subdiagnostic]
+    pub suggestion: IntegerToPtrTransmutesSuggestion<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum IntegerToPtrTransmutesSuggestion<'tcx> {
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToPtr {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        #[suggestion_part(code = "std::ptr::with_exposed_provenance{suffix}::<{dst}>(")]
+        start_call: Span,
+    },
+    #[multipart_suggestion(
+        lint_suggestion_with_exposed_provenance,
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    ToRef {
+        dst: Ty<'tcx>,
+        suffix: &'static str,
+        ref_mutbl: &'static str,
+        #[suggestion_part(
+            code = "&{ref_mutbl}*std::ptr::with_exposed_provenance{suffix}::<{dst}>("
+        )]
+        start_call: Span,
+    },
 }
 
 // types.rs
@@ -2568,16 +2536,6 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unexpected_builtin_cfg)]
-#[note(lint_controlled_by)]
-#[note(lint_incoherent)]
-pub(crate) struct UnexpectedBuiltinCfg {
-    pub(crate) cfg: String,
-    pub(crate) cfg_name: Symbol,
-    pub(crate) controlled_by: &'static str,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_macro_use_deprecated)]
 #[help]
 pub(crate) struct MacroUseDeprecated;
@@ -2691,14 +2649,6 @@ pub(crate) struct IllFormedAttributeInput {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum InnerAttributeUnstable {
-    #[diag(lint_inner_macro_attribute_unstable)]
-    InnerMacroAttribute,
-    #[diag(lint_custom_inner_attribute_unstable)]
-    CustomInnerAttribute,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unknown_diagnostic_attribute)]
 pub(crate) struct UnknownDiagnosticAttribute {
     #[subdiagnostic]
@@ -2769,7 +2719,7 @@ pub(crate) struct AbsPathWithModuleSugg {
 pub(crate) struct ProcMacroDeriveResolutionFallback {
     #[label]
     pub span: Span,
-    pub ns: Namespace,
+    pub ns_descr: &'static str,
     pub ident: Ident,
 }
 
@@ -2888,14 +2838,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
     pub span: Span,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_extern_without_abi)]
-pub(crate) struct MissingAbi {
-    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
-    pub span: Span,
-    pub default_abi: ExternAbi,
 }
 
 #[derive(LintDiagnostic)]

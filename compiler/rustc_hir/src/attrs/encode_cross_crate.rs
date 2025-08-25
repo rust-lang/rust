@@ -7,6 +7,11 @@ pub enum EncodeCrossCrate {
 }
 
 impl AttributeKind {
+    /// Whether this attribute should be encoded in metadata files.
+    ///
+    /// If this is "Yes", then another crate can do `tcx.get_all_attrs(did)` for a did in this crate, and get the attribute.
+    /// When this is No, the attribute is filtered out while encoding and other crate won't be able to observe it.
+    /// This can be unexpectedly good for performance, so unless necessary for cross-crate compilation, prefer No.
     pub fn encode_cross_crate(&self) -> EncodeCrossCrate {
         use AttributeKind::*;
         use EncodeCrossCrate::*;
@@ -31,6 +36,8 @@ impl AttributeKind {
             ConstTrait(..) => No,
             Coroutine(..) => No,
             Coverage(..) => No,
+            CrateName { .. } => No,
+            CustomMir(_, _, _) => Yes,
             DenyExplicitImpl(..) => No,
             Deprecation { .. } => Yes,
             DoNotImplementViaObject(..) => No,
@@ -72,12 +79,13 @@ impl AttributeKind {
             RustcLayoutScalarValidRangeEnd(..) => Yes,
             RustcLayoutScalarValidRangeStart(..) => Yes,
             RustcObjectLifetimeDefault => No,
+            Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             SkipDuringMethodDispatch { .. } => No,
             SpecializationTrait(..) => No,
             Stability { .. } => Yes,
             StdInternalSymbol(..) => No,
-            TargetFeature(..) => No,
+            TargetFeature { .. } => No,
             TrackCaller(..) => Yes,
             TypeConst(..) => Yes,
             UnsafeSpecializationMarker(..) => No,

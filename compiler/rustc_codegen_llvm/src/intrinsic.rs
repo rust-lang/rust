@@ -330,10 +330,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     _ => bug!(),
                 };
                 let ptr = args[0].immediate();
+                let locality = fn_args.const_at(1).to_value().valtree.unwrap_leaf().to_i32();
                 self.call_intrinsic(
                     "llvm.prefetch",
                     &[self.val_ty(ptr)],
-                    &[ptr, self.const_i32(rw), args[1].immediate(), self.const_i32(cache_type)],
+                    &[
+                        ptr,
+                        self.const_i32(rw),
+                        self.const_i32(locality),
+                        self.const_i32(cache_type),
+                    ],
                 )
             }
             sym::carrying_mul_add => {

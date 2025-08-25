@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{FileName, Symbol, sym};
+use rustc_span::{BytePos, FileName, Symbol, sym};
 use tracing::info;
 
 use super::print_item::{full_path, print_item, print_item_path};
@@ -28,6 +28,7 @@ use crate::formats::FormatRenderer;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
+use crate::html::macro_expansion::ExpandedCode;
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
@@ -139,6 +140,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
     pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
     pub(crate) call_locations: AllCallLocations,
@@ -204,6 +206,18 @@ impl<'tcx> Context<'tcx> {
         if !is_module {
             title.push_str(it.name.unwrap().as_str());
         }
+        let short_title;
+        let short_title = if is_module {
+            let module_name = self.current.last().unwrap();
+            short_title = if it.is_crate() {
+                format!("Crate {module_name}")
+            } else {
+                format!("Module {module_name}")
+            };
+            &short_title[..]
+        } else {
+            it.name.as_ref().unwrap().as_str()
+        };
         if !it.is_primitive() && !it.is_keyword() {
             if !is_module {
                 title.push_str(" in ");
@@ -240,6 +254,7 @@ impl<'tcx> Context<'tcx> {
                 root_path: &self.root_path(),
                 static_root_path: self.shared.static_root_path.as_deref(),
                 title: &title,
+                short_title,
                 description: &desc,
                 resource_suffix: &self.shared.resource_suffix,
                 rust_logo: has_doc_flag(self.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
@@ -445,20 +460,13 @@ impl<'tcx> Context<'tcx> {
     }
 }
 
-/// Generates the documentation for `crate` into the directory `dst`
-impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
-    fn descr() -> &'static str {
-        "html"
-    }
-
-    const RUN_ON_MODULE: bool = true;
-    type ModuleData = ContextInfo;
-
-    fn init(
+impl<'tcx> Context<'tcx> {
+    pub(crate) fn init(
         krate: clean::Crate,
         options: RenderOptions,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
+        expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     ) -> Result<(Self, clean::Crate), Error> {
         // need to save a copy of the options for rendering the index page
         let md_opts = options.clone();
@@ -566,6 +574,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
             should_merge: options.should_merge,
+            expanded_codes,
         };
 
         let dst = output;
@@ -591,6 +600,16 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         Ok((cx, krate))
     }
+}
+
+/// Generates the documentation for `crate` into the directory `dst`
+impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
+    fn descr() -> &'static str {
+        "html"
+    }
+
+    const RUN_ON_MODULE: bool = true;
+    type ModuleData = ContextInfo;
 
     fn save_module_data(&mut self) -> Self::ModuleData {
         self.deref_id_map.borrow_mut().clear();
@@ -617,6 +636,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let shared = &self.shared;
         let mut page = layout::Page {
             title: "List of all items in this crate",
+            short_title: "All",
             css_class: "mod sys",
             root_path: "../",
             static_root_path: shared.static_root_path.as_deref(),

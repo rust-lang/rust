@@ -46,18 +46,11 @@ use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 
-mod back {
-    pub(crate) mod archive;
-    pub(crate) mod lto;
-    pub(crate) mod owned_target_machine;
-    mod profiling;
-    pub(crate) mod write;
-}
-
 mod abi;
 mod allocator;
 mod asm;
 mod attributes;
+mod back;
 mod base;
 mod builder;
 mod callee;

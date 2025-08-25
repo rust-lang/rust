@@ -2,6 +2,8 @@
 // not put into the JavaScript we include as part of the documentation. It is used for
 // type checking. See README.md in this directory for more info.
 
+import { RoaringBitmap } from "./stringdex";
+
 /* eslint-disable */
 declare global {
     /** Search engine data used by main.js and search.js */
@@ -10,11 +12,25 @@ declare global {
     declare function nonnull(x: T|null, msg: string|undefined);
     /** Defined and documented in `storage.js` */
     declare function nonundef(x: T|undefined, msg: string|undefined);
+    interface PromiseConstructor {
+        /**
+         * Polyfill
+         * @template T
+         */
+        withResolvers: function(): {
+            "promise": Promise<T>,
+            "resolve": (function(T): void),
+            "reject": (function(any): void)
+        };
+    }
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
         /** Generated in `render/context.rs` */
         SIDEBAR_ITEMS?: { [key: string]: string[] };
+        /** Notable trait data */
+        NOTABLE_TRAITS?: { [key: string]: string };
+        CURRENT_TOOLTIP_ELEMENT?: HTMLElement & { TOOLTIP_BASE: HTMLElement };
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
@@ -80,6 +96,10 @@ declare global {
         pending_type_impls?: rustdoc.TypeImpls,
         rustdoc_add_line_numbers_to_examples?: function(),
         rustdoc_remove_line_numbers_from_examples?: function(),
+        /** JSON-encoded raw search index */
+        searchIndex: string,
+        /** Used in search index shards in order to load data into the in-memory database */
+        rr_: function(string),
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
@@ -95,29 +115,28 @@ declare namespace rustdoc {
     interface SearchState {
         rustdocToolbar: HTMLElement|null;
         loadingText: string;
-        input: HTMLInputElement|null;
+        inputElement: function(): HTMLInputElement|null;
+        containerElement: function(): Element|null;
         title: string;
         titleBeforeSearch: string;
-        timeout: number|null;
+        timeout: ReturnType<typeof setTimeout>|null;
         currentTab: number;
-        focusedByTab: [number|null, number|null, number|null];
+        focusedByTab: [Element|null, Element|null, Element|null];
         clearInputTimeout: function;
-        outputElement(): HTMLElement|null;
-        focus();
-        defocus();
-        // note: an optional param is not the same as
-        // a nullable/undef-able param.
-        showResults(elem?: HTMLElement|null);
-        removeQueryParameters();
-        hideResults();
-        getQueryStringParams(): Object.<any, string>;
-        origPlaceholder: string;
+        outputElement: function(): Element|null;
+        focus: function();
+        defocus: function();
+        toggle: function();
+        showResults: function();
+        removeQueryParameters: function();
+        hideResults: function();
+        getQueryStringParams: function(): Object.<any, string>;
         setup: function();
         setLoadingSearch();
         descShards: Map<string, SearchDescShard[]>;
         loadDesc: function({descShard: SearchDescShard, descIndex: number}): Promise<string|null>;
-        loadedDescShard(string, number, string);
-        isDisplayed(): boolean,
+        loadedDescShard: function(string, number, string);
+        isDisplayed: function(): boolean;
     }
 
     interface SearchDescShard {
@@ -131,12 +150,13 @@ declare namespace rustdoc {
      * A single parsed "atom" in a search query. For example,
      * 
      *     std::fmt::Formatter, Write -> Result<()>
-     *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
-     *     ┃                    │        ┗ QueryElement {        ┊
-     *     ┃                    │              name: Result      ┊
-     *     ┃                    │              generics: [       ┊
-     *     ┃                    │                   QueryElement ┘
-     *     ┃                    │                   name: ()
+     *     ┏━━━━━━━━━━━━━━━━━━  ┌────    ┏━━━━━┅┅┅┅┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┐
+     *     ┃                    │        ┗ QueryElement {          ┊
+     *     ┃                    │              name: Result        ┊
+     *     ┃                    │              generics: [         ┊
+     *     ┃                    │                   QueryElement { ┘
+     *     ┃                    │                       name: ()
+     *     ┃                    │                   }
      *     ┃                    │              ]
      *     ┃                    │          }
      *     ┃                    └ QueryElement {
@@ -156,14 +176,14 @@ declare namespace rustdoc {
         normalizedPathLast: string,
         generics: Array<QueryElement>,
         bindings: Map<number, Array<QueryElement>>,
-        typeFilter: number|null,
+        typeFilter: number,
     }
 
     /**
      * Same as QueryElement, but bindings and typeFilter support strings
      */
     interface ParserQueryElement {
-        name: string|null,
+        name: string,
         id: number|null,
         fullPath: Array<string>,
         pathWithoutLast: Array<string>,
@@ -172,7 +192,7 @@ declare namespace rustdoc {
         generics: Array<ParserQueryElement>,
         bindings: Map<string, Array<ParserQueryElement>>,
         bindingName: {name: string|null, generics: ParserQueryElement[]}|null,
-        typeFilter: number|string|null,
+        typeFilter: string|null,
     }
 
     /**
@@ -215,35 +235,74 @@ declare namespace rustdoc {
     /**
      * An entry in the search index database.
      */
+    interface EntryData {
+        krate: number,
+        ty: ItemType,
+        modulePath: number?,
+        exactModulePath: number?,
+        parent: number?,
+        deprecated: boolean,
+        associatedItemDisambiguator: string?,
+    }
+
+    /**
+     * A path in the search index database
+     */
+    interface PathData {
+        ty: ItemType,
+        modulePath: string,
+        exactModulePath: string?,
+    }
+
+    /**
+     * A function signature in the search index database
+     *
+     * Note that some non-function items (eg. constants, struct fields) have a function signature so they can appear in type-based search.
+     */
+    interface FunctionData {
+        functionSignature: FunctionSearchType|null,
+        paramNames: string[],
+        elemCount: number,
+    }
+
+    /**
+     * A function signature in the search index database
+     */
+    interface TypeData {
+        searchUnbox: boolean,
+        invertedFunctionSignatureIndex: RoaringBitmap[],
+    }
+
+    /**
+     * A search entry of some sort.
+     */
     interface Row {
-        crate: string,
-        descShard: SearchDescShard,
         id: number,
-        // This is the name of the item. For doc aliases, if you want the name of the aliased
-        // item, take a look at `Row.original.name`.
+        crate: string,
+        ty: ItemType,
         name: string,
         normalizedName: string,
-        word: string,
-        paramNames: string[],
-        parent: ({ty: number, name: string, path: string, exactPath: string}|null|undefined),
-        path: string,
-        ty: number,
-        type: FunctionSearchType | null,
-        descIndex: number,
-        bitIndex: number,
-        implDisambiguator: String | null,
-        is_alias?: boolean,
-        original?: Row,
+        modulePath: string,
+        exactModulePath: string,
+        entry: EntryData?,
+        path: PathData?,
+        type: FunctionData?,
+        deprecated: boolean,
+        parent: { path: PathData, name: string}?,
     }
+
+    type ItemType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+        11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
+        21 | 22 | 23 | 24 | 25 | 26;
 
     /**
      * The viewmodel for the search engine results page.
      */
     interface ResultsTable {
-        in_args: Array<ResultObject>,
-        returned: Array<ResultObject>,
-        others: Array<ResultObject>,
-        query: ParsedQuery,
+        in_args: AsyncGenerator<ResultObject>,
+        returned: AsyncGenerator<ResultObject>,
+        others: AsyncGenerator<ResultObject>,
+        query: ParsedQuery<rustdoc.ParserQueryElement>,
     }
 
     type Results = { max_dist?: number } & Map<number, ResultObject>
@@ -252,25 +311,41 @@ declare namespace rustdoc {
      * An annotated `Row`, used in the viewmodel.
      */
     interface ResultObject {
-        desc: string,
+        desc: Promise<string|null>,
         displayPath: string,
         fullPath: string,
         href: string,
         id: number,
         dist: number,
         path_dist: number,
-        name: string,
-        normalizedName: string,
-        word: string,
         index: number,
-        parent: (Object|undefined),
-        path: string,
-        ty: number,
+        parent: ({
+            path: string,
+            exactPath: string,
+            name: string,
+            ty: number,
+        }|undefined),
         type?: FunctionSearchType,
         paramNames?: string[],
         displayTypeSignature: Promise<rustdoc.DisplayTypeSignature> | null,
         item: Row,
-        dontValidate?: boolean,
+        is_alias: boolean,
+        alias?: string,
+    }
+
+    /**
+     * An annotated `Row`, used in the viewmodel.
+     */
+    interface PlainResultObject {
+        id: number,
+        dist: number,
+        path_dist: number,
+        index: number,
+        elems: rustdoc.QueryElement[],
+        returned: rustdoc.QueryElement[],
+        is_alias: boolean,
+        alias?: string,
+        original?: rustdoc.Rlow,
     }
 
     /**
@@ -364,7 +439,19 @@ declare namespace rustdoc {
      * Numeric IDs are *ONE-indexed* into the paths array (`p`). Zero is used as a sentinel for `null`
      * because `null` is four bytes while `0` is one byte.
      */
-    type RawFunctionType = number | [number, Array<RawFunctionType>];
+    type RawFunctionType = number | [number, Array<RawFunctionType>] | [number, Array<RawFunctionType>, Array<[RawFunctionType, RawFunctionType[]]>];
+
+    /**
+     * Utility typedef for deserializing compact JSON.
+     *
+     * R is the required part, O is the optional part, which goes afterward.
+     * For example, `ArrayWithOptionals<[A, B], [C, D]>` matches
+     * `[A, B] | [A, B, C] | [A, B, C, D]`.
+     */
+    type ArrayWithOptionals<R extends any[], O extends any[]> =
+        O extends [infer First, ...infer Rest] ?
+            R | ArrayWithOptionals<[...R, First], Rest> :
+            R;
 
     /**
      * The type signature entry in the decoded search index.
@@ -382,8 +469,8 @@ declare namespace rustdoc {
      */
     interface FunctionType {
         id: null|number,
-        ty: number|null,
-        name?: string,
+        ty: ItemType,
+        name: string|null,
         path: string|null,
         exactPath: string|null,
         unboxFlag: boolean,
@@ -401,70 +488,6 @@ declare namespace rustdoc {
         id: number|null;
         generics: FingerprintableType[];
         bindings: Map<number, FingerprintableType[]>;
-    };
-
-    /**
-     * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
-     * are arrays with the same length. `q`, `a`, and `c` use a sparse
-     * representation for compactness.
-     *
-     * `n[i]` contains the name of an item.
-     *
-     * `t[i]` contains the type of that item
-     * (as a string of characters that represent an offset in `itemTypes`).
-     *
-     * `d[i]` contains the description of that item.
-     *
-     * `q` contains the full paths of the items. For compactness, it is a set of
-     * (index, path) pairs used to create a map. If a given index `i` is
-     * not present, this indicates "same as the last index present".
-     *
-     * `i[i]` contains an item's parent, usually a module. For compactness,
-     * it is a set of indexes into the `p` array.
-     *
-     * `f` contains function signatures, or `0` if the item isn't a function.
-     * More information on how they're encoded can be found in rustc-dev-guide
-     *
-     * Functions are themselves encoded as arrays. The first item is a list of
-     * types representing the function's inputs, and the second list item is a list
-     * of types representing the function's output. Tuples are flattened.
-     * Types are also represented as arrays; the first item is an index into the `p`
-     * array, while the second is a list of types representing any generic parameters.
-     *
-     * b[i] contains an item's impl disambiguator. This is only present if an item
-     * is defined in an impl block and, the impl block's type has more than one associated
-     * item with the same name.
-     *
-     * `a` defines aliases with an Array of pairs: [name, offset], where `offset`
-     * points into the n/t/d/q/i/f arrays.
-     *
-     * `doc` contains the description of the crate.
-     *
-     * `p` is a list of path/type pairs. It is used for parents and function parameters.
-     * The first item is the type, the second is the name, the third is the visible path (if any) and
-     * the fourth is the canonical path used for deduplication (if any).
-     *
-     * `r` is the canonical path used for deduplication of re-exported items.
-     * It is not used for associated items like methods (that's the fourth element
-     * of `p`) but is used for modules items like free functions.
-     *
-     * `c` is an array of item indices that are deprecated.
-     */
-    type RawSearchIndexCrate = {
-    doc: string,
-    a: { [key: string]: number[] },
-    n: Array<string>,
-    t: string,
-    D: string,
-    e: string,
-    q: Array<[number, string]>,
-    i: string,
-    f: string,
-    p: Array<[number, string] | [number, string, number] | [number, string, number, number] | [number, string, number, number, string]>,
-    b: Array<[number, String]>,
-    c: string,
-    r: Array<[number, number]>,
-    P: Array<[number, string]>,
     };
 
     type VlqData = VlqData[] | number;
@@ -498,4 +521,13 @@ declare namespace rustdoc {
         options?: string[],
         default: string | boolean,
     }
+
+    /**
+     * Single element in the data-locs field of a scraped example.
+     * First field is the start and end char index,
+     * other fields seem to be unused.
+     *
+     * Generated by `render_call_locations` in `render/mod.rs`.
+     */
+    type ScrapedLoc = [[number, number], string, string]
 }

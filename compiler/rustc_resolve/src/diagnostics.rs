@@ -1020,11 +1020,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         suggestions: &mut Vec<TypoSuggestion>,
         scope_set: ScopeSet<'ra>,
-        parent_scope: &ParentScope<'ra>,
+        ps: &ParentScope<'ra>,
         ctxt: SyntaxContext,
         filter_fn: &impl Fn(Res) -> bool,
     ) {
-        self.cm().visit_scopes(scope_set, parent_scope, ctxt, |this, scope, use_prelude, _| {
+        self.cm().visit_scopes(scope_set, ps, ctxt, None, |this, scope, use_prelude, _| {
             match scope {
                 Scope::DeriveHelpers(expn_id) => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
@@ -1469,33 +1469,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         krate: &Crate,
         sugg_span: Option<Span>,
     ) {
-        // Bring imported but unused `derive` macros into `macro_map` so we ensure they can be used
-        // for suggestions.
-        self.cm().visit_scopes(
-            ScopeSet::Macro(MacroKind::Derive),
-            &parent_scope,
-            ident.span.ctxt(),
-            |this, scope, _use_prelude, _ctxt| {
-                let Scope::Module(m, _) = scope else {
-                    return None;
-                };
-                for (_, resolution) in this.resolutions(m).borrow().iter() {
-                    let Some(binding) = resolution.borrow().best_binding() else {
-                        continue;
-                    };
-                    let Res::Def(DefKind::Macro(kinds), def_id) = binding.res() else {
-                        continue;
-                    };
-                    if !kinds.intersects(MacroKinds::ATTR | MacroKinds::DERIVE) {
-                        continue;
-                    }
-                    // By doing this all *imported* macros get added to the `macro_map` even if they
-                    // are *unused*, which makes the later suggestions find them and work.
-                    let _ = this.get_macro_by_def_id(def_id);
-                }
-                None::<()>
-            },
-        );
+        // Bring all unused `derive` macros into `macro_map` so we ensure they can be used for
+        // suggestions.
+        self.register_macros_for_all_crates();
 
         let is_expected =
             &|res: Res| res.macro_kinds().is_some_and(|k| k.contains(macro_kind.into()));
@@ -1581,7 +1557,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
         }
         for ns in [Namespace::MacroNS, Namespace::TypeNS, Namespace::ValueNS] {
-            let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
+            let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::All(ns),
                 parent_scope,
@@ -2395,7 +2371,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 } else {
                     self.cm()
-                        .early_resolve_ident_in_lexical_scope(
+                        .resolve_ident_in_scope_set(
                             ident,
                             ScopeSet::All(ns_to_try),
                             parent_scope,
@@ -2498,7 +2474,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     },
                 )
             });
-            if let Ok(binding) = self.cm().early_resolve_ident_in_lexical_scope(
+            if let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::All(ValueNS),
                 parent_scope,
@@ -3434,7 +3410,7 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
 
     fn visit_item(&mut self, item: &'tcx ast::Item) {
         if self.target_module == item.id {
-            if let ItemKind::Mod(_, _, ModKind::Loaded(items, _inline, mod_spans, _)) = &item.kind {
+            if let ItemKind::Mod(_, _, ModKind::Loaded(items, _inline, mod_spans)) = &item.kind {
                 let inject = mod_spans.inject_use_span;
                 if is_span_suitable_for_use_injection(inject) {
                     self.first_legal_span = Some(inject);

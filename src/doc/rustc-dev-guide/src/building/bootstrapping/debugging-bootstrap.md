@@ -81,9 +81,11 @@ There are two orthogonal ways to control which kind of tracing logs you want:
    - If you select a level, all events/spans with an equal or higher priority level will be shown.
 2. You can also control the log **target**, e.g. `bootstrap` or `bootstrap::core::config` or a custom target like `CONFIG_HANDLING` or `STEP`.
     - Custom targets are used to limit what kinds of spans you are interested in, as the `BOOTSTRAP_TRACING=trace` output can be quite verbose. Currently, you can use the following custom targets:
-        - `CONFIG_HANDLING`: show spans related to config handling
-        - `STEP`: show all executed steps. Note that executed commands have `info` event level.
-        - `COMMAND`: show all executed commands. Note that executed commands have `trace` event level.
+        - `CONFIG_HANDLING`: show spans related to config handling.
+        - `STEP`: show all executed steps. Executed commands have `info` event level.
+        - `COMMAND`: show all executed commands. Executed commands have `trace` event level.
+        - `IO`: show performed I/O operations. Executed commands have `trace` event level.
+            - Note that many I/O are currently not being traced.
 
 You can of course combine them (custom target logs are typically gated behind `TRACE` log level additionally):
 

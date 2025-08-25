@@ -35,7 +35,7 @@ pub(crate) enum LinkFromSrc {
 /// 1. Generate a `span` correspondence map which links an item `span` to its definition `span`.
 /// 2. Collect the source code files.
 ///
-/// It returns the `krate`, the source code files and the `span` correspondence map.
+/// It returns the source code files and the `span` correspondence map.
 ///
 /// Note about the `span` correspondence map: the keys are actually `(lo, hi)` of `span`s. We don't
 /// need the `span` context later on, only their position, so instead of keeping a whole `Span`, we

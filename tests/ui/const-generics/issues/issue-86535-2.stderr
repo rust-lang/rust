@@ -4,7 +4,7 @@ warning: struct `Bar` is never constructed
 LL | struct Bar<const N: &'static ()>;
    |        ^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

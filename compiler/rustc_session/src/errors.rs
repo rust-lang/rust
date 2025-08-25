@@ -7,7 +7,7 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
@@ -472,6 +472,10 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
+#[diag(session_indirect_branch_cs_prefix_requires_x86_or_x86_64)]
+pub(crate) struct IndirectBranchCsPrefixRequiresX86OrX8664;
+
+#[derive(Diagnostic)]
 #[diag(session_unsupported_regparm)]
 pub(crate) struct UnsupportedRegparm {
     pub(crate) regparm: u32,
@@ -501,3 +505,13 @@ pub(crate) struct SoftFloatIgnored;
 #[note]
 #[note(session_soft_float_deprecated_issue)]
 pub(crate) struct SoftFloatDeprecated;
+
+#[derive(LintDiagnostic)]
+#[diag(session_unexpected_builtin_cfg)]
+#[note(session_controlled_by)]
+#[note(session_incoherent)]
+pub(crate) struct UnexpectedBuiltinCfg {
+    pub(crate) cfg: String,
+    pub(crate) cfg_name: Symbol,
+    pub(crate) controlled_by: &'static str,
+}

@@ -20,6 +20,10 @@ ast_passes_abi_must_not_have_return_type=
     .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
 
+ast_passes_abi_x86_interrupt =
+    invalid signature for `extern "x86-interrupt"` function
+    .note = functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found {$param_count})
+
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
     .suggestion = provide a definition for the constant
@@ -108,6 +112,10 @@ ast_passes_extern_types_cannot = `type`s inside `extern` blocks cannot have {$de
 ast_passes_extern_without_abi = `extern` declarations without an explicit ABI are disallowed
     .suggestion = specify an ABI
     .help = prior to Rust 2024, a default ABI was inferred
+
+ast_passes_extern_without_abi_sugg = `extern` declarations without an explicit ABI are deprecated
+    .label = ABI should be specified here
+    .suggestion = explicitly specify the {$default_abi} ABI
 
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute

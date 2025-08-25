@@ -41,20 +41,6 @@ LL | #![windows_subsystem = "console"]
 LL | #![windows_subsystem = "windows"]
    |                      +++++++++++
 
-error: malformed `crate_name` attribute input
-  --> $DIR/malformed-attrs.rs:74:1
-   |
-LL | #[crate_name]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
-   |
-   = note: for more information, visit <https://doc.rust-lang.org/reference/crates-and-source-files.html#the-crate_name-attribute>
-
-error: malformed `no_sanitize` attribute input
-  --> $DIR/malformed-attrs.rs:92:1
-   |
-LL | #[no_sanitize]
-   | ^^^^^^^^^^^^^^ help: must be of the form: `#[no_sanitize(address, kcfi, memory, thread)]`
-
 error: malformed `instruction_set` attribute input
   --> $DIR/malformed-attrs.rs:106:1
    |
@@ -244,7 +230,7 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
   --> $DIR/malformed-attrs.rs:76:1
@@ -484,6 +470,12 @@ LL | #[used()]
    |
    = help: `#[used]` can only be applied to statics
 
+error[E0539]: malformed `crate_name` attribute input
+  --> $DIR/malformed-attrs.rs:74:1
+   |
+LL | #[crate_name]
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[crate_name = "name"]`
+
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/malformed-attrs.rs:79:1
    |
@@ -530,6 +522,24 @@ LL | #[coverage(off)]
    |           +++++
 LL | #[coverage(on)]
    |           ++++
+
+error[E0539]: malformed `sanitize` attribute input
+  --> $DIR/malformed-attrs.rs:92:1
+   |
+LL | #[sanitize]
+   | ^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[sanitize(address = "on|off")]
+   |           ++++++++++++++++++++
+LL | #[sanitize(cfi = "on|off")]
+   |           ++++++++++++++++
+LL | #[sanitize(hwaddress = "on|off")]
+   |           ++++++++++++++++++++++
+LL | #[sanitize(kcfi = "on|off")]
+   |           +++++++++++++++++
+   = and 5 other candidates
 
 error[E0565]: malformed `no_implicit_prelude` attribute input
   --> $DIR/malformed-attrs.rs:97:1
@@ -754,7 +764,7 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(malformed_diagnostic_attributes)]` on by default
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: missing options for `on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:138:1
@@ -824,7 +834,7 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
@@ -836,7 +846,7 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
@@ -848,7 +858,7 @@ LL | #[link]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[inline(always)]`, `#[inline(never)]`, and `#[inline]`
@@ -859,7 +869,7 @@ LL | #[inline = 5]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
@@ -870,7 +880,7 @@ LL | #[ignore()]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
@@ -881,5 +891,5 @@ LL | #[ignore = 1]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 

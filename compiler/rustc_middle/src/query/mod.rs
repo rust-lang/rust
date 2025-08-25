@@ -100,7 +100,7 @@ use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::{PanicStrategy, SanitizerSet};
 use {rustc_abi as abi, rustc_ast as ast, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
@@ -696,6 +696,22 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
+    /// Used in case `mir_borrowck` fails to prove an obligation. We generally assume that
+    /// all goals we prove in MIR type check hold as we've already checked them in HIR typeck.
+    ///
+    /// However, we replace each free region in the MIR body with a unique region inference
+    /// variable. As we may rely on structural identity when proving goals this may cause a
+    /// goal to no longer hold. We store obligations for which this may happen during HIR
+    /// typeck in the `TypeckResults`. We then uniquify and reprove them in case MIR typeck
+    /// encounters an unexpected error. We expect this to result in an error when used and
+    /// delay a bug if it does not.
+    query check_potentially_region_dependent_goals(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc {
+            |tcx| "reproving potentially region dependent HIR typeck goals for `{}",
+            tcx.def_path_str(key)
+        }
+    }
+
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for codegen. This is also the only query that can fetch non-local MIR, at present.
     query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
@@ -1113,6 +1129,11 @@ rustc_queries! {
 
     query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
+    }
+
+    /// Unsafety-check this `LocalDefId`.
+    query check_transmutes(key: LocalDefId) {
+        desc { |tcx| "check transmute calls inside `{}`", tcx.def_path_str(key) }
     }
 
     /// Unsafety-check this `LocalDefId`.
@@ -2685,6 +2706,16 @@ rustc_queries! {
     query anon_const_kind(def_id: DefId) -> ty::AnonConstKind {
         desc { |tcx| "looking up anon const kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
+    }
+
+    /// Checks for the nearest `#[sanitize(xyz = "off")]` or
+    /// `#[sanitize(xyz = "on")]` on this def and any enclosing defs, up to the
+    /// crate root.
+    ///
+    /// Returns the set of sanitizers that is explicitly disabled for this def.
+    query disabled_sanitizers_for(key: LocalDefId) -> SanitizerSet {
+        desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
+        feedable
     }
 }
 

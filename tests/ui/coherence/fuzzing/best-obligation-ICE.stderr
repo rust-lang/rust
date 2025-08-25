@@ -11,8 +11,13 @@ error[E0277]: the trait bound `W<W<T>>: Trait` is not satisfied
   --> $DIR/best-obligation-ICE.rs:10:19
    |
 LL | impl<T> Trait for W<W<W<T>>> {}
-   |                   ^^^^^^^^^^ the trait `Trait` is not implemented for `W<W<T>>`
+   |                   ^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Trait` is not implemented for `W<W<T>>`
+  --> $DIR/best-obligation-ICE.rs:9:1
+   |
+LL | struct W<T: Trait>(*mut T);
+   | ^^^^^^^^^^^^^^^^^^
 note: required by a bound in `W`
   --> $DIR/best-obligation-ICE.rs:9:13
    |
@@ -27,8 +32,13 @@ error[E0277]: the trait bound `W<T>: Trait` is not satisfied
   --> $DIR/best-obligation-ICE.rs:10:19
    |
 LL | impl<T> Trait for W<W<W<T>>> {}
-   |                   ^^^^^^^^^^ the trait `Trait` is not implemented for `W<T>`
+   |                   ^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Trait` is not implemented for `W<T>`
+  --> $DIR/best-obligation-ICE.rs:9:1
+   |
+LL | struct W<T: Trait>(*mut T);
+   | ^^^^^^^^^^^^^^^^^^
 note: required by a bound in `W`
   --> $DIR/best-obligation-ICE.rs:9:13
    |

@@ -101,10 +101,11 @@ pub struct File(FileDesc);
 // https://github.com/rust-lang/rust/pull/67774
 macro_rules! cfg_has_statx {
     ({ $($then_tt:tt)* } else { $($else_tt:tt)* }) => {
-        cfg_if::cfg_if! {
-            if #[cfg(all(target_os = "linux", target_env = "gnu"))] {
+        cfg_select! {
+            all(target_os = "linux", target_env = "gnu") => {
                 $($then_tt)*
-            } else {
+            }
+            _ => {
                 $($else_tt)*
             }
         }
@@ -1263,6 +1264,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     ))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1275,6 +1278,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     )))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1286,6 +1291,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     ))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1298,6 +1305,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     )))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1309,6 +1318,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     ))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1329,6 +1340,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     )))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1343,6 +1356,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     ))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1363,6 +1378,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     )))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1377,6 +1394,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     ))]
     pub fn unlock(&self) -> io::Result<()> {
@@ -1389,6 +1408,8 @@ impl File {
         target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "cygwin",
         target_vendor = "apple",
     )))]
     pub fn unlock(&self) -> io::Result<()> {
@@ -1505,8 +1526,8 @@ impl File {
             )),
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
-        cfg_if::cfg_if! {
-            if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx"))] {
+        cfg_select! {
+            any(target_os = "redox", target_os = "espidf", target_os = "horizon", target_os = "nuttx") => {
                 // Redox doesn't appear to support `UTIME_OMIT`.
                 // ESP-IDF and HorizonOS do not support `futimens` at all and the behavior for those OS is therefore
                 // the same as for Redox.
@@ -1515,7 +1536,8 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(target_vendor = "apple")] {
+            }
+            target_vendor = "apple" => {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
@@ -1543,7 +1565,8 @@ impl File {
                     0
                 ) })?;
                 Ok(())
-            } else if #[cfg(target_os = "android")] {
+            }
+            target_os = "android" => {
                 let times = [to_timespec(times.accessed)?, to_timespec(times.modified)?];
                 // futimens requires Android API level 19
                 cvt(unsafe {
@@ -1559,7 +1582,8 @@ impl File {
                     }
                 })?;
                 Ok(())
-            } else {
+            }
+            _ => {
                 #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32", not(target_arch = "riscv32")))]
                 {
                     use crate::sys::{time::__timespec64, weak::weak};
@@ -1677,13 +1701,14 @@ impl fmt::Debug for File {
             let mut buf = vec![0; libc::PATH_MAX as usize];
             let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
             if n == -1 {
-                cfg_if::cfg_if! {
-                    if #[cfg(target_os = "netbsd")] {
+                cfg_select! {
+                    target_os = "netbsd" => {
                         // fallback to procfs as last resort
                         let mut p = PathBuf::from("/proc/self/fd");
                         p.push(&fd.to_string());
                         return run_path_with_cstr(&p, &readlink).ok()
-                    } else {
+                    }
+                    _ => {
                         return None;
                     }
                 }
@@ -1884,15 +1909,16 @@ pub fn symlink(original: &CStr, link: &CStr) -> io::Result<()> {
 }
 
 pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
-    cfg_if::cfg_if! {
-        if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70"))] {
+    cfg_select! {
+        any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita", target_env = "nto70") => {
             // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
             // it implementation-defined whether `link` follows symlinks, so rely on the
             // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
             // Android has `linkat` on newer versions, but we happen to know `link`
             // always has the correct behavior, so it's here as well.
             cvt(unsafe { libc::link(original.as_ptr(), link.as_ptr()) })?;
-        } else {
+        }
+        _ => {
             // Where we can, use `linkat` instead of `link`; see the comment above
             // this one for details on why.
             cvt(unsafe { libc::linkat(libc::AT_FDCWD, original.as_ptr(), libc::AT_FDCWD, link.as_ptr(), 0) })?;

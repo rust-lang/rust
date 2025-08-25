@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicBool;
 use std::{env, fmt, io};
 
 use rand::{RngCore, rng};
+use rustc_ast::NodeId;
 use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
@@ -22,7 +23,7 @@ use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::translation::Translator;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
-    TerminalUrl, fallback_fluent_bundle,
+    LintEmitter, TerminalUrl, fallback_fluent_bundle,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -44,6 +45,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
+use crate::lint::LintId;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -139,7 +141,10 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
-pub trait LintStoreMarker: Any + DynSync + DynSend {}
+pub trait DynLintStore: Any + DynSync + DynSend {
+    /// Provides a way to access lint groups without depending on `rustc_lint`
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -164,7 +169,7 @@ pub struct Session {
     pub code_stats: CodeStats,
 
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    pub lint_store: Option<Arc<dyn LintStoreMarker>>,
+    pub lint_store: Option<Arc<dyn DynLintStore>>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -219,6 +224,20 @@ pub struct Session {
     pub invocation_temp: Option<String>,
 }
 
+impl LintEmitter for &'_ Session {
+    type Id = NodeId;
+
+    fn emit_node_span_lint(
+        self,
+        lint: &'static rustc_lint_defs::Lint,
+        node_id: Self::Id,
+        span: impl Into<rustc_errors::MultiSpan>,
+        decorator: impl for<'a> rustc_errors::LintDiagnostic<'a, ()> + DynSend + 'static,
+    ) {
+        self.psess.buffer_lint(lint, span, node_id, decorator);
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum CodegenUnits {
     /// Specified by the user. In this case we try fairly hard to produce the
@@ -238,6 +257,12 @@ impl CodegenUnits {
             CodegenUnits::Default(n) => n,
         }
     }
+}
+
+pub struct LintGroup {
+    pub name: &'static str,
+    pub lints: Vec<LintId>,
+    pub is_externally_loaded: bool,
 }
 
 impl Session {
@@ -594,6 +619,13 @@ impl Session {
             ("", "")
         } else {
             (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
+        }
+    }
+
+    pub fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_> {
+        match self.lint_store {
+            Some(ref lint_store) => lint_store.lint_groups_iter(),
+            None => Box::new(std::iter::empty()),
         }
     }
 }
@@ -1365,6 +1397,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     if sess.opts.unstable_opts.function_return != FunctionReturn::default() {
         if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
             sess.dcx().emit_err(errors::FunctionReturnRequiresX86OrX8664);
+        }
+    }
+
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+            sess.dcx().emit_err(errors::IndirectBranchCsPrefixRequiresX86OrX8664);
         }
     }
 

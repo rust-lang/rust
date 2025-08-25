@@ -1,14 +1,17 @@
-cfg_if::cfg_if! {
-    if #[cfg(target_family = "unix")] {
+cfg_select! {
+    target_family = "unix" => {
         mod unix;
         use unix as imp;
-    } else if #[cfg(target_os = "windows")] {
+    }
+    target_os = "windows" => {
         mod windows;
         use windows as imp;
-    } else if #[cfg(target_os = "uefi")] {
+    }
+    target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
-    } else {
+    }
+    _ => {
         mod unsupported;
         use unsupported as imp;
     }

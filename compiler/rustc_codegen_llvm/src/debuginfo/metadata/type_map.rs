@@ -276,7 +276,7 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
         && let ty::Adt(adt_def, args) = ty.kind()
     {
         let def_id = adt_def.did();
-        // If any sub type reference the original type definition and the sub type has a type
+        // If any child type references the original type definition and the child type has a type
         // parameter that strictly contains the original parameter, the original type is a recursive
         // type that can expanding indefinitely. Example,
         // ```
@@ -285,21 +285,43 @@ pub(super) fn build_type_with_children<'ll, 'tcx>(
         //     Item(T),
         // }
         // ```
-        let is_expanding_recursive = adt_def.is_enum()
-            && debug_context(cx).adt_stack.borrow().iter().any(|(parent_def_id, parent_args)| {
-                if def_id == *parent_def_id {
-                    args.iter().zip(parent_args.iter()).any(|(arg, parent_arg)| {
-                        if let (Some(arg), Some(parent_arg)) = (arg.as_type(), parent_arg.as_type())
-                        {
-                            arg != parent_arg && arg.contains(parent_arg)
-                        } else {
-                            false
-                        }
-                    })
-                } else {
-                    false
-                }
-            });
+        let is_expanding_recursive = {
+            let stack = debug_context(cx).adt_stack.borrow();
+            stack
+                .iter()
+                .enumerate()
+                .rev()
+                .skip(1)
+                .filter(|(_, (ancestor_def_id, _))| def_id == *ancestor_def_id)
+                .any(|(ancestor_index, (_, ancestor_args))| {
+                    args.iter()
+                        .zip(ancestor_args.iter())
+                        .filter_map(|(arg, ancestor_arg)| arg.as_type().zip(ancestor_arg.as_type()))
+                        .any(|(arg, ancestor_arg)|
+                            // Strictly contains.
+                            (arg != ancestor_arg && arg.contains(ancestor_arg))
+                            // Check all types between current and ancestor use the
+                            // ancestor_arg.
+                            // Otherwise, duplicate wrappers in normal recursive type may be
+                            // regarded as expanding.
+                            // ```
+                            // struct Recursive {
+                            //     a: Box<Box<Recursive>>,
+                            // }
+                            // ```
+                            // It can produce an ADT stack like this,
+                            // - Box<Recursive>
+                            // - Recursive
+                            // - Box<Box<Recursive>>
+                            && stack[ancestor_index + 1..stack.len()].iter().all(
+                                |(_, intermediate_args)|
+                                    intermediate_args
+                                        .iter()
+                                        .filter_map(|arg| arg.as_type())
+                                        .any(|mid_arg| mid_arg.contains(ancestor_arg))
+                            ))
+                })
+        };
         if is_expanding_recursive {
             // FIXME: indicate that this is an expanding recursive type in stub metadata?
             return DINodeCreationResult::new(stub_info.metadata, false);

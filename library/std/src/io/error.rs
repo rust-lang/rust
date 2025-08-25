@@ -18,7 +18,7 @@ use crate::{error, fmt, result, sys};
 /// This type is broadly used across [`std::io`] for any operation which may
 /// produce an error.
 ///
-/// This typedef is generally used to avoid writing out [`io::Error`] directly and
+/// This type alias is generally used to avoid writing out [`io::Error`] directly and
 /// is otherwise a direct mapping to [`Result`].
 ///
 /// While usual Rust style is to import types directly, aliases of [`Result`]

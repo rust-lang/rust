@@ -1830,10 +1830,27 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--host").arg(&*compiler.host.triple);
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
-        if let Some(codegen_backend) = builder.config.default_codegen_backend(compiler.host) {
-            // Tells compiletest which codegen backend is used by default by the compiler.
+        if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
+            if !builder.config.enabled_codegen_backends(compiler.host).contains(codegen_backend) {
+                eprintln!(
+                    "\
+ERROR: No configured backend named `{name}`
+HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}]`",
+                    name = codegen_backend.name(),
+                );
+                crate::exit!(1);
+            }
+            // Tells compiletest that we want to use this codegen in particular and to override
+            // the default one.
+            cmd.arg("--override-codegen-backend").arg(codegen_backend.name());
+            // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
-            cmd.arg("--codegen-backend").arg(codegen_backend.name());
+            cmd.arg("--default-codegen-backend").arg(codegen_backend.name());
+        } else {
+            // Tells compiletest which codegen backend to use.
+            // It is used to e.g. ignore tests that don't support that codegen backend.
+            cmd.arg("--default-codegen-backend")
+                .arg(builder.config.default_codegen_backend(compiler.host).unwrap().name());
         }
 
         if builder.build.config.llvm_enzyme {
@@ -2021,12 +2038,14 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled(compiler.host) {
-            let llvm::LlvmResult { llvm_config, .. } =
+            let llvm::LlvmResult { host_llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_version = get_llvm_version(builder, &llvm_config);
-                let llvm_components =
-                    command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
+                let llvm_version = get_llvm_version(builder, &host_llvm_config);
+                let llvm_components = command(&host_llvm_config)
+                    .arg("--components")
+                    .run_capture_stdout(builder)
+                    .stdout();
                 // Remove trailing newline from llvm-config output.
                 cmd.arg("--llvm-version")
                     .arg(llvm_version.trim())
@@ -2044,7 +2063,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
-                    command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                    command(&host_llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
                 let link_llvm = if target.is_msvc() {
                     format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
@@ -2058,7 +2077,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // tools. Pass the path to run-make tests so they can use them.
                 // (The coverage-run tests also need these tools to process
                 // coverage reports.)
-                let llvm_bin_path = llvm_config
+                let llvm_bin_path = host_llvm_config
                     .parent()
                     .expect("Expected llvm-config to be contained in directory");
                 assert!(llvm_bin_path.is_dir());
@@ -2732,7 +2751,7 @@ fn prepare_cargo_test(
 /// FIXME(Zalathar): Try to split this into two separate steps: a user-visible
 /// step for testing standard library crates, and an internal step used for both
 /// library crates and compiler crates.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
     pub target: TargetSelection,
@@ -3747,7 +3766,7 @@ impl Step for TestFloatParse {
 /// Runs the tool `src/tools/collect-license-metadata` in `ONLY_CHECK=1` mode,
 /// which verifies that `license-metadata.json` is up-to-date and therefore
 /// running the tool normally would not update anything.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {

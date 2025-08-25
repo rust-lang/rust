@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
@@ -815,6 +815,14 @@ pub(crate) struct MissingAbi {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_extern_without_abi_sugg)]
+pub(crate) struct MissingAbiSugg {
+    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub default_abi: ExternAbi,
+}
+
 #[derive(Diagnostic)]
 #[diag(ast_passes_abi_custom_safe_foreign_function)]
 pub(crate) struct AbiCustomSafeForeignFunction {
@@ -890,4 +898,13 @@ pub(crate) struct AbiMustNotHaveReturnType {
     #[help]
     pub span: Span,
     pub abi: ExternAbi,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_abi_x86_interrupt)]
+#[note]
+pub(crate) struct AbiX86Interrupt {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub param_count: usize,
 }

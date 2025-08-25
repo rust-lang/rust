@@ -1,8 +1,15 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue, getVar */
-/* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
+/* global addClass, getNakedUrl, getVar, nonnull, getSettingValue */
+/* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi */
 
 "use strict";
+
+/**
+ * @param {stringdex.Stringdex} Stringdex
+ * @param {typeof stringdex.RoaringBitmap} RoaringBitmap
+ * @param {stringdex.Hooks} hooks
+ */
+const initSearch = async function(Stringdex, RoaringBitmap, hooks) {
 
 // polyfill
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/toSpliced
@@ -20,31 +27,65 @@ if (!Array.prototype.toSpliced) {
  *
  * @template T
  * @param {Iterable<T>} arr
- * @param {function(T): any} func
+ * @param {function(T): Promise<any>} func
  * @param {function(T): boolean} funcBtwn
  */
-function onEachBtwn(arr, func, funcBtwn) {
+async function onEachBtwnAsync(arr, func, funcBtwn) {
     let skipped = true;
     for (const value of arr) {
         if (!skipped) {
             funcBtwn(value);
         }
-        skipped = func(value);
+        skipped = await func(value);
     }
 }
 
 /**
- * Convert any `undefined` to `null`.
- *
- * @template T
- * @param {T|undefined} x
- * @returns {T|null}
+ * Allow the browser to redraw.
+ * @returns {Promise<void>}
  */
-function undef2null(x) {
-    if (x !== undefined) {
-        return x;
-    }
-    return null;
+const yieldToBrowser = typeof window !== "undefined" && window.requestIdleCallback ?
+    function() {
+        return new Promise((resolve, _reject) => {
+            window.requestIdleCallback(resolve);
+        });
+    } :
+    function() {
+        return new Promise((resolve, _reject) => {
+            setTimeout(resolve, 0);
+        });
+    };
+
+/**
+ * Promise-based timer wrapper.
+ * @param {number} ms
+ * @returns {Promise<void>}
+ */
+const timeout = function(ms) {
+    return new Promise((resolve, _reject) => {
+        setTimeout(resolve, ms);
+    });
+};
+
+if (!Promise.withResolvers) {
+    /**
+     * Polyfill
+     * @template T
+     * @returns {{
+            "promise": Promise<T>,
+            "resolve": (function(T): void),
+            "reject": (function(any): void)
+        }}
+     */
+    Promise.withResolvers = () => {
+        let resolve, reject;
+        const promise = new Promise((res, rej) => {
+          resolve = res;
+          reject = rej;
+        });
+        // @ts-expect-error
+        return {promise, resolve, reject};
+    };
 }
 
 // ==================== Core search logic begin ====================
@@ -81,13 +122,22 @@ const itemTypes = [
 ];
 
 // used for special search precedence
-const TY_PRIMITIVE = itemTypes.indexOf("primitive");
-const TY_GENERIC = itemTypes.indexOf("generic");
-const TY_IMPORT = itemTypes.indexOf("import");
-const TY_TRAIT = itemTypes.indexOf("trait");
-const TY_FN = itemTypes.indexOf("fn");
-const TY_METHOD = itemTypes.indexOf("method");
-const TY_TYMETHOD = itemTypes.indexOf("tymethod");
+/** @type {rustdoc.ItemType} */
+const TY_PRIMITIVE = 1;
+/** @type {rustdoc.ItemType} */
+const TY_GENERIC = 26;
+/** @type {rustdoc.ItemType} */
+const TY_IMPORT = 4;
+/** @type {rustdoc.ItemType} */
+const TY_TRAIT = 10;
+/** @type {rustdoc.ItemType} */
+const TY_FN = 7;
+/** @type {rustdoc.ItemType} */
+const TY_METHOD = 13;
+/** @type {rustdoc.ItemType} */
+const TY_TYMETHOD = 12;
+/** @type {rustdoc.ItemType} */
+const TY_ASSOCTYPE = 17;
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -242,7 +292,9 @@ function isEndCharacter(c) {
 }
 
 /**
- * @param {number} ty
+ * Same thing as ItemType::is_fn_like in item_type.rs
+ *
+ * @param {rustdoc.ItemType} ty
  * @returns
  */
 function isFnLikeTy(ty) {
@@ -535,6 +587,45 @@ function getNextElem(query, parserState, elems, isInGenerics) {
     /** @type {rustdoc.ParserQueryElement[]} */
     const generics = [];
 
+    /** @type {function(string, string): void} */
+    const handleRefOrPtr = (chr, name) => {
+            if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
+            throw [
+                "Invalid search type: primitive ",
+                chr,
+                " and ",
+                parserState.typeFilter,
+                " both specified",
+            ];
+        }
+        parserState.typeFilter = null;
+        parserState.pos += 1;
+        let c = parserState.userQuery[parserState.pos];
+        while (c === " " && parserState.pos < parserState.length) {
+            parserState.pos += 1;
+            c = parserState.userQuery[parserState.pos];
+        }
+        const generics = [];
+        const pos = parserState.pos;
+        if (parserState.userQuery.slice(pos, pos + 3) === "mut") {
+            generics.push(makePrimitiveElement("mut", { typeFilter: "keyword" }));
+            parserState.pos += 3;
+            c = parserState.userQuery[parserState.pos];
+        } else if (chr === "*" && parserState.userQuery.slice(pos, pos + 5) === "const") {
+            // make *const T parse the same as *T
+            parserState.pos += 5;
+            c = parserState.userQuery[parserState.pos];
+        }
+        while (c === " " && parserState.pos < parserState.length) {
+            parserState.pos += 1;
+            c = parserState.userQuery[parserState.pos];
+        }
+        if (!isEndCharacter(c) && parserState.pos < parserState.length) {
+            getFilteredNextElem(query, parserState, generics, isInGenerics);
+        }
+        elems.push(makePrimitiveElement(name, { generics }));
+    };
+
     skipWhitespace(parserState);
     let start = parserState.pos;
     let end;
@@ -584,36 +675,9 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             elems.push(makePrimitiveElement(name, { bindingName, generics }));
         }
     } else if (parserState.userQuery[parserState.pos] === "&") {
-        if (parserState.typeFilter !== null && parserState.typeFilter !== "primitive") {
-            throw [
-                "Invalid search type: primitive ",
-                "&",
-                " and ",
-                parserState.typeFilter,
-                " both specified",
-            ];
-        }
-        parserState.typeFilter = null;
-        parserState.pos += 1;
-        let c = parserState.userQuery[parserState.pos];
-        while (c === " " && parserState.pos < parserState.length) {
-            parserState.pos += 1;
-            c = parserState.userQuery[parserState.pos];
-        }
-        const generics = [];
-        if (parserState.userQuery.slice(parserState.pos, parserState.pos + 3) === "mut") {
-            generics.push(makePrimitiveElement("mut", { typeFilter: "keyword" }));
-            parserState.pos += 3;
-            c = parserState.userQuery[parserState.pos];
-        }
-        while (c === " " && parserState.pos < parserState.length) {
-            parserState.pos += 1;
-            c = parserState.userQuery[parserState.pos];
-        }
-        if (!isEndCharacter(c) && parserState.pos < parserState.length) {
-            getFilteredNextElem(query, parserState, generics, isInGenerics);
-        }
-        elems.push(makePrimitiveElement("reference", { generics }));
+        handleRefOrPtr("&", "reference");
+    } else if (parserState.userQuery[parserState.pos] === "*") {
+        handleRefOrPtr("*", "pointer");
     } else {
         const isStringElem = parserState.userQuery[start] === "\"";
         // We handle the strings on their own mostly to make code easier to follow.
@@ -1023,6 +1087,7 @@ class VlqHexDecoder {
         this.string = string;
         this.cons = cons;
         this.offset = 0;
+        this.elemCount = 0;
         /** @type {T[]} */
         this.backrefQueue = [];
     }
@@ -1060,6 +1125,7 @@ class VlqHexDecoder {
         n = (n << 4) | (c & 0xF);
         const [sign, value] = [n & 1, n >> 1];
         this.offset += 1;
+        this.elemCount += 1;
         return sign ? -value : value;
     }
     /**
@@ -1086,1247 +1152,142 @@ class VlqHexDecoder {
         return result;
     }
 }
-class RoaringBitmap {
-    /** @param {string} str */
-    constructor(str) {
-        // https://github.com/RoaringBitmap/RoaringFormatSpec
-        //
-        // Roaring bitmaps are used for flags that can be kept in their
-        // compressed form, even when loaded into memory. This decoder
-        // turns the containers into objects, but uses byte array
-        // slices of the original format for the data payload.
-        const strdecoded = atob(str);
-        const u8array = new Uint8Array(strdecoded.length);
-        for (let j = 0; j < strdecoded.length; ++j) {
-            u8array[j] = strdecoded.charCodeAt(j);
-        }
-        const has_runs = u8array[0] === 0x3b;
-        const size = has_runs ?
-            ((u8array[2] | (u8array[3] << 8)) + 1) :
-            ((u8array[4] | (u8array[5] << 8) | (u8array[6] << 16) | (u8array[7] << 24)));
-        let i = has_runs ? 4 : 8;
-        let is_run;
-        if (has_runs) {
-            const is_run_len = Math.floor((size + 7) / 8);
-            is_run = u8array.slice(i, i + is_run_len);
-            i += is_run_len;
-        } else {
-            is_run = new Uint8Array();
-        }
-        this.keys = [];
-        this.cardinalities = [];
-        for (let j = 0; j < size; ++j) {
-            this.keys.push(u8array[i] | (u8array[i + 1] << 8));
-            i += 2;
-            this.cardinalities.push((u8array[i] | (u8array[i + 1] << 8)) + 1);
-            i += 2;
-        }
-        this.containers = [];
-        let offsets = null;
-        if (!has_runs || this.keys.length >= 4) {
-            offsets = [];
-            for (let j = 0; j < size; ++j) {
-                offsets.push(u8array[i] | (u8array[i + 1] << 8) | (u8array[i + 2] << 16) |
-                    (u8array[i + 3] << 24));
-                i += 4;
-            }
-        }
-        for (let j = 0; j < size; ++j) {
-            if (offsets && offsets[j] !== i) {
-                // eslint-disable-next-line no-console
-                console.log(this.containers);
-                throw new Error(`corrupt bitmap ${j}: ${i} / ${offsets[j]}`);
-            }
-            if (is_run[j >> 3] & (1 << (j & 0x7))) {
-                const runcount = (u8array[i] | (u8array[i + 1] << 8));
-                i += 2;
-                this.containers.push(new RoaringBitmapRun(
-                    runcount,
-                    u8array.slice(i, i + (runcount * 4)),
-                ));
-                i += runcount * 4;
-            } else if (this.cardinalities[j] >= 4096) {
-                this.containers.push(new RoaringBitmapBits(u8array.slice(i, i + 8192)));
-                i += 8192;
-            } else {
-                const end = this.cardinalities[j] * 2;
-                this.containers.push(new RoaringBitmapArray(
-                    this.cardinalities[j],
-                    u8array.slice(i, i + end),
-                ));
-                i += end;
-            }
-        }
-    }
-    /** @param {number} keyvalue */
-    contains(keyvalue) {
-        const key = keyvalue >> 16;
-        const value = keyvalue & 0xFFFF;
-        // Binary search algorithm copied from
-        // https://en.wikipedia.org/wiki/Binary_search#Procedure
-        //
-        // Format is required by specification to be sorted.
-        // Because keys are 16 bits and unique, length can't be
-        // bigger than 2**16, and because we have 32 bits of safe int,
-        // left + right can't overflow.
-        let left = 0;
-        let right = this.keys.length - 1;
-        while (left <= right) {
-            const mid = Math.floor((left + right) / 2);
-            const x = this.keys[mid];
-            if (x < key) {
-                left = mid + 1;
-            } else if (x > key) {
-                right = mid - 1;
-            } else {
-                return this.containers[mid].contains(value);
-            }
-        }
-        return false;
-    }
-}
 
-class RoaringBitmapRun {
-    /**
-     * @param {number} runcount
-     * @param {Uint8Array} array
-     */
-    constructor(runcount, array) {
-        this.runcount = runcount;
-        this.array = array;
-    }
-    /** @param {number} value */
-    contains(value) {
-        // Binary search algorithm copied from
-        // https://en.wikipedia.org/wiki/Binary_search#Procedure
-        //
-        // Since runcount is stored as 16 bits, left + right
-        // can't overflow.
-        let left = 0;
-        let right = this.runcount - 1;
-        while (left <= right) {
-            const mid = Math.floor((left + right) / 2);
-            const i = mid * 4;
-            const start = this.array[i] | (this.array[i + 1] << 8);
-            const lenm1 = this.array[i + 2] | (this.array[i + 3] << 8);
-            if ((start + lenm1) < value) {
-                left = mid + 1;
-            } else if (start > value) {
-                right = mid - 1;
-            } else {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-class RoaringBitmapArray {
-    /**
-     * @param {number} cardinality
-     * @param {Uint8Array} array
-     */
-    constructor(cardinality, array) {
-        this.cardinality = cardinality;
-        this.array = array;
-    }
-    /** @param {number} value */
-    contains(value) {
-        // Binary search algorithm copied from
-        // https://en.wikipedia.org/wiki/Binary_search#Procedure
-        //
-        // Since cardinality can't be higher than 4096, left + right
-        // cannot overflow.
-        let left = 0;
-        let right = this.cardinality - 1;
-        while (left <= right) {
-            const mid = Math.floor((left + right) / 2);
-            const i = mid * 2;
-            const x = this.array[i] | (this.array[i + 1] << 8);
-            if (x < value) {
-                left = mid + 1;
-            } else if (x > value) {
-                right = mid - 1;
-            } else {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-class RoaringBitmapBits {
-    /**
-     * @param {Uint8Array} array
-     */
-    constructor(array) {
-        this.array = array;
-    }
-    /** @param {number} value */
-    contains(value) {
-        return !!(this.array[value >> 3] & (1 << (value & 7)));
-    }
-}
+/** @type {Array<string>} */
+const EMPTY_STRING_ARRAY = [];
+
+/** @type {Array<rustdoc.FunctionType>} */
+const EMPTY_GENERICS_ARRAY = [];
+
+/** @type {Array<[number, rustdoc.FunctionType[]]>} */
+const EMPTY_BINDINGS_ARRAY = [];
+
+/** @type {Map<number, Array<any>>} */
+const EMPTY_BINDINGS_MAP = new Map();
 
 /**
- * A prefix tree, used for name-based search.
- *
- * This data structure is used to drive prefix matches,
- * such as matching the query "link" to `LinkedList`,
- * and Lev-distance matches, such as matching the
- * query "hahsmap" to `HashMap`. Substring matches,
- * such as "list" to `LinkedList`, are done with a
- * tailTable that deep-links into this trie.
- *
- * children
- * : A [sparse array] of subtrees. The array index
- *   is a charCode.
- *
- *   [sparse array]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/
- *     Indexed_collections#sparse_arrays
- *
- * matches
- * : A list of search index IDs for this node.
- *
- * @type {{
- *     children: NameTrie[],
- *     matches: number[],
- * }}
+ * @param {string|null} typename
+ * @returns {number}
  */
-class NameTrie {
-    constructor() {
-        this.children = [];
-        this.matches = [];
+function itemTypeFromName(typename) {
+    if (typename === null) {
+        return NO_TYPE_FILTER;
     }
-    /**
-     * @param {string} name
-     * @param {number} id
-     * @param {Map<string, NameTrie[]>} tailTable
-     */
-    insert(name, id, tailTable) {
-        this.insertSubstring(name, 0, id, tailTable);
+    const index = itemTypes.findIndex(i => i === typename);
+    if (index < 0) {
+        throw ["Unknown type filter ", typename];
     }
-    /**
-     * @param {string} name
-     * @param {number} substart
-     * @param {number} id
-     * @param {Map<string, NameTrie[]>} tailTable
-     */
-    insertSubstring(name, substart, id, tailTable) {
-        const l = name.length;
-        if (substart === l) {
-            this.matches.push(id);
-        } else {
-            const sb = name.charCodeAt(substart);
-            let child;
-            if (this.children[sb] !== undefined) {
-                child = this.children[sb];
-            } else {
-                child = new NameTrie();
-                this.children[sb] = child;
-                /** @type {NameTrie[]} */
-                let sste;
-                if (substart >= 2) {
-                    const tail = name.substring(substart - 2, substart + 1);
-                    const entry = tailTable.get(tail);
-                    if (entry !== undefined) {
-                        sste = entry;
-                    } else {
-                        sste = [];
-                        tailTable.set(tail, sste);
-                    }
-                    sste.push(child);
-                }
-            }
-            child.insertSubstring(name, substart + 1, id, tailTable);
-        }
-    }
-    /**
-     * @param {string} name
-     * @param {Map<string, NameTrie[]>} tailTable
-     */
-    search(name, tailTable) {
-        const results = new Set();
-        this.searchSubstringPrefix(name, 0, results);
-        if (results.size < MAX_RESULTS && name.length >= 3) {
-            const levParams = name.length >= 6 ?
-                new Lev2TParametricDescription(name.length) :
-                new Lev1TParametricDescription(name.length);
-            this.searchLev(name, 0, levParams, results);
-            const tail = name.substring(0, 3);
-            const list = tailTable.get(tail);
-            if (list !== undefined) {
-                for (const entry of list) {
-                    entry.searchSubstringPrefix(name, 3, results);
-                }
-            }
-        }
-        return [...results];
-    }
-    /**
-     * @param {string} name
-     * @param {number} substart
-     * @param {Set<number>} results
-     */
-    searchSubstringPrefix(name, substart, results) {
-        const l = name.length;
-        if (substart === l) {
-            for (const match of this.matches) {
-                results.add(match);
-            }
-            // breadth-first traversal orders prefix matches by length
-            /** @type {NameTrie[]} */
-            let unprocessedChildren = [];
-            for (const child of this.children) {
-                if (child) {
-                    unprocessedChildren.push(child);
-                }
-            }
-            /** @type {NameTrie[]} */
-            let nextSet = [];
-            while (unprocessedChildren.length !== 0) {
-                /** @type {NameTrie} */
-                // @ts-expect-error
-                const next = unprocessedChildren.pop();
-                for (const child of next.children) {
-                    if (child) {
-                        nextSet.push(child);
-                    }
-                }
-                for (const match of next.matches) {
-                    results.add(match);
-                }
-                if (unprocessedChildren.length === 0) {
-                    const tmp = unprocessedChildren;
-                    unprocessedChildren = nextSet;
-                    nextSet = tmp;
-                }
-            }
-        } else {
-            const sb = name.charCodeAt(substart);
-            if (this.children[sb] !== undefined) {
-                this.children[sb].searchSubstringPrefix(name, substart + 1, results);
-            }
-        }
-    }
-    /**
-     * @param {string} name
-     * @param {number} substart
-     * @param {Lev2TParametricDescription|Lev1TParametricDescription} levParams
-     * @param {Set<number>} results
-     */
-    searchLev(name, substart, levParams, results) {
-        const stack = [[this, 0]];
-        const n = levParams.n;
-        while (stack.length !== 0) {
-            // It's not empty
-            //@ts-expect-error
-            const [trie, levState] = stack.pop();
-            for (const [charCode, child] of trie.children.entries()) {
-                if (!child) {
-                    continue;
-                }
-                const levPos = levParams.getPosition(levState);
-                const vector = levParams.getVector(
-                    name,
-                    charCode,
-                    levPos,
-                    Math.min(name.length, levPos + (2 * n) + 1),
-                );
-                const newLevState = levParams.transition(
-                    levState,
-                    levPos,
-                    vector,
-                );
-                if (newLevState >= 0) {
-                    stack.push([child, newLevState]);
-                    if (levParams.isAccept(newLevState)) {
-                        for (const match of child.matches) {
-                            results.add(match);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    return index;
 }
 
 class DocSearch {
     /**
-     * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
      * @param {string} rootPath
-     * @param {rustdoc.SearchState} searchState
+     * @param {stringdex.Database} database
      */
-    constructor(rawSearchIndex, rootPath, searchState) {
-        /**
-         * @type {Map<String, RoaringBitmap>}
-         */
-        this.searchIndexDeprecated = new Map();
-        /**
-         * @type {Map<String, RoaringBitmap>}
-         */
-        this.searchIndexEmptyDesc = new Map();
-        /**
-         *  @type {Uint32Array}
-         */
-        this.functionTypeFingerprint = new Uint32Array(0);
-        /**
-         * Map from normalized type names to integers. Used to make type search
-         * more efficient.
-         *
-         * @type {Map<string, {id: number, assocOnly: boolean}>}
-         */
-        this.typeNameIdMap = new Map();
-        /**
-         * Map from type ID to associated type name. Used for display,
-         * not for search.
-         *
-         * @type {Map<number, string>}
-         */
-        this.assocTypeIdNameMap = new Map();
-        this.ALIASES = new Map();
-        this.FOUND_ALIASES = new Set();
+    constructor(rootPath, database) {
         this.rootPath = rootPath;
-        this.searchState = searchState;
+        this.database = database;
 
-        /**
-         * Special type name IDs for searching by array.
-         * @type {number}
-         */
-        this.typeNameIdOfArray = this.buildTypeMapIndex("array");
-        /**
-         * Special type name IDs for searching by slice.
-         * @type {number}
-         */
-        this.typeNameIdOfSlice = this.buildTypeMapIndex("slice");
-        /**
-         * Special type name IDs for searching by both array and slice (`[]` syntax).
-         * @type {number}
-         */
-        this.typeNameIdOfArrayOrSlice = this.buildTypeMapIndex("[]");
-        /**
-         * Special type name IDs for searching by tuple.
-         * @type {number}
-         */
-        this.typeNameIdOfTuple = this.buildTypeMapIndex("tuple");
-        /**
-         * Special type name IDs for searching by unit.
-         * @type {number}
-         */
-        this.typeNameIdOfUnit = this.buildTypeMapIndex("unit");
-        /**
-         * Special type name IDs for searching by both tuple and unit (`()` syntax).
-         * @type {number}
-         */
-        this.typeNameIdOfTupleOrUnit = this.buildTypeMapIndex("()");
-        /**
-         * Special type name IDs for searching `fn`.
-         * @type {number}
-         */
-        this.typeNameIdOfFn = this.buildTypeMapIndex("fn");
-        /**
-         * Special type name IDs for searching `fnmut`.
-         * @type {number}
-         */
-        this.typeNameIdOfFnMut = this.buildTypeMapIndex("fnmut");
-        /**
-         * Special type name IDs for searching `fnonce`.
-         * @type {number}
-         */
-        this.typeNameIdOfFnOnce = this.buildTypeMapIndex("fnonce");
-        /**
-         * Special type name IDs for searching higher order functions (`->` syntax).
-         * @type {number}
-         */
-        this.typeNameIdOfHof = this.buildTypeMapIndex("->");
-        /**
-         * Special type name IDs the output assoc type.
-         * @type {number}
-         */
-        this.typeNameIdOfOutput = this.buildTypeMapIndex("output", true);
-        /**
-         * Special type name IDs for searching by reference.
-         * @type {number}
-         */
-        this.typeNameIdOfReference = this.buildTypeMapIndex("reference");
+        this.typeNameIdOfOutput = -1;
+        this.typeNameIdOfArray = -1;
+        this.typeNameIdOfSlice = -1;
+        this.typeNameIdOfArrayOrSlice = -1;
+        this.typeNameIdOfTuple = -1;
+        this.typeNameIdOfUnit = -1;
+        this.typeNameIdOfTupleOrUnit = -1;
+        this.typeNameIdOfReference = -1;
+        this.typeNameIdOfPointer = -1;
+        this.typeNameIdOfHof = -1;
 
-        /**
-         * Empty, immutable map used in item search types with no bindings.
-         *
-         * @type {Map<number, Array<any>>}
-         */
-        this.EMPTY_BINDINGS_MAP = new Map();
+        this.utf8decoder = new TextDecoder();
 
-        /**
-         * Empty, immutable map used in item search types with no bindings.
-         *
-         * @type {Array<any>}
-         */
-        this.EMPTY_GENERICS_ARRAY = [];
-
-        /**
-         * Object pool for function types with no bindings or generics.
-         * This is reset after loading the index.
-         *
-         * @type {Map<number|null, rustdoc.FunctionType>}
-         */
+        /** @type {Map<number|null, rustdoc.FunctionType>} */
         this.TYPES_POOL = new Map();
-
-        /**
-         * A trie for finding items by name.
-         * This is used for edit distance and prefix finding.
-         *
-         * @type {NameTrie}
-         */
-        this.nameTrie = new NameTrie();
-
-        /**
-         * Find items by 3-substring. This is a map from three-char
-         * prefixes into lists of subtries.
-         */
-        this.tailTable = new Map();
-
-        /**
-         *  @type {Array<rustdoc.Row>}
-         */
-        this.searchIndex = this.buildIndex(rawSearchIndex);
     }
 
     /**
-     * Add an item to the type Name->ID map, or, if one already exists, use it.
-     * Returns the number. If name is "" or null, return null (pure generic).
-     *
-     * This is effectively string interning, so that function matching can be
-     * done more quickly. Two types with the same name but different item kinds
-     * get the same ID.
-     *
-     * @template T extends string
-     * @overload
-     * @param {T} name
-     * @param {boolean=} isAssocType - True if this is an assoc type
-     * @returns {T extends "" ? null : number}
-     *
-     * @param {string} name
-     * @param {boolean=} isAssocType
-     * @returns {number | null}
-     *
+     * Load search index. If you do not call this function, `execQuery`
+     * will never fulfill.
      */
-    buildTypeMapIndex(name, isAssocType) {
-        if (name === "" || name === null) {
-            return null;
+    async buildIndex() {
+        const nn = this.database.getIndex("normalizedName");
+        if (!nn) {
+            return;
         }
-
-        const obj = this.typeNameIdMap.get(name);
-        if (obj !== undefined) {
-            obj.assocOnly = !!(isAssocType && obj.assocOnly);
-            return obj.id;
-        } else {
-            const id = this.typeNameIdMap.size;
-            this.typeNameIdMap.set(name, { id, assocOnly: !!isAssocType });
-            return id;
-        }
-    }
-
-    /**
-     * Convert a list of RawFunctionType / ID to object-based FunctionType.
-     *
-     * Crates often have lots of functions in them, and it's common to have a large number of
-     * functions that operate on a small set of data types, so the search index compresses them
-     * by encoding function parameter and return types as indexes into an array of names.
-     *
-     * Even when a general-purpose compression algorithm is used, this is still a win.
-     * I checked. https://github.com/rust-lang/rust/pull/98475#issue-1284395985
-     *
-     * The format for individual function types is encoded in
-     * librustdoc/html/render/mod.rs: impl Serialize for RenderType
-     *
-     * @param {null|Array<rustdoc.RawFunctionType>} types
-     * @param {Array<{
-     *     name: string,
-    *     ty: number,
-    *     path: string|null,
-    *     exactPath: string|null,
-    *     unboxFlag: boolean
-    * }>} paths
-    * @param {Array<{
-    *     name: string,
-    *     ty: number,
-    *     path: string|null,
-    *     exactPath: string|null,
-    *     unboxFlag: boolean,
-    * }>} lowercasePaths
-     *
-     * @return {Array<rustdoc.FunctionType>}
-     */
-    buildItemSearchTypeAll(types, paths, lowercasePaths) {
-        return types && types.length > 0 ?
-            types.map(type => this.buildItemSearchType(type, paths, lowercasePaths)) :
-            this.EMPTY_GENERICS_ARRAY;
-    }
-
-    /**
-     * Converts a single type.
-     *
-     * @param {rustdoc.RawFunctionType} type
-     * @param {Array<{
-     *     name: string,
-     *     ty: number,
-     *     path: string|null,
-     *     exactPath: string|null,
-     *     unboxFlag: boolean
-     * }>} paths
-     * @param {Array<{
-     *     name: string,
-     *     ty: number,
-     *     path: string|null,
-     *     exactPath: string|null,
-     *     unboxFlag: boolean,
-     * }>} lowercasePaths
-     * @param {boolean=} isAssocType
-     */
-    buildItemSearchType(type, paths, lowercasePaths, isAssocType) {
-        const PATH_INDEX_DATA = 0;
-        const GENERICS_DATA = 1;
-        const BINDINGS_DATA = 2;
-        let pathIndex, generics, bindings;
-        if (typeof type === "number") {
-            pathIndex = type;
-            generics = this.EMPTY_GENERICS_ARRAY;
-            bindings = this.EMPTY_BINDINGS_MAP;
-        } else {
-            pathIndex = type[PATH_INDEX_DATA];
-            generics = this.buildItemSearchTypeAll(
-                type[GENERICS_DATA],
-                paths,
-                lowercasePaths,
-            );
-            // @ts-expect-error
-            if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
-                // @ts-expect-error
-                bindings = new Map(type[BINDINGS_DATA].map(binding => {
-                    const [assocType, constraints] = binding;
-                    // Associated type constructors are represented sloppily in rustdoc's
-                    // type search, to make the engine simpler.
-                    //
-                    // MyType<Output<T>=Result<T>> is equivalent to MyType<Output<Result<T>>=T>
-                    // and both are, essentially
-                    // MyType<Output=(T, Result<T>)>, except the tuple isn't actually there.
-                    // It's more like the value of a type binding is naturally an array,
-                    // which rustdoc calls "constraints".
-                    //
-                    // As a result, the key should never have generics on it.
-                    return [
-                        this.buildItemSearchType(assocType, paths, lowercasePaths, true).id,
-                        this.buildItemSearchTypeAll(constraints, paths, lowercasePaths),
-                    ];
-                }));
-            } else {
-                bindings = this.EMPTY_BINDINGS_MAP;
-            }
-        }
+        // Each of these identifiers are used specially by
+        // type-driven search.
+        const [
+            // output is the special associated type that goes
+            // after the arrow: the type checker desugars
+            // the path `Fn(a) -> b` into `Fn<Output=b, (a)>`
+            output,
+            // fn, fnmut, and fnonce all match `->`
+            fn,
+            fnMut,
+            fnOnce,
+            hof,
+            // array and slice both match `[]`
+            array,
+            slice,
+            arrayOrSlice,
+            // tuple and unit both match `()`
+            tuple,
+            unit,
+            tupleOrUnit,
+            // reference matches `&`
+            reference,
+            pointer,
+            // never matches `!`
+            never,
+        ] = await Promise.all([
+            nn.search("output"),
+            nn.search("fn"),
+            nn.search("fnmut"),
+            nn.search("fnonce"),
+            nn.search("->"),
+            nn.search("array"),
+            nn.search("slice"),
+            nn.search("[]"),
+            nn.search("tuple"),
+            nn.search("unit"),
+            nn.search("()"),
+            nn.search("reference"),
+            nn.search("pointer"),
+            nn.search("never"),
+        ]);
         /**
-         * @type {rustdoc.FunctionType}
-         */
-        let result;
-        if (pathIndex < 0) {
-            // types less than 0 are generic parameters
-            // the actual names of generic parameters aren't stored, since they aren't API
-            result = {
-                id: pathIndex,
-                name: "",
-                ty: TY_GENERIC,
-                path: null,
-                exactPath: null,
-                generics,
-                bindings,
-                unboxFlag: true,
-            };
-        } else if (pathIndex === 0) {
-            // `0` is used as a sentinel because it's fewer bytes than `null`
-            result = {
-                id: null,
-                name: "",
-                ty: null,
-                path: null,
-                exactPath: null,
-                generics,
-                bindings,
-                unboxFlag: true,
-            };
-        } else {
-            const item = lowercasePaths[pathIndex - 1];
-            const id = this.buildTypeMapIndex(item.name, isAssocType);
-            if (isAssocType && id !== null) {
-                this.assocTypeIdNameMap.set(id, paths[pathIndex - 1].name);
-            }
-            result = {
-                id,
-                name: paths[pathIndex - 1].name,
-                ty: item.ty,
-                path: item.path,
-                exactPath: item.exactPath,
-                generics,
-                bindings,
-                unboxFlag: item.unboxFlag,
-            };
-        }
-        const cr = this.TYPES_POOL.get(result.id);
-        if (cr) {
-            // Shallow equality check. Since this function is used
-            // to construct every type object, this should be mostly
-            // equivalent to a deep equality check, except if there's
-            // a conflict, we don't keep the old one around, so it's
-            // not a fully precise implementation of hashcons.
-            if (cr.generics.length === result.generics.length &&
-                cr.generics !== result.generics &&
-                cr.generics.every((x, i) => result.generics[i] === x)
-            ) {
-                result.generics = cr.generics;
-            }
-            if (cr.bindings.size === result.bindings.size && cr.bindings !== result.bindings) {
-                let ok = true;
-                for (const [k, v] of cr.bindings.entries()) {
-                    // @ts-expect-error
-                    const v2 = result.bindings.get(v);
-                    if (!v2) {
-                        ok = false;
-                        break;
-                    }
-                    if (v !== v2 && v.length === v2.length && v.every((x, i) => v2[i] === x)) {
-                        result.bindings.set(k, v);
-                    } else if (v !== v2) {
-                        ok = false;
-                        break;
+         * @param {stringdex.Trie|null|undefined} trie
+         * @param {rustdoc.ItemType} ty
+         * @param {string} modulePath
+         * @returns {Promise<number>}
+         * */
+        const first = async(trie, ty, modulePath) => {
+            if (trie) {
+                for (const id of trie.matches().entries()) {
+                    const pathData = await this.getPathData(id);
+                    if (pathData && pathData.ty === ty && pathData.modulePath === modulePath) {
+                        return id;
                     }
                 }
-                if (ok) {
-                    result.bindings = cr.bindings;
-                }
             }
-            if (cr.ty === result.ty && cr.path === result.path
-                && cr.bindings === result.bindings && cr.generics === result.generics
-                && cr.ty === result.ty && cr.name === result.name
-                && cr.unboxFlag === result.unboxFlag
-            ) {
-                return cr;
-            }
-        }
-        this.TYPES_POOL.set(result.id, result);
-        return result;
-    }
-
-    /**
-     * Type fingerprints allow fast, approximate matching of types.
-     *
-     * This algo creates a compact representation of the type set using a Bloom filter.
-     * This fingerprint is used three ways:
-     *
-     * - It accelerates the matching algorithm by checking the function fingerprint against the
-     *   query fingerprint. If any bits are set in the query but not in the function, it can't
-     *   match.
-     *
-     * - The fourth section has the number of items in the set.
-     *   This is the distance function, used for filtering and for sorting.
-     *
-     * [^1]: Distance is the relatively naive metric of counting the number of distinct items in
-     * the function that are not present in the query.
-     *
-     * @param {rustdoc.FingerprintableType} type - a single type
-     * @param {Uint32Array} output - write the fingerprint to this data structure: uses 128 bits
-     */
-    buildFunctionTypeFingerprint(type, output) {
-        let input = type.id;
-        // All forms of `[]`/`()`/`->` get collapsed down to one thing in the bloom filter.
-        // Differentiating between arrays and slices, if the user asks for it, is
-        // still done in the matching algorithm.
-        if (input === this.typeNameIdOfArray || input === this.typeNameIdOfSlice) {
-            input = this.typeNameIdOfArrayOrSlice;
-        }
-        if (input === this.typeNameIdOfTuple || input === this.typeNameIdOfUnit) {
-            input = this.typeNameIdOfTupleOrUnit;
-        }
-        if (input === this.typeNameIdOfFn || input === this.typeNameIdOfFnMut ||
-            input === this.typeNameIdOfFnOnce) {
-            input = this.typeNameIdOfHof;
-        }
-        /**
-         * http://burtleburtle.net/bob/hash/integer.html
-         * ~~ is toInt32. It's used before adding, so
-         * the number stays in safe integer range.
-         * @param {number} k
-         */
-        const hashint1 = k => {
-            k = (~~k + 0x7ed55d16) + (k << 12);
-            k = (k ^ 0xc761c23c) ^ (k >>> 19);
-            k = (~~k + 0x165667b1) + (k << 5);
-            k = (~~k + 0xd3a2646c) ^ (k << 9);
-            k = (~~k + 0xfd7046c5) + (k << 3);
-            return (k ^ 0xb55a4f09) ^ (k >>> 16);
+            return -1;
         };
-        /** @param {number} k */
-        const hashint2 = k => {
-            k = ~k + (k << 15);
-            k ^= k >>> 12;
-            k += k << 2;
-            k ^= k >>> 4;
-            k = Math.imul(k, 2057);
-            return k ^ (k >> 16);
-        };
-        if (input !== null) {
-            const h0a = hashint1(input);
-            const h0b = hashint2(input);
-            // Less Hashing, Same Performance: Building a Better Bloom Filter
-            // doi=10.1.1.72.2442
-            const h1a = ~~(h0a + Math.imul(h0b, 2));
-            const h1b = ~~(h0a + Math.imul(h0b, 3));
-            const h2a = ~~(h0a + Math.imul(h0b, 4));
-            const h2b = ~~(h0a + Math.imul(h0b, 5));
-            output[0] |= (1 << (h0a % 32)) | (1 << (h1b % 32));
-            output[1] |= (1 << (h1a % 32)) | (1 << (h2b % 32));
-            output[2] |= (1 << (h2a % 32)) | (1 << (h0b % 32));
-            // output[3] is the total number of items in the type signature
-            output[3] += 1;
-        }
-        for (const g of type.generics) {
-            this.buildFunctionTypeFingerprint(g, output);
-        }
-        /**
-         * @type {{
-         *   id: number|null,
-         *   ty: number,
-         *   generics: rustdoc.FingerprintableType[],
-         *   bindings: Map<number, rustdoc.FingerprintableType[]>
-         * }}
-         */
-        const fb = {
-            id: null,
-            ty: 0,
-            generics: this.EMPTY_GENERICS_ARRAY,
-            bindings: this.EMPTY_BINDINGS_MAP,
-        };
-        for (const [k, v] of type.bindings.entries()) {
-            fb.id = k;
-            fb.generics = v;
-            this.buildFunctionTypeFingerprint(fb, output);
-        }
-    }
-
-    /**
-     * Convert raw search index into in-memory search index.
-     *
-     * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
-     * @returns {rustdoc.Row[]}
-     */
-    buildIndex(rawSearchIndex) {
-        /**
-         * Convert from RawFunctionSearchType to FunctionSearchType.
-         *
-         * Crates often have lots of functions in them, and function signatures are sometimes
-         * complex, so rustdoc uses a pretty tight encoding for them. This function converts it
-         * to a simpler, object-based encoding so that the actual search code is more readable
-         * and easier to debug.
-         *
-         * The raw function search type format is generated using serde in
-         * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
-         *
-         * @param {Array<{
-         *     name: string,
-         *     ty: number,
-         *     path: string|null,
-         *     exactPath: string|null,
-         *     unboxFlag: boolean
-         * }>} paths
-         * @param {Array<{
-         *     name: string,
-         *     ty: number,
-         *     path: string|null,
-         *     exactPath: string|null,
-         *     unboxFlag: boolean
-         * }>} lowercasePaths
-         *
-         * @return {function(rustdoc.RawFunctionSearchType): null|rustdoc.FunctionSearchType}
-         */
-        const buildFunctionSearchTypeCallback = (paths, lowercasePaths) => {
-            /**
-             * @param {rustdoc.RawFunctionSearchType} functionSearchType
-             */
-            const cb = functionSearchType => {
-                if (functionSearchType === 0) {
-                    return null;
-                }
-                const INPUTS_DATA = 0;
-                const OUTPUT_DATA = 1;
-                /** @type {rustdoc.FunctionType[]} */
-                let inputs;
-                /** @type {rustdoc.FunctionType[]} */
-                let output;
-                if (typeof functionSearchType[INPUTS_DATA] === "number") {
-                    inputs = [
-                        this.buildItemSearchType(
-                            functionSearchType[INPUTS_DATA],
-                            paths,
-                            lowercasePaths,
-                        ),
-                    ];
-                } else {
-                    inputs = this.buildItemSearchTypeAll(
-                        functionSearchType[INPUTS_DATA],
-                        paths,
-                        lowercasePaths,
-                    );
-                }
-                if (functionSearchType.length > 1) {
-                    if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                        output = [
-                            this.buildItemSearchType(
-                                functionSearchType[OUTPUT_DATA],
-                                paths,
-                                lowercasePaths,
-                            ),
-                        ];
-                    } else {
-                        output = this.buildItemSearchTypeAll(
-                            // @ts-expect-error
-                            functionSearchType[OUTPUT_DATA],
-                            paths,
-                            lowercasePaths,
-                        );
-                    }
-                } else {
-                    output = [];
-                }
-                const where_clause = [];
-                const l = functionSearchType.length;
-                for (let i = 2; i < l; ++i) {
-                    where_clause.push(typeof functionSearchType[i] === "number"
-                        // @ts-expect-error
-                        ? [this.buildItemSearchType(functionSearchType[i], paths, lowercasePaths)]
-                        : this.buildItemSearchTypeAll(
-                            // @ts-expect-error
-                            functionSearchType[i],
-                            paths,
-                            lowercasePaths,
-                        ));
-                }
-                return {
-                    inputs, output, where_clause,
-                };
-            };
-            return cb;
-        };
-
-        /** @type {rustdoc.Row[]} */
-        const searchIndex = [];
-        let currentIndex = 0;
-        let id = 0;
-
-        // Function type fingerprints are 128-bit bloom filters that are used to
-        // estimate the distance between function and query.
-        // This loop counts the number of items to allocate a fingerprint for.
-        for (const crate of rawSearchIndex.values()) {
-            // Each item gets an entry in the fingerprint array, and the crate
-            // does, too
-            id += crate.t.length + 1;
-        }
-        this.functionTypeFingerprint = new Uint32Array((id + 1) * 4);
-        // This loop actually generates the search item indexes, including
-        // normalized names, type signature objects and fingerprints, and aliases.
-        id = 0;
-
-        /** @type {Array<[string, { [key: string]: Array<number> },  number]>} */
-        const allAliases = [];
-        for (const [crate, crateCorpus] of rawSearchIndex) {
-            // a string representing the lengths of each description shard
-            // a string representing the list of function types
-            const itemDescShardDecoder = new VlqHexDecoder(crateCorpus.D, noop => {
-                /** @type {number} */
-                // @ts-expect-error
-                const n = noop;
-                return n;
-            });
-            let descShard = {
-                crate,
-                shard: 0,
-                start: 0,
-                len: itemDescShardDecoder.next(),
-                promise: null,
-                resolve: null,
-            };
-            const descShardList = [descShard];
-
-            // Deprecated items and items with no description
-            this.searchIndexDeprecated.set(crate, new RoaringBitmap(crateCorpus.c));
-            this.searchIndexEmptyDesc.set(crate, new RoaringBitmap(crateCorpus.e));
-            let descIndex = 0;
-
-            /**
-             * List of generic function type parameter names.
-             * Used for display, not for searching.
-             * @type {string[]}
-             */
-            let lastParamNames = [];
-
-            // This object should have exactly the same set of fields as the "row"
-            // object defined below. Your JavaScript runtime will thank you.
-            // https://mathiasbynens.be/notes/shapes-ics
-            let normalizedName = crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, "");
-            const crateRow = {
-                crate,
-                ty: 3, // == ExternCrate
-                name: crate,
-                path: "",
-                descShard,
-                descIndex,
-                exactPath: "",
-                desc: crateCorpus.doc,
-                parent: undefined,
-                type: null,
-                paramNames: lastParamNames,
-                id,
-                word: crate,
-                normalizedName,
-                bitIndex: 0,
-                implDisambiguator: null,
-            };
-            this.nameTrie.insert(normalizedName, id, this.tailTable);
-            id += 1;
-            searchIndex.push(crateRow);
-            currentIndex += 1;
-            // it's not undefined
-            // @ts-expect-error
-            if (!this.searchIndexEmptyDesc.get(crate).contains(0)) {
-                descIndex += 1;
-            }
-
-            // see `RawSearchIndexCrate` in `rustdoc.d.ts` for a more
-            // up to date description of these fields
-            const itemTypes = crateCorpus.t;
-            // an array of (String) item names
-            const itemNames = crateCorpus.n;
-            // an array of [(Number) item index,
-            //              (String) full path]
-            // an item whose index is not present will fall back to the previous present path
-            // i.e. if indices 4 and 11 are present, but 5-10 and 12-13 are not present,
-            // 5-10 will fall back to the path for 4 and 12-13 will fall back to the path for 11
-            const itemPaths = new Map(crateCorpus.q);
-            // An array of [(Number) item index, (Number) path index]
-            // Used to de-duplicate inlined and re-exported stuff
-            const itemReexports = new Map(crateCorpus.r);
-            // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
-            const itemParentIdxDecoder = new VlqHexDecoder(crateCorpus.i, noop => noop);
-            // a map Number, string for impl disambiguators
-            const implDisambiguator = new Map(crateCorpus.b);
-            const rawPaths = crateCorpus.p;
-            const aliases = crateCorpus.a;
-            // an array of [(Number) item index,
-            //              (String) comma-separated list of function generic param names]
-            // an item whose index is not present will fall back to the previous present path
-            const itemParamNames = new Map(crateCorpus.P);
-
-            /**
-             * @type {Array<{
-             *     name: string,
-             *     ty: number,
-             *     path: string|null,
-             *     exactPath: string|null,
-             *     unboxFlag: boolean
-             * }>}
-             */
-            const lowercasePaths = [];
-            /**
-             * @type {Array<{
-             *     name: string,
-             *     ty: number,
-             *     path: string|null,
-             *     exactPath: string|null,
-             *     unboxFlag: boolean
-             * }>}
-             */
-            const paths = [];
-
-            // a string representing the list of function types
-            const itemFunctionDecoder = new VlqHexDecoder(
-                crateCorpus.f,
-                // @ts-expect-error
-                buildFunctionSearchTypeCallback(paths, lowercasePaths),
-            );
-
-            // convert `rawPaths` entries into object form
-            // generate normalizedPaths for function search mode
-            let len = rawPaths.length;
-            let lastPath = undef2null(itemPaths.get(0));
-            for (let i = 0; i < len; ++i) {
-                const elem = rawPaths[i];
-                const ty = elem[0];
-                const name = elem[1];
-                /**
-                 * @param {2|3} idx
-                 * @param {string|null} if_null
-                 * @param {string|null} if_not_found
-                 * @returns {string|null}
-                 */
-                const elemPath = (idx, if_null, if_not_found) => {
-                    if (elem.length > idx && elem[idx] !== undefined) {
-                        const p = itemPaths.get(elem[idx]);
-                        if (p !== undefined) {
-                            return p;
-                        }
-                        return if_not_found;
-                    }
-                    return if_null;
-                };
-                const path = elemPath(2, lastPath, null);
-                const exactPath = elemPath(3, path, path);
-                const unboxFlag = elem.length > 4 && !!elem[4];
-
-                lowercasePaths.push({ ty, name: name.toLowerCase(), path, exactPath, unboxFlag });
-                paths[i] = { ty, name, path, exactPath, unboxFlag };
-            }
-
-            // Convert `item*` into an object form, and construct word indices.
-            //
-            // Before any analysis is performed, let's gather the search terms to
-            // search against apart from the rest of the data. This is a quick
-            // operation that is cached for the life of the page state so that
-            // all other search operations have access to this cached data for
-            // faster analysis operations
-            lastPath = "";
-            len = itemTypes.length;
-            let lastName = "";
-            let lastWord = "";
-            for (let i = 0; i < len; ++i) {
-                const bitIndex = i + 1;
-                if (descIndex >= descShard.len &&
-                    // @ts-expect-error
-                    !this.searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
-                    descShard = {
-                        crate,
-                        shard: descShard.shard + 1,
-                        start: descShard.start + descShard.len,
-                        len: itemDescShardDecoder.next(),
-                        promise: null,
-                        resolve: null,
-                    };
-                    descIndex = 0;
-                    descShardList.push(descShard);
-                }
-                const name = itemNames[i] === "" ? lastName : itemNames[i];
-                const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
-                const pathU = itemPaths.get(i);
-                const path = pathU !== undefined ? pathU : lastPath;
-                const paramNameString = itemParamNames.get(i);
-                const paramNames = paramNameString !== undefined ?
-                    paramNameString.split(",") :
-                    lastParamNames;
-                const type = itemFunctionDecoder.next();
-                if (type !== null) {
-                    if (type) {
-                        const fp = this.functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
-                        for (const t of type.inputs) {
-                            this.buildFunctionTypeFingerprint(t, fp);
-                        }
-                        for (const t of type.output) {
-                            this.buildFunctionTypeFingerprint(t, fp);
-                        }
-                        for (const w of type.where_clause) {
-                            for (const t of w) {
-                                this.buildFunctionTypeFingerprint(t, fp);
-                            }
-                        }
-                    }
-                }
-                // This object should have exactly the same set of fields as the "crateRow"
-                // object defined above.
-                const itemParentIdx = itemParentIdxDecoder.next();
-                normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
-                /** @type {rustdoc.Row} */
-                const row = {
-                    crate,
-                    ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
-                    name,
-                    path,
-                    descShard,
-                    descIndex,
-                    exactPath: itemReexports.has(i) ?
-                        // @ts-expect-error
-                        itemPaths.get(itemReexports.get(i)) : path,
-                    // @ts-expect-error
-                    parent: itemParentIdx > 0 ? paths[itemParentIdx - 1] : undefined,
-                    type,
-                    paramNames,
-                    id,
-                    word,
-                    normalizedName,
-                    bitIndex,
-                    implDisambiguator: undef2null(implDisambiguator.get(i)),
-                };
-                this.nameTrie.insert(normalizedName, id, this.tailTable);
-                id += 1;
-                searchIndex.push(row);
-                lastPath = row.path;
-                lastParamNames = row.paramNames;
-                // @ts-expect-error
-                if (!this.searchIndexEmptyDesc.get(crate).contains(bitIndex)) {
-                    descIndex += 1;
-                }
-                lastName = name;
-                lastWord = word;
-            }
-
-            if (aliases) {
-                // We need to add the aliases in `searchIndex` after we finished filling it
-                // to not mess up indexes.
-                allAliases.push([crate, aliases, currentIndex]);
-            }
-            currentIndex += itemTypes.length;
-            this.searchState.descShards.set(crate, descShardList);
-        }
-
-        for (const [crate, aliases, index] of allAliases) {
-            for (const [alias_name, alias_refs] of Object.entries(aliases)) {
-                if (!this.ALIASES.has(crate)) {
-                    this.ALIASES.set(crate, new Map());
-                }
-                const word = alias_name.toLowerCase();
-                const crate_alias_map = this.ALIASES.get(crate);
-                if (!crate_alias_map.has(word)) {
-                    crate_alias_map.set(word, []);
-                }
-                const aliases_map = crate_alias_map.get(word);
-
-                const normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
-                for (const alias of alias_refs) {
-                    const originalIndex = alias + index;
-                    const original = searchIndex[originalIndex];
-                    /** @type {rustdoc.Row} */
-                    const row = {
-                        crate,
-                        name: alias_name,
-                        normalizedName,
-                        is_alias: true,
-                        ty: original.ty,
-                        type: original.type,
-                        paramNames: [],
-                        word,
-                        id,
-                        parent: undefined,
-                        original,
-                        path: "",
-                        implDisambiguator: original.implDisambiguator,
-                        // Needed to load the description of the original item.
-                        // @ts-ignore
-                        descShard: original.descShard,
-                        descIndex: original.descIndex,
-                        bitIndex: original.bitIndex,
-                    };
-                    aliases_map.push(row);
-                    this.nameTrie.insert(normalizedName, id, this.tailTable);
-                    id += 1;
-                    searchIndex.push(row);
-                }
-            }
-        }
-        // Drop the (rather large) hash table used for reusing function items
-        this.TYPES_POOL = new Map();
-        return searchIndex;
+        this.typeNameIdOfOutput = await first(output, TY_ASSOCTYPE, "");
+        this.typeNameIdOfFnPtr = await first(fn, TY_PRIMITIVE, "");
+        this.typeNameIdOfFn = await first(fn, TY_TRAIT, "core::ops");
+        this.typeNameIdOfFnMut = await first(fnMut, TY_TRAIT, "core::ops");
+        this.typeNameIdOfFnOnce = await first(fnOnce, TY_TRAIT, "core::ops");
+        this.typeNameIdOfArray = await first(array, TY_PRIMITIVE, "");
+        this.typeNameIdOfSlice = await first(slice, TY_PRIMITIVE, "");
+        this.typeNameIdOfArrayOrSlice = await first(arrayOrSlice, TY_PRIMITIVE, "");
+        this.typeNameIdOfTuple = await first(tuple, TY_PRIMITIVE, "");
+        this.typeNameIdOfUnit = await first(unit, TY_PRIMITIVE, "");
+        this.typeNameIdOfTupleOrUnit = await first(tupleOrUnit, TY_PRIMITIVE, "");
+        this.typeNameIdOfReference = await first(reference, TY_PRIMITIVE, "");
+        this.typeNameIdOfPointer = await first(pointer, TY_PRIMITIVE, "");
+        this.typeNameIdOfHof = await first(hof, TY_PRIMITIVE, "");
+        this.typeNameIdOfNever = await first(never, TY_PRIMITIVE, "");
     }
 
     /**
@@ -2342,41 +1303,6 @@ class DocSearch {
      * @return {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} - The parsed query
      */
     static parseQuery(userQuery) {
-        /**
-         * @param {string} typename
-         * @returns {number}
-         */
-        function itemTypeFromName(typename) {
-            const index = itemTypes.findIndex(i => i === typename);
-            if (index < 0) {
-                throw ["Unknown type filter ", typename];
-            }
-            return index;
-        }
-
-        /**
-         * @param {rustdoc.ParserQueryElement} elem
-         */
-        function convertTypeFilterOnElem(elem) {
-            if (typeof elem.typeFilter === "string") {
-                let typeFilter = elem.typeFilter;
-                if (typeFilter === "const") {
-                    typeFilter = "constant";
-                }
-                elem.typeFilter = itemTypeFromName(typeFilter);
-            } else {
-                elem.typeFilter = NO_TYPE_FILTER;
-            }
-            for (const elem2 of elem.generics) {
-                convertTypeFilterOnElem(elem2);
-            }
-            for (const constraints of elem.bindings.values()) {
-                for (const constraint of constraints) {
-                    convertTypeFilterOnElem(constraint);
-                }
-            }
-        }
-
         /**
          * Takes the user search input and returns an empty `ParsedQuery`.
          *
@@ -2437,8 +1363,7 @@ class DocSearch {
                     continue;
                 }
                 if (!foundStopChar) {
-                    /** @type String[] */
-                    let extra = [];
+                    let extra = EMPTY_STRING_ARRAY;
                     if (isLastElemGeneric(query.elems, parserState)) {
                         extra = [" after ", ">"];
                     } else if (prevIs(parserState, "\"")) {
@@ -2515,11 +1440,33 @@ class DocSearch {
 
         try {
             parseInput(query, parserState);
+
+            // Scan for invalid type filters, so that we can report the error
+            // outside the search loop.
+            /** @param {rustdoc.ParserQueryElement} elem */
+            const checkTypeFilter = elem => {
+                const ty = itemTypeFromName(elem.typeFilter);
+                if (ty === TY_GENERIC && elem.generics.length !== 0) {
+                    throw [
+                        "Generic type parameter ",
+                        elem.name,
+                        " does not accept generic parameters",
+                    ];
+                }
+                for (const generic of elem.generics) {
+                    checkTypeFilter(generic);
+                }
+                for (const constraints of elem.bindings.values()) {
+                    for (const constraint of constraints) {
+                        checkTypeFilter(constraint);
+                    }
+                }
+            };
             for (const elem of query.elems) {
-                convertTypeFilterOnElem(elem);
+                checkTypeFilter(elem);
             }
             for (const elem of query.returned) {
-                convertTypeFilterOnElem(elem);
+                checkTypeFilter(elem);
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
@@ -2543,208 +1490,573 @@ class DocSearch {
     }
 
     /**
+     * @param {number} id
+     * @returns {Promise<string|null>}
+     */
+    async getName(id) {
+        const ni = this.database.getData("name");
+        if (!ni) {
+            return null;
+        }
+        const name = await ni.at(id);
+        return name === undefined || name === null ? null : this.utf8decoder.decode(name);
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<string|null>}
+     */
+    async getDesc(id) {
+        const di = this.database.getData("desc");
+        if (!di) {
+            return null;
+        }
+        const desc = await di.at(id);
+        return desc === undefined || desc === null ? null : this.utf8decoder.decode(desc);
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<number|null>}
+     */
+    async getAliasTarget(id) {
+        const ai = this.database.getData("alias");
+        if (!ai) {
+            return null;
+        }
+        const bytes = await ai.at(id);
+        if (bytes === undefined || bytes === null || bytes.length === 0) {
+            return null;
+        } else {
+            /** @type {string} */
+            const encoded = this.utf8decoder.decode(bytes);
+            /** @type {number|null} */
+            const decoded = JSON.parse(encoded);
+            return decoded;
+        }
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<rustdoc.EntryData|null>}
+     */
+    async getEntryData(id) {
+        const ei = this.database.getData("entry");
+        if (!ei) {
+            return null;
+        }
+        const encoded = this.utf8decoder.decode(await ei.at(id));
+        if (encoded === "" || encoded === undefined || encoded === null) {
+            return null;
+        }
+        /**
+         * krate,
+         * ty,
+         * module_path,
+         * exact_module_path,
+         * parent,
+         * deprecated,
+         * associated_item_disambiguator
+         * @type {rustdoc.ArrayWithOptionals<[
+         *     number,
+         *     rustdoc.ItemType,
+         *     number,
+         *     number,
+         *     number,
+         *     number,
+         * ], [string]>}
+         */
+        const raw = JSON.parse(encoded);
+        return {
+            krate: raw[0],
+            ty: raw[1],
+            modulePath: raw[2] === 0 ? null : raw[2] - 1,
+            exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
+            parent: raw[4] === 0 ? null : raw[4] - 1,
+            deprecated: raw[5] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+        };
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<rustdoc.PathData|null>}
+     */
+    async getPathData(id) {
+        const pi = this.database.getData("path");
+        if (!pi) {
+            return null;
+        }
+        const encoded = this.utf8decoder.decode(await pi.at(id));
+        if (encoded === "" || encoded === undefined || encoded === null) {
+            return null;
+        }
+        /**
+         * ty, module_path, exact_module_path, search_unbox, inverted_function_signature_index
+         * @type {rustdoc.ArrayWithOptionals<[rustdoc.ItemType, string], [string|0, 0|1, string]>}
+         */
+        const raw = JSON.parse(encoded);
+        return {
+            ty: raw[0],
+            modulePath: raw[1],
+            exactModulePath: raw[2] === 0 || raw[2] === undefined ? raw[1] : raw[2],
+        };
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<rustdoc.FunctionData|null>}
+     */
+    async getFunctionData(id) {
+        const fi = this.database.getData("function");
+        if (!fi) {
+            return null;
+        }
+        const encoded = this.utf8decoder.decode(await fi.at(id));
+        if (encoded === "" || encoded === undefined || encoded === null) {
+            return null;
+        }
+        /**
+         * function_signature, param_names
+         * @type {[string, string[]]}
+         */
+        const raw = JSON.parse(encoded);
+
+        const parser = new VlqHexDecoder(raw[0], async functionSearchType => {
+            if (typeof functionSearchType === "number") {
+                return null;
+            }
+            const INPUTS_DATA = 0;
+            const OUTPUT_DATA = 1;
+            /** @type {Promise<rustdoc.FunctionType[]>} */
+            let inputs_;
+            /** @type {Promise<rustdoc.FunctionType[]>} */
+            let output_;
+            if (typeof functionSearchType[INPUTS_DATA] === "number") {
+                inputs_ = Promise.all([
+                    this.buildItemSearchType(functionSearchType[INPUTS_DATA]),
+                ]);
+            } else {
+                // @ts-ignore
+                inputs_ = this.buildItemSearchTypeAll(functionSearchType[INPUTS_DATA]);
+            }
+            if (functionSearchType.length > 1) {
+                if (typeof functionSearchType[OUTPUT_DATA] === "number") {
+                    output_ = Promise.all([
+                        this.buildItemSearchType(functionSearchType[OUTPUT_DATA]),
+                    ]);
+                } else {
+                    // @ts-expect-error
+                    output_ = this.buildItemSearchTypeAll(functionSearchType[OUTPUT_DATA]);
+                }
+            } else {
+                output_ = Promise.resolve(EMPTY_GENERICS_ARRAY);
+            }
+            /** @type {Promise<rustdoc.FunctionType[]>[]} */
+            const where_clause_ = [];
+            const l = functionSearchType.length;
+            for (let i = 2; i < l; ++i) {
+                where_clause_.push(typeof functionSearchType[i] === "number"
+                    // @ts-expect-error
+                    ? Promise.all([this.buildItemSearchType(functionSearchType[i])])
+                    // @ts-expect-error
+                    : this.buildItemSearchTypeAll(functionSearchType[i]),
+                );
+            }
+            const [inputs, output, where_clause] = await Promise.all([
+                inputs_,
+                output_,
+                Promise.all(where_clause_),
+            ]);
+            return {
+                inputs, output, where_clause,
+            };
+        });
+
+        return {
+            functionSignature: await parser.next(),
+            paramNames: raw[1],
+            elemCount: parser.elemCount,
+        };
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<rustdoc.TypeData|null>}
+     */
+    async getTypeData(id) {
+        const ti = this.database.getData("type");
+        if (!ti) {
+            return null;
+        }
+        const encoded = this.utf8decoder.decode(await ti.at(id));
+        if (encoded === "" || encoded === undefined || encoded === null) {
+            return null;
+        }
+        /**
+         * function_signature, param_names
+         * @type {[string, number] | [number] | [string] | [] | null}
+         */
+        const raw = JSON.parse(encoded);
+
+        if (!raw || raw.length === 0) {
+            return null;
+        }
+
+        let searchUnbox = false;
+        const invertedFunctionSignatureIndex = [];
+
+        if (typeof raw[0] === "string") {
+            if (raw[1]) {
+                searchUnbox = true;
+            }
+            // the inverted function signature index is a list of bitmaps,
+            // by number of types that appear in the function
+            let i = 0;
+            const pb = makeUint8ArrayFromBase64(raw[0]);
+            const l = pb.length;
+            while (i < l) {
+                if (pb[i] === 0) {
+                    invertedFunctionSignatureIndex.push(RoaringBitmap.empty());
+                    i += 1;
+                } else {
+                    const bitmap = new RoaringBitmap(pb, i);
+                    i += bitmap.consumed_len_bytes;
+                    invertedFunctionSignatureIndex.push(bitmap);
+                }
+            }
+        } else if (raw[0]) {
+            searchUnbox = true;
+        }
+
+        return { searchUnbox, invertedFunctionSignatureIndex };
+    }
+
+    /**
+     * @returns {Promise<string[]>}
+     */
+    async getCrateNameList() {
+        const crateNames = this.database.getData("crateNames");
+        if (!crateNames) {
+            return [];
+        }
+        const l = crateNames.length;
+        const names = [];
+        for (let i = 0; i < l; ++i) {
+            names.push(crateNames.at(i).then(name => {
+                if (name === undefined) {
+                    return "";
+                }
+                return this.utf8decoder.decode(name);
+            }));
+        }
+        return Promise.all(names);
+    }
+
+    /**
+     * @param {number} id non-negative generic index
+     * @returns {Promise<stringdex.RoaringBitmap[]>}
+     */
+    async getGenericInvertedIndex(id) {
+        const gii = this.database.getData("generic_inverted_index");
+        if (!gii) {
+            return [];
+        }
+        const pb = await gii.at(id);
+        if (pb === undefined || pb === null || pb.length === 0) {
+            return [];
+        }
+
+        const invertedFunctionSignatureIndex = [];
+        // the inverted function signature index is a list of bitmaps,
+        // by number of types that appear in the function
+        let i = 0;
+        const l = pb.length;
+        while (i < l) {
+            if (pb[i] === 0) {
+                invertedFunctionSignatureIndex.push(RoaringBitmap.empty());
+                i += 1;
+            } else {
+                const bitmap = new RoaringBitmap(pb, i);
+                i += bitmap.consumed_len_bytes;
+                invertedFunctionSignatureIndex.push(bitmap);
+            }
+        }
+        return invertedFunctionSignatureIndex;
+    }
+
+    /**
+     * @param {number} id
+     * @returns {Promise<rustdoc.Row?>}
+     */
+    async getRow(id) {
+        const [name_, entry, path, type] = await Promise.all([
+            this.getName(id),
+            this.getEntryData(id),
+            this.getPathData(id),
+            this.getFunctionData(id),
+        ]);
+        if (!entry && !path) {
+            return null;
+        }
+        const [
+            moduleName,
+            modulePathData,
+            exactModuleName,
+            exactModulePathData,
+        ] = await Promise.all([
+            entry && entry.modulePath !== null ? this.getName(entry.modulePath) : null,
+            entry && entry.modulePath !== null ? this.getPathData(entry.modulePath) : null,
+            entry && entry.exactModulePath !== null ?
+                this.getName(entry.exactModulePath) :
+                null,
+            entry && entry.exactModulePath !== null ?
+                this.getPathData(entry.exactModulePath) :
+                null,
+        ]);
+        const name = name_ === null ? "" : name_;
+        const normalizedName = (name.indexOf("_") === -1 ?
+            name :
+            name.replace(/_/g, "")).toLowerCase();
+        const modulePath = modulePathData === null || moduleName === null ? "" :
+            (modulePathData.modulePath === "" ?
+                moduleName :
+                `${modulePathData.modulePath}::${moduleName}`);
+        const [parentName, parentPath] = entry !== null && entry.parent !== null ?
+            await Promise.all([this.getName(entry.parent), this.getPathData(entry.parent)]) :
+            [null, null];
+        return {
+            id,
+            crate: entry ? nonnull(await this.getName(entry.krate)) : "",
+            ty: entry ? entry.ty : nonnull(path).ty,
+            name,
+            normalizedName,
+            modulePath,
+            exactModulePath: exactModulePathData === null || exactModuleName === null ? modulePath :
+                (exactModulePathData.exactModulePath === "" ?
+                    exactModuleName :
+                    `${exactModulePathData.exactModulePath}::${exactModuleName}`),
+            entry,
+            path,
+            type,
+            deprecated: entry ? entry.deprecated : false,
+            parent: parentName !== null && parentPath !== null ?
+                { name: parentName, path: parentPath } :
+                null,
+        };
+    }
+
+    /**
+     * Convert a list of RawFunctionType / ID to object-based FunctionType.
+     *
+     * Crates often have lots of functions in them, and it's common to have a large number of
+     * functions that operate on a small set of data types, so the search index compresses them
+     * by encoding function parameter and return types as indexes into an array of names.
+     *
+     * Even when a general-purpose compression algorithm is used, this is still a win.
+     * I checked. https://github.com/rust-lang/rust/pull/98475#issue-1284395985
+     *
+     * The format for individual function types is encoded in
+     * librustdoc/html/render/mod.rs: impl Serialize for RenderType
+     *
+     * @param {null|Array<rustdoc.RawFunctionType>} types
+     *
+     * @return {Promise<Array<rustdoc.FunctionType>>}
+     */
+    async buildItemSearchTypeAll(types) {
+        return types && types.length > 0 ?
+            await Promise.all(types.map(type => this.buildItemSearchType(type))) :
+            EMPTY_GENERICS_ARRAY;
+    }
+
+    /**
+     * Converts a single type.
+     *
+     * @param {rustdoc.RawFunctionType} type
+     * @return {Promise<rustdoc.FunctionType>}
+     */
+    async buildItemSearchType(type) {
+        const PATH_INDEX_DATA = 0;
+        const GENERICS_DATA = 1;
+        const BINDINGS_DATA = 2;
+        let id, generics;
+        /**
+         * @type {Map<number, rustdoc.FunctionType[]>}
+         */
+        let bindings;
+        if (typeof type === "number") {
+            id = type;
+            generics = EMPTY_GENERICS_ARRAY;
+            bindings = EMPTY_BINDINGS_MAP;
+        } else {
+            id = type[PATH_INDEX_DATA];
+            generics = await this.buildItemSearchTypeAll(type[GENERICS_DATA]);
+            if (type[BINDINGS_DATA] && type[BINDINGS_DATA].length > 0) {
+                bindings = new Map((await Promise.all(type[BINDINGS_DATA].map(
+                    /**
+                     * @param {[rustdoc.RawFunctionType, rustdoc.RawFunctionType[]]} binding
+                     * @returns {Promise<[number, rustdoc.FunctionType[]][]>}
+                    */
+                    async binding => {
+                        const [assocType, constraints] = binding;
+                        // Associated type constructors are represented sloppily in rustdoc's
+                        // type search, to make the engine simpler.
+                        //
+                        // MyType<Output<T>=Result<T>> is equivalent to MyType<Output<Result<T>>=T>
+                        // and both are, essentially
+                        // MyType<Output=(T, Result<T>)>, except the tuple isn't actually there.
+                        // It's more like the value of a type binding is naturally an array,
+                        // which rustdoc calls "constraints".
+                        //
+                        // As a result, the key should never have generics on it.
+                        const [k, v] = await Promise.all([
+                            this.buildItemSearchType(assocType).then(t => t.id),
+                            this.buildItemSearchTypeAll(constraints),
+                        ]);
+                        return k === null ? EMPTY_BINDINGS_ARRAY : [[k, v]];
+                    },
+                ))).flat());
+            } else {
+                bindings = EMPTY_BINDINGS_MAP;
+            }
+        }
+        /**
+         * @type {rustdoc.FunctionType}
+         */
+        let result;
+        if (id < 0) {
+            // types less than 0 are generic parameters
+            // the actual names of generic parameters aren't stored, since they aren't API
+            result = {
+                id,
+                name: "",
+                ty: TY_GENERIC,
+                path: null,
+                exactPath: null,
+                generics,
+                bindings,
+                unboxFlag: true,
+            };
+        } else if (id === 0) {
+            // `0` is used as a sentinel because it's fewer bytes than `null`
+            result = {
+                id: null,
+                name: "",
+                ty: TY_GENERIC,
+                path: null,
+                exactPath: null,
+                generics,
+                bindings,
+                unboxFlag: true,
+            };
+        } else {
+            const [name, path, type] = await Promise.all([
+                this.getName(id - 1),
+                this.getPathData(id - 1),
+                this.getTypeData(id - 1),
+            ]);
+            if (path === undefined || path === null || type === undefined || type === null) {
+                return {
+                    id: null,
+                    name: "",
+                    ty: TY_GENERIC,
+                    path: null,
+                    exactPath: null,
+                    generics,
+                    bindings,
+                    unboxFlag: true,
+                };
+            }
+            result = {
+                id: id - 1,
+                name,
+                ty: path.ty,
+                path: path.modulePath,
+                exactPath: path.exactModulePath === null ? path.modulePath : path.exactModulePath,
+                generics,
+                bindings,
+                unboxFlag: type.searchUnbox,
+            };
+        }
+        const cr = this.TYPES_POOL.get(result.id);
+        if (cr) {
+            // Shallow equality check. Since this function is used
+            // to construct every type object, this should be mostly
+            // equivalent to a deep equality check, except if there's
+            // a conflict, we don't keep the old one around, so it's
+            // not a fully precise implementation of hashcons.
+            if (cr.generics.length === result.generics.length &&
+                cr.generics !== result.generics &&
+                cr.generics.every((x, i) => result.generics[i] === x)
+            ) {
+                result.generics = cr.generics;
+            }
+            if (cr.bindings.size === result.bindings.size && cr.bindings !== result.bindings) {
+                let ok = true;
+                for (const [k, v] of cr.bindings.entries()) {
+                    const v2 = result.bindings.get(k);
+                    if (!v2) {
+                        ok = false;
+                        break;
+                    }
+                    if (v !== v2 && v.length === v2.length && v.every((x, i) => v2[i] === x)) {
+                        result.bindings.set(k, v);
+                    } else if (v !== v2) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    result.bindings = cr.bindings;
+                }
+            }
+            if (cr.ty === result.ty && cr.path === result.path
+                && cr.bindings === result.bindings && cr.generics === result.generics
+                && cr.ty === result.ty && cr.name === result.name
+                && cr.unboxFlag === result.unboxFlag
+            ) {
+                return cr;
+            }
+        }
+        this.TYPES_POOL.set(result.id, result);
+        return result;
+    }
+
+    /**
      * Executes the parsed query and builds a {ResultsTable}.
      *
-     * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} origParsedQuery
+     * @param  {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} parsedQuery
      *     - The parsed user query
      * @param  {Object} filterCrates - Crate to search in if defined
      * @param  {string} currentCrate - Current crate, to rank results from this crate higher
      *
      * @return {Promise<rustdoc.ResultsTable>}
      */
-    async execQuery(origParsedQuery, filterCrates, currentCrate) {
-        /** @type {rustdoc.Results} */
-        const results_others = new Map(),
-            /** @type {rustdoc.Results} */
-            results_in_args = new Map(),
-            /** @type {rustdoc.Results} */
-            results_returned = new Map();
-
-        /** @type {rustdoc.ParsedQuery<rustdoc.QueryElement>} */
-        // @ts-expect-error
-        const parsedQuery = origParsedQuery;
-
+    async execQuery(parsedQuery, filterCrates, currentCrate) {
         const queryLen =
             parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
             parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
         const maxEditDistance = Math.floor(queryLen / 3);
-        // We reinitialize the `FOUND_ALIASES` map.
-        this.FOUND_ALIASES.clear();
 
         /**
-         * @type {Map<string, number>}
+         * @param {rustdoc.Row} item
+         * @returns {[string, string, string]}
          */
-        const genericSymbols = new Map();
-
-        /**
-         * Convert names to ids in parsed query elements.
-         * This is not used for the "In Names" tab, but is used for the
-         * "In Params", "In Returns", and "In Function Signature" tabs.
-         *
-         * If there is no matching item, but a close-enough match, this
-         * function also that correction.
-         *
-         * See `buildTypeMapIndex` for more information.
-         *
-         * @param {rustdoc.QueryElement} elem
-         * @param {boolean=} isAssocType
-         */
-        const convertNameToId = (elem, isAssocType) => {
-            const loweredName = elem.pathLast.toLowerCase();
-            if (this.typeNameIdMap.has(loweredName) &&
-                // @ts-expect-error
-                (isAssocType || !this.typeNameIdMap.get(loweredName).assocOnly)) {
-                // @ts-expect-error
-                elem.id = this.typeNameIdMap.get(loweredName).id;
-            } else if (!parsedQuery.literalSearch) {
-                let match = null;
-                let matchDist = maxEditDistance + 1;
-                let matchName = "";
-                for (const [name, { id, assocOnly }] of this.typeNameIdMap) {
-                    const dist = Math.min(
-                        editDistance(name, loweredName, maxEditDistance),
-                        editDistance(name, elem.normalizedPathLast, maxEditDistance),
-                    );
-                    if (dist <= matchDist && dist <= maxEditDistance &&
-                        (isAssocType || !assocOnly)) {
-                        if (dist === matchDist && matchName > name) {
-                            continue;
-                        }
-                        match = id;
-                        matchDist = dist;
-                        matchName = name;
-                    }
-                }
-                if (match !== null) {
-                    parsedQuery.correction = matchName;
-                }
-                elem.id = match;
-            }
-            if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
-                && elem.generics.length === 0 && elem.bindings.size === 0)
-                || elem.typeFilter === TY_GENERIC) {
-                const id = genericSymbols.get(elem.normalizedPathLast);
-                if (id !== undefined) {
-                    elem.id = id;
-                } else {
-                    elem.id = -(genericSymbols.size + 1);
-                    genericSymbols.set(elem.normalizedPathLast, elem.id);
-                }
-                if (elem.typeFilter === -1 && elem.normalizedPathLast.length >= 3) {
-                    // Silly heuristic to catch if the user probably meant
-                    // to not write a generic parameter. We don't use it,
-                    // just bring it up.
-                    const maxPartDistance = Math.floor(elem.normalizedPathLast.length / 3);
-                    let matchDist = maxPartDistance + 1;
-                    let matchName = "";
-                    for (const name of this.typeNameIdMap.keys()) {
-                        const dist = editDistance(
-                            name,
-                            elem.normalizedPathLast,
-                            maxPartDistance,
-                        );
-                        if (dist <= matchDist && dist <= maxPartDistance) {
-                            if (dist === matchDist && matchName > name) {
-                                continue;
-                            }
-                            matchDist = dist;
-                            matchName = name;
-                        }
-                    }
-                    if (matchName !== "") {
-                        parsedQuery.proposeCorrectionFrom = elem.name;
-                        parsedQuery.proposeCorrectionTo = matchName;
-                    }
-                }
-                elem.typeFilter = TY_GENERIC;
-            }
-            if (elem.generics.length > 0 && elem.typeFilter === TY_GENERIC) {
-                // Rust does not have HKT
-                parsedQuery.error = [
-                    "Generic type parameter ",
-                    elem.name,
-                    " does not accept generic parameters",
-                ];
-            }
-            for (const elem2 of elem.generics) {
-                convertNameToId(elem2);
-            }
-            elem.bindings = new Map(Array.from(elem.bindings.entries())
-                .map(entry => {
-                    const [name, constraints] = entry;
-                    // @ts-expect-error
-                    if (!this.typeNameIdMap.has(name)) {
-                        parsedQuery.error = [
-                            "Type parameter ",
-                            // @ts-expect-error
-                            name,
-                            " does not exist",
-                        ];
-                        return [0, []];
-                    }
-                    for (const elem2 of constraints) {
-                        convertNameToId(elem2, false);
-                    }
-
-                    // @ts-expect-error
-                    return [this.typeNameIdMap.get(name).id, constraints];
-                }),
-            );
-        };
-
-        for (const elem of parsedQuery.elems) {
-            convertNameToId(elem, false);
-            this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
-        }
-        for (const elem of parsedQuery.returned) {
-            convertNameToId(elem, false);
-            this.buildFunctionTypeFingerprint(elem, parsedQuery.typeFingerprint);
-        }
-
-
-        /**
-         * Creates the query results.
-         *
-         * @param {Array<rustdoc.ResultObject>} results_in_args
-         * @param {Array<rustdoc.ResultObject>} results_returned
-         * @param {Array<rustdoc.ResultObject>} results_others
-         * @param {rustdoc.ParsedQuery<rustdoc.QueryElement>} parsedQuery
-         *
-         * @return {rustdoc.ResultsTable}
-         */
-        function createQueryResults(
-            results_in_args,
-            results_returned,
-            results_others,
-            parsedQuery) {
-            return {
-                "in_args": results_in_args,
-                "returned": results_returned,
-                "others": results_others,
-                "query": parsedQuery,
-            };
-        }
-
-        // @ts-expect-error
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
-            if (item.is_alias) {
-                this.FOUND_ALIASES.add(item.word);
-                item = item.original;
-            }
             const type = itemTypes[item.ty];
             const name = item.name;
-            let path = item.path;
-            let exactPath = item.exactPath;
+            let path = item.modulePath;
+            let exactPath = item.exactModulePath;
 
             if (type === "mod") {
                 displayPath = path + "::";
                 href = this.rootPath + path.replace(/::/g, "/") + "/" +
                     name + "/index.html";
             } else if (type === "import") {
-                displayPath = item.path + "::";
-                href = this.rootPath + item.path.replace(/::/g, "/") +
+                displayPath = item.modulePath + "::";
+                href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/index.html#reexport." + name;
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
@@ -2754,13 +2066,13 @@ class DocSearch {
             } else if (type === "externcrate") {
                 displayPath = "";
                 href = this.rootPath + name + "/index.html";
-            } else if (item.parent !== undefined) {
+            } else if (item.parent) {
                 const myparent = item.parent;
                 let anchor = type + "." + name;
-                const parentType = itemTypes[myparent.ty];
+                const parentType = itemTypes[myparent.path.ty];
                 let pageType = parentType;
                 let pageName = myparent.name;
-                exactPath = `${myparent.exactPath}::${myparent.name}`;
+                exactPath = `${myparent.path.exactModulePath}::${myparent.name}`;
 
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
@@ -2768,9 +2080,9 @@ class DocSearch {
                 } else if (type === "structfield" && parentType === "variant") {
                     // Structfields belonging to variants are special: the
                     // final path element is the enum name.
-                    const enumNameIdx = item.path.lastIndexOf("::");
-                    const enumName = item.path.substr(enumNameIdx + 2);
-                    path = item.path.substr(0, enumNameIdx);
+                    const enumNameIdx = item.modulePath.lastIndexOf("::");
+                    const enumName = item.modulePath.substr(enumNameIdx + 2);
+                    path = item.modulePath.substr(0, enumNameIdx);
                     displayPath = path + "::" + enumName + "::" + myparent.name + "::";
                     anchor = "variant." + myparent.name + ".field." + name;
                     pageType = "enum";
@@ -2778,16 +2090,16 @@ class DocSearch {
                 } else {
                     displayPath = path + "::" + myparent.name + "::";
                 }
-                if (item.implDisambiguator !== null) {
-                    anchor = item.implDisambiguator + "/" + anchor;
+                if (item.entry && item.entry.associatedItemDisambiguator !== null) {
+                    anchor = item.entry.associatedItemDisambiguator + "/" + anchor;
                 }
                 href = this.rootPath + path.replace(/::/g, "/") +
                     "/" + pageType +
                     "." + pageName +
                     ".html#" + anchor;
             } else {
-                displayPath = item.path + "::";
-                href = this.rootPath + item.path.replace(/::/g, "/") +
+                displayPath = item.modulePath + "::";
+                href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
             }
             return [displayPath, href, `${exactPath}::${name}`];
@@ -2810,82 +2122,16 @@ class DocSearch {
          * Add extra data to result objects, and filter items that have been
          * marked for removal.
          *
-         * @param {rustdoc.ResultObject[]} results
-         * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @returns {rustdoc.ResultObject[]}
-         */
-        const transformResults = (results, typeInfo) => {
-            const duplicates = new Set();
-            const out = [];
-
-            for (const result of results) {
-                if (result.id !== -1) {
-                    const res = buildHrefAndPath(this.searchIndex[result.id]);
-                    // many of these properties don't strictly need to be
-                    // copied over, but copying them over satisfies tsc,
-                    // and hopefully plays nice with the shape optimization
-                    // of the browser engine.
-                    /** @type {rustdoc.ResultObject} */
-                    const obj = Object.assign({
-                        parent: result.parent,
-                        type: result.type,
-                        dist: result.dist,
-                        path_dist: result.path_dist,
-                        index: result.index,
-                        desc: result.desc,
-                        item: result.item,
-                        displayPath: pathSplitter(res[0]),
-                        fullPath: "",
-                        href: "",
-                        displayTypeSignature: null,
-                    }, this.searchIndex[result.id]);
-
-                    // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath = res[2] + "|" + obj.ty;
-
-                    if (duplicates.has(obj.fullPath)) {
-                        continue;
-                    }
-
-                    // Exports are specifically not shown if the items they point at
-                    // are already in the results.
-                    if (obj.ty === TY_IMPORT && duplicates.has(res[2])) {
-                        continue;
-                    }
-                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
-                        continue;
-                    }
-                    duplicates.add(obj.fullPath);
-                    duplicates.add(res[2]);
-
-                    if (typeInfo !== null) {
-                        obj.displayTypeSignature =
-                            // @ts-expect-error
-                            this.formatDisplayTypeSignature(obj, typeInfo);
-                    }
-
-                    obj.href = res[1];
-                    out.push(obj);
-                    if (out.length >= MAX_RESULTS) {
-                        break;
-                    }
-                }
-            }
-            return out;
-        };
-
-        /**
-         * Add extra data to result objects, and filter items that have been
-         * marked for removal.
-         *
          * The output is formatted as an array of hunks, where odd numbered
          * hunks are highlighted and even numbered ones are not.
          *
          * @param {rustdoc.ResultObject} obj
          * @param {"sig"|"elems"|"returned"|null} typeInfo
+         * @param {rustdoc.QueryElement[]} elems
+         * @param {rustdoc.QueryElement[]} returned
          * @returns {Promise<rustdoc.DisplayTypeSignature>}
          */
-        this.formatDisplayTypeSignature = async(obj, typeInfo) => {
+        const formatDisplayTypeSignature = async(obj, typeInfo, elems, returned) => {
             const objType = obj.type;
             if (!objType) {
                 return {type: [], mappedNames: new Map(), whereClause: new Map()};
@@ -2897,13 +2143,13 @@ class DocSearch {
             if (typeInfo !== "elems" && typeInfo !== "returned") {
                 fnInputs = unifyFunctionTypes(
                     objType.inputs,
-                    parsedQuery.elems,
+                    elems,
                     objType.where_clause,
                     null,
                     mgensScratch => {
                         fnOutput = unifyFunctionTypes(
                             objType.output,
-                            parsedQuery.returned,
+                            returned,
                             objType.where_clause,
                             mgensScratch,
                             mgensOut => {
@@ -2917,10 +2163,9 @@ class DocSearch {
                     0,
                 );
             } else {
-                const arr = typeInfo === "elems" ? objType.inputs : objType.output;
                 const highlighted = unifyFunctionTypes(
-                    arr,
-                    parsedQuery.elems,
+                    typeInfo === "elems" ? objType.inputs : objType.output,
+                    typeInfo === "elems" ? elems : returned,
                     objType.where_clause,
                     null,
                     mgensOut => {
@@ -2969,15 +2214,15 @@ class DocSearch {
                 }
             };
 
-            parsedQuery.elems.forEach(remapQuery);
-            parsedQuery.returned.forEach(remapQuery);
+            elems.forEach(remapQuery);
+            returned.forEach(remapQuery);
 
             /**
              * Write text to a highlighting array.
              * Index 0 is not highlighted, index 1 is highlighted,
              * index 2 is not highlighted, etc.
              *
-             * @param {{name?: string, highlighted?: boolean}} fnType - input
+             * @param {{name: string|null, highlighted?: boolean}} fnType - input
              * @param {string[]} result
              */
             const pushText = (fnType, result) => {
@@ -3004,8 +2249,9 @@ class DocSearch {
              *
              * @param {rustdoc.HighlightedFunctionType} fnType - input
              * @param {string[]} result
+             * @returns {Promise<void>}
              */
-            const writeHof = (fnType, result) => {
+            const writeHof = async(fnType, result) => {
                 const hofOutput = fnType.bindings.get(this.typeNameIdOfOutput) || [];
                 const hofInputs = fnType.generics;
                 pushText(fnType, result);
@@ -3016,7 +2262,7 @@ class DocSearch {
                         pushText({ name: ", ", highlighted: false }, result);
                     }
                     needsComma = true;
-                    writeFn(fnType, result);
+                    await writeFn(fnType, result);
                 }
                 pushText({
                     name: hofOutput.length === 0 ? ")" : ") -> ",
@@ -3031,7 +2277,7 @@ class DocSearch {
                         pushText({ name: ", ", highlighted: false }, result);
                     }
                     needsComma = true;
-                    writeFn(fnType, result);
+                    await writeFn(fnType, result);
                 }
                 if (hofOutput.length > 1) {
                     pushText({name: ")", highlighted: false}, result);
@@ -3044,8 +2290,9 @@ class DocSearch {
              *
              * @param {rustdoc.HighlightedFunctionType} fnType
              * @param {string[]} result
+             * @returns {Promise<boolean>}
              */
-            const writeSpecialPrimitive = (fnType, result) => {
+            const writeSpecialPrimitive = async(fnType, result) => {
                 if (fnType.id === this.typeNameIdOfArray || fnType.id === this.typeNameIdOfSlice ||
                     fnType.id === this.typeNameIdOfTuple || fnType.id === this.typeNameIdOfUnit) {
                     const [ob, sb] =
@@ -3054,7 +2301,7 @@ class DocSearch {
                         ["[", "]"] :
                         ["(", ")"];
                     pushText({ name: ob, highlighted: fnType.highlighted }, result);
-                    onEachBtwn(
+                    await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, result),
                         // @ts-expect-error
@@ -3065,11 +2312,11 @@ class DocSearch {
                 } else if (fnType.id === this.typeNameIdOfReference) {
                     pushText({ name: "&", highlighted: fnType.highlighted }, result);
                     let prevHighlighted = false;
-                    onEachBtwn(
+                    await onEachBtwnAsync(
                         fnType.generics,
-                        value => {
+                        async value => {
                             prevHighlighted = !!value.highlighted;
-                            writeFn(value, result);
+                            await writeFn(value, result);
                         },
                         // @ts-expect-error
                         value => pushText({
@@ -3078,8 +2325,35 @@ class DocSearch {
                         }, result),
                     );
                     return true;
-                } else if (fnType.id === this.typeNameIdOfFn) {
-                    writeHof(fnType, result);
+                } else if (fnType.id === this.typeNameIdOfPointer) {
+                    pushText({ name: "*", highlighted: fnType.highlighted }, result);
+                    if (fnType.generics.length < 2) {
+                        pushText({ name: "const ", highlighted: fnType.highlighted }, result);
+                    }
+                    let prevHighlighted = false;
+                    await onEachBtwnAsync(
+                        fnType.generics,
+                        async value => {
+                            prevHighlighted = !!value.highlighted;
+                            await writeFn(value, result);
+                        },
+                        // @ts-expect-error
+                        value => pushText({
+                            name: " ",
+                            highlighted: prevHighlighted && value.highlighted,
+                        }, result),
+                    );
+                    return true;
+                } else if (
+                    fnType.id === this.typeNameIdOfFn ||
+                    fnType.id === this.typeNameIdOfFnMut ||
+                    fnType.id === this.typeNameIdOfFnOnce ||
+                    fnType.id === this.typeNameIdOfFnPtr
+                ) {
+                    await writeHof(fnType, result);
+                    return true;
+                } else if (fnType.id === this.typeNameIdOfNever) {
+                    pushText({ name: "!", highlighted: fnType.highlighted }, result);
                     return true;
                 }
                 return false;
@@ -3091,8 +2365,9 @@ class DocSearch {
              *
              * @param {rustdoc.HighlightedFunctionType} fnType
              * @param {string[]} result
+             * @returns {Promise<void>}
              */
-            const writeFn = (fnType, result) => {
+            const writeFn = async(fnType, result) => {
                 if (fnType.id !== null && fnType.id < 0) {
                     if (fnParamNames[-1 - fnType.id] === "") {
                         // Normally, there's no need to shown an unhighlighted
@@ -3101,7 +2376,7 @@ class DocSearch {
                             fnType.generics :
                             objType.where_clause[-1 - fnType.id];
                         for (const nested of generics) {
-                            writeFn(nested, result);
+                            await writeFn(nested, result);
                         }
                         return;
                     } else if (mgens) {
@@ -3120,7 +2395,7 @@ class DocSearch {
                     }, result);
                     /** @type{string[]} */
                     const where = [];
-                    onEachBtwn(
+                    await onEachBtwnAsync(
                         fnType.generics,
                         nested => writeFn(nested, where),
                         // @ts-expect-error
@@ -3131,32 +2406,61 @@ class DocSearch {
                     }
                 } else {
                     if (fnType.ty === TY_PRIMITIVE) {
-                        if (writeSpecialPrimitive(fnType, result)) {
+                        if (await writeSpecialPrimitive(fnType, result)) {
                             return;
                         }
                     } else if (fnType.ty === TY_TRAIT && (
                         fnType.id === this.typeNameIdOfFn ||
-                            fnType.id === this.typeNameIdOfFnMut ||
-                            fnType.id === this.typeNameIdOfFnOnce)) {
-                        writeHof(fnType, result);
+                        fnType.id === this.typeNameIdOfFnMut ||
+                        fnType.id === this.typeNameIdOfFnOnce ||
+                        fnType.id === this.typeNameIdOfFnPtr
+                    )) {
+                        await writeHof(fnType, result);
+                        return;
+                    } else if (fnType.name === "" &&
+                        fnType.bindings.size === 0 &&
+                        fnType.generics.length !== 0
+                    ) {
+                        pushText({ name: "impl ", highlighted: false }, result);
+                        if (fnType.generics.length > 1) {
+                            pushText({ name: "(", highlighted: false }, result);
+                        }
+                        await onEachBtwnAsync(
+                            fnType.generics,
+                            value => writeFn(value, result),
+                            // @ts-expect-error
+                            () => pushText({ name: ", ",  highlighted: false }, result),
+                        );
+                        if (fnType.generics.length > 1) {
+                            pushText({ name: ")", highlighted: false }, result);
+                        }
                         return;
                     }
                     pushText(fnType, result);
                     let hasBindings = false;
                     if (fnType.bindings.size > 0) {
-                        onEachBtwn(
-                            fnType.bindings,
-                            ([key, values]) => {
-                                const name = this.assocTypeIdNameMap.get(key);
+                        await onEachBtwnAsync(
+                            await Promise.all([...fnType.bindings.entries()].map(
+                                /**
+                                 * @param {[number, rustdoc.HighlightedFunctionType[]]} param0
+                                 * @returns {Promise<[
+                                 *     string|null,
+                                 *     rustdoc.HighlightedFunctionType[],
+                                 * ]>}
+                                 */
+                                async([key, values]) => [await this.getName(key), values],
+                            )),
+                            async([name, values]) => {
                                 // @ts-expect-error
                                 if (values.length === 1 && values[0].id < 0 &&
                                     // @ts-expect-error
-                                    `${fnType.name}::${name}` === fnParamNames[-1 - values[0].id]) {
+                                    `${fnType.name}::${name}` === fnParamNames[-1 - values[0].id]
+                                ) {
                                     // the internal `Item=Iterator::Item` type variable should be
                                     // shown in the where clause and name mapping output, but is
                                     // redundant in this spot
                                     for (const value of values) {
-                                        writeFn(value, []);
+                                        await writeFn(value, []);
                                     }
                                     return true;
                                 }
@@ -3169,7 +2473,7 @@ class DocSearch {
                                     name: values.length !== 1 ? "=(" : "=",
                                     highlighted: false,
                                 }, result);
-                                onEachBtwn(
+                                await onEachBtwnAsync(
                                     values || [],
                                     value => writeFn(value, result),
                                     // @ts-expect-error
@@ -3186,7 +2490,7 @@ class DocSearch {
                     if (fnType.generics.length > 0) {
                         pushText({ name: hasBindings ? ", " : "<", highlighted: false }, result);
                     }
-                    onEachBtwn(
+                    await onEachBtwnAsync(
                         fnType.generics,
                         value => writeFn(value, result),
                         // @ts-expect-error
@@ -3199,14 +2503,14 @@ class DocSearch {
             };
             /** @type {string[]} */
             const type = [];
-            onEachBtwn(
+            await onEachBtwnAsync(
                 fnInputs,
                 fnType => writeFn(fnType, type),
                 // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
             pushText({ name: " -> ", highlighted: false }, type);
-            onEachBtwn(
+            await onEachBtwnAsync(
                 fnOutput,
                 fnType => writeFn(fnType, type),
                 // @ts-expect-error
@@ -3217,176 +2521,252 @@ class DocSearch {
         };
 
         /**
-         * This function takes a result map, and sorts it by various criteria, including edit
-         * distance, substring match, and the crate it comes from.
+         * Add extra data to result objects, and filter items that have been
+         * marked for removal.
          *
-         * @param {rustdoc.Results} results
+         * @param {[rustdoc.PlainResultObject, rustdoc.Row][]} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @param {string} preferredCrate
-         * @returns {Promise<rustdoc.ResultObject[]>}
+         * @param {Set<string>} duplicates
+         * @returns {rustdoc.ResultObject[]}
          */
-        const sortResults = async(results, typeInfo, preferredCrate) => {
-            const userQuery = parsedQuery.userQuery;
-            const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
-            const isMixedCase = normalizedUserQuery !== userQuery;
-            const result_list = [];
-            const isReturnTypeQuery = parsedQuery.elems.length === 0 ||
-                typeInfo === "returned";
-            for (const result of results.values()) {
-                result.item = this.searchIndex[result.id];
-                result.word = this.searchIndex[result.id].word;
-                if (isReturnTypeQuery) {
-                    // We are doing a return-type based search, deprioritize "clone-like" results,
-                    // ie. functions that also take the queried type as an argument.
-                    const resultItemType = result.item && result.item.type;
-                    if (!resultItemType) {
+        const transformResults = (results, typeInfo, duplicates) => {
+            const out = [];
+
+            for (const [result, item] of results) {
+                if (item.id !== -1) {
+                    const res = buildHrefAndPath(item);
+                    // many of these properties don't strictly need to be
+                    // copied over, but copying them over satisfies tsc,
+                    // and hopefully plays nice with the shape optimization
+                    // of the browser engine.
+                    /** @type {rustdoc.ResultObject} */
+                    const obj = Object.assign({
+                        parent: item.parent ? {
+                            path: item.parent.path.modulePath,
+                            exactPath: item.parent.path.exactModulePath ||
+                                item.parent.path.modulePath,
+                            name: item.parent.name,
+                            ty: item.parent.path.ty,
+                        } : undefined,
+                        type: item.type && item.type.functionSignature ?
+                            item.type.functionSignature :
+                            undefined,
+                        paramNames: item.type && item.type.paramNames ?
+                            item.type.paramNames :
+                            undefined,
+                        dist: result.dist,
+                        path_dist: result.path_dist,
+                        index: result.index,
+                        desc: this.getDesc(result.id),
+                        item,
+                        displayPath: pathSplitter(res[0]),
+                        fullPath: "",
+                        href: "",
+                        displayTypeSignature: null,
+                    }, result);
+
+                    // To be sure than it some items aren't considered as duplicate.
+                    obj.fullPath = res[2] + "|" + obj.item.ty;
+
+                    if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
-                    const inputs = resultItemType.inputs;
-                    const where_clause = resultItemType.where_clause;
-                    if (containsTypeFromQuery(inputs, where_clause)) {
-                        result.path_dist *= 100;
-                        result.dist *= 100;
+
+                    // Exports are specifically not shown if the items they point at
+                    // are already in the results.
+                    if (obj.item.ty === TY_IMPORT && duplicates.has(res[2])) {
+                        continue;
+                    }
+                    if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
+                        continue;
+                    }
+                    duplicates.add(obj.fullPath);
+                    duplicates.add(res[2]);
+
+                    if (typeInfo !== null) {
+                        obj.displayTypeSignature = formatDisplayTypeSignature(
+                            obj,
+                            typeInfo,
+                            result.elems,
+                            result.returned,
+                        );
+                    }
+
+                    obj.href = res[1];
+                    out.push(obj);
+                    if (out.length >= MAX_RESULTS) {
+                        break;
                     }
                 }
-                result_list.push(result);
             }
 
-            result_list.sort((aaa, bbb) => {
-                /** @type {number} */
-                let a;
-                /** @type {number} */
-                let b;
-
-                // sort by exact case-sensitive match
-                if (isMixedCase) {
-                    a = Number(aaa.item.name !== userQuery);
-                    b = Number(bbb.item.name !== userQuery);
-                    if (a !== b) {
-                        return a - b;
-                    }
-                }
-
-                // sort by exact match with regard to the last word (mismatch goes later)
-                a = Number(aaa.word !== normalizedUserQuery);
-                b = Number(bbb.word !== normalizedUserQuery);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by index of keyword in item name (no literal occurrence goes later)
-                a = Number(aaa.index < 0);
-                b = Number(bbb.index < 0);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // in type based search, put functions first
-                if (parsedQuery.hasReturnArrow) {
-                    a = Number(!isFnLikeTy(aaa.item.ty));
-                    b = Number(!isFnLikeTy(bbb.item.ty));
-                    if (a !== b) {
-                        return a - b;
-                    }
-                }
-
-                // Sort by distance in the path part, if specified
-                // (less changes required to match means higher rankings)
-                a = Number(aaa.path_dist);
-                b = Number(bbb.path_dist);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // (later literal occurrence, if any, goes later)
-                a = Number(aaa.index);
-                b = Number(bbb.index);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // Sort by distance in the name part, the last part of the path
-                // (less changes required to match means higher rankings)
-                a = Number(aaa.dist);
-                b = Number(bbb.dist);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort deprecated items later
-                a = Number(
-                    // @ts-expect-error
-                    this.searchIndexDeprecated.get(aaa.item.crate).contains(aaa.item.bitIndex),
-                );
-                b = Number(
-                    // @ts-expect-error
-                    this.searchIndexDeprecated.get(bbb.item.crate).contains(bbb.item.bitIndex),
-                );
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by crate (current crate comes first)
-                a = Number(aaa.item.crate !== preferredCrate);
-                b = Number(bbb.item.crate !== preferredCrate);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by item name length (longer goes later)
-                a = Number(aaa.word.length);
-                b = Number(bbb.word.length);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort doc alias items later
-                a = Number(aaa.item.is_alias === true);
-                b = Number(bbb.item.is_alias === true);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by item name (lexicographically larger goes later)
-                let aw = aaa.word;
-                let bw = bbb.word;
-                if (aw !== bw) {
-                    return (aw > bw ? +1 : -1);
-                }
-
-                // sort by description (no description goes later)
-                a = Number(
-                    // @ts-expect-error
-                    this.searchIndexEmptyDesc.get(aaa.item.crate).contains(aaa.item.bitIndex),
-                );
-                b = Number(
-                    // @ts-expect-error
-                    this.searchIndexEmptyDesc.get(bbb.item.crate).contains(bbb.item.bitIndex),
-                );
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by type (later occurrence in `itemTypes` goes later)
-                a = Number(aaa.item.ty);
-                b = Number(bbb.item.ty);
-                if (a !== b) {
-                    return a - b;
-                }
-
-                // sort by path (lexicographically larger goes later)
-                aw = aaa.item.path;
-                bw = bbb.item.path;
-                if (aw !== bw) {
-                    return (aw > bw ? +1 : -1);
-                }
-
-                // que sera, sera
-                return 0;
-            });
-
-            return transformResults(result_list, typeInfo);
+            return out;
         };
+
+        const sortAndTransformResults =
+            /**
+             * @this {DocSearch}
+             * @param {Array<rustdoc.PlainResultObject|null>} results
+             * @param {"sig"|"elems"|"returned"|null} typeInfo
+             * @param {string} preferredCrate
+             * @param {Set<string>} duplicates
+             * @returns {AsyncGenerator<rustdoc.ResultObject, number>}
+             */
+            async function*(results, typeInfo, preferredCrate, duplicates) {
+                const userQuery = parsedQuery.userQuery;
+                const normalizedUserQuery = parsedQuery.userQuery.toLowerCase();
+                const isMixedCase = normalizedUserQuery !== userQuery;
+                /**
+                 * @type {[rustdoc.PlainResultObject, rustdoc.Row][]}
+                 */
+                const result_list = [];
+                for (const result of results.values()) {
+                    if (!result) {
+                        continue;
+                    }
+                    /**
+                     * @type {rustdoc.Row?}
+                     */
+                    const item = await this.getRow(result.id);
+                    if (!item) {
+                        continue;
+                    }
+                    if (filterCrates !== null && item.crate !== filterCrates) {
+                        continue;
+                    }
+                    if (item) {
+                        result_list.push([result, item]);
+                    } else {
+                        continue;
+                    }
+                }
+
+                result_list.sort(([aaa, aai], [bbb, bbi]) => {
+                    /** @type {number} */
+                    let a;
+                    /** @type {number} */
+                    let b;
+
+                    if (typeInfo === null) {
+                        // in name based search...
+
+                        // sort by exact case-sensitive match
+                        if (isMixedCase) {
+                            a = Number(aai.name !== userQuery);
+                            b = Number(bbi.name !== userQuery);
+                            if (a !== b) {
+                                return a - b;
+                            }
+                        }
+
+                        // sort by exact match with regard to the last word (mismatch goes later)
+                        a = Number(aai.normalizedName !== normalizedUserQuery);
+                        b = Number(bbi.normalizedName !== normalizedUserQuery);
+                        if (a !== b) {
+                            return a - b;
+                        }
+
+                        // sort by index of keyword in item name (no literal occurrence goes later)
+                        a = Number(aaa.index < 0);
+                        b = Number(bbb.index < 0);
+                        if (a !== b) {
+                            return a - b;
+                        }
+                    }
+
+                    // Sort by distance in the path part, if specified
+                    // (less changes required to match means higher rankings)
+                    a = Number(aaa.path_dist);
+                    b = Number(bbb.path_dist);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // (later literal occurrence, if any, goes later)
+                    a = Number(aaa.index);
+                    b = Number(bbb.index);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // Sort by distance in the name part, the last part of the path
+                    // (less changes required to match means higher rankings)
+                    a = Number(aaa.dist);
+                    b = Number(bbb.dist);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort aliases lower
+                    a = Number(aaa.is_alias);
+                    b = Number(bbb.is_alias);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort deprecated items later
+                    a = Number(aai.deprecated);
+                    b = Number(bbi.deprecated);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort by crate (current crate comes first)
+                    a = Number(aai.crate !== preferredCrate);
+                    b = Number(bbi.crate !== preferredCrate);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort by item name length (longer goes later)
+                    a = Number(aai.normalizedName.length);
+                    b = Number(bbi.normalizedName.length);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort by item name (lexicographically larger goes later)
+                    let aw = aai.normalizedName;
+                    let bw = bbi.normalizedName;
+                    if (aw !== bw) {
+                        return (aw > bw ? +1 : -1);
+                    }
+
+                    // sort by description (no description goes later)
+                    const di = this.database.getData("desc");
+                    if (di) {
+                        a = Number(di.isEmpty(aaa.id));
+                        b = Number(di.isEmpty(bbb.id));
+                        if (a !== b) {
+                            return a - b;
+                        }
+                    }
+
+                    // sort by type (later occurrence in `itemTypes` goes later)
+                    a = Number(aai.ty);
+                    b = Number(bbi.ty);
+                    if (a !== b) {
+                        return a - b;
+                    }
+
+                    // sort by path (lexicographically larger goes later)
+                    const ap = aai.modulePath;
+                    const bp = bbi.modulePath;
+                    aw = ap === undefined ? "" : ap;
+                    bw = bp === undefined ? "" : bp;
+                    if (aw !== bw) {
+                        return (aw > bw ? +1 : -1);
+                    }
+
+                    // que sera, sera
+                    return 0;
+                });
+
+                const transformed_result_list = transformResults(result_list, typeInfo, duplicates);
+                yield* transformed_result_list;
+                return transformed_result_list.length;
+            }
+            .bind(this);
 
         /**
          * This function checks if a list of search query `queryElems` can all be found in the
@@ -3938,6 +3318,8 @@ class DocSearch {
                 }
                 return true;
             } else {
+                // For these special cases, matching code need added to the inverted index.
+                // search_index.rs -> convert_render_type does this
                 if (queryElem.id === this.typeNameIdOfArrayOrSlice &&
                     (fnType.id === this.typeNameIdOfSlice || fnType.id === this.typeNameIdOfArray)
                 ) {
@@ -3948,10 +3330,12 @@ class DocSearch {
                 ) {
                     // () matches primitive:tuple or primitive:unit
                     // if it matches, then we're fine, and this is an appropriate match candidate
-                } else if (queryElem.id === this.typeNameIdOfHof &&
-                    (fnType.id === this.typeNameIdOfFn || fnType.id === this.typeNameIdOfFnMut ||
-                        fnType.id === this.typeNameIdOfFnOnce)
-                ) {
+                } else if (queryElem.id === this.typeNameIdOfHof && (
+                    fnType.id === this.typeNameIdOfFn ||
+                    fnType.id === this.typeNameIdOfFnMut ||
+                    fnType.id === this.typeNameIdOfFnOnce ||
+                    fnType.id === this.typeNameIdOfFnPtr
+                )) {
                     // -> matches fn, fnonce, and fnmut
                     // if it matches, then we're fine, and this is an appropriate match candidate
                 } else if (fnType.id !== queryElem.id || queryElem.id === null) {
@@ -4134,21 +3518,13 @@ class DocSearch {
          * This function checks if the given list contains any
          * (non-generic) types mentioned in the query.
          *
+         * @param {rustdoc.QueryElement[]} elems
          * @param {rustdoc.FunctionType[]} list    - A list of function types.
          * @param {rustdoc.FunctionType[][]} where_clause - Trait bounds for generic items.
          */
-        function containsTypeFromQuery(list, where_clause) {
+        function containsTypeFromQuery(elems, list, where_clause) {
             if (!list) return false;
-            for (const ty of parsedQuery.returned) {
-                // negative type ids are generics
-                if (ty.id !== null && ty.id < 0) {
-                    continue;
-                }
-                if (checkIfInList(list, ty, where_clause, null, 0)) {
-                    return true;
-                }
-            }
-            for (const ty of parsedQuery.elems) {
+            for (const ty of elems) {
                 if (ty.id !== null && ty.id < 0) {
                     continue;
                 }
@@ -4240,10 +3616,10 @@ class DocSearch {
         /**
          * Compute an "edit distance" that ignores missing path elements.
          * @param {string[]} contains search query path
-         * @param {rustdoc.Row} ty indexed item
+         * @param {string[]} path indexed page path
          * @returns {null|number} edit distance
          */
-        function checkPath(contains, ty) {
+        function checkPath(contains, path) {
             if (contains.length === 0) {
                 return 0;
             }
@@ -4251,11 +3627,6 @@ class DocSearch {
                 contains.reduce((acc, next) => acc + next.length, 0) / 3,
             );
             let ret_dist = maxPathEditDistance + 1;
-            const path = ty.path.split("::");
-
-            if (ty.parent && ty.parent.name) {
-                path.push(ty.parent.name.toLowerCase());
-            }
 
             const length = path.length;
             const clength = contains.length;
@@ -4281,7 +3652,32 @@ class DocSearch {
             return ret_dist > maxPathEditDistance ? null : ret_dist;
         }
 
-        // @ts-expect-error
+        /**
+         * Compute an "edit distance" that ignores missing path elements.
+         * @param {string[]} contains search query path
+         * @param {rustdoc.Row} row indexed item
+         * @returns {null|number} edit distance
+         */
+        function checkRowPath(contains, row) {
+            if (contains.length === 0) {
+                return 0;
+            }
+
+            const path = row.modulePath.split("::");
+
+            if (row.parent && row.parent.name) {
+                path.push(row.parent.name.toLowerCase());
+            }
+
+            return checkPath(contains, path);
+        }
+
+        /**
+         *
+         * @param {number} filter
+         * @param {rustdoc.ItemType} type
+         * @returns
+         */
         function typePassesFilter(filter, type) {
             // No filter or Exact mach
             if (filter <= NO_TYPE_FILTER || filter === type) return true;
@@ -4303,366 +3699,839 @@ class DocSearch {
             return false;
         }
 
-        // @ts-expect-error
-        const handleAliases = async(ret, query, filterCrates, currentCrate) => {
-            const lowerQuery = query.toLowerCase();
-            if (this.FOUND_ALIASES.has(lowerQuery)) {
-                return;
-            }
-            this.FOUND_ALIASES.add(lowerQuery);
-            // We separate aliases and crate aliases because we want to have current crate
-            // aliases to be before the others in the displayed results.
-            // @ts-expect-error
-            const aliases = [];
-            // @ts-expect-error
-            const crateAliases = [];
-            if (filterCrates !== null) {
-                if (this.ALIASES.has(filterCrates)
-                    && this.ALIASES.get(filterCrates).has(lowerQuery)) {
-                    const query_aliases = this.ALIASES.get(filterCrates).get(lowerQuery);
-                    for (const alias of query_aliases) {
-                        aliases.push(alias);
-                    }
+        const innerRunNameQuery =
+            /**
+             * @this {DocSearch}
+             * @param {string} currentCrate
+             * @returns {AsyncGenerator<rustdoc.ResultObject>}
+             */
+            async function*(currentCrate) {
+                const index = this.database.getIndex("normalizedName");
+                if (!index) {
+                    return;
                 }
-            } else {
-                for (const [crate, crateAliasesIndex] of this.ALIASES) {
-                    if (crateAliasesIndex.has(lowerQuery)) {
-                        // @ts-expect-error
-                        const pushTo = crate === currentCrate ? crateAliases : aliases;
-                        const query_aliases = crateAliasesIndex.get(lowerQuery);
-                        for (const alias of query_aliases) {
-                            pushTo.push(alias);
+                const idDuplicates = new Set();
+                const pathDuplicates = new Set();
+                let count = 0;
+                const prefixResults = [];
+                const normalizedUserQuery = parsedQuery.userQuery
+                    .replace(/[_"]/g, "")
+                    .toLowerCase();
+                /**
+                 * @param {string} name
+                 * @param {number} alias
+                 * @param {number} dist
+                 * @param {number} index
+                 * @returns {Promise<rustdoc.PlainResultObject?>}
+                 */
+                const handleAlias = async(name, alias, dist, index) => {
+                    return {
+                        id: alias,
+                        dist,
+                        path_dist: 0,
+                        index,
+                        alias: name,
+                        is_alias: true,
+                        elems: [], // only used in type-based queries
+                        returned: [], // only used in type-based queries
+                        original: await this.getRow(alias),
+                    };
+                };
+                /**
+                 * @param {Promise<rustdoc.PlainResultObject|null>[]} data
+                 * @returns {AsyncGenerator<rustdoc.ResultObject, boolean>}
+                 */
+                const flush = async function* (data) {
+                    const satr = sortAndTransformResults(
+                        await Promise.all(data),
+                        null,
+                        currentCrate,
+                        pathDuplicates,
+                    );
+                    data.length = 0;
+                    for await (const processed of satr) {
+                        yield processed;
+                        count += 1;
+                        if ((count & 0x7F) === 0) {
+                            await yieldToBrowser();
+                        }
+                        if (count >= MAX_RESULTS) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                const aliasResults = await index.search(normalizedUserQuery);
+                if (aliasResults) {
+                    for (const id of aliasResults.matches().entries()) {
+                        const [name, alias] = await Promise.all([
+                            this.getName(id),
+                            this.getAliasTarget(id),
+                        ]);
+                        if (name !== null &&
+                            alias !== null &&
+                            !idDuplicates.has(id) &&
+                            name.replace(/[_"]/g, "").toLowerCase() === normalizedUserQuery
+                        ) {
+                            prefixResults.push(handleAlias(name, alias, 0, 0));
+                            idDuplicates.add(id);
                         }
                     }
                 }
-            }
-
-            // @ts-expect-error
-            const sortFunc = (aaa, bbb) => {
-                if (aaa.original.path < bbb.original.path) {
-                    return 1;
-                } else if (aaa.original.path === bbb.original.path) {
-                    return 0;
+                if (parsedQuery.error !== null || parsedQuery.elems.length === 0) {
+                    yield* flush(prefixResults);
+                    return;
                 }
-                return -1;
-            };
-            // @ts-expect-error
-            crateAliases.sort(sortFunc);
-            aliases.sort(sortFunc);
-
-            // @ts-expect-error
-            const pushFunc = alias => {
-                // Cloning `alias` to prevent its fields to be updated.
-                alias = {...alias};
-                const res = buildHrefAndPath(alias);
-                alias.displayPath = pathSplitter(res[0]);
-                alias.fullPath = alias.displayPath + alias.name;
-                alias.href = res[1];
-
-                ret.others.unshift(alias);
-                if (ret.others.length > MAX_RESULTS) {
-                    ret.others.pop();
-                }
-            };
-
-            aliases.forEach(pushFunc);
-            // @ts-expect-error
-            crateAliases.forEach(pushFunc);
-        };
-
-        /**
-         * This function adds the given result into the provided `results` map if it matches the
-         * following condition:
-         *
-         * * If it is a "literal search" (`parsedQuery.literalSearch`), then `dist` must be 0.
-         * * If it is not a "literal search", `dist` must be <= `maxEditDistance`.
-         *
-         * The `results` map contains information which will be used to sort the search results:
-         *
-         * * `fullId` is an `integer`` used as the key of the object we use for the `results` map.
-         * * `id` is the index in the `searchIndex` array for this element.
-         * * `index` is an `integer`` used to sort by the position of the word in the item's name.
-         * * `dist` is the main metric used to sort the search results.
-         * * `path_dist` is zero if a single-component search query is used, otherwise it's the
-         *   distance computed for everything other than the last path component.
-         *
-         * @param {rustdoc.Results} results
-         * @param {number} fullId
-         * @param {number} id
-         * @param {number} index
-         * @param {number} dist
-         * @param {number} path_dist
-         * @param {number} maxEditDistance
-         */
-        function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
-            if (dist <= maxEditDistance || index !== -1) {
-                if (results.has(fullId)) {
-                    const result = results.get(fullId);
-                    if (result === undefined || result.dontValidate || result.dist <= dist) {
-                        return;
-                    }
-                }
-                // @ts-expect-error
-                results.set(fullId, {
-                    id: id,
-                    index: index,
-                    dontValidate: parsedQuery.literalSearch,
-                    dist: dist,
-                    path_dist: path_dist,
-                });
-            }
-        }
-
-        /**
-         * This function is called in case the query has more than one element. In this case, it'll
-         * try to match the items which validates all the elements. For `aa -> bb` will look for
-         * functions which have a parameter `aa` and has `bb` in its returned values.
-         *
-         * @param {rustdoc.Row} row
-         * @param {number} pos      - Position in the `searchIndex`.
-         * @param {rustdoc.Results} results
-         */
-        function handleArgs(row, pos, results) {
-            if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
-                return;
-            }
-            const rowType = row.type;
-            if (!rowType) {
-                return;
-            }
-
-            const tfpDist = compareTypeFingerprints(
-                row.id,
-                parsedQuery.typeFingerprint,
-            );
-            if (tfpDist === null) {
-                return;
-            }
-            // @ts-expect-error
-            if (results.size >= MAX_RESULTS && tfpDist > results.max_dist) {
-                return;
-            }
-
-            // If the result is too "bad", we return false and it ends this search.
-            if (!unifyFunctionTypes(
-                rowType.inputs,
-                parsedQuery.elems,
-                rowType.where_clause,
-                null,
-                // @ts-expect-error
-                mgens => {
-                    return unifyFunctionTypes(
-                        rowType.output,
-                        parsedQuery.returned,
-                        rowType.where_clause,
-                        mgens,
-                        checkTypeMgensForConflict,
-                        0, // unboxing depth
-                    );
-                },
-                0, // unboxing depth
-            )) {
-                return;
-            }
-
-            results.max_dist = Math.max(results.max_dist || 0, tfpDist);
-            addIntoResults(results, row.id, pos, 0, tfpDist, 0, Number.MAX_VALUE);
-        }
-
-        /**
-         * Compare the query fingerprint with the function fingerprint.
-         *
-         * @param {number} fullId - The function
-         * @param {Uint32Array} queryFingerprint - The query
-         * @returns {number|null} - Null if non-match, number if distance
-         *                          This function might return 0!
-         */
-        const compareTypeFingerprints = (fullId, queryFingerprint) => {
-            const fh0 = this.functionTypeFingerprint[fullId * 4];
-            const fh1 = this.functionTypeFingerprint[(fullId * 4) + 1];
-            const fh2 = this.functionTypeFingerprint[(fullId * 4) + 2];
-            const [qh0, qh1, qh2] = queryFingerprint;
-            // Approximate set intersection with bloom filters.
-            // This can be larger than reality, not smaller, because hashes have
-            // the property that if they've got the same value, they hash to the
-            // same thing. False positives exist, but not false negatives.
-            const [in0, in1, in2] = [fh0 & qh0, fh1 & qh1, fh2 & qh2];
-            // Approximate the set of items in the query but not the function.
-            // This might be smaller than reality, but cannot be bigger.
-            //
-            // | in_ | qh_ | XOR | Meaning                                          |
-            // | --- | --- | --- | ------------------------------------------------ |
-            // |  0  |  0  |  0  | Not present                                      |
-            // |  1  |  0  |  1  | IMPOSSIBLE because `in_` is `fh_ & qh_`          |
-            // |  1  |  1  |  0  | If one or both is false positive, false negative |
-            // |  0  |  1  |  1  | Since in_ has no false negatives, must be real   |
-            if ((in0 ^ qh0) || (in1 ^ qh1) || (in2 ^ qh2)) {
-                return null;
-            }
-            return this.functionTypeFingerprint[(fullId * 4) + 3];
-        };
-
-
-        const innerRunQuery = () => {
-            if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
                 const elem = parsedQuery.elems[0];
-                // use arrow functions to preserve `this`.
-                /** @type {function(number): void} */
-                const handleNameSearch = id => {
-                    const row = this.searchIndex[id];
-                    if (!typePassesFilter(elem.typeFilter, row.ty) ||
+                const typeFilter = itemTypeFromName(elem.typeFilter);
+                /**
+                 * @param {number} id
+                 * @returns {Promise<rustdoc.PlainResultObject?>}
+                 */
+                const handleNameSearch = async id => {
+                    const row = await this.getRow(id);
+                    if (!row || !row.entry) {
+                        return null;
+                    }
+                    if (!typePassesFilter(typeFilter, row.ty) ||
                         (filterCrates !== null && row.crate !== filterCrates)) {
-                        return;
+                        return null;
                     }
 
+                    /** @type {number|null} */
                     let pathDist = 0;
                     if (elem.fullPath.length > 1) {
-
-                        const maybePathDist = checkPath(elem.pathWithoutLast, row);
-                        if (maybePathDist === null) {
-                            return;
+                        pathDist = checkRowPath(elem.pathWithoutLast, row);
+                        if (pathDist === null) {
+                            return null;
                         }
-                        pathDist = maybePathDist;
                     }
 
                     if (parsedQuery.literalSearch) {
-                        if (row.word === elem.pathLast) {
-                            addIntoResults(results_others, row.id, id, 0, 0, pathDist, 0);
-                        }
-                    } else {
-                        addIntoResults(
-                            results_others,
-                            row.id,
+                        return row.name.toLowerCase() === elem.pathLast ? {
                             id,
-                            row.normalizedName.indexOf(elem.normalizedPathLast),
-                            editDistance(
+                            dist: 0,
+                            path_dist: 0,
+                            index: 0,
+                            elems: [], // only used in type-based queries
+                            returned: [], // only used in type-based queries
+                            is_alias: false,
+                        } : null;
+                    } else {
+                        return {
+                            id,
+                            dist: editDistance(
                                 row.normalizedName,
                                 elem.normalizedPathLast,
                                 maxEditDistance,
                             ),
-                            pathDist,
-                            maxEditDistance,
+                            path_dist: pathDist,
+                            index: row.normalizedName.indexOf(elem.normalizedPathLast),
+                            elems: [], // only used in type-based queries
+                            returned: [], // only used in type-based queries
+                            is_alias: false,
+                        };
+                    }
+                };
+                if (elem.normalizedPathLast === "") {
+                    // faster full-table scan for this specific case.
+                    const nameData = this.database.getData("name");
+                    const l = nameData ? nameData.length : 0;
+                    for (let id = 0; id < l; ++id) {
+                        if (!idDuplicates.has(id)) {
+                            idDuplicates.add(id);
+                            prefixResults.push(handleNameSearch(id));
+                        }
+                        if (yield* flush(prefixResults)) {
+                            return;
+                        }
+                    }
+                    return;
+                }
+                const results = await index.search(elem.normalizedPathLast);
+                if (results) {
+                    for await (const result of results.prefixMatches()) {
+                        for (const id of result.entries()) {
+                            if (!idDuplicates.has(id)) {
+                                idDuplicates.add(id);
+                                prefixResults.push(handleNameSearch(id));
+                                const [name, alias] = await Promise.all([
+                                    this.getName(id),
+                                    this.getAliasTarget(id),
+                                ]);
+                                if (name !== null && alias !== null) {
+                                    prefixResults.push(handleAlias(name, alias, 0, 0));
+                                }
+                            }
+                        }
+                        if (yield* flush(prefixResults)) {
+                            return;
+                        }
+                    }
+                    if (yield* flush(prefixResults)) {
+                        return;
+                    }
+                }
+                const levSearchResults = index.searchLev(elem.normalizedPathLast);
+                const levResults = [];
+                for await (const levResult of levSearchResults) {
+                    for (const id of levResult.matches().entries()) {
+                        if (!idDuplicates.has(id)) {
+                            idDuplicates.add(id);
+                            levResults.push(handleNameSearch(id));
+                            const [name, alias] = await Promise.all([
+                                this.getName(id),
+                                this.getAliasTarget(id),
+                            ]);
+                            if (name !== null && alias !== null) {
+                                levResults.push(handleAlias(
+                                    name,
+                                    alias,
+                                    editDistance(elem.normalizedPathLast, name, maxEditDistance),
+                                    name.indexOf(elem.normalizedPathLast),
+                                ));
+                            }
+                        }
+                    }
+                }
+                yield* flush(levResults);
+                if (results) {
+                    const substringResults = [];
+                    for await (const result of results.substringMatches()) {
+                        for (const id of result.entries()) {
+                            if (!idDuplicates.has(id)) {
+                                idDuplicates.add(id);
+                                substringResults.push(handleNameSearch(id));
+                                const [name, alias] = await Promise.all([
+                                    this.getName(id),
+                                    this.getAliasTarget(id),
+                                ]);
+                                if (name !== null && alias !== null) {
+                                    levResults.push(handleAlias(
+                                        name,
+                                        alias,
+                                        editDistance(
+                                            elem.normalizedPathLast,
+                                            name,
+                                            maxEditDistance,
+                                        ),
+                                        name.indexOf(elem.normalizedPathLast),
+                                    ));
+                                }
+                            }
+                        }
+                        if (yield* flush(substringResults)) {
+                            return;
+                        }
+                    }
+                }
+            }
+            .bind(this);
+
+        const innerRunTypeQuery =
+            /**
+             * @this {DocSearch}
+             * @param {rustdoc.ParserQueryElement[]} inputs
+             * @param {rustdoc.ParserQueryElement[]} output
+             * @param {"sig"|"elems"|"returned"|null} typeInfo
+             * @param {string} currentCrate
+             * @returns {AsyncGenerator<rustdoc.ResultObject>}
+             */
+            async function*(inputs, output, typeInfo, currentCrate) {
+                const index = this.database.getIndex("normalizedName");
+                if (!index) {
+                    return;
+                }
+                /** @type {Map<string, number>} */
+                const genericMap = new Map();
+                /**
+                 * @template Q
+                 * @typedef {{
+                 *     invertedIndex: stringdex.RoaringBitmap[],
+                 *     queryElem: Q,
+                 * }} PostingsList
+                 */
+                /** @type {stringdex.RoaringBitmap[]} */
+                const empty_inverted_index = [];
+                /** @type {PostingsList<any>[]} */
+                const empty_postings_list = [];
+                /** @type {stringdex.RoaringBitmap[]} */
+                const everything_inverted_index = [];
+                for (let i = 0; i < 64; ++i) {
+                    everything_inverted_index.push(RoaringBitmap.everything());
+                }
+                /**
+                 * @type {PostingsList<rustdoc.QueryElement[]>}
+                 */
+                const everything_postings_list = {
+                    invertedIndex: everything_inverted_index,
+                    queryElem: [],
+                };
+                /**
+                 * @type {PostingsList<rustdoc.QueryElement[]>[]}
+                 */
+                const nested_everything_postings_list = [everything_postings_list];
+                /**
+                 * @param {...stringdex.RoaringBitmap[]} idx
+                 * @returns {stringdex.RoaringBitmap[]}
+                 */
+                const intersectInvertedIndexes = (...idx) => {
+                    let i = 0;
+                    const l = idx.length;
+                    while (i < l - 1 && idx[i] === everything_inverted_index) {
+                        i += 1;
+                    }
+                    const result = [...idx[i]];
+                    for (; i < l; ++i) {
+                        if (idx[i] === everything_inverted_index) {
+                            continue;
+                        }
+                        if (idx[i].length < result.length) {
+                            result.length = idx[i].length;
+                        }
+                        for (let j = 0; j < result.length; ++j) {
+                            result[j] = result[j].intersection(idx[i][j]);
+                        }
+                    }
+                    return result;
+                };
+                /**
+                 * Fetch a bitmap of potentially-matching functions,
+                 * plus a list of query elements annotated with the correct IDs.
+                 *
+                 * More than one ID can exist because, for example, q=`Iter` can match
+                 * `std::vec::Iter`, or `std::btree_set::Iter`, or anything else, and those
+                 * items different IDs. What's worse, q=`Iter<Iter>` has N**2 possible
+                 * matches, because it could be `vec::Iter<btree_set::Iter>`,
+                 * `btree_set::Iter<vec::Iter>`, `vec::Iter<vec::Iter>`,
+                 * `btree_set::Iter<btree_set::Iter>`,
+                 * or anything else. This function returns all possible permutations.
+                 *
+                 * @param {rustdoc.ParserQueryElement|null} elem
+                 * @returns {Promise<PostingsList<rustdoc.QueryElement>[]>}
+                 */
+                const unpackPostingsList = async elem => {
+                    if (!elem) {
+                        return empty_postings_list;
+                    }
+                    const typeFilter = itemTypeFromName(elem.typeFilter);
+                    const searchResults = await index.search(elem.normalizedPathLast);
+                    /**
+                     * @type {Promise<[
+                     *     number,
+                     *     string|null,
+                     *     rustdoc.TypeData|null,
+                     *     rustdoc.PathData|null,
+                     * ]>[]}
+                     * */
+                    const typePromises = [];
+                    if (typeFilter !== TY_GENERIC && searchResults) {
+                        for (const id of searchResults.matches().entries()) {
+                            typePromises.push(Promise.all([
+                                this.getName(id),
+                                this.getTypeData(id),
+                                this.getPathData(id),
+                            ]).then(([name, typeData, pathData]) =>
+                                [id, name, typeData, pathData]));
+                        }
+                    }
+                    const types = (await Promise.all(typePromises))
+                        .filter(([_id, name, ty, path]) =>
+                            name !== null && name.toLowerCase() === elem.pathLast &&
+                            ty && !ty.invertedFunctionSignatureIndex.every(bitmap => {
+                                return bitmap.isEmpty();
+                            }) &&
+                            path && path.ty !== TY_ASSOCTYPE &&
+                            (elem.pathWithoutLast.length === 0 ||
+                                checkPath(
+                                    elem.pathWithoutLast,
+                                    path.modulePath.split("::"),
+                                ) === 0),
+                            );
+                    if (types.length === 0) {
+                        const areGenericsAllowed = typeFilter === TY_GENERIC || (
+                            typeFilter === -1 &&
+                            (parsedQuery.totalElems > 1 || parsedQuery.hasReturnArrow) &&
+                            elem.pathWithoutLast.length === 0 &&
+                            elem.generics.length === 0 &&
+                            elem.bindings.size === 0
                         );
+                        if (typeFilter !== TY_GENERIC &&
+                            (elem.name.length >= 3 || !areGenericsAllowed)
+                        ) {
+                            /** @type {string|null} */
+                            let chosenName = null;
+                            /** @type {rustdoc.TypeData[]} */
+                            let chosenType = [];
+                            /** @type {rustdoc.PathData[]} */
+                            let chosenPath = [];
+                            /** @type {number[]} */
+                            let chosenId = [];
+                            let chosenDist = Number.MAX_SAFE_INTEGER;
+                            const levResults = index.searchLev(elem.normalizedPathLast);
+                            for await (const searchResults of levResults) {
+                                for (const id of searchResults.matches().entries()) {
+                                    const [name, ty, path] = await Promise.all([
+                                        this.getName(id),
+                                        this.getTypeData(id),
+                                        this.getPathData(id),
+                                    ]);
+                                    if (name !== null && ty !== null && path !== null &&
+                                        !ty.invertedFunctionSignatureIndex.every(bitmap => {
+                                            return bitmap.isEmpty();
+                                        }) &&
+                                        path.ty !== TY_ASSOCTYPE
+                                    ) {
+                                        let dist = editDistance(
+                                            name,
+                                            elem.pathLast,
+                                            maxEditDistance,
+                                        );
+                                        if (elem.pathWithoutLast.length !== 0) {
+                                            const pathDist = checkPath(
+                                                elem.pathWithoutLast,
+                                                path.modulePath.split("::"),
+                                            );
+                                            // guaranteed to be higher than the path limit
+                                            dist += pathDist === null ?
+                                                Number.MAX_SAFE_INTEGER :
+                                                pathDist;
+                                        }
+                                        if (name === chosenName) {
+                                            chosenId.push(id);
+                                            chosenType.push(ty);
+                                            chosenPath.push(path);
+                                        } else if (dist < chosenDist) {
+                                            chosenName = name;
+                                            chosenId = [id];
+                                            chosenType = [ty];
+                                            chosenPath = [path];
+                                            chosenDist = dist;
+                                        }
+                                    }
+                                }
+                                if (chosenId.length !== 0) {
+                                    // searchLev returns results in order
+                                    // if we have working matches, we're done
+                                    break;
+                                }
+                            }
+                            if (areGenericsAllowed) {
+                                parsedQuery.proposeCorrectionFrom = elem.name;
+                                parsedQuery.proposeCorrectionTo = chosenName;
+                            } else {
+                                parsedQuery.correction = chosenName;
+                                for (let i = 0; i < chosenType.length; ++i) {
+                                    types.push([
+                                        chosenId[i],
+                                        chosenName,
+                                        chosenType[i],
+                                        chosenPath[i],
+                                    ]);
+                                }
+                            }
+                        }
+                        if (areGenericsAllowed) {
+                            let genericId = genericMap.get(elem.normalizedPathLast);
+                            if (genericId === undefined) {
+                                genericId = genericMap.size;
+                                genericMap.set(elem.normalizedPathLast, genericId);
+                            }
+                            return [{
+                                invertedIndex: await this.getGenericInvertedIndex(genericId),
+                                queryElem: {
+                                    name: elem.name,
+                                    id: (-genericId) - 1,
+                                    typeFilter: TY_GENERIC,
+                                    generics: [],
+                                    bindings: EMPTY_BINDINGS_MAP,
+                                    fullPath: elem.fullPath,
+                                    pathLast: elem.pathLast,
+                                    normalizedPathLast: elem.normalizedPathLast,
+                                    pathWithoutLast: elem.pathWithoutLast,
+                                },
+                            }];
+                        }
                     }
+                    types.sort(([_i, name1, _t, pathData1], [_i2, name2, _t2, pathData2]) => {
+                        const p1 = !pathData1 ? "" : pathData1.modulePath;
+                        const p2 = !pathData2 ? "" : pathData2.modulePath;
+                        const n1 = name1 === null ? "" : name1;
+                        const n2 = name2 === null ? "" : name2;
+                        if (p1.length !== p2.length) {
+                            return p1.length > p2.length ? +1 : -1;
+                        }
+                        if (n1.length !== n2.length) {
+                            return n1.length > n2.length ? +1 : -1;
+                        }
+                        if (n1 !== n2) {
+                            return n1 > n2 ? +1 : -1;
+                        }
+                        if (p1 !== p2) {
+                            return p1 > p2 ? +1 : -1;
+                        }
+                        return 0;
+                    });
+                    /** @type {PostingsList<rustdoc.QueryElement>[]} */
+                    const results = [];
+                    for (const [id, _name, typeData] of types) {
+                        if (!typeData || typeData.invertedFunctionSignatureIndex.every(bitmap => {
+                            return bitmap.isEmpty();
+                        })) {
+                            continue;
+                        }
+                        const upla = await unpackPostingsListAll(elem.generics);
+                        const uplb = await unpackPostingsListBindings(elem.bindings);
+                        for (const {invertedIndex: genericsIdx, queryElem: generics} of upla) {
+                            for (const {invertedIndex: bindingsIdx, queryElem: bindings} of uplb) {
+                                results.push({
+                                    invertedIndex: intersectInvertedIndexes(
+                                        typeData.invertedFunctionSignatureIndex,
+                                        genericsIdx,
+                                        bindingsIdx,
+                                    ),
+                                    queryElem: {
+                                        name: elem.name,
+                                        id,
+                                        typeFilter,
+                                        generics,
+                                        bindings,
+                                        fullPath: elem.fullPath,
+                                        pathLast: elem.pathLast,
+                                        normalizedPathLast: elem.normalizedPathLast,
+                                        pathWithoutLast: elem.pathWithoutLast,
+                                    },
+                                });
+                                if ((results.length & 0x7F) === 0) {
+                                    await yieldToBrowser();
+                                }
+                            }
+                        }
+                    }
+                    return results;
                 };
-                if (elem.normalizedPathLast !== "") {
-                    const last = elem.normalizedPathLast;
-                    for (const id of this.nameTrie.search(last, this.tailTable)) {
-                        handleNameSearch(id);
+                /**
+                 * Fetch all possible matching permutations of a list of query elements.
+                 *
+                 * The empty list returns an "identity postings list", with a bitmap that
+                 * matches everything and an empty list of elems. This allows you to safely
+                 * take the intersection of this bitmap.
+                 *
+                 * @param {(rustdoc.ParserQueryElement|null)[]|null} elems
+                 * @returns {Promise<PostingsList<rustdoc.QueryElement[]>[]>}
+                 */
+                const unpackPostingsListAll = async elems => {
+                    if (!elems || elems.length === 0) {
+                        return nested_everything_postings_list;
                     }
-                }
-                const length = this.searchIndex.length;
+                    const [firstPostingsList, remainingAll] = await Promise.all([
+                        unpackPostingsList(elems[0]),
+                        unpackPostingsListAll(elems.slice(1)),
+                    ]);
+                    /** @type {PostingsList<rustdoc.QueryElement[]>[]} */
+                    const results = [];
+                    for (const {
+                        invertedIndex: firstIdx,
+                        queryElem: firstElem,
+                    } of firstPostingsList) {
+                        for (const {
+                            invertedIndex: remainingIdx,
+                            queryElem: remainingElems,
+                        } of remainingAll) {
+                            results.push({
+                                invertedIndex: intersectInvertedIndexes(firstIdx, remainingIdx),
+                                queryElem: [firstElem, ...remainingElems],
+                            });
+                            if ((results.length & 0x7F) === 0) {
+                                await yieldToBrowser();
+                            }
+                        }
+                    }
+                    return results;
+                };
+                /**
+                 * Fetch all possible matching permutations of a map query element bindings.
+                 *
+                 * The empty list returns an "identity postings list", with a bitmap that
+                 * matches everything and an empty list of elems. This allows you to safely
+                 * take the intersection of this bitmap.
+                 *
+                 * Heads up! This function mutates the Map that you provide.
+                 * Before passing an actual parser item to it, make sure to clone the map.
+                 *
+                 * @param {Map<string, rustdoc.ParserQueryElement[]>} elems
+                 * @returns {Promise<PostingsList<
+                 *     Map<number, rustdoc.QueryElement[]>,
+                 * >[]>}
+                 */
+                const unpackPostingsListBindings = async elems => {
+                    if (!elems) {
+                        return [{
+                            invertedIndex: everything_inverted_index,
+                            queryElem: new Map(),
+                        }];
+                    }
+                    const firstKey = elems.keys().next().value;
+                    if (firstKey === undefined) {
+                        return [{
+                            invertedIndex: everything_inverted_index,
+                            queryElem: new Map(),
+                        }];
+                    }
+                    const firstList = elems.get(firstKey);
+                    if (firstList === undefined) {
+                        return [{
+                            invertedIndex: everything_inverted_index,
+                            queryElem: new Map(),
+                        }];
+                    }
+                    const firstKeyIds = await index.search(firstKey);
+                    if (!firstKeyIds) {
+                        // User specified a non-existent key.
+                        return [{
+                            invertedIndex: empty_inverted_index,
+                            queryElem: new Map(),
+                        }];
+                    }
+                    elems.delete(firstKey);
+                    const [firstPostingsList, remainingAll] = await Promise.all([
+                        unpackPostingsListAll(firstList),
+                        unpackPostingsListBindings(elems),
+                    ]);
+                    /** @type {PostingsList<Map<number, rustdoc.QueryElement[]>>[]} */
+                    const results = [];
+                    for (const keyId of firstKeyIds.matches().entries()) {
+                        for (const {
+                            invertedIndex: firstIdx,
+                            queryElem: firstElem,
+                        } of firstPostingsList) {
+                            for (const {
+                                invertedIndex: remainingIdx,
+                                queryElem: remainingElems,
+                            } of remainingAll) {
+                                const elems = new Map(remainingElems);
+                                elems.set(keyId, firstElem);
+                                results.push({
+                                    invertedIndex: intersectInvertedIndexes(firstIdx, remainingIdx),
+                                    queryElem: elems,
+                                });
+                                if ((results.length & 0x7F) === 0) {
+                                    await yieldToBrowser();
+                                }
+                            }
+                        }
+                    }
+                    elems.set(firstKey, firstList);
+                    if (results.length === 0) {
+                        // User specified a non-existent key.
+                        return [{
+                            invertedIndex: empty_inverted_index,
+                            queryElem: new Map(),
+                        }];
+                    }
+                    return results;
+                };
 
-                for (let i = 0, nSearchIndex = length; i < nSearchIndex; ++i) {
-                    // queries that end in :: bypass the trie
-                    if (elem.normalizedPathLast === "") {
-                        handleNameSearch(i);
-                    }
-                    const row = this.searchIndex[i];
-                    if (filterCrates !== null && row.crate !== filterCrates) {
-                        continue;
-                    }
-                    const tfpDist = compareTypeFingerprints(
-                        row.id,
-                        parsedQuery.typeFingerprint,
-                    );
-                    if (tfpDist !== null) {
-                        const in_args = row.type && row.type.inputs
-                            && checkIfInList(row.type.inputs, elem, row.type.where_clause, null, 0);
-                        const returned = row.type && row.type.output
-                            && checkIfInList(row.type.output, elem, row.type.where_clause, null, 0);
-                        if (in_args) {
-                            results_in_args.max_dist = Math.max(
-                                results_in_args.max_dist || 0,
-                                tfpDist,
-                            );
-                            const maxDist = results_in_args.size < MAX_RESULTS ?
-                                (tfpDist + 1) :
-                                results_in_args.max_dist;
-                            addIntoResults(results_in_args, row.id, i, -1, tfpDist, 0, maxDist);
-                        }
-                        if (returned) {
-                            results_returned.max_dist = Math.max(
-                                results_returned.max_dist || 0,
-                                tfpDist,
-                            );
-                            const maxDist = results_returned.size < MAX_RESULTS ?
-                                (tfpDist + 1) :
-                                results_returned.max_dist;
-                            addIntoResults(results_returned, row.id, i, -1, tfpDist, 0, maxDist);
+                // finally, we can do the actual unification loop
+                const [allInputs, allOutput] = await Promise.all([
+                    unpackPostingsListAll(inputs),
+                    unpackPostingsListAll(output),
+                ]);
+                let checkCounter = 0;
+                /**
+                 * Finally, we can perform an incremental search, sorted by the number of
+                 * entries that match a given query.
+                 *
+                 * The outer list gives the number of elements. The inner one is separate
+                 * for each distinct name resolution.
+                 *
+                 * @type {{
+                 *     bitmap: stringdex.RoaringBitmap,
+                 *     inputs: rustdoc.QueryElement[],
+                 *     output: rustdoc.QueryElement[],
+                 * }[][]}
+                 */
+                const queryPlan = [];
+                for (const {invertedIndex: inputsIdx, queryElem: inputs} of allInputs) {
+                    for (const {invertedIndex: outputIdx, queryElem: output} of allOutput) {
+                        const invertedIndex = intersectInvertedIndexes(inputsIdx, outputIdx);
+                        for (const [size, bitmap] of invertedIndex.entries()) {
+                            checkCounter += 1;
+                            if ((checkCounter & 0x7F) === 0) {
+                                await yieldToBrowser();
+                            }
+                            if (!queryPlan[size]) {
+                                queryPlan[size] = [];
+                            }
+                            queryPlan[size].push({
+                                bitmap, inputs, output,
+                            });
                         }
                     }
                 }
-            } else if (parsedQuery.foundElems > 0) {
-                // Sort input and output so that generic type variables go first and
-                // types with generic parameters go last.
-                // That's because of the way unification is structured: it eats off
-                // the end, and hits a fast path if the last item is a simple atom.
-                /** @type {function(rustdoc.QueryElement, rustdoc.QueryElement): number} */
-                const sortQ = (a, b) => {
-                    const ag = a.generics.length === 0 && a.bindings.size === 0;
-                    const bg = b.generics.length === 0 && b.bindings.size === 0;
-                    if (ag !== bg) {
-                        // unary `+` converts booleans into integers.
-                        return +ag - +bg;
+                const resultPromises = [];
+                const dedup = new Set();
+                let resultCounter = 0;
+                const isReturnTypeQuery = inputs.length === 0;
+                /** @type {rustdoc.PlainResultObject[]} */
+                const pushToBottom = [];
+                plan: for (const queryStep of queryPlan) {
+                    for (const {bitmap, inputs, output} of queryStep) {
+                        for (const id of bitmap.entries()) {
+                            checkCounter += 1;
+                            if ((checkCounter & 0x7F) === 0) {
+                                await yieldToBrowser();
+                            }
+                            resultPromises.push(this.getFunctionData(id).then(async fnData => {
+                                if (!fnData || !fnData.functionSignature) {
+                                    return null;
+                                }
+                                checkCounter += 1;
+                                if ((checkCounter & 0x7F) === 0) {
+                                    await yieldToBrowser();
+                                }
+                                const functionSignature = fnData.functionSignature;
+                                if (!unifyFunctionTypes(
+                                    functionSignature.inputs,
+                                    inputs,
+                                    functionSignature.where_clause,
+                                    null,
+                                    mgens => {
+                                        return !!unifyFunctionTypes(
+                                            functionSignature.output,
+                                            output,
+                                            functionSignature.where_clause,
+                                            mgens,
+                                            checkTypeMgensForConflict,
+                                            0, // unboxing depth
+                                        );
+                                    },
+                                    0, // unboxing depth
+                                )) {
+                                    return null;
+                                }
+                                const result = {
+                                    id,
+                                    dist: fnData.elemCount,
+                                    path_dist: 0,
+                                    index: -1,
+                                    elems: inputs,
+                                    returned: output,
+                                    is_alias: false,
+                                };
+                                const entry = await this.getEntryData(id);
+                                if ((entry && !isFnLikeTy(entry.ty)) ||
+                                    (isReturnTypeQuery &&
+                                        functionSignature &&
+                                        containsTypeFromQuery(
+                                            output,
+                                            functionSignature.inputs,
+                                            functionSignature.where_clause,
+                                        )
+                                    )
+                                ) {
+                                    pushToBottom.push(result);
+                                    return null;
+                                }
+                                return result;
+                            }));
+                        }
                     }
-                    const ai = a.id !== null && a.id > 0;
-                    const bi = b.id !== null && b.id > 0;
-                    return +ai - +bi;
-                };
-                parsedQuery.elems.sort(sortQ);
-                parsedQuery.returned.sort(sortQ);
-                for (let i = 0, nSearchIndex = this.searchIndex.length; i < nSearchIndex; ++i) {
-                    handleArgs(this.searchIndex[i], i, results_others);
+                    for await (const result of sortAndTransformResults(
+                        await Promise.all(resultPromises),
+                        typeInfo,
+                        currentCrate,
+                        dedup,
+                    )) {
+                        if (resultCounter >= MAX_RESULTS) {
+                            break plan;
+                        }
+                        yield result;
+                        resultCounter += 1;
+                    }
+                    resultPromises.length = 0;
+                }
+                if (resultCounter >= MAX_RESULTS) {
+                    return;
+                }
+                for await (const result of sortAndTransformResults(
+                    await Promise.all(pushToBottom),
+                    typeInfo,
+                    currentCrate,
+                    dedup,
+                )) {
+                    if (resultCounter >= MAX_RESULTS) {
+                        break;
+                    }
+                    yield result;
+                    resultCounter += 1;
                 }
             }
-        };
+            .bind(this);
 
-        if (parsedQuery.error === null) {
-            innerRunQuery();
+        if (parsedQuery.foundElems === 1 && !parsedQuery.hasReturnArrow) {
+            // We never want the main tab to delay behind the other two tabs.
+            // This is a bit of a hack (because JS's scheduler doesn't have much of an API),
+            // along with making innerRunTypeQuery yield to the UI thread.
+            const {
+                promise: donePromise,
+                resolve: doneResolve,
+                reject: doneReject,
+            } = Promise.withResolvers();
+            const doneTimeout = timeout(250);
+            return {
+                "in_args": (async function*() {
+                    await Promise.race([donePromise, doneTimeout]);
+                    yield* innerRunTypeQuery(parsedQuery.elems, [], "elems", currentCrate);
+                })(),
+                "returned": (async function*() {
+                    await Promise.race([donePromise, doneTimeout]);
+                    yield* innerRunTypeQuery([], parsedQuery.elems, "returned", currentCrate);
+                })(),
+                "others": (async function*() {
+                    try {
+                        yield* innerRunNameQuery(currentCrate);
+                        doneResolve(null);
+                    } catch (e) {
+                        doneReject(e);
+                        throw e;
+                    }
+                })(),
+                "query": parsedQuery,
+            };
+        } else if (parsedQuery.error !== null) {
+            return {
+                "in_args": (async function*() {})(),
+                "returned": (async function*() {})(),
+                "others": innerRunNameQuery(currentCrate),
+                "query": parsedQuery,
+            };
+        } else {
+            const typeInfo = parsedQuery.elems.length === 0 ?
+                "returned" : (
+                    parsedQuery.returned.length === 0 ? "elems" : "sig"
+                );
+            return {
+                "in_args": (async function*() {})(),
+                "returned": (async function*() {})(),
+                "others": parsedQuery.foundElems === 0 ?
+                    (async function*() {})() :
+                    innerRunTypeQuery(
+                        parsedQuery.elems,
+                        parsedQuery.returned,
+                        typeInfo,
+                        currentCrate,
+                    ),
+                "query": parsedQuery,
+            };
         }
-
-        const isType = parsedQuery.foundElems !== 1 || parsedQuery.hasReturnArrow;
-        const [sorted_in_args, sorted_returned, sorted_others] = await Promise.all([
-            sortResults(results_in_args, "elems", currentCrate),
-            sortResults(results_returned, "returned", currentCrate),
-            // @ts-expect-error
-            sortResults(results_others, (isType ? "query" : null), currentCrate),
-        ]);
-        const ret = createQueryResults(
-            sorted_in_args,
-            sorted_returned,
-            sorted_others,
-            parsedQuery);
-        await handleAliases(ret, parsedQuery.userQuery.replace(/"/g, ""),
-            filterCrates, currentCrate);
-        await Promise.all([ret.others, ret.returned, ret.in_args].map(async list => {
-            const descs = await Promise.all(list.map(result => {
-                // @ts-expect-error
-                return this.searchIndexEmptyDesc.get(result.crate).contains(result.bitIndex) ?
-                    "" :
-                    // @ts-expect-error
-                    this.searchState.loadDesc(result);
-            }));
-            for (const [i, result] of list.entries()) {
-                // @ts-expect-error
-                result.desc = descs[i];
-            }
-        }));
-        if (parsedQuery.error !== null && ret.others.length !== 0) {
-            // It means some doc aliases were found so let's "remove" the error!
-            ret.query.error = null;
-        }
-        return ret;
     }
 }
 
 
 // ==================== Core search logic end ====================
 
-/** @type {Map<string, rustdoc.RawSearchIndexCrate>} */
-let rawSearchIndex;
-// @ts-expect-error
+/** @type {DocSearch} */
 let docSearch;
 const longItemTypes = [
     "keyword",
@@ -4762,12 +4631,8 @@ function buildUrl(search, filterCrates) {
 function getFilterCrates() {
     const elem = document.getElementById("crate-search");
 
-    if (elem &&
-        // @ts-expect-error
-        elem.value !== "all crates" &&
-        // @ts-expect-error
-        window.searchIndex.has(elem.value)
-    ) {
+    // @ts-expect-error
+    if (elem && elem.value !== "all crates") {
         // @ts-expect-error
         return elem.value;
     }
@@ -4777,8 +4642,7 @@ function getFilterCrates() {
 // @ts-expect-error
 function nextTab(direction) {
     const next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
-    // @ts-expect-error
-    searchState.focusedByTab[searchState.currentTab] = document.activeElement;
+    window.searchState.focusedByTab[searchState.currentTab] = document.activeElement;
     printTab(next);
     focusSearchResult();
 }
@@ -4790,133 +4654,182 @@ function focusSearchResult() {
         document.querySelectorAll(".search-results.active a").item(0) ||
         document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
     searchState.focusedByTab[searchState.currentTab] = null;
-    if (target) {
-        // @ts-expect-error
+    if (target && target instanceof HTMLElement) {
         target.focus();
     }
 }
 
 /**
  * Render a set of search results for a single tab.
- * @param {Array<?>}    array   - The search results for this tab
- * @param {rustdoc.ParsedQuery<rustdoc.QueryElement>} query
+ * @param {AsyncGenerator<rustdoc.ResultObject>} results   - The search results for this tab
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
  * @param {boolean}     display - True if this is the active tab
+ * @param {function(number, HTMLElement): any} finishedCallback
+ * @param {boolean} isTypeSearch
+ * @returns {Promise<HTMLElement>}
  */
-async function addTab(array, query, display) {
+async function addTab(results, query, display, finishedCallback, isTypeSearch) {
     const extraClass = display ? " active" : "";
 
-    const output = document.createElement(
-        array.length === 0 && query.error === null ? "div" : "ul",
-    );
-    if (array.length > 0) {
-        output.className = "search-results " + extraClass;
+    /** @type {HTMLElement} */
+    let output = document.createElement("ul");
+    output.className = "search-results " + extraClass;
 
-        const lis = Promise.all(array.map(async item => {
-            const name = item.is_alias ? item.original.name : item.name;
-            const type = itemTypes[item.ty];
-            const longType = longItemTypes[item.ty];
-            const typeName = longType.length !== 0 ? `${longType}` : "?";
+    let count = 0;
 
-            const link = document.createElement("a");
-            link.className = "result-" + type;
-            link.href = item.href;
+    /** @type {Promise<string|null>[]} */
+    const descList = [];
 
-            const resultName = document.createElement("span");
-            resultName.className = "result-name";
+    /** @param {rustdoc.ResultObject} obj */
+    const addNextResultToOutput = async obj => {
+        count += 1;
 
-            resultName.insertAdjacentHTML(
-                "beforeend",
-                `<span class="typename">${typeName}</span>`);
-            link.appendChild(resultName);
+        const name = obj.item.name;
+        const type = itemTypes[obj.item.ty];
+        const longType = longItemTypes[obj.item.ty];
+        const typeName = longType.length !== 0 ? `${longType}` : "?";
 
-            let alias = " ";
-            if (item.is_alias) {
-                alias = ` <div class="alias">\
-<b>${item.name}</b><i class="grey">&nbsp;- see&nbsp;</i>\
+        const link = document.createElement("a");
+        link.className = "result-" + type;
+        link.href = obj.href;
+
+        const resultName = document.createElement("span");
+        resultName.className = "result-name";
+
+        resultName.insertAdjacentHTML(
+            "beforeend",
+            `<span class="typename">${typeName}</span>`);
+        link.appendChild(resultName);
+
+        let alias = " ";
+        if (obj.alias !== undefined) {
+            alias = ` <div class="alias">\
+<b>${obj.alias}</b><i class="grey">&nbsp;- see&nbsp;</i>\
 </div>`;
-            }
-            resultName.insertAdjacentHTML(
-                "beforeend",
-                `<div class="path">${alias}\
-${item.displayPath}<span class="${type}">${name}</span>\
+        }
+        resultName.insertAdjacentHTML(
+            "beforeend",
+            `<div class="path">${alias}\
+${obj.displayPath}<span class="${type}">${name}</span>\
 </div>`);
 
-            const description = document.createElement("div");
-            description.className = "desc";
-            description.insertAdjacentHTML("beforeend", item.desc);
-            if (item.displayTypeSignature) {
-                const {type, mappedNames, whereClause} = await item.displayTypeSignature;
-                const displayType = document.createElement("div");
-                // @ts-expect-error
-                type.forEach((value, index) => {
-                    if (index % 2 !== 0) {
-                        const highlight = document.createElement("strong");
-                        highlight.appendChild(document.createTextNode(value));
-                        displayType.appendChild(highlight);
-                    } else {
-                        displayType.appendChild(document.createTextNode(value));
-                    }
-                });
-                if (mappedNames.size > 0 || whereClause.size > 0) {
-                    let addWhereLineFn = () => {
-                        const line = document.createElement("div");
-                        line.className = "where";
-                        line.appendChild(document.createTextNode("where"));
-                        displayType.appendChild(line);
-                        addWhereLineFn = () => {};
-                    };
-                    for (const [qname, name] of mappedNames) {
-                        // don't care unless the generic name is different
-                        if (name === qname) {
-                            continue;
-                        }
-                        addWhereLineFn();
-                        const line = document.createElement("div");
-                        line.className = "where";
-                        line.appendChild(document.createTextNode(`    ${qname} matches `));
-                        const lineStrong = document.createElement("strong");
-                        lineStrong.appendChild(document.createTextNode(name));
-                        line.appendChild(lineStrong);
-                        displayType.appendChild(line);
-                    }
-                    for (const [name, innerType] of whereClause) {
-                        // don't care unless there's at least one highlighted entry
-                        if (innerType.length <= 1) {
-                            continue;
-                        }
-                        addWhereLineFn();
-                        const line = document.createElement("div");
-                        line.className = "where";
-                        line.appendChild(document.createTextNode(`    ${name}: `));
-                        // @ts-expect-error
-                        innerType.forEach((value, index) => {
-                            if (index % 2 !== 0) {
-                                const highlight = document.createElement("strong");
-                                highlight.appendChild(document.createTextNode(value));
-                                line.appendChild(highlight);
-                            } else {
-                                line.appendChild(document.createTextNode(value));
-                            }
-                        });
-                        displayType.appendChild(line);
-                    }
-                }
-                displayType.className = "type-signature";
-                link.appendChild(displayType);
-            }
-
-            link.appendChild(description);
-            return link;
-        }));
-        lis.then(lis => {
-            for (const li of lis) {
-                output.appendChild(li);
+        const description = document.createElement("div");
+        description.className = "desc";
+        obj.desc.then(desc => {
+            if (desc !== null) {
+                description.insertAdjacentHTML("beforeend", desc);
             }
         });
-    } else if (query.error === null) {
-        const dlroChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
+        descList.push(obj.desc);
+        if (obj.displayTypeSignature) {
+            const {type, mappedNames, whereClause} = await obj.displayTypeSignature;
+            const displayType = document.createElement("div");
+            type.forEach((value, index) => {
+                if (index % 2 !== 0) {
+                    const highlight = document.createElement("strong");
+                    highlight.appendChild(document.createTextNode(value));
+                    displayType.appendChild(highlight);
+                } else {
+                    displayType.appendChild(document.createTextNode(value));
+                }
+            });
+            if (mappedNames.size > 0 || whereClause.size > 0) {
+                let addWhereLineFn = () => {
+                    const line = document.createElement("div");
+                    line.className = "where";
+                    line.appendChild(document.createTextNode("where"));
+                    displayType.appendChild(line);
+                    addWhereLineFn = () => {};
+                };
+                for (const [qname, name] of mappedNames) {
+                    // don't care unless the generic name is different
+                    if (name === qname) {
+                        continue;
+                    }
+                    addWhereLineFn();
+                    const line = document.createElement("div");
+                    line.className = "where";
+                    line.appendChild(document.createTextNode(`    ${qname} matches `));
+                    const lineStrong = document.createElement("strong");
+                    lineStrong.appendChild(document.createTextNode(name));
+                    line.appendChild(lineStrong);
+                    displayType.appendChild(line);
+                }
+                for (const [name, innerType] of whereClause) {
+                    // don't care unless there's at least one highlighted entry
+                    if (innerType.length <= 1) {
+                        continue;
+                    }
+                    addWhereLineFn();
+                    const line = document.createElement("div");
+                    line.className = "where";
+                    line.appendChild(document.createTextNode(`    ${name}: `));
+                    innerType.forEach((value, index) => {
+                        if (index % 2 !== 0) {
+                            const highlight = document.createElement("strong");
+                            highlight.appendChild(document.createTextNode(value));
+                            line.appendChild(highlight);
+                        } else {
+                            line.appendChild(document.createTextNode(value));
+                        }
+                    });
+                    displayType.appendChild(line);
+                }
+            }
+            displayType.className = "type-signature";
+            link.appendChild(displayType);
+        }
+
+        link.appendChild(description);
+        output.appendChild(link);
+
+        results.next().then(async nextResult => {
+            if (nextResult.value) {
+                addNextResultToOutput(nextResult.value);
+            } else {
+                await Promise.all(descList);
+                // need to make sure the element is shown before
+                // running this callback
+                yieldToBrowser().then(() => finishedCallback(count, output));
+            }
+        });
+    };
+    const firstResult = await results.next();
+    let correctionOutput = "";
+    if (query.correction !== null && isTypeSearch) {
+        const orig = query.returned.length > 0
+            ? query.returned[0].name
+            : query.elems[0].name;
+        correctionOutput = "<h3 class=\"search-corrections\">" +
+            `Type "${orig}" not found. ` +
+            "Showing results for closest type name " +
+            `"${query.correction}" instead.</h3>`;
+    }
+    if (query.proposeCorrectionFrom !== null && isTypeSearch) {
+        const orig = query.proposeCorrectionFrom;
+        const targ = query.proposeCorrectionTo;
+        correctionOutput = "<h3 class=\"search-corrections\">" +
+            `Type "${orig}" not found and used as generic parameter. ` +
+            `Consider searching for "${targ}" instead.</h3>`;
+    }
+    if (firstResult.value) {
+        if (correctionOutput !== "") {
+            const h3 = document.createElement("h3");
+            h3.innerHTML = correctionOutput;
+            output.appendChild(h3);
+        }
+        await addNextResultToOutput(firstResult.value);
+    } else {
+        output = document.createElement("div");
+        if (correctionOutput !== "") {
+            const h3 = document.createElement("h3");
+            h3.innerHTML = correctionOutput;
+            output.appendChild(h3);
+        }
         output.className = "search-failed" + extraClass;
-        output.innerHTML = "No results :(<br/>" +
+        const dlroChannel = `https://doc.rust-lang.org/${getVar("channel")}`;
+        if (query.userQuery !== "") {
+            output.innerHTML += "No results :(<br/>" +
             "Try on <a href=\"https://duckduckgo.com/?q=" +
             encodeURIComponent("rust " + query.userQuery) +
             "\">DuckDuckGo</a>?<br/><br/>" +
@@ -4929,192 +4842,198 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             "introductions to language features and the language itself.</li><li><a " +
             "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
             " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
+        }
+        output.innerHTML += "Example searches:<ul>" +
+            "<li><a href=\"" + getNakedUrl() + "?search=std::vec\">std::vec</a></li>" +
+            "<li><a href=\"" + getNakedUrl() + "?search=u32+->+bool\">u32 -> bool</a></li>" +
+            "<li><a href=\"" + getNakedUrl() + "?search=Option<T>,+(T+->+U)+->+Option<U>\">" +
+                "Option&lt;T>, (T -> U) -> Option&lt;U></a></li>" +
+            "</ul>";
+        // need to make sure the element is shown before
+        // running this callback
+        yieldToBrowser().then(() => finishedCallback(0, output));
     }
     return output;
 }
 
-// @ts-expect-error
-function makeTabHeader(tabNb, text, nbElems) {
-    // https://blog.horizon-eda.org/misc/2020/02/19/ui.html
-    //
-    // CSS runs with `font-variant-numeric: tabular-nums` to ensure all
-    // digits are the same width. \u{2007} is a Unicode space character
-    // that is defined to be the same width as a digit.
-    const fmtNbElems =
-        nbElems < 10  ? `\u{2007}(${nbElems})\u{2007}\u{2007}` :
-        nbElems < 100 ? `\u{2007}(${nbElems})\u{2007}` : `\u{2007}(${nbElems})`;
-    if (searchState.currentTab === tabNb) {
-        return "<button class=\"selected\">" + text +
-            "<span class=\"count\">" + fmtNbElems + "</span></button>";
-    }
-    return "<button>" + text + "<span class=\"count\">" + fmtNbElems + "</span></button>";
+/**
+ * returns [tab, output]
+ * @param {number} tabNb
+ * @param {string} text
+ * @param {AsyncGenerator<rustdoc.ResultObject>} results
+ * @param {rustdoc.ParsedQuery<rustdoc.ParserQueryElement>} query
+ * @param {boolean} isTypeSearch
+ * @param {boolean} goToFirst
+ * @returns {[HTMLElement, Promise<HTMLElement>]}
+ */
+function makeTab(tabNb, text, results, query, isTypeSearch, goToFirst) {
+    const isCurrentTab = window.searchState.currentTab === tabNb;
+    const tabButton = document.createElement("button");
+    tabButton.appendChild(document.createTextNode(text));
+    tabButton.className = isCurrentTab ? "selected" : "";
+    const tabCount = document.createElement("span");
+    tabCount.className = "count loading";
+    tabCount.innerHTML = "\u{2007}(\u{2007})\u{2007}\u{2007}";
+    tabButton.appendChild(tabCount);
+    return [
+        tabButton,
+        addTab(results, query, isCurrentTab, (count, output) => {
+            const search = window.searchState.outputElement();
+            const error = query.error;
+            if (count === 0 && error !== null && search) {
+                error.forEach((value, index) => {
+                    value = value.split("<").join("&lt;").split(">").join("&gt;");
+                    if (index % 2 !== 0) {
+                        error[index] = `<code>${value.replaceAll(" ", "&nbsp;")}</code>`;
+                    } else {
+                        error[index] = value;
+                    }
+                });
+                const errorReport = document.createElement("h3");
+                errorReport.className = "error";
+                errorReport.innerHTML = `Query parser error: "${error.join("")}".`;
+                search.insertBefore(errorReport, search.firstElementChild);
+            } else if (goToFirst ||
+                (count === 1 && getSettingValue("go-to-only-result") === "true")
+            ) {
+                // Needed to force re-execution of JS when coming back to a page. Let's take this
+                // scenario as example:
+                //
+                // 1. You have the "Directly go to item in search if there is only one result"
+                //    option enabled.
+                // 2. You make a search which results only one result, leading you automatically to
+                //    this result.
+                // 3. You go back to previous page.
+                //
+                // Now, without the call below, the JS will not be re-executed and the previous
+                // state will be used, starting search again since the search input is not empty,
+                // leading you back to the previous page again.
+                window.onunload = () => { };
+                window.searchState.removeQueryParameters();
+                const a = output.querySelector("a");
+                if (a) {
+                    a.click();
+                    return;
+                }
+            }
+
+            // https://blog.horizon-eda.org/misc/2020/02/19/ui.html
+            //
+            // CSS runs with `font-variant-numeric: tabular-nums` to ensure all
+            // digits are the same width. \u{2007} is a Unicode space character
+            // that is defined to be the same width as a digit.
+            const fmtNbElems =
+                count < 10  ? `\u{2007}(${count})\u{2007}\u{2007}` :
+                count < 100 ? `\u{2007}(${count})\u{2007}` : `\u{2007}(${count})`;
+            tabCount.innerHTML = fmtNbElems;
+            tabCount.className = "count";
+        }, isTypeSearch),
+    ];
 }
 
 /**
+ * @param {DocSearch} docSearch
  * @param {rustdoc.ResultsTable} results
- * @param {boolean} go_to_first
+ * @param {boolean} goToFirst
  * @param {string} filterCrates
  */
-async function showResults(results, go_to_first, filterCrates) {
-    const search = searchState.outputElement();
-    if (go_to_first || (results.others.length === 1
-        && getSettingValue("go-to-only-result") === "true")
-    ) {
-        // Needed to force re-execution of JS when coming back to a page. Let's take this
-        // scenario as example:
-        //
-        // 1. You have the "Directly go to item in search if there is only one result" option
-        //    enabled.
-        // 2. You make a search which results only one result, leading you automatically to
-        //    this result.
-        // 3. You go back to previous page.
-        //
-        // Now, without the call below, the JS will not be re-executed and the previous state
-        // will be used, starting search again since the search input is not empty, leading you
-        // back to the previous page again.
-        window.onunload = () => { };
-        searchState.removeQueryParameters();
-        const elem = document.createElement("a");
-        elem.href = results.others[0].href;
-        removeClass(elem, "active");
-        // For firefox, we need the element to be in the DOM so it can be clicked.
-        document.body.appendChild(elem);
-        elem.click();
+async function showResults(docSearch, results, goToFirst, filterCrates) {
+    const search = window.searchState.outputElement();
+
+    if (!search) {
         return;
-    }
-    if (results.query === undefined) {
-        // @ts-expect-error
-        results.query = DocSearch.parseQuery(searchState.input.value);
-    }
-
-    currentResults = results.query.userQuery;
-
-    // Navigate to the relevant tab if the current tab is empty, like in case users search
-    // for "-> String". If they had selected another tab previously, they have to click on
-    // it again.
-    let currentTab = searchState.currentTab;
-    if ((currentTab === 0 && results.others.length === 0) ||
-        (currentTab === 1 && results.in_args.length === 0) ||
-        (currentTab === 2 && results.returned.length === 0)) {
-        if (results.others.length !== 0) {
-            currentTab = 0;
-        } else if (results.in_args.length) {
-            currentTab = 1;
-        } else if (results.returned.length) {
-            currentTab = 2;
-        }
     }
 
     let crates = "";
-    if (rawSearchIndex.size > 1) {
-        crates = "<div class=\"sub-heading\"> in&nbsp;<div id=\"crate-search-div\">" +
+    const crateNames = await docSearch.getCrateNameList();
+    if (crateNames.length > 1) {
+        crates = "&nbsp;in&nbsp;<div id=\"crate-search-div\">" +
             "<select id=\"crate-search\"><option value=\"all crates\">all crates</option>";
-        for (const c of rawSearchIndex.keys()) {
+        const l = crateNames.length;
+        for (let i = 0; i < l; i += 1) {
+            const c = crateNames[i];
             crates += `<option value="${c}" ${c === filterCrates && "selected"}>${c}</option>`;
         }
-        crates += "</select></div></div>";
+        crates += "</select></div>";
     }
+    nonnull(document.querySelector(".search-switcher")).innerHTML = `Search results${crates}`;
 
-    let output = `<div class="main-heading">\
-        <h1 class="search-results-title">Results</h1>${crates}</div>`;
+    /** @type {[HTMLElement, Promise<HTMLElement>][]} */
+    const tabs = [];
+    searchState.currentTab = 0;
     if (results.query.error !== null) {
-        const error = results.query.error;
-        // @ts-expect-error
-        error.forEach((value, index) => {
-            value = value.split("<").join("&lt;").split(">").join("&gt;");
-            if (index % 2 !== 0) {
-                error[index] = `<code>${value.replaceAll(" ", "&nbsp;")}</code>`;
-            } else {
-                error[index] = value;
-            }
-        });
-        output += `<h3 class="error">Query parser error: "${error.join("")}".</h3>`;
-        output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, "In Names", results.others.length) +
-            "</div>";
-        currentTab = 0;
-    } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
-        output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, "In Names", results.others.length) +
-            makeTabHeader(1, "In Parameters", results.in_args.length) +
-            makeTabHeader(2, "In Return Types", results.returned.length) +
-            "</div>";
+        tabs.push(makeTab(0, "In Names", results.others, results.query, false, goToFirst));
+    } else if (
+        results.query.foundElems <= 1 &&
+        results.query.returned.length === 0 &&
+        !results.query.hasReturnArrow
+    ) {
+        tabs.push(makeTab(0, "In Names", results.others, results.query, false, goToFirst));
+        tabs.push(makeTab(1, "In Parameters", results.in_args, results.query, true, false));
+        tabs.push(makeTab(2, "In Return Types", results.returned, results.query, true, false));
     } else {
         const signatureTabTitle =
             results.query.elems.length === 0 ? "In Function Return Types" :
                 results.query.returned.length === 0 ? "In Function Parameters" :
                     "In Function Signatures";
-        output += "<div id=\"search-tabs\">" +
-            makeTabHeader(0, signatureTabTitle, results.others.length) +
-            "</div>";
-        currentTab = 0;
+        tabs.push(makeTab(0, signatureTabTitle, results.others, results.query, true, goToFirst));
     }
 
-    if (results.query.correction !== null) {
-        const orig = results.query.returned.length > 0
-            ? results.query.returned[0].name
-            : results.query.elems[0].name;
-        output += "<h3 class=\"search-corrections\">" +
-            `Type "${orig}" not found. ` +
-            "Showing results for closest type name " +
-            `"${results.query.correction}" instead.</h3>`;
-    }
-    if (results.query.proposeCorrectionFrom !== null) {
-        const orig = results.query.proposeCorrectionFrom;
-        const targ = results.query.proposeCorrectionTo;
-        output += "<h3 class=\"search-corrections\">" +
-            `Type "${orig}" not found and used as generic parameter. ` +
-            `Consider searching for "${targ}" instead.</h3>`;
-    }
-
-    const [ret_others, ret_in_args, ret_returned] = await Promise.all([
-        addTab(results.others, results.query, currentTab === 0),
-        addTab(results.in_args, results.query, currentTab === 1),
-        addTab(results.returned, results.query, currentTab === 2),
-    ]);
+    const tabsElem = document.createElement("div");
+    tabsElem.id = "search-tabs";
 
     const resultsElem = document.createElement("div");
     resultsElem.id = "results";
-    resultsElem.appendChild(ret_others);
-    resultsElem.appendChild(ret_in_args);
-    resultsElem.appendChild(ret_returned);
 
-    // @ts-expect-error
-    search.innerHTML = output;
-    if (searchState.rustdocToolbar) {
-        // @ts-expect-error
-        search.querySelector(".main-heading").appendChild(searchState.rustdocToolbar);
+    search.innerHTML = "";
+    for (const [tab, output] of tabs) {
+        tabsElem.appendChild(tab);
+        const placeholder = document.createElement("div");
+        output.then(output => {
+            if (placeholder.parentElement) {
+                placeholder.parentElement.replaceChild(output, placeholder);
+            }
+        });
+        resultsElem.appendChild(placeholder);
+    }
+
+    if (window.searchState.rustdocToolbar) {
+        nonnull(
+            nonnull(window.searchState.containerElement())
+                .querySelector(".main-heading"),
+        ).appendChild(window.searchState.rustdocToolbar);
     }
     const crateSearch = document.getElementById("crate-search");
     if (crateSearch) {
         crateSearch.addEventListener("input", updateCrate);
     }
-    // @ts-expect-error
+    search.appendChild(tabsElem);
     search.appendChild(resultsElem);
     // Reset focused elements.
-    searchState.showResults(search);
-    // @ts-expect-error
-    const elems = document.getElementById("search-tabs").childNodes;
-    // @ts-expect-error
-    searchState.focusedByTab = [];
+    window.searchState.showResults();
+    window.searchState.focusedByTab = [null, null, null];
     let i = 0;
-    for (const elem of elems) {
+    for (const elem of tabsElem.childNodes) {
         const j = i;
         // @ts-expect-error
         elem.onclick = () => printTab(j);
-        searchState.focusedByTab.push(null);
+        window.searchState.focusedByTab[i] = null;
         i += 1;
     }
-    printTab(currentTab);
+    printTab(0);
 }
 
 // @ts-expect-error
 function updateSearchHistory(url) {
+    const btn = document.querySelector("#search-button a");
+    if (btn instanceof HTMLAnchorElement) {
+        btn.href = url;
+    }
     if (!browserSupportsHistoryApi()) {
         return;
     }
     const params = searchState.getQueryStringParams();
-    if (!history.state && !params.search) {
+    if (!history.state && params.search === undefined) {
         history.pushState(null, "", url);
     } else {
         history.replaceState(null, "", url);
@@ -5127,8 +5046,8 @@ function updateSearchHistory(url) {
  * @param {boolean} [forced]
  */
 async function search(forced) {
-    // @ts-expect-error
-    const query = DocSearch.parseQuery(searchState.input.value.trim());
+    const query = DocSearch.parseQuery(nonnull(window.searchState.inputElement()).value.trim());
+
     let filterCrates = getFilterCrates();
 
     // @ts-expect-error
@@ -5138,6 +5057,7 @@ async function search(forced) {
         }
         return;
     }
+    currentResults = query.userQuery;
 
     searchState.setLoadingSearch();
 
@@ -5149,6 +5069,12 @@ async function search(forced) {
         filterCrates = params["filter-crate"];
     }
 
+    if (filterCrates !== null &&
+        (await docSearch.getCrateNameList()).indexOf(filterCrates) === -1
+    ) {
+        filterCrates = null;
+    }
+
     // Update document title to maintain a meaningful browser history
     searchState.title = "\"" + query.userQuery + "\" Search - Rust";
 
@@ -5157,6 +5083,7 @@ async function search(forced) {
     updateSearchHistory(buildUrl(query.userQuery, filterCrates));
 
     await showResults(
+        docSearch,
         // @ts-expect-error
         await docSearch.execQuery(query, filterCrates, window.currentCrate),
         params.go_to_first,
@@ -5176,16 +5103,14 @@ function onSearchSubmit(e) {
 }
 
 function putBackSearch() {
-    const search_input = searchState.input;
-    if (!searchState.input) {
+    const search_input = window.searchState.inputElement();
+    if (!search_input) {
         return;
     }
-    // @ts-expect-error
     if (search_input.value !== "" && !searchState.isDisplayed()) {
         searchState.showResults();
         if (browserSupportsHistoryApi()) {
             history.replaceState(null, "",
-                // @ts-expect-error
                 buildUrl(search_input.value, getFilterCrates()));
         }
         document.title = searchState.title;
@@ -5199,30 +5124,21 @@ function registerSearchEvents() {
     // but only if the input bar is empty. This avoid the obnoxious issue
     // where you start trying to do a search, and the index loads, and
     // suddenly your search is gone!
-    // @ts-expect-error
-    if (searchState.input.value === "") {
-        // @ts-expect-error
-        searchState.input.value = params.search || "";
+    const inputElement = nonnull(window.searchState.inputElement());
+    if (inputElement.value === "") {
+        inputElement.value = params.search || "";
     }
 
     const searchAfter500ms = () => {
         searchState.clearInputTimeout();
-        // @ts-expect-error
-        if (searchState.input.value.length === 0) {
-            searchState.hideResults();
-        } else {
-            // @ts-ignore
-            searchState.timeout = setTimeout(search, 500);
-        }
+        window.searchState.timeout = setTimeout(search, 500);
     };
-    // @ts-expect-error
-    searchState.input.onkeyup = searchAfter500ms;
-    // @ts-expect-error
-    searchState.input.oninput = searchAfter500ms;
-    // @ts-expect-error
-    document.getElementsByClassName("search-form")[0].onsubmit = onSearchSubmit;
-    // @ts-expect-error
-    searchState.input.onchange = e => {
+    inputElement.onkeyup = searchAfter500ms;
+    inputElement.oninput = searchAfter500ms;
+    if (inputElement.form) {
+        inputElement.form.onsubmit = onSearchSubmit;
+    }
+    inputElement.onchange = e => {
         if (e.target !== document.activeElement) {
             // To prevent doing anything when it's from a blur event.
             return;
@@ -5234,11 +5150,13 @@ function registerSearchEvents() {
         // change, though.
         setTimeout(search, 0);
     };
-    // @ts-expect-error
-    searchState.input.onpaste = searchState.input.onchange;
+    inputElement.onpaste = inputElement.onchange;
 
     // @ts-expect-error
     searchState.outputElement().addEventListener("keydown", e => {
+        if (!(e instanceof KeyboardEvent)) {
+            return;
+        }
         // We only handle unmodified keystrokes here. We don't want to interfere with,
         // for instance, alt-left and alt-right for history navigation.
         if (e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
@@ -5278,88 +5196,23 @@ function registerSearchEvents() {
         }
     });
 
-    // @ts-expect-error
-    searchState.input.addEventListener("keydown", e => {
+    inputElement.addEventListener("keydown", e => {
         if (e.which === 40) { // down
             focusSearchResult();
             e.preventDefault();
         }
     });
 
-    // @ts-expect-error
-    searchState.input.addEventListener("focus", () => {
+    inputElement.addEventListener("focus", () => {
         putBackSearch();
     });
-
-    // @ts-expect-error
-    searchState.input.addEventListener("blur", () => {
-        if (window.searchState.input) {
-            window.searchState.input.placeholder = window.searchState.origPlaceholder;
-        }
-    });
-
-    // Push and pop states are used to add search results to the browser
-    // history.
-    if (browserSupportsHistoryApi()) {
-        // Store the previous <title> so we can revert back to it later.
-        const previousTitle = document.title;
-
-        window.addEventListener("popstate", e => {
-            const params = searchState.getQueryStringParams();
-            // Revert to the previous title manually since the History
-            // API ignores the title parameter.
-            document.title = previousTitle;
-            // When browsing forward to search results the previous
-            // search will be repeated, so the currentResults are
-            // cleared to ensure the search is successful.
-            currentResults = null;
-            // Synchronize search bar with query string state and
-            // perform the search. This will empty the bar if there's
-            // nothing there, which lets you really go back to a
-            // previous state with nothing in the bar.
-            if (params.search && params.search.length > 0) {
-                // @ts-expect-error
-                searchState.input.value = params.search;
-                // Some browsers fire "onpopstate" for every page load
-                // (Chrome), while others fire the event only when actually
-                // popping a state (Firefox), which is why search() is
-                // called both here and at the end of the startSearch()
-                // function.
-                e.preventDefault();
-                search();
-            } else {
-                // @ts-expect-error
-                searchState.input.value = "";
-                // When browsing back from search results the main page
-                // visibility must be reset.
-                searchState.hideResults();
-            }
-        });
-    }
-
-    // This is required in firefox to avoid this problem: Navigating to a search result
-    // with the keyboard, hitting enter, and then hitting back would take you back to
-    // the doc page, rather than the search that should overlay it.
-    // This was an interaction between the back-forward cache and our handlers
-    // that try to sync state between the URL and the search input. To work around it,
-    // do a small amount of re-init on page show.
-    window.onpageshow = () => {
-        const qSearch = searchState.getQueryStringParams().search;
-        // @ts-expect-error
-        if (searchState.input.value === "" && qSearch) {
-            // @ts-expect-error
-            searchState.input.value = qSearch;
-        }
-        search();
-    };
 }
 
 // @ts-expect-error
 function updateCrate(ev) {
     if (ev.target.value === "all crates") {
         // If we don't remove it from the URL, it'll be picked up again by the search.
-        // @ts-expect-error
-        const query = searchState.input.value.trim();
+        const query = nonnull(window.searchState.inputElement()).value.trim();
         updateSearchHistory(buildUrl(query, null));
     }
     // In case you "cut" the entry from the search input, then change the crate filter
@@ -5369,522 +5222,89 @@ function updateCrate(ev) {
     search(true);
 }
 
-// Parts of this code are based on Lucene, which is licensed under the
-// Apache/2.0 license.
-// More information found here:
-// https://fossies.org/linux/lucene/lucene/core/src/java/org/apache/lucene/util/automaton/
-//   LevenshteinAutomata.java
-class ParametricDescription {
-    // @ts-expect-error
-    constructor(w, n, minErrors) {
-        this.w = w;
-        this.n = n;
-        this.minErrors = minErrors;
+// eslint-disable-next-line max-len
+// polyfill https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromBase64
+/**
+ * @type {function(string): Uint8Array} base64
+ */
+//@ts-expect-error
+const makeUint8ArrayFromBase64 = Uint8Array.fromBase64 ? Uint8Array.fromBase64 : (string => {
+    const bytes_as_string = atob(string);
+    const l = bytes_as_string.length;
+    const bytes = new Uint8Array(l);
+    for (let i = 0; i < l; ++i) {
+        bytes[i] = bytes_as_string.charCodeAt(i);
     }
-    // @ts-expect-error
-    isAccept(absState) {
-        const state = Math.floor(absState / (this.w + 1));
-        const offset = absState % (this.w + 1);
-        return this.w - offset + this.minErrors[state] <= this.n;
-    }
-    // @ts-expect-error
-    getPosition(absState) {
-        return absState % (this.w + 1);
-    }
-    // @ts-expect-error
-    getVector(name, charCode, pos, end) {
-        let vector = 0;
-        for (let i = pos; i < end; i += 1) {
-            vector = vector << 1;
-            if (name.charCodeAt(i) === charCode) {
-                vector |= 1;
-            }
-        }
-        return vector;
-    }
-    // @ts-expect-error
-    unpack(data, index, bitsPerValue) {
-        const bitLoc = (bitsPerValue * index);
-        const dataLoc = bitLoc >> 5;
-        const bitStart = bitLoc & 31;
-        if (bitStart + bitsPerValue <= 32) {
-            // not split
-            return ((data[dataLoc] >> bitStart) & this.MASKS[bitsPerValue - 1]);
-        } else {
-            // split
-            const part = 32 - bitStart;
-            return ~~(((data[dataLoc] >> bitStart) & this.MASKS[part - 1]) +
-                ((data[1 + dataLoc] & this.MASKS[bitsPerValue - part - 1]) << part));
-        }
-    }
+    return bytes;
+});
+
+
+if (ROOT_PATH === null) {
+    return;
 }
-ParametricDescription.prototype.MASKS = new Int32Array([
-    0x1, 0x3, 0x7, 0xF,
-    0x1F, 0x3F, 0x7F, 0xFF,
-    0x1FF, 0x3F, 0x7FF, 0xFFF,
-    0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF,
-    0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF,
-    0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF,
-    0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF, 0xFFFFFFF,
-    0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF,
-]);
-
-// The following code was generated with the moman/finenight pkg
-// This package is available under the MIT License, see NOTICE.txt
-// for more details.
-// This class is auto-generated, Please do not modify it directly.
-// You should modify the https://gitlab.com/notriddle/createAutomata.py instead.
-// The following code was generated with the moman/finenight pkg
-// This package is available under the MIT License, see NOTICE.txt
-// for more details.
-// This class is auto-generated, Please do not modify it directly.
-// You should modify https://gitlab.com/notriddle/moman-rustdoc instead.
-
-class Lev2TParametricDescription extends ParametricDescription {
-    /**
-     * @param {number} absState
-     * @param {number} position
-     * @param {number} vector
-     * @returns {number}
-    */
-    transition(absState, position, vector) {
-        let state = Math.floor(absState / (this.w + 1));
-        let offset = absState % (this.w + 1);
-
-        if (position === this.w) {
-            if (state < 3) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 3) + state;
-                offset += this.unpack(this.offsetIncrs0, loc, 1);
-                state = this.unpack(this.toStates0, loc, 2) - 1;
-            }
-        } else if (position === this.w - 1) {
-            if (state < 5) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 5) + state;
-                offset += this.unpack(this.offsetIncrs1, loc, 1);
-                state = this.unpack(this.toStates1, loc, 3) - 1;
-            }
-        } else if (position === this.w - 2) {
-            if (state < 13) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 13) + state;
-                offset += this.unpack(this.offsetIncrs2, loc, 2);
-                state = this.unpack(this.toStates2, loc, 4) - 1;
-            }
-        } else if (position === this.w - 3) {
-            if (state < 28) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 28) + state;
-                offset += this.unpack(this.offsetIncrs3, loc, 2);
-                state = this.unpack(this.toStates3, loc, 5) - 1;
-            }
-        } else if (position === this.w - 4) {
-            if (state < 45) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 45) + state;
-                offset += this.unpack(this.offsetIncrs4, loc, 3);
-                state = this.unpack(this.toStates4, loc, 6) - 1;
-            }
-        } else {
-            if (state < 45) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 45) + state;
-                offset += this.unpack(this.offsetIncrs5, loc, 3);
-                state = this.unpack(this.toStates5, loc, 6) - 1;
-            }
-        }
-
-        if (state === -1) {
-            // null state
-            return -1;
-        } else {
-            // translate back to abs
-            return Math.imul(state, this.w + 1) + offset;
-        }
+const database = await Stringdex.loadDatabase(hooks);
+if (typeof window !== "undefined") {
+    docSearch = new DocSearch(ROOT_PATH, database);
+    await docSearch.buildIndex();
+    onEachLazy(document.querySelectorAll(
+        ".search-form.loading",
+    ), form => {
+        removeClass(form, "loading");
+    });
+    registerSearchEvents();
+    // If there's a search term in the URL, execute the search now.
+    if (window.searchState.getQueryStringParams().search !== undefined) {
+        search();
     }
-
-    // state map
-    //   0 -> [(0, 0)]
-    //   1 -> [(0, 1)]
-    //   2 -> [(0, 2)]
-    //   3 -> [(0, 1), (1, 1)]
-    //   4 -> [(0, 2), (1, 2)]
-    //   5 -> [(0, 1), (1, 1), (2, 1)]
-    //   6 -> [(0, 2), (1, 2), (2, 2)]
-    //   7 -> [(0, 1), (2, 1)]
-    //   8 -> [(0, 1), (2, 2)]
-    //   9 -> [(0, 2), (2, 1)]
-    //   10 -> [(0, 2), (2, 2)]
-    //   11 -> [t(0, 1), (0, 1), (1, 1), (2, 1)]
-    //   12 -> [t(0, 2), (0, 2), (1, 2), (2, 2)]
-    //   13 -> [(0, 2), (1, 2), (2, 2), (3, 2)]
-    //   14 -> [(0, 1), (1, 1), (3, 2)]
-    //   15 -> [(0, 1), (2, 2), (3, 2)]
-    //   16 -> [(0, 1), (3, 2)]
-    //   17 -> [(0, 1), t(1, 2), (2, 2), (3, 2)]
-    //   18 -> [(0, 2), (1, 2), (3, 1)]
-    //   19 -> [(0, 2), (1, 2), (3, 2)]
-    //   20 -> [(0, 2), (1, 2), t(1, 2), (2, 2), (3, 2)]
-    //   21 -> [(0, 2), (2, 1), (3, 1)]
-    //   22 -> [(0, 2), (2, 2), (3, 2)]
-    //   23 -> [(0, 2), (3, 1)]
-    //   24 -> [(0, 2), (3, 2)]
-    //   25 -> [(0, 2), t(1, 2), (1, 2), (2, 2), (3, 2)]
-    //   26 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (3, 2)]
-    //   27 -> [t(0, 2), (0, 2), (1, 2), (3, 1)]
-    //   28 -> [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
-    //   29 -> [(0, 2), (1, 2), (2, 2), (4, 2)]
-    //   30 -> [(0, 2), (1, 2), (2, 2), t(2, 2), (3, 2), (4, 2)]
-    //   31 -> [(0, 2), (1, 2), (3, 2), (4, 2)]
-    //   32 -> [(0, 2), (1, 2), (4, 2)]
-    //   33 -> [(0, 2), (1, 2), t(1, 2), (2, 2), (3, 2), (4, 2)]
-    //   34 -> [(0, 2), (1, 2), t(2, 2), (2, 2), (3, 2), (4, 2)]
-    //   35 -> [(0, 2), (2, 1), (4, 2)]
-    //   36 -> [(0, 2), (2, 2), (3, 2), (4, 2)]
-    //   37 -> [(0, 2), (2, 2), (4, 2)]
-    //   38 -> [(0, 2), (3, 2), (4, 2)]
-    //   39 -> [(0, 2), (4, 2)]
-    //   40 -> [(0, 2), t(1, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
-    //   41 -> [(0, 2), t(2, 2), (2, 2), (3, 2), (4, 2)]
-    //   42 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
-    //   43 -> [t(0, 2), (0, 2), (1, 2), (2, 2), (4, 2)]
-    //   44 -> [t(0, 2), (0, 2), (1, 2), (2, 2), t(2, 2), (3, 2), (4, 2)]
-
-
-    /** @param {number} w - length of word being checked */
-    constructor(w) {
-        super(w, 2, new Int32Array([
-            0,1,2,0,1,-1,0,-1,0,-1,0,-1,0,-1,-1,-1,-1,-1,-2,-1,-1,-2,-1,-2,
-            -1,-1,-1,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,-2,
-        ]));
-    }
+} else if (typeof exports !== "undefined") {
+    docSearch = new DocSearch(ROOT_PATH, database);
+    await docSearch.buildIndex();
+    return { docSearch, DocSearch };
 }
-
-Lev2TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
-    0xe,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
-    0x0,
-]);
-
-Lev2TParametricDescription.prototype.toStates1 = /*3 bits per value */ new Int32Array([
-    0x1a688a2c,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
-    0x3e0,
-]);
-
-Lev2TParametricDescription.prototype.toStates2 = /*4 bits per value */ new Int32Array([
-    0x70707054,0xdc07035,0x3dd3a3a,0x2323213a,
-    0x15435223,0x22545432,0x5435,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
-    0x80000,0x55582088,0x55555555,0x55,
-]);
-
-Lev2TParametricDescription.prototype.toStates3 = /*5 bits per value */ new Int32Array([
-    0x1c0380a4,0x700a570,0xca529c0,0x180a00,
-    0xa80af180,0xc5498e60,0x5a546398,0x8c4300e8,
-    0xac18c601,0xd8d43501,0x863500ad,0x51976d6a,
-    0x8ca0180a,0xc3501ac2,0xb0c5be16,0x76dda8a5,
-    0x18c4519,0xc41294a,0xe248d231,0x1086520c,
-    0xce31ac42,0x13946358,0x2d0348c4,0x6732d494,
-    0x1ad224a5,0xd635ad4b,0x520c4139,0xce24948,
-    0x22110a52,0x58ce729d,0xc41394e3,0x941cc520,
-    0x90e732d4,0x4729d224,0x39ce35ad,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
-    0x80000,0xc0c830,0x300f3c30,0x2200fcff,
-    0xcaa00a08,0x3c2200a8,0xa8fea00a,0x55555555,
-    0x55555555,0x55555555,0x55555555,0x55555555,
-    0x55555555,0x55555555,
-]);
-
-Lev2TParametricDescription.prototype.toStates4 = /*6 bits per value */ new Int32Array([
-    0x801c0144,0x1453803,0x14700038,0xc0005145,
-    0x1401,0x14,0x140000,0x0,
-    0x510000,0x6301f007,0x301f00d1,0xa186178,
-    0xc20ca0c3,0xc20c30,0xc30030c,0xc00c00cd,
-    0xf0c00c30,0x4c054014,0xc30944c3,0x55150c34,
-    0x8300550,0x430c0143,0x50c31,0xc30850c,
-    0xc3143000,0x50053c50,0x5130d301,0x850d30c2,
-    0x30a08608,0xc214414,0x43142145,0x21450031,
-    0x1400c314,0x4c143145,0x32832803,0x28014d6c,
-    0xcd34a0c3,0x1c50c76,0x1c314014,0x430c30c3,
-    0x1431,0xc300500,0xca00d303,0xd36d0e40,
-    0x90b0e400,0xcb2abb2c,0x70c20ca1,0x2c32ca2c,
-    0xcd2c70cb,0x31c00c00,0x34c2c32c,0x5583280,
-    0x558309b7,0x6cd6ca14,0x430850c7,0x51c51401,
-    0x1430c714,0xc3087,0x71451450,0xca00d30,
-    0xc26dc156,0xb9071560,0x1cb2abb2,0xc70c2144,
-    0xb1c51ca1,0x1421c70c,0xc51c00c3,0x30811c51,
-    0x24324308,0xc51031c2,0x70820820,0x5c33830d,
-    0xc33850c3,0x30c30c30,0xc30c31c,0x451450c3,
-    0x20c20c20,0xda0920d,0x5145914f,0x36596114,
-    0x51965865,0xd9643653,0x365a6590,0x51964364,
-    0x43081505,0x920b2032,0x2c718b28,0xd7242249,
-    0x35cb28b0,0x2cb3872c,0x972c30d7,0xb0c32cb2,
-    0x4e1c75c,0xc80c90c2,0x62ca2482,0x4504171c,
-    0xd65d9610,0x33976585,0xd95cb5d,0x4b5ca5d7,
-    0x73975c36,0x10308138,0xc2245105,0x41451031,
-    0x14e24208,0xc35c3387,0x51453851,0x1c51c514,
-    0xc70c30c3,0x20451450,0x14f1440c,0x4f0da092,
-    0x4513d41,0x6533944d,0x1350e658,0xe1545055,
-    0x64365a50,0x5519383,0x51030815,0x28920718,
-    0x441c718b,0x714e2422,0x1c35cb28,0x4e1c7387,
-    0xb28e1c51,0x5c70c32c,0xc204e1c7,0x81c61440,
-    0x1c62ca24,0xd04503ce,0x85d63944,0x39338e65,
-    0x8e154387,0x364b5ca3,0x38739738,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs4 = /*3 bits per value */ new Int32Array([
-    0x10000000,0xc00000,0x60061,0x400,
-    0x0,0x80010008,0x249248a4,0x8229048,
-    0x2092,0x6c3603,0xb61b6c30,0x6db6036d,
-    0xdb6c0,0x361b0180,0x91b72000,0xdb11b71b,
-    0x6db6236,0x1008200,0x12480012,0x24924906,
-    0x48200049,0x80410002,0x24000900,0x4924a489,
-    0x10822492,0x20800125,0x48360,0x9241b692,
-    0x6da4924,0x40009268,0x241b010,0x291b4900,
-    0x6d249249,0x49493423,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x2492,
-]);
-
-Lev2TParametricDescription.prototype.toStates5 = /*6 bits per value */ new Int32Array([
-    0x801c0144,0x1453803,0x14700038,0xc0005145,
-    0x1401,0x14,0x140000,0x0,
-    0x510000,0x4e00e007,0xe0051,0x3451451c,
-    0xd015000,0x30cd0000,0xc30c30c,0xc30c30d4,
-    0x40c30c30,0x7c01c014,0xc03458c0,0x185e0c07,
-    0x2830c286,0x830c3083,0xc30030,0x33430c,
-    0x30c3003,0x70051030,0x16301f00,0x8301f00d,
-    0x30a18617,0xc20ca0c,0x431420c3,0xb1450c51,
-    0x14314315,0x4f143145,0x34c05401,0x4c30944c,
-    0x55150c3,0x30830055,0x1430c014,0xc00050c3,
-    0xc30850,0xc314300,0x150053c5,0x25130d30,
-    0x5430d30c,0xc0354154,0x300d0c90,0x1cb2cd0c,
-    0xc91cb0c3,0x72c30cb2,0x14f1cb2c,0xc34c0540,
-    0x34c30944,0x82182214,0x851050c2,0x50851430,
-    0x1400c50c,0x30c5085,0x50c51450,0x150053c,
-    0xc25130d3,0x8850d30,0x1430a086,0x450c2144,
-    0x51cb1c21,0x1c91c70c,0xc71c314b,0x34c1cb1,
-    0x6c328328,0xc328014d,0x76cd34a0,0x1401c50c,
-    0xc31c3140,0x31430c30,0x14,0x30c3005,
-    0xa0ca00d3,0x535b0c,0x4d2830ca,0x514369b3,
-    0xc500d01,0x5965965a,0x30d46546,0x6435030c,
-    0x8034c659,0xdb439032,0x2c390034,0xcaaecb24,
-    0x30832872,0xcb28b1c,0x4b1c32cb,0x70030033,
-    0x30b0cb0c,0xe40ca00d,0x400d36d0,0xb2c90b0e,
-    0xca1cb2ab,0xa2c70c20,0x6575d95c,0x4315b5ce,
-    0x95c53831,0x28034c5d,0x9b705583,0xa1455830,
-    0xc76cd6c,0x40143085,0x71451c51,0x871430c,
-    0x450000c3,0xd3071451,0x1560ca00,0x560c26dc,
-    0xb35b2851,0xc914369,0x1a14500d,0x46593945,
-    0xcb2c939,0x94507503,0x328034c3,0x9b70558,
-    0xe41c5583,0x72caaeca,0x1c308510,0xc7147287,
-    0x50871c32,0x1470030c,0xd307147,0xc1560ca0,
-    0x1560c26d,0xabb2b907,0x21441cb2,0x38a1c70c,
-    0x8e657394,0x314b1c93,0x39438738,0x43083081,
-    0x31c22432,0x820c510,0x830d7082,0x50c35c33,
-    0xc30c338,0xc31c30c3,0x50c30c30,0xc204514,
-    0x890c90c2,0x31440c70,0xa8208208,0xea0df0c3,
-    0x8a231430,0xa28a28a2,0x28a28a1e,0x1861868a,
-    0x48308308,0xc3682483,0x14516453,0x4d965845,
-    0xd4659619,0x36590d94,0xd969964,0x546590d9,
-    0x20c20541,0x920d20c,0x5914f0da,0x96114514,
-    0x65865365,0xe89d3519,0x99e7a279,0x9e89e89e,
-    0x81821827,0xb2032430,0x18b28920,0x422492c7,
-    0xb28b0d72,0x3872c35c,0xc30d72cb,0x32cb2972,
-    0x1c75cb0c,0xc90c204e,0xa2482c80,0x24b1c62c,
-    0xc3a89089,0xb0ea2e42,0x9669a31c,0xa4966a28,
-    0x59a8a269,0x8175e7a,0xb203243,0x718b2892,
-    0x4114105c,0x17597658,0x74ce5d96,0x5c36572d,
-    0xd92d7297,0xe1ce5d70,0xc90c204,0xca2482c8,
-    0x4171c62,0x5d961045,0x976585d6,0x79669533,
-    0x964965a2,0x659689e6,0x308175e7,0x24510510,
-    0x451031c2,0xe2420841,0x5c338714,0x453851c3,
-    0x51c51451,0xc30c31c,0x451450c7,0x41440c20,
-    0xc708914,0x82105144,0xf1c58c90,0x1470ea0d,
-    0x61861863,0x8a1e85e8,0x8687a8a2,0x3081861,
-    0x24853c51,0x5053c368,0x1341144f,0x96194ce5,
-    0x1544d439,0x94385514,0xe0d90d96,0x5415464,
-    0x4f1440c2,0xf0da0921,0x4513d414,0x533944d0,
-    0x350e6586,0x86082181,0xe89e981d,0x18277689,
-    0x10308182,0x89207185,0x41c718b2,0x14e24224,
-    0xc35cb287,0xe1c73871,0x28e1c514,0xc70c32cb,
-    0x204e1c75,0x1c61440c,0xc62ca248,0x90891071,
-    0x2e41c58c,0xa31c70ea,0xe86175e7,0xa269a475,
-    0x5e7a57a8,0x51030817,0x28920718,0xf38718b,
-    0xe5134114,0x39961758,0xe1ce4ce,0x728e3855,
-    0x5ce0d92d,0xc204e1ce,0x81c61440,0x1c62ca24,
-    0xd04503ce,0x85d63944,0x75338e65,0x5d86075e,
-    0x89e69647,0x75e76576,
-]);
-Lev2TParametricDescription.prototype.offsetIncrs5 = /*3 bits per value */ new Int32Array([
-    0x10000000,0xc00000,0x60061,0x400,
-    0x0,0x60000008,0x6b003080,0xdb6ab6db,
-    0x2db6,0x800400,0x49245240,0x11482412,
-    0x104904,0x40020000,0x92292000,0xa4b25924,
-    0x9649658,0xd80c000,0xdb0c001b,0x80db6d86,
-    0x6db01b6d,0xc0600003,0x86000d86,0x6db6c36d,
-    0xddadb6ed,0x300001b6,0x6c360,0xe37236e4,
-    0x46db6236,0xdb6c,0x361b018,0xb91b7200,
-    0x6dbb1b71,0x6db763,0x20100820,0x61248001,
-    0x92492490,0x24820004,0x8041000,0x92400090,
-    0x24924830,0x555b6a49,0x2080012,0x20004804,
-    0x49252449,0x84112492,0x4000928,0x240201,
-    0x92922490,0x58924924,0x49456,0x120d8082,
-    0x6da4800,0x69249249,0x249a01b,0x6c04100,
-    0x6d240009,0x92492483,0x24d5adb4,0x60208001,
-    0x92000483,0x24925236,0x6846da49,0x10400092,
-    0x241b0,0x49291b49,0x636d2492,0x92494935,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,0x49249249,
-    0x92492492,0x24924924,0x49249249,0x92492492,
-    0x24924924,0x49249249,0x92492492,0x24924924,
-    0x49249249,0x92492492,0x24924924,
-]);
-
-class Lev1TParametricDescription extends ParametricDescription {
-    /**
-     * @param {number} absState
-     * @param {number} position
-     * @param {number} vector
-     * @returns {number}
-    */
-    transition(absState, position, vector) {
-        let state = Math.floor(absState / (this.w + 1));
-        let offset = absState % (this.w + 1);
-
-        if (position === this.w) {
-            if (state < 2) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 2) + state;
-                offset += this.unpack(this.offsetIncrs0, loc, 1);
-                state = this.unpack(this.toStates0, loc, 2) - 1;
-            }
-        } else if (position === this.w - 1) {
-            if (state < 3) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 3) + state;
-                offset += this.unpack(this.offsetIncrs1, loc, 1);
-                state = this.unpack(this.toStates1, loc, 2) - 1;
-            }
-        } else if (position === this.w - 2) {
-            if (state < 6) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 6) + state;
-                offset += this.unpack(this.offsetIncrs2, loc, 2);
-                state = this.unpack(this.toStates2, loc, 3) - 1;
-            }
-        } else {
-            if (state < 6) { // eslint-disable-line no-lonely-if
-                const loc = Math.imul(vector, 6) + state;
-                offset += this.unpack(this.offsetIncrs3, loc, 2);
-                state = this.unpack(this.toStates3, loc, 3) - 1;
-            }
-        }
-
-        if (state === -1) {
-            // null state
-            return -1;
-        } else {
-            // translate back to abs
-            return Math.imul(state, this.w + 1) + offset;
-        }
-    }
-
-    // state map
-    //   0 -> [(0, 0)]
-    //   1 -> [(0, 1)]
-    //   2 -> [(0, 1), (1, 1)]
-    //   3 -> [(0, 1), (1, 1), (2, 1)]
-    //   4 -> [(0, 1), (2, 1)]
-    //   5 -> [t(0, 1), (0, 1), (1, 1), (2, 1)]
-
-
-    /** @param {number} w - length of word being checked */
-    constructor(w) {
-        super(w, 1, new Int32Array([0,1,0,-1,-1,-1]));
-    }
-}
-
-Lev1TParametricDescription.prototype.toStates0 = /*2 bits per value */ new Int32Array([
-    0x2,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs0 = /*1 bits per value */ new Int32Array([
-    0x0,
-]);
-
-Lev1TParametricDescription.prototype.toStates1 = /*2 bits per value */ new Int32Array([
-    0xa43,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs1 = /*1 bits per value */ new Int32Array([
-    0x38,
-]);
-
-Lev1TParametricDescription.prototype.toStates2 = /*3 bits per value */ new Int32Array([
-    0x12180003,0xb45a4914,0x69,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs2 = /*2 bits per value */ new Int32Array([
-    0x558a0000,0x5555,
-]);
-
-Lev1TParametricDescription.prototype.toStates3 = /*3 bits per value */ new Int32Array([
-    0x900c0003,0xa1904864,0x45a49169,0x5a6d196a,
-    0x9634,
-]);
-Lev1TParametricDescription.prototype.offsetIncrs3 = /*2 bits per value */ new Int32Array([
-    0xa0fc0000,0x5555ba08,0x55555555,
-]);
-
-// ====================
-// WARNING: Nothing should be added below this comment: we need the `initSearch` function to
-// be called ONLY when the whole file has been parsed and loaded.
-
-// @ts-expect-error
-function initSearch(searchIndex) {
-    rawSearchIndex = searchIndex;
-    if (typeof window !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        registerSearchEvents();
-        // If there's a search term in the URL, execute the search now.
-        if (window.searchState.getQueryStringParams().search) {
-            search();
-        }
-    } else if (typeof exports !== "undefined") {
-        // @ts-expect-error
-        docSearch = new DocSearch(rawSearchIndex, ROOT_PATH, searchState);
-        exports.docSearch = docSearch;
-        exports.parseQuery = DocSearch.parseQuery;
-    }
-}
-
-if (typeof exports !== "undefined") {
-    exports.initSearch = initSearch;
-}
+};
 
 if (typeof window !== "undefined") {
-    // @ts-expect-error
-    window.initSearch = initSearch;
-    // @ts-expect-error
-    if (window.searchIndex !== undefined) {
-        // @ts-expect-error
-        initSearch(window.searchIndex);
-    }
-} else {
-    // Running in Node, not a browser. Run initSearch just to produce the
-    // exports.
-    initSearch(new Map());
+    const ROOT_PATH = window.rootPath;
+    /** @type {stringdex.Callbacks|null} */
+    let databaseCallbacks = null;
+    initSearch(window.Stringdex, window.RoaringBitmap, {
+        loadRoot: callbacks => {
+            for (const key in callbacks) {
+                if (Object.hasOwn(callbacks, key)) {
+                    // @ts-ignore
+                    window[key] = callbacks[key];
+                }
+            }
+            databaseCallbacks = callbacks;
+            // search.index/root is loaded by main.js, so
+            // this script doesn't need to launch it, but
+            // must pick it up
+            if (window.searchIndex) {
+                window.rr_(window.searchIndex);
+            }
+        },
+        loadTreeByHash: hashHex => {
+            const script = document.createElement("script");
+            script.src = `${ROOT_PATH}search.index/${hashHex}.js`;
+            script.onerror = e => {
+                if (databaseCallbacks) {
+                    databaseCallbacks.err_rn_(hashHex, e);
+                }
+            };
+            document.documentElement.appendChild(script);
+        },
+        loadDataByNameAndHash: (name, hashHex) => {
+            const script = document.createElement("script");
+            script.src = `${ROOT_PATH}search.index/${name}/${hashHex}.js`;
+            script.onerror = e => {
+                if (databaseCallbacks) {
+                    databaseCallbacks.err_rd_(hashHex, e);
+                }
+            };
+            document.documentElement.appendChild(script);
+        },
+    });
+} else if (typeof exports !== "undefined") {
+    // eslint-disable-next-line no-undef
+    exports.initSearch = initSearch;
 }

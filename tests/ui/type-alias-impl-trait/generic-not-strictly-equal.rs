@@ -32,8 +32,7 @@ fn test<'x>(_: Opaque<'x>) {
 
     ensure_outlives::<'x>(opaque); // outlives constraint: '?1: 'x
     relate(opaque, hidden); // defining use: Opaque<'?1> := u8
-    //[basic]~^ ERROR expected generic lifetime parameter, found `'_`
-    //[member_constraints]~^^ ERROR captures lifetime that does not appear in bounds
+    //~^ ERROR expected generic lifetime parameter, found `'_`
 }
 
 fn main() {}

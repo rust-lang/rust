@@ -1,11 +1,16 @@
+use std::borrow::Cow;
+use std::path::PathBuf;
+
 pub use ReprAttr::*;
 use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrStyle, ast};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Ident, Span, Symbol};
+pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
@@ -205,6 +210,44 @@ pub enum Linkage {
     WeakODR,
 }
 
+#[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MirDialect {
+    Analysis,
+    Built,
+    Runtime,
+}
+
+impl IntoDiagArg for MirDialect {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirDialect::Analysis => "analysis",
+            MirDialect::Built => "built",
+            MirDialect::Runtime => "runtime",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
+    }
+}
+
+#[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub enum MirPhase {
+    Initial,
+    PostCleanup,
+    Optimized,
+}
+
+impl IntoDiagArg for MirPhase {
+    fn into_diag_arg(self, _path: &mut Option<PathBuf>) -> DiagArgValue {
+        let arg = match self {
+            MirPhase::Initial => "initial",
+            MirPhase::PostCleanup => "post-cleanup",
+            MirPhase::Optimized => "optimized",
+        };
+        DiagArgValue::Str(Cow::Borrowed(arg))
+    }
+}
+
 /// Represents parsed *built-in* inert attributes.
 ///
 /// ## Overview
@@ -323,6 +366,12 @@ pub enum AttributeKind {
 
     /// Represents `#[coverage(..)]`.
     Coverage(Span, CoverageAttrKind),
+
+    /// Represents `#[crate_name = ...]`
+    CrateName { name: Symbol, name_span: Span, attr_span: Span, style: AttrStyle },
+
+    /// Represents `#[custom_mir]`.
+    CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 
     ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
@@ -460,6 +509,12 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[sanitize]`
+    ///
+    /// the on set and off set are distjoint since there's a third option: unset.
+    /// a node may not set the sanitizer setting in which case it inherits from parents.
+    Sanitize { on_set: SanitizerSet, off_set: SanitizerSet, span: Span },
+
     /// Represents `#[should_panic]`
     ShouldPanic { reason: Option<Symbol>, span: Span },
 
@@ -479,8 +534,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_std_internal_symbol]`.
     StdInternalSymbol(Span),
 
-    /// Represents `#[target_feature(enable = "...")]`
-    TargetFeature(ThinVec<(Symbol, Span)>, Span),
+    /// Represents `#[target_feature(enable = "...")]` and
+    /// `#[unsafe(force_target_feature(enable = "...")]`.
+    TargetFeature { features: ThinVec<(Symbol, Span)>, attr_span: Span, was_forced: bool },
 
     /// Represents `#[track_caller]`
     TrackCaller(Span),

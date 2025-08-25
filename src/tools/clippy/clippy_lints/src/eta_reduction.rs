@@ -231,9 +231,13 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                                     _ => (),
                                 }
                             }
+                            let replace_with = match callee_ty_adjusted.kind() {
+                                ty::FnDef(def, _) => cx.tcx.def_descr(*def),
+                                _ => "function",
+                            };
                             diag.span_suggestion(
                                 expr.span,
-                                "replace the closure with the function itself",
+                                format!("replace the closure with the {replace_with} itself"),
                                 snippet,
                                 Applicability::MachineApplicable,
                             );

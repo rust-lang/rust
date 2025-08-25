@@ -173,7 +173,7 @@ impl Params {
     }
 
     /// Sets the `apply_lint` flag on each parameter.
-    fn flag_for_linting(&mut self) {
+    fn flag_for_linting(&self) {
         // Stores the list of parameters currently being resolved. Needed to avoid cycles.
         let mut eval_stack = Vec::new();
         for param in &self.params {

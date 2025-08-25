@@ -1,16 +1,10 @@
-use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind::{LinkName, LinkOrdinal, LinkSection};
-use rustc_hir::attrs::{AttributeKind, Linkage};
-use rustc_hir::{MethodKind, Target};
-use rustc_span::{Span, Symbol, sym};
+use rustc_hir::attrs::Linkage;
 
-use crate::attributes::{
-    AttributeOrder, NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::MaybeWarn::Allow;
-use crate::context::{ALL_TARGETS, AcceptContext, AllowedTargets, Stage, parse_single_integer};
-use crate::parser::ArgParser;
+use super::prelude::*;
+use super::util::parse_single_integer;
 use crate::session_diagnostics::{LinkOrdinalOutOfRange, NullOnLinkSection};
+
 pub(crate) struct LinkNameParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
@@ -212,16 +206,16 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
             _ => {
                 cx.expected_specific_argument(
                     name_value.value_span,
-                    vec![
-                        "available_externally",
-                        "common",
-                        "extern_weak",
-                        "external",
-                        "internal",
-                        "linkonce",
-                        "linkonce_odr",
-                        "weak",
-                        "weak_odr",
+                    &[
+                        sym::available_externally,
+                        sym::common,
+                        sym::extern_weak,
+                        sym::external,
+                        sym::internal,
+                        sym::linkonce,
+                        sym::linkonce_odr,
+                        sym::weak,
+                        sym::weak_odr,
                     ],
                 );
                 return None;

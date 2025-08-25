@@ -25,12 +25,8 @@ enum CanonicalizeInputKind {
     /// trait candidates relies on it when deciding whether a where-bound
     /// is trivial.
     ParamEnv,
-    /// When canonicalizing predicates, we don't keep `'static`. If we're
-    /// currently outside of the trait solver and canonicalize the root goal
-    /// during HIR typeck, we replace each occurance of a region with a
-    /// unique region variable. See the comment on `InferCtxt::in_hir_typeck`
-    /// for more details.
-    Predicate { is_hir_typeck_root_goal: bool },
+    /// When canonicalizing predicates, we don't keep `'static`.
+    Predicate,
 }
 
 /// Whether we're canonicalizing a query input or the query response.
@@ -191,7 +187,6 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
         variables: &'a mut Vec<I::GenericArg>,
-        is_hir_typeck_root_goal: bool,
         input: QueryInput<I, P>,
     ) -> ty::Canonical<I, QueryInput<I, P>> {
         // First canonicalize the `param_env` while keeping `'static`
@@ -201,9 +196,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         // while *mostly* reusing the canonicalizer from above.
         let mut rest_canonicalizer = Canonicalizer {
             delegate,
-            canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
-                is_hir_typeck_root_goal,
-            }),
+            canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
 
             variables,
             variable_lookup_table,
@@ -481,31 +474,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             }
         };
 
-        let var = if let CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
-            is_hir_typeck_root_goal: true,
-        }) = self.canonicalize_mode
-        {
-            let var = ty::BoundVar::from(self.variables.len());
-            self.variables.push(r.into());
-            self.var_kinds.push(kind);
-            var
-        } else {
-            self.get_or_insert_bound_var(r, kind)
-        };
+        let var = self.get_or_insert_bound_var(r, kind);
 
         Region::new_anon_bound(self.cx(), self.binder_index, var)
     }
 
     fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
-        if let CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
-            is_hir_typeck_root_goal: true,
-        }) = self.canonicalize_mode
-        {
-            // If we're canonicalizing a root goal during HIR typeck, we
-            // must not use the `cache` as we want to map each occurrence
-            // of a region to a unique existential variable.
-            self.inner_fold_ty(t)
-        } else if let Some(&ty) = self.cache.get(&(self.binder_index, t)) {
+        if let Some(&ty) = self.cache.get(&(self.binder_index, t)) {
             ty
         } else {
             let res = self.inner_fold_ty(t);

@@ -49,6 +49,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
+    frontmatter_allowed: FrontmatterAllowed,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
@@ -56,7 +57,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         start_pos = start_pos + BytePos::from_usize(shebang_len);
     }
 
-    let cursor = Cursor::new(src, FrontmatterAllowed::Yes);
+    let cursor = Cursor::new(src, frontmatter_allowed);
     let mut lexer = Lexer {
         psess,
         start_pos,
@@ -542,21 +543,21 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             })
             .collect();
 
+        let label = label.to_string();
         let count = spans.len();
-        let labels = point_at_inner_spans.then_some(spans.clone());
+        let labels = point_at_inner_spans
+            .then_some(errors::HiddenUnicodeCodepointsDiagLabels { spans: spans.clone() });
+        let sub = if point_at_inner_spans && !spans.is_empty() {
+            errors::HiddenUnicodeCodepointsDiagSub::Escape { spans }
+        } else {
+            errors::HiddenUnicodeCodepointsDiagSub::NoEscape { spans }
+        };
 
         self.psess.buffer_lint(
             TEXT_DIRECTION_CODEPOINT_IN_LITERAL,
             span,
             ast::CRATE_NODE_ID,
-            BuiltinLintDiag::HiddenUnicodeCodepoints {
-                label: label.to_string(),
-                count,
-                span_label: span,
-                labels,
-                escape: point_at_inner_spans && !spans.is_empty(),
-                spans,
-            },
+            errors::HiddenUnicodeCodepointsDiag { label, count, span_label: span, labels, sub },
         );
     }
 

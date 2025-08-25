@@ -1,0 +1,14 @@
+error[E0515]: cannot return value referencing function parameter `y`
+  --> $DIR/iterator-scope-collect-suggestion-81584.rs:6:22
+   |
+LL |             .map(|y| y.iter().map(|x| x + 1))
+   |                      -^^^^^^^^^^^^^^^^^^^^^^
+   |                      |
+   |                      returns a value referencing data owned by the current function
+   |                      `y` is borrowed here
+   |
+   = help: use `.collect()` to allocate the iterator
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

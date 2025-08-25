@@ -43,10 +43,11 @@ error[E0596]: cannot borrow `*ptr_x` as mutable, as it is behind a `*const` poin
 LL |             let _y1 = &mut *ptr_x;
    |                       ^^^^^^^^^^^ `ptr_x` is a `*const` pointer, so the data it refers to cannot be borrowed as mutable
    |
-help: consider changing this to be a mutable pointer
+help: consider changing this binding's type
    |
-LL |         let ptr_x: *const _ = &mut x;
-   |                                +++
+LL -         let ptr_x: *const _ = &x;
+LL +         let ptr_x: *mut i32 = &x;
+   |
 
 error[E0596]: cannot borrow `*foo_ref.f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-access-permissions.rs:59:18

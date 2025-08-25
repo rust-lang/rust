@@ -160,7 +160,11 @@ impl<'tcx> PlaceTy<'tcx> {
     /// Convenience wrapper around `projection_ty_core` for `PlaceElem`,
     /// where we can just use the `Ty` that is already stored inline on
     /// field projection elems.
-    pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
+    pub fn projection_ty<V: ::std::fmt::Debug>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        elem: ProjectionElem<V, Ty<'tcx>>,
+    ) -> PlaceTy<'tcx> {
         self.projection_ty_core(tcx, &elem, |ty| ty, |_, _, _, ty| ty, |ty| ty)
     }
 
@@ -289,6 +293,36 @@ impl<V, T> ProjectionElem<V, T> {
             // FIXME(unsafe_binders): Figure this out.
             Self::UnwrapUnsafeBinder(..) => false,
         }
+    }
+
+    /// Returns the `ProjectionKind` associated to this projection.
+    pub fn kind(self) -> ProjectionKind {
+        self.try_map(|_| Some(()), |_| ()).unwrap()
+    }
+
+    /// Apply functions to types and values in this projection and return the result.
+    pub fn try_map<V2, T2>(
+        self,
+        v: impl FnOnce(V) -> Option<V2>,
+        t: impl FnOnce(T) -> T2,
+    ) -> Option<ProjectionElem<V2, T2>> {
+        Some(match self {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Downcast(name, read_variant) => {
+                ProjectionElem::Downcast(name, read_variant)
+            }
+            ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, t(ty)),
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
+            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(t(ty)),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
+            ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
+        })
     }
 }
 

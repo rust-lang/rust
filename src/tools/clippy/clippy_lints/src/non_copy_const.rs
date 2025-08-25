@@ -92,7 +92,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub DECLARE_INTERIOR_MUTABLE_CONST,
-    style,
+    suspicious,
     "declaring `const` with interior mutability"
 }
 

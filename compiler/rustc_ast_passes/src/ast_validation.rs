@@ -25,16 +25,16 @@ use rustc_abi::{CanonAbi, ExternAbi, InterruptKind};
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
 use rustc_ast_pretty::pprust::{self, State};
+use rustc_attr_parsing::validate_attr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, LintBuffer};
 use rustc_feature::Features;
-use rustc_parse::validate_attr;
 use rustc_session::Session;
+use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
-use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use thin_vec::thin_vec;
@@ -405,6 +405,17 @@ impl<'a> AstValidator<'a> {
                         if let InterruptKind::X86 = interrupt_kind {
                             // "x86-interrupt" is special because it does have arguments.
                             // FIXME(workingjubilee): properly lint on acceptable input types.
+                            let inputs = &sig.decl.inputs;
+                            let param_count = inputs.len();
+                            if !matches!(param_count, 1 | 2) {
+                                let mut spans: Vec<Span> =
+                                    inputs.iter().map(|arg| arg.span).collect();
+                                if spans.is_empty() {
+                                    spans = vec![sig.span];
+                                }
+                                self.dcx().emit_err(errors::AbiX86Interrupt { spans, param_count });
+                            }
+
                             if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
                                 && match &ret_ty.kind {
                                     TyKind::Never => false,
@@ -865,7 +876,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                BuiltinLintDiag::MissingAbi(span, ExternAbi::FALLBACK),
+                errors::MissingAbiSugg { span, default_abi: ExternAbi::FALLBACK },
             )
         }
     }
@@ -1169,7 +1180,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _))
+                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
                     && !attr::contains_name(&item.attrs, sym::path)
                 {
                     self.check_mod_file_item_asciionly(*ident);

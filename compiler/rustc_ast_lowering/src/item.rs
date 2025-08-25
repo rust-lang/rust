@@ -251,7 +251,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Mod(_, ident, mod_kind) => {
                 let ident = self.lower_ident(*ident);
                 match mod_kind {
-                    ModKind::Loaded(items, _, spans, _) => {
+                    ModKind::Loaded(items, _, spans) => {
                         hir::ItemKind::Mod(ident, self.lower_mod(items, spans))
                     }
                     ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),
@@ -1596,7 +1596,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let safety = self.lower_safety(h.safety, default_safety);
 
         // Treat safe `#[target_feature]` functions as unsafe, but also remember that we did so.
-        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { .. })
+        let safety = if find_attr!(attrs, AttributeKind::TargetFeature { was_forced: false, .. })
             && safety.is_safe()
             && !self.tcx.sess.target.is_like_wasm
         {

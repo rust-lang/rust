@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import sys
 from typing import List, TYPE_CHECKING
 
@@ -410,6 +411,16 @@ class MSVCStrSyntheticProvider:
             return "&str"
 
 
+def _getVariantName(variant) -> str:
+    """
+    Since the enum variant's type name is in the form `TheEnumName::TheVariantName$Variant`,
+    we can extract `TheVariantName` from it for display purpose.
+    """
+    s = variant.GetType().GetName()
+    match = re.search(r"::([^:]+)\$Variant$", s)
+    return match.group(1) if match else ""
+
+
 class ClangEncodedEnumProvider:
     """Pretty-printer for 'clang-encoded' enums support implemented in LLDB"""
 
@@ -424,37 +435,25 @@ class ClangEncodedEnumProvider:
         return True
 
     def num_children(self) -> int:
-        if self.is_default:
-            return 1
-        return 2
+        return 1
 
-    def get_child_index(self, name: str) -> int:
-        if name == ClangEncodedEnumProvider.VALUE_MEMBER_NAME:
-            return 0
-        if name == ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME:
-            return 1
+    def get_child_index(self, _name: str) -> int:
         return -1
 
     def get_child_at_index(self, index: int) -> SBValue:
         if index == 0:
-            return self.variant.GetChildMemberWithName(
+            value = self.variant.GetChildMemberWithName(
                 ClangEncodedEnumProvider.VALUE_MEMBER_NAME
             )
-        if index == 1:
-            return self.variant.GetChildMemberWithName(
-                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME
+            return value.CreateChildAtOffset(
+                _getVariantName(self.variant), 0, value.GetType()
             )
+        return None
 
     def update(self):
         all_variants = self.valobj.GetChildAtIndex(0)
         index = self._getCurrentVariantIndex(all_variants)
         self.variant = all_variants.GetChildAtIndex(index)
-        self.is_default = (
-            self.variant.GetIndexOfChildWithName(
-                ClangEncodedEnumProvider.DISCRIMINANT_MEMBER_NAME
-            )
-            == -1
-        )
 
     def _getCurrentVariantIndex(self, all_variants: SBValue) -> int:
         default_index = 0

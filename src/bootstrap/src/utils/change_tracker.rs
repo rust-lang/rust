@@ -506,4 +506,14 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "It is no longer possible to `x clippy` with stage 0. All clippy commands have to be on stage 1+.",
     },
+    ChangeInfo {
+        change_id: 145256,
+        severity: ChangeSeverity::Info,
+        summary: "Added `--test-codegen-backend` CLI option for tests",
+    },
+    ChangeInfo {
+        change_id: 145379,
+        severity: ChangeSeverity::Info,
+        summary: "Build/check now supports forwarding `--timings` flag to cargo.",
+    },
 ];

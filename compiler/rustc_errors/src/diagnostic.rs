@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
+use rustc_error_messages::{DiagArgName, DiagArgValue, IntoDiagArg};
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
@@ -21,26 +21,6 @@ use crate::{
     MultiSpan, StashKey, SubdiagMessage, Substitution, SubstitutionPart, SuggestionStyle,
     Suggestions,
 };
-
-/// Simplified version of `FluentArg` that can implement `Encodable` and `Decodable`. Collection of
-/// `DiagArg` are converted to `FluentArgs` (consuming the collection) at the start of diagnostic
-/// emission.
-pub type DiagArg<'iter> = (&'iter DiagArgName, &'iter DiagArgValue);
-
-/// Name of a diagnostic argument.
-pub type DiagArgName = Cow<'static, str>;
-
-/// Simplified version of `FluentValue` that can implement `Encodable` and `Decodable`. Converted
-/// to a `FluentValue` by the emitter to be used in diagnostic translation.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagArgValue {
-    Str(Cow<'static, str>),
-    // This gets converted to a `FluentNumber`, which is an `f64`. An `i32`
-    // safely fits in an `f64`. Any integers bigger than that will be converted
-    // to strings in `into_diag_arg` and stored using the `Str` variant.
-    Number(i32),
-    StrListSepByAnd(Vec<Cow<'static, str>>),
-}
 
 pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
@@ -143,36 +123,6 @@ where
     }
 }
 
-/// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
-/// Implemented as a custom trait rather than `From` so that it is implemented on the type being
-/// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
-/// implement this.
-pub trait IntoDiagArg {
-    /// Convert `Self` into a `DiagArgValue` suitable for rendering in a diagnostic.
-    ///
-    /// It takes a `path` where "long values" could be written to, if the `DiagArgValue` is too big
-    /// for displaying on the terminal. This path comes from the `Diag` itself. When rendering
-    /// values that come from `TyCtxt`, like `Ty<'_>`, they can use `TyCtxt::short_string`. If a
-    /// value has no shortening logic that could be used, the argument can be safely ignored.
-    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue;
-}
-
-impl IntoDiagArg for DiagArgValue {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self
-    }
-}
-
-impl From<DiagArgValue> for FluentValue<'static> {
-    fn from(val: DiagArgValue) -> Self {
-        match val {
-            DiagArgValue::Str(s) => From::from(s),
-            DiagArgValue::Number(n) => From::from(n),
-            DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
-        }
-    }
-}
-
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(Subdiagnostic)]` -- see [rustc_macros::Subdiagnostic].
 #[rustc_diagnostic_item = "Subdiagnostic"]
@@ -188,8 +138,18 @@ where
 /// `#[derive(LintDiagnostic)]` -- see [rustc_macros::LintDiagnostic].
 #[rustc_diagnostic_item = "LintDiagnostic"]
 pub trait LintDiagnostic<'a, G: EmissionGuarantee> {
-    /// Decorate and emit a lint.
+    /// Decorate a lint with the information from this type.
     fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>);
+}
+
+pub trait LintDiagnosticBox<'a, G: EmissionGuarantee> {
+    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>);
+}
+
+impl<'a, G: EmissionGuarantee, D: LintDiagnostic<'a, G>> LintDiagnosticBox<'a, G> for D {
+    fn decorate_lint_box<'b>(self: Box<Self>, diag: &'b mut Diag<'a, G>) {
+        self.decorate_lint(diag);
+    }
 }
 
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -615,6 +575,29 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             self.level
         );
         self.level = Level::DelayedBug;
+    }
+
+    /// Make emitting this diagnostic fatal
+    ///
+    /// Changes the level of this diagnostic to Fatal, and importantly also changes the emission guarantee.
+    /// This is sound for errors that would otherwise be printed, but now simply exit the process instead.
+    /// This function still gives an emission guarantee, the guarantee is now just that it exits fatally.
+    /// For delayed bugs this is different, since those are buffered. If we upgrade one to fatal, another
+    /// might now be ignored.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn upgrade_to_fatal(mut self) -> Diag<'a, FatalAbort> {
+        assert!(
+            matches!(self.level, Level::Error),
+            "upgrade_to_fatal: cannot upgrade {:?} to Fatal: not an error",
+            self.level
+        );
+        self.level = Level::Fatal;
+
+        // Take is okay since we immediately rewrap it in another diagnostic.
+        // i.e. we do emit it despite defusing the original diagnostic's drop bomb.
+        let diag = self.diag.take();
+        Diag { dcx: self.dcx, diag, _marker: PhantomData }
     }
 
     with_fn! { with_span_label,

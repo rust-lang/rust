@@ -6,7 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
-use rustc_type_ir::{self as ty, Interner, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -135,12 +135,16 @@ where
         }
 
         let impl_polarity = cx.impl_polarity(impl_def_id);
-        match impl_polarity {
+        let certainty = match impl_polarity {
             ty::ImplPolarity::Negative => return Err(NoSolution),
-            ty::ImplPolarity::Reservation => {
-                unimplemented!("reservation impl for const trait: {:?}", goal)
-            }
-            ty::ImplPolarity::Positive => {}
+            ty::ImplPolarity::Reservation => match ecx.typing_mode() {
+                TypingMode::Coherence => Certainty::AMBIGUOUS,
+                TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => return Err(NoSolution),
+            },
+            ty::ImplPolarity::Positive => Certainty::Yes,
         };
 
         if !cx.impl_is_const(impl_def_id) {
@@ -171,7 +175,7 @@ where
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            ecx.evaluate_added_goals_and_make_canonical_response(certainty)
         })
     }
 

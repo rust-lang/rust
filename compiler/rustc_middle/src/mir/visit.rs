@@ -531,13 +531,20 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         replace: _,
                         drop: _,
-                        async_fut: _,
+                        async_fut,
                     } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             location
                         );
+                        if let Some(async_fut) = async_fut {
+                            self.visit_local(
+                                $(&$mutability)? *async_fut,
+                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                                location
+                            );
+                        }
                     }
 
                     TerminatorKind::Call {

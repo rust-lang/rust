@@ -434,14 +434,14 @@ fn test_prebuilt_llvm_config_path_resolution() {
         false,
     )
     .llvm_result()
-    .llvm_config
+    .host_llvm_config
     .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
 
     let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
-        .llvm_config
+        .host_llvm_config
         .clone();
     let actual = drop_win_disk_prefix_if_present(actual);
     assert_eq!(expected, actual);
@@ -459,7 +459,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
     let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
         .llvm_result()
-        .llvm_config
+        .host_llvm_config
         .clone();
     let expected = builder
         .out
@@ -482,7 +482,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
 
         let actual = prebuilt_llvm_config(&builder, builder.config.host_target, false)
             .llvm_result()
-            .llvm_config
+            .host_llvm_config
             .clone();
         let expected = builder
             .out
@@ -669,6 +669,83 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .hosts(&[TEST_TRIPLE_1])
+                .stage(3)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] llvm <target1>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <target1>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_full_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .args(&["--set", "build.full-bootstrap=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        ");
+    }
+
+    #[test]
+    fn build_compiler_stage_3_cross_full_bootstrap() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("compiler")
+                .stage(3)
+                .hosts(&[TEST_TRIPLE_1])
+                .args(&["--set", "build.full-bootstrap=true"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] llvm <target1>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <target1>
         ");
     }
 
@@ -1514,7 +1591,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
     }
 
     #[test]
@@ -1540,7 +1617,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
     }
 
     #[test]
@@ -1554,7 +1631,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (73 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (74 crates)
         ");
     }
 
@@ -1569,8 +1646,8 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [build] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (73 crates)
+        [check] rustc 1 <host> -> std 1 <target1>
+        [check] rustc 1 <host> -> rustc 2 <target1> (74 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1666,7 +1743,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (73 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
     }
 
     #[test]

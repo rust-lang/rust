@@ -23,16 +23,11 @@ runners:
     <<: *base-job
 
   - &job-macos
-    os: macos-13
-    <<: *base-job
-
-  - &job-macos-m1
     os: macos-14
     <<: *base-job
 
   - &job-windows
     os: windows-2025
-    free_disk: true
     <<: *base-job
 
   - &job-windows-8c
@@ -68,17 +63,6 @@ runners:
     <<: *base-job
 
 envs:
-  env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py check compiletest --set build.compiletest-use-stage0-libtest=true && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
-    RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
-    # Ensure that host tooling is tested on our minimum supported macOS version.
-    MACOSX_DEPLOYMENT_TARGET: 10.12
-    MACOSX_STD_DEPLOYMENT_TARGET: 10.12
-    SELECT_XCODE: /Applications/Xcode_15.2.app
-    NO_LLVM_ASSERTIONS: 1
-    NO_DEBUG_ASSERTIONS: 1
-    NO_OVERFLOW_CHECKS: 1
-
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
@@ -455,8 +439,19 @@ auto:
 
   - name: dist-x86_64-apple
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
-      RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
+      SCRIPT: >-
+        ./x.py dist bootstrap
+        --include-default-paths
+        --host=x86_64-apple-darwin
+        --target=x86_64-apple-darwin
+      RUST_CONFIGURE_ARGS: >-
+        --enable-full-tools
+        --enable-sanitizers
+        --enable-profiler
+        --disable-docs
+        --set rust.jemalloc
+        --set rust.lto=thin
+        --set rust.codegen-units=1
       # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
       MACOSX_STD_DEPLOYMENT_TARGET: 10.12
@@ -482,17 +477,6 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos-m1
-
-  - name: x86_64-apple-1
-    env:
-      <<: *env-x86_64-apple-tests
-    <<: *job-macos
-
-  - name: x86_64-apple-2
-    env:
-      SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc
-      <<: *env-x86_64-apple-tests
     <<: *job-macos
 
   - name: dist-aarch64-apple
@@ -517,7 +501,7 @@ auto:
       NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-macos-m1
+    <<: *job-macos
 
   - name: aarch64-apple
     env:
@@ -537,7 +521,7 @@ auto:
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
       NO_OVERFLOW_CHECKS: 1
-    <<: *job-macos-m1
+    <<: *job-macos
 
   ######################
   #  Windows Builders  #

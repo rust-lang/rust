@@ -179,7 +179,7 @@ impl ClashingExternDeclarations {
 /// symbol's name.
 fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: hir::OwnerId) -> SymbolName {
     if let Some((overridden_link_name, overridden_link_name_span)) =
-        tcx.codegen_fn_attrs(fi).link_name.map(|overridden_link_name| {
+        tcx.codegen_fn_attrs(fi).symbol_name.map(|overridden_link_name| {
             // FIXME: Instead of searching through the attributes again to get span
             // information, we could have codegen_fn_attrs also give span information back for
             // where the attribute was defined. However, until this is found to be a

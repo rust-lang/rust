@@ -24,7 +24,7 @@ error[E0277]: the trait bound `Bar: Foo<u8>` is not satisfied
   --> $DIR/return-dont-satisfy-bounds.rs:8:34
    |
 LL |     fn foo<F2: Foo<u8>>(self) -> impl Foo<u8> {
-   |                                  ^^^^^^^^^^^^ the trait `Foo<u8>` is not implemented for `Bar`
+   |                                  ^^^^^^^^^^^^ unsatisfied trait bound
 ...
 LL |         self
    |         ---- return type was inferred to be `Bar` here

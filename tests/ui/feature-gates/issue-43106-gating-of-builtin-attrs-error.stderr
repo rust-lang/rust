@@ -30,7 +30,7 @@ error: `#[export_name]` attribute cannot be used on crates
 LL | #![export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[inline]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:28:1
@@ -86,7 +86,7 @@ error: `#[export_name]` attribute cannot be used on modules
 LL | #[export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:85:17
@@ -94,7 +94,7 @@ error: `#[export_name]` attribute cannot be used on modules
 LL |     mod inner { #![export_name="2200"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on structs
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:90:5
@@ -102,7 +102,7 @@ error: `#[export_name]` attribute cannot be used on structs
 LL |     #[export_name = "2200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on type aliases
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:93:5
@@ -110,7 +110,7 @@ error: `#[export_name]` attribute cannot be used on type aliases
 LL |     #[export_name = "2200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on inherent impl blocks
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:5
@@ -118,7 +118,7 @@ error: `#[export_name]` attribute cannot be used on inherent impl blocks
 LL |     #[export_name = "2200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to functions, statics
+   = help: `#[export_name]` can be applied to functions and statics
 
 error: `#[export_name]` attribute cannot be used on required trait methods
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:100:9
@@ -126,7 +126,7 @@ error: `#[export_name]` attribute cannot be used on required trait methods
 LL |         #[export_name = "2200"] fn foo();
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[export_name]` can be applied to statics, functions, inherent methods, provided trait methods, trait methods in impl blocks
+   = help: `#[export_name]` can be applied to statics, functions, inherent methods, provided trait methods, and trait methods in impl blocks
 
 error: attribute should be applied to an `extern crate` item
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:56:1
@@ -305,7 +305,7 @@ LL |     #[inline = "2100"] fn f() { }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 37 previous errors
 
@@ -320,5 +320,5 @@ LL |     #[inline = "2100"] fn f() { }
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: `#[deny(ill_formed_attribute_input)]` on by default
+   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 

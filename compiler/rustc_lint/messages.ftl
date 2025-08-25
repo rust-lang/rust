@@ -205,8 +205,6 @@ lint_confusable_identifier_pair = found both `{$existing_sym}` and `{$sym}` as i
     .current_use = this identifier can be confused with `{$existing_sym}`
     .other_use = other identifier used here
 
-lint_custom_inner_attribute_unstable = custom inner attributes are unstable
-
 lint_dangling_pointers_from_locals = a dangling pointer will be produced because the local variable `{$local_var_name}` will be dropped
     .ret_ty = return type of the {$fn_kind} is `{$ret_ty}`
     .local_var = `{$local_var_name}` is part the {$fn_kind} and will be dropped at the end of the {$fn_kind}
@@ -271,10 +269,6 @@ lint_expectation = this lint expectation is unfulfilled
 lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `use`
 
-lint_extern_without_abi = `extern` declarations without an explicit ABI are deprecated
-    .label = ABI should be specified here
-    .suggestion = explicitly specify the {$default_abi} ABI
-
 lint_for_loops_over_fallibles =
     for loop over {$article} `{$ref_prefix}{$ty}`. This is more readably written as an `if let` statement
     .suggestion = consider using `if let` to clear intent
@@ -293,19 +287,6 @@ lint_hidden_glob_reexport = private item shadows public glob re-export
     .note_private_item = but the private item here shadows it
 
 lint_hidden_lifetime_parameters = hidden lifetime parameters in types are deprecated
-
-lint_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
-    .label = this {$label} contains {$count ->
-        [one] an invisible
-        *[other] invisible
-    } unicode text flow control {$count ->
-        [one] codepoint
-        *[other] codepoints
-    }
-    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
-    .suggestion_remove = if their presence wasn't intentional, you can remove them
-    .suggestion_escape = if you want to keep them but make them visible in your source code, you can escape them
-    .no_suggestion_note_escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}
 
 lint_identifier_non_ascii_char = identifier contains non-ASCII characters
 
@@ -431,8 +412,6 @@ lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 lint_incomplete_include =
     include macro expected single expression in source
 
-lint_inner_macro_attribute_unstable = inner macro attributes are unstable
-
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
     .help = start numbering with `2` instead
@@ -482,6 +461,14 @@ lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undef
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 lint_invalid_reference_casting_note_ty_has_interior_mutability = even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`
+
+lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a pointer without provenance
+    .note = this is dangerous because dereferencing the resulting pointer is undefined behavior
+    .note_exposed_provenance = exposed provenance semantics can be used to create a pointer based on some previously exposed provenance
+    .help_transmute = for more information about transmute, see <https://doc.rust-lang.org/std/mem/fn.transmute.html#transmutation-between-pointers-and-integers>
+    .help_exposed_provenance = for more information about exposed provenance, see <https://doc.rust-lang.org/std/ptr/index.html#exposed-provenance>
+    .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
+    .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 
 lint_legacy_derive_helpers = derive helper attribute is used before it is introduced
     .label = the attribute is introduced here
@@ -732,7 +719,7 @@ lint_pattern_in_foreign = patterns aren't allowed in foreign function declaratio
 lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
     .suggestion = consider making the `extern crate` item publicly accessible
 
-lint_proc_macro_derive_resolution_fallback = cannot find {$ns} `{$ident}` in this scope
+lint_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
     .label = names from parent modules are not accessible without an explicit import
 
 lint_query_instability = using `{$query}` can result in unstable query results
@@ -869,10 +856,6 @@ lint_undefined_transmute = pointers cannot be transmuted to integers during cons
 lint_undropped_manually_drops = calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
     .label = argument has type `{$arg_ty}`
     .suggestion = use `std::mem::ManuallyDrop::into_inner` to get the inner value
-
-lint_unexpected_builtin_cfg = unexpected `--cfg {$cfg}` flag
-    .controlled_by = config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`
-    .incoherent = manually setting a built-in cfg can and does create incoherent behaviors
 
 lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_println}` to the top of the `build.rs`
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead

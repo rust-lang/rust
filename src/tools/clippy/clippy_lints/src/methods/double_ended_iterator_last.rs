@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{has_non_owning_mutable_access, implements_trait};
-use clippy_utils::{is_mutable, is_trait_method, path_to_local, sym};
+use clippy_utils::{is_mutable, is_trait_method, path_to_local_with_projections, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         // TODO: Change this to lint only when the referred iterator is not used later. If it is used later,
         // changing to `next_back()` may change its behavior.
         if !(is_mutable(cx, self_expr) || self_type.is_ref()) {
-            if let Some(hir_id) = path_to_local(self_expr)
+            if let Some(hir_id) = path_to_local_with_projections(self_expr)
                 && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
                 && let PatKind::Binding(_, _, ident, _) = pat.kind
             {

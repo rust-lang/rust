@@ -171,9 +171,6 @@ codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphizati
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
 
-codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
-    .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
-
 codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed
 
 codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented yet for ld64

@@ -25,7 +25,7 @@ note: `E` could also refer to the struct imported here
 LL |         pub use self::d::*;
    |                 ^^^^^^^^^^
    = help: consider adding an explicit import of `E` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: aborting due to 2 previous errors
 
@@ -52,5 +52,5 @@ note: `E` could also refer to the struct imported here
 LL |         pub use self::d::*;
    |                 ^^^^^^^^^^
    = help: consider adding an explicit import of `E` to disambiguate
-   = note: `#[deny(ambiguous_glob_imports)]` on by default
+   = note: `#[deny(ambiguous_glob_imports)]` (part of `#[deny(future_incompatible)]`) on by default
 

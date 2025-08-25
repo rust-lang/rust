@@ -11,8 +11,10 @@ use rustc_ast::{
     NodeId, NormalAttr,
 };
 use rustc_attr_parsing as attr;
+use rustc_attr_parsing::validate_attr::deny_builtin_meta_unsafety;
 use rustc_attr_parsing::{
     AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg_attr,
+    validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
@@ -20,8 +22,6 @@ use rustc_feature::{
     REMOVED_LANG_FEATURES, UNSTABLE_LANG_FEATURES,
 };
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::validate_attr;
-use rustc_parse::validate_attr::deny_builtin_meta_unsafety;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
@@ -415,16 +415,6 @@ impl<'a> StripUnconfigured<'a> {
         node: NodeId,
         emit_errors: ShouldEmit,
     ) -> EvalConfigResult {
-        // We need to run this to do basic validation of the attribute, such as that lits are valid, etc
-        // FIXME(jdonszelmann) this should not be necessary in the future
-        match validate_attr::parse_meta(&self.sess.psess, attr) {
-            Ok(_) => {}
-            Err(err) => {
-                err.emit();
-                return EvalConfigResult::True;
-            }
-        }
-
         // Unsafety check needs to be done explicitly here because this attribute will be removed before the normal check
         deny_builtin_meta_unsafety(
             self.sess.dcx(),

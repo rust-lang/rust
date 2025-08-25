@@ -117,12 +117,12 @@ jobs:
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux and Windows by removing preinstalled components that
+      # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
       - name: free up disk space
-        run: src/ci/scripts/free-disk-space.sh
+        run: src/ci/scripts/free-disk-space-linux.sh
         if: matrix.free_disk
 
       # If we don't need to free up disk space then just report how much space we have
@@ -222,11 +222,6 @@ jobs:
         run: |
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
-
-      - name: wait for Windows disk cleanup to finish
-        if: ${{ matrix.free_disk && startsWith(matrix.os, 'windows-') }}
-        run: |
-          python3 src/ci/scripts/free-disk-space-windows-wait.py
 
       - name: run the build
         run: |

@@ -1,0 +1,4 @@
+error: `-Zindirect-branch-cs-prefix` is only supported on x86 and x86_64
+
+error: aborting due to 1 previous error
+

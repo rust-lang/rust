@@ -122,7 +122,7 @@ impl Buffer {
 
     /// Remove bytes that have already been read from the buffer.
     pub fn backshift(&mut self) {
-        self.buf.copy_within(self.pos.., 0);
+        self.buf.copy_within(self.pos..self.filled, 0);
         self.filled -= self.pos;
         self.pos = 0;
     }

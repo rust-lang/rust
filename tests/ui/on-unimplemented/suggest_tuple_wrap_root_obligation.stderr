@@ -2,10 +2,15 @@ error[E0277]: the trait bound `Tuple: From<u8>` is not satisfied
   --> $DIR/suggest_tuple_wrap_root_obligation.rs:22:24
    |
 LL |     convert_into_tuple(42_u8);
-   |     ------------------ ^^^^^ the trait `From<u8>` is not implemented for `Tuple`
+   |     ------------------ ^^^^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
+help: the trait `From<u8>` is not implemented for `Tuple`
+  --> $DIR/suggest_tuple_wrap_root_obligation.rs:1:1
+   |
+LL | struct Tuple;
+   | ^^^^^^^^^^^^
    = help: the following other types implement trait `From<T>`:
              `Tuple` implements `From<(u8, u8)>`
              `Tuple` implements `From<(u8, u8, u8)>`

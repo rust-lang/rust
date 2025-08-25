@@ -11,7 +11,7 @@ use std::sync::Arc;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
-    ForeignItemKind, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
+    ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TyAlias,
 };
 use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
@@ -207,6 +207,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 self.arenas.alloc_macro(macro_data)
             }),
+        }
+    }
+
+    /// Add every proc macro accessible from the current crate to the `macro_map` so diagnostics can
+    /// find them for suggestions.
+    pub(crate) fn register_macros_for_all_crates(&mut self) {
+        if !self.all_crate_macros_already_registered {
+            for def_id in self.cstore().all_proc_macro_def_ids() {
+                self.get_macro_by_def_id(def_id);
+            }
+            self.all_crate_macros_already_registered = true;
         }
     }
 
@@ -474,6 +485,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_span,
             root_id,
             vis,
+            vis_span: item.vis.span,
         });
 
         self.r.indeterminate_imports.push(import);
@@ -801,7 +813,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Mod(_, ident, ref mod_kind) => {
                 self.r.define_local(parent, ident, TypeNS, res, vis, sp, expansion);
 
-                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
+                if let ast::ModKind::Loaded(_, Inline::No { had_parse_error: Err(_) }, _) = mod_kind
+                {
                     self.r.mods_with_parse_errors.insert(def_id);
                 }
                 self.parent_scope.module = self.r.new_local_module(
@@ -966,6 +979,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             span: item.span,
             module_path: Vec::new(),
             vis,
+            vis_span: item.vis.span,
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1100,6 +1114,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 span,
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
+                vis_span: item.vis.span,
             })
         };
 
@@ -1270,6 +1285,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     span,
                     module_path: Vec::new(),
                     vis,
+                    vis_span: item.vis.span,
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_binding = self.r.import(binding, import);

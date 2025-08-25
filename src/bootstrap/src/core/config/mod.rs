@@ -324,7 +324,7 @@ impl FromStr for LlvmLibunwind {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum SplitDebuginfo {
     Packed,
     Unpacked,
@@ -400,12 +400,6 @@ pub enum GccCiMode {
     /// Try to download GCC from CI.
     /// If it is not available on CI, it will be built locally instead.
     DownloadFromCi,
-}
-
-pub fn set<T>(field: &mut T, val: Option<T>) {
-    if let Some(v) = val {
-        *field = v;
-    }
 }
 
 pub fn threads_from_config(v: u32) -> u32 {

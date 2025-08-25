@@ -172,6 +172,7 @@
 #![feature(no_core)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
+#![feature(reborrow)]
 #![feature(repr_simd)]
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
@@ -224,6 +225,13 @@ mod macros;
 pub mod assert_matches {
     #[unstable(feature = "assert_matches", issue = "82775")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
+}
+
+#[unstable(feature = "derive_from", issue = "144889")]
+/// Unstable module containing the unstable `From` derive macro.
+pub mod from {
+    #[unstable(feature = "derive_from", issue = "144889")]
+    pub use crate::macros::builtin::From;
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.

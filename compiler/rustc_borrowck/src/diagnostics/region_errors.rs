@@ -23,7 +23,6 @@ use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
     find_param_with_region, suggest_adding_lifetime_params,
 };
-use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -104,18 +103,6 @@ impl std::fmt::Debug for RegionErrors<'_> {
 pub(crate) enum RegionErrorKind<'tcx> {
     /// A generic bound failure for a type test (`T: 'a`).
     TypeTestError { type_test: TypeTest<'tcx> },
-
-    /// An unexpected hidden region for an opaque type.
-    UnexpectedHiddenRegion {
-        /// The span for the member constraint.
-        span: Span,
-        /// The hidden type.
-        hidden_ty: Ty<'tcx>,
-        /// The opaque type.
-        key: ty::OpaqueTypeKey<'tcx>,
-        /// The unexpected region.
-        member_region: ty::Region<'tcx>,
-    },
 
     /// Higher-ranked subtyping error.
     BoundUniversalRegionError {
@@ -215,7 +202,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         diag: &mut Diag<'_>,
         lower_bound: RegionVid,
     ) {
-        let mut suggestions = vec![];
         let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
@@ -237,9 +223,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             .collect::<Vec<_>>();
         debug!(?gat_id_and_generics);
 
-        // find higher-ranked trait bounds bounded to the generic associated types
+        // Look for the where-bound which introduces the placeholder.
+        // As we're using the HIR, we need to handle both `for<'a> T: Trait<'a>`
+        // and `T: for<'a> Trait`<'a>.
         let mut hrtb_bounds = vec![];
-        gat_id_and_generics.iter().flatten().for_each(|(gat_hir_id, generics)| {
+        gat_id_and_generics.iter().flatten().for_each(|&(gat_hir_id, generics)| {
             for pred in generics.predicates {
                 let BoundPredicate(WhereBoundPredicate { bound_generic_params, bounds, .. }) =
                     pred.kind
@@ -248,17 +236,32 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {
                         hrtb_bounds.push(bound);
+                    }
+                } else {
+                    for bound in *bounds {
+                        if let Trait(trait_bound) = bound {
+                            if trait_bound
+                                .bound_generic_params
+                                .iter()
+                                .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == gat_hir_id)
+                                .is_some()
+                            {
+                                hrtb_bounds.push(bound);
+                                return;
+                            }
+                        }
                     }
                 }
             }
         });
         debug!(?hrtb_bounds);
 
+        let mut suggestions = vec![];
         hrtb_bounds.iter().for_each(|bound| {
             let Trait(PolyTraitRef { trait_ref, span: trait_span, .. }) = bound else {
                 return;
@@ -307,11 +310,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn report_region_errors(&mut self, nll_errors: RegionErrors<'tcx>) {
         // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
         // buffered in the `MirBorrowckCtxt`.
-
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
-        let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
-            None;
-
         for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
                 RegionErrorKind::TypeTestError { type_test } => {
@@ -359,30 +358,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         );
 
                         self.buffer_error(diag);
-                    }
-                }
-
-                RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, key, member_region } => {
-                    let named_ty =
-                        self.regioncx.name_regions_for_member_constraint(self.infcx.tcx, hidden_ty);
-                    let named_key =
-                        self.regioncx.name_regions_for_member_constraint(self.infcx.tcx, key);
-                    let named_region = self
-                        .regioncx
-                        .name_regions_for_member_constraint(self.infcx.tcx, member_region);
-                    let diag = unexpected_hidden_region_diagnostic(
-                        self.infcx,
-                        self.mir_def_id(),
-                        span,
-                        named_ty,
-                        named_region,
-                        named_key,
-                    );
-                    if last_unexpected_hidden_region != Some((span, named_ty, named_key)) {
-                        self.buffer_error(diag);
-                        last_unexpected_hidden_region = Some((span, named_ty, named_key));
-                    } else {
-                        diag.delay_as_bug();
                     }
                 }
 
