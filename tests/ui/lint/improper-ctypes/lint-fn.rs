@@ -1,5 +1,5 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_ctypes_definitions, improper_ctypes)]
 
 use std::default::Default;
 use std::marker::PhantomData;

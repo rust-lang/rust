@@ -2387,12 +2387,9 @@ pub(crate) struct ImproperCTypes<'a> {
 // Used because of the complexity of Option<DiagMessage>, DiagMessage, and Option<Span>
 impl<'a> Diagnostic<'a, ()> for ImproperCTypes<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        let mut diag = Diag::new(
-            dcx,
-            level,
-            msg!("`extern` {$desc} uses type `{$ty}`, which is not FFI-safe"),
-        )
-        .with_span_label(self.label, msg!("not FFI-safe"));
+        let mut diag =
+            Diag::new(dcx, level, msg!("{$desc} uses type `{$ty}`, which is not FFI-safe"))
+                .with_span_label(self.label, msg!("not FFI-safe"));
         for reason in self.reasons.into_iter() {
             diag.subdiagnostic(reason);
         }
