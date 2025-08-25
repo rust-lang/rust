@@ -40,17 +40,18 @@ pub struct ImportLibraryItem {
     pub is_data: bool,
 }
 
-impl From<ImportLibraryItem> for COFFShortExport {
-    fn from(item: ImportLibraryItem) -> Self {
+impl ImportLibraryItem {
+    fn into_coff_short_export(self, sess: &Session) -> COFFShortExport {
+        let import_name = (sess.target.arch == "arm64ec").then(|| self.name.clone());
         COFFShortExport {
-            name: item.name,
+            name: self.name,
             ext_name: None,
-            symbol_name: item.symbol_name,
-            import_name: None,
+            symbol_name: self.symbol_name,
+            import_name,
             export_as: None,
-            ordinal: item.ordinal.unwrap_or(0),
-            noname: item.ordinal.is_some(),
-            data: item.is_data,
+            ordinal: self.ordinal.unwrap_or(0),
+            noname: self.ordinal.is_some(),
+            data: self.is_data,
             private: false,
             constant: false,
         }
@@ -114,7 +115,8 @@ pub trait ArchiveBuilderBuilder {
                     .emit_fatal(ErrorCreatingImportLibrary { lib_name, error: error.to_string() }),
             };
 
-            let exports = items.into_iter().map(Into::into).collect::<Vec<_>>();
+            let exports =
+                items.into_iter().map(|item| item.into_coff_short_export(sess)).collect::<Vec<_>>();
             let machine = match &*sess.target.arch {
                 "x86_64" => MachineTypes::AMD64,
                 "x86" => MachineTypes::I386,
