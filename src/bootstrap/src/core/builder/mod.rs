@@ -1435,22 +1435,30 @@ impl<'a> Builder<'a> {
         // FIXME: make the `Std` step return some type-level "proof" that std was indeed built,
         // and then require passing that to all Cargo invocations that we do.
 
-        // The "stage 0" std is always precompiled and comes with the stage0 compiler, so we have
-        // special logic for it, to avoid creating needless and confusing Std steps that don't
+        // The "stage 0" std is almost always precompiled and comes with the stage0 compiler, so we
+        // have special logic for it, to avoid creating needless and confusing Std steps that don't
         // actually build anything.
+        // We only allow building the stage0 stdlib if we do a local rebuild, so the stage0 compiler
+        // actually comes from in-tree sources, and we're cross-compiling, so the stage0 for the
+        // given `target` is not available.
         if compiler.stage == 0 {
             if target != compiler.host {
-                panic!(
-                    r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
+                if self.local_rebuild {
+                    self.ensure(Std::new(compiler, target))
+                } else {
+                    panic!(
+                        r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
 You have to build a stage1 compiler for `{}` first, and then use it to build a standard library for `{target}`.
+Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler built from in-tree sources.
 ",
-                    compiler.host
-                )
+                        compiler.host
+                    )
+                }
+            } else {
+                // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
+                self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
+                None
             }
-
-            // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
-            self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
-            None
         } else {
             // This step both compiles the std and links it into the compiler's sysroot.
             // Yes, it's quite magical and side-effecty.. would be nice to refactor later.
