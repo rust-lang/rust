@@ -2043,6 +2043,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             if !builder.config.dry_run() {
                 let llvm_version = get_llvm_version(builder, &host_llvm_config);
                 let llvm_components = command(&host_llvm_config)
+                    .cached()
                     .arg("--components")
                     .run_capture_stdout(builder)
                     .stdout();
@@ -2062,8 +2063,11 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             // separate compilations. We can add LLVM's library path to the
             // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
-                let llvm_libdir =
-                    command(&host_llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
+                let llvm_libdir = command(&host_llvm_config)
+                    .cached()
+                    .arg("--libdir")
+                    .run_capture_stdout(builder)
+                    .stdout();
                 let link_llvm = if target.is_msvc() {
                     format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {

@@ -273,6 +273,7 @@ target | std | host | notes
 [`aarch64_be-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit (big-endian)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
+[`aarch64_be-unknown-linux-musl`](platform-support/aarch64_be-unknown-linux-musl.md) | ✓ | ✓ | ARM64 Linux (big-endian) with musl-libc 1.2.5
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
 [`aarch64_be-unknown-none-softfloat`](platform-support/aarch64_be-unknown-none-softfloat.md) | * |  | Bare big-endian ARM64, softfloat
 [`amdgcn-amd-amdhsa`](platform-support/amdgcn-amd-amdhsa.md) | * |  | `-Ctarget-cpu=gfx...` to specify [the AMD GPU] to compile for
@@ -391,6 +392,7 @@ target | std | host | notes
 [`riscv64gc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
 [`riscv64imac-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
+[`riscv64a23-unknown-linux-gnu`](platform-support/riscv64a23-unknown-linux-gnu.md) | ✓ | ✓ | RISC-V Linux (kernel 6.8.0+, glibc 2.39)
 [`s390x-unknown-linux-musl`](platform-support/s390x-unknown-linux-musl.md) | ✓ |  | S390x Linux (kernel 3.2, musl 1.2.3)
 `sparc-unknown-linux-gnu` | ✓ |  | 32-bit SPARC Linux
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+

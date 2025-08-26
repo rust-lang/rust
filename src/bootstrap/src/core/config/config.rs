@@ -960,8 +960,8 @@ impl Config {
             Subcommand::Dist => flags_stage.or(build_dist_stage).unwrap_or(2),
             Subcommand::Install => flags_stage.or(build_install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags_stage.unwrap_or(1),
-            // These are all bootstrap tools, which don't depend on the compiler.
-            // The stage we pass shouldn't matter, but use 0 just in case.
+            // Most of the run commands execute bootstrap tools, which don't depend on the compiler.
+            // Other commands listed here should always use bootstrap tools.
             Subcommand::Clean { .. }
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }

@@ -1929,11 +1929,17 @@ unsafe extern "C" {
         C: &Context,
         effects: MemoryEffects,
     ) -> &Attribute;
+    /// ## Safety
+    /// - Each of `LowerWords` and `UpperWords` must point to an array that is
+    ///   long enough to fully define an integer of size `NumBits`, i.e. each
+    ///   pointer must point to `NumBits.div_ceil(64)` elements or more.
+    /// - The implementation will make its own copy of the pointed-to `u64`
+    ///   values, so the pointers only need to outlive this function call.
     pub(crate) fn LLVMRustCreateRangeAttribute(
         C: &Context,
-        num_bits: c_uint,
-        lower_words: *const u64,
-        upper_words: *const u64,
+        NumBits: c_uint,
+        LowerWords: *const u64,
+        UpperWords: *const u64,
     ) -> &Attribute;
 
     // Operations on functions

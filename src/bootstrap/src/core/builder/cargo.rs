@@ -132,10 +132,7 @@ impl Cargo {
     }
 
     pub fn into_cmd(self) -> BootstrapCommand {
-        let mut cmd: BootstrapCommand = self.into();
-        // Disable caching for commands originating from Cargo-related operations.
-        cmd.do_not_cache();
-        cmd
+        self.into()
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
@@ -1085,7 +1082,7 @@ impl Builder<'_> {
             && let Some(llvm_config) = self.llvm_config(target)
         {
             let llvm_libdir =
-                command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
+                command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
             } else {

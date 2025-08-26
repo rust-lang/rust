@@ -2281,6 +2281,7 @@ fn maybe_install_llvm(
     {
         trace!("LLVM already built, installing LLVM files");
         let mut cmd = command(host_llvm_config);
+        cmd.cached();
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
