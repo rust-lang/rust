@@ -1957,10 +1957,10 @@ impl<B: ExtraBackendMethods> Drop for Coordinator<B> {
 pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub backend: B,
     pub crate_info: CrateInfo,
-    pub codegen_worker_receive: Receiver<CguMessage>,
-    pub shared_emitter_main: SharedEmitterMain,
     pub output_filenames: Arc<OutputFilenames>,
     pub coordinator: Coordinator<B>,
+    pub codegen_worker_receive: Receiver<CguMessage>,
+    pub shared_emitter_main: SharedEmitterMain,
 }
 
 impl<B: ExtraBackendMethods> OngoingCodegen<B> {
