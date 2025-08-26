@@ -3117,45 +3117,55 @@ impl Step for Distcheck {
     ///
     /// FIXME(#136822): dist components are under-tested.
     fn run(self, builder: &Builder<'_>) {
-        builder.info("Distcheck");
-        let dir = builder.tempdir().join("distcheck");
-        let _ = fs::remove_dir_all(&dir);
-        t!(fs::create_dir_all(&dir));
+        // Use a temporary directory completely outside the current checkout, to avoid reusing any
+        // local source code, built artifacts or configuration by accident
+        let root_dir = std::env::temp_dir().join("distcheck");
 
-        // Guarantee that these are built before we begin running.
-        builder.ensure(dist::PlainSourceTarball);
-        builder.ensure(dist::Src);
+        // Check that we can build some basic things from the plain source tarball
+        builder.info("Distcheck plain source tarball");
+        let plain_src_tarball = builder.ensure(dist::PlainSourceTarball);
+        let plain_src_dir = root_dir.join("distcheck-plain-src");
+        builder.clear_dir(&plain_src_dir);
+
+        let configure_args: Vec<String> = std::env::var("DISTCHECK_CONFIGURE_ARGS")
+            .map(|args| args.split(" ").map(|s| s.to_string()).collect::<Vec<String>>())
+            .unwrap_or_default();
 
         command("tar")
             .arg("-xf")
-            .arg(builder.ensure(dist::PlainSourceTarball).tarball())
+            .arg(plain_src_tarball.tarball())
             .arg("--strip-components=1")
-            .current_dir(&dir)
+            .current_dir(&plain_src_dir)
             .run(builder);
         command("./configure")
-            .args(&builder.config.configure_args)
+            .arg("--set")
+            .arg("rust.omit-git-hash=false")
+            .args(&configure_args)
             .arg("--enable-vendor")
-            .current_dir(&dir)
+            .current_dir(&plain_src_dir)
             .run(builder);
         command(helpers::make(&builder.config.host_target.triple))
             .arg("check")
-            .current_dir(&dir)
+            // Do not run the build as if we were in CI, otherwise git would be assumed to be
+            // present, but we build from a tarball here
+            .env("GITHUB_ACTIONS", "0")
+            .current_dir(&plain_src_dir)
             .run(builder);
 
         // Now make sure that rust-src has all of libstd's dependencies
         builder.info("Distcheck rust-src");
-        let dir = builder.tempdir().join("distcheck-src");
-        let _ = fs::remove_dir_all(&dir);
-        t!(fs::create_dir_all(&dir));
+        let src_tarball = builder.ensure(dist::Src);
+        let src_dir = root_dir.join("distcheck-src");
+        builder.clear_dir(&src_dir);
 
         command("tar")
             .arg("-xf")
-            .arg(builder.ensure(dist::Src).tarball())
+            .arg(src_tarball.tarball())
             .arg("--strip-components=1")
-            .current_dir(&dir)
+            .current_dir(&src_dir)
             .run(builder);
 
-        let toml = dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
+        let toml = src_dir.join("rust-src/lib/rustlib/src/rust/library/std/Cargo.toml");
         command(&builder.initial_cargo)
             // Will read the libstd Cargo.toml
             // which uses the unstable `public-dependency` feature.
@@ -3163,7 +3173,7 @@ impl Step for Distcheck {
             .arg("generate-lockfile")
             .arg("--manifest-path")
             .arg(&toml)
-            .current_dir(&dir)
+            .current_dir(&src_dir)
             .run(builder);
     }
 }
