@@ -4,7 +4,7 @@ pub struct Stdin;
 pub struct Stdout;
 pub type Stderr = Stdout;
 
-const STDIO_CHANNEL: u32 = 1;
+pub const STDIO_CHANNEL: u32 = 1;
 
 impl Stdin {
     pub const fn new() -> Stdin {
@@ -40,17 +40,29 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let written =
-            unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, buf.as_ptr(), buf.len() as u32) };
+        let mut count = 0;
 
-        if written < 0 {
-            return Err(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "Internal write error occurred.",
-            ));
+        // HACK: VEXos holds an internal write buffer for serial that is flushed to USB1 roughly every
+        // millisecond by `vexTasksRun`. For writes larger than 2048 bytes, we must block until that buffer
+        // is flushed to USB1 before writing the rest of `buf`. In practice, this is fairly nonstandard for
+        // a `write` implementation but it avoids an guaranteed recursive panic when using macros such as
+        // `print!` to write large amounts of data to stdout at once.
+        for chunk in buf.chunks(STDOUT_BUF_SIZE) {
+            if unsafe { vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize } < chunk.len() {
+                self.flush().unwrap();
+            }
+
+            count += unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32) };
+    
+            if count < 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::Uncategorized,
+                    "Internal write error occurred.",
+                ));
+            }
         }
 
-        Ok(written as usize)
+        Ok(count as usize)
     }
 
     fn flush(&mut self) -> io::Result<()> {
