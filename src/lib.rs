@@ -361,7 +361,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> ModuleCodegen<Self::Module> {
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::lto::run_fat(cgcx, each_linked_rlib_for_lto, modules)
     }
 
