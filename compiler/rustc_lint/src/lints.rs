@@ -17,7 +17,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -2586,50 +2586,6 @@ impl<'a> LintDiagnostic<'a, ()> for UnstableFeature {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_avoid_intel_syntax)]
-pub(crate) struct AvoidIntelSyntax;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_avoid_att_syntax)]
-pub(crate) struct AvoidAttSyntax;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_incomplete_include)]
-pub(crate) struct IncompleteInclude;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unnameable_test_items)]
-pub(crate) struct UnnameableTestItems;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_duplicate_macro_attribute)]
-pub(crate) struct DuplicateMacroAttribute;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_cfg_attr_no_attributes)]
-pub(crate) struct CfgAttrNoAttributes;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_metavariable_still_repeating)]
-pub(crate) struct MetaVariableStillRepeating {
-    pub name: MacroRulesNormalizedIdent,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_metavariable_wrong_operator)]
-pub(crate) struct MetaVariableWrongOperator;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_duplicate_matcher_binding)]
-pub(crate) struct DuplicateMatcherBinding;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unknown_macro_variable)]
-pub(crate) struct UnknownMacroVariable {
-    pub name: MacroRulesNormalizedIdent,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_unused_crate_dependency)]
 #[help]
 pub(crate) struct UnusedCrateDependency {
@@ -2712,22 +2668,6 @@ pub(crate) struct AbsPathWithModuleSugg {
     #[applicability]
     pub applicability: Applicability,
     pub replacement: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_proc_macro_derive_resolution_fallback)]
-pub(crate) struct ProcMacroDeriveResolutionFallback {
-    #[label]
-    pub span: Span,
-    pub ns_descr: &'static str,
-    pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_macro_expanded_macro_exports_accessed_by_absolute_paths)]
-pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
-    #[note]
-    pub definition: Span,
 }
 
 #[derive(LintDiagnostic)]

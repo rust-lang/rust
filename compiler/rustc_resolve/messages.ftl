@@ -260,6 +260,9 @@ resolve_macro_defined_later =
 resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments =
     macro-expanded `extern crate` items cannot shadow names passed with `--extern`
 
+resolve_macro_expanded_macro_exports_accessed_by_absolute_paths = macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
+    .note = the macro is defined here
+
 resolve_macro_expected_found =
     expected {$expected}, found {$found} `{$macro_path}`
     .label = not {$article} {$expected}
@@ -338,6 +341,9 @@ resolve_param_in_ty_of_const_param =
     .label = the type must not depend on the parameter `{$name}`
 
 resolve_pattern_doesnt_bind_name = pattern doesn't bind `{$name}`
+
+resolve_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
+    .label = names from parent modules are not accessible without an explicit import
 
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`

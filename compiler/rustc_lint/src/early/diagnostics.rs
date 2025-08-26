@@ -64,17 +64,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
-            span: macro_span,
-            ns_descr,
-            ident,
-        } => lints::ProcMacroDeriveResolutionFallback { span: macro_span, ns_descr, ident }
-            .decorate_lint(diag),
-        BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def) => {
-            lints::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def }
-                .decorate_lint(diag)
-        }
-
         BuiltinLintDiag::ElidedLifetimesInPaths(n, path_span, incl_angl_brckt, insertion_span) => {
             lints::ElidedLifetimesInPaths {
                 subdiag: elided_lifetime_in_path_suggestion(
@@ -397,36 +386,6 @@ pub fn decorate_builtin_lint(
         }
         BuiltinLintDiag::UnstableFeature(msg) => {
             lints::UnstableFeature { msg }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AvoidUsingIntelSyntax => {
-            lints::AvoidIntelSyntax.decorate_lint(diag);
-        }
-        BuiltinLintDiag::AvoidUsingAttSyntax => {
-            lints::AvoidAttSyntax.decorate_lint(diag);
-        }
-        BuiltinLintDiag::IncompleteInclude => {
-            lints::IncompleteInclude.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnnameableTestItems => {
-            lints::UnnameableTestItems.decorate_lint(diag);
-        }
-        BuiltinLintDiag::DuplicateMacroAttribute => {
-            lints::DuplicateMacroAttribute.decorate_lint(diag);
-        }
-        BuiltinLintDiag::CfgAttrNoAttributes => {
-            lints::CfgAttrNoAttributes.decorate_lint(diag);
-        }
-        BuiltinLintDiag::MetaVariableStillRepeating(name) => {
-            lints::MetaVariableStillRepeating { name }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::MetaVariableWrongOperator => {
-            lints::MetaVariableWrongOperator.decorate_lint(diag);
-        }
-        BuiltinLintDiag::DuplicateMatcherBinding => {
-            lints::DuplicateMatcherBinding.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnknownMacroVariable(name) => {
-            lints::UnknownMacroVariable { name }.decorate_lint(diag);
         }
         BuiltinLintDiag::UnusedCrateDependency { extern_crate, local_crate } => {
             lints::UnusedCrateDependency { extern_crate, local_crate }.decorate_lint(diag)

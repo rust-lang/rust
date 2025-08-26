@@ -40,12 +40,6 @@ lint_atomic_ordering_load = atomic loads cannot have `Release` or `AcqRel` order
 lint_atomic_ordering_store = atomic stores cannot have `Acquire` or `AcqRel` ordering
     .help = consider using ordering modes `Release`, `SeqCst` or `Relaxed`
 
-lint_avoid_att_syntax =
-    avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
-
-lint_avoid_intel_syntax =
-    avoid using `.intel_syntax`, Intel syntax is the default
-
 lint_bad_attribute_argument = bad attribute argument
 
 lint_bad_opt_access = {$msg}
@@ -190,9 +184,6 @@ lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
 lint_byte_slice_in_packed_struct_with_derive = {$ty} slice in a packed struct that derives a built-in trait
     .help = consider implementing the trait by hand, or remove the `packed` attribute
 
-lint_cfg_attr_no_attributes =
-    `#[cfg_attr]` does not expand to any attributes
-
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
@@ -248,11 +239,6 @@ lint_dropping_copy_types = calls to `std::mem::drop` with a value that implement
 
 lint_dropping_references = calls to `std::mem::drop` with a reference instead of an owned value does nothing
     .label = argument has type `{$arg_ty}`
-
-lint_duplicate_macro_attribute =
-    duplicated attribute
-
-lint_duplicate_matcher_binding = duplicate matcher binding
 
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
@@ -409,9 +395,6 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
 
-lint_incomplete_include =
-    include macro expected single expression in source
-
 lint_invalid_asm_label_binary = avoid using labels containing only the digits `0` and `1` in inline assembly
     .label = use a different label that doesn't start with `0` or `1`
     .help = start numbering with `2` instead
@@ -476,9 +459,6 @@ lint_legacy_derive_helpers = derive helper attribute is used before it is introd
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
-lint_macro_expanded_macro_exports_accessed_by_absolute_paths = macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
-    .note = the macro is defined here
-
 lint_macro_expr_fragment_specifier_2024_migration =
     the `expr` fragment specifier will accept more expressions in the 2024 edition
     .suggestion = to keep the existing behavior, use the `expr_2021` fragment specifier
@@ -498,10 +478,6 @@ lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
     .argument_label = called `Iterator::map` with callable that returns `()`
     .map_label = after this call to map, the resulting iterator is `impl Iterator<Item = ()>`, which means the only information carried by the iterator is the number of items
     .suggestion = you might have meant to use `Iterator::for_each`
-
-lint_metavariable_still_repeating = variable `{$name}` is still repeating at this depth
-
-lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
 
 lint_mismatched_lifetime_syntaxes_eliding_while_named =
     eliding a lifetime that's named elsewhere is confusing
@@ -719,9 +695,6 @@ lint_pattern_in_foreign = patterns aren't allowed in foreign function declaratio
 lint_private_extern_crate_reexport = extern crate `{$ident}` is private and cannot be re-exported
     .suggestion = consider making the `extern crate` item publicly accessible
 
-lint_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
-    .label = names from parent modules are not accessible without an explicit import
-
 lint_query_instability = using `{$query}` can result in unstable query results
     .note = if you believe this case to be fine, allow this lint and add a comment explaining your rationale
 
@@ -935,12 +908,8 @@ lint_unknown_lint =
         *[false] did you mean: `{$replace}`
     }
 
-lint_unknown_macro_variable = unknown macro variable `{$name}`
-
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
-
-lint_unnameable_test_items = cannot test inner items
 
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments

@@ -3,7 +3,7 @@ use rustc_errors::{
     Applicability, Diag, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg, MultiSpan,
     Subdiagnostic,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::late::PatternSource;
@@ -564,6 +564,22 @@ pub(crate) struct ProcMacroSameCrate {
     pub(crate) span: Span,
     #[help]
     pub(crate) is_test: bool,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_proc_macro_derive_resolution_fallback)]
+pub(crate) struct ProcMacroDeriveResolutionFallback {
+    #[label]
+    pub span: Span,
+    pub ns_descr: &'static str,
+    pub ident: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_expanded_macro_exports_accessed_by_absolute_paths)]
+pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
+    #[note]
+    pub definition: Span,
 }
 
 #[derive(Diagnostic)]

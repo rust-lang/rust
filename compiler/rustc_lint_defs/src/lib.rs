@@ -11,7 +11,7 @@ use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -620,12 +620,6 @@ pub enum DeprecatedSinceKind {
 #[derive(Debug)]
 pub enum BuiltinLintDiag {
     AbsPathWithModule(Span),
-    ProcMacroDeriveResolutionFallback {
-        span: Span,
-        ns_descr: &'static str,
-        ident: Ident,
-    },
-    MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span),
     UnknownCrateTypes {
         span: Span,
@@ -774,16 +768,6 @@ pub enum BuiltinLintDiag {
     UnusedMacroDefinition(Symbol),
     MacroRuleNeverUsed(usize, Symbol),
     UnstableFeature(DiagMessage),
-    AvoidUsingIntelSyntax,
-    AvoidUsingAttSyntax,
-    IncompleteInclude,
-    UnnameableTestItems,
-    DuplicateMacroAttribute,
-    CfgAttrNoAttributes,
-    MetaVariableStillRepeating(MacroRulesNormalizedIdent),
-    MetaVariableWrongOperator,
-    DuplicateMatcherBinding,
-    UnknownMacroVariable(MacroRulesNormalizedIdent),
     UnusedCrateDependency {
         extern_crate: Symbol,
         local_crate: Symbol,

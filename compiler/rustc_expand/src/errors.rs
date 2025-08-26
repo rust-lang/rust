@@ -3,8 +3,12 @@ use std::borrow::Cow;
 use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_hir::limit::Limit;
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
+
+#[derive(LintDiagnostic)]
+#[diag(expand_cfg_attr_no_attributes)]
+pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -28,11 +32,28 @@ pub(crate) struct CountRepetitionMisplaced {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_var_still_repeating)]
-pub(crate) struct VarStillRepeating {
+#[diag(expand_metavar_still_repeating)]
+pub(crate) struct MacroVarStillRepeating {
     #[primary_span]
     pub span: Span,
     pub ident: MacroRulesNormalizedIdent,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_metavar_still_repeating)]
+pub(crate) struct MetaVarStillRepeatingLint {
+    #[label]
+    pub label: Span,
+    pub ident: MacroRulesNormalizedIdent,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_metavariable_wrong_operator)]
+pub(crate) struct MetaVariableWrongOperator {
+    #[label(expand_binder_label)]
+    pub binder: Span,
+    #[label(expand_occurrence_label)]
+    pub occurrence: Span,
 }
 
 #[derive(Diagnostic)]
@@ -41,6 +62,12 @@ pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
     pub msg: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_unknown_macro_variable)]
+pub(crate) struct UnknownMacroVariable {
+    pub name: MacroRulesNormalizedIdent,
 }
 
 #[derive(Diagnostic)]
@@ -339,6 +366,15 @@ pub(crate) struct ProcMacroDeriveTokens {
 #[diag(expand_duplicate_matcher_binding)]
 pub(crate) struct DuplicateMatcherBinding {
     #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(expand_label2)]
+    pub prev: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_duplicate_matcher_binding)]
+pub(crate) struct DuplicateMatcherBindingLint {
     #[label]
     pub span: Span,
     #[label(expand_label2)]

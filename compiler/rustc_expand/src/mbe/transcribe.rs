@@ -17,8 +17,8 @@ use rustc_span::{
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
-    CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
-    NoSyntaxVarsExprRepeat, VarStillRepeating,
+    CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
+    MveUnrecognizedVar, NoSyntaxVarsExprRepeat,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
@@ -483,7 +483,7 @@ fn transcribe_metavar<'tx>(
         }
         MatchedSeq(..) => {
             // We were unable to descend far enough. This is an error.
-            return Err(dcx.create_err(VarStillRepeating { span: sp, ident }));
+            return Err(dcx.create_err(MacroVarStillRepeating { span: sp, ident }));
         }
     };
 
