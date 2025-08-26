@@ -56,6 +56,7 @@ impl io::Write for Stdout {
 
             let count = unsafe {
                 vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32)
+                    as usize;
             };
             if count < 0 {
                 return Err(io::Error::new(
@@ -77,7 +78,7 @@ impl io::Write for Stdout {
             }
         }
 
-        Ok(written as usize)
+        Ok(written)
     }
 
     fn flush(&mut self) -> io::Result<()> {
