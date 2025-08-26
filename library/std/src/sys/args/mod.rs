@@ -32,9 +32,13 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use wasi::*;
+    all(target_os = "wasi", target_env = "p1") => {
+        mod wasip1;
+        pub use wasip1::*;
+    }
+    all(target_os = "wasi", target_env = "p2") => {
+        mod wasip2;
+        pub use wasip2::*;
     }
     target_os = "xous" => {
         mod xous;
