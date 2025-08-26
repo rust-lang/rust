@@ -1473,7 +1473,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
             }
             TyKind::Foreign(type_alias) => {
                 let alias = match type_alias {
-                    SolverDefId::ForeignId(id) => id,
+                    SolverDefId::TypeAliasId(id) => id,
                     _ => unreachable!(),
                 };
                 let type_alias = db.type_alias_signature(alias);

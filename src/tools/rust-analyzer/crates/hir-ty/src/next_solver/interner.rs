@@ -1148,7 +1148,6 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         let container = match def_id {
             SolverDefId::FunctionId(it) => it.lookup(self.db()).container,
             SolverDefId::TypeAliasId(it) => it.lookup(self.db()).container,
-            SolverDefId::ForeignId(it) => it.lookup(self.db()).container,
             SolverDefId::ConstId(it) => it.lookup(self.db()).container,
             SolverDefId::InternedClosureId(it) => {
                 return self

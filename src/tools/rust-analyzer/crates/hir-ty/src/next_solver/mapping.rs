@@ -271,7 +271,7 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                     )
                 }
                 chalk_ir::TyKind::Foreign(foreign_def_id) => rustc_type_ir::TyKind::Foreign(
-                    SolverDefId::ForeignId(crate::from_foreign_def_id(*foreign_def_id)),
+                    SolverDefId::TypeAliasId(crate::from_foreign_def_id(*foreign_def_id)),
                 ),
                 chalk_ir::TyKind::Error => rustc_type_ir::TyKind::Error(ErrorGuaranteed),
                 chalk_ir::TyKind::Placeholder(placeholder_index) => {
@@ -1262,7 +1262,7 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
 
         rustc_type_ir::TyKind::Foreign(foreign) => {
             let def_id = match foreign {
-                SolverDefId::ForeignId(id) => id,
+                SolverDefId::TypeAliasId(id) => id,
                 _ => unreachable!(),
             };
             TyKind::Foreign(to_foreign_def_id(def_id))
