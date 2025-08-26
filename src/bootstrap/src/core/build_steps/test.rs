@@ -1850,7 +1850,7 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             // Tells compiletest which codegen backend to use.
             // It is used to e.g. ignore tests that don't support that codegen backend.
             cmd.arg("--default-codegen-backend")
-                .arg(builder.config.default_codegen_backend(compiler.host).unwrap().name());
+                .arg(builder.config.default_codegen_backend(compiler.host).name());
         }
 
         if builder.build.config.llvm_enzyme {

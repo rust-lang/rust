@@ -1670,8 +1670,9 @@ impl Config {
 
     /// Returns the codegen backend that should be configured as the *default* codegen backend
     /// for a rustc compiled by bootstrap.
-    pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<&CodegenBackendKind> {
-        self.enabled_codegen_backends(target).first()
+    pub fn default_codegen_backend(&self, target: TargetSelection) -> &CodegenBackendKind {
+        // We're guaranteed to have always at least one codegen backend listed.
+        self.enabled_codegen_backends(target).first().unwrap()
     }
 
     pub fn jemalloc(&self, target: TargetSelection) -> bool {
