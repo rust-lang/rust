@@ -1122,9 +1122,8 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -1141,9 +1140,10 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
+        [build] rustdoc 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
@@ -1183,12 +1183,11 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> LldWrapper 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -1205,9 +1204,10 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
+        [build] rustdoc 2 <host>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1228,6 +1228,8 @@ mod snapshot {
         [build] rustc 1 <host> -> miri 2 <host>
         [build] rustc 1 <host> -> cargo-miri 2 <host>
         [dist] rustc 1 <host> -> miri 2 <host>
+        [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [dist] rustc 1 <host> -> extended 2 <host>
         [dist] reproducible-artifacts <host>
         ");
@@ -1261,10 +1263,9 @@ mod snapshot {
         [doc] book/2018-edition (book) <target1>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -1292,8 +1293,9 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [build] rustdoc 2 <host>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <host>
@@ -1331,9 +1333,8 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
@@ -1356,9 +1357,10 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
+        [build] rustdoc 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [build] rustdoc 2 <target1>
@@ -1401,10 +1403,9 @@ mod snapshot {
         [doc] book/2018-edition (book) <target1>
         [doc] rustc 1 <host> -> standalone 2 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [build] llvm <target1>
@@ -1437,12 +1438,13 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] docs <target1>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <target1>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
+        [build] rustdoc 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [build] rustdoc 2 <target1>
@@ -1480,9 +1482,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [doc] nomicon (book) <target1>
         [doc] rustc 1 <host> -> reference (book) 2 <target1>
         [doc] rustdoc (book) <target1>
@@ -1495,6 +1495,8 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustdoc 2 <host>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
         [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <target1>
@@ -1527,10 +1529,7 @@ mod snapshot {
         [build] rustdoc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <target1>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] llvm <target1>
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 1 <host> -> WasmComponentLd 2 <target1>
@@ -1550,8 +1549,8 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <target1>
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <target1>
         [dist] mingw <target1>
         [build] rustdoc 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
@@ -1583,7 +1582,7 @@ mod snapshot {
     }
 
     /// Simulates e.g. the powerpc64 builder, which is fully cross-compiled from x64, but it does
-    /// not build docs. Crutically, it shouldn't build host stage 2 rustc.
+    /// not build docs. Crucially, it shouldn't build host stage 2 rustc.
     ///
     /// This is a regression test for <https://github.com/rust-lang/rust/issues/138123>
     /// and <https://github.com/rust-lang/rust/issues/138004>.
@@ -1673,10 +1672,9 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -1693,9 +1691,10 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <host>
         [dist] mingw <host>
+        [build] rustdoc 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
@@ -1755,9 +1754,8 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -2467,10 +2465,9 @@ mod snapshot {
         [doc] book/2018-edition (book) <host>
         [build] rustdoc 1 <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
@@ -2488,6 +2485,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [dist] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 2 <host>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>

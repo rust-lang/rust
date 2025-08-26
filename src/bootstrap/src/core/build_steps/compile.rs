@@ -150,7 +150,9 @@ impl Step for Std {
         trace!(force_recompile);
 
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler_for_std(run.builder.top_stage, run.target),
+            // Note: we don't use compiler_for_std here, so that `x build library --stage 2`
+            // builds a stage2 rustc.
+            build_compiler: run.builder.compiler(run.builder.top_stage, builder.host_target),
             target: run.target,
             crates,
             force_recompile,
