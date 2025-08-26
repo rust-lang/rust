@@ -797,6 +797,7 @@ macro_rules! list_fold {
 list_fold! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
+    &'tcx ty::List<&'tcx ty::List<PlaceElem<'tcx>>> : mk_place_elem_chain,
     &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>> : mk_outlives,
 }
