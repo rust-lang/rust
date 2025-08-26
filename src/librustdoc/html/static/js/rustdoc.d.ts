@@ -241,6 +241,7 @@ declare namespace rustdoc {
         modulePath: number?,
         exactModulePath: number?,
         parent: number?,
+        traitParent: number?,
         deprecated: boolean,
         associatedItemDisambiguator: string?,
     }
@@ -291,8 +292,11 @@ declare namespace rustdoc {
         path: PathData?,
         functionData: FunctionData?,
         deprecated: boolean,
-        parent: { path: PathData, name: string}?,
+        parent: RowParent,
+        traitParent: RowParent,
     }
+
+    type RowParent = { path: PathData, name: string } | null;
 
     type ItemType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
         11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 |
@@ -316,7 +320,23 @@ declare namespace rustdoc {
     interface ResultObject {
         desc: Promise<string|null>,
         displayPath: string,
+        /**
+         * path to where the item was defined (not inlined),
+         * then `|`, then the `ItemType` of the item.
+         *
+         * This is often a private path, so it should not be displayed,
+         * but this allows us to use it to reliably deduplicate reexported and inlined items
+         */
         fullPath: string,
+        /**
+         * The `fullPath` of the corresponding item within a trait.
+         * For example, for `File::read`, this would be `std::io::Read::read|12`
+         *
+         * This is used to hide items from trait impls when the trait itself is in the search results.
+         *
+         * `null` if the item is not from a trait impl block.
+         */
+        traitPath: string | null,
         href: string,
         id: number,
         dist: number,
