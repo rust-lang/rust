@@ -808,14 +808,24 @@ impl<'db> ChalkToNextSolver<'db, PredicateKind<'db>> for chalk_ir::DomainGoal<In
                     _ => unimplemented!(),
                 };
                 let args: GenericArgs<'db> = proj_ty.substitution.to_nextsolver(interner);
-                let alias = rustc_type_ir::AliasTerm::new(
+                let alias = Ty::new(
                     interner,
-                    from_assoc_type_id(proj_ty.associated_ty_id).into(),
-                    args,
-                );
+                    rustc_type_ir::TyKind::Alias(
+                        rustc_type_ir::AliasTyKind::Projection,
+                        rustc_type_ir::AliasTy::new(
+                            interner,
+                            from_assoc_type_id(proj_ty.associated_ty_id).into(),
+                            args,
+                        ),
+                    ),
+                )
+                .into();
                 let term = normalize.ty.to_nextsolver(interner).into();
-                let normalizes_to = rustc_type_ir::NormalizesTo { alias, term };
-                PredicateKind::NormalizesTo(normalizes_to)
+                PredicateKind::AliasRelate(
+                    alias,
+                    term,
+                    rustc_type_ir::AliasRelationDirection::Equate,
+                )
             }
             chalk_ir::DomainGoal::WellFormed(well_formed) => {
                 let term = match well_formed {
