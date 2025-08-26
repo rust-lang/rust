@@ -1,3 +1,5 @@
+use rustc_feature::AttributeType;
+
 use super::prelude::*;
 
 pub(crate) struct CrateNameParser;
@@ -7,6 +9,7 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
+    const TYPE: AttributeType = AttributeType::CrateLevel;
 
     // FIXME: crate name is allowed on all targets and ignored,
     //        even though it should only be valid on crates of course

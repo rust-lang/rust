@@ -155,7 +155,7 @@ impl RawVecInner<Global> {
 }
 
 // Tiny Vecs are dumb. Skip to:
-// - 8 if the element size is 1, because any heap allocators is likely
+// - 8 if the element size is 1, because any heap allocator is likely
 //   to round up a request of less than 8 bytes to at least 8 bytes.
 // - 4 if elements are moderate-sized (<= 1 KiB).
 // - 1 otherwise, to avoid wasting too much space for very short Vecs.

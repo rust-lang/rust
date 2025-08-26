@@ -167,8 +167,13 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
 
-        // We already have std ready to be used for stage 0.
-        if self.build_compiler.stage == 0 {
+        // In most cases, we already have the std ready to be used for stage 0.
+        // However, if we are doing a local rebuild (so the build compiler can compile the standard
+        // library even on stage 0), and we're cross-compiling (so the stage0 standard library for
+        // *target* is not available), we still allow the stdlib to be built here.
+        if self.build_compiler.stage == 0
+            && !(builder.local_rebuild && target != builder.host_target)
+        {
             let compiler = self.build_compiler;
             builder.ensure(StdLink::from_std(self, compiler));
 
@@ -1332,9 +1337,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         cargo.env("CFG_OMIT_GIT_HASH", "1");
     }
 
-    if let Some(backend) = builder.config.default_codegen_backend(target) {
-        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend.name());
-    }
+    cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", builder.config.default_codegen_backend(target).name());
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     let target_config = builder.config.target_config.get(&target);
