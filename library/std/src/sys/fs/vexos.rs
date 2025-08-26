@@ -1,10 +1,11 @@
 use crate::ffi::{CString, OsString};
 use crate::fmt;
+use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
-use crate::sys::unsupported;
+use crate::sys::{unsupported, unsupported_err};
 
 #[derive(Debug)]
 struct FileDesc(*mut vex_sdk::FIL);
@@ -19,12 +20,8 @@ pub struct FileAttr {
     is_dir: bool,
 }
 
-#[derive(Debug)]
-pub struct ReadDir {
-    entries: Vec<DirEntry>,
-}
+pub struct ReadDir(!);
 
-#[derive(Debug)]
 pub struct DirEntry {
     path: PathBuf,
 }
@@ -39,18 +36,18 @@ pub struct OpenOptions {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes(());
+pub struct FileTimes {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FilePermissions;
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FilePermissions {}
 
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
     is_dir: bool,
 }
 
 #[derive(Debug)]
-pub struct DirBuilder(());
+pub struct DirBuilder {}
 
 impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
@@ -79,9 +76,8 @@ impl FileAttr {
             let mut opts = OpenOptions::new();
             opts.read(true);
             let file = File::open(path, &opts)?;
-            let fd = file.fd.0;
 
-            Self::from_fd(fd)
+            Self::from_fd(file.fd.0)
         }
     }
 
@@ -90,7 +86,7 @@ impl FileAttr {
     }
 
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions
+        FilePermissions {}
     }
 
     pub fn file_type(&self) -> FileType {
@@ -135,7 +131,14 @@ impl FileType {
     }
 
     pub fn is_symlink(&self) -> bool {
+        // No symlinks in vexos; entries are either files or directories.
         false
+    }
+}
+
+impl fmt::Debug for ReadDir {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
     }
 }
 
@@ -143,7 +146,7 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.entries.pop().map(Ok)
+        self.0
     }
 }
 
@@ -191,6 +194,7 @@ impl OpenOptions {
 }
 
 impl File {
+    // TODO
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         // Mount sdcard volume as FAT filesystem
         map_fresult(unsafe { vex_sdk::vexFileMountSD() })?;
@@ -265,12 +269,12 @@ impl File {
         unsupported()
     }
 
-    pub fn try_lock(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
-    pub fn try_lock_shared(&self) -> io::Result<bool> {
-        unsupported()
+    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+        Err(TryLockError::Error(unsupported_err()))
     }
 
     pub fn unlock(&self) -> io::Result<()> {
@@ -333,11 +337,15 @@ impl File {
         Ok(())
     }
 
-    fn tell(&self) -> io::Result<u64> {
+    pub fn tell(&self) -> io::Result<u64> {
         let position = unsafe { vex_sdk::vexFileTell(self.fd.0) };
         position.try_into().map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Failed to get current location in file")
         })
+    }
+
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        None
     }
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
@@ -412,7 +420,7 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder(())
+        DirBuilder {}
     }
 
     pub fn mkdir(&self, _p: &Path) -> io::Result<()> {

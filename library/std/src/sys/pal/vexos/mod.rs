@@ -21,9 +21,9 @@ global_asm!(
 );
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn _start() -> ! {
-    extern "C" {
+    unsafe extern "C" {
         static mut __bss_start: u8;
         static mut __bss_end: u8;
 
@@ -40,6 +40,7 @@ pub unsafe extern "C" fn _start() -> ! {
 
     main();
 
+    cleanup();
     abort_internal()
 }
 
@@ -49,7 +50,22 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {}
+pub unsafe fn cleanup() {
+    let exit_time = Instant::now();
+    const FLUSH_TIMEOUT: Duration = Duration::from_millis(15);
+    const STDIO_CHANNEL: u32 = 1;
+
+    // Force the serial buffer to flush
+    while exit_time.elapsed() < FLUSH_TIMEOUT {
+        vex_sdk::vexTasksRun();
+
+        // If the buffer has been fully flushed, exit the loop
+        if vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) == (crate::sys::stdio::STDOUT_BUF_SIZE as i32)
+        {
+            break;
+        }
+    }
+}
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -68,21 +84,7 @@ pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
 }
 
 pub fn abort_internal() -> ! {
-    let exit_time = Instant::now();
-    const FLUSH_TIMEOUT: Duration = Duration::from_millis(15);
-
     unsafe {
-        // Force the serial buffer to flush
-        while exit_time.elapsed() < FLUSH_TIMEOUT {
-            vex_sdk::vexTasksRun();
-
-            // If the buffer has been fully flushed, exit the loop
-            if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32)
-            {
-                break;
-            }
-        }
-
         vex_sdk::vexSystemExitRequest();
 
         loop {
