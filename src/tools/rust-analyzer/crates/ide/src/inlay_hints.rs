@@ -306,6 +306,7 @@ pub struct InlayHintsConfig {
     pub generic_parameter_hints: GenericParameterHints,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
+    pub adjustment_hints_disable_reborrows: bool,
     pub adjustment_hints_mode: AdjustmentHintsMode,
     pub adjustment_hints_hide_outside_unsafe: bool,
     pub closure_return_type_hints: ClosureReturnTypeHints,
@@ -430,7 +431,7 @@ pub enum LifetimeElisionHints {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AdjustmentHints {
     Always,
-    ReborrowOnly,
+    BorrowsOnly,
     Never,
 }
 
@@ -886,6 +887,7 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::Never,
         closure_capture_hints: false,
         adjustment_hints: AdjustmentHints::Never,
+        adjustment_hints_disable_reborrows: false,
         adjustment_hints_mode: AdjustmentHintsMode::Prefix,
         adjustment_hints_hide_outside_unsafe: false,
         binding_mode_hints: false,

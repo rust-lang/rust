@@ -169,6 +169,7 @@ impl StaticIndex<'_> {
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     adjustment_hints: crate::AdjustmentHints::Never,
+                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: AdjustmentHintsMode::Prefix,
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,

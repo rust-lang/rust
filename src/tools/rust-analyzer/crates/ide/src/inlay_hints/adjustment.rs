@@ -47,7 +47,22 @@ pub(super) fn hints(
 
     let descended = sema.descend_node_into_attributes(expr.clone()).pop();
     let desc_expr = descended.as_ref().unwrap_or(expr);
-    let adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
+    let mut adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
+
+    if config.adjustment_hints_disable_reborrows {
+        // Remove consecutive deref-ref, i.e. reborrows.
+        let mut i = 0;
+        while i < adjustments.len().saturating_sub(1) {
+            let [current, next, ..] = &adjustments[i..] else { unreachable!() };
+            if matches!(current.kind, Adjust::Deref(None))
+                && matches!(next.kind, Adjust::Borrow(AutoBorrow::Ref(_)))
+            {
+                adjustments.splice(i..i + 2, []);
+            } else {
+                i += 1;
+            }
+        }
+    }
 
     if let ast::Expr::BlockExpr(_) | ast::Expr::IfExpr(_) | ast::Expr::MatchExpr(_) = desc_expr {
         // Don't show unnecessary reborrows for these, they will just repeat the inner ones again
@@ -715,6 +730,38 @@ fn hello(it: &&[impl T]) {
     it.len();
   //^^(&**
   //^^)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn disable_reborrows() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_disable_reborrows: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+#![rustc_coherence_is_core]
+
+trait ToOwned {
+    type Owned;
+    fn to_owned(&self) -> Self::Owned;
+}
+
+struct String;
+impl ToOwned for str {
+    type Owned = String;
+    fn to_owned(&self) -> Self::Owned { String }
+}
+
+fn a(s: &String) {}
+
+fn main() {
+    let s = "".to_owned();
+    a(&s)
 }
 "#,
         );
