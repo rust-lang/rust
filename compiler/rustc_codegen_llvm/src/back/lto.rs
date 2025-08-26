@@ -14,7 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::slice_owned;
+use rustc_data_structures::owned_slice::{OwnedSlice, slice_owned};
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
@@ -57,10 +57,13 @@ fn prepare_lto(
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
         for path in each_linked_rlib_for_lto {
-            let archive_data = unsafe {
-                Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
-                    .expect("couldn't map rlib")
-            };
+            let archive_data = slice_owned(
+                unsafe {
+                    Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
+                        .expect("couldn't map rlib")
+                },
+                |data| &*data,
+            );
             let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
             let obj_files = archive
                 .members()
@@ -72,13 +75,14 @@ fn prepare_lto(
                 .filter(|&(name, _)| looks_like_rust_object_file(name));
             for (name, child) in obj_files {
                 info!("adding bitcode from {}", name);
-                match get_bitcode_slice_from_object_data(
-                    child.data(&*archive_data).expect("corrupt rlib"),
-                    cgcx,
-                ) {
+                let (offset, size) = child.file_range();
+                let child_data = archive_data.clone().slice(|data| {
+                    data.get(offset as usize..offset as usize + size as usize)
+                        .expect("corrupt rlib")
+                });
+                match get_bitcode_slice_from_object_data(child_data, cgcx) {
                     Ok(data) => {
-                        let module =
-                            SerializedModule::FromFile(slice_owned(data.to_vec(), |data| &*data));
+                        let module = SerializedModule::FromFile(data);
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
                     Err(e) => dcx.emit_fatal(e),
@@ -90,15 +94,15 @@ fn prepare_lto(
     (symbols_below_threshold, upstream_modules)
 }
 
-fn get_bitcode_slice_from_object_data<'a>(
-    obj: &'a [u8],
+fn get_bitcode_slice_from_object_data(
+    data: OwnedSlice,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-) -> Result<&'a [u8], LtoBitcodeFromRlib> {
+) -> Result<OwnedSlice, LtoBitcodeFromRlib> {
     // We're about to assume the data here is an object file with sections, but if it's raw LLVM IR
     // that won't work. Fortunately, if that's what we have we can just return the object directly,
     // so we sniff the relevant magic strings here and return.
-    if obj.starts_with(b"\xDE\xC0\x17\x0B") || obj.starts_with(b"BC\xC0\xDE") {
-        return Ok(obj);
+    if data.starts_with(b"\xDE\xC0\x17\x0B") || data.starts_with(b"BC\xC0\xDE") {
+        return Ok(data);
     }
     // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
     // name" which in the public API for sections gets treated as part of the section name, but
@@ -106,13 +110,17 @@ fn get_bitcode_slice_from_object_data<'a>(
     let section_name = bitcode_section_name(cgcx).to_str().unwrap().trim_start_matches("__LLVM,");
 
     let obj =
-        object::File::parse(obj).map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })?;
+        object::File::parse(&*data).map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })?;
 
     let section = obj
         .section_by_name(section_name)
         .ok_or_else(|| LtoBitcodeFromRlib { err: format!("Can't find section {section_name}") })?;
 
-    section.data().map_err(|err| LtoBitcodeFromRlib { err: err.to_string() })
+    if let Some((offset, size)) = section.file_range() {
+        Ok(data.slice(|data| &data[offset as usize..offset as usize + size as usize]))
+    } else {
+        Err(LtoBitcodeFromRlib { err: format!("Section {section_name} doesn't have contents") })
+    }
 }
 
 /// Performs fat LTO by merging all modules into a single one and returning it
