@@ -68,9 +68,10 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let fn_abi = if fn_abi.conv == rustc_abi::CanonAbi::GpuKernel {
             dbg!("found gpu fn!");
-            my_fn_abi(fn_abi)
+            fn_abi.clone()
+            //my_fn_abi(fn_abi)
         } else {
-            dbg!("asdf!");
+            //dbg!("asdf!");
             fn_abi.clone()
         };
         let lldecl = self.declare_fn(symbol_name, &fn_abi, Some(instance));

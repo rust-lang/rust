@@ -1201,6 +1201,8 @@ unsafe extern "C" {
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
+    //pub(crate) fn LLVMGetNamedFunction<'a>(Mod: &'a Module, Name: *const char) -> Option<&'a Value>;
+        
     pub(crate) fn LLVMDeleteFunction(Fn: &Value);
 
     // Operations about llvm intrinsics
