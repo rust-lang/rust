@@ -3,7 +3,7 @@ use std::str::FromStr;
 use rustc_abi::{Align, ExternAbi};
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
-use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, UsedBy};
+use rustc_hir::attrs::{AttributeKind, InlineAttr, InstructionSetAttr, RtsanSetting, UsedBy};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{self as hir, Attribute, LangItem, find_attr, lang_items};
@@ -466,6 +466,28 @@ fn check_result(
             lint.primary_message("non-default `sanitize` will have no effect after inlining");
             lint.span_note(inline_span, "inlining requested here");
         })
+    }
+
+    // warn for nonblocking async fn.
+    // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
+    if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
+        && let Some(sanitize_span) = interesting_spans.sanitize
+        // async function
+        && (tcx.asyncness(did).is_async() || (tcx.is_closure_like(did.into())
+            // async block
+            && (tcx.coroutine_is_async(did.into())
+                // async closure
+                || tcx.coroutine_is_async(tcx.coroutine_for_closure(did)))))
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(
+            lint::builtin::RTSAN_NONBLOCKING_ASYNC,
+            hir_id,
+            sanitize_span,
+            |lint| {
+                lint.primary_message(r#"the async executor can run blocking code, without realtime sanitizer catching it"#);
+            }
+        );
     }
 
     // error when specifying link_name together with link_ordinal
