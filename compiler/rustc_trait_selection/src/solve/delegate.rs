@@ -237,13 +237,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         canonical.instantiate(self.tcx, &values)
     }
 
-    fn instantiate_canonical_var_with_infer(
+    fn instantiate_canonical_var(
         &self,
         kind: CanonicalVarKind<'tcx>,
         span: Span,
+        var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, kind, universe_map)
+        self.0.instantiate_canonical_var(span, kind, var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(

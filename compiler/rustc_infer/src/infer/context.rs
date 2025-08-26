@@ -59,6 +59,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_var(var)
     }
 
+    fn sub_root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.sub_root_var(var)
+    }
+
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
         self.root_const_var(var)
     }

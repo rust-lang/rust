@@ -67,6 +67,7 @@ pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     variables: &'a mut Vec<I::GenericArg>,
     var_kinds: Vec<CanonicalVarKind<I>>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
+    sub_root_lookup_table: HashMap<ty::TyVid, usize>,
     binder_index: ty::DebruijnIndex,
 
     /// We only use the debruijn index during lookup. We don't need to
@@ -88,6 +89,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table: Default::default(),
+            sub_root_lookup_table: Default::default(),
             var_kinds: Vec::new(),
             binder_index: ty::INNERMOST,
 
@@ -132,6 +134,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
                         variables: &mut variables,
                         variable_lookup_table: Default::default(),
+                        sub_root_lookup_table: Default::default(),
                         var_kinds: Vec::new(),
                         binder_index: ty::INNERMOST,
 
@@ -139,6 +142,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     };
                     let param_env = param_env.fold_with(&mut env_canonicalizer);
                     debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+                    debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
                     CanonicalParamEnvCacheEntry {
                         param_env,
                         variable_lookup_table: env_canonicalizer.variable_lookup_table,
@@ -164,6 +168,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
                 variables,
                 variable_lookup_table: Default::default(),
+                sub_root_lookup_table: Default::default(),
                 var_kinds: Vec::new(),
                 binder_index: ty::INNERMOST,
 
@@ -171,6 +176,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             };
             let param_env = param_env.fold_with(&mut env_canonicalizer);
             debug_assert_eq!(env_canonicalizer.binder_index, ty::INNERMOST);
+            debug_assert!(env_canonicalizer.sub_root_lookup_table.is_empty());
             (param_env, env_canonicalizer.variable_lookup_table, env_canonicalizer.var_kinds)
         }
     }
@@ -199,6 +205,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
             variables,
             variable_lookup_table,
+            sub_root_lookup_table: Default::default(),
             var_kinds,
             binder_index: ty::INNERMOST,
 
@@ -265,6 +272,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
+    fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
+        let root_vid = self.delegate.sub_root_ty_var(vid);
+        let idx =
+            *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
+        ty::BoundVar::from(idx)
+    }
+
     fn finalize(self) -> (ty::UniverseIndex, I::CanonicalVarKinds) {
         let mut var_kinds = self.var_kinds;
         // See the rustc-dev-guide section about how we deal with universes
@@ -312,16 +326,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         "ty vid should have been resolved fully before canonicalization"
                     );
 
-                    match self.canonicalize_mode {
-                        CanonicalizeMode::Input { .. } => {
-                            CanonicalVarKind::Ty(ty::UniverseIndex::ROOT)
-                        }
-                        CanonicalizeMode::Response { .. } => {
-                            CanonicalVarKind::Ty(self.delegate.universe_of_ty(vid).unwrap_or_else(
-                                || panic!("ty var should have been resolved: {t:?}"),
-                            ))
-                        }
-                    }
+                    let sub_root = self.get_or_insert_sub_root(vid);
+                    let ui = match self.canonicalize_mode {
+                        CanonicalizeMode::Input { .. } => ty::UniverseIndex::ROOT,
+                        CanonicalizeMode::Response { .. } => self
+                            .delegate
+                            .universe_of_ty(vid)
+                            .unwrap_or_else(|| panic!("ty var should have been resolved: {t:?}")),
+                    };
+                    CanonicalVarKind::Ty { ui, sub_root }
                 }
                 ty::IntVar(vid) => {
                     debug_assert_eq!(
