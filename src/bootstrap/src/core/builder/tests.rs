@@ -2372,6 +2372,24 @@ mod snapshot {
         [dist] src <>
         ");
     }
+
+    // Check that `x run miri --target FOO` actually builds miri for the host.
+    #[test]
+    fn run_miri() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("run")
+                .path("miri")
+                .stage(1)
+                .targets(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> miri 1 <host>
+        [build] rustc 0 <host> -> cargo-miri 1 <host>
+        [run] rustc 0 <host> -> miri 1 <target1>
+        ");
+    }
 }
 
 struct ExecutedSteps {

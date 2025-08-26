@@ -182,6 +182,10 @@ impl StepMetadata {
         Self::new(name, target, Kind::Test)
     }
 
+    pub fn run(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Run)
+    }
+
     fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
         Self { name: name.to_string(), kind, target, built_by: None, stage: None, metadata: None }
     }
