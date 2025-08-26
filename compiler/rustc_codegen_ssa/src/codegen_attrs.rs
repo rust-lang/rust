@@ -470,6 +470,28 @@ fn check_result(
         })
     }
 
+    // warn for nonblocking async fn.
+    // This doesn't behave as expected, because the executor can run blocking code without the sanitizer noticing.
+    if codegen_fn_attrs.sanitizers.rtsan_setting == RtsanSetting::Nonblocking
+        && let Some(sanitize_span) = interesting_spans.sanitize
+        // async function
+        && (tcx.asyncness(did).is_async() || (tcx.is_closure_like(did.into())
+            // async block
+            && (tcx.coroutine_is_async(did.into())
+                // async closure
+                || tcx.coroutine_is_async(tcx.coroutine_for_closure(did)))))
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(
+            lint::builtin::RTSAN_NONBLOCKING_ASYNC,
+            hir_id,
+            sanitize_span,
+            |lint| {
+                lint.primary_message(r#"the async executor can run blocking code, without realtime sanitizer catching it"#);
+            }
+        );
+    }
+
     // error when specifying link_name together with link_ordinal
     if let Some(_) = codegen_fn_attrs.symbol_name
         && let Some(_) = codegen_fn_attrs.link_ordinal
