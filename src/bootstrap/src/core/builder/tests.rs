@@ -1133,8 +1133,7 @@ mod snapshot {
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
@@ -1198,8 +1197,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] rustc 1 <host> -> analysis 2 <host>
         [dist] src <>
@@ -1216,7 +1214,6 @@ mod snapshot {
         [build] rustc 1 <host> -> miri 2 <host>
         [build] rustc 1 <host> -> cargo-miri 2 <host>
         [dist] rustc 1 <host> -> miri 2 <host>
-        [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> extended 2 <host>
         [dist] reproducible-artifacts <host>
         ");
@@ -1287,8 +1284,7 @@ mod snapshot {
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
@@ -1350,8 +1346,7 @@ mod snapshot {
         [dist] rustc <host>
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
@@ -1433,10 +1428,8 @@ mod snapshot {
         [dist] rustc <host>
         [build] rustdoc 2 <target1>
         [dist] rustc <target1>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> std 1 <host>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] src <>
@@ -1490,8 +1483,6 @@ mod snapshot {
         ");
     }
 
-    /// This also serves as an important regression test for <https://github.com/rust-lang/rust/issues/138123>
-    /// and <https://github.com/rust-lang/rust/issues/138004>.
     #[test]
     fn dist_all_cross_extended() {
         let ctx = TestCtx::new();
@@ -1545,8 +1536,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] rustc 1 <host> -> analysis 2 <target1>
         [dist] src <>
@@ -1564,7 +1554,6 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [dist] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [dist] rustc 1 <host> -> std 1 <target1>
         [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
         [dist] rustc 1 <host> -> extended 2 <target1>
         [dist] reproducible-artifacts <target1>
@@ -1573,6 +1562,9 @@ mod snapshot {
 
     /// Simulates e.g. the powerpc64 builder, which is fully cross-compiled from x64, but it does
     /// not build docs. Crutically, it shouldn't build host stage 2 rustc.
+    ///
+    /// This is a regression test for <https://github.com/rust-lang/rust/issues/138123>
+    /// and <https://github.com/rust-lang/rust/issues/138004>.
     #[test]
     fn dist_all_cross_extended_no_docs() {
         let ctx = TestCtx::new();
@@ -1591,11 +1583,11 @@ mod snapshot {
             .get_steps();
 
         // Make sure that we don't build stage2 host rustc
-        // steps.assert_no_match(|m| {
-        //     m.name == "rustc"
-        //         && m.built_by.map(|b| b.stage) == Some(1)
-        //         && *m.target.triple == host_target()
-        // });
+        steps.assert_no_match(|m| {
+            m.name == "rustc"
+                && m.built_by.map(|b| b.stage) == Some(1)
+                && *m.target.triple == host_target()
+        });
 
         insta::assert_snapshot!(
                 steps.render(), @r"
@@ -1613,10 +1605,7 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] rustc <target1>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustc 1 <host> -> WasmComponentLd 2 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <target1>
         [dist] rustc 1 <host> -> analysis 2 <target1>
         [dist] src <>
@@ -1634,7 +1623,6 @@ mod snapshot {
         [build] rustc 1 <host> -> cargo-miri 2 <target1>
         [dist] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
-        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] rustc 1 <host> -> extended 2 <target1>
         [dist] reproducible-artifacts <target1>
         ");
@@ -1688,8 +1676,7 @@ mod snapshot {
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> rustc_codegen_cranelift 2 <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
@@ -2420,8 +2407,7 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <host>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
-        [build] rustc 2 <host> -> std 2 <host>
-        [dist] rustc 2 <host> -> std 2 <host>
+        [dist] rustc 1 <host> -> std 1 <host>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
