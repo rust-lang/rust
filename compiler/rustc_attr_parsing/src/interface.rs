@@ -271,8 +271,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             };
 
                             (accept.accept_fn)(&mut cx, args);
-
-                            if !matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
+                            if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+                                Self::check_type(accept.attribute_type, target, &mut cx);
                                 self.check_target(
                                     path.get_attribute_path(),
                                     attr.span,

@@ -66,5 +66,19 @@ pub fn emit_attribute_lint<L: LintEmitter>(lint: &AttributeLint<L::Id>, lint_emi
                     attr_span: *span,
                 },
             ),
+
+        &AttributeLintKind::InvalidStyle { ref name, is_used_as_inner, target, target_span } => {
+            lint_emitter.emit_node_span_lint(
+                rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+                *id,
+                *span,
+                session_diagnostics::InvalidAttrStyle {
+                    name: name.clone(),
+                    is_used_as_inner,
+                    target_span: (!is_used_as_inner).then_some(target_span),
+                    target,
+                },
+            )
+        }
     }
 }
