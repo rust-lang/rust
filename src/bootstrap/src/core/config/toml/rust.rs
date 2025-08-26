@@ -415,6 +415,10 @@ pub(crate) fn parse_codegen_backends(
         };
         found_backends.push(backend);
     }
+    if found_backends.is_empty() {
+        eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
+        exit!(1);
+    }
     found_backends
 }
 
