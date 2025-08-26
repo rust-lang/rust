@@ -190,5 +190,5 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
 /// and a rustc warning would be triggered, see #15301
 fn fn_is_externally_exported(cx: &LateContext<'_>, def_id: DefId) -> bool {
     let attrs = cx.tcx.codegen_fn_attrs(def_id);
-    attrs.contains_extern_indicator(cx.tcx, def_id)
+    attrs.contains_extern_indicator()
 }

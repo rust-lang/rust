@@ -18,7 +18,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
     // If this has an extern indicator, then this function is globally shared and thus will not
     // generate cgu-internal copies which would make it cross-crate inlinable.
-    if codegen_fn_attrs.contains_extern_indicator(tcx, def_id.into()) {
+    if codegen_fn_attrs.contains_extern_indicator() {
         return false;
     }
 

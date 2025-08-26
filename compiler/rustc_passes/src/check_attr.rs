@@ -492,7 +492,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let attrs = self.tcx.codegen_fn_attrs(did);
                     // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-                    if attrs.contains_extern_indicator(self.tcx, did.into()) {
+                    if attrs.contains_extern_indicator() {
                         self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
