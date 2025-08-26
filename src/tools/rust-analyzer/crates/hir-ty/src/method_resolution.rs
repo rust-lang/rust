@@ -155,7 +155,7 @@ impl TyFingerprint {
                 rustc_ast_ir::Mutability::Not => TyFingerprint::RawPtr(Mutability::Not),
             },
             TyKind::Foreign(def) => {
-                let SolverDefId::ForeignId(def) = def else { unreachable!() };
+                let SolverDefId::TypeAliasId(def) = def else { unreachable!() };
                 TyFingerprint::ForeignType(crate::to_foreign_def_id(def))
             }
             TyKind::Dynamic(bounds, _, _) => {
