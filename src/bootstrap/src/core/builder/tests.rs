@@ -1142,6 +1142,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1205,6 +1206,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [dist] mingw <host>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1291,7 +1293,9 @@ mod snapshot {
         [dist] docs <host>
         [dist] docs <target1>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1353,6 +1357,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
@@ -1433,7 +1438,9 @@ mod snapshot {
         [dist] docs <host>
         [dist] docs <target1>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
@@ -1489,6 +1496,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <target1>
         [build] rustc 2 <host> -> std 2 <target1>
         [dist] rustc 2 <host> -> std 2 <target1>
@@ -1543,6 +1551,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
         [doc] rustc 2 <host> -> std 2 <target1> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <target1>
         [dist] mingw <target1>
         [build] rustdoc 2 <target1>
         [build] rustc 1 <host> -> rust-analyzer-proc-macro-srv 2 <target1>
@@ -1567,6 +1576,7 @@ mod snapshot {
         [dist] rustc 1 <host> -> miri 2 <target1>
         [build] rustc 1 <host> -> LlvmBitcodeLinker 2 <target1>
         [doc] rustc 2 <target1> -> std 2 <target1> crates=[]
+        [dist] rustc 2 <target1> -> json-docs 3 <target1>
         [dist] rustc 1 <host> -> extended 2 <target1>
         [dist] reproducible-artifacts <target1>
         ");
@@ -1684,6 +1694,7 @@ mod snapshot {
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <host>
         [doc] rustc 2 <host> -> std 2 <host> crates=[]
+        [dist] rustc 2 <host> -> json-docs 3 <host>
         [dist] mingw <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>

@@ -96,6 +96,8 @@ impl Step for Docs {
     }
 }
 
+/// Builds the `rust-docs-json` installer component.
+/// It contains the documentation of the standard library in JSON format.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct JsonDocs {
     build_compiler: Compiler,
@@ -118,7 +120,6 @@ impl Step for JsonDocs {
         });
     }
 
-    /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
         let directory = builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
@@ -134,6 +135,10 @@ impl Step for JsonDocs {
         tarball.is_preview(true);
         tarball.add_bulk_dir(directory, dest);
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("json-docs", self.target).built_by(self.build_compiler))
     }
 }
 
