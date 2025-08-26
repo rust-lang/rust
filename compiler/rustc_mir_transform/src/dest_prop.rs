@@ -137,7 +137,6 @@
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 //! [attempt 4]: https://github.com/rust-lang/rust/pull/96451
 
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
@@ -187,48 +186,47 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let mut merged_locals = DenseBitSet::new_empty(body.local_decls.len());
 
-        for (src, candidates) in candidates.c.into_iter() {
-            trace!(?src, ?candidates);
+        for (src, dst) in candidates.c.into_iter() {
+            trace!(?src, ?dst);
 
-            for dst in candidates {
-                // We call `relevant.find(src)` inside the loop, as a previous iteration may have
-                // renamed `src` to one of the locals in `dst`.
-                let Some(mut src) = relevant.find(src) else { continue };
-                let Some(src_live_ranges) = live.row(src) else { continue };
-                trace!(?src, ?src_live_ranges);
+            let Some(mut src) = relevant.find(src) else { continue };
+            let Some(mut dst) = relevant.find(dst) else { continue };
+            if src == dst {
+                continue;
+            }
 
-                let Some(mut dst) = relevant.find(dst) else { continue };
-                let Some(dst_live_ranges) = live.row(dst) else { continue };
-                trace!(?dst, ?dst_live_ranges);
+            let Some(src_live_ranges) = live.row(src) else { continue };
+            let Some(dst_live_ranges) = live.row(dst) else { continue };
+            trace!(?src, ?src_live_ranges);
+            trace!(?dst, ?dst_live_ranges);
 
-                if src_live_ranges.disjoint(dst_live_ranges) {
-                    // We want to replace `src` by `dst`.
-                    let mut orig_src = relevant.original[src];
-                    let mut orig_dst = relevant.original[dst];
+            if src_live_ranges.disjoint(dst_live_ranges) {
+                // We want to replace `src` by `dst`.
+                let mut orig_src = relevant.original[src];
+                let mut orig_dst = relevant.original[dst];
 
-                    // The return place and function arguments are required and cannot be renamed.
-                    // This check cannot be made during candidate collection, as we may want to
-                    // unify the same non-required local with several required locals.
-                    match (is_local_required(orig_src, body), is_local_required(orig_dst, body)) {
-                        // Renaming `src` is ok.
-                        (false, _) => {}
-                        // Renaming `src` is wrong, but renaming `dst` is ok.
-                        (true, false) => {
-                            std::mem::swap(&mut src, &mut dst);
-                            std::mem::swap(&mut orig_src, &mut orig_dst);
-                        }
-                        // Neither local can be renamed, so skip this case.
-                        (true, true) => continue,
+                // The return place and function arguments are required and cannot be renamed.
+                // This check cannot be made during candidate collection, as we may want to
+                // unify the same non-required local with several required locals.
+                match (is_local_required(orig_src, body), is_local_required(orig_dst, body)) {
+                    // Renaming `src` is ok.
+                    (false, _) => {}
+                    // Renaming `src` is wrong, but renaming `dst` is ok.
+                    (true, false) => {
+                        std::mem::swap(&mut src, &mut dst);
+                        std::mem::swap(&mut orig_src, &mut orig_dst);
                     }
-
-                    trace!(?src, ?dst, "merge");
-                    merged_locals.insert(orig_src);
-                    merged_locals.insert(orig_dst);
-
-                    // Replace `src` by `dst`.
-                    relevant.union(src, dst);
-                    live.union_rows(/* read */ src, /* write */ dst);
+                    // Neither local can be renamed, so skip this case.
+                    (true, true) => continue,
                 }
+
+                trace!(?src, ?dst, "merge");
+                merged_locals.insert(orig_src);
+                merged_locals.insert(orig_dst);
+
+                // Replace `src` by `dst`.
+                relevant.union(src, dst);
+                live.union_rows(/* read */ src, /* write */ dst);
             }
         }
         trace!(?merged_locals);
@@ -342,11 +340,9 @@ impl RelevantLocals {
             shrink.get_or_insert_with(local, || original.push(local));
         };
 
-        for (&src, destinations) in candidates.c.iter() {
+        for &(src, dest) in candidates.c.iter() {
             declare(src);
-            for &dest in destinations {
-                declare(dest)
-            }
+            declare(dest)
         }
 
         let renames = IndexVec::from_fn_n(|l| l, original.len());
@@ -388,8 +384,6 @@ impl RelevantLocals {
 struct Candidates {
     /// The set of candidates we are considering in this optimization.
     ///
-    /// We will always merge the key into at most one of its values.
-    ///
     /// Whether a place ends up in the key or the value does not correspond to whether it appears as
     /// the lhs or rhs of any assignment. As a matter of fact, the places in here might never appear
     /// in an assignment at all. This happens because if we see an assignment like this:
@@ -400,7 +394,7 @@ struct Candidates {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: FxIndexMap<Local, Vec<Local>>,
+    c: Vec<(Local, Local)>,
 }
 
 // We first implement some utility functions which we will expose removing candidates according to
@@ -414,19 +408,13 @@ impl Candidates {
         let mut visitor = FindAssignments { body, candidates: Default::default(), borrowed };
         visitor.visit_body(body);
 
-        // Deduplicate candidates.
-        for (_, cands) in visitor.candidates.iter_mut() {
-            cands.sort();
-            cands.dedup();
-        }
-
         Candidates { c: visitor.candidates }
     }
 }
 
 struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: FxIndexMap<Local, Vec<Local>>,
+    candidates: Vec<(Local, Local)>,
     borrowed: &'a DenseBitSet<Local>,
 }
 
@@ -456,7 +444,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
             }
 
             // We may insert duplicates here, but that's fine
-            self.candidates.entry(src).or_default().push(dest);
+            self.candidates.push((src, dest));
         }
     }
 }
