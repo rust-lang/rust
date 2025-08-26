@@ -969,31 +969,38 @@ impl Config {
             | Subcommand::Vendor { .. } => flags_stage.unwrap_or(0),
         };
 
-        // Now check that the selected stage makes sense, and if not, print a warning and end
+        let local_rebuild = build_local_rebuild.unwrap_or(false);
+
+        let check_stage0 = |kind: &str| {
+            if local_rebuild {
+                eprintln!("WARNING: running {kind} in stage 0. This might not work as expected.");
+            } else {
+                eprintln!(
+                    "ERROR: cannot {kind} anything on stage 0. Use at least stage 1 or set build.local-rebuild=true and use a stage0 compiler built from in-tree sources."
+                );
+                exit!(1);
+            }
+        };
+
+        // Now check that the selected stage makes sense, and if not, print an error and end
         match (stage, &flags_cmd) {
             (0, Subcommand::Build { .. }) => {
-                eprintln!("ERROR: cannot build anything on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("build");
             }
             (0, Subcommand::Check { .. }) => {
-                eprintln!("ERROR: cannot check anything on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("check");
             }
             (0, Subcommand::Doc { .. }) => {
-                eprintln!("ERROR: cannot document anything on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("doc");
             }
             (0, Subcommand::Clippy { .. }) => {
-                eprintln!("ERROR: cannot run clippy on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("clippy");
             }
             (0, Subcommand::Dist) => {
-                eprintln!("ERROR: cannot dist anything on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("dist");
             }
             (0, Subcommand::Install) => {
-                eprintln!("ERROR: cannot install anything on stage 0. Use at least stage 1.");
-                exit!(1);
+                check_stage0("install");
             }
             _ => {}
         }
@@ -1234,7 +1241,7 @@ impl Config {
             llvm_use_libcxx: llvm_use_libcxx.unwrap_or(false),
             llvm_use_linker,
             llvm_version_suffix,
-            local_rebuild: build_local_rebuild.unwrap_or(false),
+            local_rebuild,
             locked_deps: build_locked_deps.unwrap_or(false),
             low_priority: build_low_priority.unwrap_or(false),
             mandir: install_mandir.map(PathBuf::from),

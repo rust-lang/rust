@@ -854,6 +854,18 @@ mod snapshot {
     }
 
     #[test]
+    fn build_library_stage_0_local_rebuild() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("build")
+                .path("library")
+                .stage(0)
+                .targets(&[TEST_TRIPLE_1])
+                .args(&["--set", "build.local-rebuild=true"])
+                .render_steps(), @"[build] rustc 0 <host> -> std 0 <target1>");
+    }
+
+    #[test]
     fn build_library_stage_1() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
@@ -1693,6 +1705,22 @@ mod snapshot {
                 .render_steps(), @r"
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] bootstrap <host>
+        ");
+    }
+
+    #[test]
+    fn dist_library_stage_0_local_rebuild() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("dist")
+                .path("rust-std")
+                .stage(0)
+                .targets(&[TEST_TRIPLE_1])
+                .args(&["--set", "build.local-rebuild=true"])
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> std 0 <target1>
+        [build] rustc 0 <host> -> RustInstaller 1 <host>
+        [dist] rustc 0 <host> -> std 0 <target1>
         ");
     }
 
