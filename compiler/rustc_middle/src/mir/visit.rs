@@ -180,6 +180,15 @@ macro_rules! make_mir_visitor {
                 self.super_place(place, context, location);
             }
 
+            fn visit_compound_place(
+                &mut self,
+                place: & $($mutability)? CompoundPlace<'tcx>,
+                context: PlaceContext,
+                location: Location,
+            ) {
+                self.super_compound_place(place, context, location);
+            }
+
             visit_place_fns!($($mutability)?);
 
             /// This is called for every constant in the MIR body and every `required_consts`
@@ -1182,6 +1191,45 @@ macro_rules! visit_place_fns {
                 | PlaceElem::Downcast(..) => None,
             }
         }
+
+        fn super_compound_place(
+            &mut self,
+            place: &mut CompoundPlace<'tcx>,
+            context: PlaceContext,
+            location: Location,
+        ) {
+            self.visit_local(&mut place.local, context, location);
+
+            if let Some(new_projection_chain) =
+                self.process_projection_chain(&place.projection_chain, location)
+            {
+                place.projection_chain = self.tcx().mk_place_elem_chain(&new_projection_chain);
+            }
+        }
+
+        fn process_projection_chain<'a>(
+            &mut self,
+            projection_chain: &'a [&'tcx List<PlaceElem<'tcx>>],
+            location: Location,
+        ) -> Option<Vec<&'tcx List<PlaceElem<'tcx>>>> {
+            let mut projection_chain = Cow::Borrowed(projection_chain);
+
+            for i in 0..projection_chain.len() {
+                if let Some(segment) = projection_chain.get(i) {
+                    if let Some(segment) = self.process_projection(segment, location) {
+                        // This converts the borrowed projection chain into `Cow::Owned(_)` and returns a
+                        // clone of the projection chain so we can mutate and reintern later.
+                        let vec = projection_chain.to_mut();
+                        vec[i] = self.tcx().mk_place_elems(&segment);
+                    }
+                }
+            }
+
+            match projection_chain {
+                Cow::Borrowed(_) => None,
+                Cow::Owned(vec) => Some(vec),
+            }
+        }
     };
 
     () => {
@@ -1194,13 +1242,15 @@ macro_rules! visit_place_fns {
             self.super_projection(place_ref, context, location);
         }
 
-        fn visit_projection_elem(
+        fn visit_projection_elem<P>(
             &mut self,
-            place_ref: PlaceRef<'tcx>,
+            place_ref: P,
             elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
-        ) {
+        ) where
+            P: ProjectionBase<'tcx>,
+        {
             self.super_projection_elem(place_ref, elem, context, location);
         }
 
@@ -1235,13 +1285,15 @@ macro_rules! visit_place_fns {
             }
         }
 
-        fn super_projection_elem(
+        fn super_projection_elem<P>(
             &mut self,
-            _place_ref: PlaceRef<'tcx>,
+            _place_ref: P,
             elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
-        ) {
+        ) where
+            P: ProjectionBase<'tcx>,
+        {
             match elem {
                 ProjectionElem::OpaqueCast(ty)
                 | ProjectionElem::Subtype(ty)
@@ -1265,6 +1317,28 @@ macro_rules! visit_place_fns {
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
                 | ProjectionElem::Downcast(_, _) => {}
+            }
+        }
+
+        fn super_compound_place(
+            &mut self,
+            place: &CompoundPlace<'tcx>,
+            mut context: PlaceContext,
+            location: Location,
+        ) {
+            if !place.projection_chain.is_empty() && context.is_use() {
+                // ^ Only change the context if it is a real use, not a "use" in debuginfo.
+                context = if context.is_mutating_use() {
+                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
+                } else {
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
+                };
+            }
+
+            self.visit_local(place.local, context, location);
+
+            for (base, elem) in place.iter_projections().rev() {
+                self.visit_projection_elem(base, elem, context, location);
             }
         }
     };
@@ -1490,5 +1564,30 @@ where
     fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, location: Location) {
         (self.0)(*place, ctxt);
         self.visit_projection(place.as_ref(), ctxt, location);
+    }
+}
+
+/// Base of a projection in [`Visitor::visit_projection_elem`].
+pub trait ProjectionBase<'tcx>: Debug + Copy {
+    fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>;
+}
+
+impl<'tcx> ProjectionBase<'tcx> for PlaceRef<'tcx> {
+    fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        self.ty(local_decls, tcx)
+    }
+}
+
+impl<'tcx> ProjectionBase<'tcx> for CompoundPlaceRef<'tcx> {
+    fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        self.ty(local_decls, tcx)
     }
 }

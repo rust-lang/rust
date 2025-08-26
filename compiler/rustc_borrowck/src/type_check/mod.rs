@@ -19,7 +19,7 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
 use rustc_infer::traits::PredicateObligations;
-use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, ProjectionBase, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -1807,13 +1807,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn visit_projection_elem(
+    fn visit_projection_elem<P>(
         &mut self,
-        place: PlaceRef<'tcx>,
+        place: P,
         elem: PlaceElem<'tcx>,
         context: PlaceContext,
         location: Location,
-    ) {
+    ) where
+        P: ProjectionBase<'tcx>,
+    {
         let tcx = self.tcx();
         let base_ty = place.ty(self.body(), tcx);
         match elem {

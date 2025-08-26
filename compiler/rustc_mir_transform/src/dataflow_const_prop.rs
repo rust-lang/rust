@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, ProjectionBase, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
@@ -1069,13 +1069,15 @@ struct OperandCollector<'a, 'b, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for OperandCollector<'_, '_, 'tcx> {
-    fn visit_projection_elem(
+    fn visit_projection_elem<P>(
         &mut self,
-        _: PlaceRef<'tcx>,
+        _: P,
         elem: PlaceElem<'tcx>,
         _: PlaceContext,
         location: Location,
-    ) {
+    ) where
+        P: ProjectionBase<'tcx>,
+    {
         if let PlaceElem::Index(local) = elem
             && let Some(value) =
                 self.visitor.try_make_constant(self.ecx, local.into(), self.state, self.map)

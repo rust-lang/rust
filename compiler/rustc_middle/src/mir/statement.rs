@@ -589,14 +589,6 @@ impl<'tcx> CompoundPlace<'tcx> {
         CompoundPlaceRef { local: self.local, projection_chain_base: base, last_projection: last }
     }
 
-    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
-    where
-        D: HasLocalDecls<'tcx>,
-    {
-        PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
-            .projection_chain_ty(tcx, self.projection_chain)
-    }
-
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (CompoundPlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
@@ -623,6 +615,14 @@ impl<'tcx> CompoundPlace<'tcx> {
                 (base, elem)
             })
         })
+    }
+
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
+            .projection_chain_ty(tcx, self.projection_chain)
     }
 }
 
