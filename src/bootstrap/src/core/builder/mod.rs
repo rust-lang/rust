@@ -145,8 +145,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 }
 
 /// Metadata that describes an executed step, mostly for testing and tracing.
-#[allow(unused)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
     name: String,
     kind: Kind,
