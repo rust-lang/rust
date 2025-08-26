@@ -483,7 +483,7 @@ impl<'tcx> std::ops::Add<FfiResult<'tcx>> for FfiResult<'tcx> {
 /// in the `FfiResult` is final.
 type PartialFfiResult<'tcx> = Option<FfiResult<'tcx>>;
 
-/// What type indirection points to a given type.
+/// The type of an indirection (the way in which it points to its pointee).
 #[derive(Clone, Copy)]
 enum IndirectionKind {
     /// Box (valid non-null pointer, owns pointee).
@@ -492,6 +492,132 @@ enum IndirectionKind {
     Ref,
     /// Raw pointer (not necessarily non-null or valid. no info on ownership).
     RawPtr,
+}
+
+/// The different ways a given type can have/not have a fixed size
+#[derive(Clone, Copy)]
+enum TypeSizedness {
+    /// Type of definite size (pointers are C-compatible).
+    Definite,
+    /// Unsized type because it includes an opaque/foreign type (pointers are C-compatible).
+    UnsizedWithExternType,
+    /// Unsized type for other reasons (slice, string, dyn Trait, closure, ...) (pointers are not C-compatible).
+    UnsizedWithMetadata,
+    /// Not known, usually for placeholder types (Self in non-impl trait functions, type parameters, aliases, the like).
+    NotYetKnown,
+}
+
+/// Determine if a type is sized or not, and whether it affects references/pointers/boxes to it.
+fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> TypeSizedness {
+    let tcx = cx.tcx;
+
+    // note that sizedness is unrelated to inhabitedness
+    if ty.is_sized(tcx, cx.typing_env()) {
+        TypeSizedness::Definite
+    } else {
+        // the overall type is !Sized or ?Sized
+        match ty.kind() {
+            ty::Slice(_) => TypeSizedness::UnsizedWithMetadata,
+            ty::Str => TypeSizedness::UnsizedWithMetadata,
+            ty::Dynamic(..) => TypeSizedness::UnsizedWithMetadata,
+            ty::Foreign(..) => TypeSizedness::UnsizedWithExternType,
+            ty::Adt(def, args) => {
+                // for now assume: boxes and phantoms don't mess with this
+                match def.adt_kind() {
+                    AdtKind::Union | AdtKind::Enum => {
+                        bug!("unions and enums are necessarily sized")
+                    }
+                    AdtKind::Struct => {
+                        if let Some(sym::cstring_type | sym::cstr_type) =
+                            tcx.get_diagnostic_name(def.did())
+                        {
+                            return TypeSizedness::UnsizedWithMetadata;
+                        }
+
+                        // note: non-exhaustive structs from other crates are not assumed to be ?Sized
+                        // for the purpose of sizedness, it seems we are allowed to look at its current contents.
+
+                        if def.non_enum_variant().fields.is_empty() {
+                            bug!("an empty struct is necessarily sized");
+                        }
+
+                        let variant = def.non_enum_variant();
+
+                        // only the last field may be !Sized (or ?Sized in the case of type params)
+                        let last_field = match (&variant.fields).iter().last(){
+                            Some(last_field) => last_field,
+                            // even nonexhaustive-empty structs from another crate are considered Sized
+                            // (eventhough one could add a !Sized field to them)
+                            None => bug!("Empty struct should be Sized, right?"), //
+                        };
+                        let field_ty = get_type_from_field(cx, last_field, args);
+                        match get_type_sizedness(cx, field_ty) {
+                            s @ (TypeSizedness::UnsizedWithMetadata
+                            | TypeSizedness::UnsizedWithExternType
+                            | TypeSizedness::NotYetKnown) => s,
+                            TypeSizedness::Definite => {
+                                bug!("failed to find the reason why struct `{:?}` is unsized", ty)
+                            }
+                        }
+                    }
+                }
+            }
+            ty::Tuple(tuple) => {
+                // only the last field may be !Sized (or ?Sized in the case of type params)
+                let item_ty: Ty<'tcx> = match tuple.last() {
+                    Some(item_ty) => *item_ty,
+                    None => bug!("Empty tuple (AKA unit type) should be Sized, right?"),
+                };
+                let item_ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), item_ty).unwrap_or(item_ty);
+                match get_type_sizedness(cx, item_ty) {
+                    s @ (TypeSizedness::UnsizedWithMetadata
+                    | TypeSizedness::UnsizedWithExternType
+                    | TypeSizedness::NotYetKnown) => s,
+                    TypeSizedness::Definite => {
+                        bug!("failed to find the reason why tuple `{:?}` is unsized", ty)
+                    }
+                }
+            }
+
+            ty_kind @ (ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnPtr(..)
+            | ty::Never
+            | ty::Pat(..) // these are (for now) numeric types with a range-based restriction
+            ) => {
+                // those types are all sized, right?
+                bug!(
+                    "This ty_kind (`{:?}`) should be sized, yet we are in a branch of code that deals with unsized types.",
+                    ty_kind,
+                )
+            }
+
+            // While opaque types are checked for earlier, if a projection in a struct field
+            // normalizes to an opaque type, then it will reach ty::Alias(ty::Opaque) here.
+            ty::Param(..) | ty::Alias(ty::Opaque | ty::Projection | ty::Inherent, ..) => {
+                return TypeSizedness::NotYetKnown;
+            }
+
+            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
+            ty::Alias(ty::Free, ..)
+            | ty::Infer(..)
+            | ty::Bound(..)
+            | ty::Error(_)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Placeholder(..)
+            | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+        }
+    }
 }
 
 bitflags! {
@@ -685,13 +811,6 @@ impl VisitorState {
         self.persistent_flags.contains(PersistentStateFlags::DEFINED) && self.is_in_function()
     }
 
-    /// Whether the type is used (directly or not) in a function pointer type.
-    /// Here, we also allow non-FFI-safe types behind a C pointer,
-    /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_fnptr(&self) -> bool {
-        self.persistent_flags.contains(PersistentStateFlags::THEORETICAL) && self.is_in_function()
-    }
-
     /// Whether we can expect type parameters and co in a given type.
     fn can_expect_ty_params(&self) -> bool {
         // rust-defined functions, as well as FnPtrs
@@ -716,6 +835,12 @@ impl VisitorState {
     fn is_nonmut_pointee(&self) -> bool {
         self.is_pointee() && !self.ephemeral_flags.contains(EphemeralStateFlags::PTR_MUT)
     }
+
+    /// Whether the current type is behind a raw pointer
+    #[inline]
+    fn is_raw_pointee(&self) -> bool {
+        self.ephemeral_flags.contains(EphemeralStateFlags::IN_PTR | EphemeralStateFlags::PTR_RAW)
+    }
 }
 
 /// Visitor used to recursively traverse MIR types and evaluate FFI-safety.
@@ -725,15 +850,12 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// To prevent problems with recursive types,
     /// add a types-in-check cache.
-    cache: FxHashSet<Ty<'tcx>>,
-    /// The original type being checked, before we recursed
-    /// to any other types it contains.
-    base_fn_mode: CItemKind,
+    ty_cache: FxHashSet<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>, base_fn_mode: CItemKind) -> Self {
-        Self { cx, base_fn_mode, cache: FxHashSet::default() }
+    fn new(cx: &'a LateContext<'tcx>) -> Self {
+        Self { cx, ty_cache: FxHashSet::default() }
     }
 
     /// Return the right help for Cstring and Cstr-linked unsafety.
@@ -762,7 +884,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         inner_ty: Ty<'tcx>,
         indirection_kind: IndirectionKind,
     ) -> FfiResult<'tcx> {
-        use FfiResult::*;
         let tcx = self.cx.tcx;
 
         if let ty::Adt(def, _) = inner_ty.kind() {
@@ -794,64 +915,48 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        match indirection_kind {
-            IndirectionKind::Box => {
-                // FIXME(ctypes): this logic is broken, but it still fits the current tests:
-                // - for some reason `Box<_>`es in `extern "ABI" {}` blocks
-                //   (including within FnPtr:s)
-                //   are not treated as pointers but as unsafe structs
-                // - otherwise, treat the box itself correctly, and follow pointee safety logic
-                //   as described in the other `indirection_type` match branch.
-                if state.is_in_defined_function()
-                    || (state.is_in_fnptr()
-                        && matches!(self.base_fn_mode, CItemKind::ExportedFunction))
-                {
-                    if inner_ty.is_sized(tcx, self.cx.typing_env()) {
-                        return FfiSafe;
-                    } else {
-                        return FfiResult::new_with_reason(
-                            ty,
-                            fluent::lint_improper_ctypes_box,
-                            None,
-                        );
-                    }
-                } else {
-                    // (mid-retcon-commit-chain comment:)
-                    // this is the original fallback behavior, which is wrong
-                    if let ty::Adt(def, args) = ty.kind() {
-                        self.visit_struct_or_union(state, ty, *def, args)
-                    } else if cfg!(debug_assertions) {
-                        bug!("ImproperCTypes: this retcon commit was badly written")
-                    } else {
-                        FfiSafe
-                    }
-                }
+        // there are three remaining concerns with the pointer:
+        // - is the pointer compatible with a C pointer in the first place? (if not, only send that error message)
+        // - is the pointee FFI-safe? (it might not matter, see mere lines below)
+        // - does the pointer type contain a non-zero assumption, but has a value given by non-rust code?
+        // this block deals with the first two.
+        match get_type_sizedness(self.cx, inner_ty) {
+            TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite => {
+                // FIXME(ctypes):
+                // for now, we consider this to be safe even in the case of a FFI-unsafe pointee
+                // this is technically only safe if the pointer is never dereferenced on the non-rust
+                // side of the FFI boundary, i.e. if the type is to be treated as opaque
+                // there are techniques to flag those pointees as opaque, but not always, so we can only enforce this
+                // in some cases.
+                FfiResult::FfiSafe
             }
-            IndirectionKind::Ref | IndirectionKind::RawPtr => {
-                // Weird behaviour for pointee safety. the big question here is
-                // "if you have a FFI-unsafe pointee behind a FFI-safe pointer type, is it ok?"
-                // The answer until now is:
-                // "It's OK for rust-defined functions and callbacks, we'll assume those are
-                // meant to be opaque types on the other side of the FFI boundary".
-                //
-                // Reasoning:
-                // For extern function declarations, the actual definition of the function is
-                // written somewhere else, meaning the declaration is free to express this
-                // opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void
-                // (opaque callee-side). For extern function definitions, however, in the case
-                // where the type is opaque caller-side, it is not opaque callee-side,
-                // and having the full type information is necessary to compile the function.
-                //
-                // It might be better to rething this, or even ignore pointee safety for a first
-                // batch of behaviour changes. See the discussion that ends with
-                // https://github.com/rust-lang/rust/pull/134697#issuecomment-2692610258
-                if (state.is_in_defined_function() || state.is_in_fnptr())
-                    && inner_ty.is_sized(self.cx.tcx, self.cx.typing_env())
-                {
-                    FfiSafe
-                } else {
-                    self.visit_type(state.get_next(ty), inner_ty)
-                }
+            TypeSizedness::NotYetKnown => {
+                // types with sizedness NotYetKnown:
+                // - Type params (with `variable: impl Trait` shorthand or not)
+                //   (function definitions only, let's see how this interacts with monomorphisation)
+                // - Self in trait functions/methods
+                // - Opaque return types
+                //   (always FFI-unsafe)
+                // - non-exhaustive structs/enums/unions from other crates
+                //   (always FFI-unsafe)
+                // (for the three first, this is unless there is a `+Sized` bound involved)
+
+                // whether they are FFI-safe or not does not depend on the indirections involved (&Self, &T, Box<impl Trait>),
+                // so let's not wrap the current context around a potential FfiUnsafe type param.
+                self.visit_type(state.get_next(ty), inner_ty)
+            }
+            TypeSizedness::UnsizedWithMetadata => {
+                let help = match inner_ty.kind() {
+                    ty::Str => Some(fluent::lint_improper_ctypes_str_help),
+                    ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
+                    _ => None,
+                };
+                let reason = match indirection_kind {
+                    IndirectionKind::RawPtr => fluent::lint_improper_ctypes_unsized_ptr,
+                    IndirectionKind::Ref => fluent::lint_improper_ctypes_unsized_ref,
+                    IndirectionKind::Box => fluent::lint_improper_ctypes_unsized_box,
+                };
+                return FfiResult::new_with_reason(ty, reason, help);
             }
         }
     }
@@ -1017,7 +1122,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.
-        if !(self.cache.insert(ty) && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
+        if !(self.ty_cache.insert(ty)
+            && self.cx.tcx.recursion_limit().value_within_limit(state.depth))
         {
             return FfiSafe;
         }
@@ -1032,6 +1138,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
+                        // There are two ways to encounter cstr here (since pointees are treated elsewhere):
+                        // - Cstr used as an argument of a FnPtr (!Sized structs are in fact allowed there)
+                        // - Cstr as the last field of a struct
+                        // This excludes non-compiling code where a CStr is used where !Sized is not allowed
+                        // (currently those mistakes prevent this lint from running)
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
                         {
@@ -1083,6 +1194,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     state.is_direct_function_return()
                     // `()` fields are safe
                     || state.is_field()
+                    // this serves as a "void*"
+                    || state.is_raw_pointee()
                 } else {
                     false
                 };
@@ -1231,7 +1344,6 @@ impl<'tcx> ImproperCTypesLint {
         state: VisitorState,
         hir_ty: &hir::Ty<'tcx>,
         ty: Ty<'tcx>,
-        fn_mode: CItemKind,
     ) {
         struct FnPtrFinder<'tcx> {
             current_depth: usize,
@@ -1284,7 +1396,7 @@ impl<'tcx> ImproperCTypesLint {
             iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
         );
         for (depth, (fn_ptr_ty, span)) in all_types {
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx);
             let bridge_state = VisitorState { depth, ..state };
             // FIXME(ctypes): make a check_for_fnptr
             let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
@@ -1307,12 +1419,12 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let state = VisitorState::argument_from_fnmode(fn_mode);
-            self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty, fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
             let state = VisitorState::return_from_fnmode(fn_mode);
-            self.check_type_for_external_abi_fnptr(cx, state, ret_hir, sig.output(), fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, state, ret_hir, sig.output());
         }
     }
 
@@ -1335,7 +1447,7 @@ impl<'tcx> ImproperCTypesLint {
 
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor::new(cx, CItemKind::ImportedExtern);
+        let mut visitor = ImproperCTypesVisitor::new(cx);
         let ffi_res = visitor.check_type(VisitorState::static_var(), ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
@@ -1353,14 +1465,14 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let visit_state = VisitorState::argument_from_fnmode(fn_mode);
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx);
             let ffi_res = visitor.check_type(visit_state, *input_ty);
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
             let visit_state = VisitorState::return_from_fnmode(fn_mode);
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx);
             let ffi_res = visitor.check_type(visit_state, sig.output());
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
         }
@@ -1518,7 +1630,6 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     VisitorState::static_var(),
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
-                    CItemKind::ExportedFunction, // TODO: for some reason, this is the value that reproduces old behaviour
                 );
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
@@ -1552,7 +1663,6 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             VisitorState::static_var(),
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity(),
-            CItemKind::ImportedExtern,
         );
     }
 
