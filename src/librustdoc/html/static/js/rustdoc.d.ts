@@ -241,6 +241,7 @@ declare namespace rustdoc {
         modulePath: number?,
         exactModulePath: number?,
         parent: number?,
+        traitParent: number?,
         deprecated: boolean,
         associatedItemDisambiguator: string?,
     }
@@ -288,7 +289,8 @@ declare namespace rustdoc {
         path: PathData?,
         type: FunctionData?,
         deprecated: boolean,
-        parent: { path: PathData, name: string}?,
+        parent: { path: PathData, name: string }?,
+        traitParent: { path: PathData, name: string }?,
     }
 
     type ItemType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |

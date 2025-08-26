@@ -1555,11 +1555,13 @@ class DocSearch {
          * module_path,
          * exact_module_path,
          * parent,
+         * trait_parent,
          * deprecated,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1573,8 +1575,9 @@ class DocSearch {
             modulePath: raw[2] === 0 ? null : raw[2] - 1,
             exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
             parent: raw[4] === 0 ? null : raw[4] - 1,
-            deprecated: raw[5] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+            traitParent: raw[5] === 0 ? null : raw[5] - 1,
+            deprecated: raw[6] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
         };
     }
 
@@ -1825,6 +1828,10 @@ class DocSearch {
         const [parentName, parentPath] = entry !== null && entry.parent !== null ?
             await Promise.all([this.getName(entry.parent), this.getPathData(entry.parent)]) :
             [null, null];
+        const [traitParentName, traitParentPath] = entry !== null && entry.traitParent !== null ?
+            await Promise.all([this.getName(entry.traitParent), this.getPathData(entry.traitParent)]) :
+            [null, null];
+
         return {
             id,
             crate: entry ? nonnull(await this.getName(entry.krate)) : "",
@@ -1843,6 +1850,10 @@ class DocSearch {
             parent: parentName !== null && parentPath !== null ?
                 { name: parentName, path: parentPath } :
                 null,
+            traitParent: traitParentName !== null && traitParentPath !== null ?
+                { name: traitParentName, path: traitParentPath } :
+                null,
+
         };
     }
 
@@ -2101,6 +2112,10 @@ class DocSearch {
                 displayPath = item.modulePath + "::";
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
+            }
+            if (item.traitParent) {
+                const tparent = item.traitParent; 
+                exactPath = `${tparent.path.exactModulePath}::${tparent.name}`;
             }
             return [displayPath, href, `${exactPath}::${name}`];
         };
@@ -2531,10 +2546,14 @@ class DocSearch {
          */
         const transformResults = (results, typeInfo, duplicates) => {
             const out = [];
+            
+            // if there are duplicates, those from impl blocks should not be shown
+            results.sort(([_a, a], [_b, b]) => Number(!!a.traitParent) - Number(!!b.traitParent))
 
             for (const [result, item] of results) {
                 if (item.id !== -1) {
                     const res = buildHrefAndPath(item);
+                    console.log(res);
                     // many of these properties don't strictly need to be
                     // copied over, but copying them over satisfies tsc,
                     // and hopefully plays nice with the shape optimization
@@ -2567,6 +2586,7 @@ class DocSearch {
 
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath = res[2] + "|" + obj.item.ty;
+                    console.log(obj.fullPath, item);
 
                     if (duplicates.has(obj.fullPath)) {
                         continue;
