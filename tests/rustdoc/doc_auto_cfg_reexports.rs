@@ -20,3 +20,16 @@ mod x {
 //      'Available on non-crate feature pistache only.'
 #[cfg(not(feature = "pistache"))]
 pub use crate::x::B;
+
+// Now checking that `cfg`s are not applied on non-inlined reexports.
+pub mod pub_sub_mod {
+    //@ has 'foo/pub_sub_mod/index.html'
+    // There should be only only item with `cfg` note.
+    //@ count - '//*[@class="stab portability"]' 1
+    // And obviously the item should be "blabla".
+    //@ has - '//dt' 'blablaNon-pistache'
+    #[cfg(not(feature = "pistache"))]
+    pub fn blabla() {}
+
+    pub use self::blabla as another;
+}

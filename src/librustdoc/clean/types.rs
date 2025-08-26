@@ -925,7 +925,8 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
 /// This type keeps track of (doc) cfg information as we go down the item tree.
 #[derive(Clone, Debug)]
 pub(crate) struct CfgInfo {
-    /// List of `doc(auto_cfg(hide(...)))` cfgs.
+    /// List of currently active `doc(auto_cfg(hide(...)))` cfgs,minus currently active
+    /// `doc(auto_cfg(show(...)))` cfgs.
     hidden_cfg: FxHashSet<Cfg>,
     /// Current computed `cfg`. Each time we enter a new item, this field is updated as well while
     /// taking into account the `hidden_cfg` information.
@@ -1181,7 +1182,8 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             Some(Arc::new(cfg_info.current_cfg.clone()))
         }
     } else {
-        // Since we always want to collect all `cfg` items, we remove the hidden ones afterward.
+        // If `doc(auto_cfg)` feature is enabled, we want to collect all `cfg` items, we remove the
+        // hidden ones afterward.
         match cfg_info.current_cfg.strip_hidden(&cfg_info.hidden_cfg) {
             None | Some(Cfg::True) => None,
             Some(cfg) => Some(Arc::new(cfg)),
