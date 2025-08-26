@@ -134,6 +134,8 @@ pub(crate) struct IndexItem {
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
     pub(crate) parent_idx: Option<usize>,
+    pub(crate) trait_parent: Option<DefId>,
+    pub(crate) trait_parent_idx: Option<usize>,
     pub(crate) exact_module_path: Option<Vec<Symbol>>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
