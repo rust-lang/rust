@@ -350,7 +350,6 @@ impl<'tcx> FfiResult<'tcx> {
     /// If the FfiUnsafe variant, 'wraps' all reasons,
     /// creating new `FfiUnsafeReason`s, putting the originals as their `inner` fields.
     /// Otherwise, keep unchanged.
-    #[expect(unused)]
     fn wrap_all(self, ty: Ty<'tcx>, note: DiagMessage, help: Option<DiagMessage>) -> Self {
         match self {
             Self::FfiUnsafe(this) => {
@@ -705,6 +704,18 @@ impl VisitorState {
     fn is_field(&self) -> bool {
         self.ephemeral_flags.contains(EphemeralStateFlags::IN_ADT)
     }
+
+    /// Whether the current type is behind a pointer
+    #[inline]
+    fn is_pointee(&self) -> bool {
+        self.ephemeral_flags.contains(EphemeralStateFlags::IN_PTR)
+    }
+
+    /// Whether the current type is behind a pointer that doesn't allow mutating this
+    #[inline]
+    fn is_nonmut_pointee(&self) -> bool {
+        self.is_pointee() && !self.ephemeral_flags.contains(EphemeralStateFlags::PTR_MUT)
+    }
 }
 
 /// Visitor used to recursively traverse MIR types and evaluate FFI-safety.
@@ -717,13 +728,30 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
     cache: FxHashSet<Ty<'tcx>>,
     /// The original type being checked, before we recursed
     /// to any other types it contains.
-    base_ty: Ty<'tcx>,
     base_fn_mode: CItemKind,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>, base_ty: Ty<'tcx>, base_fn_mode: CItemKind) -> Self {
-        Self { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
+    fn new(cx: &'a LateContext<'tcx>, base_fn_mode: CItemKind) -> Self {
+        Self { cx, base_fn_mode, cache: FxHashSet::default() }
+    }
+
+    /// Return the right help for Cstring and Cstr-linked unsafety.
+    fn visit_cstr(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        debug_assert!(matches!(ty.kind(), ty::Adt(def, _)
+            if matches!(
+                self.cx.tcx.get_diagnostic_name(def.did()),
+                Some(sym::cstring_type | sym::cstr_type)
+            )
+        ));
+
+        let help = if state.is_nonmut_pointee() {
+            fluent::lint_improper_ctypes_cstr_help_const
+        } else {
+            fluent::lint_improper_ctypes_cstr_help_mut
+        };
+
+        FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_cstr_reason, Some(help))
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -736,6 +764,35 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
         let tcx = self.cx.tcx;
+
+        if let ty::Adt(def, _) = inner_ty.kind() {
+            if let Some(diag_name @ (sym::cstring_type | sym::cstr_type)) =
+                tcx.get_diagnostic_name(def.did())
+            {
+                // we have better error messages when checking for C-strings directly
+                let mut cstr_res = self.visit_cstr(state.get_next(ty), inner_ty); // always unsafe with one depth-one reason.
+
+                // Cstr pointer have metadata, CString is Sized
+                if diag_name == sym::cstr_type {
+                    // we need to override the "type" part of `cstr_res`'s only FfiResultReason
+                    // so it says that it's the use of the indirection that is unsafe
+                    match cstr_res {
+                        FfiResult::FfiUnsafe(ref mut reasons) => {
+                            reasons.first_mut().unwrap().reason.ty = ty;
+                        }
+                        _ => unreachable!(),
+                    }
+                    let note = match indirection_kind {
+                        IndirectionKind::RawPtr => fluent::lint_improper_ctypes_unsized_ptr,
+                        IndirectionKind::Ref => fluent::lint_improper_ctypes_unsized_ref,
+                        IndirectionKind::Box => fluent::lint_improper_ctypes_unsized_box,
+                    };
+                    return cstr_res.wrap_all(ty, note, None);
+                } else {
+                    return cstr_res;
+                }
+            }
+        }
 
         match indirection_kind {
             IndirectionKind::Box => {
@@ -977,13 +1034,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     AdtKind::Struct | AdtKind::Union => {
                         if let Some(sym::cstring_type | sym::cstr_type) =
                             tcx.get_diagnostic_name(def.did())
-                            && !self.base_ty.is_mutable_ptr()
                         {
-                            return FfiResult::new_with_reason(
-                                ty,
-                                fluent::lint_improper_ctypes_cstr_reason,
-                                Some(fluent::lint_improper_ctypes_cstr_help),
-                            );
+                            return self.visit_cstr(state, ty);
                         }
                         self.visit_struct_or_union(state, ty, def, args)
                     }
@@ -1232,7 +1284,7 @@ impl<'tcx> ImproperCTypesLint {
             iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
         );
         for (depth, (fn_ptr_ty, span)) in all_types {
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_ptr_ty, fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
             let bridge_state = VisitorState { depth, ..state };
             // FIXME(ctypes): make a check_for_fnptr
             let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
@@ -1283,7 +1335,7 @@ impl<'tcx> ImproperCTypesLint {
 
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::ImportedExtern);
+        let mut visitor = ImproperCTypesVisitor::new(cx, CItemKind::ImportedExtern);
         let ffi_res = visitor.check_type(VisitorState::static_var(), ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
@@ -1301,14 +1353,14 @@ impl<'tcx> ImproperCTypesLint {
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let visit_state = VisitorState::argument_from_fnmode(fn_mode);
-            let mut visitor = ImproperCTypesVisitor::new(cx, *input_ty, fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
             let ffi_res = visitor.check_type(visit_state, *input_ty);
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
             let visit_state = VisitorState::return_from_fnmode(fn_mode);
-            let mut visitor = ImproperCTypesVisitor::new(cx, sig.output(), fn_mode);
+            let mut visitor = ImproperCTypesVisitor::new(cx, fn_mode);
             let ffi_res = visitor.check_type(visit_state, sig.output());
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
         }
