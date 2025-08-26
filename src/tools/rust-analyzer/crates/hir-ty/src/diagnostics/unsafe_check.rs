@@ -119,11 +119,11 @@ pub fn unsafe_operations(
     def: DefWithBodyId,
     body: &Body,
     current: ExprId,
-    callback: &mut dyn FnMut(InsideUnsafeBlock),
+    callback: &mut dyn FnMut(ExprOrPatId, InsideUnsafeBlock),
 ) {
     let mut visitor_callback = |diag| {
-        if let UnsafeDiagnostic::UnsafeOperation { inside_unsafe_block, .. } = diag {
-            callback(inside_unsafe_block);
+        if let UnsafeDiagnostic::UnsafeOperation { inside_unsafe_block, node, .. } = diag {
+            callback(node, inside_unsafe_block);
         }
     };
     let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
