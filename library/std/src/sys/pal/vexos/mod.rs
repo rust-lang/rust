@@ -5,6 +5,7 @@ pub mod pipe;
 pub mod thread;
 pub mod time;
 
+use crate::sys::stdio;
 use crate::arch::global_asm;
 use crate::ptr::{self, addr_of_mut};
 use crate::time::{Duration, Instant};
@@ -53,14 +54,13 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 pub unsafe fn cleanup() {
     let exit_time = Instant::now();
     const FLUSH_TIMEOUT: Duration = Duration::from_millis(15);
-    const STDIO_CHANNEL: u32 = 1;
 
     // Force the serial buffer to flush
     while exit_time.elapsed() < FLUSH_TIMEOUT {
         vex_sdk::vexTasksRun();
 
         // If the buffer has been fully flushed, exit the loop
-        if vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) == (crate::sys::stdio::STDOUT_BUF_SIZE as i32)
+        if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32)
         {
             break;
         }
