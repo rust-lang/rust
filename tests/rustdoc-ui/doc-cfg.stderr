@@ -30,6 +30,18 @@ error: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or key/value item
 LL | #[doc(auto_cfg(hide(foo::bar)))]
    |                     ^^^^^^^^
 
+error: `expected boolean for #[doc(auto_cfg = ...)]`
+  --> $DIR/doc-cfg.rs:16:7
+   |
+LL | #[doc(auto_cfg = 42)]
+   |       ^^^^^^^^^^^^^
+
+error: `expected boolean for #[doc(auto_cfg = ...)]`
+  --> $DIR/doc-cfg.rs:17:7
+   |
+LL | #[doc(auto_cfg = "a")]
+   |       ^^^^^^^^^^^^^^
+
 warning: unexpected `cfg` condition name: `foo`
   --> $DIR/doc-cfg.rs:6:11
    |
@@ -74,5 +86,5 @@ error: multiple `cfg` predicates are specified
 LL | #[doc(cfg(foo, bar))]
    |                ^^^
 
-error: aborting due to 9 previous errors; 2 warnings emitted
+error: aborting due to 11 previous errors; 2 warnings emitted
 
