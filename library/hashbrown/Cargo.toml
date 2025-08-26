@@ -14,7 +14,7 @@ rust-version = "1.65.0"
 
 [dependencies]
 # For the default hasher
-foldhash = { version = "0.1.2", default-features = false, optional = true }
+foldhash = { version = "0.2.0", default-features = false, optional = true }
 
 # For external trait impls
 rayon = { version = "1.2", optional = true }
