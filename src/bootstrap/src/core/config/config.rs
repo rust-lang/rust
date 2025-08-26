@@ -46,8 +46,8 @@ use crate::core::config::toml::rust::{
 };
 use crate::core::config::toml::target::Target;
 use crate::core::config::{
-    DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt, RustcLto, SplitDebuginfo,
-    StringOrBool, threads_from_config,
+    CompilerBuiltins, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge, ReplaceOpt,
+    RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
 };
 use crate::core::download::{
     DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
@@ -121,8 +121,7 @@ pub struct Config {
     pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: build_helper::stage0_parser::Stage0,
     pub android_ndk: Option<PathBuf>,
-    /// Whether to use the `c` feature of the `compiler_builtins` crate.
-    pub optimized_compiler_builtins: bool,
+    pub optimized_compiler_builtins: CompilerBuiltins,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -1109,7 +1108,11 @@ impl Config {
         let rustfmt_info = git_info(&exec_ctx, omit_git_hash, &src.join("src/tools/rustfmt"));
 
         let optimized_compiler_builtins =
-            build_optimized_compiler_builtins.unwrap_or(channel != "dev");
+            build_optimized_compiler_builtins.unwrap_or(if channel == "dev" {
+                CompilerBuiltins::BuildRustOnly
+            } else {
+                CompilerBuiltins::BuildLLVMFuncs
+            });
         let vendor = build_vendor.unwrap_or(
             rust_info.is_from_tarball()
                 && src.join("vendor").exists()
@@ -1672,11 +1675,11 @@ impl Config {
         self.target_config.get(&target).and_then(|t| t.rpath).unwrap_or(self.rust_rpath)
     }
 
-    pub fn optimized_compiler_builtins(&self, target: TargetSelection) -> bool {
+    pub fn optimized_compiler_builtins(&self, target: TargetSelection) -> &CompilerBuiltins {
         self.target_config
             .get(&target)
-            .and_then(|t| t.optimized_compiler_builtins)
-            .unwrap_or(self.optimized_compiler_builtins)
+            .and_then(|t| t.optimized_compiler_builtins.as_ref())
+            .unwrap_or(&self.optimized_compiler_builtins)
     }
 
     pub fn llvm_enabled(&self, target: TargetSelection) -> bool {

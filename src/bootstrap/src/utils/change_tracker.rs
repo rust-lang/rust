@@ -521,4 +521,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "It is no longer possible to `x dist` or `x install` with stage 0. All dist and install commands have to be on stage 1+.",
     },
+    ChangeInfo {
+        change_id: 143689,
+        severity: ChangeSeverity::Info,
+        summary: "The `optimized-compiler-builtins` option now accepts a path to an existing compiler-rt builtins library.",
+    },
 ];
