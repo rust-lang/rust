@@ -363,8 +363,17 @@ lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 
-lint_improper_ctypes_cstr_help =
-    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_help_const =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()` or `CString::as_ptr()`
+lint_improper_ctypes_cstr_help_mut =
+    consider passing a `*mut std::ffi::c_char` instead, and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+lint_improper_ctypes_cstr_help_owned =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+    (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
+lint_improper_ctypes_cstr_help_unknown =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use (depending on the use case) `CStr::as_ptr()`, `CString::into_raw()` then `CString::from_raw()`, or a dedicated buffer
 lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
 
 lint_improper_ctypes_dyn = trait objects have no C equivalent
@@ -386,8 +395,8 @@ lint_improper_ctypes_opaque = opaque types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
-lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 
+lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
 lint_improper_ctypes_str_reason = string slices have no C equivalent
 lint_improper_ctypes_struct_fieldless_help = consider adding a member to this struct
 
@@ -408,6 +417,10 @@ lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[re
 
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
+
+lint_improper_ctypes_unsized_box = this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ptr = this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ref = this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 lint_incomplete_include =
     include macro expected single expression in source
