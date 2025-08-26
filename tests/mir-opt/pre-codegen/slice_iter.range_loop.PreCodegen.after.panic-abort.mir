@@ -5,7 +5,6 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     debug f => _2;
     let mut _0: ();
     let mut _3: usize;
-    let mut _4: usize;
     let mut _8: std::option::Option<usize>;
     let mut _10: bool;
     let mut _12: &impl Fn(usize, &T);
@@ -24,6 +23,7 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         }
         scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
             scope 6 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
+                let mut _4: usize;
                 let mut _6: bool;
                 let _7: usize;
                 scope 7 {

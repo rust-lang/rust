@@ -27,10 +27,10 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let _3: usize;
             let mut _7: *mut T;
             let mut _8: *mut T;
-            let mut _9: *const T;
             scope 5 {
                 let _6: std::ptr::NonNull<T>;
                 scope 6 {
+                    let _9: *const T;
                     scope 7 {
                     }
                     scope 11 (inlined std::ptr::without_provenance::<T>) {

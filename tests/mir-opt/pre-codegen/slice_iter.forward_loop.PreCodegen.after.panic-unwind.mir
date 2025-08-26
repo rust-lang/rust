@@ -4,8 +4,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     debug slice => _1;
     debug f => _2;
     let mut _0: ();
-    let mut _6: std::ptr::NonNull<T>;
-    let mut _9: *const T;
     let mut _22: std::option::Option<&T>;
     let mut _24: &impl Fn(&T);
     let mut _25: (&T,);
@@ -19,6 +17,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             debug x => _23;
         }
         scope 16 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+            let mut _6: std::ptr::NonNull<T>;
             let _10: std::ptr::NonNull<T>;
             let _12: std::ptr::NonNull<T>;
             let mut _15: bool;
@@ -74,6 +73,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let mut _8: *mut T;
             scope 5 {
                 scope 6 {
+                    let _9: *const T;
                     scope 7 {
                     }
                     scope 11 (inlined std::ptr::without_provenance::<T>) {

@@ -4,8 +4,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     debug slice => _1;
     debug f => _2;
     let mut _0: ();
-    let mut _6: std::ptr::NonNull<T>;
-    let mut _9: *const T;
     let mut _10: usize;
     let mut _28: std::option::Option<(usize, &T)>;
     let mut _31: &impl Fn(usize, &T);
@@ -47,6 +45,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 }
             }
             scope 28 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+                let mut _6: std::ptr::NonNull<T>;
                 let _11: std::ptr::NonNull<T>;
                 let _13: std::ptr::NonNull<T>;
                 let mut _16: bool;
@@ -103,6 +102,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             let mut _8: *mut T;
             scope 5 {
                 scope 6 {
+                    let _9: *const T;
                     scope 7 {
                     }
                     scope 11 (inlined std::ptr::without_provenance::<T>) {
