@@ -616,7 +616,9 @@ impl Step for Std {
             return;
         }
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            build_compiler: run
+                .builder
+                .compiler_for_std(run.builder.top_stage, run.builder.host_target),
             target: run.target,
             format: if run.builder.config.cmd.json() {
                 DocumentationFormat::Json

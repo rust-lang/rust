@@ -1360,6 +1360,14 @@ impl<'a> Builder<'a> {
         self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
     }
 
+    pub fn compiler_for_std(&self, stage: u32, target: TargetSelection) -> Compiler {
+        if compile::Std::should_be_uplifted_from_stage_1(self, stage, target) {
+            self.compiler(1, self.host_target)
+        } else {
+            self.compiler(stage, self.host_target)
+        }
+    }
+
     /// Similar to `compiler`, except handles the full-bootstrap option to
     /// silently use the stage1 compiler instead of a stage2 compiler if one is
     /// requested.

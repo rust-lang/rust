@@ -150,7 +150,7 @@ impl Step for Std {
         trace!(force_recompile);
 
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage, run.target),
             target: run.target,
             crates,
             force_recompile,

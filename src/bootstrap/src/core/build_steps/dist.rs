@@ -115,7 +115,7 @@ impl Step for JsonDocs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(JsonDocs {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage, run.target),
             target: run.target,
         });
     }
