@@ -407,8 +407,11 @@
 #build.profiler = false
 
 # Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
-# sources are available.
+# Choosing true requires the LLVM submodule to be managed by bootstrap (i.e. not external)
+# so that `compiler-rt` sources are available.
+#
+# Setting this to a path removes the requirement for a C toolchain, but requires setting the
+# path to an existing library containing the builtins library from LLVM's compiler-rt.
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
@@ -1041,13 +1044,15 @@
 #runner = <none> (string)
 
 # Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics
-# on this target.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external) so that `compiler-rt`
-# sources are available.
+# on this target. Choosing true requires the LLVM submodule to be managed by bootstrap
+# (i.e. not external) so that `compiler-rt` sources are available.
+#
+# Setting this to a path removes the requirement for a C toolchain, but requires setting the
+# path to an existing library containing the builtins library from LLVM's compiler-rt.
 #
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
-#optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
+#optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
 # This overrides the global `rust.jemalloc` option. See that option for more info.

@@ -269,9 +269,9 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_profiler, profiler, "build");
 
     let current_optimized_compiler_builtins =
-        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     let optimized_compiler_builtins =
-        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
     // We always build the in-tree compiler on cross targets, so we only care

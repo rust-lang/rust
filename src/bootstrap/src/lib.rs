@@ -1950,6 +1950,20 @@ impl Build {
         t!(fs::remove_dir_all(dir))
     }
 
+    /// Make sure that `dir` will be an empty existing directory after this function ends.
+    /// If it existed before, it will be first deleted.
+    fn clear_dir(&self, dir: &Path) {
+        if self.config.dry_run() {
+            return;
+        }
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("dir-clear", ?dir);
+
+        let _ = std::fs::remove_dir_all(dir);
+        self.create_dir(dir);
+    }
+
     fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
