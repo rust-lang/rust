@@ -1,7 +1,7 @@
 use std::ffi::CString;
 use std::sync::Arc;
 
-use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::ty::TyCtxt;
@@ -47,16 +47,14 @@ pub struct ThinShared<B: WriteBackendMethods> {
 
 pub enum SerializedModule<M: ModuleBufferMethods> {
     Local(M),
-    FromRlib(Vec<u8>),
-    FromUncompressedFile(Mmap),
+    FromFile(OwnedSlice),
 }
 
 impl<M: ModuleBufferMethods> SerializedModule<M> {
     pub fn data(&self) -> &[u8] {
         match *self {
             SerializedModule::Local(ref m) => m.data(),
-            SerializedModule::FromRlib(ref m) => m,
-            SerializedModule::FromUncompressedFile(ref m) => m,
+            SerializedModule::FromFile(ref m) => m,
         }
     }
 }

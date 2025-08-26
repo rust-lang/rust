@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owned_slice::slice_owned;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
@@ -76,7 +77,8 @@ fn prepare_lto(
                     cgcx,
                 ) {
                     Ok(data) => {
-                        let module = SerializedModule::FromRlib(data.to_vec());
+                        let module =
+                            SerializedModule::FromFile(slice_owned(data.to_vec(), |data| &*data));
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
                     Err(e) => dcx.emit_fatal(e),

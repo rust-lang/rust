@@ -234,10 +234,7 @@ fn fat_lto(
                         .context
                         .add_driver_option(module_buffer.0.to_str().expect("path"));
                 }
-                SerializedModule::FromRlib(_) => unimplemented!("from rlib"),
-                SerializedModule::FromUncompressedFile(_) => {
-                    unimplemented!("from uncompressed file")
-                }
+                SerializedModule::FromFile(_) => unimplemented!("from file"),
             }
         }
         save_temp_bitcode(cgcx, &module, "lto.input");
@@ -417,10 +414,7 @@ fn thin_lto(
                 .context
                 .add_driver_option(module_buffer.0.to_str().expect("path"));*/
             }
-            SerializedModule::FromRlib(_) => unimplemented!("from rlib"),
-            SerializedModule::FromUncompressedFile(_) => {
-                unimplemented!("from uncompressed file")
-            }
+            SerializedModule::FromFile(_) => unimplemented!("from file"),
         }
 
         serialized.push(module);
@@ -554,10 +548,7 @@ pub fn optimize_thin_module(
                         .context
                         .add_driver_option(module_buffer.0.to_str().expect("path"));*/
                 }
-                SerializedModule::FromRlib(_) => unimplemented!("from rlib"),
-                SerializedModule::FromUncompressedFile(_) => {
-                    unimplemented!("from uncompressed file")
-                }
+                SerializedModule::FromFile(_) => unimplemented!("from file"),
             }
             Arc::new(SyncContext::new(context))
         }

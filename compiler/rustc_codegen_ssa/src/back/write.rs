@@ -11,6 +11,7 @@ use rustc_ast::attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
+use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::translation::Translator;
@@ -2061,7 +2062,7 @@ pub(crate) fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
     };
     // Schedule the module to be loaded
     drop(coordinator.sender.send(Message::AddImportOnlyModule::<B> {
-        module_data: SerializedModule::FromUncompressedFile(mmap),
+        module_data: SerializedModule::FromFile(slice_owned(mmap, |mmap| &*mmap)),
         work_product: module.source,
     }));
 }
