@@ -418,6 +418,11 @@ pub struct GoalEvaluation<I: Interner> {
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
+    ///
+    /// We knowingly ignore the `sub_root` of our inference variables here. This means we
+    /// may not reevaluate a goal even though a change to the `sub_root` could cause a goal
+    /// to make progress. Tracking them adds additional complexity for an incredibly minor
+    /// type inference improvement. We could look into properly handling this in the future.
     pub stalled_on: Option<GoalStalledOn<I>>,
 }
 

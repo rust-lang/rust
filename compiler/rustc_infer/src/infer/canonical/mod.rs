@@ -84,13 +84,12 @@ impl<'tcx> InferCtxt<'tcx> {
         variables: &List<CanonicalVarKind<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        CanonicalVarValues {
-            var_values: self.tcx.mk_args_from_iter(
-                variables
-                    .iter()
-                    .map(|kind| self.instantiate_canonical_var(span, kind, &universe_map)),
-            ),
+        let mut var_values = Vec::with_capacity(variables.len());
+        for info in variables.iter() {
+            let value = self.instantiate_canonical_var(span, info, &var_values, &universe_map);
+            var_values.push(value);
         }
+        CanonicalVarValues { var_values: self.tcx.mk_args(&var_values) }
     }
 
     /// Given the "info" about a canonical variable, creates a fresh
@@ -105,10 +104,22 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         span: Span,
         kind: CanonicalVarKind<'tcx>,
+        previous_var_values: &[GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
         match kind {
-            CanonicalVarKind::Ty(ui) => self.next_ty_var_in_universe(span, universe_map(ui)).into(),
+            CanonicalVarKind::Ty { ui, sub_root } => {
+                let vid = self.next_ty_vid_in_universe(span, universe_map(ui));
+                // Fetch the `sub_root` in case it exists.
+                if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
+                    if let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
+                        self.inner.borrow_mut().type_variables().sub(vid, sub_root);
+                    } else {
+                        unreachable!()
+                    }
+                }
+                Ty::new_var(self.tcx, vid).into()
+            }
 
             CanonicalVarKind::Int => self.next_int_var().into(),
 

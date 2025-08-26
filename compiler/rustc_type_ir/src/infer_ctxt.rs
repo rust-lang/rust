@@ -158,6 +158,7 @@ pub trait InferCtxtLike: Sized {
     fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex>;
 
     fn root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
+    fn sub_root_ty_var(&self, var: ty::TyVid) -> ty::TyVid;
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid;
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> <Self::Interner as Interner>::Ty;
