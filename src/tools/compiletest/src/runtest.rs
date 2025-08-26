@@ -412,7 +412,7 @@ impl<'test> TestCx<'test> {
             cmdline: format!("{cmd:?}"),
         };
         self.dump_output(
-            self.config.verbose,
+            self.config.verbose || !proc_res.status.success(),
             &cmd.get_program().to_string_lossy(),
             &proc_res.stdout,
             &proc_res.stderr,
@@ -1486,7 +1486,7 @@ impl<'test> TestCx<'test> {
         };
 
         self.dump_output(
-            self.config.verbose,
+            self.config.verbose || (!result.status.success() && self.config.mode != TestMode::Ui),
             &command.get_program().to_string_lossy(),
             &result.stdout,
             &result.stderr,
@@ -2987,6 +2987,7 @@ struct ProcArgs {
     args: Vec<OsString>,
 }
 
+#[derive(Debug)]
 pub struct ProcRes {
     status: ExitStatus,
     stdout: String,
