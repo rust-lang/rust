@@ -480,6 +480,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "unicode-width",
     "unwinding",
     "wasi",
+    "windows-link",
     "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
