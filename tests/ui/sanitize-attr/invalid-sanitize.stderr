@@ -1,5 +1,5 @@
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:3:1
+  --> $DIR/invalid-sanitize.rs:4:1
    |
 LL | #[sanitize(brontosaurus = "off")]
    | ^^^^^^^^^^^------------^^^^^^^^^^
@@ -23,31 +23,31 @@ LL + #[sanitize(kcfi = "on|off")]
    = and 6 other candidates
 
 error: multiple `sanitize` attributes
-  --> $DIR/invalid-sanitize.rs:6:1
+  --> $DIR/invalid-sanitize.rs:7:1
    |
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-sanitize.rs:7:1
+  --> $DIR/invalid-sanitize.rs:8:1
    |
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: multiple `sanitize` attributes
-  --> $DIR/invalid-sanitize.rs:10:1
+  --> $DIR/invalid-sanitize.rs:11:1
    |
 LL | #[sanitize(address = "on")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/invalid-sanitize.rs:11:1
+  --> $DIR/invalid-sanitize.rs:12:1
    |
 LL | #[sanitize(address = "off")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:14:1
+  --> $DIR/invalid-sanitize.rs:15:1
    |
 LL | #[sanitize(address = "bogus")]
    | ^^^^^^^^^^^^^^^^^^^^^-------^^
@@ -71,7 +71,7 @@ LL + #[sanitize(kcfi = "on|off")]
    = and 6 other candidates
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:17:1
+  --> $DIR/invalid-sanitize.rs:18:1
    |
 LL | #[sanitize = "off"]
    | ^^^^^^^^^^^^^^^^^^^ expected this to be a list
@@ -93,7 +93,7 @@ LL + #[sanitize(kcfi = "on|off")]
    = and 6 other candidates
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:20:1
+  --> $DIR/invalid-sanitize.rs:21:1
    |
 LL | #[sanitize]
    | ^^^^^^^^^^^ expected this to be a list
@@ -111,7 +111,7 @@ LL | #[sanitize(kcfi = "on|off")]
    = and 6 other candidates
 
 error[E0539]: malformed `sanitize` attribute input
-  --> $DIR/invalid-sanitize.rs:23:1
+  --> $DIR/invalid-sanitize.rs:24:1
    |
 LL | #[sanitize(realtime = "on")]
    | ^^^^^^^^^^^^^^^^^^^^^^----^^
@@ -134,6 +134,26 @@ LL + #[sanitize(kcfi = "on|off")]
    |
    = and 6 other candidates
 
-error: aborting due to 7 previous errors
+warning: the async executor can run blocking code, without realtime sanitizer catching it
+  --> $DIR/invalid-sanitize.rs:27:1
+   |
+LL | #[sanitize(realtime = "nonblocking")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(rtsan_nonblocking_async)]` on by default
+
+warning: the async executor can run blocking code, without realtime sanitizer catching it
+  --> $DIR/invalid-sanitize.rs:32:9
+   |
+LL | ...   #[sanitize(realtime = "nonblocking")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: the async executor can run blocking code, without realtime sanitizer catching it
+  --> $DIR/invalid-sanitize.rs:37:9
+   |
+LL | ...   #[sanitize(realtime = "nonblocking")]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0539`.
