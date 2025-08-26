@@ -26,7 +26,7 @@ pub struct ZeroSize;
 
 pub type RustFn = fn();
 
-pub type RustBadRet = extern "C" fn() -> Box<u32>;
+pub type RustBadRet = extern "C" fn() -> (u32,u64); //~ ERROR uses type `(u32, u64)`
 
 pub type CVoidRet = ();
 
@@ -68,14 +68,15 @@ pub extern "C" fn ptr_unit(p: *const ()) { }
 pub extern "C" fn ptr_tuple(p: *const ((),)) { }
 
 pub extern "C" fn slice_type(p: &[u32]) { }
-//~^ ERROR: uses type `[u32]`
+//~^ ERROR: uses type `&[u32]`
 
 pub extern "C" fn str_type(p: &str) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `&str`
 
 pub extern "C" fn box_type(p: Box<u32>) { }
 
 pub extern "C" fn opt_box_type(p: Option<Box<u32>>) { }
+// no error here!
 
 pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
 //~^ ERROR: uses type `Box<[u8]>`
@@ -113,11 +114,13 @@ pub extern "C" fn fn_type2(p: fn()) { }
 //~^ ERROR uses type `fn()`
 
 pub extern "C" fn fn_contained(p: RustBadRet) { }
+//~^ ERROR: uses type `(u32, u64)`
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `&str`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+//~^ ERROR: uses type `(u32, u64)`
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 

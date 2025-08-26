@@ -357,7 +357,6 @@ lint_improper_ctypes = {$desc} uses type `{$ty}`, which is not FFI-safe
 lint_improper_ctypes_array_help = consider passing a pointer to the array
 
 lint_improper_ctypes_array_reason = passing raw arrays by value is not FFI-safe
-lint_improper_ctypes_box = box cannot be represented as a single pointer
 
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 

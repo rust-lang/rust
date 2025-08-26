@@ -1,52 +1,68 @@
-error: `extern` fn uses type `[u32]`, which is not FFI-safe
+error: `extern` callback uses type `(u32, u64)`, which is not FFI-safe
+  --> $DIR/lint-fn.rs:29:23
+   |
+LL | pub type RustBadRet = extern "C" fn() -> (u32,u64);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+note: the lint level is defined here
+  --> $DIR/lint-fn.rs:2:36
+   |
+LL | #![deny(improper_c_fn_definitions, improper_c_callbacks)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` fn uses type `&[u32]`, which is not FFI-safe
   --> $DIR/lint-fn.rs:70:33
    |
 LL | pub extern "C" fn slice_type(p: &[u32]) { }
    |                                 ^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer instead
-   = note: slices have no C equivalent
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 note: the lint level is defined here
   --> $DIR/lint-fn.rs:2:9
    |
 LL | #![deny(improper_c_fn_definitions, improper_c_callbacks)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `extern` fn uses type `str`, which is not FFI-safe
+error: `extern` fn uses type `&str`, which is not FFI-safe
   --> $DIR/lint-fn.rs:73:31
    |
 LL | pub extern "C" fn str_type(p: &str) { }
    |                               ^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: string slices have no C equivalent
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:80:34
+  --> $DIR/lint-fn.rs:81:34
    |
 LL | pub extern "C" fn boxed_slice(p: Box<[u8]>) { }
    |                                  ^^^^^^^^^ not FFI-safe
    |
-   = note: box cannot be represented as a single pointer
+   = help: consider using a raw pointer instead
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<str>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:83:35
+  --> $DIR/lint-fn.rs:84:35
    |
 LL | pub extern "C" fn boxed_string(p: Box<str>) { }
    |                                   ^^^^^^^^ not FFI-safe
    |
-   = note: box cannot be represented as a single pointer
+   = help: consider using `*const u8` and a length instead
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn Trait>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:86:34
+  --> $DIR/lint-fn.rs:87:34
    |
 LL | pub extern "C" fn boxed_trait(p: Box<dyn Trait>) { }
    |                                  ^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: box cannot be represented as a single pointer
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `char`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:89:32
+  --> $DIR/lint-fn.rs:90:32
    |
 LL | pub extern "C" fn char_type(p: char) { }
    |                                ^^^^ not FFI-safe
@@ -55,7 +71,7 @@ LL | pub extern "C" fn char_type(p: char) { }
    = note: the `char` type has no C equivalent
 
 error: `extern` fn uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:92:33
+  --> $DIR/lint-fn.rs:93:33
    |
 LL | pub extern "C" fn tuple_type(p: (i32, i32)) { }
    |                                 ^^^^^^^^^^ not FFI-safe
@@ -64,7 +80,7 @@ LL | pub extern "C" fn tuple_type(p: (i32, i32)) { }
    = note: tuples have unspecified layout
 
 error: `extern` fn uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:95:34
+  --> $DIR/lint-fn.rs:96:34
    |
 LL | pub extern "C" fn tuple_type2(p: I32Pair) { }
    |                                  ^^^^^^^ not FFI-safe
@@ -73,7 +89,7 @@ LL | pub extern "C" fn tuple_type2(p: I32Pair) { }
    = note: tuples have unspecified layout
 
 error: `extern` fn uses type `ZeroSize`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:98:32
+  --> $DIR/lint-fn.rs:99:32
    |
 LL | pub extern "C" fn zero_size(p: ZeroSize) { }
    |                                ^^^^^^^^ not FFI-safe
@@ -87,7 +103,7 @@ LL | pub struct ZeroSize;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:101:40
+  --> $DIR/lint-fn.rs:102:40
    |
 LL | pub extern "C" fn zero_size_phantom(p: ZeroSizeWithPhantomData) { }
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -100,7 +116,7 @@ LL | pub struct ZeroSizeWithPhantomData(PhantomData<i32>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:104:51
+  --> $DIR/lint-fn.rs:105:51
    |
 LL | pub extern "C" fn zero_size_phantom_toplevel() -> PhantomData<bool> {
    |                                                   ^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -108,7 +124,7 @@ LL | pub extern "C" fn zero_size_phantom_toplevel() -> PhantomData<bool> {
    = note: composed only of `PhantomData`
 
 error: `extern` fn uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:109:30
+  --> $DIR/lint-fn.rs:110:30
    |
 LL | pub extern "C" fn fn_type(p: RustFn) { }
    |                              ^^^^^^ not FFI-safe
@@ -117,7 +133,7 @@ LL | pub extern "C" fn fn_type(p: RustFn) { }
    = note: this function pointer has Rust-specific calling convention
 
 error: `extern` fn uses type `fn()`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:112:31
+  --> $DIR/lint-fn.rs:113:31
    |
 LL | pub extern "C" fn fn_type2(p: fn()) { }
    |                               ^^^^ not FFI-safe
@@ -125,17 +141,35 @@ LL | pub extern "C" fn fn_type2(p: fn()) { }
    = help: consider using an `extern fn(...) -> ...` function pointer instead
    = note: this function pointer has Rust-specific calling convention
 
-error: `extern` fn uses type `str`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:117:38
+error: `extern` fn uses type `(u32, u64)`, which is not FFI-safe
+  --> $DIR/lint-fn.rs:116:35
+   |
+LL | pub extern "C" fn fn_contained(p: RustBadRet) { }
+   |                                   ^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `extern` fn uses type `&str`, which is not FFI-safe
+  --> $DIR/lint-fn.rs:119:38
    |
 LL | pub extern "C" fn transparent_str(p: TransparentStr) { }
    |                                      ^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
-   = note: string slices have no C equivalent
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `(u32, u64)`, which is not FFI-safe
+  --> $DIR/lint-fn.rs:122:37
+   |
+LL | pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+   |                                     ^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
 
 error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:169:43
+  --> $DIR/lint-fn.rs:172:43
    |
 LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
    |                                           ^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -143,7 +177,7 @@ LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
    = note: composed only of `PhantomData`
 
 error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:182:39
+  --> $DIR/lint-fn.rs:185:39
    |
 LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    |                                       ^^^^^^ not FFI-safe
@@ -152,7 +186,7 @@ LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    = note: this struct has unspecified layout
 
 error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:185:41
+  --> $DIR/lint-fn.rs:188:41
    |
 LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    |                                         ^^^^^^ not FFI-safe
@@ -160,5 +194,5 @@ LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 
-error: aborting due to 17 previous errors
+error: aborting due to 20 previous errors
 
