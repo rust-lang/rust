@@ -1373,10 +1373,11 @@ impl<'a> Builder<'a> {
     /// we need:
     /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 rustc)
     /// - stage 2 rustc for target2
+    ///
     /// However, without this optimization, we would also build stage 2 rustc for **target1**,
     /// which is completely wasteful.
-    pub fn compiler_for_std(&self, stage: u32, target: TargetSelection) -> Compiler {
-        if compile::Std::should_be_uplifted_from_stage_1(self, stage, target) {
+    pub fn compiler_for_std(&self, stage: u32) -> Compiler {
+        if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
             self.compiler(1, self.host_target)
         } else {
             self.compiler(stage, self.host_target)

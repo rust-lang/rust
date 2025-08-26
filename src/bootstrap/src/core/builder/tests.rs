@@ -1066,6 +1066,7 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <target1>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 2 <host> -> std 2 <target1>
+        [build] rustc 1 <host> -> std 1 <target2>
         [build] rustc 2 <host> -> std 2 <target2>
         ");
     }
@@ -1295,16 +1296,15 @@ mod snapshot {
         [dist] docs <target1>
         [doc] rustc 1 <host> -> std 1 <host> crates=[]
         [dist] rustc 1 <host> -> json-docs 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <target1>
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <target1>
         [dist] mingw <host>
         [dist] mingw <target1>
+        [build] rustdoc 2 <host>
         [build] rustc 0 <host> -> GenerateCopyright 1 <host>
         [dist] rustc <host>
         [dist] rustc 1 <host> -> std 1 <host>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
         [dist] rustc 1 <host> -> rustc-dev 2 <host>
         [dist] src <>
         [dist] reproducible-artifacts <host>
@@ -1495,13 +1495,10 @@ mod snapshot {
         [doc] rustc 1 <host> -> releases 2 <target1>
         [build] rustc 0 <host> -> RustInstaller 1 <host>
         [dist] docs <target1>
-        [build] rustc 1 <host> -> rustc 2 <host>
-        [build] rustdoc 2 <host>
-        [doc] rustc 2 <host> -> std 2 <target1> crates=[]
-        [dist] rustc 2 <host> -> json-docs 3 <target1>
+        [doc] rustc 1 <host> -> std 1 <target1> crates=[]
+        [dist] rustc 1 <host> -> json-docs 2 <target1>
         [dist] mingw <target1>
-        [build] rustc 2 <host> -> std 2 <target1>
-        [dist] rustc 2 <host> -> std 2 <target1>
+        [dist] rustc 1 <host> -> std 1 <target1>
         ");
     }
 

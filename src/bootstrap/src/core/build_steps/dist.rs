@@ -115,7 +115,7 @@ impl Step for JsonDocs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(JsonDocs {
-            build_compiler: run.builder.compiler_for_std(run.builder.top_stage, run.target),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
             target: run.target,
         });
     }
@@ -769,7 +769,7 @@ pub struct Std {
 
 impl Std {
     pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
-        Std { build_compiler: builder.compiler_for_std(builder.top_stage, target), target }
+        Std { build_compiler: builder.compiler_for_std(builder.top_stage), target }
     }
 }
 
