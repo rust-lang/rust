@@ -5,9 +5,9 @@ pub mod pipe;
 pub mod thread;
 pub mod time;
 
-use crate::sys::stdio;
 use crate::arch::global_asm;
 use crate::ptr::{self, addr_of_mut};
+use crate::sys::stdio;
 use crate::time::{Duration, Instant};
 
 global_asm!(
@@ -60,8 +60,7 @@ pub unsafe fn cleanup() {
         vex_sdk::vexTasksRun();
 
         // If the buffer has been fully flushed, exit the loop
-        if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32)
-        {
+        if vex_sdk::vexSerialWriteFree(stdio::STDIO_CHANNEL) == (stdio::STDOUT_BUF_SIZE as i32) {
             break;
         }
     }

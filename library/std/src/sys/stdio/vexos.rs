@@ -14,7 +14,7 @@ impl Stdin {
 
 impl io::Read for Stdin {
     fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
-        let mut written = 0;
+        let mut count = 0;
 
         while let Some((out_byte, new_buf)) = buf.split_first_mut() {
             buf = new_buf;
@@ -25,10 +25,10 @@ impl io::Read for Stdin {
             }
 
             *out_byte = byte as u8;
-            written += 1;
+            count += 1;
         }
 
-        Ok(written)
+        Ok(count)
     }
 }
 
@@ -40,32 +40,48 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut count = 0;
+        let mut written = 0;
 
-        // HACK: VEXos holds an internal write buffer for serial that is flushed to USB1 roughly every
-        // millisecond by `vexTasksRun`. For writes larger than 2048 bytes, we must block until that buffer
-        // is flushed to USB1 before writing the rest of `buf`. In practice, this is fairly nonstandard for
-        // a `write` implementation but it avoids an guaranteed recursive panic when using macros such as
-        // `print!` to write large amounts of data to stdout at once.
+        // HACK: VEXos holds an internal ringbuffer for serial writes that is flushed to USB1
+        // roughly every millisecond by `vexTasksRun`. For writes larger than 2048 bytes, we
+        // must block until that buffer is flushed to USB1 before writing the rest of `buf`.
+        //
+        // This is fairly nonstandard for a `write` implementation, but it avoids a guaranteed
+        // recursive panic when using macros such as `print!` to write large amounts of data
+        // (buf.len() > 2048) to stdout at once.
         for chunk in buf.chunks(STDOUT_BUF_SIZE) {
             if unsafe { vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize } < chunk.len() {
                 self.flush().unwrap();
             }
 
-            count += unsafe { vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32) };
-    
+            let count = unsafe {
+                vex_sdk::vexSerialWriteBuffer(STDIO_CHANNEL, chunk.as_ptr(), chunk.len() as u32)
+            };
             if count < 0 {
                 return Err(io::Error::new(
                     io::ErrorKind::Uncategorized,
                     "Internal write error occurred.",
                 ));
             }
+
+            written += count;
+
+            // This is a sanity check to ensure that we don't end up with non-contiguous
+            // buffer writes. e.g. a chunk gets only partially written, but we continue
+            // attempting to write the remaining chunks.
+            //
+            // In practice, this should never really occur since the previous flush ensures
+            // enough space in FIFO to write the entire chunk to vexSerialWriteBuffer.
+            if count != chunk.len() {
+                break;
+            }
         }
 
-        Ok(count as usize)
+        Ok(written as usize)
     }
 
     fn flush(&mut self) -> io::Result<()> {
+        // This may block for up to a millisecond.
         unsafe {
             while (vex_sdk::vexSerialWriteFree(STDIO_CHANNEL) as usize) != STDOUT_BUF_SIZE {
                 vex_sdk::vexTasksRun();

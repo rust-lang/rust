@@ -194,7 +194,6 @@ impl OpenOptions {
 }
 
 impl File {
-    // TODO
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         // Mount sdcard volume as FAT filesystem
         map_fresult(unsafe { vex_sdk::vexFileMountSD() })?;
