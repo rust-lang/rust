@@ -4,7 +4,7 @@ warning: `extern` callback uses type `CStr`, which is not FFI-safe
 LL | type Foo = extern "C" fn(::std::ffi::CStr);
    |                          ^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+   = help: consider passing a `*mut std::ffi::c_char` instead, converting to/from `CStr` as needed
    = note: `CStr`/`CString` do not have a guaranteed layout
    = note: `#[warn(improper_ctypes)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
