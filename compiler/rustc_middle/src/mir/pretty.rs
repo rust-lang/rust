@@ -1270,6 +1270,30 @@ impl Debug for PlaceRef<'_> {
     }
 }
 
+impl Debug for CompoundPlace<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        self.as_ref().fmt(fmt)
+    }
+}
+
+impl Debug for CompoundPlaceRef<'_> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        pre_fmt_projection(self.last_projection, fmt)?;
+        for projection in self.projection_chain_base.iter().rev() {
+            pre_fmt_projection(projection, fmt)?;
+        }
+
+        write!(fmt, "{:?}", self.local)?;
+
+        for projection in self.projection_chain_base {
+            post_fmt_projection(projection, fmt)?;
+        }
+        post_fmt_projection(self.last_projection, fmt)?;
+
+        Ok(())
+    }
+}
+
 fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> fmt::Result {
     for &elem in projection.iter().rev() {
         match elem {

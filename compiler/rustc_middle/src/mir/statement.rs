@@ -157,6 +157,17 @@ impl<'tcx> PlaceTy<'tcx> {
         elems.iter().fold(self, |place_ty, &elem| place_ty.projection_ty(tcx, elem))
     }
 
+    pub fn projection_chain_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        chain: &[&List<PlaceElem<'tcx>>],
+    ) -> PlaceTy<'tcx> {
+        chain
+            .iter()
+            .flat_map(|&elems| elems)
+            .fold(self, |place_ty, elem| place_ty.projection_ty(tcx, elem))
+    }
+
     /// Convenience wrapper around `projection_ty_core` for `PlaceElem`,
     /// where we can just use the `Ty` that is already stored inline on
     /// field projection elems.
@@ -541,6 +552,88 @@ impl From<Local> for PlaceRef<'_> {
     #[inline]
     fn from(local: Local) -> Self {
         PlaceRef { local, projection: &[] }
+    }
+}
+
+/// A place possibly containing derefs in the middle of its projection by chaining projection lists.
+///
+/// In `AnalysisPhase::PostCleanup` and later, [`Place`] and [`PlaceRef`] cannot represent these
+/// kinds of places.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct CompoundPlace<'tcx> {
+    pub local: Local,
+    /// Invariants:
+    /// - All segments in the chain other than the first must start with a deref.
+    /// - Derefs may only appear at the start of a segment.
+    /// - No segment may be empty.
+    pub projection_chain: &'tcx List<&'tcx List<PlaceElem<'tcx>>>,
+}
+
+/// Borrowed form of [`CompoundPlace`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CompoundPlaceRef<'tcx> {
+    pub local: Local,
+    pub projection_chain_base: &'tcx [&'tcx List<PlaceElem<'tcx>>],
+    pub last_projection: &'tcx [PlaceElem<'tcx>],
+}
+
+// these impls are bare-bones for now
+impl<'tcx> CompoundPlace<'tcx> {
+    pub fn as_ref(&self) -> CompoundPlaceRef<'tcx> {
+        let (last, base) = self
+            .projection_chain
+            .split_last()
+            .map(|(&last, base)| (last, base))
+            .unwrap_or_default();
+
+        CompoundPlaceRef { local: self.local, projection_chain_base: base, last_projection: last }
+    }
+
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
+            .projection_chain_ty(tcx, self.projection_chain)
+    }
+
+    pub fn iter_projections(
+        self,
+    ) -> impl Iterator<Item = (CompoundPlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
+        self.projection_chain.iter().enumerate().flat_map(move |(i, projs)| {
+            projs.iter().enumerate().map(move |(j, elem)| {
+                let base = if j == 0 && i > 0 {
+                    // last_projection should only be empty if projection_chain_base is too
+                    // otherwise it has to have a deref at least
+
+                    debug_assert_eq!(elem, PlaceElem::Deref);
+                    CompoundPlaceRef {
+                        local: self.local,
+                        projection_chain_base: &self.projection_chain[..i - 1],
+                        last_projection: &projs[..=j],
+                    }
+                } else {
+                    CompoundPlaceRef {
+                        local: self.local,
+                        projection_chain_base: &self.projection_chain[..i],
+                        last_projection: &projs[..j],
+                    }
+                };
+
+                (base, elem)
+            })
+        })
+    }
+}
+
+impl<'tcx> CompoundPlaceRef<'tcx> {
+    pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
+    where
+        D: HasLocalDecls<'tcx>,
+    {
+        PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
+            .projection_chain_ty(tcx, self.projection_chain_base)
+            .multi_projection_ty(tcx, self.last_projection)
     }
 }
 

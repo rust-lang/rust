@@ -934,6 +934,7 @@ pub struct CtxtInterners<'tcx> {
     clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
+    place_elem_chains: InternedSet<'tcx, List<&'tcx List<PlaceElem<'tcx>>>>,
     const_: InternedSet<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>,
     pat: InternedSet<'tcx, PatternKind<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
@@ -972,6 +973,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             clauses: InternedSet::with_capacity(N),
             projs: InternedSet::with_capacity(N * 4),
             place_elems: InternedSet::with_capacity(N * 2),
+            place_elem_chains: InternedSet::with_capacity(N * 2), // FIXME non-empirical factor - just copying place_elems
             const_: InternedSet::with_capacity(N * 2),
             pat: InternedSet::with_capacity(N),
             const_allocation: InternedSet::with_capacity(N),
@@ -2779,6 +2781,7 @@ slice_interners!(
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
+    place_elem_chains: pub mk_place_elem_chain(&'tcx List<PlaceElem<'tcx>>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
@@ -3167,6 +3170,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T: CollectAndApply<PlaceElem<'tcx>, &'tcx List<PlaceElem<'tcx>>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_place_elems(xs))
+    }
+
+    pub fn mk_place_elem_chain_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<&'tcx List<PlaceElem<'tcx>>, &'tcx List<&'tcx List<PlaceElem<'tcx>>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_place_elem_chain(xs))
     }
 
     pub fn mk_fields_from_iter<I, T>(self, iter: I) -> T::Output
