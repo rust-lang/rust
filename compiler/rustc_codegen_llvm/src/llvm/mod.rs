@@ -112,16 +112,26 @@ pub(crate) fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &
 
 pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
     let lower = range.start;
+    // LLVM treats the upper bound as exclusive, but allows wrapping.
     let upper = range.end.wrapping_add(1);
-    let lower_words = [lower as u64, (lower >> 64) as u64];
-    let upper_words = [upper as u64, (upper >> 64) as u64];
+
+    // Pass each `u128` endpoint value as a `[u64; 2]` array, least-significant part first.
+    let as_u64_array = |x: u128| [x as u64, (x >> 64) as u64];
+    let lower_words: [u64; 2] = as_u64_array(lower);
+    let upper_words: [u64; 2] = as_u64_array(upper);
+
+    // To ensure that LLVM doesn't try to read beyond the `[u64; 2]` arrays,
+    // we must explicitly check that `size_bits` does not exceed 128.
+    let size_bits = size.bits();
+    assert!(size_bits <= 128);
+    // More robust assertions that are redundant with `size_bits <= 128` and
+    // should be optimized away.
+    assert!(size_bits.div_ceil(64) <= u64::try_from(lower_words.len()).unwrap());
+    assert!(size_bits.div_ceil(64) <= u64::try_from(upper_words.len()).unwrap());
+    let size_bits = c_uint::try_from(size_bits).unwrap();
+
     unsafe {
-        LLVMRustCreateRangeAttribute(
-            llcx,
-            size.bits().try_into().unwrap(),
-            lower_words.as_ptr(),
-            upper_words.as_ptr(),
-        )
+        LLVMRustCreateRangeAttribute(llcx, size_bits, lower_words.as_ptr(), upper_words.as_ptr())
     }
 }
 
