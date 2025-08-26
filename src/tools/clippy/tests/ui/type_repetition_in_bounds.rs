@@ -2,7 +2,7 @@
 #![allow(
     clippy::extra_unused_type_parameters,
     clippy::multiple_bound_locations,
-    clippy::needless_maybe_sized
+    redundant_sizedness_bound
 )]
 
 use serde::Deserialize;
