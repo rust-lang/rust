@@ -190,29 +190,51 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         for (src, candidates) in candidates.c.into_iter() {
             trace!(?src, ?candidates);
 
-            let Some(src) = relevant.find(src) else { continue };
-            let Some(src_live_ranges) = &live.row(src) else { continue };
-            trace!(?src, ?src_live_ranges);
+            for dst in candidates {
+                // We call `relevant.find(src)` inside the loop, as a previous iteration may have
+                // renamed `src` to one of the locals in `dst`.
+                let Some(mut src) = relevant.find(src) else { continue };
+                let Some(src_live_ranges) = live.row(src) else { continue };
+                trace!(?src, ?src_live_ranges);
 
-            let dst = candidates.into_iter().find_map(|dst| {
-                let dst = relevant.find(dst)?;
-                let dst_live_ranges = &live.row(dst)?;
+                let Some(mut dst) = relevant.find(dst) else { continue };
+                let Some(dst_live_ranges) = live.row(dst) else { continue };
                 trace!(?dst, ?dst_live_ranges);
 
-                let disjoint = src_live_ranges.disjoint(dst_live_ranges);
-                disjoint.then_some(dst)
-            });
-            let Some(dst) = dst else { continue };
+                if src_live_ranges.disjoint(dst_live_ranges) {
+                    // We want to replace `src` by `dst`.
+                    let mut orig_src = relevant.original[src];
+                    let mut orig_dst = relevant.original[dst];
 
-            merged_locals.insert(relevant.original[src]);
-            merged_locals.insert(relevant.original[dst]);
+                    // The return place and function arguments are required and cannot be renamed.
+                    // This check cannot be made during candidate collection, as we may want to
+                    // unify the same non-required local with several required locals.
+                    match (is_local_required(orig_src, body), is_local_required(orig_dst, body)) {
+                        // Renaming `src` is ok.
+                        (false, _) => {}
+                        // Renaming `src` is wrong, but renaming `dst` is ok.
+                        (true, false) => {
+                            std::mem::swap(&mut src, &mut dst);
+                            std::mem::swap(&mut orig_src, &mut orig_dst);
+                        }
+                        // Neither local can be renamed, so skip this case.
+                        (true, true) => continue,
+                    }
 
-            relevant.union(src, dst);
-            live.union_rows(src, dst);
+                    trace!(?src, ?dst, "merge");
+                    merged_locals.insert(orig_src);
+                    merged_locals.insert(orig_dst);
+
+                    // Replace `src` by `dst`.
+                    relevant.union(src, dst);
+                    live.union_rows(/* read */ src, /* write */ dst);
+                }
+            }
         }
         trace!(?merged_locals);
 
         relevant.make_idempotent();
+        trace!(?relevant.renames);
 
         if merged_locals.is_empty() {
             return;
@@ -402,41 +424,6 @@ impl Candidates {
     }
 }
 
-/// If the pair of places is being considered for merging, returns the candidate which would be
-/// merged in order to accomplish this.
-///
-/// The contract here is in one direction - there is a guarantee that merging the locals that are
-/// outputted by this function would result in an assignment between the inputs becoming a
-/// self-assignment. However, there is no guarantee that the returned pair is actually suitable for
-/// merging - candidate collection must still check this independently.
-///
-/// This output is unique for each unordered pair of input places.
-fn places_to_candidate_pair<'tcx>(
-    a: Place<'tcx>,
-    b: Place<'tcx>,
-    body: &Body<'tcx>,
-) -> Option<(Local, Local)> {
-    let (mut a, mut b) = if a.projection.len() == 0 && b.projection.len() == 0 {
-        (a.local, b.local)
-    } else {
-        return None;
-    };
-
-    // By sorting, we make sure we're input order independent
-    if a > b {
-        std::mem::swap(&mut a, &mut b);
-    }
-
-    // We could now return `(a, b)`, but then we miss some candidates in the case where `a` can't be
-    // used as a `src`.
-    if is_local_required(a, body) {
-        std::mem::swap(&mut a, &mut b);
-    }
-    // We could check `is_local_required` again here, but there's no need - after all, we make no
-    // promise that the candidate pair is actually valid
-    Some((a, b))
-}
-
 struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
     candidates: FxIndexMap<Local, Vec<Local>>,
@@ -449,11 +436,9 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
             lhs,
             Rvalue::CopyForDeref(rhs) | Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
+            && let Some(src) = lhs.as_local()
+            && let Some(dest) = rhs.as_local()
         {
-            let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {
-                return;
-            };
-
             // As described at the top of the file, we do not go near things that have
             // their address taken.
             if self.borrowed.contains(src) || self.borrowed.contains(dest) {
@@ -467,11 +452,6 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
             if src_ty != dest_ty {
                 // FIXME(#112651): This can be removed afterwards. Also update the module description.
                 trace!("skipped `{src:?} = {dest:?}` due to subtyping: {src_ty} != {dest_ty}");
-                return;
-            }
-
-            // Also, we need to make sure that MIR actually allows the `src` to be removed
-            if is_local_required(src, self.body) {
                 return;
             }
 
