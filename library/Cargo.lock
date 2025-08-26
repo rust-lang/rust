@@ -393,7 +393,8 @@ dependencies = [
 [[package]]
 name = "vex-sdk"
 version = "0.27.0"
-source = "git+https://github.com/vexide/vex-sdk.git#67771319f730557693b2aa1e84c7ecd4831efb13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89f74fce61d7a7ba1589da9634c6305a72befb7cc9150c1f872d87d8060f32b9"
 dependencies = [
  "rustc-std-workspace-core",
 ]
