@@ -309,6 +309,7 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
     cx.tcx.lang_items().get(item) == Some(did)
 }
 
+/// Checks if `expr` is an empty block or an empty tuple.
 pub fn is_unit_expr(expr: &Expr<'_>) -> bool {
     matches!(
         expr.kind,
