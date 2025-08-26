@@ -90,7 +90,7 @@ r-efi = { version = "5.2.0", features = ['rustc-dep-of-std'] }
 r-efi-alloc = { version = "2.0.0", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(target_os = "vexos")'.dependencies]
-vex-sdk = { git = "https://github.com/vexide/vex-sdk.git", features = [
+vex-sdk = { version = "0.27.0", features = [
     'rustc-dep-of-std',
 ], default-features = false }
 
