@@ -12,7 +12,7 @@ path = "lib.rs"
 arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
-indexmap = "2"
+indexmap.workspace = true
 itertools.workspace = true
 minifier = { version = "0.3.5", default-features = false }
 pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }

@@ -63,6 +63,7 @@ exclude = [
 # tidy-alphabetical-start
 bitflags = "2.9.3"
 either = "1.15.0"
+indexmap = "2.10.0"
 itertools = "0.12.1"
 # FIXME: Remove this pin once this rustix issue is resolved
 # https://github.com/bytecodealliance/rustix/issues/1496

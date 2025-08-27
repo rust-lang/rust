@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 blake3 = "1.5.2"
 derive-where = "1.2.7"
-indexmap = { version = "2.0.0" }
+indexmap.workspace = true
 itoa = "1.0"
 md5 = { package = "md-5", version = "0.10.0" }
 rustc_arena = { path = "../rustc_arena" }

@@ -10,7 +10,7 @@ bitflags.workspace = true
 either.workspace = true
 elsa = "1.11.0"
 ena = "0.14.3"
-indexmap = "2.4.0"
+indexmap.workspace = true
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
 parking_lot = "0.12"
