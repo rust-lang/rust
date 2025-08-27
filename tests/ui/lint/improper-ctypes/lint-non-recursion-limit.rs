@@ -33,6 +33,6 @@ struct B {
 }
 
 extern "C" fn foo(_: B) {}
-//~^ ERROR: uses type `char`
+//~^ ERROR: uses type `B`
 
 fn main() {}

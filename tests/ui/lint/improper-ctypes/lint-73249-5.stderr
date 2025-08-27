@@ -1,4 +1,4 @@
-error: `extern` block uses type `Qux`, which is not FFI-safe
+error: `extern` block uses type `A`, which is not FFI-safe
   --> $DIR/lint-73249-5.rs:21:25
    |
 LL |     pub fn lint_me() -> A;
