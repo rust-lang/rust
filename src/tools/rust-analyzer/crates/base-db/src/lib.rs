@@ -7,7 +7,12 @@ pub use salsa_macros;
 mod change;
 mod input;
 
-use std::{cell::RefCell, hash::BuildHasherDefault, panic, sync::Once};
+use std::{
+    cell::RefCell,
+    hash::BuildHasherDefault,
+    panic,
+    sync::{Once, atomic::AtomicUsize},
+};
 
 pub use crate::{
     change::FileChange,
@@ -328,6 +333,27 @@ pub trait SourceDatabase: salsa::Database {
 
     #[doc(hidden)]
     fn crates_map(&self) -> Arc<CratesMap>;
+
+    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision);
+}
+
+static NEXT_NONCE: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Nonce(usize);
+
+impl Default for Nonce {
+    #[inline]
+    fn default() -> Self {
+        Nonce::new()
+    }
+}
+
+impl Nonce {
+    #[inline]
+    pub fn new() -> Nonce {
+        Nonce(NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
+    }
 }
 
 /// Crate related data shared by the whole workspace.

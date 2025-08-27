@@ -51,7 +51,7 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, RootQueryDb,
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, query_group,
 };
 use hir::{
@@ -83,6 +83,7 @@ pub struct RootDatabase {
     storage: ManuallyDrop<salsa::Storage<Self>>,
     files: Arc<Files>,
     crates_map: Arc<CratesMap>,
+    nonce: Nonce,
 }
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
@@ -102,6 +103,7 @@ impl Clone for RootDatabase {
             storage: self.storage.clone(),
             files: self.files.clone(),
             crates_map: self.crates_map.clone(),
+            nonce: Nonce::new(),
         }
     }
 }
@@ -165,6 +167,10 @@ impl SourceDatabase for RootDatabase {
     fn crates_map(&self) -> Arc<CratesMap> {
         self.crates_map.clone()
     }
+
+    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision) {
+        (self.nonce, salsa::plumbing::ZalsaDatabase::zalsa(self).current_revision())
+    }
 }
 
 impl Default for RootDatabase {
@@ -179,6 +185,7 @@ impl RootDatabase {
             storage: ManuallyDrop::new(salsa::Storage::default()),
             files: Default::default(),
             crates_map: Default::default(),
+            nonce: Nonce::new(),
         };
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
         db.set_all_crates(Arc::new(Box::new([])));

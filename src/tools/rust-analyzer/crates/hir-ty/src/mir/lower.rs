@@ -2168,9 +2168,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
     let _p = tracing::info_span!("mir_body_query", ?detail).entered();
     let body = db.body(def);
     let infer = db.infer(def);
-    let mut result = crate::next_solver::with_new_cache(|| {
-        lower_to_mir(db, def, &body, &infer, body.body_expr)
-    })?;
+    let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;
     result.shrink_to_fit();
     Ok(Arc::new(result))
 }
