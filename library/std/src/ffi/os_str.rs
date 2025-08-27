@@ -1273,6 +1273,17 @@ impl OsStr {
     pub fn display(&self) -> Display<'_> {
         Display { os_str: self }
     }
+
+    /// Returns the same string as a string slice `&OsStr`.
+    ///
+    /// This method is redundant when used directly on `&OsStr`, but
+    /// it helps dereferencing other string-like types to string slices,
+    /// for example references to `Box<OsStr>` or `Arc<OsStr>`.
+    #[inline]
+    #[unstable(feature = "thing_as_thing", issue = "none")]
+    pub const fn as_os_str(&self) -> &OsStr {
+        self
+    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
