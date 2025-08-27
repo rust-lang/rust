@@ -20,7 +20,7 @@ use crate::ty::VarianceDiagInfo;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::universal_regions::UniversalRegions;
-use crate::{BorrowckInferCtxt, NllRegionVariableOrigin};
+use crate::{BorrowckInferCtxt, NllRegionVariableOrigin, bug};
 
 /// A set of outlives constraints after rewriting to remove
 /// higher-kinded constraints.
@@ -182,12 +182,12 @@ impl RegionTracker {
         })
     }
 
-    /// Check for the second and final type of placeholder leak,
-    /// where a placeholder `'p` outlives (transitively) an existential `'e`
-    /// and `'e` cannot name `'p`. This is sort of a dual of `unnameable_placeholder`;
-    /// one of the members of this SCC cannot be named by the SCC.
+    /// Check for placeholder leaks where a placeholder `'p` outlives (transitively)
+    /// an existential `'e` and `'e` cannot name `'p`. This is sort of a dual of
+    /// `unnameable_placeholder`; one of the members of this SCC cannot be named by
+    /// the SCC itself.
     ///
-    /// Returns *a* culprit (though there may be more than one).
+    /// Returns *a* culprit (there may be more than one).
     fn reaches_existential_that_cannot_name_us(&self) -> Option<RegionVid> {
         let Representative::Placeholder(_p) = self.representative else {
             return None;
@@ -428,39 +428,33 @@ fn rewrite_placeholder_outlives<'tcx>(
         // That constraint is annotated with some placeholder `unnameable` where
         // `unnameable` is unnameable from `r` and there is a path in the constraint graph
         // between them.
-        //
-        // There is one exception; if some other region in this SCC can't name `'r`, then
-        // we pick the region with the smallest universe in the SCC, so that a path can
-        // always start in `'r` to find a motivation that isn't cyclic.
-        let blame_to = if annotation.representative.rvid() == max_u_rvid {
-            // Assertion: the region that lowered our universe is an existential one and we are a placeholder!
+        if annotation.representative.rvid() != max_u_rvid {
+            // FIXME: if we can extract a useful blame span here, future error
+            // reporting and constraint search can be simplified.
 
+            added_constraints = true;
+            outlives_constraints.push(OutlivesConstraint {
+                sup: annotation.representative.rvid(),
+                sub: fr_static,
+                category: ConstraintCategory::OutlivesUnnameablePlaceholder(max_u_rvid),
+                locations: Locations::All(rustc_span::DUMMY_SP),
+                span: rustc_span::DUMMY_SP,
+                variance_info: VarianceDiagInfo::None,
+                from_closure: false,
+            });
+        } else if !(annotation.reaches_existential_that_cannot_name_us().is_some()
+            || annotation.reaches_other_placeholder(annotation.representative.rvid()).is_some())
+        {
             // The SCC's representative is not nameable from some region
-            // that ends up in the SCC.
-            let small_universed_rvid = annotation.max_nameable_universe.1;
-            debug!(
-                "{small_universed_rvid:?} lowered our universe to {:?}",
-                annotation.max_nameable_universe()
+            // that ends up in the SCC. This means there is nothing for us to do.
+            // However, this is only possible under circumstances that produce
+            // errors, so we make sure that we catch them here. Otherwise,
+            // there might actually be soundness issues!
+            bug!(
+                "Universe of SCC {scc:?} should have been lowered by an existential or at least another placeholder but was lowered by {:?}, which is neither.",
+                annotation.max_nameable_universe
             );
-            small_universed_rvid
-        } else {
-            // `max_u_rvid` is not nameable by the SCC's representative.
-            max_u_rvid
         };
-
-        // FIXME: if we can extract a useful blame span here, future error
-        // reporting and constraint search can be simplified.
-
-        added_constraints = true;
-        outlives_constraints.push(OutlivesConstraint {
-            sup: annotation.representative.rvid(),
-            sub: fr_static,
-            category: ConstraintCategory::OutlivesUnnameablePlaceholder(blame_to),
-            locations: Locations::All(rustc_span::DUMMY_SP),
-            span: rustc_span::DUMMY_SP,
-            variance_info: VarianceDiagInfo::None,
-            from_closure: false,
-        });
     }
     added_constraints
 }
