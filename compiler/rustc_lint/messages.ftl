@@ -383,7 +383,9 @@ lint_improper_ctypes_enum_repr_help =
 lint_improper_ctypes_enum_repr_reason = enum has no representation hint
 lint_improper_ctypes_fnptr_help = consider using an `extern fn(...) -> ...` function pointer instead
 
+lint_improper_ctypes_fnptr_indirect_reason = the function pointer to `{$ty}` is FFI-unsafe due to `{$inner_ty}`
 lint_improper_ctypes_fnptr_reason = this function pointer has Rust-specific calling convention
+
 lint_improper_ctypes_non_exhaustive = this enum is non-exhaustive
 lint_improper_ctypes_non_exhaustive_variant = this enum has non-exhaustive variants
 

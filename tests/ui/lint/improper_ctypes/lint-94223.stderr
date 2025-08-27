@@ -4,6 +4,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL | pub fn bad(f: extern "C" fn([u8])) {}
    |               ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 note: the lint level is defined here
@@ -18,6 +19,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL | pub fn bad_twice(f: Result<extern "C" fn([u8]), extern "C" fn([u8])>) {}
    |                            ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -27,6 +29,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL | pub fn bad_twice(f: Result<extern "C" fn([u8]), extern "C" fn([u8])>) {}
    |                                                 ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -36,6 +39,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL | struct BadStruct(extern "C" fn([u8]));
    |                  ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -45,6 +49,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL |     A(extern "C" fn([u8])),
    |       ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -54,6 +59,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL |     A(extern "C" fn([u8])),
    |       ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -63,6 +69,7 @@ error: `extern` callback uses type `[u8]`, which is not FFI-safe
 LL | type Foo = extern "C" fn([u8]);
    |            ^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn([u8])` is FFI-unsafe due to `[u8]`
    = help: consider using a raw pointer instead
    = note: slices have no C equivalent
 
@@ -72,6 +79,7 @@ error: `extern` callback uses type `Option<&<T as FooTrait>::FooType>`, which is
 LL | pub type Foo2<T> = extern "C" fn(Option<&<T as FooTrait>::FooType>);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `for<'a> extern "C" fn(Option<&'a <T as FooTrait>::FooType>)` is FFI-unsafe due to `Option<&<T as FooTrait>::FooType>`
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
@@ -81,6 +89,7 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD: extern "C" fn(FfiUnsafe) = f;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(FfiUnsafe)` is FFI-unsafe due to `FfiUnsafe`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -95,6 +104,7 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(FfiUnsafe)` is FFI-unsafe due to `FfiUnsafe`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -109,6 +119,7 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(FfiUnsafe)` is FFI-unsafe due to `FfiUnsafe`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
@@ -123,6 +134,7 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub const BAD_CONST: extern "C" fn(FfiUnsafe) = f;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(FfiUnsafe)` is FFI-unsafe due to `FfiUnsafe`
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 note: the type is defined here
