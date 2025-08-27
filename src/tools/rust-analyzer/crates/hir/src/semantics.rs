@@ -28,13 +28,13 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
-use hir_ty::diagnostics::unsafe_operations_for_body;
+use hir_ty::diagnostics::{unsafe_operations, unsafe_operations_for_body};
 use intern::{Interned, Symbol, sym};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{SmallVec, smallvec};
 use span::{Edition, FileId, SyntaxContext};
-use stdx::TupleExt;
+use stdx::{TupleExt, always};
 use syntax::{
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
     TextSize,
@@ -1760,6 +1760,25 @@ impl<'db> SemanticsImpl<'db> {
         unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
             if let Ok(node) = source_map.expr_or_pat_syntax(node) {
                 res.insert(node);
+            }
+        });
+        res
+    }
+
+    pub fn get_unsafe_ops_for_unsafe_block(&self, block: ast::BlockExpr) -> Vec<ExprOrPatSource> {
+        always!(block.unsafe_token().is_some());
+        let block = self.wrap_node_infile(ast::Expr::from(block));
+        let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
+        let def = def.into();
+        let (body, source_map) = self.db.body_with_source_map(def);
+        let infer = self.db.infer(def);
+        let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
+            return Vec::new();
+        };
+        let mut res = Vec::default();
+        unsafe_operations(self.db, &infer, def, &body, block, &mut |node, _| {
+            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                res.push(node);
             }
         });
         res

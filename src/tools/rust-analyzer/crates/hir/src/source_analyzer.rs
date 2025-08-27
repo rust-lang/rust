@@ -1283,7 +1283,7 @@ impl<'db> SourceAnalyzer<'db> {
         {
             let mut is_unsafe = false;
             let mut walk_expr = |expr_id| {
-                unsafe_operations(db, infer, def, body, expr_id, &mut |inside_unsafe_block| {
+                unsafe_operations(db, infer, def, body, expr_id, &mut |_, inside_unsafe_block| {
                     is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
                 })
             };
