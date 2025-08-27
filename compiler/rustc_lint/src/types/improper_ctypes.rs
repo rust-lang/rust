@@ -10,8 +10,8 @@ use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, Unnormalized,
+    self, Adt, AdtDef, AdtKind, Binder, FnSig, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -144,6 +144,27 @@ declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES_DEFINITIONS,
     USES_POWER_ALIGNMENT,
 ]);
+
+type Sig<'tcx> = Binder<'tcx, FnSig<'tcx>>;
+
+/// Extract (binder-wrapped) FnSig object from a FnPtr's mir::Ty
+fn get_sig_from_fnptr_ty<'tcx>(ty: Ty<'tcx>) -> Sig<'tcx> {
+    match *ty.kind() {
+        ty::FnPtr(sig_tys, hdr) => {
+            let sig = sig_tys.with(hdr);
+            if sig.abi().is_rustic_abi() {
+                bug!(
+                    "expected to inspect the type of an `extern \"ABI\"` FnPtr, not an internal-ABI one"
+                )
+            } else {
+                sig
+            }
+        }
+        r @ _ => {
+            bug!("expected to inspect the type of an `extern \"ABI\"` FnPtr, not {:?}", r,)
+        }
+    }
+}
 
 /// A common pattern in this lint is to attempt normalize_erasing_regions,
 /// but keep the original type if it were to fail.
@@ -514,9 +535,6 @@ bitflags! {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum OuterTyKind {
     None,
-    /// A variant that should not exist,
-    /// but is needed because we don't change the lint's behavior yet
-    NoneThroughFnPtr,
     /// For struct/enum/union fields
     AdtField,
     /// Placeholder for properties that will be used eventually
@@ -527,7 +545,7 @@ impl OuterTyKind {
     /// Computes the relationship by providing the containing Ty itself
     fn from_ty<'tcx>(ty: Ty<'tcx>) -> Self {
         match ty.kind() {
-            ty::FnPtr(..) => Self::NoneThroughFnPtr,
+            ty::FnPtr(..) => Self::None,
             ty::Adt(..) => {
                 if ty.boxed_ty().is_some() {
                     Self::Other
@@ -584,31 +602,15 @@ impl VisitorState {
         }
     }
 
-    /// From an existing state, compute the state of any subtype of the current type.
-    /// (Case where the current type is a function pointer,
-    /// meaning we need to specify if the subtype is an argument or the return.)
-    fn next_in_fnptr(&self, current_ty: Ty<'_>, fn_pos: FnPos) -> Self {
-        assert!(matches!(current_ty.kind(), ty::FnPtr(..)));
-        VisitorState {
-            root_use_flags: match fn_pos {
-                FnPos::Ret => RootUseFlags::RETURN_TY_IN_FNPTR,
-                FnPos::Arg => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
-            },
-            outer_ty_kind: OuterTyKind::from_ty(current_ty),
-            depth: self.depth + 1,
-        }
-    }
-
     /// Get the proper visitor state for a given function's arguments or return type.
     fn fn_entry_point(fn_mode: CItemKind, fn_pos: FnPos) -> Self {
         let p_flags = match (fn_mode, fn_pos) {
             (CItemKind::ExportedFunction, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DEFINITION,
             (CItemKind::ImportedExtern, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_DECLARATION,
+            (CItemKind::Callback, FnPos::Ret) => RootUseFlags::RETURN_TY_IN_FNPTR,
             (CItemKind::ExportedFunction, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
             (CItemKind::ImportedExtern, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
-            // we could also deal with CItemKind::Callback,
-            // but we bake an assumption from this function's call sites here.
-            _ => bug!("cannot be called with CItemKind::{:?}", fn_mode),
+            (CItemKind::Callback, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
         };
         VisitorState { root_use_flags: p_flags, outer_ty_kind: OuterTyKind::None, depth: 0 }
     }
@@ -677,15 +679,10 @@ struct ImproperCTypesVisitor<'a, 'tcx> {
     /// The original type being checked, before we recursed
     /// to any other types it contains.
     base_ty: Ty<'tcx>,
-    base_fn_mode: CItemKind,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn new(
-        cx: &'a LateContext<'tcx>,
-        base_ty: Unnormalized<'tcx, Ty<'tcx>>,
-        base_fn_mode: CItemKind,
-    ) -> Self {
+    fn new(cx: &'a LateContext<'tcx>, base_ty: Unnormalized<'tcx, Ty<'tcx>>) -> Self {
         // Skip normalization for opaques: even in `TypingMode::Borrowck` the body's own
         // defining opaques still get revealed, leaving entries in `OpaqueTypeStorage` that
         // ICE on `InferCtxt` drop (issue #156352).
@@ -694,7 +691,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             maybe_normalize_erasing_regions(cx, base_ty)
         };
-        ImproperCTypesVisitor { cx, base_ty, base_fn_mode, cache: FxHashSet::default() }
+        ImproperCTypesVisitor { cx, base_ty, cache: FxHashSet::default() }
     }
 
     /// Checks if the given indirection (box,ref,pointer) is "ffi-safe".
@@ -712,14 +709,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             IndirectionKind::Box => {
                 // FIXME(ctypes): this logic is broken, but it still fits the current tests:
                 // - for some reason `Box<_>`es in `extern "ABI" {}` blocks
-                //   (including within FnPtr:s)
                 //   are not treated as pointers but as FFI-unsafe structs
                 // - otherwise, treat the box itself correctly, and follow pointee safety logic
                 //   as described in the other `indirection_type` match branch.
-                if state.is_in_defined_function()
-                    || (state.is_in_fnptr()
-                        && matches!(self.base_fn_mode, CItemKind::ExportedFunction))
-                {
+                if state.is_in_defined_function() || state.is_in_fnptr() {
                     if inner_ty.is_sized(tcx, self.cx.typing_env()) {
                         return FfiSafe;
                     } else {
@@ -1014,10 +1007,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     && ((
                             state.is_in_function_return()
                             // C functions can return void
-                            && matches!(
-                                state.outer_ty_kind,
-                                OuterTyKind::None | OuterTyKind::NoneThroughFnPtr
-                            )
+                            && matches!(state.outer_ty_kind, OuterTyKind::None)
                         )
                         // `()` fields are safe
                         || state.is_field())
@@ -1049,10 +1039,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_in_function()
-                    // FIXME(ctypes): VVV-this-VVV shouldn't make a difference between ::None and ::NoneThroughFnPtr
-                    && matches!(state.outer_ty_kind, OuterTyKind::None)
-                {
+                if state.is_in_function() && matches!(state.outer_ty_kind, OuterTyKind::None) {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
                     FfiResult::new_with_reason(
@@ -1067,28 +1054,23 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
+            // fnptrs are a special case, they always need to be treated as
+            // "the element rendered unsafe" because their unsafety doesn't affect
+            // their surroundings, and their type is often declared inline
+            // as a result, don't go into them when scanning for the safety of something else
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
                 if sig.abi().is_rustic_abi() {
-                    return FfiResult::new_with_reason(
+                    FfiResult::new_with_reason(
                         ty,
-                        msg!("this function pointer has Rust-specific calling convention"),
+                        msg!("this function pointer has a Rust-specific calling convention"),
                         Some(msg!(
                             "consider using an `extern fn(...) -> ...` function pointer instead"
                         )),
-                    );
+                    )
+                } else {
+                    FfiSafe
                 }
-
-                let sig = tcx.instantiate_bound_regions_with_erased(sig);
-                for arg in sig.inputs() {
-                    match self.visit_type(state.next_in_fnptr(ty, FnPos::Arg), *arg) {
-                        FfiSafe => {}
-                        r => return r,
-                    }
-                }
-
-                let ret_ty = sig.output();
-                self.visit_type(state.next_in_fnptr(ty, FnPos::Ret), ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -1183,7 +1165,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
         }
-
         self.visit_type(state, ty)
     }
 }
@@ -1194,27 +1175,25 @@ impl<'tcx> ImproperCTypesLint {
     fn check_type_for_external_abi_fnptr(
         &mut self,
         cx: &LateContext<'tcx>,
-        state: VisitorState,
-        hir_ty: &hir::Ty<'tcx>,
+        hir_ty: &'tcx hir::Ty<'tcx>,
         ty: Ty<'tcx>,
-        fn_mode: CItemKind,
     ) {
         struct FnPtrFinder<'tcx> {
             current_depth: usize,
             depths: Vec<usize>,
-            spans: Vec<Span>,
+            decls: Vec<&'tcx hir::FnDecl<'tcx>>,
             tys: Vec<Ty<'tcx>>,
         }
 
-        impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
-            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
+        impl<'tcx> hir::intravisit::Visitor<'tcx> for FnPtrFinder<'tcx> {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
                 debug!(?ty);
                 self.current_depth += 1;
-                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, .. }) = ty.kind
+                if let hir::TyKind::FnPtr(hir::FnPtrTy { abi, decl, .. }) = ty.kind
                     && !abi.is_rustic_abi()
                 {
+                    self.decls.push(*decl);
                     self.depths.push(self.current_depth);
-                    self.spans.push(ty.span);
                 }
 
                 hir::intravisit::walk_ty(self, ty);
@@ -1237,8 +1216,8 @@ impl<'tcx> ImproperCTypesLint {
         }
 
         let mut visitor = FnPtrFinder {
-            spans: Vec::new(),
             tys: Vec::new(),
+            decls: Vec::new(),
             depths: Vec::new(),
             current_depth: 0,
         };
@@ -1247,16 +1226,14 @@ impl<'tcx> ImproperCTypesLint {
 
         let all_types = iter::zip(
             visitor.depths.drain(..),
-            iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)),
+            iter::zip(visitor.tys.drain(..), visitor.decls.drain(..)),
         );
-        for (depth, (fn_ptr_ty, span)) in all_types {
-            let fn_ptr_ty = Unnormalized::new_wip(fn_ptr_ty);
-            let mut visitor = ImproperCTypesVisitor::new(cx, fn_ptr_ty, fn_mode);
-            let bridge_state = VisitorState { depth, ..state };
-            // FIXME(ctypes): make a check_for_fnptr
-            let ffi_res = visitor.check_type(bridge_state, fn_ptr_ty);
+        for (depth, (fn_ptr_ty, decl)) in all_types {
+            let sig = get_sig_from_fnptr_ty(fn_ptr_ty);
 
-            self.process_ffi_result(cx, span, ffi_res, CItemKind::Callback);
+            // FIXME: does this cause a double normalisation? (since this signature comes from
+            // the normalised `ty` argument of this method) Is this a performance problem?
+            self.check_foreign_fn(cx, CItemKind::Callback, Unnormalized::new_wip(sig), decl, depth);
         }
     }
 
@@ -1265,7 +1242,6 @@ impl<'tcx> ImproperCTypesLint {
     fn check_fn_for_external_abi_fnptr(
         &mut self,
         cx: &LateContext<'tcx>,
-        fn_mode: CItemKind,
         def_id: LocalDefId,
         decl: &'tcx hir::FnDecl<'_>,
     ) {
@@ -1273,13 +1249,11 @@ impl<'tcx> ImproperCTypesLint {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            self.check_type_for_external_abi_fnptr(cx, state, input_hir, *input_ty, fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, input_hir, *input_ty);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            self.check_type_for_external_abi_fnptr(cx, state, ret_hir, sig.output(), fn_mode);
+            self.check_type_for_external_abi_fnptr(cx, ret_hir, sig.output());
         }
     }
 
@@ -1300,9 +1274,10 @@ impl<'tcx> ImproperCTypesLint {
         check_struct_for_power_alignment(cx, item, adt_def);
     }
 
+    /// Check that an extern "ABI" static variable is of a ffi-safe type.
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::ImportedExtern);
+        let mut visitor = ImproperCTypesVisitor::new(cx, ty);
         let ffi_res = visitor.check_type(VisitorState::static_entry_point(), ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
@@ -1312,24 +1287,26 @@ impl<'tcx> ImproperCTypesLint {
         &mut self,
         cx: &LateContext<'tcx>,
         fn_mode: CItemKind,
-        def_id: LocalDefId,
+        sig: Unnormalized<'tcx, Sig<'tcx>>,
         decl: &'tcx hir::FnDecl<'_>,
+        depth: usize,
     ) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-        let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
+        let sig = cx.tcx.instantiate_bound_regions_with_erased(sig.skip_norm_wip());
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             let input_ty = Unnormalized::new_wip(*input_ty);
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
-            let mut visitor = ImproperCTypesVisitor::new(cx, input_ty, fn_mode);
+            let mut state = VisitorState::fn_entry_point(fn_mode, FnPos::Arg);
+            state.depth = depth;
+            let mut visitor = ImproperCTypesVisitor::new(cx, input_ty);
             let ffi_res = visitor.check_type(state, input_ty);
             self.process_ffi_result(cx, input_hir.span, ffi_res, fn_mode);
         }
 
         if let hir::FnRetTy::Return(ret_hir) = decl.output {
             let output_ty = Unnormalized::new_wip(sig.output());
-            let state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
-            let mut visitor = ImproperCTypesVisitor::new(cx, output_ty, fn_mode);
+            let mut state = VisitorState::fn_entry_point(fn_mode, FnPos::Ret);
+            state.depth = depth;
+            let mut visitor = ImproperCTypesVisitor::new(cx, output_ty);
             let ffi_res = visitor.check_type(state, output_ty);
             self.process_ffi_result(cx, ret_hir.span, ffi_res, fn_mode);
         }
@@ -1451,24 +1428,14 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         let abi = cx.tcx.hir_get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(sig, _, _) => {
+            hir::ForeignItemKind::Fn(hir_sig, _, _) => {
                 // fnptrs are a special case, they always need to be treated as
                 // "the element rendered unsafe" because their unsafety doesn't affect
                 // their surroundings, and their type is often declared inline
+                self.check_fn_for_external_abi_fnptr(cx, it.owner_id.def_id, hir_sig.decl);
+                let sig = cx.tcx.fn_sig(it.owner_id.def_id).instantiate_identity();
                 if !abi.is_rustic_abi() {
-                    self.check_foreign_fn(
-                        cx,
-                        CItemKind::ImportedExtern,
-                        it.owner_id.def_id,
-                        sig.decl,
-                    );
-                } else {
-                    self.check_fn_for_external_abi_fnptr(
-                        cx,
-                        CItemKind::ImportedExtern,
-                        it.owner_id.def_id,
-                        sig.decl,
-                    );
+                    self.check_foreign_fn(cx, CItemKind::ImportedExtern, sig, hir_sig.decl, 0);
                 }
             }
             hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
@@ -1485,10 +1452,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_type_for_external_abi_fnptr(
                     cx,
-                    VisitorState::static_entry_point(),
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
-                    CItemKind::ExportedFunction, // TODO: for some reason, this is the value that reproduces old behaviour
                 );
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
@@ -1519,10 +1484,8 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'tcx>) {
         self.check_type_for_external_abi_fnptr(
             cx,
-            VisitorState::static_entry_point(),
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity().skip_norm_wip(),
-            CItemKind::ImportedExtern,
         );
     }
 
@@ -1546,10 +1509,10 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         // fnptrs are a special case, they always need to be treated as
         // "the element rendered unsafe" because their unsafety doesn't affect
         // their surroundings, and their type is often declared inline
+        self.check_fn_for_external_abi_fnptr(cx, id, decl);
+        let sig = cx.tcx.fn_sig(id).instantiate_identity();
         if !abi.is_rustic_abi() {
-            self.check_foreign_fn(cx, CItemKind::ExportedFunction, id, decl);
-        } else {
-            self.check_fn_for_external_abi_fnptr(cx, CItemKind::ExportedFunction, id, decl);
+            self.check_foreign_fn(cx, CItemKind::ExportedFunction, sig, decl, 0);
         }
     }
 }
