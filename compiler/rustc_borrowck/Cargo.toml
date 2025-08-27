@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 either = "1.5.0"
-itertools = "0.12"
+itertools.workspace = true
 polonius-engine = "0.13.0"
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -25,5 +25,5 @@ rustc_span = { path = "../rustc_span" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end

@@ -46,7 +46,7 @@ rustc_thread_pool = { path = "../rustc_thread_pool" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [dev-dependencies]

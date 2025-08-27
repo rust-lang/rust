@@ -6,12 +6,12 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 ar_archive_writer = "0.4.2"
-bitflags = "2.4.1"
+bitflags.workspace = true
 bstr = "1.11.3"
 # `cc` updates often break things, so we pin it here. Cargo enforces "max 1 semver-compat version
 # per crate", so if you change this, you need to also change it in `rustc_llvm`.
 cc = "=1.2.16"
-itertools = "0.12"
+itertools.workspace = true
 pathdiff = "0.2.0"
 regex = "1.4"
 rustc_abi = { path = "../rustc_abi" }
@@ -40,9 +40,9 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
-thin-vec = "0.2.12"
+thin-vec.workspace = true
 thorin-dwp = "0.9"
-tracing = "0.1"
+tracing.workspace = true
 wasm-encoder = "0.219"
 # tidy-alphabetical-end
 

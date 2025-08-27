@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -21,6 +21,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_transmute = { path = "../rustc_transmute", features = ["rustc"] }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2"
-tracing = "0.1"
+thin-vec.workspace = true
+tracing.workspace = true
 # tidy-alphabetical-end

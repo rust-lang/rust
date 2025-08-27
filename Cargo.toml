@@ -59,6 +59,16 @@ exclude = [
   "obj",
 ]
 
+[workspace.dependencies]
+# tidy-alphabetical-start
+bitflags = "2.9.3"
+itertools = "0.12.1"
+memchr = "2.7.5"
+rustc-literal-escaper = "0.0.5"
+thin-vec = "0.2.14"
+tracing = "0.1.37"
+# tidy-alphabetical-end
+
 [profile.release.package.rustc_thread_pool]
 # The rustc fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)

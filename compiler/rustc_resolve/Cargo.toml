@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
+bitflags.workspace = true
 indexmap = "2.4.0"
-itertools = "0.12"
+itertools.workspace = true
 pulldown-cmark = { version = "0.11", features = ["html"], default-features = false }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
@@ -27,6 +27,6 @@ rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2.12"
-tracing = "0.1"
+thin-vec.workspace = true
+tracing.workspace = true
 # tidy-alphabetical-end
