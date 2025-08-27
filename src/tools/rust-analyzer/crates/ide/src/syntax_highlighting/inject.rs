@@ -26,7 +26,8 @@ pub(super) fn ra_fixture(
     literal: &ast::String,
     expanded: &ast::String,
 ) -> Option<()> {
-    let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
+    let active_parameter =
+        salsa::attach(sema.db, || ActiveParameter::at_token(sema, expanded.syntax().clone()))?;
     let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
         attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
             path.segments()
