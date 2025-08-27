@@ -24,7 +24,7 @@
 pub use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
 pub use rustc_middle::infer::canonical::*;
-use rustc_middle::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::{InferCtxt, RegionVariableOrigin};
@@ -67,29 +67,12 @@ impl<'tcx> InferCtxt<'tcx> {
             .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
-        let canonical_inference_vars =
-            self.instantiate_canonical_vars(span, canonical.variables, |ui| universes[ui]);
-        let result = canonical.instantiate(self.tcx, &canonical_inference_vars);
-        (result, canonical_inference_vars)
-    }
-
-    /// Given the "infos" about the canonical variables from some
-    /// canonical, creates fresh variables with the same
-    /// characteristics (see `instantiate_canonical_var` for
-    /// details). You can then use `instantiate` to instantiate the
-    /// canonical variable with these inference variables.
-    fn instantiate_canonical_vars(
-        &self,
-        span: Span,
-        variables: &List<CanonicalVarKind<'tcx>>,
-        universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
-    ) -> CanonicalVarValues<'tcx> {
-        let mut var_values = Vec::with_capacity(variables.len());
-        for info in variables.iter() {
-            let value = self.instantiate_canonical_var(span, info, &var_values, &universe_map);
-            var_values.push(value);
-        }
-        CanonicalVarValues { var_values: self.tcx.mk_args(&var_values) }
+        let var_values =
+            CanonicalVarValues::instantiate(self.tcx, &canonical.variables, |var_values, info| {
+                self.instantiate_canonical_var(span, info, &var_values, |ui| universes[ui])
+            });
+        let result = canonical.instantiate(self.tcx, &var_values);
+        (result, var_values)
     }
 
     /// Given the "info" about a canonical variable, creates a fresh

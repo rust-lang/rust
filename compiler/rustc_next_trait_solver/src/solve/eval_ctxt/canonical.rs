@@ -365,10 +365,8 @@ where
                 }
             }
         }
-
-        let mut var_values = Vec::with_capacity(response.variables.len());
-        for (index, kind) in response.variables.iter().enumerate() {
-            let value = if kind.universe() != ty::UniverseIndex::ROOT {
+        CanonicalVarValues::instantiate(delegate.cx(), response.variables, |var_values, kind| {
+            if kind.universe() != ty::UniverseIndex::ROOT {
                 // A variable from inside a binder of the query. While ideally these shouldn't
                 // exist at all (see the FIXME at the start of this method), we have to deal with
                 // them for now.
@@ -383,7 +381,7 @@ where
                 // more placeholders then they should be able to. However the inference variables have
                 // to "come from somewhere", so by equating them with the original values of the caller
                 // later on, we pull them down into their correct universe again.
-                if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
+                if let Some(v) = opt_values[ty::BoundVar::from_usize(var_values.len())] {
                     v
                 } else {
                     delegate.instantiate_canonical_var(kind, span, &var_values, |_| prev_universe)
@@ -392,11 +390,8 @@ where
                 // For placeholders which were already part of the input, we simply map this
                 // universal bound variable back the placeholder of the input.
                 original_values[kind.expect_placeholder_index()]
-            };
-            var_values.push(value)
-        }
-
-        CanonicalVarValues { var_values: delegate.cx().mk_args(&var_values) }
+            }
+        })
     }
 
     /// Unify the `original_values` with the `var_values` returned by the canonical query..

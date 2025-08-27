@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::Index;
 
+use arrayvec::ArrayVec;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -304,6 +305,37 @@ impl<I: Interner> CanonicalVarValues<I> {
     /// canonical response.
     pub fn dummy() -> CanonicalVarValues<I> {
         CanonicalVarValues { var_values: Default::default() }
+    }
+
+    pub fn instantiate(
+        cx: I,
+        variables: I::CanonicalVarKinds,
+        mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
+    ) -> CanonicalVarValues<I> {
+        // Instantiating `CanonicalVarValues` is really hot, but limited to less than
+        // 4 most of the time. Avoid creating a `Vec` here.
+        if variables.len() <= 4 {
+            let mut var_values = ArrayVec::<_, 4>::new();
+            for info in variables.iter() {
+                var_values.push(f(&var_values, info));
+            }
+            CanonicalVarValues { var_values: cx.mk_args(&var_values) }
+        } else {
+            CanonicalVarValues::instantiate_cold(cx, variables, f)
+        }
+    }
+
+    #[cold]
+    fn instantiate_cold(
+        cx: I,
+        variables: I::CanonicalVarKinds,
+        mut f: impl FnMut(&[I::GenericArg], CanonicalVarKind<I>) -> I::GenericArg,
+    ) -> CanonicalVarValues<I> {
+        let mut var_values = Vec::with_capacity(variables.len());
+        for info in variables.iter() {
+            var_values.push(f(&var_values, info));
+        }
+        CanonicalVarValues { var_values: cx.mk_args(&var_values) }
     }
 
     #[inline]
