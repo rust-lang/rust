@@ -640,7 +640,6 @@ pub enum BuiltinLintDiag {
         path: String,
         since_kind: DeprecatedSinceKind,
     },
-    UnusedDocComment(Span),
     UnusedBuiltinAttribute {
         attr_name: Symbol,
         macro_name: String,
@@ -652,7 +651,6 @@ pub enum BuiltinLintDiag {
         ident: Ident,
         is_foreign: bool,
     },
-    LegacyDeriveHelpers(Span),
     OrPatternsBackCompat(Span, String),
     ReservedPrefix(Span, String),
     /// `'r#` in edition < 2021.
@@ -668,9 +666,6 @@ pub enum BuiltinLintDiag {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
-    MissingUnsafeOnExtern {
-        suggestion: Span,
-    },
     SingleUseLifetime {
         /// Span of the parameter which declares this lifetime.
         param_span: Span,
@@ -698,10 +693,6 @@ pub enum BuiltinLintDiag {
     ByteSliceInPackedStructWithDerive {
         // FIXME: enum of byte/string
         ty: String,
-    },
-    UnusedExternCrate {
-        span: Span,
-        removal_span: Span,
     },
     ExternCrateNotIdiomatic {
         vis_span: Span,

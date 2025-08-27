@@ -539,3 +539,11 @@ pub(crate) struct MacroArgsBadDelimSugg {
     #[suggestion_part(code = ")")]
     pub close: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(expand_unused_doc_comment)]
+#[help]
+pub(crate) struct UnusedDocComment {
+    #[label]
+    pub span: Span,
+}

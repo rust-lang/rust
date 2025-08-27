@@ -190,6 +190,11 @@ expand_unknown_macro_variable = unknown macro variable `{$name}`
 expand_unsupported_key_value =
     key-value macro attributes are not supported
 
+expand_unused_doc_comment = unused doc comment
+    .label = rustdoc does not generate documentation for {$kind}
+    .plain_help = use `//` for a plain comment
+    .block_help = use `/* */` for a plain comment
+
 expand_var_still_repeating =
     variable `{$ident}` is still repeating at this depth
 

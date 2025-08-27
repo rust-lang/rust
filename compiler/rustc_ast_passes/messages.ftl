@@ -201,6 +201,7 @@ ast_passes_match_arm_with_no_body =
     .suggestion = add a body after the pattern
 
 ast_passes_missing_unsafe_on_extern = extern blocks must be unsafe
+    .suggestion = needs `unsafe` before the extern keyword
 
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using the `#[path]` attribute to specify filesystem path

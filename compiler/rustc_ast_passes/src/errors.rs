@@ -489,6 +489,13 @@ pub(crate) struct MissingUnsafeOnExtern {
     pub span: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(ast_passes_missing_unsafe_on_extern)]
+pub(crate) struct MissingUnsafeOnExternLint {
+    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(ast_passes_fieldless_union)]
 pub(crate) struct FieldlessUnion {
