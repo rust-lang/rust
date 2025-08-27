@@ -1,12 +1,12 @@
 error: argument never used
-  --> $DIR/format-foreign-dollar-without-spec.rs:2:25
+  --> $DIR/format-foreign-dollar-without-spec.rs:3:25
    |
 LL |     println!("%65536$", 1);
    |                         ^ argument never used
    |
 note: format specifiers use curly braces, and the conversion specifier `
       ` is unknown or unsupported
-  --> $DIR/format-foreign-dollar-without-spec.rs:2:15
+  --> $DIR/format-foreign-dollar-without-spec.rs:3:15
    |
 LL |     println!("%65536$", 1);
    |               ^^^^^^^^
