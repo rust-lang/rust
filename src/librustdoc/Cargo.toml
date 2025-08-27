@@ -13,7 +13,7 @@ arrayvec = { version = "0.7", default-features = false }
 askama = { version = "0.14", default-features = false, features = ["alloc", "config", "derive"] }
 base64 = "0.21.7"
 indexmap = "2"
-itertools = "0.12"
+itertools.workspace = true
 minifier = { version = "0.3.5", default-features = false }
 pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
 regex = "1"
@@ -24,8 +24,8 @@ smallvec = "1.8.1"
 stringdex = { version = "0.0.1-alpha4" }
 tempfile = "3"
 threadpool = "1.8.1"
-tracing = "0.1"
 tracing-tree = "0.3.0"
+tracing.workspace = true
 unicode-segmentation = "1.9"
 # tidy-alphabetical-end
 

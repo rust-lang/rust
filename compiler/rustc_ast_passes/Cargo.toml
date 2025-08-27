@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
@@ -18,5 +18,5 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-thin-vec = "0.2.12"
+thin-vec.workspace = true
 # tidy-alphabetical-end

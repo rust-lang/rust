@@ -80,6 +80,7 @@
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
 #![feature(numfmt)]
+#![feature(option_reduce)]
 #![feature(pattern)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]

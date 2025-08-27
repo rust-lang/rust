@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
@@ -23,5 +23,5 @@ rustc_pattern_analysis = { path = "../rustc_pattern_analysis" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
