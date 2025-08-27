@@ -274,6 +274,10 @@ resolve_macro_extern_deprecated =
     `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
     .help = try an outer attribute: `#[macro_use]`
 
+resolve_macro_use_deprecated =
+    applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
+    .help = remove it and import macros at use sites with a `use` item instead
+
 resolve_macro_use_extern_crate_self = `#[macro_use]` is not supported on `extern crate self`
 
 resolve_macro_use_name_already_in_use =
@@ -356,6 +360,9 @@ resolve_reexport_of_crate_public =
 
 resolve_reexport_of_private =
     re-export of private `{$ident}`
+
+resolve_reexport_private_dependency =
+    {$kind} `{$name}` from private dependency '{$krate}' is re-exported
 
 resolve_relative_2018 =
     relative paths are not supported in visibilities in 2018 edition or later
@@ -477,6 +484,10 @@ resolve_unreachable_label_with_similar_name_exists =
 resolve_unused_extern_crate = unused extern crate
     .label = unused
     .suggestion = remove the unused `extern crate`
+
+resolve_unused_label = unused label
+
+resolve_unused_macro_use = unused `#[macro_use]` import
 
 resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`

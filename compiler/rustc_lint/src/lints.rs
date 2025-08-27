@@ -2536,25 +2536,12 @@ pub(crate) mod unexpected_cfg_value {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_macro_use_deprecated)]
-#[help]
-pub(crate) struct MacroUseDeprecated;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_macro_use)]
-pub(crate) struct UnusedMacroUse;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_private_extern_crate_reexport, code = E0365)]
 pub(crate) struct PrivateExternCrateReexport {
     pub ident: Ident,
     #[suggestion(code = "pub ", style = "verbose", applicability = "maybe-incorrect")]
     pub sugg: Span,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_label)]
-pub(crate) struct UnusedLabel;
 
 #[derive(LintDiagnostic)]
 #[diag(lint_macro_is_private)]
@@ -2955,14 +2942,6 @@ pub(crate) struct HiddenGlobReexports {
     pub name: String,
     // FIXME: make this translatable
     pub namespace: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_reexport_private_dependency)]
-pub(crate) struct ReexportPrivateDependency {
-    pub name: String,
-    pub kind: String,
-    pub krate: Symbol,
 }
 
 #[derive(LintDiagnostic)]

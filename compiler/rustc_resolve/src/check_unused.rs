@@ -406,7 +406,7 @@ impl Resolver<'_, '_> {
                                 MACRO_USE_EXTERN_CRATE,
                                 import.root_id,
                                 import.span,
-                                BuiltinLintDiag::MacroUseDeprecated,
+                                crate::errors::MacroUseDeprecated,
                             );
                         }
                     }
@@ -427,7 +427,7 @@ impl Resolver<'_, '_> {
                         UNUSED_IMPORTS,
                         import.root_id,
                         import.span,
-                        BuiltinLintDiag::UnusedMacroUse,
+                        crate::errors::UnusedMacroUse,
                     );
                 }
                 _ => {}

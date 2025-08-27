@@ -308,9 +308,6 @@ pub fn decorate_builtin_lint(
             }
             .decorate_lint(diag);
         }
-        BuiltinLintDiag::ReexportPrivateDependency { name, kind, krate } => {
-            lints::ReexportPrivateDependency { name, kind, krate }.decorate_lint(diag);
-        }
         BuiltinLintDiag::UnusedQualifications { removal_span } => {
             lints::UnusedQualifications { removal_span }.decorate_lint(diag);
         }
@@ -350,15 +347,10 @@ pub fn decorate_builtin_lint(
             });
             lints::UnknownDiagnosticAttribute { typo }.decorate_lint(diag);
         }
-        BuiltinLintDiag::MacroUseDeprecated => {
-            lints::MacroUseDeprecated.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedMacroUse => lints::UnusedMacroUse.decorate_lint(diag),
         BuiltinLintDiag::PrivateExternCrateReexport { source: ident, extern_crate_span } => {
             lints::PrivateExternCrateReexport { ident, sugg: extern_crate_span.shrink_to_lo() }
                 .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedLabel => lints::UnusedLabel.decorate_lint(diag),
         BuiltinLintDiag::MacroIsPrivate(ident) => {
             lints::MacroIsPrivate { ident }.decorate_lint(diag);
         }
