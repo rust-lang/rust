@@ -48,7 +48,6 @@ jobs:
           x86_64-unknown-linux-gnu,
           i686-unknown-linux-gnu,
           i586-unknown-linux-gnu,
-          loongarch64-unknown-linux-gnu,
           armv7-unknown-linux-gnueabihf,
           aarch64-unknown-linux-gnu,
           thumbv6m-none-eabi,
@@ -75,6 +74,9 @@ jobs:
         - os: ubuntu-latest
           target: x86_64-unknown-linux-gnu
           channel: stable
+        - os: ubuntu-latest
+          target: loongarch64-unknown-linux-gnu
+          channel: nightly
 
   msrv:
     runs-on: ubuntu-latest
