@@ -1,0 +1,31 @@
+error: pub struct `T9` is unconstructible externally and never constructed locally
+  --> $DIR/unconstructible-pub-struct.rs:30:1
+   |
+LL | pub struct T9<X> {
+   | ^^^^^^^^^^^^^^^^
+   |
+help: this struct may be unused locally and also externally, consider removing it
+  --> $DIR/unconstructible-pub-struct.rs:30:1
+   |
+LL | pub struct T9<X> {
+   | ^^^
+note: the lint level is defined here
+  --> $DIR/unconstructible-pub-struct.rs:2:9
+   |
+LL | #![deny(unconstructible_pub_struct)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: pub struct `NeverConstructed` is unconstructible externally and never constructed locally
+  --> $DIR/unconstructible-pub-struct.rs:41:1
+   |
+LL | pub struct NeverConstructed(i32);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: this struct may be unused locally and also externally, consider removing it
+  --> $DIR/unconstructible-pub-struct.rs:41:1
+   |
+LL | pub struct NeverConstructed(i32);
+   | ^^^
+
+error: aborting due to 2 previous errors
+
