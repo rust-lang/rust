@@ -1,8 +1,8 @@
 //! The main parser interface.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![cfg_attr(test, feature(iter_order_by))]
-#![feature(debug_closure_helpers)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_intersperse)]

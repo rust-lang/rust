@@ -27,6 +27,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(doc, feature(intra_doc_pointers))]
 #![feature(allocator_api)]
@@ -35,7 +36,6 @@
 #![feature(const_default)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
-#![feature(debug_closure_helpers)]
 #![feature(decl_macro)]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
