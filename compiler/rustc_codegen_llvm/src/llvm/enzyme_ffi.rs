@@ -25,8 +25,8 @@ pub(crate) enum CConcreteType {
     DT_Half = 3,
     DT_Float = 4,
     DT_Double = 5,
-    // FIXME(KMJ-007): handle f128 using long double here(https://github.com/EnzymeAD/Enzyme/issues/1600)
     DT_Unknown = 6,
+    DT_FP128 = 9,
 }
 
 pub(crate) struct TypeTree {
