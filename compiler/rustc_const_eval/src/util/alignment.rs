@@ -54,7 +54,7 @@ where
             // Therefore align([T]) == align(T). Length does not affect alignment.
 
             // Try to determine alignment from the type structure
-            if let Some(element_align) = get_element_alignment(tcx, ty) {
+            if let Some(element_align) = get_element_alignment(tcx, typing_env, ty) {
                 element_align > pack
             } else {
                 // If we still can't determine alignment, conservatively assume disaligned
@@ -64,22 +64,36 @@ where
     }
 }
 
-/// Try to determine the alignment of an array element type
-fn get_element_alignment<'tcx>(_tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Align> {
+/// Returns the ABI alignment of the *element type* if `ty` is an array/slice,
+/// otherwise `None`.
+///
+/// Soundness note:
+/// For any `T`, the ABI alignment of `[T]` (and `[T; N]`) equals that of `T`
+/// and does not depend on the length `N`.
+/// Proof sketch:
+///   (1) From `&[T]` we can obtain `&T`  ⇒  align([T]) ≥ align(T).
+///   (2) From `&T` we can obtain `&[T; 1]` via `std::array::from_ref`
+///       (and thus `&[T]`)  ⇒  align(T) ≥ align([T]).
+/// Hence `align([T]) == align(T)`.
+///
+/// Therefore, when `layout_of([T; N])` is unavailable in generic contexts,
+/// it is sufficient (and safe) to use `layout_of(T)` for alignment checks.
+///
+/// Returns:
+/// - `Some(align)` if `ty` is `Array(elem, _)` or `Slice(elem)` and
+///    `layout_of(elem)` is available;
+/// - `None` otherwise (caller should stay conservative).
+fn get_element_alignment<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<Align> {
     match ty.kind() {
-        ty::Array(element_ty, _) | ty::Slice(element_ty) => {
-            // Only allow u8 and i8 arrays when layout computation fails
-            // Other types are conservatively assumed to be misaligned
-            match element_ty.kind() {
-                ty::Uint(ty::UintTy::U8) | ty::Int(ty::IntTy::I8) => {
-                    // For u8 and i8, we know their alignment is 1
-                    Some(Align::from_bytes(1).unwrap())
-                }
-                _ => {
-                    // For other types, we cannot safely determine alignment
-                    // Conservatively return None to indicate potential misalignment
-                    None
-                }
+        ty::Array(elem_ty, _) | ty::Slice(elem_ty) => {
+            // Try to obtain the element's layout; if we can, use its ABI align.
+            match tcx.layout_of(typing_env.as_query_input(*elem_ty)) {
+                Ok(layout) => Some(layout.align.abi),
+                Err(_) => None, // stay conservative when even the element's layout is unknown
             }
         }
         _ => None,
