@@ -3,9 +3,9 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(debug_closure_helpers))]
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
-#![feature(debug_closure_helpers)]
 #![feature(exhaustive_patterns)]
 #![feature(never_type)]
 #![feature(variant_count)]
