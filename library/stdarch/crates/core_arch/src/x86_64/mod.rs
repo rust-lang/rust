@@ -75,7 +75,7 @@ mod bt;
 pub use self::bt::*;
 
 mod avx512fp16;
-#[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
+#[stable(feature = "stdarch_x86_avx512fp16", since = "CURRENT_RUSTC_VERSION")]
 pub use self::avx512fp16::*;
 
 mod amx;
