@@ -75,6 +75,7 @@ odht = { version = "0.3.1", features = ["nightly"] }
 polonius-engine = "0.13.0"
 proc-macro2 = "1.0.101"
 quote = "1.0.40"
+rustc-demangle = "0.1.26"
 rustc-hash = "2.1.1"
 rustc-literal-escaper = "0.0.5"
 rustc_apfloat = "0.2.3"

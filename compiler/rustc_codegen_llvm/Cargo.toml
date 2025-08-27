@@ -16,7 +16,7 @@ itertools.workspace = true
 libc.workspace = true
 measureme.workspace = true
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
-rustc-demangle = "0.1.21"
+rustc-demangle.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
