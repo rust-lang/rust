@@ -69,6 +69,7 @@ itertools = "0.12.1"
 # FIXME: Remove this pin once this rustix issue is resolved
 # https://github.com/bytecodealliance/rustix/issues/1496
 libc = "=0.2.174"
+measureme = "12.0.3"
 memchr = "2.7.5"
 proc-macro2 = "1.0.101"
 quote = "1.0.40"

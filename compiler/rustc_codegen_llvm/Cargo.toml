@@ -14,7 +14,7 @@ bitflags.workspace = true
 gimli = "0.31"
 itertools.workspace = true
 libc.workspace = true
-measureme = "12.0.1"
+measureme.workspace = true
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
 rustc-demangle = "0.1.21"
 rustc_abi = { path = "../rustc_abi" }
