@@ -2183,7 +2183,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::UnusedDocComment(attr.span),
+                    crate::errors::MacroCallUnusedDocComment { span: attr.span },
                 );
             } else if rustc_attr_parsing::is_builtin_attr(attr)
                 && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())

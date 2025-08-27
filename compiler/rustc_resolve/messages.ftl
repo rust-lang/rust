@@ -231,6 +231,9 @@ resolve_item_was_cfg_out = the item is gated here
 resolve_label_with_similar_name_reachable =
     a label with a similar name is reachable
 
+resolve_legacy_derive_helpers = derive helper attribute is used before it is introduced
+    .label = the attribute is introduced here
+
 resolve_lending_iterator_report_error =
     associated type `Iterator::Item` is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
     .note = you can't create an `Iterator` that borrows each `Item` from itself, but you can instead create a new type that borrows your existing type and implement `Iterator` for that new type
@@ -470,6 +473,10 @@ resolve_unreachable_label_suggestion_use_similarly_named =
 
 resolve_unreachable_label_with_similar_name_exists =
     a label with a similar name exists but is unreachable
+
+resolve_unused_extern_crate = unused extern crate
+    .label = unused
+    .suggestion = remove the unused `extern crate`
 
 resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`

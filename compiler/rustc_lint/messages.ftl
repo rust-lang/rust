@@ -453,9 +453,6 @@ lint_int_to_ptr_transmutes = transmuting an integer to a pointer creates a point
     .suggestion_with_exposed_provenance = use `std::ptr::with_exposed_provenance{$suffix}` instead to use a previously exposed provenance
     .suggestion_without_provenance_mut = if you truly mean to create a pointer without provenance, use `std::ptr::without_provenance_mut`
 
-lint_legacy_derive_helpers = derive helper attribute is used before it is introduced
-    .label = the attribute is introduced here
-
 lint_lintpass_by_hand = implementing `LintPass` by hand
     .help = try using `declare_lint_pass!` or `impl_lint_pass!` instead
 
@@ -523,9 +520,6 @@ lint_mismatched_lifetime_syntaxes_suggestion_mixed =
 
 lint_mismatched_lifetime_syntaxes_suggestion_mixed_only_paths =
     use `'_` for type paths
-
-lint_missing_unsafe_on_extern = extern blocks should be unsafe
-    .suggestion = needs `unsafe` before the extern keyword
 
 lint_mixed_script_confusables =
     the usage of Script Group `{$set}` in this crate consists solely of mixed script confusables
@@ -961,14 +955,6 @@ lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
 
 lint_unused_delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
-
-lint_unused_doc_comment = unused doc comment
-    .label = rustdoc does not generate documentation for macro invocations
-    .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
-
-lint_unused_extern_crate = unused extern crate
-    .label = unused
-    .suggestion = remove the unused `extern crate`
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

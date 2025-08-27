@@ -135,9 +135,6 @@ pub fn decorate_builtin_lint(
             stability::Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
                 .decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedDocComment(attr_span) => {
-            lints::UnusedDocComment { span: attr_span }.decorate_lint(diag);
-        }
         BuiltinLintDiag::PatternsInFnsWithoutBody { span: remove_span, ident, is_foreign } => {
             let sub = lints::PatternsInFnsWithoutBodySub { ident, span: remove_span };
             if is_foreign {
@@ -146,9 +143,6 @@ pub fn decorate_builtin_lint(
                 lints::PatternsInFnsWithoutBody::Bodiless { sub }
             }
             .decorate_lint(diag);
-        }
-        BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
-            lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::OrPatternsBackCompat(suggestion_span, suggestion) => {
             lints::OrPatternsBackCompat { span: suggestion_span, suggestion }.decorate_lint(diag);
@@ -210,9 +204,6 @@ pub fn decorate_builtin_lint(
             };
             lints::DeprecatedWhereClauseLocation { suggestion }.decorate_lint(diag);
         }
-        BuiltinLintDiag::MissingUnsafeOnExtern { suggestion } => {
-            lints::MissingUnsafeOnExtern { suggestion }.decorate_lint(diag);
-        }
         BuiltinLintDiag::SingleUseLifetime {
             param_span,
             use_span: Some((use_span, elide)),
@@ -242,7 +233,6 @@ pub fn decorate_builtin_lint(
                 .decorate_lint(diag);
         }
         BuiltinLintDiag::SingleUseLifetime { use_span: None, deletion_span, ident, .. } => {
-            debug!(?deletion_span);
             lints::UnusedLifetime { deletion_span, ident }.decorate_lint(diag);
         }
         BuiltinLintDiag::NamedArgumentUsedPositionally {
@@ -282,9 +272,6 @@ pub fn decorate_builtin_lint(
         }
         BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
             lints::ByteSliceInPackedStructWithDerive { ty }.decorate_lint(diag);
-        }
-        BuiltinLintDiag::UnusedExternCrate { span, removal_span } => {
-            lints::UnusedExternCrate { span, removal_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);

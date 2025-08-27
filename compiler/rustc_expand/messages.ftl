@@ -80,6 +80,10 @@ expand_macro_body_stability =
     .label = invalid body stability attribute
     .label2 = body stability attribute affects this macro
 
+expand_macro_call_unused_doc_comment = unused doc comment
+    .label = rustdoc does not generate documentation for macro invocations
+    .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+
 expand_macro_const_stability =
     macros cannot have const stability attributes
     .label = invalid const stability attribute

@@ -2750,14 +2750,6 @@ pub(crate) enum RedundantImportSub {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_unused_doc_comment)]
-#[help]
-pub(crate) struct UnusedDocComment {
-    #[label]
-    pub span: Span,
-}
-
-#[derive(LintDiagnostic)]
 pub(crate) enum PatternsInFnsWithoutBody {
     #[diag(lint_pattern_in_foreign)]
     Foreign {
@@ -2778,13 +2770,6 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
     pub span: Span,
 
     pub ident: Ident,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_legacy_derive_helpers)]
-pub(crate) struct LegacyDeriveHelpers {
-    #[label]
-    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -2879,13 +2864,6 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_missing_unsafe_on_extern)]
-pub(crate) struct MissingUnsafeOnExtern {
-    #[suggestion(code = "unsafe ", applicability = "machine-applicable")]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_single_use_lifetime)]
 pub(crate) struct SingleUseLifetime {
     #[label(lint_label_param)]
@@ -2938,15 +2916,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 pub(crate) struct ByteSliceInPackedStructWithDerive {
     // FIXME: make this translatable
     pub ty: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(lint_unused_extern_crate)]
-pub(crate) struct UnusedExternCrate {
-    #[label]
-    pub span: Span,
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
-    pub removal_span: Span,
 }
 
 #[derive(LintDiagnostic)]

@@ -1292,3 +1292,19 @@ pub(crate) struct TraitImplMismatch {
     #[label(resolve_trait_impl_mismatch_label_item)]
     pub(crate) trait_item_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_legacy_derive_helpers)]
+pub(crate) struct LegacyDeriveHelpers {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_extern_crate)]
+pub(crate) struct UnusedExternCrate {
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub removal_span: Span,
+}

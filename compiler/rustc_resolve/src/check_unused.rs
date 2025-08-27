@@ -169,7 +169,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                         UNUSED_EXTERN_CRATES,
                         extern_crate.id,
                         span,
-                        BuiltinLintDiag::UnusedExternCrate {
+                        crate::errors::UnusedExternCrate {
                             span: extern_crate.span,
                             removal_span: extern_crate.span_with_attributes,
                         },
