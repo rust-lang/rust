@@ -197,6 +197,7 @@ pub trait InferCtxtLike: Sized {
     ) -> U;
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
+    fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
