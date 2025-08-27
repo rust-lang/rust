@@ -181,9 +181,6 @@ lint_builtin_unused_doc_comment = unused doc comment
 lint_builtin_while_true = denote infinite loops with `loop {"{"} ... {"}"}`
     .suggestion = use `loop`
 
-lint_byte_slice_in_packed_struct_with_derive = {$ty} slice in a packed struct that derives a built-in trait
-    .help = consider implementing the trait by hand, or remove the `packed` attribute
-
 lint_check_name_unknown_tool = unknown lint tool: `{$tool_name}`
 
 lint_closure_returning_async_block = closure returning async block can be made into an async closure
