@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 blake3 = "1.5.2"
-derive-where = "1.2.7"
+derive-where.workspace = true
 indexmap.workspace = true
 itoa = "1.0"
 md5 = { package = "md-5", version = "0.10.0" }
