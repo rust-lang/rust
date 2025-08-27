@@ -436,7 +436,6 @@ impl<'tcx> FfiResult<'tcx> {
     /// For instance, if we have a repr(C) struct in a function's argument, FFI unsafeties inside the struct
     /// are to be blamed on the struct and not the members.
     /// This is where we use this wrapper, to tell "all FFI-unsafeties in there are caused by this `ty`"
-    #[expect(unused)]
     fn with_overrides(mut self, override_cause_ty: Option<Ty<'tcx>>) -> FfiResult<'tcx> {
         use FfiResult::*;
 
@@ -982,7 +981,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             all_phantom &= match self.visit_type(state.get_next(ty), field_ty) {
                 FfiSafe => false,
                 FfiPhantom(..) => true,
-                r @ FfiUnsafe { .. } => return r,
+                r @ FfiUnsafe { .. } => {
+                    return r.wrap_all(ty, fluent::lint_improper_ctypes_struct_dueto, None);
+                }
             }
         }
 
@@ -1033,7 +1034,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             );
         }
 
-        if def.non_enum_variant().fields.is_empty() {
+        let ffires = if def.non_enum_variant().fields.is_empty() {
             FfiResult::new_with_reason(
                 ty,
                 if def.is_struct() {
@@ -1049,7 +1050,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             )
         } else {
             self.visit_variant_fields(state, ty, def, def.non_enum_variant(), args)
-        }
+        };
+
+        // Here, if there is something wrong, then the "fault" comes from inside the struct itself.
+        // Even if we add more details to the lint, the initial line must specify that
+        // the FFI-unsafety is because of the struct
+        // Plus, if the struct is from another crate, then there's not much that can be done anyways
+        //
+        // So, we override the "cause type" of the lint.
+        ffires.with_overrides(Some(ty))
     }
 
     fn visit_enum(
@@ -1096,10 +1105,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         });
         if let ControlFlow::Break(result) = ret {
-            return result;
+            // this enum is visited in the middle of another lint,
+            // so we override the "cause type" of the lint
+            // (for more detail, see comment in ``visit_struct_union`` before its call to ``result.with_overrides``)
+            result.with_overrides(Some(ty))
+        } else {
+            FfiSafe
         }
-
-        FfiSafe
     }
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined

@@ -116,7 +116,7 @@ pub extern "C" fn fn_type2(p: fn()) { }
 pub extern "C" fn fn_contained(p: RustBadRet) { }
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `&str`
+//~^ ERROR: uses type `TransparentStr`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 
