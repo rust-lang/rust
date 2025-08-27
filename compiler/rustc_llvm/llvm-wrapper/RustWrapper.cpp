@@ -1,5 +1,7 @@
 #include "LLVMWrapper.h"
 
+#include "llvm/Transforms/Utils/ValueMapper.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm-c/Analysis.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/DebugInfo.h"
@@ -168,6 +170,63 @@ extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
 extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   auto OS = RawRustStringOstream(OutBuf);
   llvm::PrintStatistics(OS);
+}
+
+extern "C" void LLVMRustOffloadWrapper(LLVMModuleRef M, LLVMValueRef Fn) {
+    // Convert to C++ types
+    llvm::Module *module = llvm::unwrap(M);
+    llvm::Function *oldFn = llvm::unwrap<llvm::Function>(Fn);
+
+    if (oldFn->arg_size() > 0 && oldFn->getArg(0)->getName() == "dyn_ptr") {
+      return;
+    }
+
+    // 1. Create new function type
+    llvm::LLVMContext &ctx = module->getContext();
+    llvm::Type *dynPtrType = llvm::PointerType::get(ctx,0);
+    std::vector<llvm::Type *> argTypes;
+    argTypes.push_back(dynPtrType); // First argument
+
+    for (auto &arg : oldFn->args()) {
+        argTypes.push_back(arg.getType());
+    }
+
+    llvm::FunctionType *newFnType = llvm::FunctionType::get(
+        oldFn->getReturnType(), argTypes, oldFn->isVarArg()
+    );
+
+    
+    // 2. Create new function
+    llvm::Function *newFn = llvm::Function::Create(
+        //newFnType, oldFn->getLinkage(), oldFn->getName(), module
+        newFnType, oldFn->getLinkage(), oldFn->getName() + ".offload", module
+    );
+
+    // Map old arguments to new arguments (skip first argument)
+    llvm::ValueToValueMapTy vmap;
+    auto newArgIt = newFn->arg_begin();
+    newArgIt->setName("dyn_ptr");
+    ++newArgIt; // skip %dyn_ptr
+    for (auto &oldArg : oldFn->args()) {
+        vmap[&oldArg] = &*newArgIt++;
+    }
+
+    // 2. Clone body
+    llvm::SmallVector<llvm::ReturnInst *, 8> returns;
+    llvm::CloneFunctionInto(newFn, oldFn, vmap, llvm::CloneFunctionChangeType::LocalChangesOnly, returns);
+    //llvm::CloneFunctionInto(newFn, oldFn, vmap, false, returns);
+    //
+    newFn->setLinkage(oldFn->getLinkage());
+    newFn->setVisibility(oldFn->getVisibility());
+
+    // 3. Print new function
+    newFn->print(llvm::errs());
+
+    // Replace uses and delete old function
+    oldFn->replaceAllUsesWith(newFn);
+    auto name = oldFn->getName();
+    oldFn->eraseFromParent();
+    newFn->setName(name);
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
