@@ -158,17 +158,9 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
 
-                let identical_succ = terminator.identical_successor();
                 terminator.successors_mut(|successor| {
                     self.collapse_goto_chain(successor, &mut changed);
                 });
-                if changed && let Some(identical_succ) = identical_succ {
-                    // Add debugging information from the goto chain only when all successors are identical,
-                    // otherwise, we may provide misleading debugging information within a branch.
-                    let mut succ_debuginfos =
-                        self.basic_blocks[identical_succ].after_last_stmt_debuginfos.clone();
-                    self.basic_blocks[bb].after_last_stmt_debuginfos.append(&mut succ_debuginfos);
-                }
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -236,28 +228,36 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // goto chains. We should probably benchmark different sizes.
         let mut terminators: SmallVec<[_; 1]> = Default::default();
         let mut current = *start;
+        // If each successor has only one predecessor, it's a trivial goto chain.
+        // We can move all debuginfos to the last basic block.
+        let mut trivial_goto_chain = true;
         while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
             let Terminator { kind: TerminatorKind::Goto { target }, .. } = terminator else {
                 unreachable!();
             };
+            trivial_goto_chain &= self.pred_count[target] == 1;
             terminators.push((current, terminator));
             current = target;
         }
         let last = current;
         *changed |= *start != last;
         *start = last;
-        let mut succ = last;
         while let Some((current, mut terminator)) = terminators.pop() {
             let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator
             else {
                 unreachable!();
             };
-            if *target != last {
-                let mut succ_debuginfos =
-                    self.basic_blocks[succ].after_last_stmt_debuginfos.clone();
-                self.basic_blocks[current].after_last_stmt_debuginfos.extend(&mut succ_debuginfos);
+            if trivial_goto_chain {
+                let mut pred_debuginfos =
+                    std::mem::take(&mut self.basic_blocks[current].after_last_stmt_debuginfos);
+                let debuginfos = if let Some(stmt) = self.basic_blocks[last].statements.first_mut()
+                {
+                    &mut stmt.debuginfos
+                } else {
+                    &mut self.basic_blocks[last].after_last_stmt_debuginfos
+                };
+                debuginfos.prepend(&mut pred_debuginfos);
             }
-            succ = current;
             *changed |= *target != last;
             *target = last;
             debug!("collapsing goto chain from {:?} to {:?}", current, target);
