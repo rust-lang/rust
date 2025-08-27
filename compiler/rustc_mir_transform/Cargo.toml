@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-either = "1"
+either.workspace = true
 itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }

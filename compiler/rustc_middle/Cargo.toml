@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags.workspace = true
-either = "1.5.0"
+either.workspace = true
 gsgdt = "0.1.2"
 polonius-engine = "0.13.0"
 rustc_abi = { path = "../rustc_abi" }

@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
 bitflags.workspace = true
-either = "1.0"
+either.workspace = true
 elsa = "1.11.0"
 ena = "0.14.3"
 indexmap = "2.4.0"
