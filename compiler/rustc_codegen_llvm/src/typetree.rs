@@ -31,7 +31,7 @@ fn to_enzyme_typetree(
             rustc_ast::expand::typetree::Kind::Half => llvm::CConcreteType::DT_Half,
             rustc_ast::expand::typetree::Kind::Float => llvm::CConcreteType::DT_Float,
             rustc_ast::expand::typetree::Kind::Double => llvm::CConcreteType::DT_Double,
-            rustc_ast::expand::typetree::Kind::F128 => llvm::CConcreteType::DT_Unknown,
+            rustc_ast::expand::typetree::Kind::F128 => llvm::CConcreteType::DT_FP128,
             rustc_ast::expand::typetree::Kind::Unknown => llvm::CConcreteType::DT_Unknown,
         };
 
