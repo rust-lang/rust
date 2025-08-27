@@ -402,6 +402,8 @@ lint_improper_ctypes_str_reason = string slices have no C equivalent
 lint_improper_ctypes_struct_fieldless_help = consider adding a member to this struct
 
 lint_improper_ctypes_struct_fieldless_reason = this struct has no fields
+lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
+
 lint_improper_ctypes_struct_layout_help = consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 
 lint_improper_ctypes_struct_layout_reason = this struct has unspecified layout

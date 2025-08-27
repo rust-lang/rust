@@ -109,7 +109,7 @@ LL |     pub fn fn_type2(p: fn());
    = help: consider using an `extern fn(...) -> ...` function pointer instead
    = note: this function pointer has Rust-specific calling convention
 
-error: `extern` block uses type `&str`, which is not FFI-safe
+error: `extern` block uses type `TransparentStr`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:87:31
    |
 LL |     pub fn transparent_str(p: TransparentStr);
@@ -127,8 +127,48 @@ LL |     pub fn raw_array(arr: [u8; 8]);
    = help: consider passing a pointer to the array
    = note: passing raw arrays by value is not FFI-safe
 
+error: `extern` callback uses type `char`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:91:12
+   |
+LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `char`
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+note: the lint level is defined here
+  --> $DIR/lint-ctypes.rs:5:26
+   |
+LL | #![deny(improper_ctypes, improper_c_callbacks)]
+   |                          ^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` callback uses type `&dyn Debug`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:91:12
+   |
+LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `&dyn Debug`
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` callback uses type `TwoBadTypes<'_>`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:91:12
+   |
+LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `TwoBadTypes<'_>`
+   = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `&[u8]` field
+note: the type is defined here
+  --> $DIR/lint-ctypes.rs:58:1
+   |
+LL | pub struct TwoBadTypes<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider using a raw pointer instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
 error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:92:47
+  --> $DIR/lint-ctypes.rs:98:47
    |
 LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -136,7 +176,7 @@ LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:94:26
+  --> $DIR/lint-ctypes.rs:100:26
    |
 LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -145,7 +185,7 @@ LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `Option<UnsafeCell<&i32>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:96:26
+  --> $DIR/lint-ctypes.rs:102:26
    |
 LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -153,5 +193,5 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: aborting due to 16 previous errors
+error: aborting due to 19 previous errors
 

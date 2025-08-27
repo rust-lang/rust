@@ -117,7 +117,7 @@ pub extern "C" fn fn_contained(p: RustBadRet) { }
 // ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `&str`
+//~^ ERROR: uses type `TransparentStr`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 // ^ possible FIXME: it doesn't see the actual FnPtr's error...
