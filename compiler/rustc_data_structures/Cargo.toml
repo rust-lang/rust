@@ -47,7 +47,7 @@ features = [
 
 [target.'cfg(unix)'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2"
+libc.workspace = true
 # tidy-alphabetical-end
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

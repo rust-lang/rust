@@ -12,7 +12,7 @@ edition = "2024"
 # tidy-alphabetical-start
 bstr = "1.12"
 gimli = "0.32"
-libc = "0.2"
+libc.workspace = true
 object = "0.37"
 regex = "1.11"
 serde_json = "1.0"

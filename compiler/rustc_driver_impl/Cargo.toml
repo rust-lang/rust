@@ -56,7 +56,7 @@ tracing.workspace = true
 
 [target.'cfg(all(unix, any(target_env = "gnu", target_os = "macos")))'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2"
+libc.workspace = true
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]

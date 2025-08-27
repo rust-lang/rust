@@ -63,6 +63,9 @@ exclude = [
 # tidy-alphabetical-start
 bitflags = "2.9.3"
 itertools = "0.12.1"
+# FIXME: Remove this pin once this rustix issue is resolved
+# https://github.com/bytecodealliance/rustix/issues/1496
+libc = "=0.2.174"
 memchr = "2.7.5"
 rustc-literal-escaper = "0.0.5"
 thin-vec = "0.2.14"

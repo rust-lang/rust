@@ -36,5 +36,5 @@ tracing.workspace = true
 
 [target.'cfg(target_os = "aix")'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2"
+libc.workspace = true
 # tidy-alphabetical-end

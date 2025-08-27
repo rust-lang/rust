@@ -35,7 +35,7 @@ walkdir = "2"
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2"
+libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.6"

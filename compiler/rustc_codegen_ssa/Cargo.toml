@@ -48,7 +48,7 @@ wasm-encoder = "0.219"
 
 [target.'cfg(unix)'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2.50"
+libc.workspace = true
 # tidy-alphabetical-end
 
 [dependencies.object]
