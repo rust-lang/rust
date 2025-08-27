@@ -52,6 +52,9 @@ labels = ["S-waiting-on-concerns"]
 # Show differences when a PR is rebased
 [range-diff]
 
+# Amend a review to include a link to what was changed since the review
+[review-changes-since]
+
 [assign]
 contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
 users_on_vacation = [
