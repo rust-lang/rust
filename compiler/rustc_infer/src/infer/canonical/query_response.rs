@@ -453,16 +453,17 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let mut var_values = Vec::with_capacity(query_response.variables.len());
-        for (index, kind) in query_response.variables.iter().enumerate() {
-            let value = if kind.universe() != ty::UniverseIndex::ROOT {
+        let tcx = self.tcx;
+        let variables = query_response.variables;
+        let var_values = CanonicalVarValues::instantiate(tcx, variables, |var_values, kind| {
+            if kind.universe() != ty::UniverseIndex::ROOT {
                 // A variable from inside a binder of the query. While ideally these shouldn't
                 // exist at all, we have to deal with them for now.
                 self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
                     universe_map[u.as_usize()]
                 })
             } else if kind.is_existential() {
-                match opt_values[BoundVar::new(index)] {
+                match opt_values[BoundVar::new(var_values.len())] {
                     Some(k) => k,
                     None => self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
                         universe_map[u.as_usize()]
@@ -471,20 +472,17 @@ impl<'tcx> InferCtxt<'tcx> {
             } else {
                 // For placeholders which were already part of the input, we simply map this
                 // universal bound variable back the placeholder of the input.
-                opt_values[BoundVar::new(index)]
+                opt_values[BoundVar::new(var_values.len())]
                     .expect("expected placeholder to be unified with itself during response")
-            };
-            var_values.push(value);
-        }
-
-        let result_args = CanonicalVarValues { var_values: self.tcx.mk_args(&var_values) };
+            }
+        });
 
         let mut obligations = PredicateObligations::new();
 
         // Carry all newly resolved opaque types to the caller's scope
         for &(a, b) in &query_response.value.opaque_types {
-            let a = instantiate_value(self.tcx, &result_args, a);
-            let b = instantiate_value(self.tcx, &result_args, b);
+            let a = instantiate_value(self.tcx, &var_values, a);
+            let b = instantiate_value(self.tcx, &var_values, b);
             debug!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
             // opaque type's hidden value directly, because the hidden type may have been an inference
@@ -501,7 +499,7 @@ impl<'tcx> InferCtxt<'tcx> {
             );
         }
 
-        Ok(InferOk { value: result_args, obligations })
+        Ok(InferOk { value: var_values, obligations })
     }
 
     /// Given a "guess" at the values for the canonical variables in

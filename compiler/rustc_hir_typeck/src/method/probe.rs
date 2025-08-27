@@ -403,15 +403,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
+                let (ParamEnvAnd { param_env: _, value: self_ty }, var_values) =
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self.make_query_response_ignoring_pending_obligations(
-                            canonical_inference_vars,
-                            self_ty,
-                        ),
+                        self_ty: self
+                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
