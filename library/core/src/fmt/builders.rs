@@ -1210,8 +1210,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 }
 
-/// Creates a type whose [`fmt::Debug`] and [`fmt::Display`] impls are provided with the function
-/// `f`.
+/// Creates a type whose [`fmt::Debug`] and [`fmt::Display`] impls are
+/// forwarded to the provided closure.
 ///
 /// # Examples
 ///
@@ -1232,7 +1232,7 @@ pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F>
     FromFn(f)
 }
 
-/// Implements [`fmt::Debug`] and [`fmt::Display`] using a function.
+/// Implements [`fmt::Debug`] and [`fmt::Display`] via the provided closure.
 ///
 /// Created with [`from_fn`].
 #[stable(feature = "fmt_from_fn", since = "CURRENT_RUSTC_VERSION")]
