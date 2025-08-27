@@ -137,6 +137,7 @@
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 //! [attempt 4]: https://github.com/rust-lang/rust/pull/96451
 
+use rustc_data_structures::union_find::UnionFind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{IndexVec, newtype_index};
@@ -225,13 +226,12 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 merged_locals.insert(orig_dst);
 
                 // Replace `src` by `dst`.
-                relevant.union(src, dst);
-                live.union_rows(/* read */ src, /* write */ dst);
+                let head = relevant.union(src, dst);
+                live.union_rows(/* read */ src, /* write */ head);
+                live.union_rows(/* read */ dst, /* write */ head);
             }
         }
         trace!(?merged_locals);
-
-        relevant.make_idempotent();
         trace!(?relevant.renames);
 
         if merged_locals.is_empty() {
@@ -326,7 +326,7 @@ newtype_index! {
 struct RelevantLocals {
     original: IndexVec<RelevantLocal, Local>,
     shrink: IndexVec<Local, Option<RelevantLocal>>,
-    renames: IndexVec<RelevantLocal, RelevantLocal>,
+    renames: UnionFind<RelevantLocal>,
 }
 
 impl RelevantLocals {
@@ -345,35 +345,21 @@ impl RelevantLocals {
             declare(dest)
         }
 
-        let renames = IndexVec::from_fn_n(|l| l, original.len());
+        let renames = UnionFind::new(original.len());
         RelevantLocals { original, shrink, renames }
     }
 
-    fn find(&self, src: Local) -> Option<RelevantLocal> {
-        let mut src = self.shrink[src]?;
-        while let s2 = self.renames[src]
-            && src != s2
-        {
-            src = s2
-        }
+    fn find(&mut self, src: Local) -> Option<RelevantLocal> {
+        let src = self.shrink[src]?;
+        let src = self.renames.find(src);
         Some(src)
     }
 
-    fn union(&mut self, lhs: RelevantLocal, rhs: RelevantLocal) {
-        self.renames[lhs] = rhs;
-    }
-
-    fn make_idempotent(&mut self) {
-        for l in self.renames.indices() {
-            let mut h = self.renames[l];
-            while let h2 = self.renames[h]
-                && h != h2
-            {
-                h = h2
-            }
-            self.renames[l] = h;
-            debug_assert_eq!(h, self.renames[h], "non-idempotent for {l:?}");
-        }
+    fn union(&mut self, lhs: RelevantLocal, rhs: RelevantLocal) -> RelevantLocal {
+        let head = self.renames.unify(lhs, rhs);
+        // We need to ensure we keep the original local of the RHS, as it may be a required local.
+        self.original[head] = self.original[rhs];
+        head
     }
 }
 
