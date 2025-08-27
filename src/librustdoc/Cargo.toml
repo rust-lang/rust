@@ -22,7 +22,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json.workspace = true
 smallvec = "1.8.1"
 stringdex = { version = "0.0.1-alpha4" }
-tempfile = "3"
+tempfile.workspace = true
 threadpool = "1.8.1"
 tracing-tree = "0.3.0"
 tracing.workspace = true

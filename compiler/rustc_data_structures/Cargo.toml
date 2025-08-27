@@ -25,7 +25,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stacker = "0.1.17"
-tempfile = "3.2"
+tempfile.workspace = true
 thin-vec.workspace = true
 tracing.workspace = true
 # tidy-alphabetical-end

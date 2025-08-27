@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-tempfile = "3.7.1"
+tempfile.workspace = true
 # tidy-alphabetical-end

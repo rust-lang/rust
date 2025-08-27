@@ -39,7 +39,7 @@ rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 serde_json.workspace = true
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tempfile = "3.2"
+tempfile.workspace = true
 thin-vec.workspace = true
 thorin-dwp = "0.9"
 tracing.workspace = true

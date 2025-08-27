@@ -14,5 +14,5 @@ thin-vec.workspace = true
 [dev-dependencies]
 # tidy-alphabetical-start
 rustc_macros = { path = "../rustc_macros" }
-tempfile = "3.2"
+tempfile.workspace = true
 # tidy-alphabetical-end
