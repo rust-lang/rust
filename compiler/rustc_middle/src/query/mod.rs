@@ -1204,6 +1204,7 @@ rustc_queries! {
     query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx (
         LocalDefIdSet,
         LocalDefIdMap<FxIndexSet<DefId>>,
+        LocalDefIdSet,
     ) {
         arena_cache
         desc { "finding live symbols in crate" }
