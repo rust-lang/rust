@@ -72,6 +72,7 @@ libc = "=0.2.174"
 measureme = "12.0.3"
 memchr = "2.7.5"
 odht = { version = "0.3.1", features = ["nightly"] }
+polonius-engine = "0.13.0"
 proc-macro2 = "1.0.101"
 quote = "1.0.40"
 rustc-hash = "2.1.1"
