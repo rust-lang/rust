@@ -232,8 +232,7 @@ fn missing_items_err(
     };
 
     // Obtain the level of indentation ending in `sugg_sp`.
-    let padding =
-        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
+    let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
     let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
         (Vec::new(), Vec::new(), Vec::new());
 
@@ -330,6 +329,7 @@ fn default_body_is_unstable(
 fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    assoc: Option<ty::AssocItem>,
 ) -> (String, String) {
     let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut projections = vec![];
@@ -354,8 +354,14 @@ fn bounds_from_generic_predicates<'tcx>(
 
     let mut where_clauses = vec![];
     let mut types_str = vec![];
-    for (ty, bounds) in types {
+    let generics = assoc.map(|a| tcx.generics_of(a.def_id)).map(|g| (g.own_counts().types, g));
+    for (idx, (ty, bounds)) in types.into_iter().enumerate() {
         if let ty::Param(_) = ty.kind() {
+            if generics.is_some_and(|(count, g)| {
+                idx + 1 <= count && g.param_at(idx + 1, tcx).kind.is_synthetic()
+            }) {
+                continue;
+            }
             let mut bounds_str = vec![];
             for bound in bounds {
                 let mut projections_str = vec![];
@@ -472,10 +478,10 @@ fn fn_sig_suggestion<'tcx>(
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
     let safety = sig.safety.prefix_str();
-    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
+    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates, Some(assoc));
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
-    // not be present in the `fn` definition, not will we account for renamed
+    // not be present in the `fn` definition, nor will we account for renamed
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
@@ -511,6 +517,7 @@ fn suggestion_signature<'tcx>(
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
                 tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+                None,
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
