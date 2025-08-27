@@ -607,11 +607,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let SideEffect { imported_module, .. } = side_effect;
             import.imported_module.set(Some(*imported_module));
 
-            if import.is_glob()
-                && let ModuleOrUniformRoot::Module(module) = imported_module
-                && import.parent_scope.module != *module
-            {
-                module.glob_importers.borrow_mut().push(*import);
+            if import.is_glob() {
+                let ModuleOrUniformRoot::Module(module) = imported_module else {
+                    self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
+                    continue;
+                };
+                if import.parent_scope.module != *module {
+                    module.glob_importers.borrow_mut().push(*import);
+                }
             }
         }
 
@@ -662,7 +665,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 (ImportKind::Glob { id, .. }, SideEffectBindings::Glob { import_bindings }) => {
                     let ModuleOrUniformRoot::Module(module) = imported_module else {
-                        self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
                         continue;
                     };
 
