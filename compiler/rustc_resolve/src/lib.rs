@@ -1823,15 +1823,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn per_ns_cm<'r, F: FnMut(&mut CmResolver<'r, 'ra, 'tcx>, Namespace)>(
-        mut self: CmResolver<'r, 'ra, 'tcx>,
-        mut f: F,
-    ) {
-        f(&mut self, TypeNS);
-        f(&mut self, ValueNS);
-        f(&mut self, MacroNS);
-    }
-
     fn is_builtin_macro(&self, res: Res) -> bool {
         self.get_macro(res).is_some_and(|macro_data| macro_data.ext.builtin_name.is_some())
     }

@@ -973,7 +973,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Meanwhile, if resolution is successful, the side effect of the resolution is returned.
     fn resolve_import<'r>(
-        self: &mut CmResolver<'r, 'ra, 'tcx>,
+        mut self: CmResolver<'r, 'ra, 'tcx>,
         import: Import<'ra>,
     ) -> (Option<SideEffect<'ra>>, usize) {
         debug!(
@@ -1018,12 +1018,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut import_bindings = PerNS::default();
         let mut indeterminate_count = 0;
-        self.reborrow().per_ns_cm(|this, ns| {
+
+        // HACK: Use array of namespaces in the same order as `per_ns_mut`.
+        // We can't use `per_ns_cm` because of the invariance on CmResolver (RefOrMut).
+        for ns in [TypeNS, ValueNS, MacroNS] {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
-                    return;
+                    continue;
                 };
-                let binding_result = this.reborrow().maybe_resolve_ident_in_module(
+                let binding_result = self.reborrow().maybe_resolve_ident_in_module(
                     module,
                     source,
                     ns,
@@ -1033,7 +1036,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let pending_binding = match binding_result {
                     Ok(binding) => {
                         // We need the `target`, `source` can be extracted.
-                        let imported_binding = this.import(binding, import);
+                        let imported_binding = self.import(binding, import);
                         Some(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => Some(None),
@@ -1044,8 +1047,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 };
                 import_bindings[ns] = pending_binding;
             }
-        });
-
+        }
         (
             Some(SideEffect {
                 imported_module: module,
