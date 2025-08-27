@@ -1211,7 +1211,7 @@ class DocSearch {
      * will never fulfill.
      */
     async buildIndex() {
-        const nn = this.database.getIndex("normalizedName");
+        const nn = this.database.getData("normalizedName");
         if (!nn) {
             return;
         }
@@ -3706,7 +3706,7 @@ class DocSearch {
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(currentCrate) {
-                const index = this.database.getIndex("normalizedName");
+                const index = this.database.getData("normalizedName");
                 if (!index) {
                     return;
                 }
@@ -3835,8 +3835,7 @@ class DocSearch {
                 };
                 if (elem.normalizedPathLast === "") {
                     // faster full-table scan for this specific case.
-                    const nameData = this.database.getData("name");
-                    const l = nameData ? nameData.length : 0;
+                    const l = index.length;
                     for (let id = 0; id < l; ++id) {
                         if (!idDuplicates.has(id)) {
                             idDuplicates.add(id);
@@ -3938,7 +3937,7 @@ class DocSearch {
              * @returns {AsyncGenerator<rustdoc.ResultObject>}
              */
             async function*(inputs, output, typeInfo, currentCrate) {
-                const index = this.database.getIndex("normalizedName");
+                const index = this.database.getData("normalizedName");
                 if (!index) {
                     return;
                 }
