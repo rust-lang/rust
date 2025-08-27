@@ -989,6 +989,10 @@ impl<'tcx> InferCtxt<'tcx> {
         storage.var_infos.clone()
     }
 
+    pub fn has_opaque_types_in_storage(&self) -> bool {
+        !self.inner.borrow().opaque_type_storage.is_empty()
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
         self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
