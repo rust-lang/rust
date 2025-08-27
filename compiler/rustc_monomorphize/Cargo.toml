@@ -16,6 +16,6 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 serde = "1"
-serde_json = "1"
+serde_json.workspace = true
 tracing.workspace = true
 # tidy-alphabetical-end
