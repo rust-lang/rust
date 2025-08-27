@@ -894,7 +894,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
                     (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
-                        self.tecx.sub_relations.borrow_mut().unified(self.tecx, a_vid, b_vid)
+                        self.tecx.sub_root_var(a_vid) == self.tecx.sub_root_var(b_vid)
                     }
                     _ => false,
                 }

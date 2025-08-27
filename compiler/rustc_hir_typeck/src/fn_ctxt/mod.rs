@@ -21,7 +21,6 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
-use rustc_trait_selection::error_reporting::infer::sub_relations::SubRelations;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -188,14 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxtErrorExt::err_ctxt`]: rustc_trait_selection::error_reporting::InferCtxtErrorExt::err_ctxt
     pub(crate) fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        let mut sub_relations = SubRelations::default();
-        sub_relations.add_constraints(
-            self,
-            self.fulfillment_cx.borrow_mut().pending_obligations().iter().map(|o| o.predicate),
-        );
         TypeErrCtxt {
             infcx: &self.infcx,
-            sub_relations: RefCell::new(sub_relations),
             typeck_results: Some(self.typeck_results.borrow()),
             fallback_has_occurred: self.fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {

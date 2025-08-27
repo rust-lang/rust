@@ -900,6 +900,10 @@ where
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
+    pub(super) fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.delegate.sub_ty_vids_raw(a, b)
+    }
+
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq<T: Relate<I>>(
         &mut self,
