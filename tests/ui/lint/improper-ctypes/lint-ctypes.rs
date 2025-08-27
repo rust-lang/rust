@@ -84,9 +84,15 @@ extern "C" {
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBoxRet);
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `TransparentStr`
     pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
+    pub fn multi_errors_per_arg(
+        f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+    );
+    //~^^ ERROR: uses type `char`
+    //~| ERROR: uses type `&dyn Debug`
+    //~| ERROR: uses type `TwoBadTypes<'_>`
 
     pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`

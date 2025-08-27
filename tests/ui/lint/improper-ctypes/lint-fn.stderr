@@ -142,7 +142,7 @@ LL | pub extern "C" fn fn_type2(p: fn()) { }
    = help: consider using an `extern fn(...) -> ...` function pointer instead
    = note: this function pointer has Rust-specific calling convention
 
-error: `extern` fn uses type `&str`, which is not FFI-safe
+error: `extern` fn uses type `TransparentStr`, which is not FFI-safe
   --> $DIR/lint-fn.rs:119:38
    |
 LL | pub extern "C" fn transparent_str(p: TransparentStr) { }
