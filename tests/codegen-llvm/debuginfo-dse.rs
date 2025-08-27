@@ -21,9 +21,11 @@ fn r#ref(ref_foo: &Foo) -> i32 {
     // CHECK-LABEL: define {{.*}} i32 @ref
     // CHECK-SAME: (ptr {{.*}} [[ARG_ref_foo:%.*]])
     // OPTIMIZED: #dbg_value(ptr [[ARG_ref_foo]], [[VAR_ref_foo:![0-9]+]], !DIExpression()
+    // CHECK: #dbg_value(ptr poison, [[VAR_invalid_ref_of_ref_foo:![0-9]+]], !DIExpression()
     // CHECK: #dbg_value(ptr [[ARG_ref_foo]], [[VAR_ref_v0:![0-9]+]], !DIExpression()
     // CHECK: #dbg_value(ptr [[ARG_ref_foo]], [[VAR_ref_v1:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 8, DW_OP_stack_value)
     // CHECK: #dbg_value(ptr [[ARG_ref_foo]], [[VAR_ref_v2:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 16, DW_OP_stack_value)
+    let invalid_ref_of_ref_foo = &ref_foo;
     let ref_v0 = &ref_foo.0;
     let ref_v1 = &ref_foo.1;
     let ref_v2 = &ref_foo.2;
@@ -49,9 +51,11 @@ pub fn dead_first(dead_first_foo: &Foo) -> &i32 {
 fn ptr(ptr_foo: Foo) -> i32 {
     // CHECK-LABEL: define {{.*}} i32 @ptr
     // CHECK-SAME: (ptr {{.*}} [[ARG_ptr_foo:%.*]])
+    // CHECK: #dbg_value(ptr [[ARG_ptr_foo]], [[ref_ptr_foo:![0-9]+]], !DIExpression()
     // CHECK: #dbg_value(ptr [[ARG_ptr_foo]], [[VAR_ptr_v0:![0-9]+]], !DIExpression()
     // CHECK: #dbg_value(ptr [[ARG_ptr_foo]], [[VAR_ptr_v1:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 8, DW_OP_stack_value)
     // CHECK: #dbg_value(ptr [[ARG_ptr_foo]], [[VAR_ptr_v2:![0-9]+]], !DIExpression(DW_OP_plus_uconst, 16, DW_OP_stack_value)
+    let ref_ptr_foo = &ptr_foo;
     let ptr_v0 = &ptr_foo.0;
     let ptr_v1 = &ptr_foo.1;
     let ptr_v2 = &ptr_foo.2;
@@ -99,10 +103,22 @@ pub fn tuple(foo: (i32, &Foo)) -> i32 {
     foo.1.0
 }
 
+pub struct ZST;
+
+#[no_mangle]
+pub fn zst(zst: ZST, v: &i32) -> i32 {
+    // CHECK-LABEL: define {{.*}} i32 @zst
+    // CHECK: #dbg_value(ptr poison, [[VAR_zst_ref:![0-9]+]], !DIExpression()
+    let zst_ref = &zst;
+    *v
+}
+
+// CHECK-DAG: [[VAR_invalid_ref_of_ref_foo]] = !DILocalVariable(name: "invalid_ref_of_ref_foo"
 // OPTIMIZED-DAG: [[VAR_ref_foo]] = !DILocalVariable(name: "ref_foo"
 // CHECK-DAG: [[VAR_ref_v0]] = !DILocalVariable(name: "ref_v0"
 // CHECK-DAG: [[VAR_ref_v1]] = !DILocalVariable(name: "ref_v1"
 // CHECK-DAG: [[VAR_ref_v2]] = !DILocalVariable(name: "ref_v2"
+// CHECK-DAG: [[ref_ptr_foo]] = !DILocalVariable(name: "ref_ptr_foo"
 // CHECK-DAG: [[VAR_ptr_v0]] = !DILocalVariable(name: "ptr_v0"
 // CHECK-DAG: [[VAR_ptr_v1]] = !DILocalVariable(name: "ptr_v1"
 // CHECK-DAG: [[VAR_ptr_v2]] = !DILocalVariable(name: "ptr_v2"
@@ -112,3 +128,4 @@ pub fn tuple(foo: (i32, &Foo)) -> i32 {
 // CHECK-DAG: [[VAR_deref_dead]] = !DILocalVariable(name: "deref_dead"
 // CHECK-DAG: [[ARG_dead_first_foo]] = !DILocalVariable(name: "dead_first_foo", arg: 1
 // CHECK-DAG: [[VAR_dead_first_v0]] = !DILocalVariable(name: "dead_first_v0"
+// CHECK-DAG: [[VAR_zst_ref]] = !DILocalVariable(name: "zst_ref"

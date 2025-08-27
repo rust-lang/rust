@@ -1,10 +1,10 @@
-use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
+use rustc_middle::mir::{self, NonDivergingIntrinsic, RETURN_PLACE, StmtDebugInfo};
 use rustc_middle::{bug, span_bug};
+use rustc_target::callconv::PassMode;
 use tracing::instrument;
 
 use super::{FunctionCx, LocalRef};
 use crate::common::TypeKind;
-use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
@@ -113,21 +113,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     LocalRef::Place(place_ref) | LocalRef::UnsizedPlace(place_ref) => {
                         Some(place_ref)
                     }
-                    LocalRef::Operand(operand_ref) => match operand_ref.val {
-                        OperandValue::Immediate(v) => {
-                            Some(PlaceRef::new_sized(v, operand_ref.layout))
-                        }
-                        OperandValue::Ref(_)
-                        | OperandValue::Pair(_, _)
-                        | OperandValue::ZeroSized => None,
-                    },
+                    LocalRef::Operand(operand_ref) => operand_ref
+                        .val
+                        .try_pointer_parts()
+                        .map(|(pointer, _)| PlaceRef::new_sized(pointer, operand_ref.layout)),
                     LocalRef::PendingOperand => None,
                 }
                 .filter(|place_ref| {
+                    // For the reference of an argument (e.x. `&_1`), it's only valid if the pass mode is indirect, and its reference is
+                    // llval.
+                    let local_ref_pass_mode = place.as_local().and_then(|local| {
+                        if local == RETURN_PLACE {
+                            None
+                        } else {
+                            self.fn_abi.args.get(local.as_usize() - 1).map(|arg| &arg.mode)
+                        }
+                    });
+                    matches!(local_ref_pass_mode, Some(&PassMode::Indirect {..}) | None) &&
                     // Drop unsupported projections.
                     // FIXME: Add a test case.
                     place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
-                        // Only pointers can calculate addresses.
+                        // Only pointers can be calculated addresses.
                         bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer
                 });
                 if let Some(local_ref) = local_ref {
