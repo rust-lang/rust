@@ -9,6 +9,7 @@
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
+use std::fs::File;
 use std::io::{self, BorrowedBuf, Read};
 use std::{fs, path};
 
@@ -115,13 +116,18 @@ impl FileLoader for RealFileLoader {
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
-        if path.metadata().is_ok_and(|metadata| metadata.len() > SourceFile::MAX_FILE_SIZE.into()) {
+        let mut file = File::open(path)?;
+        let size = file.metadata().map(|metadata| metadata.len()).ok().unwrap_or(0);
+
+        if size > SourceFile::MAX_FILE_SIZE.into() {
             return Err(io::Error::other(format!(
                 "text files larger than {} bytes are unsupported",
                 SourceFile::MAX_FILE_SIZE
             )));
         }
-        fs::read_to_string(path)
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+        Ok(contents)
     }
 
     fn read_binary_file(&self, path: &Path) -> io::Result<Arc<[u8]>> {

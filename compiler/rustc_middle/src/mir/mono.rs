@@ -149,7 +149,7 @@ impl<'tcx> MonoItem<'tcx> {
         // instantiation:
         // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
         let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
-        if codegen_fn_attrs.contains_extern_indicator(tcx, instance.def.def_id())
+        if codegen_fn_attrs.contains_extern_indicator()
             || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
         {
             return InstantiationMode::GloballyShared { may_conflict: false };

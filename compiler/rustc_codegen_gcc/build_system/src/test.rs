@@ -531,7 +531,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<PathBuf, String> {
             r#"change-id = 115898
 
 [rust]
-codegen-backends = []
+codegen-backends = ["gcc"]
 deny-warnings = false
 verbose-tests = true
 

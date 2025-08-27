@@ -462,8 +462,10 @@ passes_object_lifetime_err =
     {$repr}
 
 passes_outer_crate_level_attr =
-    crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+    crate-level attribute should be an inner attribute
 
+passes_outer_crate_level_attr_suggestion =
+    add a `!`
 
 passes_panic_unwind_without_std =
     unwinding panics are not supported without std

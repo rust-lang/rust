@@ -2419,9 +2419,11 @@ symbols! {
         yield_expr,
         ymm_reg,
         yreg,
+        zca,
         zfh,
         zfhmin,
         zmm_reg,
+        ztso,
         // tidy-alphabetical-end
     }
 }

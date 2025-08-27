@@ -777,31 +777,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
-                if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
                 self.assemble_inherent_impl_candidates_for_type(def_id, receiver_steps);
-                if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did, receiver_steps);
-                if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(
-                        raw_self_ty,
-                        receiver_steps,
-                    );
-                }
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps);
             }
             ty::Param(_) => {
                 self.assemble_inherent_candidates_from_param(raw_self_ty);
@@ -2400,17 +2385,14 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if !self.is_relevant_kind_for_mode(x.kind) {
                             return false;
                         }
-                        if self.matches_by_doc_alias(x.def_id) {
-                            return true;
-                        }
-                        match edit_distance_with_substrings(
+                        if let Some(d) = edit_distance_with_substrings(
                             name.as_str(),
                             x.name().as_str(),
                             max_dist,
                         ) {
-                            Some(d) => d > 0,
-                            None => false,
+                            return d > 0;
                         }
+                        self.matches_by_doc_alias(x.def_id)
                     })
                     .copied()
                     .collect()

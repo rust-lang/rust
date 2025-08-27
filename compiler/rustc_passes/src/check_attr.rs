@@ -369,24 +369,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             if hir_id != CRATE_HIR_ID {
                 match attr {
-                    // FIXME(jdonszelmann) move to attribute parsing when validation gets better there
-                    &Attribute::Parsed(AttributeKind::CrateName {
-                        attr_span: span, style, ..
-                    }) => match style {
-                        ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            span,
-                            errors::OuterCrateLevelAttr,
-                        ),
-                        ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            span,
-                            errors::InnerCrateLevelAttr,
-                        ),
-                    },
-                    Attribute::Parsed(_) => { /* not crate-level */ }
+                    Attribute::Parsed(_) => { /* Already validated. */ }
                     Attribute::Unparsed(attr) => {
                         // FIXME(jdonszelmann): remove once all crate-level attrs are parsed and caught by
                         // the above
@@ -397,12 +380,26 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                 .and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
                         {
                             match attr.style {
-                                ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
-                                    UNUSED_ATTRIBUTES,
-                                    hir_id,
-                                    attr.span,
-                                    errors::OuterCrateLevelAttr,
-                                ),
+                                ast::AttrStyle::Outer => {
+                                    let attr_span = attr.span;
+                                    let bang_position = self
+                                        .tcx
+                                        .sess
+                                        .source_map()
+                                        .span_until_char(attr_span, '[')
+                                        .shrink_to_hi();
+
+                                    self.tcx.emit_node_span_lint(
+                                        UNUSED_ATTRIBUTES,
+                                        hir_id,
+                                        attr.span,
+                                        errors::OuterCrateLevelAttr {
+                                            suggestion: errors::OuterCrateLevelAttrSuggestion {
+                                                bang_position,
+                                            },
+                                        },
+                                    )
+                                }
                                 ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
                                     UNUSED_ATTRIBUTES,
                                     hir_id,
@@ -495,7 +492,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let attrs = self.tcx.codegen_fn_attrs(did);
                     // Not checking naked as `#[inline]` is forbidden for naked functions anyways.
-                    if attrs.contains_extern_indicator(self.tcx, did.into()) {
+                    if attrs.contains_extern_indicator() {
                         self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
@@ -1851,12 +1848,24 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         {
             if hir_id != CRATE_HIR_ID {
                 match style {
-                    Some(ast::AttrStyle::Outer) => self.tcx.emit_node_span_lint(
-                        UNUSED_ATTRIBUTES,
-                        hir_id,
-                        attr.span(),
-                        errors::OuterCrateLevelAttr,
-                    ),
+                    Some(ast::AttrStyle::Outer) => {
+                        let attr_span = attr.span();
+                        let bang_position = self
+                            .tcx
+                            .sess
+                            .source_map()
+                            .span_until_char(attr_span, '[')
+                            .shrink_to_hi();
+
+                        self.tcx.emit_node_span_lint(
+                            UNUSED_ATTRIBUTES,
+                            hir_id,
+                            attr_span,
+                            errors::OuterCrateLevelAttr {
+                                suggestion: errors::OuterCrateLevelAttrSuggestion { bang_position },
+                            },
+                        )
+                    }
                     Some(ast::AttrStyle::Inner) | None => self.tcx.emit_node_span_lint(
                         UNUSED_ATTRIBUTES,
                         hir_id,

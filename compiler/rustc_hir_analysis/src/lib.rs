@@ -82,7 +82,7 @@ mod coherence;
 mod collect;
 mod constrained_generic_params;
 mod delegation;
-mod errors;
+pub mod errors;
 pub mod hir_ty_lowering;
 pub mod hir_wf_check;
 mod impl_wf_check;

@@ -7,6 +7,7 @@ use std::path::{Component, Path, PathBuf};
 use std::{env, fs};
 
 use crate::core::build_steps::dist;
+use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
@@ -64,17 +65,14 @@ fn is_dir_writable_for_user(dir: &Path) -> bool {
 fn install_sh(
     builder: &Builder<'_>,
     package: &str,
-    stage: u32,
-    host: Option<TargetSelection>,
+    build_compiler: impl Into<Option<Compiler>>,
+    target: Option<TargetSelection>,
     tarball: &GeneratedTarball,
 ) {
-    let _guard = builder.msg(
-        Kind::Install,
-        package,
-        None,
-        (host.unwrap_or(builder.host_target), stage),
-        host,
-    );
+    let _guard = match build_compiler.into() {
+        Some(build_compiler) => builder.msg(Kind::Install, package, None, build_compiler, target),
+        None => builder.msg_unstaged(Kind::Install, package, target.unwrap_or(builder.host_target)),
+    };
 
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
@@ -166,10 +164,10 @@ macro_rules! install {
        IS_HOST: $IS_HOST:expr,
        $run_item:block $(, $c:ident)*;)+) => {
         $(
-            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
+            build_compiler: Compiler,
+            target: TargetSelection,
         }
 
         impl $name {
@@ -193,7 +191,7 @@ macro_rules! install {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.host_target),
+                    build_compiler: run.builder.compiler(run.builder.top_stage - 1, run.builder.config.host_target),
                     target: run.target,
                 });
             }
@@ -208,96 +206,95 @@ macro_rules! install {
 install!((self, builder, _config),
     Docs, path = "src/doc", _config.docs, IS_HOST: false, {
         let tarball = builder.ensure(dist::Docs { host: self.target }).expect("missing docs");
-        install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
+        install_sh(builder, "docs", self.build_compiler, Some(self.target), &tarball);
     };
     Std, path = "library/std", true, IS_HOST: false, {
         // `expect` should be safe, only None when host != build, but this
         // only runs when host == build
-        let tarball = builder.ensure(dist::Std {
-            compiler: self.compiler,
-            target: self.target
-        }).expect("missing std");
-        install_sh(builder, "std", self.compiler.stage, Some(self.target), &tarball);
+        let std = dist::Std::new(builder, self.target);
+        let build_compiler = std.build_compiler;
+        let tarball = builder.ensure(std).expect("missing std");
+        install_sh(builder, "std", build_compiler, Some(self.target), &tarball);
     };
     Cargo, alias = "cargo", Self::should_build(_config), IS_HOST: true, {
         let tarball = builder
-            .ensure(dist::Cargo { build_compiler: self.compiler, target: self.target })
+            .ensure(dist::Cargo { build_compiler: self.build_compiler, target: self.target })
             .expect("missing cargo");
-        install_sh(builder, "cargo", self.compiler.stage, Some(self.target), &tarball);
+        install_sh(builder, "cargo", self.build_compiler, Some(self.target), &tarball);
     };
     RustAnalyzer, alias = "rust-analyzer", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) =
-            builder.ensure(dist::RustAnalyzer { build_compiler: self.compiler, target: self.target })
+            builder.ensure(dist::RustAnalyzer { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target), target: self.target })
         {
-            install_sh(builder, "rust-analyzer", self.compiler.stage, Some(self.target), &tarball);
+            install_sh(builder, "rust-analyzer", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
-                &format!("skipping Install rust-analyzer stage{} ({})", self.compiler.stage, self.target),
+                &format!("skipping Install rust-analyzer stage{} ({})", self.build_compiler.stage + 1, self.target),
             );
         }
     };
     Clippy, alias = "clippy", Self::should_build(_config), IS_HOST: true, {
         let tarball = builder
-            .ensure(dist::Clippy { build_compiler: self.compiler, target: self.target })
+            .ensure(dist::Clippy { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target), target: self.target })
             .expect("missing clippy");
-        install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
+        install_sh(builder, "clippy", self.build_compiler, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), IS_HOST: true, {
-        if let Some(tarball) = builder.ensure(dist::Miri { build_compiler: self.compiler, target: self.target }) {
-            install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) = builder.ensure(dist::Miri { compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target) , target: self.target }) {
+            install_sh(builder, "miri", self.build_compiler, Some(self.target), &tarball);
         } else {
             // Miri is only available on nightly
             builder.info(
-                &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
+                &format!("skipping Install miri stage{} ({})", self.build_compiler.stage + 1, self.target),
             );
         }
     };
     LlvmTools, alias = "llvm-tools", _config.llvm_tools_enabled && _config.llvm_enabled(_config.host_target), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::LlvmTools { target: self.target }) {
-            install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
+            install_sh(builder, "llvm-tools", None, Some(self.target), &tarball);
         } else {
             builder.info(
-                &format!("skipping llvm-tools stage{} ({}): external LLVM", self.compiler.stage, self.target),
+                &format!("skipping llvm-tools ({}): external LLVM", self.target),
             );
         }
     };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
-            build_compiler: self.compiler,
+            compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target),
             target: self.target
         }) {
-            install_sh(builder, "rustfmt", self.compiler.stage, Some(self.target), &tarball);
+            install_sh(builder, "rustfmt", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
-                &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
+                &format!("skipping Install Rustfmt stage{} ({})", self.build_compiler.stage + 1, self.target),
             );
         }
     };
     Rustc, path = "compiler/rustc", true, IS_HOST: true, {
         let tarball = builder.ensure(dist::Rustc {
-            compiler: builder.compiler(builder.top_stage, self.target),
+            target_compiler: builder.compiler(self.build_compiler.stage + 1, self.target),
         });
-        install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
+        install_sh(builder, "rustc", self.build_compiler, Some(self.target), &tarball);
     };
     RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), IS_HOST: true, {
         if let Some(tarball) = builder.ensure(dist::CraneliftCodegenBackend {
-            build_compiler: self.compiler,
+            compilers: RustcPrivateCompilers::from_build_compiler(builder, self.build_compiler, self.target),
             target: self.target
         }) {
-            install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
+            install_sh(builder, "rustc-codegen-cranelift", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
                 &format!("skipping Install CodegenBackend(\"cranelift\") stage{} ({})",
-                         self.compiler.stage, self.target),
+                         self.build_compiler.stage + 1, self.target),
             );
         }
     };
     LlvmBitcodeLinker, alias = "llvm-bitcode-linker", Self::should_build(_config), IS_HOST: true, {
-        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.compiler, target: self.target }) {
-            install_sh(builder, "llvm-bitcode-linker", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) = builder.ensure(dist::LlvmBitcodeLinker { build_compiler: self.build_compiler, target: self.target }) {
+            install_sh(builder, "llvm-bitcode-linker", self.build_compiler, Some(self.target), &tarball);
         } else {
             builder.info(
-                &format!("skipping llvm-bitcode-linker stage{} ({})", self.compiler.stage, self.target),
+                &format!("skipping llvm-bitcode-linker stage{} ({})", self.build_compiler.stage + 1, self.target),
             );
         }
     };
@@ -305,7 +302,7 @@ install!((self, builder, _config),
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Src {
-    pub stage: u32,
+    stage: u32,
 }
 
 impl Step for Src {
@@ -325,6 +322,6 @@ impl Step for Src {
 
     fn run(self, builder: &Builder<'_>) {
         let tarball = builder.ensure(dist::Src);
-        install_sh(builder, "src", self.stage, None, &tarball);
+        install_sh(builder, "src", None, None, &tarball);
     }
 }

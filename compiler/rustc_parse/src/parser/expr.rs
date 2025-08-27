@@ -1598,7 +1598,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair<'_>) -> PResult<'a, Box<Expr>> {
+    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[` or other open delim
 
@@ -3661,7 +3661,7 @@ impl<'a> Parser<'a> {
         &mut self,
         pth: ast::Path,
         recover: bool,
-        close: ExpTokenPair<'_>,
+        close: ExpTokenPair,
     ) -> PResult<
         'a,
         (
@@ -3680,8 +3680,8 @@ impl<'a> Parser<'a> {
             errors::HelpUseLatestEdition::new().add_to_diag(e);
         };
 
-        while self.token != *close.tok {
-            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(close.tok) {
+        while self.token != close.tok {
+            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(&close.tok) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(close) {
