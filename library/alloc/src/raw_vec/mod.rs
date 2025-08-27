@@ -658,7 +658,7 @@ impl<A: Allocator> RawVecInner<A> {
         let new_layout = layout_array(cap, elem_layout)?;
 
         let ptr = finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
+        // SAFETY: layout_array would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
 
         unsafe { self.set_ptr_and_cap(ptr, cap) };
         Ok(())
@@ -680,7 +680,7 @@ impl<A: Allocator> RawVecInner<A> {
         let new_layout = layout_array(cap, elem_layout)?;
 
         let ptr = finish_grow(new_layout, self.current_memory(elem_layout), &mut self.alloc)?;
-        // SAFETY: finish_grow would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
+        // SAFETY: layout_array would have resulted in a capacity overflow if we tried to allocate more than `isize::MAX` items
         unsafe {
             self.set_ptr_and_cap(ptr, cap);
         }
