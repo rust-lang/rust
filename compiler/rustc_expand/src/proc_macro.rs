@@ -4,6 +4,7 @@ use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
 use rustc_span::profiling::SpannedEventArgRecorder;
+use rustc_span::sym;
 use {rustc_ast as ast, rustc_proc_macro as pm};
 
 use crate::base::{self, *};
@@ -122,6 +123,27 @@ impl MultiItemModifier for DeriveProcMacro {
         // Eventually we might remove the special case hard error check
         // altogether. See #73345.
         crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.psess);
+
+        // Extract diagnostic attributes from the original item before expansion
+        let diagnostic_attrs = {
+            match &item {
+                base::Annotatable::Item(item) => item
+                    .attrs
+                    .iter()
+                    .filter(|attr| {
+                        attr.name().map_or(false, |name| {
+                            matches!(
+                                name,
+                                sym::expect | sym::allow | sym::warn | sym::deny | sym::forbid
+                            )
+                        })
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>(),
+                _ => Vec::new(), // Other annotatable types don't have attributes
+            }
+        };
+
         let input = item.to_tokens();
         let stream = {
             let _timer =
@@ -158,7 +180,15 @@ impl MultiItemModifier for DeriveProcMacro {
         loop {
             match parser.parse_item(ForceCollect::No) {
                 Ok(None) => break,
-                Ok(Some(item)) => {
+                Ok(Some(mut item)) => {
+                    // Apply diagnostic attributes from the original item to the expanded item
+                    if !diagnostic_attrs.is_empty() {
+                        // Prepend diagnostic attributes to preserve their position
+                        let mut new_attrs = diagnostic_attrs.clone();
+                        new_attrs.extend(item.attrs);
+                        item.attrs = new_attrs.into();
+                    }
+
                     if is_stmt {
                         items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, item))));
                     } else {
