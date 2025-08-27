@@ -2693,7 +2693,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 /// which have their own separate test steps.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
-    /// The compiler that will *build* rustc in test mode.
+    /// The compiler that will run unit tests and doctests on the in-tree rustc source.
     build_compiler: Compiler,
     target: TargetSelection,
     crates: Vec<String>,
@@ -3429,24 +3429,22 @@ impl Step for LintDocs {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/lint-docs")
+        let stage = run.builder.top_stage;
+        // Lint docs tests might not work with stage 1, so do not run this test by default in
+        // `x test` below stage 2.
+        run.path("src/tools/lint-docs").default_condition(stage > 1)
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Bump the stage to 2, because the rustc book requires an in-tree compiler.
-        // At the same time, since this step is enabled by default, we don't want `x test` to fail
-        // in stage 1.
-        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
-            run.builder.top_stage
-        } else {
-            2
-        };
+        if run.builder.top_stage < 2 {
+            eprintln!("WARNING: lint-docs tests might not work below stage 2");
+        }
 
         run.builder.ensure(LintDocs {
             build_compiler: prepare_doc_compiler(
                 run.builder,
                 run.builder.config.host_target,
-                stage,
+                run.builder.top_stage,
             ),
             target: run.target,
         });

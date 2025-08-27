@@ -2111,8 +2111,6 @@ mod snapshot {
         [test] link-check <host>
         [test] tier-check <host>
         [test] rustc 0 <host> -> rust-analyzer 1 <host>
-        [doc] rustc (book) <host>
-        [test] rustc 1 <host> -> lint-docs 2 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
         [test] RustdocUi <host>
@@ -2175,7 +2173,7 @@ mod snapshot {
         [doc] book/second-edition (book) <host>
         [doc] book/2018-edition (book) <host>
         [doc] rustc 1 <host> -> standalone 2 <host>
-        [doc] rustc 2 <host> -> std 2 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
         [build] rustc 1 <host> -> error-index 2 <host>
         [doc] rustc 1 <host> -> error-index 2 <host>
         [doc] nomicon (book) <host>
