@@ -4,6 +4,7 @@
 //!
 //! Hints may be compile time or runtime.
 
+use crate::marker::Destruct;
 use crate::mem::MaybeUninit;
 use crate::{intrinsics, ub_checks};
 
@@ -781,17 +782,35 @@ pub const fn cold_path() {
 /// ```
 #[inline(always)]
 #[stable(feature = "select_unpredictable", since = "1.88.0")]
-pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
-    // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
-    // Change this to use ManuallyDrop instead.
-    let mut true_val = MaybeUninit::new(true_val);
-    let mut false_val = MaybeUninit::new(false_val);
-    // SAFETY: The value that is not selected is dropped, and the selected one
-    // is returned. This is necessary because the intrinsic doesn't drop the
-    // value that is  not selected.
-    unsafe {
-        crate::intrinsics::select_unpredictable(!condition, &mut true_val, &mut false_val)
-            .assume_init_drop();
-        crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
+pub const fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T
+where
+    T: [const] Destruct,
+{
+    #[inline(always)]
+    fn select_actually_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
+        // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
+        // Change this to use ManuallyDrop instead.
+        let mut true_val = MaybeUninit::new(true_val);
+        let mut false_val = MaybeUninit::new(false_val);
+        // SAFETY: The value that is not selected is dropped, and the selected one
+        // is returned. This is necessary because the intrinsic doesn't drop the
+        // value that is  not selected.
+        unsafe {
+            crate::intrinsics::select_unpredictable(!condition, &mut true_val, &mut false_val)
+                .assume_init_drop();
+            crate::intrinsics::select_unpredictable(condition, true_val, false_val).assume_init()
+        }
     }
+    const fn select_predictable<T>(condition: bool, true_val: T, false_val: T) -> T
+    where
+        T: [const] Destruct,
+    {
+        if condition { true_val } else { false_val }
+    }
+    intrinsics::const_eval_select(
+        (condition, true_val, false_val),
+        select_predictable,
+        select_actually_unpredictable,
+    )
 }
