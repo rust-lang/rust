@@ -951,8 +951,9 @@ pub(crate) mod builtin {
     /// format string in `format_args!`.
     ///
     /// ```rust
-    /// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
-    /// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
+    /// let args = format_args!("{} foo {:?}", 1, 2);
+    /// let debug = format!("{args:?}");
+    /// let display = format!("{args}");
     /// assert_eq!("1 foo 2", display);
     /// assert_eq!(display, debug);
     /// ```
@@ -976,13 +977,17 @@ pub(crate) mod builtin {
     /// assert_eq!(s, format!("hello {}", "world"));
     /// ```
     ///
-    /// # Lifetime limitation
+    /// # Argument lifetimes
     ///
     /// Except when no formatting arguments are used,
-    /// the produced `fmt::Arguments` value borrows temporary values,
-    /// which means it can only be used within the same expression
-    /// and cannot be stored for later use.
-    /// This is a known limitation, see [#92698](https://github.com/rust-lang/rust/issues/92698).
+    /// the produced `fmt::Arguments` value borrows temporary values.
+    /// To allow it to be stored for later use, the arguments' lifetimes, as well as those of
+    /// temporaries they borrow, may be [extended] when `format_args!` appears in the initializer
+    /// expression of a `let` statement. The syntactic rules used to determine when temporaries'
+    /// lifetimes are extended are documented in the [Reference].
+    ///
+    /// [extended]: ../reference/destructors.html#temporary-lifetime-extension
+    /// [Reference]: ../reference/destructors.html#extending-based-on-expressions
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "format_args_macro"]
     #[allow_internal_unsafe]
