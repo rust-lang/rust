@@ -2911,14 +2911,6 @@ pub(crate) struct NamedArgumentUsedPositionally {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_byte_slice_in_packed_struct_with_derive)]
-#[help]
-pub(crate) struct ByteSliceInPackedStructWithDerive {
-    // FIXME: make this translatable
-    pub ty: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_extern_crate_not_idiomatic)]
 pub(crate) struct ExternCrateNotIdiomatic {
     #[suggestion(style = "verbose", code = "{code}", applicability = "machine-applicable")]

@@ -690,10 +690,6 @@ pub enum BuiltinLintDiag {
         /// Indicates if the named argument is used as a width/precision for formatting
         is_formatting_arg: bool,
     },
-    ByteSliceInPackedStructWithDerive {
-        // FIXME: enum of byte/string
-        ty: String,
-    },
     ExternCrateNotIdiomatic {
         vis_span: Span,
         ident_span: Span,
