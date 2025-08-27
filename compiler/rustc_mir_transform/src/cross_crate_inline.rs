@@ -137,7 +137,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             }
             TerminatorKind::Call { ref func, unwind, .. } => {
                 if let Some((fn_def_id, _)) = func.const_fn_def() {
-                    if self.tcx.intrinsic(fn_def_id).is_some() {
+                    if self.tcx.has_attr(def_id, sym::rustc_intrinsic) {
                         return;
                     }
                 }
