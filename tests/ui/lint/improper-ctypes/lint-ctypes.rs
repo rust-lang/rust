@@ -63,9 +63,9 @@ extern "C" {
         -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `PhantomData<bool>`
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
-    pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `Box<u32>`
+    pub fn fn_contained(p: RustBadRet);
     pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
-    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
+    pub fn transparent_fn(p: TransparentBadFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
 
     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);

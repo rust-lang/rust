@@ -155,15 +155,6 @@ LL |     pub fn fn_type2(p: fn());
    = help: consider using an `extern fn(...) -> ...` function pointer instead
    = note: this function pointer has Rust-specific calling convention
 
-error: `extern` block uses type `Box<u32>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:66:28
-   |
-LL |     pub fn fn_contained(p: RustBadRet);
-   |                            ^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-
 error: `extern` block uses type `str`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:67:31
    |
@@ -172,15 +163,6 @@ LL |     pub fn transparent_str(p: TransparentStr);
    |
    = help: consider using `*const u8` and a length instead
    = note: string slices have no C equivalent
-
-error: `extern` block uses type `Box<u32>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:68:30
-   |
-LL |     pub fn transparent_fn(p: TransparentBadFn);
-   |                              ^^^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
 
 error: `extern` block uses type `[u8; 8]`, which is not FFI-safe
   --> $DIR/lint-ctypes.rs:69:27
@@ -209,5 +191,5 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: aborting due to 21 previous errors
+error: aborting due to 19 previous errors
 

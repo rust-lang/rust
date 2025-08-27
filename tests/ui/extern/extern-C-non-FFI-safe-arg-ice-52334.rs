@@ -8,7 +8,6 @@ type Foo = extern "C" fn(::std::ffi::CStr);
 //~^ WARN `extern` callback uses type
 extern "C" {
     fn meh(blah: Foo);
-    //~^ WARN `extern` block uses type
 }
 
 fn main() {

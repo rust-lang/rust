@@ -1,5 +1,5 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes_definitions, improper_ctypes)]
+#![deny(improper_ctypes, improper_ctypes_definitions)]
 
 use std::default::Default;
 use std::marker::PhantomData;
@@ -113,19 +113,22 @@ pub extern "C" fn fn_type2(p: fn()) { }
 //~^ ERROR uses type `fn()`
 
 pub extern "C" fn fn_contained(p: RustBadRet) { }
+// ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
 //~^ ERROR: uses type `str`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+// ^ possible FIXME: it doesn't see the actual FnPtr's error...
+//   but at least it reports it elsewhere?
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
-pub extern "C" fn good4(aptr: &[u8; 4 as usize]) { }
+pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
 
 pub extern "C" fn good5(s: StructWithProjection) { }
 
-pub extern "C" fn good6(s: StructWithProjectionAndLifetime) { }
+pub extern "C" fn argument_with_assumptions_6(s: StructWithProjectionAndLifetime) { }
 
 pub extern "C" fn good7(fptr: extern "C" fn() -> ()) { }
 
@@ -141,7 +144,7 @@ pub extern "C" fn good12(size: usize) { }
 
 pub extern "C" fn good13(n: TransparentInt) { }
 
-pub extern "C" fn good14(p: TransparentRef) { }
+pub extern "C" fn argument_with_assumptions_14(p: TransparentRef) { }
 
 pub extern "C" fn good15(p: TransparentLifetime) { }
 
