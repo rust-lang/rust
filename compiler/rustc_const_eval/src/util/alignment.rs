@@ -64,25 +64,8 @@ where
     }
 }
 
-/// Returns the ABI alignment of the *element type* if `ty` is an array/slice,
-/// otherwise `None`.
-///
-/// Soundness note:
-/// For any `T`, the ABI alignment of `[T]` (and `[T; N]`) equals that of `T`
-/// and does not depend on the length `N`.
-/// Proof sketch:
-///   (1) From `&[T]` we can obtain `&T`  ⇒  align([T]) ≥ align(T).
-///   (2) From `&T` we can obtain `&[T; 1]` via `std::array::from_ref`
-///       (and thus `&[T]`)  ⇒  align(T) ≥ align([T]).
-/// Hence `align([T]) == align(T)`.
-///
-/// Therefore, when `layout_of([T; N])` is unavailable in generic contexts,
-/// it is sufficient (and safe) to use `layout_of(T)` for alignment checks.
-///
-/// Returns:
-/// - `Some(align)` if `ty` is `Array(elem, _)` or `Slice(elem)` and
-///    `layout_of(elem)` is available;
-/// - `None` otherwise (caller should stay conservative).
+// For arrays/slices, `align([T]) == align(T)` (independent of length).
+// So if layout_of([T; N]) is unavailable, we can fall back to layout_of(T).
 fn get_element_alignment<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
