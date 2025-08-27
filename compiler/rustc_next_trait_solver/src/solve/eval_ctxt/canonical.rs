@@ -14,9 +14,10 @@ use std::iter;
 use rustc_index::IndexVec;
 use rustc_type_ir::data_structures::HashSet;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
+    self as ty, Canonical, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, TypeFoldable,
 };
 use tracing::{debug, instrument, trace};
 
@@ -132,6 +133,43 @@ where
                             goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
                         ),
                     )
+                }
+                (_, Certainty::Yes) => {
+                    let goals = std::mem::take(&mut self.nested_goals);
+                    // As we return all ambiguous nested goals, we can ignore the certainty
+                    // returned by `self.try_evaluate_added_goals()`.
+                    if goals.is_empty() {
+                        assert!(matches!(goals_certainty, Certainty::Yes));
+                    }
+                    if goals.iter().all(|(_, g, _)| {
+                        let Some(clause) = g.predicate.as_clause() else {
+                            return false;
+                        };
+                        match clause.kind().skip_binder() {
+                            ClauseKind::Trait(pred) => {
+                                let def_id = pred.def_id();
+                                (self.cx().is_lang_item(def_id, TraitSolverLangItem::Sized)
+                                    || self
+                                        .cx()
+                                        .is_lang_item(def_id, TraitSolverLangItem::MetaSized))
+                                    && self.resolve_vars_if_possible(pred).self_ty().is_ty_var()
+                            }
+                            ClauseKind::WellFormed(arg) => {
+                                self.resolve_vars_if_possible(arg).is_infer()
+                            }
+                            _ => false,
+                        }
+                    }) {
+                        (
+                            Certainty::Yes,
+                            NestedNormalizationGoals(
+                                goals.into_iter().map(|(s, g, _)| (s, g)).collect(),
+                            ),
+                        )
+                    } else {
+                        let certainty = shallow_certainty.and(goals_certainty);
+                        (certainty, NestedNormalizationGoals::empty())
+                    }
                 }
                 _ => {
                     let certainty = shallow_certainty.and(goals_certainty);

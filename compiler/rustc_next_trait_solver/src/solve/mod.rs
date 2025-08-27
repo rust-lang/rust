@@ -413,6 +413,7 @@ pub struct GoalEvaluation<I: Interner> {
     /// then reevaluating this goal now only needs to resolve `?y` while it would otherwise
     /// have to resolve both `?x` and `?y`,
     pub goal: Goal<I, I::Predicate>,
+    pub nested_goals: NestedNormalizationGoals<I>,
     pub certainty: Certainty,
     pub has_changed: HasChanged,
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed

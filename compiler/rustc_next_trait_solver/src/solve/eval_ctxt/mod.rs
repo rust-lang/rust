@@ -171,13 +171,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         span: <Self::Interner as Interner>::Span,
-    ) -> (
-        Result<
-            (NestedNormalizationGoals<Self::Interner>, GoalEvaluation<Self::Interner>),
-            NoSolution,
-        >,
-        inspect::GoalEvaluation<Self::Interner>,
-    );
+    ) -> (Result<GoalEvaluation<Self::Interner>, NoSolution>, inspect::GoalEvaluation<Self::Interner>);
 }
 
 impl<D, I> SolverDelegateEvalExt for D
@@ -221,16 +215,13 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         span: I::Span,
-    ) -> (
-        Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution>,
-        inspect::GoalEvaluation<I>,
-    ) {
+    ) -> (Result<GoalEvaluation<I>, NoSolution>, inspect::GoalEvaluation<I>) {
         let (result, proof_tree) = EvalCtxt::enter_root(
             self,
             self.cx().recursion_limit(),
             GenerateProofTree::Yes,
             span,
-            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal, None),
+            |ecx| ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal, None),
         );
         (result, proof_tree.unwrap())
     }
@@ -411,26 +402,6 @@ where
         goal: Goal<I, I::Predicate>,
         stalled_on: Option<GoalStalledOn<I>>,
     ) -> Result<GoalEvaluation<I>, NoSolution> {
-        let (normalization_nested_goals, goal_evaluation) =
-            self.evaluate_goal_raw(goal_evaluation_kind, source, goal, stalled_on)?;
-        assert!(normalization_nested_goals.is_empty());
-        Ok(goal_evaluation)
-    }
-
-    /// Recursively evaluates `goal`, returning the nested goals in case
-    /// the nested goal is a `NormalizesTo` goal.
-    ///
-    /// As all other goal kinds do not return any nested goals and
-    /// `NormalizesTo` is only used by `AliasRelate`, all other callsites
-    /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
-    /// storage.
-    pub(super) fn evaluate_goal_raw(
-        &mut self,
-        goal_evaluation_kind: GoalEvaluationKind,
-        source: GoalSource,
-        goal: Goal<I, I::Predicate>,
-        stalled_on: Option<GoalStalledOn<I>>,
-    ) -> Result<(NestedNormalizationGoals<I>, GoalEvaluation<I>), NoSolution> {
         // If we have run this goal before, and it was stalled, check that any of the goal's
         // args have changed. Otherwise, we don't need to re-run the goal because it'll remain
         // stalled, since it'll canonicalize the same way and evaluation is pure.
@@ -441,15 +412,13 @@ where
                 .opaque_types_storage_num_entries()
                 .needs_reevaluation(stalled_on.num_opaques)
         {
-            return Ok((
-                NestedNormalizationGoals::empty(),
-                GoalEvaluation {
-                    goal,
-                    certainty: Certainty::Maybe(stalled_on.stalled_cause),
-                    has_changed: HasChanged::No,
-                    stalled_on: Some(stalled_on),
-                },
-            ));
+            return Ok(GoalEvaluation {
+                goal,
+                certainty: Certainty::Maybe(stalled_on.stalled_cause),
+                has_changed: HasChanged::No,
+                stalled_on: Some(stalled_on),
+                nested_goals: NestedNormalizationGoals::empty(),
+            });
         }
 
         // We only care about one entry per `OpaqueTypeKey` here,
@@ -477,7 +446,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        let (normalization_nested_goals, certainty) =
+        let (nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, &orig_values, response);
 
         // FIXME: We previously had an assert here that checked that recomputing
@@ -536,10 +505,7 @@ where
             },
         };
 
-        Ok((
-            normalization_nested_goals,
-            GoalEvaluation { goal, certainty, has_changed, stalled_on },
-        ))
+        Ok(GoalEvaluation { goal, certainty, has_changed, stalled_on, nested_goals })
     }
 
     pub(super) fn compute_goal(&mut self, goal: Goal<I, I::Predicate>) -> QueryResult<I> {
@@ -673,10 +639,13 @@ where
                 let unconstrained_goal =
                     goal.with(cx, ty::NormalizesTo { alias: pred.alias, term: unconstrained_rhs });
 
-                let (
-                    NestedNormalizationGoals(nested_goals),
-                    GoalEvaluation { goal, certainty, stalled_on, has_changed: _ },
-                ) = self.evaluate_goal_raw(
+                let GoalEvaluation {
+                    goal,
+                    certainty,
+                    stalled_on,
+                    has_changed: _,
+                    nested_goals: NestedNormalizationGoals(nested_goals),
+                } = self.evaluate_goal(
                     GoalEvaluationKind::Nested,
                     source,
                     unconstrained_goal,
@@ -733,12 +702,18 @@ where
                     }
                 }
             } else {
-                let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                    self.evaluate_goal(GoalEvaluationKind::Nested, source, goal, stalled_on)?;
+                let GoalEvaluation {
+                    goal,
+                    certainty,
+                    has_changed,
+                    stalled_on,
+                    nested_goals: NestedNormalizationGoals(nested_goals),
+                } = self.evaluate_goal(GoalEvaluationKind::Nested, source, goal, stalled_on)?;
+                trace!(?nested_goals);
+                self.nested_goals.extend(nested_goals.into_iter().map(|(s, g)| (s, g, None)));
                 if has_changed == HasChanged::Yes {
                     unchanged_certainty = None;
                 }
-
                 match certainty {
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {

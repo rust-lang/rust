@@ -7,7 +7,8 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
-    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
+    FromSolverError, Obligation, ObligationCause, PredicateObligation, PredicateObligations,
+    TraitEngine,
 };
 use rustc_middle::ty::{
     self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -15,7 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::delegate::SolverDelegate as _;
 use rustc_next_trait_solver::solve::{
-    GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _,
+    GoalEvaluation, GoalStalledOn, HasChanged, NestedNormalizationGoals, SolverDelegateEvalExt as _,
 };
 use rustc_span::Span;
 use thin_vec::ThinVec;
@@ -213,7 +214,13 @@ where
 
                 let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
                 self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
+                let GoalEvaluation {
+                    goal,
+                    certainty,
+                    has_changed,
+                    stalled_on,
+                    nested_goals: NestedNormalizationGoals(nested_goals),
+                } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(E::from_solver_error(
@@ -223,6 +230,18 @@ where
                         continue;
                     }
                 };
+                for (_, nested_goal) in nested_goals {
+                    self.obligations.register(
+                        Obligation::with_depth(
+                            infcx.tcx,
+                            ObligationCause::misc(obligation.cause.span, obligation.cause.body_id),
+                            obligation.recursion_depth + 1,
+                            nested_goal.param_env,
+                            nested_goal.predicate,
+                        ),
+                        None,
+                    );
+                }
 
                 // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
                 // in the next iteration. This does not resolve the inference variables

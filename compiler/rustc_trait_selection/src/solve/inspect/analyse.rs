@@ -20,7 +20,7 @@ use rustc_middle::ty::{TyCtxt, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::resolve::eager_resolve_vars;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
-use rustc_next_trait_solver::solve::{MaybeCause, SolverDelegateEvalExt as _};
+use rustc_next_trait_solver::solve::{GoalEvaluation, MaybeCause, SolverDelegateEvalExt as _};
 use rustc_span::Span;
 use tracing::instrument;
 
@@ -249,23 +249,26 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     // `InspectGoal::new` so that the goal has the right result (and maintains
                     // the impression that we don't do this normalizes-to infer hack at all).
                     let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
-                    let nested_goals_result = nested.and_then(|(nested, _)| {
-                        normalizes_to_term_hack.constrain_and(
-                            infcx,
-                            span,
-                            proof_tree.uncanonicalized_goal.param_env,
-                            |ocx| {
-                                ocx.register_obligations(nested.0.into_iter().map(|(_, goal)| {
-                                    Obligation::new(
-                                        infcx.tcx,
-                                        ObligationCause::dummy_with_span(span),
-                                        goal.param_env,
-                                        goal.predicate,
-                                    )
-                                }));
-                            },
-                        )
-                    });
+                    let nested_goals_result =
+                        nested.and_then(|GoalEvaluation { nested_goals, .. }| {
+                            normalizes_to_term_hack.constrain_and(
+                                infcx,
+                                span,
+                                proof_tree.uncanonicalized_goal.param_env,
+                                |ocx| {
+                                    ocx.register_obligations(nested_goals.0.into_iter().map(
+                                        |(_, goal)| {
+                                            Obligation::new(
+                                                infcx.tcx,
+                                                ObligationCause::dummy_with_span(span),
+                                                goal.param_env,
+                                                goal.predicate,
+                                            )
+                                        },
+                                    ));
+                                },
+                            )
+                        });
                     (proof_tree, nested_goals_result)
                 });
                 InspectGoal::new(
