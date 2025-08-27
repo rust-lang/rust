@@ -460,10 +460,6 @@ lint_macro_is_private = macro `{$ident}` is private
 
 lint_macro_rule_never_used = rule #{$n} of macro `{$name}` is never used
 
-lint_macro_use_deprecated =
-    applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
-    .help = remove it and import macros at use sites with a `use` item instead
-
 lint_malformed_attribute = malformed lint attribute input
 
 lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
@@ -726,9 +722,6 @@ lint_redundant_semicolons_suggestion = remove {$multiple_semicolons ->
         *[false] this semicolon
     }
 
-lint_reexport_private_dependency =
-    {$kind} `{$name}` from private dependency '{$krate}' is re-exported
-
 lint_remove_mut_from_pattern = remove `mut` from the parameter
 
 lint_removed_lint = lint `{$name}` has been removed: {$reason}
@@ -966,14 +959,10 @@ lint_unused_imports = {$num_snippets ->
         }
     .help = if this is a test module, consider adding a `#[cfg(test)]` to the containing module
 
-lint_unused_label = unused label
-
 lint_unused_lifetime = lifetime parameter `{$ident}` never used
     .suggestion = elide the unused lifetime
 
 lint_unused_macro_definition = unused macro definition: `{$name}`
-
-lint_unused_macro_use = unused `#[macro_use]` import
 
 lint_unused_op = unused {$op} that must be used
     .label = the {$op} produces a value

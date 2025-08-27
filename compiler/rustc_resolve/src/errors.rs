@@ -1308,3 +1308,24 @@ pub(crate) struct UnusedExternCrate {
     #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub removal_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_reexport_private_dependency)]
+pub(crate) struct ReexportPrivateDependency {
+    pub name: Symbol,
+    pub kind: &'static str,
+    pub krate: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_label)]
+pub(crate) struct UnusedLabel;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_macro_use)]
+pub(crate) struct UnusedMacroUse;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_use_deprecated)]
+#[help]
+pub(crate) struct MacroUseDeprecated;
