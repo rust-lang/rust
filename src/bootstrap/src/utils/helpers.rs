@@ -510,6 +510,8 @@ pub fn check_cfg_arg(name: &str, values: Option<&[&str]>) -> String {
 #[track_caller]
 pub fn git(source_dir: Option<&Path>) -> BootstrapCommand {
     let mut git = command("git");
+    // git commands are almost always read-only, so cache them by default
+    git.cached();
 
     if let Some(source_dir) = source_dir {
         git.current_dir(source_dir);

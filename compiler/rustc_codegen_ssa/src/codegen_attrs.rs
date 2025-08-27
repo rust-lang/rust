@@ -385,6 +385,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
 
     // Foreign items by default use no mangling for their symbol name.
     if tcx.is_foreign_item(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
+
         // There's a few exceptions to this rule though:
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way

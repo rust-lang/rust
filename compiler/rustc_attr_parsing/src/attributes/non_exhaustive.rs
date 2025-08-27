@@ -19,6 +19,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NonExhaustiveParser {
         Warn(Target::Field),
         Warn(Target::Arm),
         Warn(Target::MacroDef),
+        Warn(Target::MacroCall),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NonExhaustive;
 }

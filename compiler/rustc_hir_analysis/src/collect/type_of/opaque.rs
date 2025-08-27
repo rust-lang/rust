@@ -4,9 +4,10 @@ use rustc_hir::{self as hir, Expr, ImplItem, Item, Node, TraitItem, def, intravi
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, DefiningScopeKind, Ty, TyCtxt, TypeVisitableExt};
+use rustc_trait_selection::opaque_types::report_item_does_not_constrain_error;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{TaitForwardCompat2, UnconstrainedOpaqueType};
+use crate::errors::UnconstrainedOpaqueType;
 
 /// Checks "defining uses" of opaque `impl Trait` in associated types.
 /// These can only be defined by associated items of the same trait.
@@ -127,14 +128,11 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
     }
 
     fn non_defining_use_in_defining_scope(&mut self, item_def_id: LocalDefId) {
-        let guar = self.tcx.dcx().emit_err(TaitForwardCompat2 {
-            span: self
-                .tcx
-                .def_ident_span(item_def_id)
-                .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
-            opaque_type_span: self.tcx.def_span(self.def_id),
-            opaque_type: self.tcx.def_path_str(self.def_id),
-        });
+        // We make sure that all opaque types get defined while
+        // type checking the defining scope, so this error is unreachable
+        // with the new solver.
+        assert!(!self.tcx.next_trait_solver_globally());
+        let guar = report_item_does_not_constrain_error(self.tcx, item_def_id, self.def_id, None);
         self.insert_found(ty::OpaqueHiddenType::new_error(self.tcx, guar));
     }
 
@@ -252,9 +250,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             } else if let Some(hidden_ty) = tables.concrete_opaque_types.get(&def_id) {
                 hidden_ty.ty
             } else {
-                // FIXME(-Znext-solver): This should not be necessary and we should
-                // instead rely on inference variable fallback inside of typeck itself.
-
+                assert!(!tcx.next_trait_solver_globally());
                 // We failed to resolve the opaque type or it
                 // resolves to itself. We interpret this as the
                 // no values of the hidden type ever being constructed,
@@ -273,6 +269,7 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
                     if let Err(guar) = hir_ty.error_reported() {
                         Ty::new_error(tcx, guar)
                     } else {
+                        assert!(!tcx.next_trait_solver_globally());
                         hir_ty
                     }
                 }

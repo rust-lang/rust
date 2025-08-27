@@ -134,8 +134,7 @@ pub fn iter_exported_symbols<'tcx>(
     for def_id in crate_items.definitions() {
         let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
             let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-            codegen_attrs.contains_extern_indicator(tcx, def_id.into())
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+            codegen_attrs.contains_extern_indicator()
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };

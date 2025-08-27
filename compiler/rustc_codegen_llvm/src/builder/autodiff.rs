@@ -11,7 +11,7 @@ use crate::builder::{Builder, PlaceRef, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
 use crate::llvm;
-use crate::llvm::{Metadata, True, Type};
+use crate::llvm::{Metadata, TRUE, Type};
 use crate::value::Value;
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
@@ -293,7 +293,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     //   ret double %0
     // }
     // ```
-    let enzyme_ty = unsafe { llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True) };
+    let enzyme_ty = unsafe { llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, TRUE) };
 
     // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
     // think a bit more about what should go here.

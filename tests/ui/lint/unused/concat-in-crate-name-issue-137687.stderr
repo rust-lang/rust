@@ -11,12 +11,20 @@ LL | #![deny(unused)]
    |         ^^^^^^
    = note: `#[deny(unused_macros)]` implied by `#[deny(unused)]`
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![crate_name]`
   --> $DIR/concat-in-crate-name-issue-137687.rs:3:1
    |
 LL | #[crate_name = concat !()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+note: This attribute does not have an `!`, which means it is applied to this macro def
+  --> $DIR/concat-in-crate-name-issue-137687.rs:5:1
+   |
+LL | / macro_rules! a {
+LL | |
+LL | |     () => {};
+LL | | }
+   | |_^
    = note: `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
 
 error: aborting due to 2 previous errors

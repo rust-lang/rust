@@ -1875,12 +1875,7 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "key already exists"
-    }
-}
+impl<'a, K: Debug, V: Debug> Error for OccupiedError<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {

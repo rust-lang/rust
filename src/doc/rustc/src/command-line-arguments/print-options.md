@@ -32,7 +32,7 @@ The names of the files created by the `link` emit kind.
 
 ## `sysroot`
 
-Abosulte path to the sysroot.
+Absolute path to the sysroot.
 
 Example (with rustup and the stable toolchain):
 

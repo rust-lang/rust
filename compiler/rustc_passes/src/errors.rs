@@ -64,7 +64,17 @@ pub(crate) struct MixedExportNameAndNoMangle {
 
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
-pub(crate) struct OuterCrateLevelAttr;
+pub(crate) struct OuterCrateLevelAttr {
+    #[subdiagnostic]
+    pub suggestion: OuterCrateLevelAttrSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(passes_outer_crate_level_attr_suggestion, style = "verbose")]
+pub(crate) struct OuterCrateLevelAttrSuggestion {
+    #[suggestion_part(code = "!")]
+    pub bang_position: Span,
+}
 
 #[derive(LintDiagnostic)]
 #[diag(passes_inner_crate_level_attr)]

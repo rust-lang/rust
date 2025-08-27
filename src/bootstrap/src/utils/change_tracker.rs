@@ -516,4 +516,19 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Build/check now supports forwarding `--timings` flag to cargo.",
     },
+    ChangeInfo {
+        change_id: 145472,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x dist` or `x install` with stage 0. All dist and install commands have to be on stage 1+.",
+    },
+    ChangeInfo {
+        change_id: 143689,
+        severity: ChangeSeverity::Info,
+        summary: "The `optimized-compiler-builtins` option now accepts a path to an existing compiler-rt builtins library.",
+    },
+    ChangeInfo {
+        change_id: 145876,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 rustc built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
+    },
 ];

@@ -11,9 +11,8 @@
 //! the need for an extra cast from `*const u8` on the Rust side.
 
 #![allow(non_camel_case_types)]
-#![allow(non_upper_case_globals)]
 
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr;
@@ -33,10 +32,59 @@ use crate::llvm;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
-pub(crate) type Bool = c_int;
+///
+/// This wrapper does not implement `PartialEq`.
+/// To test the underlying boolean value, use [`Self::is_true`].
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub(crate) struct Bool {
+    value: c_int,
+}
 
-pub(crate) const True: Bool = 1 as Bool;
-pub(crate) const False: Bool = 0 as Bool;
+pub(crate) const TRUE: Bool = Bool::TRUE;
+pub(crate) const FALSE: Bool = Bool::FALSE;
+
+impl Bool {
+    pub(crate) const TRUE: Self = Self { value: 1 };
+    pub(crate) const FALSE: Self = Self { value: 0 };
+
+    pub(crate) const fn from_bool(rust_bool: bool) -> Self {
+        if rust_bool { Self::TRUE } else { Self::FALSE }
+    }
+
+    /// Converts this LLVM-C boolean to a Rust `bool`
+    pub(crate) fn is_true(self) -> bool {
+        // Since we're interacting with a C API, follow the C convention of
+        // treating any nonzero value as true.
+        self.value != Self::FALSE.value
+    }
+}
+
+impl Debug for Bool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.value {
+            0 => f.write_str("FALSE"),
+            1 => f.write_str("TRUE"),
+            // As with `Self::is_true`, treat any nonzero value as true.
+            v => write!(f, "TRUE ({v})"),
+        }
+    }
+}
+
+/// Convenience trait to convert `bool` to `llvm::Bool` with an explicit method call.
+///
+/// Being able to write `b.to_llvm_bool()` is less noisy than `llvm::Bool::from(b)`,
+/// while being more explicit and less mistake-prone than something like `b.into()`.
+pub(crate) trait ToLlvmBool: Copy {
+    fn to_llvm_bool(self) -> llvm::Bool;
+}
+
+impl ToLlvmBool for bool {
+    #[inline(always)]
+    fn to_llvm_bool(self) -> llvm::Bool {
+        llvm::Bool::from_bool(self)
+    }
+}
 
 /// Wrapper for a raw enum value returned from LLVM's C APIs.
 ///
@@ -1881,11 +1929,17 @@ unsafe extern "C" {
         C: &Context,
         effects: MemoryEffects,
     ) -> &Attribute;
+    /// ## Safety
+    /// - Each of `LowerWords` and `UpperWords` must point to an array that is
+    ///   long enough to fully define an integer of size `NumBits`, i.e. each
+    ///   pointer must point to `NumBits.div_ceil(64)` elements or more.
+    /// - The implementation will make its own copy of the pointed-to `u64`
+    ///   values, so the pointers only need to outlive this function call.
     pub(crate) fn LLVMRustCreateRangeAttribute(
         C: &Context,
-        num_bits: c_uint,
-        lower_words: *const u64,
-        upper_words: *const u64,
+        NumBits: c_uint,
+        LowerWords: *const u64,
+        UpperWords: *const u64,
     ) -> &Attribute;
 
     // Operations on functions

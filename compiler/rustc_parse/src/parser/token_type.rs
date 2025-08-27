@@ -416,8 +416,8 @@ impl TokenType {
 /// is always by used those methods. The second field is only used when the
 /// first field doesn't match.
 #[derive(Clone, Copy, Debug)]
-pub struct ExpTokenPair<'a> {
-    pub tok: &'a TokenKind,
+pub struct ExpTokenPair {
+    pub tok: TokenKind,
     pub token_type: TokenType,
 }
 
@@ -444,7 +444,7 @@ macro_rules! exp {
     // `ExpTokenPair` helper rules.
     (@tok, $tok:ident) => {
         $crate::parser::token_type::ExpTokenPair {
-            tok: &rustc_ast::token::$tok,
+            tok: rustc_ast::token::$tok,
             token_type: $crate::parser::token_type::TokenType::$tok
         }
     };

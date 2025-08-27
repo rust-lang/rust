@@ -33,9 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# We are disabling CI LLVM since distcheck is an offline build.
-ENV NO_DOWNLOAD_CI_LLVM 1
+# Make distcheck builds faster
+ENV DISTCHECK_CONFIGURE_ARGS "--enable-sccache"
 
-ENV RUST_CONFIGURE_ARGS --build=x86_64-unknown-linux-gnu --set rust.omit-git-hash=false
-ENV SCRIPT python3 ../x.py --stage 2 test distcheck
-ENV DIST_SRC 1
+ENV SCRIPT python3 ../x.py test distcheck

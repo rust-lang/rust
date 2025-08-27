@@ -10,6 +10,16 @@ to be added as an explicit dependency in `Cargo.toml`.
 
 [`compiler-rt`]: https://github.com/llvm/llvm-project/tree/1b1dc505057322f4fa1110ef4f53c44347f52986/compiler-rt
 
+## Configuration
+
+`compiler-builtins` can be configured with the following environment variables when the `c` feature
+is enabled:
+
+- `LLVM_COMPILER_RT_LIB`
+- `RUST_COMPILER_RT_ROOT`
+
+See `build.rs` for details.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
