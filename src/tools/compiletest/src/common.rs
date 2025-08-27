@@ -8,7 +8,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 
-use crate::executor::{ColorConfig, OutputFormat};
+use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -565,13 +565,6 @@ pub struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// (Useless) Adjust libtest output format.
-    ///
-    /// FIXME: the hand-rolled executor does not support non-JSON output, because `compiletest` need
-    /// to package test outcome as `libtest`-esque JSON that `bootstrap` can intercept *anyway*.
-    /// However, now that we don't use the `libtest` executor, this is useless.
-    pub format: OutputFormat,
-
     /// Whether to use colors in test output.
     ///
     /// Note: the exact control mechanism is delegated to [`colored`].
@@ -768,7 +761,6 @@ impl Config {
             adb_device_status: Default::default(),
             lldb_python_dir: Default::default(),
             verbose: Default::default(),
-            format: Default::default(),
             color: Default::default(),
             remote_test_client: Default::default(),
             compare_mode: Default::default(),
