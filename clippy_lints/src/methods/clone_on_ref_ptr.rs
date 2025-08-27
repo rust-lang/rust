@@ -24,9 +24,10 @@ pub(super) fn check(
         && let Some(name) = cx.tcx.get_diagnostic_name(adt.did())
     {
         let caller_type = match name {
-            sym::Rc => "Rc",
-            sym::Arc => "Arc",
-            sym::RcWeak | sym::ArcWeak => "Weak",
+            sym::Rc => "std::rc::Rc",
+            sym::Arc => "std::sync::Arc",
+            sym::RcWeak => "std::rc::Weak",
+            sym::ArcWeak => "std::sync::Weak",
             _ => return,
         };
         span_lint_and_then(
