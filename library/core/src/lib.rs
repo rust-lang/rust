@@ -363,6 +363,8 @@ pub mod slice;
 pub mod str;
 pub mod time;
 
+pub mod wtf8;
+
 pub mod unicode;
 
 /* Async */
