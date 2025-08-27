@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-hash = "2.0.0"
+rustc-hash.workspace = true
 rustc_abi = { path = "../rustc_abi", optional = true }
 rustc_apfloat.workspace = true
 rustc_arena = { path = "../rustc_arena", optional = true }
