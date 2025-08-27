@@ -135,7 +135,12 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { unwind, .. } => {
+            TerminatorKind::Call { ref func, unwind, .. } => {
+                if let Some((fn_def_id, _)) = func.const_fn_def() {
+                    if self.tcx.intrinsic(fn_def_id).is_some() {
+                        return;
+                    }
+                }
                 self.calls += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;
