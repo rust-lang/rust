@@ -53,7 +53,7 @@ enum SideEffectBindings<'ra> {
         import_bindings: PerNS<Option<Option<NameBinding<'ra>>>>,
     },
     Glob {
-        import_bindings: Vec<(NameBinding<'ra>, BindingKey, bool /* warn_ambiguity */)>,
+        import_bindings: Vec<(NameBinding<'ra>, BindingKey)>,
     },
 }
 
@@ -605,17 +605,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             !self.assert_speculative,
             "`commit_import_resolutions` should not be called during speculative resolution"
         );
-        self.determined_imports.reserve(self.determined_imports.len());
         for (import, side_effect) in import_resolutions.iter() {
-            self.determined_imports.push(*import);
             let SideEffect { imported_module, .. } = side_effect;
             import.imported_module.set_unchecked(Some(*imported_module));
 
-            if import.is_glob()
-                && let ModuleOrUniformRoot::Module(module) = imported_module
-                && import.parent_scope.module != *module
-            {
-                module.glob_importers.borrow_mut(self).push(*import);
+            if import.is_glob() {
+                let ModuleOrUniformRoot::Module(module) = imported_module else {
+                    self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
+                    continue;
+                };
+                if import.parent_scope.module != *module {
+                    module.glob_importers.borrow_mut_unchecked().push(*import);
+                }
             }
         }
 
@@ -666,7 +667,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 (ImportKind::Glob { id, .. }, SideEffectBindings::Glob { import_bindings }) => {
                     let ModuleOrUniformRoot::Module(module) = imported_module else {
-                        self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
                         continue;
                     };
 
@@ -681,12 +681,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         .emit();
                     }
 
-                    for (binding, key, warn_ambiguity) in import_bindings {
+                    for (binding, key) in import_bindings {
+                        let imported_binding = self.import(binding, import);
+                        let warn_ambiguity = self
+                            .resolution(import.parent_scope.module, key)
+                            .and_then(|r| r.binding())
+                            .is_some_and(|binding| binding.warn_ambiguity_recursive());
                         let _ = self.try_define_local(
                             parent,
                             key.ident.0,
                             key.ns,
-                            binding,
+                            imported_binding,
                             warn_ambiguity,
                         );
                     }
@@ -971,7 +976,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ///
     /// Meanwhile, if resolution is successful, the side effect of the resolution is returned.
     fn resolve_import<'r>(
-        self: &mut CmResolver<'r, 'ra, 'tcx>,
+        mut self: CmResolver<'r, 'ra, 'tcx>,
         import: Import<'ra>,
     ) -> (Option<SideEffect<'ra>>, usize) {
         debug!(
@@ -1016,12 +1021,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut import_bindings = PerNS::default();
         let mut indeterminate_count = 0;
-        self.reborrow().per_ns_cm(|this, ns| {
+
+        // HACK: Use array of namespaces in the same order as `per_ns_mut`.
+        // We can't use `per_ns_cm` because of the invariance on CmResolver (RefOrMut).
+        for ns in [TypeNS, ValueNS, MacroNS] {
             if !type_ns_only || ns == TypeNS {
                 if bindings[ns].get() != PendingBinding::Pending {
-                    return;
+                    continue;
                 };
-                let binding_result = this.reborrow().maybe_resolve_ident_in_module(
+                let binding_result = self.reborrow().maybe_resolve_ident_in_module(
                     module,
                     source,
                     ns,
@@ -1031,7 +1039,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let pending_binding = match binding_result {
                     Ok(binding) => {
                         // We need the `target`, `source` can be extracted.
-                        let imported_binding = this.import(binding, import);
+                        let imported_binding = self.import(binding, import);
                         Some(Some(imported_binding))
                     }
                     Err(Determinacy::Determined) => Some(None),
@@ -1043,8 +1051,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // FIXME(batched): Will be fixed in batched import resolution.
                 import_bindings[ns] = pending_binding;
             }
-        });
-
+        }
         (
             Some(SideEffect {
                 imported_module: module,
@@ -1594,47 +1601,40 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         false
     }
 
-    fn resolve_glob_import<'r>(
-        self: &mut CmResolver<'r, 'ra, 'tcx>,
+    fn resolve_glob_import(
+        &self,
         import: Import<'ra>,
         imported_module: ModuleOrUniformRoot<'ra>,
     ) -> SideEffectBindings<'ra> {
-        // This function is only called for glob imports.
-        let ImportKind::Glob { .. } = import.kind else { unreachable!() };
+        match imported_module {
+            ModuleOrUniformRoot::Module(module) if module != import.parent_scope.module => {
+                let import_bindings = self
+                    .resolutions(module)
+                    .borrow()
+                    .iter()
+                    .filter_map(|(key, resolution)| {
+                        let binding = resolution.borrow().binding()?;
+                        let mut key = *key;
+                        let scope = match key
+                            .ident
+                            .0
+                            .span
+                            .reverse_glob_adjust(module.expansion, import.span)
+                        {
+                            Some(Some(def)) => self.expn_def_scope(def),
+                            Some(None) => import.parent_scope.module,
+                            None => return None,
+                        };
+                        self.is_accessible_from(binding.vis, scope).then(|| (binding, key))
+                    })
+                    .collect::<Vec<_>>();
 
-        let ModuleOrUniformRoot::Module(module) = imported_module else {
-            return SideEffectBindings::None;
-        };
+                SideEffectBindings::Glob { import_bindings }
+            }
 
-        if module == import.parent_scope.module {
-            return SideEffectBindings::None;
+            // Errors are reported in `commit_imports_resolutions`
+            _ => SideEffectBindings::None,
         }
-
-        let import_bindings = self
-            .resolutions(module)
-            .borrow()
-            .iter()
-            .filter_map(|(key, resolution)| {
-                let binding = resolution.borrow().binding()?;
-                let mut key = *key;
-                let scope =
-                    match key.ident.0.span.reverse_glob_adjust(module.expansion, import.span) {
-                        Some(Some(def)) => self.expn_def_scope(def),
-                        Some(None) => import.parent_scope.module,
-                        None => return None,
-                    };
-                self.is_accessible_from(binding.vis, scope).then(|| {
-                    let imported_binding = self.import(binding, import);
-                    let warn_ambiguity = self
-                        .resolution(import.parent_scope.module, key)
-                        .and_then(|r| r.binding())
-                        .is_some_and(|binding| binding.warn_ambiguity_recursive());
-                    (imported_binding, key, warn_ambiguity)
-                })
-            })
-            .collect::<Vec<_>>();
-
-        SideEffectBindings::Glob { import_bindings }
     }
 
     // Miscellaneous post-processing, including recording re-exports,
