@@ -10,7 +10,7 @@ either.workspace = true
 gsgdt = "0.1.2"
 polonius-engine = "0.13.0"
 rustc_abi = { path = "../rustc_abi" }
-rustc_apfloat = "0.2.0"
+rustc_apfloat.workspace = true
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
