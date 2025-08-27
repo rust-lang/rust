@@ -92,6 +92,11 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         InliningThreshold::Never => return false,
     };
 
+    // Avoid inlining coroutines, since that does not make any sense.
+    if tcx.is_coroutine(def_id.to_def_id()) {
+        return false;
+    }
+
     let mir = tcx.optimized_mir(def_id);
     let mut checker =
         CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };

@@ -349,14 +349,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         }
     }
 
-    fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool {
-        // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
-        // which can create a cycle, even when no attempt is made to inline the function in the other
-        // direction.
-        if body.coroutine.is_some() {
-            return false;
-        }
-
+    fn check_caller_mir_body(&self, _: &Body<'tcx>) -> bool {
         true
     }
 
@@ -707,6 +700,11 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
     let callee_def_id = callee.def_id();
     if callee_def_id == caller_def_id {
         return Err("self-recursion");
+    }
+
+    // Avoid inlining coroutines, since that does not make any sense.
+    if inliner.tcx().is_coroutine(callee_def_id) {
+        return Err("coroutine");
     }
 
     match callee.def {

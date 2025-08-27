@@ -94,6 +94,15 @@ fn process<'tcx>(
             continue;
         }
 
+        // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
+        // which can create a cycle, even when no attempt is made to inline the function in the other
+        // direction.
+        if tcx.is_coroutine(callee.def_id()) {
+            reaches_root = true;
+            seen.insert(callee, true);
+            continue;
+        }
+
         if tcx.is_constructor(callee.def_id()) {
             trace!("constructors always have MIR");
             // Constructor functions cannot cause a query cycle.
