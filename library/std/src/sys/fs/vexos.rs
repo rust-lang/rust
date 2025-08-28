@@ -225,13 +225,20 @@ impl File {
 
                 // append
                 (false, _, true, false, create, create_new) => unsafe {
-                    if create_new && vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
-                        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File exists"));
-                    } else if !create && vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::NotFound,
-                            "No such file or directory",
-                        ));
+                    if create_new {
+                        if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::AlreadyExists,
+                                "File exists",
+                            ));
+                        }
+                    } else if !create {
+                        if vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::NotFound,
+                                "No such file or directory",
+                            ));
+                        }
                     }
 
                     vex_sdk::vexFileOpenWrite(path.as_ptr())
@@ -239,13 +246,20 @@ impl File {
 
                 // write
                 (false, true, false, truncate, create, create_new) => unsafe {
-                    if create_new && vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
-                        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File exists"));
-                    } else if !create && vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::NotFound,
-                            "No such file or directory",
-                        ));
+                    if create_new {
+                        if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::AlreadyExists,
+                                "File exists",
+                            ));
+                        }
+                    } else if !create {
+                        if vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
+                            return Err(io::Error::new(
+                                io::ErrorKind::NotFound,
+                                "No such file or directory",
+                            ));
+                        }
                     }
 
                     if truncate {
