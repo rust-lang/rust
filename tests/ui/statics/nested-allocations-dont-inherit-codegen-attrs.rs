@@ -1,6 +1,6 @@
 //@ build-pass
 
-#![allow(improper_c_var_definitions)]
+#![allow(improper_ctypes_definitions)]
 
 // Make sure that the nested static allocation for `FOO` doesn't inherit `no_mangle`.
 #[no_mangle]
