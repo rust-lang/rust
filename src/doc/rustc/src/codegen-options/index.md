@@ -209,6 +209,19 @@ Note that while the `-C instrument-coverage` option is stable, the profile data
 format produced by the resulting instrumentation may change, and may not work
 with coverage tools other than those built and shipped with the compiler.
 
+## jump-tables
+
+This option is used to allow or prevent the LLVM codegen backend from creating
+jump tables when lowering switches.
+
+* `y`, `yes`, `on`, `true` or no value: allow jump tables (the default).
+* `n`, `no`, `off` or `false`: disable jump tables.
+
+Disabling jump tables can be used to help provide protection against
+jump-oriented-programming (JOP) attacks. However, this option makes
+no guarantee any precompiled or external dependencies are compiled
+with or without jump tables.
+
 ## link-arg
 
 This flag lets you append a single extra argument to the linker invocation.

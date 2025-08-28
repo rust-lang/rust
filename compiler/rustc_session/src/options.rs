@@ -2022,6 +2022,8 @@ options! {
         "instrument the generated code to support LLVM source-based code coverage reports \
         (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`"),
+    jump_tables: bool = (true, parse_bool, [TRACKED],
+        "Allow jump table and lookup table generation from switch case lowering (default: yes)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -2324,8 +2326,6 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
-    jump_tables: bool = (true, parse_bool, [TRACKED],
-        "Allow jump table and lookup table generation from switch case lowering (default: yes)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
     link_directives: bool = (true, parse_bool, [TRACKED],
