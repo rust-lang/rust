@@ -63,7 +63,7 @@ LL |     pub fn zero_size(p: ZeroSize);
    |                         ^^^^^^^^ not FFI-safe
    |
    = help: consider adding a member to this struct
-   = note: this struct has no fields
+   = note: `ZeroSize` has no fields
 note: the type is defined here
   --> $DIR/lint-ctypes.rs:24:1
    |
@@ -115,6 +115,12 @@ error: `extern` block uses type `TransparentStr`, which is not FFI-safe
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: this struct/enum/union (`TransparentStr`) is FFI-unsafe due to a `&str` field
+note: the type is defined here
+  --> $DIR/lint-ctypes.rs:32:1
+   |
+LL | pub struct TransparentStr(&'static str);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
@@ -128,31 +134,43 @@ LL |     pub fn raw_array(arr: [u8; 8]);
    = note: passing raw arrays by value is not FFI-safe
 
 error: `extern` callback uses type `char`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:90:12
+  --> $DIR/lint-ctypes.rs:90:36
    |
 LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |                                    ^^^^ not FFI-safe
    |
-   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `char`
    = help: consider using `u32` or `libc::wchar_t` instead
    = note: the `char` type has no C equivalent
 
 error: `extern` callback uses type `&dyn Debug`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:90:12
+  --> $DIR/lint-ctypes.rs:90:44
    |
 LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |                                            ^^^^^^^^^^ not FFI-safe
    |
-   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `&dyn Debug`
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` callback uses type `TwoBadTypes<'_>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:90:12
+  --> $DIR/lint-ctypes.rs:90:59
    |
 LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |                                                           ^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), TwoBadTypes<'b>)` is FFI-unsafe due to `TwoBadTypes<'_>`
+   = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `char` field
+note: the type is defined here
+  --> $DIR/lint-ctypes.rs:57:1
+   |
+LL | pub struct TwoBadTypes<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+
+error: `extern` callback uses type `TwoBadTypes<'_>`, which is not FFI-safe
+  --> $DIR/lint-ctypes.rs:90:59
+   |
+LL |         f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+   |                                                           ^^^^^^^^^^^^^^^ not FFI-safe
+   |
    = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `&[u8]` field
 note: the type is defined here
   --> $DIR/lint-ctypes.rs:57:1
@@ -163,7 +181,7 @@ LL | pub struct TwoBadTypes<'a> {
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:97:47
+  --> $DIR/lint-ctypes.rs:98:47
    |
 LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -171,7 +189,7 @@ LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:99:26
+  --> $DIR/lint-ctypes.rs:100:26
    |
 LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -180,7 +198,7 @@ LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `Option<UnsafeCell<&i32>>`, which is not FFI-safe
-  --> $DIR/lint-ctypes.rs:101:26
+  --> $DIR/lint-ctypes.rs:102:26
    |
 LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -188,5 +206,5 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 

@@ -4,8 +4,8 @@ error: `extern` block uses type `Foo`, which is not FFI-safe
 LL |     pub fn foo(x: (Foo));
    |                    ^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `Foo`
+   = note: `Foo` has unspecified layout
 note: the type is defined here
   --> $DIR/issue-16250.rs:3:1
    |

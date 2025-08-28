@@ -92,6 +92,7 @@ extern "C" {
     //~^^ ERROR: uses type `char`
     //~| ERROR: uses type `&dyn Debug`
     //~| ERROR: uses type `TwoBadTypes<'_>`
+    //~| ERROR: uses type `TwoBadTypes<'_>`
 
     pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`

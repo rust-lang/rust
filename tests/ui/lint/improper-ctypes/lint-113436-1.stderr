@@ -10,8 +10,8 @@ note: the type is defined here
    |
 LL | pub struct Bar {
    | ^^^^^^^^^^^^^^
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `NotSafe`
+   = note: `NotSafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-113436-1.rs:13:1
    |
@@ -35,8 +35,8 @@ note: the type is defined here
    |
 LL | pub struct Bar {
    | ^^^^^^^^^^^^^^
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `NotSafe`
+   = note: `NotSafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-113436-1.rs:13:1
    |

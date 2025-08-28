@@ -81,8 +81,8 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD: extern "C" fn(FfiUnsafe) = f;
    |                               ^^^^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `FfiUnsafe`
+   = note: `FfiUnsafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-94223.rs:34:1
    |
@@ -95,8 +95,8 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                                            ^^^^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `FfiUnsafe`
+   = note: `FfiUnsafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-94223.rs:34:1
    |
@@ -109,8 +109,8 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub static BAD_TWICE: Result<extern "C" fn(FfiUnsafe), extern "C" fn(FfiUnsafe)> = Ok(f);
    |                                                                      ^^^^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `FfiUnsafe`
+   = note: `FfiUnsafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-94223.rs:34:1
    |
@@ -123,8 +123,8 @@ error: `extern` callback uses type `FfiUnsafe`, which is not FFI-safe
 LL | pub const BAD_CONST: extern "C" fn(FfiUnsafe) = f;
    |                                    ^^^^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `FfiUnsafe`
+   = note: `FfiUnsafe` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-94223.rs:34:1
    |
