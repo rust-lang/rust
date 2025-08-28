@@ -204,7 +204,7 @@ fn fat_lto(
             let path = tmp_path.path().to_path_buf().join(&module.name);
             let path = path.to_str().expect("path");
             let context = &module.module_llvm.context;
-            let config = cgcx.config(module.kind);
+            let config = &cgcx.module_config;
             // NOTE: we need to set the optimization level here in order for LTO to do its job.
             context.set_optimization_level(to_gcc_opt_level(config.opt_level));
             context.add_command_line_option("-flto=auto");
