@@ -25,14 +25,14 @@ This target is cross-compiled. Dynamic linking is unsupported.
 - `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding, as this is a single-threaded environment.
 - `std::time` has full support for `Instant`, but no support for `SystemTime`.
 - `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to to USB channel 1 on this platform and are not differentiated.
-- `std::fs`, has limited support for reading or writing to files. Directory operations, file deletion, and some file opening features are unsupported and will return errors.
-- A global allocator is provided and implemented on top of `dlmalloc`.
-- Modules that do not need to interact with the OS beyond allocation, such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc are fully supported.
-- Random number generation is insecure, as there is no reliable source of entropy on this platform.
+- `std::fs` has limited support for reading or writing to files. Directory operations, file deletion, and some file opening features are unsupported and will return errors.
+- A global allocator implemented on top of `dlmalloc` is provided.
+- Modules that do not need to interact with the OS beyond allocation such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc are fully supported.
+- Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
 
 In order to support some APIs, users are expected to provide a supporting runtime SDK for `libstd` to link against. This library may be provided either by [`vex-sdk-build`](https://github.com/vexide/vex-sdk/tree/main/packages/vex-sdk-build) (which will download an official SDK from VEX) or through an open-source implementation such as [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable).
 
-When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (soft float ABI).
+When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (softfp ABI).
 
 This target generates binaries in the ELF format that may be uploaded to the brain with external tools.
 
