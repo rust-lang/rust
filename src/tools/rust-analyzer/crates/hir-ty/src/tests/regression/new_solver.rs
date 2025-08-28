@@ -71,3 +71,30 @@ fn main() {
 }"#,
     );
 }
+
+#[test]
+fn projection_is_not_associated_type() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+trait Iterator {
+    type Item;
+
+    fn partition<F>(self, f: F)
+    where
+        F: FnMut(&Self::Item) -> bool,
+    {
+    }
+}
+
+struct Iter;
+impl Iterator for Iter {
+    type Item = i32;
+}
+
+fn main() {
+    Iter.partition(|n| true);
+}
+    "#,
+    );
+}
