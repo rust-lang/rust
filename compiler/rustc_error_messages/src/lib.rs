@@ -15,7 +15,6 @@ use fluent_bundle::FluentResource;
 pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
-use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use intl_memoizer::concurrent::IntlLangMemoizer;
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_macros::{Decodable, Encodable};
@@ -515,8 +514,8 @@ impl From<Vec<Span>> for MultiSpan {
     }
 }
 
-fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Locale> {
-    icu_locid::Locale::try_from_bytes(lang.to_string().as_bytes()).ok()
+fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locale::Locale> {
+    icu_locale::Locale::try_from_str(&lang.to_string()).ok()
 }
 
 pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {
@@ -568,21 +567,15 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
         where
             Self: Sized,
         {
-            let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
-            let locale_fallbacker =
-                LocaleFallbacker::try_new_with_any_provider(&baked_data_provider)
-                    .expect("Failed to create fallback provider");
-            let data_provider =
-                LocaleFallbackProvider::new_with_fallbacker(baked_data_provider, locale_fallbacker);
             let locale = icu_locale_from_unic_langid(lang)
                 .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
-            let list_formatter =
-                icu_list::ListFormatter::try_new_and_with_length_with_any_provider(
-                    &data_provider,
-                    &locale.into(),
-                    icu_list::ListLength::Wide,
-                )
-                .expect("Failed to create list formatter");
+            let list_formatter = icu_list::ListFormatter::try_new_and_unstable(
+                &rustc_baked_icu_data::BakedDataProvider,
+                locale.into(),
+                icu_list::options::ListFormatterOptions::default()
+                    .with_length(icu_list::options::ListLength::Wide),
+            )
+            .expect("Failed to create list formatter");
 
             Ok(MemoizableListFormatter(list_formatter))
         }
