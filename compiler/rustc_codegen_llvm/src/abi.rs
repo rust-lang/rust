@@ -375,26 +375,31 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             return true;
         }
 
-        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
-        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
-        // as, well, packed structs, so they won't match with those either)
-        if self.type_kind(llvm_ty) == TypeKind::Struct
-            && self.type_kind(rust_ty) == TypeKind::Struct
-        {
-            let rust_element_tys = self.struct_element_types(rust_ty);
-            let llvm_element_tys = self.struct_element_types(llvm_ty);
+        match self.type_kind(llvm_ty) {
+            // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+            // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+            // as, well, packed structs, so they won't match with those either)
+            TypeKind::Struct if self.type_kind(rust_ty) == TypeKind::Struct => {
+                let rust_element_tys = self.struct_element_types(rust_ty);
+                let llvm_element_tys = self.struct_element_types(llvm_ty);
 
-            if rust_element_tys.len() != llvm_element_tys.len() {
-                return false;
+                if rust_element_tys.len() != llvm_element_tys.len() {
+                    return false;
+                }
+
+                iter::zip(rust_element_tys, llvm_element_tys).all(
+                    |(rust_element_ty, llvm_element_ty)| {
+                        self.equate_ty(rust_element_ty, llvm_element_ty)
+                    },
+                )
             }
+            TypeKind::Vector if self.element_type(llvm_ty) == self.type_i1() => {
+                let element_count = self.vector_length(llvm_ty) as u64;
+                let int_width = element_count.next_power_of_two().max(8);
 
-            iter::zip(rust_element_tys, llvm_element_tys).all(
-                |(rust_element_ty, llvm_element_ty)| {
-                    self.equate_ty(rust_element_ty, llvm_element_ty)
-                },
-            )
-        } else {
-            false
+                rust_ty == self.type_ix(int_width)
+            }
+            _ => false,
         }
     }
 }
