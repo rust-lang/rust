@@ -2032,6 +2032,10 @@ supported_targets! {
     ("i586-unknown-redox", i586_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
+    ("x86_64-unknown-managarm-mlibc", x86_64_unknown_managarm_mlibc),
+    ("aarch64-unknown-managarm-mlibc", aarch64_unknown_managarm_mlibc),
+    ("riscv64gc-unknown-managarm-mlibc", riscv64gc_unknown_managarm_mlibc),
+
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
