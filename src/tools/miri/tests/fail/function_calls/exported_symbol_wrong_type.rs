@@ -1,5 +1,5 @@
 #[no_mangle]
-#[allow(improper_c_var_definitions)]
+#[allow(improper_ctypes_definitions)]
 static FOO: () = ();
 
 fn main() {
