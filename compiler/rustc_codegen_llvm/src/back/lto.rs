@@ -70,6 +70,10 @@ fn prepare_lto(
         symbols_below_threshold.extend(msan_weak_symbols.into_iter().map(|sym| sym.to_owned()));
     }
 
+    // Preserve LLVM-injected, ASAN-related symbols.
+    // See also https://github.com/rust-lang/rust/issues/113404.
+    symbols_below_threshold.push(c"___asan_globals_registered".to_owned());
+
     // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
     // should have default visibility.
