@@ -69,7 +69,7 @@
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
-#![link()] //~ WARN attribute should be applied to an `extern` block
+#![link(name = "x")] //~ WARN attribute should be applied to an `extern` block
 //~^ WARN this was previously accepted
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
@@ -692,38 +692,38 @@ mod link_section {
 
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
-#[link()]
+#[link(name = "x")]
 //~^ WARN attribute should be applied to an `extern` block
 //~| WARN this was previously accepted
 mod link {
     //~^ NOTE not an `extern` block
 
-    mod inner { #![link()] }
+    mod inner { #![link(name = "x")] }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] fn f() { }
+    #[link(name = "x")] fn f() { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] struct S;
+    #[link(name = "x")] struct S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] type T = S;
+    #[link(name = "x")] type T = S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] impl S { }
+    #[link(name = "x")] impl S { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] extern "Rust" {}
+    #[link(name = "x")] extern "Rust" {}
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
 }

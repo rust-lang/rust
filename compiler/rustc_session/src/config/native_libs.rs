@@ -5,10 +5,11 @@
 //! which have their own parser in `rustc_metadata`.)
 
 use rustc_feature::UnstableFeatures;
+use rustc_hir::attrs::NativeLibKind;
 
 use crate::EarlyDiagCtxt;
 use crate::config::UnstableOptions;
-use crate::utils::{NativeLib, NativeLibKind};
+use crate::utils::NativeLib;
 
 #[cfg(test)]
 mod tests;

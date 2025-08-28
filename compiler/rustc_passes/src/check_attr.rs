@@ -200,6 +200,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
+                Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
+                    self.check_link(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -305,7 +308,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
-                        [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
@@ -1324,7 +1326,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_link(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
@@ -1336,7 +1338,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span(),
+            attr_span,
             errors::Link { span: (target != Target::ForeignMod).then_some(span) },
         );
     }
