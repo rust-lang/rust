@@ -1,6 +1,6 @@
 [package]
 name = "hashbrown"
-version = "0.15.5"
+version = "0.16.0"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
 license = "MIT OR Apache-2.0"
@@ -30,6 +30,7 @@ allocator-api2 = { version = "0.2.9", optional = true, default-features = false,
 ] }
 
 # Equivalent trait which can be shared with other hash table implementations.
+# NB: this is a public dependency because `Equivalent` is re-exported!
 equivalent = { version = "1.0", optional = true, default-features = false }
 
 [dev-dependencies]
