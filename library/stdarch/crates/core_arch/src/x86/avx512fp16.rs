@@ -11202,7 +11202,7 @@ pub fn _mm256_reduce_mul_ph(a: __m256h) -> f16 {
 #[inline]
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub unsafe fn _mm512_reduce_mul_ph(a: __m512h) -> f16 {
+pub fn _mm512_reduce_mul_ph(a: __m512h) -> f16 {
     unsafe {
         let p = simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
         let q = simd_shuffle!(
