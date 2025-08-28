@@ -29,6 +29,7 @@ use crate::util::is_within_packed;
 ///
 /// The `borrowed` set must be a `DenseBitSet` of all the locals that are ever borrowed in this
 /// body. It can be generated via the [`borrowed_locals`] function.
+/// Returns true if any instruction is eliminated.
 fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let borrowed_locals = borrowed_locals(body);
 
