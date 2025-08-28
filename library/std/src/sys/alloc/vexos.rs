@@ -62,7 +62,7 @@ unsafe impl dlmalloc::Allocator for Vexos {
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which 
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
@@ -70,7 +70,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which 
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
@@ -78,7 +78,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which 
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
@@ -86,7 +86,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which 
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
         // guarantees unique and non-reentrant access to the allocator.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
