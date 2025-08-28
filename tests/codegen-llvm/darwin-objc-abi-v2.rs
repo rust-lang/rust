@@ -131,6 +131,9 @@ pub fn get_other_selector() -> *mut () {
 // aarch64_ios-SAME: align 8
 // aarch64_ios_sim-SAME: align 8
 
+// CHECK-NOT: @OBJC_CLASS_NAME_
+// CHECK-NOT: @OBJC_MODULES
+
 // CHECK: @get_class_again = unnamed_addr alias ptr (), ptr @get_class
 // CHECK: @get_selector_again = unnamed_addr alias ptr (), ptr @get_selector
 

@@ -29,6 +29,9 @@ pub fn get_selector() -> objc::SEL {
 // CHECK: @OBJC_METH_VAR_NAME_.{{[0-9]+}} = private unnamed_addr constant [9 x i8] c"myMethod\00", section "__TEXT,__objc_methname,cstring_literals", align 1
 // CHECK: @OBJC_SELECTOR_REFERENCES_.{{[0-9]+}} = internal externally_initialized global ptr @OBJC_METH_VAR_NAME_.{{[0-9]+}}, section "__DATA,__objc_selrefs,literal_pointers,no_dead_strip", align 8
 
+// CHECK-NOT: @OBJC_CLASS_NAME_
+// CHECK-NOT: @OBJC_MODULES
+
 // CHECK: load ptr, ptr @"OBJC_CLASSLIST_REFERENCES_$_.{{[0-9]+}}", align 8
 // CHECK: load ptr, ptr @OBJC_SELECTOR_REFERENCES_.{{[0-9]+}}, align 8
 
