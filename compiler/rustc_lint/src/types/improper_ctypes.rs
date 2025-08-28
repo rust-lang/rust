@@ -641,8 +641,8 @@ enum OuterTyKind {
     },
     /// For struct/enum/union fields
     AdtField,
-    /// Placeholder for properties that will be used eventually
-    UnusedVariant,
+    /// For arrays/slices but also tuples
+    OtherItem,
 }
 
 impl OuterTyKind {
@@ -660,7 +660,7 @@ impl OuterTyKind {
                     Self::AdtField
                 }
             }
-            ty::Tuple(..) | ty::Array(..) | ty::Slice(_) => Self::UnusedVariant,
+            ty::Tuple(..) | ty::Array(..) | ty::Slice(_) => Self::OtherItem,
             k @ _ => bug!("Unexpected outer type {:?} of kind {:?}", ty, k),
         }
     }
@@ -730,6 +730,15 @@ impl VisitorState {
         Self::entry_point(RootUseFlags::STATIC_TY)
     }
 
+    /// Whether the type is used as the type of a static variable.
+    fn is_direct_in_static(&self) -> bool {
+        let ret = self.root_use_flags.contains(RootUseFlags::STATIC);
+        if ret {
+            debug_assert!(!self.root_use_flags.contains(RootUseFlags::FUNC));
+        }
+        ret && matches!(self.outer_ty_kind, OuterTyKind::None)
+    }
+
     /// Whether the type is used in a function.
     fn is_in_function(&self) -> bool {
         let ret = self.root_use_flags.contains(RootUseFlags::FUNC);
@@ -783,6 +792,11 @@ impl VisitorState {
     /// Whether the current type is behind a raw pointer
     fn is_raw_pointee(&self) -> bool {
         matches!(self.outer_ty_kind, OuterTyKind::Pointee { raw: true, .. })
+    }
+
+    /// Whether the current type directly in the memory layout of the parent ty
+    fn is_memory_inlined(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::AdtField | OuterTyKind::OtherItem)
     }
 }
 
@@ -1254,11 +1268,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 Some(fluent::lint_improper_ctypes_char_help),
             ),
 
-            ty::Slice(_) => FfiResult::new_with_reason(
-                ty,
-                fluent::lint_improper_ctypes_slice_reason,
-                Some(fluent::lint_improper_ctypes_slice_help),
-            ),
+            ty::Slice(inner_ty) => {
+                // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
+                let slice_is_actually_array =
+                    state.is_memory_inlined() || state.is_direct_in_static();
+
+                if slice_is_actually_array {
+                    self.visit_type(state.get_next(ty), inner_ty)
+                } else {
+                    FfiResult::new_with_reason(
+                        ty,
+                        fluent::lint_improper_ctypes_slice_reason,
+                        Some(fluent::lint_improper_ctypes_slice_help),
+                    )
+                }
+            }
 
             ty::Dynamic(..) => {
                 FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_dyn, None)
