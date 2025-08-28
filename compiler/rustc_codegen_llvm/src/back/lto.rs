@@ -15,6 +15,7 @@ use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir::attrs::SanitizerSet;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_session::config::{self, Lto};
@@ -41,6 +42,37 @@ fn prepare_lto(
         .iter()
         .map(|symbol| CString::new(symbol.to_owned()).unwrap())
         .collect::<Vec<CString>>();
+
+    if cgcx.regular_module_config.instrument_coverage
+        || cgcx.regular_module_config.pgo_gen.enabled()
+    {
+        // These are weak symbols that point to the profile version and the
+        // profile name, which need to be treated as exported so LTO doesn't nix
+        // them.
+        const PROFILER_WEAK_SYMBOLS: [&CStr; 2] =
+            [c"__llvm_profile_raw_version", c"__llvm_profile_filename"];
+
+        symbols_below_threshold.extend(PROFILER_WEAK_SYMBOLS.iter().map(|&sym| sym.to_owned()));
+    }
+
+    if cgcx.regular_module_config.sanitizer.contains(SanitizerSet::MEMORY) {
+        let mut msan_weak_symbols = Vec::new();
+
+        // Similar to profiling, preserve weak msan symbol during LTO.
+        if cgcx.regular_module_config.sanitizer_recover.contains(SanitizerSet::MEMORY) {
+            msan_weak_symbols.push(c"__msan_keep_going");
+        }
+
+        if cgcx.regular_module_config.sanitizer_memory_track_origins != 0 {
+            msan_weak_symbols.push(c"__msan_track_origins");
+        }
+
+        symbols_below_threshold.extend(msan_weak_symbols.into_iter().map(|sym| sym.to_owned()));
+    }
+
+    // Preserve LLVM-injected, ASAN-related symbols.
+    // See also https://github.com/rust-lang/rust/issues/113404.
+    symbols_below_threshold.push(c"___asan_globals_registered".to_owned());
 
     // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
