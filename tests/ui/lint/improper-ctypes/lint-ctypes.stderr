@@ -63,7 +63,7 @@ LL |     pub fn zero_size(p: ZeroSize);
    |                         ^^^^^^^^ not FFI-safe
    |
    = help: consider adding a member to this struct
-   = note: this struct has no fields
+   = note: `ZeroSize` has no fields
 note: the type is defined here
   --> $DIR/lint-ctypes.rs:25:1
    |
@@ -115,6 +115,12 @@ error: `extern` block uses type `TransparentStr`, which is not FFI-safe
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: this struct/enum/union (`TransparentStr`) is FFI-unsafe due to a `&str` field
+note: the type is defined here
+  --> $DIR/lint-ctypes.rs:33:1
+   |
+LL | pub struct TransparentStr(&'static str);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
