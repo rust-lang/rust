@@ -62,57 +62,33 @@ unsafe impl dlmalloc::Allocator for Vexos {
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
+        // guarantees unique and non-reentrant access to the allocator.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
         unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
+        // guarantees unique and non-reentrant access to the allocator.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
         unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
+        // guarantees unique and non-reentrant access to the allocator.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
         unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
     }
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
+        // guarantees unique and non-reentrant access to the allocator.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
-        let _lock = lock::lock();
         unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
-    }
-}
-
-mod lock {
-    use crate::sync::atomic::Ordering::{Acquire, Release};
-    use crate::sync::atomic::{Atomic, AtomicI32};
-
-    static LOCKED: Atomic<i32> = AtomicI32::new(0);
-
-    pub struct DropLock;
-
-    pub fn lock() -> DropLock {
-        loop {
-            if LOCKED.swap(1, Acquire) == 0 {
-                return DropLock;
-            }
-        }
-    }
-
-    impl Drop for DropLock {
-        fn drop(&mut self) {
-            let r = LOCKED.swap(0, Release);
-            debug_assert_eq!(r, 1);
-        }
     }
 }
