@@ -730,8 +730,27 @@ pub(crate) fn nonnull_optimization_guaranteed<'tcx>(
     find_attr!(tcx, def.did(), RustcNonnullOptimizationGuaranteed)
 }
 
+/// Test if a given Ty is a 1-ZST.
+/// (This function is designed to only test a single type. For multiple `Ty`s,
+/// more efficient alternatives exist.)
+pub(crate) fn is_1zst<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+    // `InferCtxt` would ICE (see #156352).
+    let typing_env = if let Some(body_id) = cx.enclosing_body {
+        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    } else {
+        cx.typing_env()
+    };
+    cx.tcx.layout_of(typing_env.as_query_input(ty)).is_ok_and(|layout| layout.is_1zst())
+}
+
 /// `repr(transparent)` structs can have a single non-1-ZST field, this function returns that
 /// field.
+/// Note that this function does not see through type parameters.
+/// Instead, it returns the sole field which *might* be a non-1-ZST.
+/// Proper layout checks still need to be done on that field's type.
 pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     variant: &'a ty::VariantDef,
@@ -743,6 +762,26 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
             tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
     })
+}
+
+/// for a given ADT variant, list which fields *may* be non-1ZST (depending of type params, if any)
+/// (`repr(transparent)`, if present, guarantees that there is at most one)
+pub(crate) fn map_non_1zst_fields<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Vec<bool> {
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
+    variant
+        .fields
+        .iter()
+        .map(|field| {
+            let field_ty = tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
+            let is_1zst = tcx
+                .layout_of(typing_env.as_query_input(field_ty))
+                .is_ok_and(|layout| layout.is_1zst());
+            !is_1zst
+        })
+        .collect()
 }
 
 /// Is type known to be non-null?

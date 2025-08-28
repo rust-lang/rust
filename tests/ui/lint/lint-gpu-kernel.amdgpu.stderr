@@ -40,7 +40,7 @@ LL | extern "gpu-kernel" fn arg_struct(_: S) { }
    |                                      ^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = note: `S` has unspecified layout
 note: the type is defined here
   --> $DIR/lint-gpu-kernel.rs:47:1
    |
