@@ -659,9 +659,6 @@ bitflags! {
         /// To show that there is no outer type, the current type is directly used by a `static`
         /// variable or a function/FnPtr
         const NO_OUTER_TY = 0b100000;
-        /// For NO_OUTER_TY cases, show that we are being directly used by a FnPtr specifically
-        /// FIXME(ctypes): this is only used for "bad behaviour" reproduced for compatibility's sake
-        const NOOUT_FNPTR = 0b1000000;
     }
 }
 
@@ -696,7 +693,7 @@ impl EphemeralStateFlags {
     /// modify self to change the ephemeral part of the flags
     fn from_outer_ty<'tcx>(ty: Ty<'tcx>) -> Self {
         match ty.kind() {
-            ty::FnPtr(..) => Self::NO_OUTER_TY | Self::NOOUT_FNPTR,
+            ty::FnPtr(..) => Self::NO_OUTER_TY,
             k @ (ty::RawPtr(..) | ty::Ref(..)) => {
                 let mut ret = Self::IN_PTR;
                 if ty.is_mutable_ptr() {
@@ -740,7 +737,7 @@ impl VisitorState {
             } else {
                 PersistentStateFlags::ARGUMENT_TY_IN_FNPTR
             },
-            ephemeral_flags: EphemeralStateFlags::NO_OUTER_TY | EphemeralStateFlags::NOOUT_FNPTR,
+            ephemeral_flags: EphemeralStateFlags::NO_OUTER_TY,
         }
     }
 
@@ -777,6 +774,15 @@ impl VisitorState {
     #[inline]
     fn static_var() -> Self {
         Self::entry_point(PersistentStateFlags::STATIC_TY)
+    }
+
+    /// Whether the type is used as the type of a static variable.
+    fn is_direct_in_static(&self) -> bool {
+        let ret = self.persistent_flags.contains(PersistentStateFlags::STATIC);
+        if ret {
+            debug_assert!(!self.persistent_flags.contains(PersistentStateFlags::FUNC));
+        }
+        ret && self.ephemeral_flags.contains(EphemeralStateFlags::NO_OUTER_TY)
     }
 
     /// Whether the type is used in a function.
@@ -843,6 +849,12 @@ impl VisitorState {
     #[inline]
     fn is_raw_pointee(&self) -> bool {
         self.ephemeral_flags.contains(EphemeralStateFlags::IN_PTR | EphemeralStateFlags::PTR_RAW)
+    }
+
+    /// Whether the current type directly in the memory layout of the parent ty
+    #[inline]
+    fn is_memory_inlined(&self) -> bool {
+        self.ephemeral_flags.contains(EphemeralStateFlags::MEMORY_INLINED)
     }
 }
 
@@ -1320,11 +1332,21 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 Some(fluent::lint_improper_ctypes_char_help),
             ),
 
-            ty::Slice(_) => FfiResult::new_with_reason(
-                ty,
-                fluent::lint_improper_ctypes_slice_reason,
-                Some(fluent::lint_improper_ctypes_slice_help),
-            ),
+            ty::Slice(inner_ty) => {
+                // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
+                let slice_is_actually_array =
+                    state.is_memory_inlined() || state.is_direct_in_static();
+
+                if slice_is_actually_array {
+                    self.visit_type(state.get_next(ty), inner_ty)
+                } else {
+                    FfiResult::new_with_reason(
+                        ty,
+                        fluent::lint_improper_ctypes_slice_reason,
+                        Some(fluent::lint_improper_ctypes_slice_help),
+                    )
+                }
+            }
 
             ty::Dynamic(..) => {
                 FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_dyn, None)
@@ -1376,10 +1398,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_direct_in_function()
-                    // FIXME(ctypes): VVV-this-VVV shouldn't be the case
-                    && !state.ephemeral_flags.contains(EphemeralStateFlags::NOOUT_FNPTR)
-                {
+                if state.is_direct_in_function() {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
                     FfiResult::new_with_reason(
