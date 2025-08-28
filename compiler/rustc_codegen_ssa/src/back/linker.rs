@@ -11,8 +11,9 @@ use rustc_metadata::{
 };
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
+use rustc_middle::middle::exported_symbols::{
+    self, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -22,6 +23,8 @@ use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
+use crate::back::symbol_export::allocator_shim_symbols;
+use crate::base::needs_allocator_shim_for_linking;
 use crate::errors;
 
 #[cfg(test)]
@@ -1837,6 +1840,14 @@ fn exported_symbols_for_non_proc_macro(
             symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
         }
     });
+
+    // Mark allocator shim symbols as exported only if they were generated.
+    if export_threshold == SymbolExportLevel::Rust
+        && needs_allocator_shim_for_linking(tcx.dependency_formats(()), crate_type)
+        && tcx.allocator_kind(()).is_some()
+    {
+        symbols.extend(allocator_shim_symbols(tcx));
+    }
 
     symbols
 }
