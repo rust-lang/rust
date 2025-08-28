@@ -1,51 +1,51 @@
 error: `extern` block uses type `AlsoUninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:31:17
+  --> $DIR/lint-uninhabited.rs:31:21
    |
-LL | fn bad_entry(e: AlsoUninhabited);
-   |                 ^^^^^^^^^^^^^^^ not FFI-safe
+LL |     fn bad_entry(e: AlsoUninhabited);
+   |                     ^^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: `AlsoUninhabited` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
    = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:9:1
+  --> $DIR/lint-uninhabited.rs:9:1
    |
-LL | struct AlsoUninhabited{
+LL | struct AlsoUninhabited {
    | ^^^^^^^^^^^^^^^^^^^^^^
    = note: zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:6:1
+  --> $DIR/lint-uninhabited.rs:6:1
    |
-LL | enum Uninhabited{}
+LL | enum Uninhabited {}
    | ^^^^^^^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/lint_uninhabited.rs:2:9
+  --> $DIR/lint-uninhabited.rs:2:9
    |
 LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
    |         ^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `Uninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:34:18
+  --> $DIR/lint-uninhabited.rs:34:22
    |
-LL | fn bad0_entry(e: Uninhabited);
-   |                  ^^^^^^^^^^^ not FFI-safe
+LL |     fn bad0_entry(e: Uninhabited);
+   |                      ^^^^^^^^^^^ not FFI-safe
    |
    = note: zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:6:1
+  --> $DIR/lint-uninhabited.rs:6:1
    |
-LL | enum Uninhabited{}
+LL | enum Uninhabited {}
    | ^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `!`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:40:18
+  --> $DIR/lint-uninhabited.rs:40:23
    |
-LL | fn never_entry(e:!);
-   |                  ^ not FFI-safe
+LL |     fn never_entry(e: !);
+   |                       ^ not FFI-safe
    |
    = note: the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
 
 error: `extern` fn uses type `AlsoUninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:45:33
+  --> $DIR/lint-uninhabited.rs:45:33
    |
 LL | extern "C" fn impl_bad_entry(e: AlsoUninhabited) {}
    |                                 ^^^^^^^^^^^^^^^ not FFI-safe
@@ -53,65 +53,65 @@ LL | extern "C" fn impl_bad_entry(e: AlsoUninhabited) {}
    = help: `AlsoUninhabited` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
    = note: this struct/enum/union (`AlsoUninhabited`) is FFI-unsafe due to a `Uninhabited` field
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:9:1
+  --> $DIR/lint-uninhabited.rs:9:1
    |
-LL | struct AlsoUninhabited{
+LL | struct AlsoUninhabited {
    | ^^^^^^^^^^^^^^^^^^^^^^
    = note: zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:6:1
+  --> $DIR/lint-uninhabited.rs:6:1
    |
-LL | enum Uninhabited{}
+LL | enum Uninhabited {}
    | ^^^^^^^^^^^^^^^^
 note: the lint level is defined here
-  --> $DIR/lint_uninhabited.rs:2:26
+  --> $DIR/lint-uninhabited.rs:2:26
    |
 LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `Uninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:53:34
+  --> $DIR/lint-uninhabited.rs:50:34
    |
 LL | extern "C" fn impl_bad0_entry(e: Uninhabited) {}
    |                                  ^^^^^^^^^^^ not FFI-safe
    |
    = note: zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:6:1
+  --> $DIR/lint-uninhabited.rs:6:1
    |
-LL | enum Uninhabited{}
+LL | enum Uninhabited {}
    | ^^^^^^^^^^^^^^^^
 
 warning: the type `Uninhabited` does not permit zero-initialization
-  --> $DIR/lint_uninhabited.rs:55:12
+  --> $DIR/lint-uninhabited.rs:52:14
    |
-LL |     unsafe{transmute(())}
-   |            ^^^^^^^^^^^^^ this code causes undefined behavior when executed
+LL |     unsafe { transmute(()) }
+   |              ^^^^^^^^^^^^^ this code causes undefined behavior when executed
    |
 note: enums with no inhabited variants have no valid value
-  --> $DIR/lint_uninhabited.rs:6:1
+  --> $DIR/lint-uninhabited.rs:6:1
    |
-LL | enum Uninhabited{}
+LL | enum Uninhabited {}
    | ^^^^^^^^^^^^^^^^
    = note: `#[warn(invalid_value)]` on by default
 
 error: `extern` fn uses type `!`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:63:34
+  --> $DIR/lint-uninhabited.rs:60:35
    |
-LL | extern "C" fn impl_never_entry(e:!){}
-   |                                  ^ not FFI-safe
+LL | extern "C" fn impl_never_entry(e: !) {}
+   |                                   ^ not FFI-safe
    |
    = note: the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
 
 error: `extern` fn uses type `HalfHiddenUninhabited`, which is not FFI-safe
-  --> $DIR/lint_uninhabited.rs:68:31
+  --> $DIR/lint-uninhabited.rs:65:32
    |
-LL | extern "C" fn weird_pattern(e:HalfHiddenUninhabited){}
-   |                               ^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+LL | extern "C" fn weird_pattern(e: HalfHiddenUninhabited) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this struct/enum/union (`HalfHiddenUninhabited`) is FFI-unsafe due to a `!` field
 note: the type is defined here
-  --> $DIR/lint_uninhabited.rs:23:1
+  --> $DIR/lint-uninhabited.rs:23:1
    |
 LL | struct HalfHiddenUninhabited {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
