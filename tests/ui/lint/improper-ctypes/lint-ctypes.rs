@@ -4,7 +4,7 @@
 #![feature(pattern_type_macro)]
 
 #![allow(private_interfaces)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctypes_definitions)]
 
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
@@ -137,6 +137,15 @@ extern "C" {
 extern "C" {
     pub fn good19(_: &String);
 }
+
+static DEFAULT_U32: u32 = 42;
+#[no_mangle]
+static EXPORTED_STATIC: &u32 = &DEFAULT_U32;
+#[no_mangle]
+static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
+//~^ ERROR: uses type `&str`
+#[export_name="EXPORTED_STATIC_MUT_BUT_RENAMED"]
+static mut EXPORTED_STATIC_MUT: &u32 = &DEFAULT_U32;
 
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" {
