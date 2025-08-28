@@ -1827,7 +1827,7 @@ fn exported_symbols_for_non_proc_macro(
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
-        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // from any dylib. The latter doesn't work anyway as we use hidden visibility for
         // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
         if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push((
