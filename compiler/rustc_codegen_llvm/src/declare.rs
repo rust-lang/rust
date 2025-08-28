@@ -155,18 +155,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let span = || instance.map(|instance| self.tcx.def_span(instance.def_id()));
 
-        if let FunctionSignature::LLVMSignature(_, llvm_fn_ty) = signature {
-            // check if the intrinsic signatures match
-            if !fn_abi.verify_intrinsic_signature(self, llvm_fn_ty) {
-                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
-                    name,
-                    llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
-                    rust_fn_ty: &format!("{:?}", fn_abi.rust_signature(self)),
-                    span: span(),
-                });
-            }
-        }
-
         // Function addresses in Rust are never significant, allowing functions to
         // be merged.
         let llfn = declare_raw_fn(
@@ -212,10 +200,20 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             fn_abi.apply_attrs_llfn(self, llfn, instance);
         }
 
+        if let FunctionSignature::NonMatchingSignature { llvm_ty, rust_ty, .. } = signature {
+            let (can_upgrade, _) = llvm::check_autoupgrade(llfn);
+            if !can_upgrade {
+                self.tcx.dcx().emit_fatal(errors::IntrinsicSignatureMismatch {
+                    name,
+                    llvm_fn_ty: &format!("{llvm_ty:?}"),
+                    rust_fn_ty: &format!("{rust_ty:?}"),
+                    span: span(),
+                });
+            }
+        }
+
         if let FunctionSignature::MaybeInvalid(..) = signature {
-            let mut new_llfn = None;
-            let can_upgrade =
-                unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+            let (can_upgrade, new_llfn) = llvm::check_autoupgrade(llfn);
 
             // we can emit diagnostics for local crates only
             if let Some(instance) = instance

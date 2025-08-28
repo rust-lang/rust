@@ -313,6 +313,8 @@ pub(crate) enum FunctionSignature<'ll> {
     /// This is an LLVM intrinsic, but the signature is just the Rust signature.
     /// FIXME: this should ideally not exist, we should be using the LLVM signature for all LLVM intrinsics
     RustSignature(llvm::Intrinsic, &'ll Type),
+    /// FIXME: This shouldn't exist as well, but needed to get around autocast
+    NonMatchingSignature { intrinsic: llvm::Intrinsic, llvm_ty: &'ll Type, rust_ty: &'ll Type },
     /// The name starts with `llvm.`, but can't obtain the intrinsic ID. May be invalid or upgradable
     MaybeInvalid(&'ll Type),
     /// Just the Rust signature
@@ -326,13 +328,15 @@ impl<'ll> FunctionSignature<'ll> {
             | FunctionSignature::RustSignature(_, fn_ty)
             | FunctionSignature::MaybeInvalid(fn_ty)
             | FunctionSignature::NotIntrinsic(fn_ty) => fn_ty,
+            FunctionSignature::NonMatchingSignature { rust_ty, .. } => rust_ty,
         }
     }
 
     pub(crate) fn intrinsic(&self) -> Option<llvm::Intrinsic> {
         match self {
             FunctionSignature::RustSignature(intrinsic, _)
-            | FunctionSignature::LLVMSignature(intrinsic, _) => Some(*intrinsic),
+            | FunctionSignature::LLVMSignature(intrinsic, _)
+            | FunctionSignature::NonMatchingSignature { intrinsic, .. } => Some(*intrinsic),
             _ => None,
         }
     }
@@ -375,40 +379,26 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             return true;
         }
 
-        match self.type_kind(llvm_ty) {
-            TypeKind::BFloat => rust_ty == self.type_i16(),
+        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+        // as, well, packed structs, so they won't match with those either)
+        if self.type_kind(llvm_ty) == TypeKind::Struct
+            && self.type_kind(rust_ty) == TypeKind::Struct
+        {
+            let rust_element_tys = self.struct_element_types(rust_ty);
+            let llvm_element_tys = self.struct_element_types(llvm_ty);
 
-            // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
-            // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
-            // as, well, packed structs, so they won't match with those either)
-            TypeKind::Struct if self.type_kind(rust_ty) == TypeKind::Struct => {
-                let rust_element_tys = self.struct_element_types(rust_ty);
-                let llvm_element_tys = self.struct_element_types(llvm_ty);
-
-                if rust_element_tys.len() != llvm_element_tys.len() {
-                    return false;
-                }
-
-                iter::zip(rust_element_tys, llvm_element_tys).all(
-                    |(rust_element_ty, llvm_element_ty)| {
-                        self.equate_ty(rust_element_ty, llvm_element_ty)
-                    },
-                )
+            if rust_element_tys.len() != llvm_element_tys.len() {
+                return false;
             }
-            TypeKind::Vector => {
-                let element_count = self.vector_length(llvm_ty) as u64;
-                let llvm_element_ty = self.element_type(llvm_ty);
 
-                if llvm_element_ty == self.type_bf16() {
-                    rust_ty == self.type_vector(self.type_i16(), element_count)
-                } else if llvm_element_ty == self.type_i1() {
-                    let int_width = element_count.next_power_of_two().max(8);
-                    rust_ty == self.type_ix(int_width)
-                } else {
-                    false
-                }
-            }
-            _ => false,
+            iter::zip(rust_element_tys, llvm_element_tys).all(
+                |(rust_element_ty, llvm_element_ty)| {
+                    self.equate_ty(rust_element_ty, llvm_element_ty)
+                },
+            )
+        } else {
+            false
         }
     }
 }
@@ -520,7 +510,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             if let Some(intrinsic) = llvm::Intrinsic::lookup(name) {
                 if !intrinsic.is_overloaded() {
                     // FIXME: also do this for overloaded intrinsics
-                    FunctionSignature::LLVMSignature(intrinsic, intrinsic.get_type(cx.llcx, &[]))
+                    let llvm_ty = intrinsic.get_type(cx.llcx, &[]);
+                    if self.verify_intrinsic_signature(cx, llvm_ty) {
+                        FunctionSignature::LLVMSignature(intrinsic, llvm_ty)
+                    } else {
+                        FunctionSignature::NonMatchingSignature {
+                            intrinsic,
+                            llvm_ty,
+                            rust_ty: self.rust_signature(cx),
+                        }
+                    }
                 } else {
                     FunctionSignature::RustSignature(intrinsic, self.rust_signature(cx))
                 }

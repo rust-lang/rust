@@ -327,6 +327,12 @@ impl Intrinsic {
     }
 }
 
+pub(crate) fn check_autoupgrade(llfn: &Value) -> (bool, Option<&Value>) {
+    let mut new_llfn = None;
+    let can_upgrade = unsafe { LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
+    (can_upgrade, new_llfn)
+}
+
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
