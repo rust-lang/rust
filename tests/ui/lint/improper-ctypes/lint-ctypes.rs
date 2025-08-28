@@ -2,25 +2,30 @@
 #![feature(extern_types)]
 #![feature(pattern_types, rustc_attrs)]
 #![feature(pattern_type_macro)]
-
 #![allow(private_interfaces)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctypes_definitions)]
 
 use std::cell::UnsafeCell;
-use std::marker::PhantomData;
 use std::ffi::{c_int, c_uint};
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::pat::pattern_type;
 
-unsafe extern "C" {type UnsizedOpaque;}
-trait Bar { }
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
+unsafe extern "C" {
+    type UnsizedOpaque;
+}
+trait Bar {}
+trait Mirror {
+    type It: ?Sized;
+}
+impl<T: ?Sized> Mirror for T {
+    type It = Self;
+}
 #[repr(C)]
 pub struct StructWithProjection(*mut <StructWithProjection as Mirror>::It);
 #[repr(C)]
 pub struct StructWithProjectionAndLifetime<'a>(
-    &'a mut <StructWithProjectionAndLifetime<'a> as Mirror>::It
+    &'a mut <StructWithProjectionAndLifetime<'a> as Mirror>::It,
 );
 pub type I32Pair = (i32, i32);
 #[repr(C)]
@@ -73,7 +78,7 @@ extern "C" {
     pub fn box_type(p: Box<u32>);
     pub fn opt_box_type(p: Option<Box<u32>>);
     pub fn char_type(p: char); //~ ERROR uses type `char`
-    pub fn pat_type1() -> Option<pattern_type!(u32 is 0..)>; //~ ERROR uses type `Option<(u32) is 0..>`
+    pub fn pat_type1() -> Option<pattern_type!(u32 is 0..)>; //~ ERROR uses type `Option<pattern_type!(u32 is 0..)>`
     pub fn pat_type2(p: Option<pattern_type!(u32 is 1..)>); // no error!
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
@@ -81,8 +86,7 @@ extern "C" {
     pub fn zero_size(p: ZeroSize); //~ ERROR uses type `ZeroSize`
     pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
     //~^ ERROR uses type `ZeroSizeWithPhantomData`
-    pub fn zero_size_phantom_toplevel()
-        -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `PhantomData<bool>`
+    pub fn zero_size_phantom_toplevel() -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `PhantomData<bool>`
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBoxRet);
@@ -90,7 +94,7 @@ extern "C" {
     pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
     pub fn multi_errors_per_arg(
-        f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
+        f: for<'a> extern "C" fn(a: char, b: &dyn Debug, c: TwoBadTypes<'a>),
     );
     //~^^ ERROR: uses type `char`
     //~| ERROR: uses type `&dyn Debug`
@@ -135,11 +139,19 @@ extern "C" {
     pub fn good19(_: &String);
 }
 
+static DEFAULT_U32: u32 = 42;
+#[no_mangle]
+static EXPORTED_STATIC: &u32 = &DEFAULT_U32;
+#[no_mangle]
+static EXPORTED_STATIC_BAD: &'static str = "is this reaching you, plugin?";
+//~^ ERROR: uses type `&str`
+#[export_name = "EXPORTED_STATIC_MUT_BUT_RENAMED"]
+static mut EXPORTED_STATIC_MUT: &u32 = &DEFAULT_U32;
+
 #[cfg(not(target_arch = "wasm32"))]
 extern "C" {
     pub fn good1(size: *const c_int);
     pub fn good2(size: *const c_uint);
 }
 
-fn main() {
-}
+fn main() {}

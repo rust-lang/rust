@@ -17,7 +17,7 @@ extern "C" {
 }
 
 #[no_mangle]
-pub static close: () = ();
+pub static close: u8 = 127_u8;
 
 extern "C" {
     pub fn malloc();
