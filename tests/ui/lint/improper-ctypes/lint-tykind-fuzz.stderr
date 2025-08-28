@@ -1,0 +1,292 @@
+error: `extern` fn uses type `String`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:118:7
+   |
+LL |     s:String,
+   |       ^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: `String` has unspecified layout
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:26
+   |
+LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` fn uses type `&str`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:120:8
+   |
+LL |     s2:&str,
+   |        ^^^^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `char`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:122:8
+   |
+LL |     c: char,
+   |        ^^^^ not FFI-safe
+   |
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+
+error: `extern` fn uses type `&[u8]`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:124:8
+   |
+LL |     s3:&[u8],
+   |        ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `[u8; N]`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:126:8
+   |
+LL |     s4:[u8;N],
+   |        ^^^^^^ not FFI-safe
+   |
+   = help: consider passing a pointer to the array
+   = note: passing raw arrays by value is not FFI-safe
+
+error: `extern` fn uses type `(u8, u8)`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:128:7
+   |
+LL |     p:(u8, u8),
+   |       ^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `extern` fn uses type `(u8, u8)`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:130:14
+   |
+LL |     (p2, p3):(u8, u8),
+   |              ^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `extern` fn uses type `&StructWithDyn`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:146:9
+   |
+LL |     e3: &StructWithDyn,
+   |         ^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `!`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:148:7
+   |
+LL |     x:!,
+   |       ^ not FFI-safe
+   |
+   = note: the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
+
+error: `extern` fn uses type `fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:151:9
+   |
+LL |     f2: fn(u8)->u8,
+   |         ^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
+   = note: this function pointer has a Rust-specific calling convention
+
+error: `extern` fn uses type `&dyn Fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:153:9
+   |
+LL |     f3: &'a dyn Fn(u8)->u8,
+   |         ^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `&dyn PartialOrd<u8>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:155:9
+   |
+LL |     d2: &dyn std::cmp::PartialOrd<u8>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `impl Debug`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:159:6
+   |
+LL | ) -> impl std::fmt::Debug {
+   |      ^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: opaque types have no C equivalent
+
+error: `extern` fn uses type `*const str`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:169:9
+   |
+LL |     s2: *const str,
+   |         ^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `*const [u8]`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:173:9
+   |
+LL |     s3: *const [u8],
+   |         ^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `(*const u8, *const u8)`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:179:14
+   |
+LL |     (p2, p3):(*const u8, *const u8),
+   |              ^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `extern` fn uses type `*const StructWithDyn`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:195:9
+   |
+LL |     e3: *const StructWithDyn,
+   |         ^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `*const dyn Fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:202:9
+   |
+LL |     f3: *const dyn Fn(u8)->u8,
+   |         ^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `*const dyn PartialOrd<u8>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:204:9
+   |
+LL |     d2: *const dyn std::cmp::PartialOrd<u8>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `*const dyn Debug`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:208:6
+   |
+LL | ) -> *const dyn std::fmt::Debug {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&str`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:219:9
+   |
+LL |     s2: &str,
+   |         ^^^^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:9
+   |
+LL | #![deny(improper_ctypes, improper_ctypes_definitions)]
+   |         ^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `&[u8]`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:223:9
+   |
+LL |     s3: &[u8],
+   |         ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&StructWithDyn`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:245:9
+   |
+LL |     e3: &StructWithDyn,
+   |         ^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&dyn Fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:252:9
+   |
+LL |     f3: &dyn Fn(u8)->u8,
+   |         ^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&dyn PartialOrd<u8>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:254:9
+   |
+LL |     d2: &dyn std::cmp::PartialOrd<u8>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&dyn Debug`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:258:6
+   |
+LL | ) -> &'a dyn std::fmt::Debug;
+   |      ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `Box<str>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:267:9
+   |
+LL |     s2: Box<str>,
+   |         ^^^^^^^^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:271:9
+   |
+LL |     s3: Box<[u8]>,
+   |         ^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `(Box<u8>, Box<u8>)`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:277:13
+   |
+LL |     (p2,p3):(Box<u8>, Box<u8>),
+   |             ^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `extern` fn uses type `Box<StructWithDyn>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:293:9
+   |
+LL |     e3: Box<StructWithDyn>,
+   |         ^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `Box<dyn Fn(u8) -> u8>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:300:9
+   |
+LL |     f3: Box<dyn Fn(u8)->u8>,
+   |         ^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `Box<dyn PartialOrd<u8>>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:302:9
+   |
+LL |     d2: Box<dyn std::cmp::PartialOrd<u8>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` fn uses type `Box<dyn Debug>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:306:6
+   |
+LL | ) -> Box<dyn std::fmt::Debug> {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: aborting due to 33 previous errors
+
