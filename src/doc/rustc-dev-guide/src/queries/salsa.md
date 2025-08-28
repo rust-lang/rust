@@ -7,7 +7,7 @@ want to watch [Salsa In More
 Depth](https://www.youtube.com/watch?v=i_IhACacPRY), also by Niko
 Matsakis.
 
-> As of <!-- date-check --> November 2022, although Salsa is inspired by (among
+> As of <!-- date-check --> August 2025, although Salsa is inspired by (among
 > other things) rustc's query system, it is not used directly in rustc. It
 > _is_ used in [chalk], an implementation of  Rust's trait system, and
 > extensively in [`rust-analyzer`], the official implementation of the language
