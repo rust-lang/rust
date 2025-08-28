@@ -129,7 +129,7 @@ pub fn git_diff<S: AsRef<OsStr>>(base_commit: &str, extra_arg: S) -> Option<Stri
 
 /// Similar to `files_modified`, but only involves a single call to `git`.
 ///
-/// removes all elements from `items` that do not cause any match when `pred` is called with the list of modifed files.
+/// removes all elements from `items` that do not cause any match when `pred` is called with the list of modified files.
 ///
 /// if in CI, no elements will be removed.
 pub fn files_modified_batch_filter<T>(
