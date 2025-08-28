@@ -614,6 +614,15 @@ impl VisitorState {
         }
     }
 
+    /// Whether the type is used in a static variable.
+    fn is_in_static(self) -> bool {
+        let ret = self.contains(Self::STATIC);
+        if ret {
+            assert!(!self.contains(Self::FUNC));
+        }
+        ret
+    }
+
     /// Whether the type is used in a function.
     fn is_in_function(self) -> bool {
         let ret = self.contains(Self::FUNC);
@@ -1179,11 +1188,30 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Primitive types with a stable representation.
             ty::Bool => FfiSafe,
 
-            ty::Slice(_) => FfiResult::new_with_reason(
-                ty,
-                fluent::lint_improper_ctypes_slice_reason,
-                Some(fluent::lint_improper_ctypes_slice_help),
-            ),
+            ty::Slice(inner_ty) => {
+                // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
+                let slice_is_actually_array = match outer_ty.map(|ty| ty.kind()) {
+                    None => state.is_in_static(),
+                    // this should have been caught a layer up, in visit_indirection
+                    Some(ty::Ref(..) | ty::RawPtr(..)) => false,
+                    Some(ty::Adt(..)) => ty.boxed_ty().is_none(),
+                    Some(ty::Tuple(..)) => true,
+                    Some(ty::FnPtr(..)) => false,
+                    // this is supposed to cause a compile error that prevents this lint
+                    // from being reached, but oh well
+                    Some(ty::Array(..) | ty::Slice(_)) => true,
+                    Some(ty @ _) => bug!("unexpected ty_kind around a slice: {:?}", ty),
+                };
+                if slice_is_actually_array {
+                    self.visit_type(state, Some(ty), inner_ty)
+                } else {
+                    FfiResult::new_with_reason(
+                        ty,
+                        fluent::lint_improper_ctypes_slice_reason,
+                        Some(fluent::lint_improper_ctypes_slice_help),
+                    )
+                }
+            }
 
             ty::Dynamic(..) => {
                 FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_dyn, None)
@@ -1239,7 +1267,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_in_function() && matches!(outer_ty.map(|ty| ty.kind()), None) {
+                if state.is_in_function()
+                    && matches!(outer_ty.map(|ty| ty.kind()), None | Some(ty::FnPtr(..)))
+                {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
                     FfiResult::new_with_reason(

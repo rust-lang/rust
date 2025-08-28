@@ -393,8 +393,7 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_slice_help = consider using a raw pointer instead
-
+lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
 lint_improper_ctypes_slice_reason = slices have no C equivalent
 
 lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
