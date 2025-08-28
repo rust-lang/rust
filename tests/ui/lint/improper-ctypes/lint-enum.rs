@@ -78,7 +78,7 @@ struct Field(());
 enum NonExhaustive {}
 
 extern "C" {
-    fn zf(x: Z);
+    fn zf(x: Z); //~ ERROR `extern` block uses type `Z`
     fn uf(x: U); //~ ERROR `extern` block uses type `U`
     fn bf(x: B); //~ ERROR `extern` block uses type `B`
     fn tf(x: T); //~ ERROR `extern` block uses type `T`
