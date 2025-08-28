@@ -6,7 +6,7 @@
 #[repr(C, align(536870912))]
 pub struct A(i64);
 
-pub extern "C" fn foo(x: A) {}  //~ ERROR: uses type `A`
+pub extern "C" fn foo(x: A) {}  //~ WARN: uses type `A`
 
 fn main() {
     foo(A(0));
