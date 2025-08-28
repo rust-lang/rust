@@ -208,7 +208,7 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
 }
 
 fn nojumptables_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    if !cx.sess().opts.unstable_opts.no_jump_tables {
+    if cx.sess().opts.unstable_opts.jump_tables {
         return None;
     }
 
