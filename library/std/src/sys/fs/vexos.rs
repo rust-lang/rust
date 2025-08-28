@@ -512,8 +512,7 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     let path = CString::new(path.as_os_str().as_encoded_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
 
-    let file_exists = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
-    if file_exists != 0 { Ok(true) } else { Ok(false) }
+    Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0)
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
