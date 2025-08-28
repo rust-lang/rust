@@ -23,18 +23,12 @@ error: `extern` block uses type `B`, which is not FFI-safe
 LL |     fn bar(x: B);
    |               ^ not FFI-safe
    |
-   = note: this struct/enum/union (`B`) is FFI-unsafe due to a `A` field
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `B`
+   = note: `B` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:13:1
    |
 LL | struct B {
-   | ^^^^^^^^
-   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
-   = note: `A` has unspecified layout
-note: the type is defined here
-  --> $DIR/repr-rust-is-undefined.rs:8:1
-   |
-LL | struct A {
    | ^^^^^^^^
 
 error: `extern` block uses type `A`, which is not FFI-safe
@@ -57,18 +51,12 @@ error: `extern` block uses type `B`, which is not FFI-safe
 LL |     fn quux(x: B2);
    |                ^^ not FFI-safe
    |
-   = note: this struct/enum/union (`B`) is FFI-unsafe due to a `A` field
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `B`
+   = note: `B` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:13:1
    |
 LL | struct B {
-   | ^^^^^^^^
-   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
-   = note: `A` has unspecified layout
-note: the type is defined here
-  --> $DIR/repr-rust-is-undefined.rs:8:1
-   |
-LL | struct A {
    | ^^^^^^^^
 
 error: `extern` block uses type `D`, which is not FFI-safe
