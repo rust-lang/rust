@@ -31,7 +31,7 @@ use crate::{
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
     error_lifetime,
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
+    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
@@ -948,8 +948,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
-                        let mut table = InferenceTable::new(self.db, self.env.clone());
-                        cast_kind(&mut table, &source_ty, &target_ty)?
+                        cast_kind(self.db, &source_ty, &target_ty)?
                     };
 
                     Rvalue::Cast(cast_kind, it, target_ty)
@@ -2017,9 +2016,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 }
 
-fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
-    let from = CastTy::from_ty(table, source_ty);
-    let cast = CastTy::from_ty(table, target_ty);
+fn cast_kind(db: &dyn HirDatabase, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
+    let from = CastTy::from_ty(db, source_ty);
+    let cast = CastTy::from_ty(db, target_ty);
     Ok(match (from, cast) {
         (Some(CastTy::Ptr(..) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             CastKind::PointerExposeAddress
