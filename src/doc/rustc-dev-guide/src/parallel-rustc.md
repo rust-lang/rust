@@ -1,14 +1,14 @@
 # Parallel compilation
 
 <div class="warning">
-As of <!-- date-check --> November 2024,
+As of <!-- date-check --> August 2025,
 the parallel front-end is undergoing significant changes,
 so this page contains quite a bit of outdated information.
 
 Tracking issue: <https://github.com/rust-lang/rust/issues/113349>
 </div>
 
-As of <!-- date-check --> November 2024, most of the rust compiler is now
+As of <!-- date-check --> August 2025, most of the rust compiler is now
 parallelized.
 
 - The codegen part is executed concurrently by default. You can use the `-C
@@ -104,7 +104,7 @@ when `parallel-compiler` is true.
 | **ModuleItems::par_foreign_items**(&self, f: impl Fn(ForeignItemId)) | run `f` on all foreign items in the module                   | rustc_middle::hir          |
 
 There are a lot of loops in the compiler which can possibly be parallelized
-using these functions. As of <!-- date-check--> August 2022, scenarios where
+using these functions. As of <!-- date-check--> August 2025, scenarios where
 the parallel iterator function has been used are as follows:
 
 | caller                                                  | scenario                                                     | callee                   |
@@ -155,7 +155,7 @@ open feature tracking issue][tracking].
 
 ## Rustdoc
 
-As of <!-- date-check--> November 2022, there are still a number of steps to
+As of <!-- date-check--> August 2025, there are still a number of steps to
 complete before `rustdoc` rendering can be made parallel (see a open discussion
 of [parallel `rustdoc`][parallel-rustdoc]).
 
