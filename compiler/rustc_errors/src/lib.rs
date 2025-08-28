@@ -381,6 +381,12 @@ impl CodeSuggestion {
                 // Assumption: all spans are in the same file, and all spans
                 // are disjoint. Sort in ascending order.
                 substitution.parts.sort_by_key(|part| part.span.lo());
+                // Verify the assumption that all spans are disjoint
+                assert_eq!(
+                    substitution.parts.array_windows().find(|[a, b]| a.span.overlaps(b.span)),
+                    None,
+                    "all spans must be disjoint",
+                );
 
                 // Find the bounding span.
                 let lo = substitution.parts.iter().map(|part| part.span.lo()).min()?;
