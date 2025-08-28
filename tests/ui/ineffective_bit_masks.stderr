@@ -1,0 +1,256 @@
+error: ineffective bit mask: `x | 0` compared to `0`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:17:13
+   |
+LL |     let _ = x | 0b00_0000 > 0b00_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::ineffective_bit_mask)]` on by default
+
+error: ineffective bit mask: `x | 1` compared to `1`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:19:13
+   |
+LL |     let _ = x | 0b00_0001 > 0b00_0001;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 0` compared to `3`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:22:13
+   |
+LL |     let _ = x | 0b00_0000 > 0b00_0011;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `3`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:23:13
+   |
+LL |     let _ = x | 0b00_0001 > 0b00_0011;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `3`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:24:13
+   |
+LL |     let _ = x | 0b00_0010 > 0b00_0011;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `3`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:25:13
+   |
+LL |     let _ = x | 0b00_0011 > 0b00_0011;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `7`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:28:13
+   |
+LL |     let _ = x | 0b00_0001 > 0b00_0111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `7`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:29:13
+   |
+LL |     let _ = x | 0b00_0010 > 0b00_0111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `7`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:30:13
+   |
+LL |     let _ = x | 0b00_0011 > 0b00_0111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 4` compared to `7`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:31:13
+   |
+LL |     let _ = x | 0b00_0100 > 0b00_0111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:34:13
+   |
+LL |     let _ = x | 0b00_0001 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:35:13
+   |
+LL |     let _ = x | 0b00_0010 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:36:13
+   |
+LL |     let _ = x | 0b00_0011 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 4` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:37:13
+   |
+LL |     let _ = x | 0b00_0100 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 5` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:38:13
+   |
+LL |     let _ = x | 0b00_0101 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 6` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:39:13
+   |
+LL |     let _ = x | 0b00_0110 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 7` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:40:13
+   |
+LL |     let _ = x | 0b00_0111 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 8` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:41:13
+   |
+LL |     let _ = x | 0b00_1000 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 9` compared to `15`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:42:13
+   |
+LL |     let _ = x | 0b00_1001 > 0b00_1111;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 0` compared to `2`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:90:13
+   |
+LL |     let _ = x | 0b00_0000 < 0b00_0010;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `2`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:91:13
+   |
+LL |     let _ = x | 0b00_0001 < 0b00_0010;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 0` compared to `4`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:94:13
+   |
+LL |     let _ = x | 0b00_0000 < 0b00_0100;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `4`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:95:13
+   |
+LL |     let _ = x | 0b00_0001 < 0b00_0100;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `4`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:96:13
+   |
+LL |     let _ = x | 0b00_0010 < 0b00_0100;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `4`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:97:13
+   |
+LL |     let _ = x | 0b00_0011 < 0b00_0100;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `8`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:100:13
+   |
+LL |     let _ = x | 0b00_0001 < 0b00_1000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `8`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:101:13
+   |
+LL |     let _ = x | 0b00_0010 < 0b00_1000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `8`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:102:13
+   |
+LL |     let _ = x | 0b00_0011 < 0b00_1000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 4` compared to `8`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:103:13
+   |
+LL |     let _ = x | 0b00_0100 < 0b00_1000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 1` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:106:13
+   |
+LL |     let _ = x | 0b00_0001 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:107:13
+   |
+LL |     let _ = x | 0b00_0010 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 3` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:108:13
+   |
+LL |     let _ = x | 0b00_0011 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 4` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:109:13
+   |
+LL |     let _ = x | 0b00_0100 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 5` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:110:13
+   |
+LL |     let _ = x | 0b00_0101 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 6` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:111:13
+   |
+LL |     let _ = x | 0b00_0110 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 7` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:112:13
+   |
+LL |     let _ = x | 0b00_0111 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 8` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:113:13
+   |
+LL |     let _ = x | 0b00_1000 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 9` compared to `16`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:114:13
+   |
+LL |     let _ = x | 0b00_1001 < 0b01_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2147483647` compared to `4294967295`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:161:13
+   |
+LL |     let _ = x | 0x7fff_ffff > 0xffff_ffff;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2147483648` compared to `4294967295`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:162:13
+   |
+LL |     let _ = x | 0x8000_0000 > 0xffff_ffff;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 4294967295` compared to `4294967295`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:163:13
+   |
+LL |     let _ = x | 0xffff_ffff > 0xffff_ffff;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ineffective bit mask: `x | 2147483647` compared to `2147483648`, is the same as x compared directly
+  --> tests/ui/ineffective_bit_masks.rs:168:13
+   |
+LL |     let _ = x | 0x7fff_ffff < 0x8000_0000;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 42 previous errors
+

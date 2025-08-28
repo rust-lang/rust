@@ -1,0 +1,233 @@
+error: &-masking with zero
+  --> tests/ui/bad_bit_masks.rs:13:13
+   |
+LL |     let _ = x & 0b0000 == 0b0000;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::bad-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bad_bit_mask)]`
+
+error: incompatible bit mask: `_ & 0` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:14:13
+   |
+LL |     let _ = x & 0b0000 == 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:17:13
+   |
+LL |     let _ = x & 0b0010 == 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 1` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:18:13
+   |
+LL |     let _ = x & 0b0001 == 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 3` can never be equal to `4`
+  --> tests/ui/bad_bit_masks.rs:22:13
+   |
+LL |     let _ = x & 0b0011 == 0b0100;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 6` can never be equal to `7`
+  --> tests/ui/bad_bit_masks.rs:24:13
+   |
+LL |     let _ = x & 0b0110 == 0b0111;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 3` can never be equal to `5`
+  --> tests/ui/bad_bit_masks.rs:25:13
+   |
+LL |     let _ = x & 0b0011 == 0b0101;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 1` can never be equal to `0`
+  --> tests/ui/bad_bit_masks.rs:31:13
+   |
+LL |     let _ = x | 0b0001 == 0b0000;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:33:13
+   |
+LL |     let _ = x | 0b0010 == 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 1` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:34:13
+   |
+LL |     let _ = x | 0b0001 == 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:35:13
+   |
+LL |     let _ = x | 0b0011 == 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:36:13
+   |
+LL |     let _ = x | 0b0011 == 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `4`
+  --> tests/ui/bad_bit_masks.rs:38:13
+   |
+LL |     let _ = x | 0b0011 == 0b0100;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `5`
+  --> tests/ui/bad_bit_masks.rs:41:13
+   |
+LL |     let _ = x | 0b0011 == 0b0101;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 15` can never be equal to `14`
+  --> tests/ui/bad_bit_masks.rs:42:13
+   |
+LL |     let _ = x | 0b1111 == 0b1110;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 15` can never be equal to `10`
+  --> tests/ui/bad_bit_masks.rs:43:13
+   |
+LL |     let _ = x | 0b1111 == 0b1010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: &-masking with zero
+  --> tests/ui/bad_bit_masks.rs:45:13
+   |
+LL |     let _ = x & 0b0000 != 0b0000;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 0` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:46:13
+   |
+LL |     let _ = x & 0b0000 != 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:49:13
+   |
+LL |     let _ = x & 0b0010 != 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 1` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:50:13
+   |
+LL |     let _ = x & 0b0001 != 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 3` can never be equal to `4`
+  --> tests/ui/bad_bit_masks.rs:54:13
+   |
+LL |     let _ = x & 0b0011 != 0b0100;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 6` can never be equal to `7`
+  --> tests/ui/bad_bit_masks.rs:56:13
+   |
+LL |     let _ = x & 0b0110 != 0b0111;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 3` can never be equal to `5`
+  --> tests/ui/bad_bit_masks.rs:57:13
+   |
+LL |     let _ = x & 0b0011 != 0b0101;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 1` can never be equal to `0`
+  --> tests/ui/bad_bit_masks.rs:63:13
+   |
+LL |     let _ = x | 0b0001 != 0b0000;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:65:13
+   |
+LL |     let _ = x | 0b0010 != 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 1` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:66:13
+   |
+LL |     let _ = x | 0b0001 != 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:67:13
+   |
+LL |     let _ = x | 0b0011 != 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `2`
+  --> tests/ui/bad_bit_masks.rs:68:13
+   |
+LL |     let _ = x | 0b0011 != 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `4`
+  --> tests/ui/bad_bit_masks.rs:70:13
+   |
+LL |     let _ = x | 0b0011 != 0b0100;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 3` can never be equal to `5`
+  --> tests/ui/bad_bit_masks.rs:73:13
+   |
+LL |     let _ = x | 0b0011 != 0b0101;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 15` can never be equal to `14`
+  --> tests/ui/bad_bit_masks.rs:74:13
+   |
+LL |     let _ = x | 0b1111 != 0b1110;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ | 15` can never be equal to `10`
+  --> tests/ui/bad_bit_masks.rs:75:13
+   |
+LL |     let _ = x | 0b1111 != 0b1010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:77:13
+   |
+LL |     let _ = 0b0010 & x == 0b0001;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:78:13
+   |
+LL |     let _ = 0b0001 == x & 0b0010;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 2` can never be equal to `1`
+  --> tests/ui/bad_bit_masks.rs:79:13
+   |
+LL |     let _ = 0b0001 == 0b0010 & x;
+   |             ^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 6` can never be equal to `15`
+  --> tests/ui/bad_bit_masks.rs:81:13
+   |
+LL |     let _ = x & (0b0100 | 0b0010) == (0b0111 ^ 0b1000);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 3` can never be equal to `4`
+  --> tests/ui/bad_bit_masks.rs:98:17
+   |
+LL |         let _ = x & C == 0b0100;
+   |                 ^^^^^^^^^^^^^^^
+
+error: incompatible bit mask: `_ & 1` can never be equal to `3`
+  --> tests/ui/bad_bit_masks.rs:99:17
+   |
+LL |         let _ = x & 0b0001 == C;
+   |                 ^^^^^^^^^^^^^^^
+
+error: aborting due to 38 previous errors
+
