@@ -18,6 +18,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(bootstrap, feature(round_char_boundary))]
+#![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
