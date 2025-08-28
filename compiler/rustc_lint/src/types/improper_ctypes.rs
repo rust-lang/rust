@@ -16,7 +16,7 @@ use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, Binder, FnSig, GenericArgs, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, Unnormalized,
 };
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModId};
 use rustc_span::{Span, bug, sym};
 use rustc_target::spec::Os;
 use tracing::debug;
@@ -413,7 +413,6 @@ impl<'tcx> FfiResult<'tcx> {
     /// if the note at their core reason is one in a provided list.
     /// If the FfiResult is not FfiUnsafe, or if no reasons are plucked,
     /// then return FfiSafe.
-    #[expect(unused)]
     fn take_with_core_note(&mut self, notes: &[DiagMessage]) -> Self {
         match self {
             Self::FfiUnsafe(this) => {
@@ -867,14 +866,34 @@ impl VisitorState {
 /// and ``visit_*`` methods to recurse.
 struct ImproperCTypesVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
+    /// The module id of the item being checked for FFI-safety
+    mod_id: LocalModId,
     /// To prevent problems with recursive types,
     /// add a types-in-check cache.
     ty_cache: FxHashSet<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>) -> Self {
-        ImproperCTypesVisitor { cx, ty_cache: FxHashSet::default() }
+    fn new(cx: &'a LateContext<'tcx>, mod_id: LocalModId) -> Self {
+        ImproperCTypesVisitor { cx, mod_id, ty_cache: FxHashSet::default() }
+    }
+
+    /// Checks whether an uninhabited type (one without valid values) is safe-ish to have here.
+    fn visit_uninhabited(&self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        if state.is_in_function_return() {
+            FfiResult::FfiSafe
+        } else {
+            let desc = match ty.kind() {
+                ty::Adt(..) => msg!(
+                    "zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"
+                ),
+                ty::Never => msg!(
+                    "the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"
+                ),
+                r @ _ => bug!("unexpected ty_kind in uninhabited type handling: {:?}", r),
+            };
+            FfiResult::new_with_reason(ty, desc, None)
+        }
     }
 
     /// Return the right help for Cstring and Cstr-linked unsafety.
@@ -1005,8 +1024,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         use FfiResult::*;
 
         // The decision tree for the safety of a list of fields is as follows:
+        // (but please note that the conditionals are not evaluated in that order)
+        //
         // - is it neither `repr(C)`, `transparent` (for a struct), nor `repr(int_type)` (for enums)?
         //   - if so, it is unsafe.
+        // - are we in a situation where uninhabitedness is an issue?
+        //   - if so, raise lints for all uninhabited fields
         // - are all the fields PhantomData?
         //   - if so, the struct as a whole is PhantomData
         // - is it a transparent struct?
@@ -1019,29 +1042,60 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         let mut ffires_accumulator = FfiSafe;
 
-        let (transparent_with_all_zst_fields, field_list) =
-            if !matches!(def.adt_kind(), AdtKind::Enum) && def.repr().transparent() {
-                // determine if there is 0 or 1 non-1ZST field, and which it is.
-                // (note: for enums, "transparent" means 1-variant, which is not what we want)
-                if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant)
+        let (transparent_with_all_zst_fields, field_list) = if !matches!(
+            def.adt_kind(),
+            AdtKind::Enum
+        ) && def.repr().transparent()
+        {
+            // determine if there is 0 or 1 non-1ZST field, and which it is.
+            // (note: for enums, "transparent" means 1-variant, which is not what we want)
+            if !ty.is_inhabited_from(self.cx.tcx, self.mod_id, self.cx.typing_env()) {
+                // `repr(transparent)` structs are FFI-safe when some of their 1ZSTs are uninhabited
+                // and if we are in a context where uninhabitedness is allowed (function returns, etc)
+                // Notably, transparent structs with a data type and an uninhabited 1ZST marker
+                // is what models `[[noreturn]]` C functions with a possibly non-void return type,
+                // which still requires things like stack allocations prior to the call.
+                // see https://github.com/rust-lang/rust/pull/134697#issuecomment-2937936422
+                //
+                // However, if we are in a context where uninhabitedness is forbidden (function argument, etc),
+                // we must make sure that we lint on all uninhabited fields, even if we discard
+                // all other sources of FFI-unsafety from them.
+                ffires_accumulator += variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let field_ty = maybe_normalize_erasing_regions(
+                                self.cx,
+                                field.ty(self.cx.tcx, args),
+                            );
+                            let mut field_res = self.visit_type(state.next(ty), field_ty);
+                            field_res.take_with_core_note(&[
+                                msg!("zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"),
+                                msg!("the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"),
+                            ])
+                        })
+                        .reduce(|r1, r2| r1 + r2)
+                        .unwrap() // if uninhabited, then >0 fields
+            }
+            if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant)
                     // FIXME: this constructs two `typing_env`s in a single line
                     // (inefficient, but is it that big a problem?)
                     && !super::is_1zst(self.cx, maybe_normalize_erasing_regions(
                         self.cx,
                         field.ty(self.cx.tcx, args),
                     ))
-                {
-                    // Transparent newtypes have at most one non-ZST field which needs to be checked later
-                    // Though, the function above doesn't see through type params in this ADT, so we checked its work
-                    (false, vec![field])
-                } else {
-                    // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
-                    // `PhantomData`).
-                    (true, variant.fields.iter().collect::<Vec<_>>())
-                }
+            {
+                // Transparent newtypes have at most one non-ZST field which needs to be checked later
+                // Though, the function above doesn't see through type params in this ADT, so we checked its work
+                (false, vec![field])
             } else {
-                (false, variant.fields.iter().collect::<Vec<_>>())
-            };
+                // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
+                // `PhantomData`).
+                (true, variant.fields.iter().collect::<Vec<_>>())
+            }
+        } else {
+            (false, variant.fields.iter().collect::<Vec<_>>())
+        };
 
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
@@ -1221,8 +1275,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         use FfiResult::*;
 
         if def.variants().is_empty() {
-            // Empty enums are okay... although sort of useless.
-            return FfiSafe;
+            // Empty enums are implicitly handled as the never type:
+            return self.visit_uninhabited(state, ty);
         }
 
         if def.repr().align.is_some() {
@@ -1297,17 +1351,32 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else if nonexhaustive_variant_flag {
             FfiResult::new_with_reason(ty, msg!("this enum has non-exhaustive variants"), None)
         } else {
-            let ffires = def
+            // small caveat to checking the variants: we authorise up to n-1 invariants
+            // to be unsafe because uninhabited.
+            // so for now let's isolate those unsafeties
+            let mut variants_uninhabited_ffires = vec![FfiSafe; def.variants().len()];
+
+            let mut ffires = def
                 .variants()
                 .iter()
-                .map(|variant| {
-                    let variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                .enumerate()
+                .map(|(variant_i, variant)| {
+                    let mut variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                    variants_uninhabited_ffires[variant_i] = variant_res.take_with_core_note(&[
+                        msg!("zero-variant enums and other uninhabited types are not allowed in function arguments and static variables"),
+                        msg!("the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables"),
+                    ]);
                     // FIXME(ctypes): check that enums allow any (up to all) variants to be phantoms?
                     // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
                     variant_res.forbid_phantom()
                 })
                 .reduce(|r1, r2| r1 + r2)
                 .unwrap(); // always at least one variant if we hit this branch
+
+            if variants_uninhabited_ffires.iter().all(|res| matches!(res, FfiUnsafe(..))) {
+                // if the enum is uninhabited, because all its variants are uninhabited
+                ffires += variants_uninhabited_ffires.into_iter().reduce(|r1, r2| r1 + r2).unwrap();
+            }
 
             // this enum is visited in the middle of another lint,
             // so we override the "cause type" of the lint
@@ -1483,7 +1552,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Never => FfiSafe,
+            ty::Never => self.visit_uninhabited(state, ty),
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
@@ -1590,6 +1659,7 @@ impl<'tcx> ImproperCTypesLint {
             current_depth: usize,
             depths: Vec<usize>,
             decls: Vec<&'tcx hir::FnDecl<'tcx>>,
+            hir_ids: Vec<hir::HirId>,
             tys: Vec<Ty<'tcx>>,
         }
 
@@ -1602,6 +1672,7 @@ impl<'tcx> ImproperCTypesLint {
                 {
                     self.decls.push(*decl);
                     self.depths.push(self.current_depth);
+                    self.hir_ids.push(ty.hir_id);
                 }
 
                 hir::intravisit::walk_ty(self, ty);
@@ -1624,6 +1695,7 @@ impl<'tcx> ImproperCTypesLint {
         }
 
         let mut visitor = FnPtrFinder {
+            hir_ids: Vec::new(),
             tys: Vec::new(),
             decls: Vec::new(),
             depths: Vec::new(),
@@ -1633,15 +1705,24 @@ impl<'tcx> ImproperCTypesLint {
         visitor.visit_ty_unambig(hir_ty);
 
         let all_types = iter::zip(
-            visitor.depths.drain(..),
+            iter::zip(visitor.depths.drain(..), visitor.hir_ids.drain(..)),
             iter::zip(visitor.tys.drain(..), visitor.decls.drain(..)),
         );
-        for (depth, (fn_ptr_ty, decl)) in all_types {
+
+        for ((depth, hir_id), (fn_ptr_ty, decl)) in all_types {
             let sig = get_sig_from_fnptr_ty(fn_ptr_ty);
+            let mod_id = cx.tcx.parent_module(hir_id);
 
             // FIXME: does this cause a double normalisation? (since this signature comes from
             // the normalised `ty` argument of this method) Is this a performance problem?
-            self.check_foreign_fn(cx, CItemKind::Callback, Unnormalized::new_wip(sig), decl, depth);
+            self.check_foreign_fn(
+                cx,
+                CItemKind::Callback,
+                Unnormalized::new_wip(sig),
+                decl,
+                mod_id,
+                depth,
+            );
         }
     }
 
@@ -1683,11 +1764,12 @@ impl<'tcx> ImproperCTypesLint {
     }
 
     /// Check that an extern "ABI" static variable is of a ffi-safe type.
-    fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
-        let ty = cx.tcx.type_of(id).instantiate_identity();
+    fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::HirId, span: Span) {
+        let ty = cx.tcx.type_of(id.owner).instantiate_identity();
+        let mod_id = cx.tcx.parent_module(id);
         let state = VisitorState::static_entry_point();
         self.check_ffi_type(cx, ty.skip_norm_wip(), state, span, CItemKind::ImportedExtern, || {
-            let mut visitor = ImproperCTypesVisitor::new(cx);
+            let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
             visitor.check_type(state, ty)
         });
     }
@@ -1699,6 +1781,7 @@ impl<'tcx> ImproperCTypesLint {
         fn_mode: CItemKind,
         sig: Unnormalized<'tcx, Sig<'tcx>>,
         decl: &'tcx hir::FnDecl<'_>,
+        mod_id: LocalModId,
         depth: usize,
     ) {
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig.skip_norm_wip());
@@ -1708,7 +1791,7 @@ impl<'tcx> ImproperCTypesLint {
             state.depth = depth;
             self.check_ffi_type(cx, *input_ty, state, input_hir.span, fn_mode, || {
                 let input_ty = Unnormalized::new_wip(*input_ty);
-                let mut visitor = ImproperCTypesVisitor::new(cx);
+                let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
                 visitor.check_type(state, input_ty)
             });
         }
@@ -1718,7 +1801,7 @@ impl<'tcx> ImproperCTypesLint {
             state.depth = depth;
             self.check_ffi_type(cx, sig.output(), state, ret_hir.span, fn_mode, || {
                 let output_ty = Unnormalized::new_wip(sig.output());
-                let mut visitor = ImproperCTypesVisitor::new(cx);
+                let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
                 visitor.check_type(state, output_ty)
             });
         }
@@ -1846,12 +1929,20 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                 // their surroundings, and their type is often declared inline
                 self.check_fn_for_external_abi_fnptr(cx, it.owner_id.def_id, hir_sig.decl);
                 let sig = cx.tcx.fn_sig(it.owner_id.def_id).instantiate_identity();
+                let mod_id = cx.tcx.parent_module_from_def_id(it.owner_id.def_id);
                 if !abi.is_rustic_abi() {
-                    self.check_foreign_fn(cx, CItemKind::ImportedExtern, sig, hir_sig.decl, 0);
+                    self.check_foreign_fn(
+                        cx,
+                        CItemKind::ImportedExtern,
+                        sig,
+                        hir_sig.decl,
+                        mod_id,
+                        0,
+                    );
                 }
             }
             hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
-                self.check_foreign_static(cx, it.owner_id, ty.span);
+                self.check_foreign_static(cx, it.hir_id(), ty.span);
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
@@ -1923,9 +2014,10 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
         // "the element rendered unsafe" because their unsafety doesn't affect
         // their surroundings, and their type is often declared inline
         self.check_fn_for_external_abi_fnptr(cx, id, decl);
-        let sig = cx.tcx.fn_sig(id).instantiate_identity();
         if !abi.is_rustic_abi() {
-            self.check_foreign_fn(cx, CItemKind::ExportedFunction, sig, decl, 0);
+            let sig = cx.tcx.fn_sig(id).instantiate_identity();
+            let mod_id = cx.tcx.parent_module_from_def_id(id);
+            self.check_foreign_fn(cx, CItemKind::ExportedFunction, sig, decl, mod_id, 0);
         }
     }
 }
