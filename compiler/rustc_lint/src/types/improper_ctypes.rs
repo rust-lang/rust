@@ -678,7 +678,7 @@ enum OuterTyKind {
     },
     /// For struct/enum/union fields
     AdtField,
-    /// Placeholder for properties that will be used eventually
+    /// For arrays/slices but also tuples
     Other,
 }
 
@@ -811,6 +811,11 @@ impl VisitorState {
     fn is_raw_pointee(&self) -> bool {
         matches!(self.outer_ty_kind, OuterTyKind::Pointee { raw: true, .. })
     }
+
+    /// Whether the current type directly in the memory layout of the parent ty
+    fn is_memory_inlined(&self) -> bool {
+        matches!(self.outer_ty_kind, OuterTyKind::AdtField | OuterTyKind::Other)
+    }
 }
 
 /// Visitor used to recursively traverse MIR types and evaluate FFI-safety.
@@ -933,7 +938,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             TypeSizedness::MetaSized => {
                 let help = match inner_ty.kind() {
                     ty::Str => Some(msg!("consider using `*const u8` and a length instead")),
-                    ty::Slice(_) => Some(msg!("consider using a raw pointer instead")),
+                    ty::Slice(_) => Some(msg!(
+                        "consider using a raw pointer to the slice's first element (and a length) instead"
+                    )),
                     _ => None,
                 };
                 let reason = indirection_kind.to_note_msg();
@@ -1323,11 +1330,22 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 Some(msg!("consider using `u32` or `libc::wchar_t` instead")),
             ),
 
-            ty::Slice(_) => FfiResult::new_with_reason(
-                ty,
-                msg!("slices have no C equivalent"),
-                Some(msg!("consider using a raw pointer instead")),
-            ),
+            ty::Slice(inner_ty) => {
+                // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
+                let slice_is_actually_array = state.is_memory_inlined();
+
+                if slice_is_actually_array {
+                    self.visit_type(state.next(ty), inner_ty)
+                } else {
+                    FfiResult::new_with_reason(
+                        ty,
+                        msg!("slices have no C equivalent"),
+                        Some(msg!(
+                            "consider using a raw pointer to the slice's first element (and a length) instead"
+                        )),
+                    )
+                }
+            }
 
             ty::Dynamic(..) => {
                 FfiResult::new_with_reason(ty, msg!("trait objects have no C equivalent"), None)
