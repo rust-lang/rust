@@ -2222,7 +2222,7 @@ impl<'test> TestCx<'test> {
                 .env("PAGER", "")
                 .stdin(File::open(&diff_filename).unwrap())
                 // Capture output and print it explicitly so it will in turn be
-                // captured by libtest.
+                // captured by output-capture.
                 .output()
                 .unwrap();
             assert!(output.status.success());
