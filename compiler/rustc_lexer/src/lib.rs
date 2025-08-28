@@ -350,6 +350,21 @@ pub fn is_whitespace(c: char) -> bool {
     )
 }
 
+/// True if `c` is considered horizontal whitespace according to Rust language definition.
+pub fn is_horizontal_whitespace(c: char) -> bool {
+    // This is Pattern_White_Space.
+    //
+    // Note that this set is stable (ie, it doesn't change with different
+    // Unicode versions), so it's ok to just hard-code the values.
+
+    matches!(
+        c,
+        // Horizontal space characters
+        '\u{0009}'   // tab (\t)
+        | '\u{0020}' // space
+    )
+}
+
 /// True if `c` is valid as a first character of an identifier.
 /// See [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html) for
 /// a formal definition of valid identifier name.
@@ -536,7 +551,7 @@ impl Cursor<'_> {
         debug_assert!(length_opening >= 3);
 
         // whitespace between the opening and the infostring.
-        self.eat_while(|ch| ch != '\n' && is_whitespace(ch));
+        self.eat_while(|ch| ch != '\n' && is_horizontal_whitespace(ch));
 
         // copied from `eat_identifier`, but allows `-` and `.` in infostring to allow something like
         // `---Cargo.toml` as a valid opener
@@ -545,7 +560,7 @@ impl Cursor<'_> {
             self.eat_while(|c| is_id_continue(c) || c == '-' || c == '.');
         }
 
-        self.eat_while(|ch| ch != '\n' && is_whitespace(ch));
+        self.eat_while(|ch| ch != '\n' && is_horizontal_whitespace(ch));
         let invalid_infostring = self.first() != '\n';
 
         let mut found = false;
@@ -586,7 +601,7 @@ impl Cursor<'_> {
                 // on a standalone line. Might be wrong.
                 while let Some(closing) = rest.find("---") {
                     let preceding_chars_start = rest[..closing].rfind("\n").map_or(0, |i| i + 1);
-                    if rest[preceding_chars_start..closing].chars().all(is_whitespace) {
+                    if rest[preceding_chars_start..closing].chars().all(is_horizontal_whitespace) {
                         // candidate found
                         potential_closing = Some(closing);
                         break;
