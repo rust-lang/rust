@@ -1,4 +1,4 @@
-<!-- date-check: may 2024 -->
+<!-- date-check: Aug 2025 -->
 # `TypeFoldable` and `TypeFolder`
 
 In [a previous chapter], we discussed instantiating binders.
