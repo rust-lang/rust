@@ -707,6 +707,26 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
     })
 }
 
+/// for a given ADT variant, list which fields are non-1ZST
+/// (`repr(transparent)` guarantees that there is at most one)
+pub(crate) fn map_non_1zst_fields<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Vec<bool> {
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
+    variant
+        .fields
+        .iter()
+        .map(|field| {
+            let field_ty = tcx.type_of(field.did).instantiate_identity();
+            let is_1zst = tcx
+                .layout_of(typing_env.as_query_input(field_ty))
+                .is_ok_and(|layout| layout.is_1zst());
+            !is_1zst
+        })
+        .collect()
+}
+
 /// Is type known to be non-null?
 fn ty_is_known_nonnull<'tcx>(
     tcx: TyCtxt<'tcx>,
