@@ -2025,8 +2025,6 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
             cmd.arg("--verbose");
         }
 
-        cmd.arg("--json");
-
         if builder.config.rustc_debug_assertions {
             cmd.arg("--with-rustc-debug-assertions");
         }

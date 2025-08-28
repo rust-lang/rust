@@ -223,13 +223,13 @@ LL | #![no_std]
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:695:1
    |
-LL |   #[link()]
-   |   ^^^^^^^^^
+LL |   #[link(name = "x")]
+   |   ^^^^^^^^^^^^^^^^^^^
 ...
 LL | / mod link {
 LL | |
 LL | |
-LL | |     mod inner { #![link()] }
+LL | |     mod inner { #![link(name = "x")] }
 ...  |
 LL | | }
    | |_- not an `extern` block
@@ -316,8 +316,8 @@ LL | #![type_length_limit="0100"]
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:72:1
    |
-LL | #![link()]
-   | ^^^^^^^^^^ not an `extern` block
+LL | #![link(name = "x")]
+   | ^^^^^^^^^^^^^^^^^^^^ not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
@@ -462,48 +462,48 @@ LL |     #![no_std] impl S { }
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:701:17
    |
-LL |     mod inner { #![link()] }
-   |     ------------^^^^^^^^^^-- not an `extern` block
+LL |     mod inner { #![link(name = "x")] }
+   |     ------------^^^^^^^^^^^^^^^^^^^^-- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:706:5
    |
-LL |     #[link()] fn f() { }
-   |     ^^^^^^^^^ ---------- not an `extern` block
+LL |     #[link(name = "x")] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^ ---------- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:711:5
    |
-LL |     #[link()] struct S;
-   |     ^^^^^^^^^ --------- not an `extern` block
+LL |     #[link(name = "x")] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^ --------- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:716:5
    |
-LL |     #[link()] type T = S;
-   |     ^^^^^^^^^ ----------- not an `extern` block
+LL |     #[link(name = "x")] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^ ----------- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:721:5
    |
-LL |     #[link()] impl S { }
-   |     ^^^^^^^^^ ---------- not an `extern` block
+LL |     #[link(name = "x")] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^ ---------- not an `extern` block
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:726:5
    |
-LL |     #[link()] extern "Rust" {}
-   |     ^^^^^^^^^
+LL |     #[link(name = "x")] extern "Rust" {}
+   |     ^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 

@@ -3072,7 +3072,7 @@ impl str {
     /// for example references to `Box<str>` or `Arc<str>`.
     #[inline]
     #[unstable(feature = "str_as_str", issue = "130366")]
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         self
     }
 }
