@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{DiagMessage, msg};
 use rustc_hir::def::CtorKind;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, AmbigArg};
+use rustc_hir::{self as hir, AmbigArg, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, Binder, FnSig, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
@@ -58,27 +58,32 @@ declare_lint! {
 
 declare_lint! {
     /// The `improper_ctypes_definitions` lint detects incorrect use of
-    /// [`extern` function] definitions.
-    /// (In other words, functions to be used by foreign code.)
+    /// [`extern` function] definitions and [`no_mangle`] / [`export_name`] static variable definitions.
+    /// (In other words, functions and global variables to be used by foreign code.)
     ///
     /// [`extern` function]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
+    /// [`no_mangle`]: https://doc.rust-lang.org/stable/reference/abi.html#the-no_mangle-attribute
+    /// [`export_name`]: https://doc.rust-lang.org/stable/reference/abi.html#the-export_name-attribute
     ///
     /// ### Example
     ///
     /// ```rust
     /// # #![allow(unused)]
     /// pub extern "C" fn str_type(p: &str) { }
+    /// # #[used]
+    /// # #[unsafe(no_mangle)]
+    /// static PLUGIN_ABI_MIN_VERSION: &'static str = "0.0.5";
     /// ```
     ///
     /// {{produces}}
     ///
     /// ### Explanation
     ///
-    /// There are many parameter and return types that may be specified in an
-    /// `extern` function that are not compatible with the given ABI. This
-    /// lint is an alert that these types should not be used. The lint usually
-    /// should provide a description of the issue, along with possibly a hint
-    /// on how to resolve it.
+    /// There are many types that may be specified at interfaces exposed to foreign code,
+    /// but are not follow the rules to ensure proper ABI compatibility.
+    /// This lint is issued when a mistake is detected.
+    /// The lint usually should provide a description of the issue,
+    /// along with possibly a hint on how to resolve it.
     pub(crate) IMPROPER_CTYPES_DEFINITIONS,
     Warn,
     "proper use of libc types in foreign item definitions"
@@ -289,6 +294,9 @@ enum CItemKind {
     ExportedFunction,
     /// `extern "C"` function pointers -> also IMPROPER_CTYPES,
     Callback,
+    /// `no_mangle`/`export_name` static variables, assumed to be used from across an FFI boundary,
+    /// -> also IMPROPER_CTYPES_DEFINITIONS
+    ExportedStatic,
 }
 
 /// Annotates whether we are in the context of a function's argument types or return type.
@@ -715,6 +723,8 @@ struct VisitorState {
 impl RootUseFlags {
     // The values that can be set.
     const STATIC_TY: Self = Self::STATIC;
+    const EXPORTED_STATIC_TY: Self =
+        Self::from_bits(Self::STATIC.bits() | Self::DEFINED.bits()).unwrap();
     const ARGUMENT_TY_IN_DEFINITION: Self =
         Self::from_bits(Self::FUNC.bits() | Self::DEFINED.bits()).unwrap();
     const RETURN_TY_IN_DEFINITION: Self =
@@ -750,6 +760,9 @@ impl VisitorState {
             (CItemKind::ExportedFunction, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DEFINITION,
             (CItemKind::ImportedExtern, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_DECLARATION,
             (CItemKind::Callback, FnPos::Arg) => RootUseFlags::ARGUMENT_TY_IN_FNPTR,
+            (CItemKind::ExportedStatic, _) => bug!(
+                "VisitorState::entry_point_from_fnmode() should not be used for static variables!"
+            ),
         };
         VisitorState { root_use_flags: p_flags, outer_ty_kind: OuterTyKind::None, depth: 0 }
     }
@@ -758,6 +771,15 @@ impl VisitorState {
     fn static_entry_point() -> Self {
         VisitorState {
             root_use_flags: RootUseFlags::STATIC_TY,
+            outer_ty_kind: OuterTyKind::None,
+            depth: 0,
+        }
+    }
+
+    /// Get the proper visitor state for a locally-defined static variable's type
+    fn static_def_entry_point() -> Self {
+        VisitorState {
+            root_use_flags: RootUseFlags::EXPORTED_STATIC_TY,
             outer_ty_kind: OuterTyKind::None,
             depth: 0,
         }
@@ -1732,6 +1754,15 @@ impl<'tcx> ImproperCTypesLint {
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
 
+    /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type.
+    fn check_exported_static(&self, cx: &LateContext<'tcx>, id: hir::HirId, span: Span) {
+        let ty = cx.tcx.type_of(id.owner).instantiate_identity();
+        let mod_id = cx.tcx.parent_module(id);
+        let mut visitor = ImproperCTypesVisitor::new(cx, mod_id);
+        let ffi_res = visitor.check_type(VisitorState::static_def_entry_point(), ty);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
+    }
+
     /// Check if a function's argument types and result type are "ffi-safe".
     fn check_foreign_fn(
         &mut self,
@@ -1838,10 +1869,13 @@ impl<'tcx> ImproperCTypesLint {
             // Internally, we treat this differently, but at the end of the day
             // their linting needs to be enabled/disabled alongside that of "FFI-imported" items.
             CItemKind::Callback => IMPROPER_CTYPES,
+            // Same thing with static variables, which are "FFI-exported"
+            CItemKind::ExportedStatic => IMPROPER_CTYPES_DEFINITIONS,
         };
         let desc = match fn_mode {
             CItemKind::ImportedExtern => "`extern` block",
             CItemKind::ExportedFunction => "`extern` fn",
+            CItemKind::ExportedStatic => "foreign-code-reachable static",
             CItemKind::Callback => "`extern` callback",
         };
         for reason in reasons.iter_mut() {
@@ -1912,6 +1946,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
                 );
+
+                if matches!(item.kind, hir::ItemKind::Static(..))
+                    && (find_attr!(cx.tcx, item.owner_id, NoMangle(_))
+                        || find_attr!(cx.tcx, item.owner_id, ExportName { .. }))
+                {
+                    self.check_exported_static(cx, item.hir_id(), ty.span);
+                }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
             hir::ItemKind::Fn { .. } => {}

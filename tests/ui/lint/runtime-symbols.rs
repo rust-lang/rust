@@ -5,6 +5,7 @@
 
 #![feature(c_variadic)]
 #![allow(clashing_extern_declarations)] // we are voluntarily testing different definitions
+#![allow(improper_ctypes_definitions)]
 
 use core::ffi::{c_char, c_int, c_void};
 
