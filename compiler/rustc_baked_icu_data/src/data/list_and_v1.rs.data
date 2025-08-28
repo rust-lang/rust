@@ -11,6 +11,7 @@
 ///
 /// This macro requires the following crates:
 /// * `icu_list`
+/// * `icu_locale/compiled_data`
 /// * `icu_provider`
 /// * `icu_provider/baked`
 /// * `zerovec`
@@ -31,8 +32,23 @@ macro_rules! __impl_list_and_v1 {
         #[clippy::msrv = "1.82"]
         impl icu_provider::DataProvider<icu_list::provider::ListAndV1> for $provider {
             fn load(&self, req: icu_provider::DataRequest) -> Result<icu_provider::DataResponse<icu_list::provider::ListAndV1>, icu_provider::DataError> {
-                let metadata = icu_provider::DataResponseMetadata::default();
-                let Some(payload) = icu_provider::baked::DataStore::get(&Self::DATA_LIST_AND_V1, req.id, req.metadata.attributes_prefix_match) else { return Err(icu_provider::DataErrorKind::IdentifierNotFound.with_req(<icu_list::provider::ListAndV1 as icu_provider::DataMarker>::INFO, req)) };
+                let mut metadata = icu_provider::DataResponseMetadata::default();
+                let payload = if let Some(payload) = icu_provider::baked::DataStore::get(&Self::DATA_LIST_AND_V1, req.id, req.metadata.attributes_prefix_match) {
+                    payload
+                } else {
+                    const FALLBACKER: icu_locale::fallback::LocaleFallbackerWithConfig<'static> = icu_locale::fallback::LocaleFallbacker::new().for_config(<icu_list::provider::ListAndV1 as icu_provider::DataMarker>::INFO.fallback_config);
+                    let mut fallback_iterator = FALLBACKER.fallback_for(req.id.locale.clone());
+                    loop {
+                        if let Some(payload) = icu_provider::baked::DataStore::get(&Self::DATA_LIST_AND_V1, icu_provider::DataIdentifierBorrowed::for_marker_attributes_and_locale(req.id.marker_attributes, fallback_iterator.get()), req.metadata.attributes_prefix_match) {
+                            metadata.locale = Some(fallback_iterator.take());
+                            break payload;
+                        }
+                        if fallback_iterator.get().is_unknown() {
+                            return Err(icu_provider::DataErrorKind::IdentifierNotFound.with_req(<icu_list::provider::ListAndV1 as icu_provider::DataMarker>::INFO, req));
+                        }
+                        fallback_iterator.step();
+                    }
+                };
                 Ok(icu_provider::DataResponse { payload, metadata })
             }
         }

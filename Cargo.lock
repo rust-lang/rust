@@ -1702,6 +1702,7 @@ dependencies = [
  "displaydoc",
  "icu_collections",
  "icu_locale_core",
+ "icu_locale_data",
  "icu_provider",
  "potential_utf",
  "tinystr",
@@ -1720,6 +1721,12 @@ dependencies = [
  "writeable",
  "zerovec",
 ]
+
+[[package]]
+name = "icu_locale_data"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fdef0c124749d06a743c69e938350816554eb63ac979166590e2b4ee4252765"
 
 [[package]]
 name = "icu_normalizer"
@@ -1778,18 +1785,6 @@ dependencies = [
  "yoke",
  "zerofrom",
  "zerotrie",
- "zerovec",
-]
-
-[[package]]
-name = "icu_provider_adapters"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85c260e90e962088d46a1605687f78d3293cc3a34ba66b08ff7361084bc7895e"
-dependencies = [
- "icu_locale",
- "icu_provider",
- "tinystr",
  "zerovec",
 ]
 
@@ -3697,7 +3692,6 @@ dependencies = [
  "fluent-syntax",
  "icu_list",
  "icu_locale",
- "icu_provider_adapters",
  "intl-memoizer",
  "rustc_ast",
  "rustc_ast_pretty",

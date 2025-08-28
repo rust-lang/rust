@@ -567,18 +567,10 @@ pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValu
         where
             Self: Sized,
         {
-            let baked_data_provider = rustc_baked_icu_data::baked_data_provider();
-            let locale_fallbacker =
-                icu_locale::LocaleFallbacker::try_new_unstable(&baked_data_provider)
-                    .expect("Failed to create fallback provider");
-            let data_provider = icu_provider_adapters::fallback::LocaleFallbackProvider::new(
-                baked_data_provider,
-                locale_fallbacker,
-            );
             let locale = icu_locale_from_unic_langid(lang)
                 .unwrap_or_else(|| rustc_baked_icu_data::supported_locales::EN);
             let list_formatter = icu_list::ListFormatter::try_new_and_unstable(
-                &data_provider,
+                &rustc_baked_icu_data::BakedDataProvider,
                 locale.into(),
                 icu_list::options::ListFormatterOptions::default()
                     .with_length(icu_list::options::ListLength::Wide),

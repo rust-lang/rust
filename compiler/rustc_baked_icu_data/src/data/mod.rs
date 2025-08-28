@@ -1,6 +1,4 @@
 // @generated
-include!("locale_likely_subtags_language_v1.rs.data");
-include!("locale_parents_v1.rs.data");
 include!("list_and_v1.rs.data");
 /// Marks a type as a data provider. You can then use macros like
 /// `impl_core_helloworld_v1` to add implementations.
@@ -29,8 +27,7 @@ macro_rules! __make_provider {
 pub use __make_provider as make_provider;
 /// This macro requires the following crates:
 /// * `icu_list`
-/// * `icu_locale`
-/// * `icu_locale_core`
+/// * `icu_locale/compiled_data`
 /// * `icu_provider`
 /// * `icu_provider/baked`
 /// * `zerovec`
@@ -38,8 +35,6 @@ pub use __make_provider as make_provider;
 macro_rules! impl_data_provider {
     ($ provider : ty) => {
         make_provider!($provider);
-        impl_locale_likely_subtags_language_v1!($provider);
-        impl_locale_parents_v1!($provider);
         impl_list_and_v1!($provider);
     };
 }

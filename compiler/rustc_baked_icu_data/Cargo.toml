@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 icu_list = { version = "2.0", default-features = false }
-icu_locale = { version = "2.0", default-features = false }
+icu_locale = { version = "2.0", default-features = false, features = ["compiled_data"] }
 icu_provider = { version = "2.0", features = ["baked", "sync"] }
 zerovec = "0.11.0"
 # tidy-alphabetical-end

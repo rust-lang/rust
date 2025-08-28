@@ -16,8 +16,7 @@
 //! ```text
 //! icu4x-datagen -W --pretty --use-separate-crates \
 //! --format baked --locales @en @es @fr @it @ja @pt @ru @tr @zh @zh-Hans @zh-Hant \
-//! -m ListAndV1 LocaleLikelySubtagsLanguageV1 LocaleParentsV1 \
-//! --no-internal-fallback --deduplication maximal -o src/data
+//! -m ListAndV1 -o src/data
 //! ```
 
 // tidy-alphabetical-start
@@ -33,7 +32,6 @@ pub struct BakedDataProvider;
 
 include!("data/mod.rs");
 const _: () = {
-    use icu_provider::prelude::icu_locale_core;
     impl_data_provider!(BakedDataProvider);
 };
 
