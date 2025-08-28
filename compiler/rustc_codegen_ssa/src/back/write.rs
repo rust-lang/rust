@@ -809,18 +809,11 @@ pub(crate) fn compute_per_cgu_lto_type(
     sess_lto: &Lto,
     opts: &config::Options,
     sess_crate_types: &[CrateType],
-    module_kind: ModuleKind,
 ) -> ComputedLtoType {
     // If the linker does LTO, we don't have to do it. Note that we
     // keep doing full LTO, if it is requested, as not to break the
     // assumption that the output will be a single module.
     let linker_does_lto = opts.cg.linker_plugin_lto.enabled();
-
-    // When we're automatically doing ThinLTO for multi-codegen-unit
-    // builds we don't actually want to LTO the allocator modules if
-    // it shows up. This is due to various linker shenanigans that
-    // we'll encounter later.
-    let is_allocator = module_kind == ModuleKind::Allocator;
 
     // We ignore a request for full crate graph LTO if the crate type
     // is only an rlib, as there is no full crate graph to process,
@@ -833,7 +826,7 @@ pub(crate) fn compute_per_cgu_lto_type(
     let is_rlib = matches!(sess_crate_types, [CrateType::Rlib]);
 
     match sess_lto {
-        Lto::ThinLocal if !linker_does_lto && !is_allocator => ComputedLtoType::Thin,
+        Lto::ThinLocal if !linker_does_lto => ComputedLtoType::Thin,
         Lto::Thin if !linker_does_lto && !is_rlib => ComputedLtoType::Thin,
         Lto::Fat if !is_rlib => ComputedLtoType::Fat,
         _ => ComputedLtoType::No,
@@ -855,7 +848,16 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     // back to the coordinator thread for further LTO processing (which
     // has to wait for all the initial modules to be optimized).
 
-    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types, module.kind);
+    // When we're automatically doing ThinLTO for multi-codegen-unit
+    // builds we don't actually want to LTO the allocator modules if
+    // it shows up. This is due to various linker shenanigans that
+    // we'll encounter later.
+    if module.kind == ModuleKind::Allocator {
+        let module = B::codegen(cgcx, module, module_config);
+        return WorkItemResult::Finished(module);
+    }
+
+    let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types);
 
     // If we're doing some form of incremental LTO then we need to be sure to
     // save our module to disk first.
