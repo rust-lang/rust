@@ -28,6 +28,7 @@ use url::Url;
 
 mod broken_link;
 mod doc_comment_double_space_linebreaks;
+mod doc_comments_missing_terminal_punctuation;
 mod doc_suspicious_footnotes;
 mod include_in_doc_without_cfg;
 mod lazy_continuation;
@@ -670,6 +671,28 @@ declare_clippy_lint! {
     "looks like a link or footnote ref, but with no definition"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for doc comments that do not end with a period or another punctuation mark.
+    /// Various Markdowns constructs are taken into account to avoid false positives.
+    ///
+    /// ### Why is this bad?
+    /// A project may wish to enforce consistent doc comments by making sure they end with a punctuation mark.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// /// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything.
+    /// ```
+    #[clippy::version = "1.92.0"]
+    pub DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
+    nursery,
+    "missing terminal punctuation in doc comments"
+}
+
 pub struct Documentation {
     valid_idents: FxHashSet<String>,
     check_private_items: bool,
@@ -704,11 +727,13 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
     DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     DOC_SUSPICIOUS_FOOTNOTES,
+    DOC_COMMENTS_MISSING_TERMINAL_PUNCTUATION,
 ]);
 
 impl EarlyLintPass for Documentation {
     fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
         include_in_doc_without_cfg::check(cx, attrs);
+        doc_comments_missing_terminal_punctuation::check(cx, attrs);
     }
 }
 

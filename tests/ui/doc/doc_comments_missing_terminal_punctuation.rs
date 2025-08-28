@@ -1,0 +1,142 @@
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
+#![warn(clippy::doc_comments_missing_terminal_punctuation)]
+
+/// Returns the Answer to the Ultimate Question of Life, the Universe, and Everything
+//~^ doc_comments_missing_terminal_punctuation
+fn answer() -> i32 {
+    42
+}
+
+/// The `Option` type
+//~^ doc_comments_missing_terminal_punctuation
+// Triggers even in the presence of another attribute.
+#[derive(Debug)]
+enum MyOption<T> {
+    /// No value
+    //~^ doc_comments_missing_terminal_punctuation
+    None,
+    /// Some value of type `T`.
+    Some(T),
+}
+
+// Triggers correctly even when interleaved with other attributes.
+/// A multiline
+#[derive(Debug)]
+/// doc comment:
+/// only the last line triggers the lint
+//~^ doc_comments_missing_terminal_punctuation
+enum Exceptions {
+    /// Question marks are fine?
+    QuestionMark,
+    /// Exclamation marks are fine!
+    ExclamationMark,
+    /// Ellipses are ok too…
+    Ellipsis,
+    /// HTML content is however not checked:
+    /// <em>Raw HTML is allowed as well</em>
+    RawHtml,
+    /// The raw HTML exception also unfortunately results in ignoring autolinks too:
+    /// <https://spec.commonmark.org/0.31.2/#autolinks>
+    MarkdownAutolink,
+    /// | Exception      | Note  |
+    /// | -------------- | ----- |
+    /// | Markdown table | A-ok  |
+    MarkdownTable,
+    /// ```
+    /// // Code blocks are no issues.
+    /// ```
+    CodeBlock,
+}
+
+// Check the lint can be expected on a whole enum at once.
+#[expect(clippy::doc_comments_missing_terminal_punctuation)]
+enum Char {
+    /// U+0000
+    Null,
+    /// U+0001
+    StartOfHeading,
+}
+
+// Check the lint can be expected on a single variant without affecting others.
+enum Char2 {
+    #[expect(clippy::doc_comments_missing_terminal_punctuation)]
+    /// U+0000
+    Null,
+    /// U+0001
+    //~^ doc_comments_missing_terminal_punctuation
+    StartOfHeading,
+}
+
+mod module {
+    //! Works on
+    //! inner attributes too
+    //~^ doc_comments_missing_terminal_punctuation
+}
+
+enum Trailers {
+    /// (Sometimes the last sentence is in parentheses, and that's ok.)
+    ParensPassing,
+    /// (But sometimes it is missing a period)
+    //~^ doc_comments_missing_terminal_punctuation
+    ParensFailing,
+    /// **Sometimes the last sentence is in bold, and that's ok.**
+    DoubleStarPassing,
+    /// **But sometimes it is missing a period**
+    //~^ doc_comments_missing_terminal_punctuation
+    DoubleStarFailing,
+    /// _Sometimes the last sentence is in italics, and that's ok._
+    UnderscorePassing,
+    /// _But sometimes it is missing a period_
+    //~^ doc_comments_missing_terminal_punctuation
+    UnderscoreFailing,
+}
+
+/// Doc comments can end with an [inline link](#anchor)
+//~^ doc_comments_missing_terminal_punctuation
+struct InlineLink;
+
+/// Some doc comments contain [link reference definitions][spec]
+//~^ doc_comments_missing_terminal_punctuation
+///
+/// [spec]: https://spec.commonmark.org/0.31.2/#link-reference-definitions
+struct LinkRefDefinition;
+
+// List items do not always need to end with a period.
+enum UnorderedLists {
+    /// - A list item
+    Dash,
+    /// + A list item
+    Plus,
+    /// * A list item
+    Star,
+}
+
+enum OrderedLists {
+    /// 1. A list item
+    Dot,
+    /// 42) A list item
+    Paren,
+}
+
+/// Doc comments with trailing blank lines are supported
+//~^ doc_comments_missing_terminal_punctuation
+///
+struct TrailingBlankLine;
+
+/// The first paragraph is not checked
+///
+/// Other sentences are not either
+/// Only the last sentence is
+//~^ doc_comments_missing_terminal_punctuation
+struct OnlyLastSentence;
+
+/// Sometimes a doc attribute is used for concatenation:
+/// ```
+#[doc = ""]
+/// ```
+struct DocAttribute;
+
+#[expect(clippy::empty_docs)]
+///
+struct EmptyDocComment;
