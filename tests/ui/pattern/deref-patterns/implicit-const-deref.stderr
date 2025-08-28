@@ -6,6 +6,7 @@ LL | const EMPTY: Vec<()> = Vec::new();
 ...
 LL |         EMPTY => {}
    |         ^^^^^ constant of non-structural type
+   |
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |
    = note: `Vec<()>` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
