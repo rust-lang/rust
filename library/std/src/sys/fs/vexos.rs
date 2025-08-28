@@ -214,7 +214,7 @@ impl File {
                 (true, true, _, _, _, _) => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
-                        "Opening files in both read and write mode is unsupported",
+                        "Opening files with read and write access is unsupported on this target",
                     ));
                 }
 
