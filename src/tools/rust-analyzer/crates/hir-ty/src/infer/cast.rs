@@ -6,7 +6,9 @@ use stdx::never;
 
 use crate::{
     Adjustment, Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex,
-    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause, from_chalk_trait_id,
+    QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
+    db::HirDatabase,
+    from_chalk_trait_id,
     infer::{coerce::CoerceNever, unify::InferenceTable},
 };
 
@@ -30,7 +32,7 @@ pub(crate) enum CastTy {
 }
 
 impl CastTy {
-    pub(crate) fn from_ty(table: &mut InferenceTable<'_>, t: &Ty) -> Option<Self> {
+    pub(crate) fn from_ty(db: &dyn HirDatabase, t: &Ty) -> Option<Self> {
         match t.kind(Interner) {
             TyKind::Scalar(Scalar::Bool) => Some(Self::Int(Int::Bool)),
             TyKind::Scalar(Scalar::Char) => Some(Self::Int(Int::Char)),
@@ -43,8 +45,8 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = id.enum_variants(table.db);
-                if enum_data.is_payload_free(table.db) { Some(Self::Int(Int::CEnum)) } else { None }
+                let enum_data = id.enum_variants(db);
+                if enum_data.is_payload_free(db) { Some(Self::Int(Int::CEnum)) } else { None }
             }
             TyKind::Raw(m, ty) => Some(Self::Ptr(ty.clone(), *m)),
             TyKind::Function(_) => Some(Self::FnPtr),
@@ -142,58 +144,50 @@ impl CastCheck {
     where
         F: FnMut(ExprId, Vec<Adjustment>),
     {
-        let (t_from, t_cast) =
-            match (CastTy::from_ty(table, &self.expr_ty), CastTy::from_ty(table, &self.cast_ty)) {
-                (Some(t_from), Some(t_cast)) => (t_from, t_cast),
-                (None, Some(t_cast)) => match self.expr_ty.kind(Interner) {
-                    TyKind::FnDef(..) => {
-                        let sig = self.expr_ty.callable_sig(table.db).expect("FnDef had no sig");
-                        let sig = table.eagerly_normalize_and_resolve_shallow_in(sig);
-                        let fn_ptr = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-                        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &fn_ptr, CoerceNever::Yes)
-                        {
-                            apply_adjustments(self.source_expr, adj);
-                        } else {
-                            return Err(CastError::IllegalCast);
-                        }
-
-                        (CastTy::FnPtr, t_cast)
+        let (t_from, t_cast) = match (
+            CastTy::from_ty(table.db, &self.expr_ty),
+            CastTy::from_ty(table.db, &self.cast_ty),
+        ) {
+            (Some(t_from), Some(t_cast)) => (t_from, t_cast),
+            (None, Some(t_cast)) => match self.expr_ty.kind(Interner) {
+                TyKind::FnDef(..) => {
+                    let sig = self.expr_ty.callable_sig(table.db).expect("FnDef had no sig");
+                    let sig = table.eagerly_normalize_and_resolve_shallow_in(sig);
+                    let fn_ptr = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
+                    if let Ok((adj, _)) = table.coerce(&self.expr_ty, &fn_ptr, CoerceNever::Yes) {
+                        apply_adjustments(self.source_expr, adj);
+                    } else {
+                        return Err(CastError::IllegalCast);
                     }
-                    TyKind::Ref(mutbl, _, inner_ty) => {
-                        return match t_cast {
-                            CastTy::Int(_) | CastTy::Float => match inner_ty.kind(Interner) {
-                                TyKind::Scalar(
-                                    Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_),
-                                )
-                                | TyKind::InferenceVar(
-                                    _,
-                                    TyVariableKind::Integer | TyVariableKind::Float,
-                                ) => Err(CastError::NeedDeref),
 
-                                _ => Err(CastError::NeedViaPtr),
-                            },
-                            // array-ptr-cast
-                            CastTy::Ptr(t, m) => {
-                                let t = table.eagerly_normalize_and_resolve_shallow_in(t);
-                                if !table.is_sized(&t) {
-                                    return Err(CastError::IllegalCast);
-                                }
-                                self.check_ref_cast(
-                                    table,
-                                    inner_ty,
-                                    *mutbl,
-                                    &t,
-                                    m,
-                                    apply_adjustments,
-                                )
+                    (CastTy::FnPtr, t_cast)
+                }
+                TyKind::Ref(mutbl, _, inner_ty) => {
+                    return match t_cast {
+                        CastTy::Int(_) | CastTy::Float => match inner_ty.kind(Interner) {
+                            TyKind::Scalar(Scalar::Int(_) | Scalar::Uint(_) | Scalar::Float(_))
+                            | TyKind::InferenceVar(
+                                _,
+                                TyVariableKind::Integer | TyVariableKind::Float,
+                            ) => Err(CastError::NeedDeref),
+
+                            _ => Err(CastError::NeedViaPtr),
+                        },
+                        // array-ptr-cast
+                        CastTy::Ptr(t, m) => {
+                            let t = table.eagerly_normalize_and_resolve_shallow_in(t);
+                            if !table.is_sized(&t) {
+                                return Err(CastError::IllegalCast);
                             }
-                            _ => Err(CastError::NonScalar),
-                        };
-                    }
-                    _ => return Err(CastError::NonScalar),
-                },
+                            self.check_ref_cast(table, inner_ty, *mutbl, &t, m, apply_adjustments)
+                        }
+                        _ => Err(CastError::NonScalar),
+                    };
+                }
                 _ => return Err(CastError::NonScalar),
-            };
+            },
+            _ => return Err(CastError::NonScalar),
+        };
 
         // rustc checks whether the `expr_ty` is foreign adt with `non_exhaustive` sym
 
