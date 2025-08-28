@@ -166,25 +166,39 @@ fn get_sig_from_fnptr_ty<'tcx>(ty: Ty<'tcx>) -> Sig<'tcx> {
     }
 }
 
-/// A common pattern in this lint is to attempt normalize_erasing_regions,
-/// but keep the original type if it were to fail.
-/// This may or may not be supported in the logic behind the `Unnormalized` wrapper,
-/// (FIXME?)
-/// but it should be enough for non-wrapped types to be as normalised as this lint needs them to be.
+// FIXME(ctypes): it seems that tests/ui/lint/opaque-ty-ffi-normalization-cycle.rs relies on
+// the fact that we consider opaque aliases that normalise to something else to be unsafe.
+// ...is it the behaviour we want?
+// possible FIXME(ctypes,normalization): this maybe-normalised output may or may not be supported in the logic
+// behind the `Unnormalized` wrapper, but it should be enough for non-wrapped types to
+// be as normalised as this lint needs them to be.
+/// a modified version of cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty.skip_normalization())
+/// so that opaque types prevent normalisation once region erasure occurs
 fn maybe_normalize_erasing_regions<'tcx>(
     cx: &LateContext<'tcx>,
     value: Unnormalized<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
-    // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
-    // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
-    // `InferCtxt` would ICE (see #156352).
-    let typing_env = if let Some(body_id) = cx.enclosing_body {
-        let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
-        ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+    let value_inner = value.skip_norm_wip();
+    if (!value_inner.has_aliases()) || value_inner.has_opaque_types() {
+        cx.tcx.erase_and_anonymize_regions(value_inner)
     } else {
-        cx.typing_env()
-    };
-    cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value.skip_norm_wip())
+        // Use `TypingMode::Borrowck` so the new solver doesn't reveal opaque types since we're now
+        // past hir typeck. If we were to attempt to reveal more opaque types, dropping the
+        // `InferCtxt` would ICE (see #156352).
+        let typing_env = if let Some(body_id) = cx.enclosing_body {
+            let body_def_id = cx.tcx.hir_enclosing_body_owner(body_id.hir_id);
+            ty::TypingEnv::new(cx.param_env, ty::TypingMode::borrowck(cx.tcx, body_def_id))
+        } else {
+            cx.typing_env()
+        };
+
+        cx.tcx.try_normalize_erasing_regions(typing_env, value).unwrap_or(value_inner)
+        // note: the code above ^^^ should only cause a call to the commented code below vvv
+        //let value = value.skip_normalization();
+        //let value = cx.tcx.erase_and_anonymize_regions(value);
+        //let mut folder = TryNormalizeAfterErasingRegionsFolder::new(cx.tcx, typing_env);
+        //value.try_fold_with(&mut folder).unwrap_or(value)
+    }
 }
 
 fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
@@ -1468,19 +1482,64 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Never => self.visit_uninhabited(state, ty),
 
-            // While opaque types are checked for earlier, if a projection in a struct field
-            // normalizes to an opaque type, then it will reach this branch.
+            // This is only half of the checking-for-opaque-aliases story:
+            // since they are liable to vanish on normalisation, we need a specific to find them through
+            // other aliases, which is called in the next branch of this `match ty.kind()` statement
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                 FfiResult::new_with_reason(ty, msg!("opaque types have no C equivalent"), None)
             }
 
-            // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
+            // `extern "C" fn` function definitions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
+            // function pointers can do the same
+            //
+            // however, these ty_kind:s can also be encountered because the type isn't normalized yet.
             ty::Param(..)
-            | ty::Alias(_, ty::AliasTy { kind: ty::Projection { .. } | ty::Inherent { .. }, .. })
-                if state.can_expect_ty_params() =>
-            {
-                FfiSafe
+            | ty::Alias(
+                _,
+                ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                },
+            ) => {
+                if ty.has_opaque_types() {
+                    // FIXME(ctypes): this is suboptimal because we give up
+                    // on reporting anything *else* than the opaque part of the type
+                    // but this is better than not reporting anything, or crashing
+                    self.visit_for_opaque_ty(ty).unwrap()
+                } else {
+                    // in theory, thanks to maybe_normalize_erasing_regions,
+                    // normalisation has already occurred
+                    debug_assert_eq!(
+                        self.cx
+                            .tcx
+                            .try_normalize_erasing_regions(
+                                self.cx.typing_env(),
+                                Unnormalized::new_wip(ty)
+                            )
+                            .unwrap_or(ty),
+                        ty,
+                    );
+
+                    if matches!(
+                        ty.kind(),
+                        ty::Param(..)
+                            | ty::Alias(
+                                _,
+                                ty::AliasTy {
+                                    kind: ty::Projection { .. } | ty::Inherent { .. },
+                                    ..
+                                }
+                            )
+                    ) && state.can_expect_ty_params()
+                    {
+                        FfiSafe
+                    } else {
+                        // ty::Alias(_, ty::Free), and all params/aliases for something
+                        // defined beyond the FFI boundary
+                        bug!("unexpected type in foreign function: {:?}", ty)
+                    }
+                }
             }
 
             ty::UnsafeBinder(_) => FfiResult::new_with_reason(
@@ -1502,19 +1561,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 None,
             ),
 
-            ty::Param(..)
-            | ty::Alias(
-                _,
-                ty::AliasTy {
-                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
-                    ..
-                },
-            )
-            | ty::Infer(..)
-            | ty::Bound(..)
-            | ty::Error(_)
-            | ty::Placeholder(..)
-            | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
+            ty::Infer(..) | ty::Bound(..) | ty::Error(_) | ty::Placeholder(..) | ty::FnDef(..) => {
+                bug!("unexpected type in foreign function: {:?}", ty)
+            }
         }
     }
 
@@ -1553,9 +1602,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return res;
         }
         let ty = maybe_normalize_erasing_regions(self.cx, ty);
-        if let Some(res) = self.visit_for_opaque_ty(ty) {
-            return res;
-        }
         self.visit_type(state, ty)
     }
 }
