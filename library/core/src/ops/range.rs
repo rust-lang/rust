@@ -736,6 +736,28 @@ impl<T> Bound<T> {
     }
 }
 
+impl<T: Copy> Bound<&T> {
+    /// Map a `Bound<&T>` to a `Bound<T>` by copying the contents of the bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ops::Bound::*;
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert_eq!((1..12).start_bound(), Included(&1));
+    /// assert_eq!((1..12).start_bound().copied(), Included(1));
+    /// ```
+    #[unstable(feature = "bound_copied", issue = "145966")]
+    pub fn copied(self) -> Bound<T> {
+        match self {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(x) => Bound::Included(*x),
+            Bound::Excluded(x) => Bound::Excluded(*x),
+        }
+    }
+}
+
 impl<T: Clone> Bound<&T> {
     /// Map a `Bound<&T>` to a `Bound<T>` by cloning the contents of the bound.
     ///
