@@ -257,22 +257,21 @@ fn check_struct_for_power_alignment<'tcx>(
     item: &'tcx hir::Item<'tcx>,
     adt_def: AdtDef<'tcx>,
 ) {
-    let tcx = cx.tcx;
-
     // Only consider structs (not enums or unions) on AIX.
-    if tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
+    if cx.tcx.sess.target.os != Os::Aix || !adt_def.is_struct() {
         return;
     }
 
     // The struct must be repr(C), but ignore it if it explicitly specifies its alignment with
     // either `align(N)` or `packed(N)`.
-    if adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none() {
+    debug_assert!(adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none());
+    if !adt_def.all_fields().next().is_none() {
         let struct_variant_data = item.expect_struct().2;
         for field_def in struct_variant_data.fields().iter().skip(1) {
             // Struct fields (after the first field) are checked for the
             // power alignment rule, as fields after the first are likely
             // to be the fields that are misaligned.
-            let ty = tcx.type_of(field_def.def_id).instantiate_identity().skip_norm_wip();
+            let ty = cx.tcx.type_of(field_def.def_id).instantiate_identity().skip_norm_wip();
             if check_arg_for_power_alignment(cx, ty) {
                 cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
             }
@@ -1125,7 +1124,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // otherwise, having all fields be phantoms
         // takes priority over transparent_with_all_zst_fields
         if let FfiUnsafe(explanations) = ffires_accumulator {
-            debug_assert!(def.repr().c() || def.repr().transparent() || def.repr().int.is_some());
+            debug_assert!(
+                (def.repr().c() && !def.repr().packed() && def.repr().align.is_none())
+                    || def.repr().transparent()
+                    || def.repr().int.is_some()
+            );
 
             if def.repr().transparent() || matches!(def.adt_kind(), AdtKind::Enum) {
                 let field_ffires = FfiUnsafe(explanations).wrap_all(
@@ -1202,6 +1205,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             && !def.repr().transparent()
         {
             // TODO: discuss readability implications of repeating ty name on every message
+            // FIXME(ctypes) acknowledge the not-quite-similar C annotations for alignment
             return FfiResult::new_with_reason(
                 ty,
                 msg!("`{$ty}` has unspecified layout"),
@@ -1271,13 +1275,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         if def.repr().align.is_some() {
-            // note: aligned reprs are allowed with enums, but not packed reprs
+            // note: aligned reprs are allowed (by the compiler) with enums, but not packed reprs
             return FfiResult::new_with_reason(
                 ty,
                 msg!("`{$ty}` has unspecified layout"),
                 Some(msg!("consider removing the `#[repr(align)]` attribute from this enum")),
             );
         }
+
+        // currently, packed enums cause a compilation error early enough to prevent this lint from running
+        debug_assert!(!def.repr().packed());
 
         // Check for a repr() attribute to specify the size of the
         // discriminant.
