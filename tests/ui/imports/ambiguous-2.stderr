@@ -1,0 +1,19 @@
+error[E0425]: cannot find function `id` in crate `ambiguous_1`
+  --> $DIR/ambiguous-2.rs:7:18
+   |
+LL |     ambiguous_1::id();
+   |                  ^^ not found in `ambiguous_1`
+   |
+help: consider importing this function
+   |
+LL + use std::process::id;
+   |
+help: if you import `id`, refer to it directly
+   |
+LL -     ambiguous_1::id();
+LL +     id();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.
