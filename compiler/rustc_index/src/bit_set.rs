@@ -194,7 +194,11 @@ impl<T: Idx> DenseBitSet<T> {
             self.domain_size,
         );
         let (word_index, mask) = word_index_and_mask(elem);
-        let word_ref = &mut self.words[word_index];
+        // SAFETY:
+        // The number of words we have is the domain size divided by word size (rounded up). We have
+        // asserted above that the element is contained within the domain size. Therefore,
+        // word_index is in bounds.
+        let word_ref = unsafe { self.words.get_unchecked_mut(word_index) };
         let word = *word_ref;
         let new_word = word | mask;
         *word_ref = new_word;
