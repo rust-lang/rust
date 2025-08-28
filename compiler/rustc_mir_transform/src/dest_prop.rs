@@ -52,12 +52,12 @@
 //!   does not currently care about what the value in `q` is (and vice versa). We formalize the
 //!   notion of "does not care what the value in `q` is" by checking the *liveness* of `q`.
 //!
-//!   Because of the difficulty of computing liveness of places that have their address taken, we do
-//!   not even attempt to do it. Any places that are in a local that has its address taken is
-//!   excluded from the optimization.
-//!
 //! The first two conditions are simple structural requirements on the `Assign` statements that can
 //! be trivially checked. The third requirement however is more difficult and costly to check.
+//!
+//! If a local has its address taken, we consider that any indirect write may write to it, and any
+//! indirect read reads it. Since terminators may do anything, we conservatively consider them to
+//! both read and write to all borrowed locals.
 //!
 //! ## Current implementation
 //!
@@ -144,9 +144,9 @@ use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{DefUse, MaybeLiveLocals};
-use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_mir_dataflow::{Analysis, Results};
+use rustc_mir_dataflow::Analysis;
+use rustc_mir_dataflow::impls::{DefUse, MaybeBorrowedLocals, MaybeLiveLocals};
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use tracing::{debug, trace};
 
 pub(super) struct DestinationPropagation;
@@ -161,21 +161,18 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         let def_id = body.source.def_id();
         trace!(?def_id);
 
-        let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
-
-        let candidates = Candidates::find(body, &borrowed);
+        let candidates = Candidates::find(body);
         trace!(?candidates);
         if candidates.c.is_empty() {
             return;
         }
 
-        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
-
         let points = DenseLocationMap::new(body);
         let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
-        let mut live = save_as_intervals(&points, body, &relevant, live.results);
+        let borrowed = save_borrowed_locals(tcx, &points, body, &relevant);
+        let mut live = save_value_liveness(tcx, &points, body, &relevant, &borrowed);
 
-        dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
+        dest_prop_mir_dump(tcx, body, &points, &borrowed, &live, &relevant);
 
         let mut merged_locals = DenseBitSet::new_empty(body.local_decls.len());
 
@@ -382,8 +379,8 @@ impl Candidates {
     /// Collects the candidates for merging.
     ///
     /// This is responsible for enforcing the first and third bullet point.
-    fn find(body: &Body<'_>, borrowed: &DenseBitSet<Local>) -> Candidates {
-        let mut visitor = FindAssignments { body, candidates: Default::default(), borrowed };
+    fn find(body: &Body<'_>) -> Candidates {
+        let mut visitor = FindAssignments { body, candidates: Default::default() };
         visitor.visit_body(body);
 
         Candidates { c: visitor.candidates }
@@ -393,7 +390,6 @@ impl Candidates {
 struct FindAssignments<'a, 'tcx> {
     body: &'a Body<'tcx>,
     candidates: Vec<(Local, Local)>,
-    borrowed: &'a DenseBitSet<Local>,
 }
 
 impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
@@ -405,12 +401,6 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
             && let Some(src) = lhs.as_local()
             && let Some(dest) = rhs.as_local()
         {
-            // As described at the top of the file, we do not go near things that have
-            // their address taken.
-            if self.borrowed.contains(src) || self.borrowed.contains(dest) {
-                return;
-            }
-
             // As described at the top of this file, we do not touch locals which have
             // different types.
             let src_ty = self.body.local_decls()[src].ty;
@@ -445,10 +435,18 @@ fn dest_prop_mir_dump<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     points: &DenseLocationMap,
+    borrowed: &SparseIntervalMatrix<RelevantLocal, PointIndex>,
     live: &SparseIntervalMatrix<RelevantLocal, TwoStepIndex>,
     relevant: &RelevantLocals,
 ) {
-    let locals_live_at = |location| {
+    let borrowed_at = |location| {
+        borrowed
+            .rows()
+            .filter(|&r| borrowed.contains(r, location))
+            .map(|rl| relevant.original[rl])
+            .collect::<Vec<_>>()
+    };
+    let live_at = |location| {
         live.rows()
             .filter(|&r| live.contains(r, location))
             .map(|rl| relevant.original[rl])
@@ -458,13 +456,15 @@ fn dest_prop_mir_dump<'tcx>(
     if let Some(dumper) = MirDumper::new(tcx, "DestinationPropagation-dataflow", body) {
         let extra_data = &|pass_where, w: &mut dyn std::io::Write| {
             if let PassWhere::BeforeLocation(loc) = pass_where {
+                let borrowed = borrowed_at(points.point_from_location(loc));
+                writeln!(w, "        // borrowed: {:?}", borrowed)?;
                 let location = TwoStepIndex::new(points, loc, Effect::Before);
-                let live = locals_live_at(location);
+                let live = live_at(location);
                 writeln!(w, "        // before: {:?} => {:?}", location, live)?;
             }
             if let PassWhere::AfterLocation(loc) = pass_where {
                 let location = TwoStepIndex::new(points, loc, Effect::After);
-                let live = locals_live_at(location);
+                let live = live_at(location);
                 writeln!(w, "        // after: {:?} => {:?}", location, live)?;
             }
             Ok(())
@@ -503,15 +503,90 @@ impl TwoStepIndex {
     }
 }
 
-/// Add points depending on the result of the given dataflow analysis.
-fn save_as_intervals<'tcx>(
+fn save_borrowed_locals<'tcx>(
+    tcx: TyCtxt<'tcx>,
     elements: &DenseLocationMap,
     body: &Body<'tcx>,
     relevant: &RelevantLocals,
-    results: Results<DenseBitSet<Local>>,
+) -> SparseIntervalMatrix<RelevantLocal, PointIndex> {
+    let live =
+        MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("MaybeBorrowedLocals-DestProp"));
+    let mut analysis = live.analysis;
+    let results = live.results;
+
+    let mut values = SparseIntervalMatrix::new(elements.num_points());
+    let mut state = analysis.bottom_value(body);
+    let reachable_blocks = traversal::reachable_as_bitset(body);
+
+    let append_at = |values: &mut SparseIntervalMatrix<_, _>, state: &DenseBitSet<Local>, point| {
+        for (relevant, &original) in relevant.original.iter_enumerated() {
+            if state.contains(original) {
+                values.append(relevant, point);
+            }
+        }
+    };
+
+    // Iterate blocks in increasing order, to visit locations in increasing order. This
+    // allows to use the more efficient `append` method to interval sets.
+    for block in body.basic_blocks.indices() {
+        if !reachable_blocks.contains(block) {
+            continue;
+        }
+
+        state.clone_from(&results[block]);
+        let block_data = &body.basic_blocks[block];
+        let mut point = elements.entry_point(block);
+
+        for (statement_index, stmt) in block_data.statements.iter().enumerate() {
+            let loc = Location { block, statement_index };
+            analysis.apply_early_statement_effect(&mut state, stmt, loc);
+            analysis.apply_primary_statement_effect(&mut state, stmt, loc);
+
+            debug_assert_eq!(point, elements.point_from_location(loc));
+            append_at(&mut values, &state, point);
+
+            point = PointIndex::from_u32(point.as_u32() + 1);
+        }
+
+        let loc = Location { block, statement_index: block_data.statements.len() };
+        let term = block_data.terminator();
+        analysis.apply_early_terminator_effect(&mut state, term, loc);
+        analysis.apply_primary_terminator_effect(&mut state, term, loc);
+
+        debug_assert_eq!(point, elements.point_from_location(loc));
+        append_at(&mut values, &state, point);
+    }
+
+    values
+}
+
+fn save_value_liveness<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    elements: &DenseLocationMap,
+    body: &Body<'tcx>,
+    relevant: &RelevantLocals,
+    borrowed: &SparseIntervalMatrix<RelevantLocal, PointIndex>,
 ) -> SparseIntervalMatrix<RelevantLocal, TwoStepIndex> {
+    // Return the set of borrowed locals at the given location. Those will be marked as live if the
+    // statement contains an indirect read or write, or if the terminator may read/write to it.
+    let borrowed_locals_at = |location| {
+        let borrowed_ref = &borrowed; // Trick `move` closure.
+        let location = elements.point_from_location(location);
+        borrowed
+            .rows()
+            .filter(move |&r| borrowed_ref.contains(r, location))
+            .map(|rl| relevant.original[rl])
+    };
+    let live = MaybeLiveLocals(borrowed_locals_at).iterate_to_fixpoint(
+        tcx,
+        body,
+        Some("MaybeLiveLocals-DestProp"),
+    );
+    let mut analysis = live.analysis;
+    let results = live.results;
+
     let mut values = SparseIntervalMatrix::new(2 * elements.num_points());
-    let mut state = MaybeLiveLocals.bottom_value(body);
+    let mut state = analysis.bottom_value(body);
     let reachable_blocks = traversal::reachable_as_bitset(body);
 
     let two_step_loc = |location, effect| TwoStepIndex::new(elements, location, effect);
@@ -537,7 +612,9 @@ fn save_as_intervals<'tcx>(
         let loc = Location { block, statement_index: block_data.statements.len() };
 
         let term = block_data.terminator();
+
         let mut twostep = two_step_loc(loc, Effect::After);
+        analysis.apply_early_terminator_effect(&mut state, term, loc);
         append_at(&mut values, &state, twostep);
         // Ensure we have a non-zero live range even for dead stores. This is done by marking all
         // the written-to locals as live in the second half of the statement.
@@ -557,14 +634,14 @@ fn save_as_intervals<'tcx>(
 
         twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
         debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-        MaybeLiveLocals.apply_early_terminator_effect(&mut state, term, loc);
-        MaybeLiveLocals.apply_primary_terminator_effect(&mut state, term, loc);
+        analysis.apply_primary_terminator_effect(&mut state, term, loc);
         append_at(&mut values, &state, twostep);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
             twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::After));
+            analysis.apply_early_statement_effect(&mut state, stmt, loc);
             append_at(&mut values, &state, twostep);
             // Like terminators, ensure we have a non-zero live range even for dead stores.
             // Some rvalues interleave reads and writes, for instance `Rvalue::Aggregate`, see
@@ -597,8 +674,7 @@ fn save_as_intervals<'tcx>(
 
             twostep = TwoStepIndex::from_u32(twostep.as_u32() + 1);
             debug_assert_eq!(twostep, two_step_loc(loc, Effect::Before));
-            MaybeLiveLocals.apply_early_statement_effect(&mut state, stmt, loc);
-            MaybeLiveLocals.apply_primary_statement_effect(&mut state, stmt, loc);
+            analysis.apply_primary_statement_effect(&mut state, stmt, loc);
             // ... but reads from operands are marked as live here so they do not conflict with
             // the all the writes we manually marked as live in the second half of the statement.
             append_at(&mut values, &state, twostep);

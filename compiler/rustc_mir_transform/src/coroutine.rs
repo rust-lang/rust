@@ -708,8 +708,9 @@ fn locals_live_across_suspend_points<'tcx>(
     );
 
     // Calculate the liveness of MIR locals ignoring borrows.
-    let mut liveness =
-        MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("coroutine")).into_results_cursor(body);
+    let mut liveness = MaybeLiveLocals(|_| std::iter::empty())
+        .iterate_to_fixpoint(tcx, body, Some("coroutine"))
+        .into_results_cursor(body);
 
     let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
