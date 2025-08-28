@@ -41,7 +41,7 @@ use rustc_span::{
     Symbol, sym,
 };
 use rustc_target::spec::PanicStrategy;
-use rustc_trait_selection::traits;
+use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
@@ -895,6 +895,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_hir_typeck::provide(providers);
     ty::provide(providers);
     traits::provide(providers);
+    solve::provide(providers);
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     rustc_ty_utils::provide(providers);
