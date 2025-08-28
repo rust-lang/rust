@@ -132,7 +132,7 @@ impl DocFolder for Stripper<'_, '_> {
             clean::PrimitiveItem(..) => {}
 
             // Keywords are never stripped
-            clean::KeywordItem => {}
+            clean::KeywordItem { .. } => {}
         }
 
         let fastreturn = match i.kind {

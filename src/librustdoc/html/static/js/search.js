@@ -1557,6 +1557,7 @@ class DocSearch {
          * parent,
          * deprecated,
          * associated_item_disambiguator
+         * xx_url_name_override_xx
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
@@ -1564,7 +1565,7 @@ class DocSearch {
          *     number,
          *     number,
          *     number,
-         * ], [string]>}
+         * ], [string, string]>}
          */
         const raw = JSON.parse(encoded);
         return {
@@ -1574,7 +1575,8 @@ class DocSearch {
             exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
             parent: raw[4] === 0 ? null : raw[4] - 1,
             deprecated: raw[5] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+            associatedItemDisambiguator: raw.length <= 6 ? null : raw[6],
+            xxUrlNameOverrideXx: raw.length <= 7 ? null : raw[7],
         };
     }
 
@@ -2061,8 +2063,11 @@ class DocSearch {
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
                 exactPath = "";
+                const xxActualNameXx = type === "keyword"
+                    && item.entry && item.entry.xxUrlNameOverrideXx
+                    ? item.entry.xxUrlNameOverrideXx : name;
                 href = this.rootPath + path.replace(/::/g, "/") +
-                    "/" + type + "." + name + ".html";
+                    "/" + type + "." + xxActualNameXx + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
                 href = this.rootPath + name + "/index.html";

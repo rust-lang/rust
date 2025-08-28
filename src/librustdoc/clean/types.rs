@@ -201,8 +201,8 @@ impl ExternalCrate {
     fn mapped_root_modules<T>(
         &self,
         tcx: TyCtxt<'_>,
-        f: impl Fn(DefId, TyCtxt<'_>) -> Option<(DefId, T)>,
-    ) -> impl Iterator<Item = (DefId, T)> {
+        f: impl Fn(DefId, TyCtxt<'_>) -> Option<T>,
+    ) -> impl Iterator<Item = T> {
         let root = self.def_id();
 
         if root.is_local() {
@@ -225,13 +225,30 @@ impl ExternalCrate {
         }
     }
 
-    pub(crate) fn keywords(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = (DefId, Symbol)> {
-        fn as_keyword(did: DefId, tcx: TyCtxt<'_>) -> Option<(DefId, Symbol)> {
+    pub(crate) fn keywords(
+        &self,
+        tcx: TyCtxt<'_>,
+    ) -> impl Iterator<Item = (DefId, Symbol, Option<Symbol>)> {
+        fn as_keyword(did: DefId, tcx: TyCtxt<'_>) -> Option<(DefId, Symbol, Option<Symbol>)> {
             tcx.get_attrs(did, sym::doc)
                 .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
                 .filter(|meta| meta.has_name(sym::keyword))
-                .find_map(|meta| meta.value_str())
-                .map(|value| (did, value))
+                .find_map(|meta| {
+                    let mut keyword = None;
+                    let mut xx_url_name_override_xx = None;
+                    for value in meta.meta_item_list()? {
+                        match value {
+                            ast::MetaItemInner::MetaItem(meta) => {
+                                if !meta.has_name(sym::encode) {
+                                    return None;
+                                }
+                                xx_url_name_override_xx = Some(meta.value_str()?);
+                            }
+                            ast::MetaItemInner::Lit(lit) => keyword = Some(lit.value_str()?),
+                        }
+                    }
+                    keyword.map(|keyword| (did, keyword, xx_url_name_override_xx))
+                })
         }
 
         self.mapped_root_modules(tcx, as_keyword)
@@ -735,7 +752,9 @@ impl Item {
             // Primitives and Keywords are written in the source code as private modules.
             // The modules need to be private so that nobody actually uses them, but the
             // keywords and primitives that they are documenting are public.
-            ItemKind::KeywordItem | ItemKind::PrimitiveItem(_) => return Some(Visibility::Public),
+            ItemKind::KeywordItem { .. } | ItemKind::PrimitiveItem(_) => {
+                return Some(Visibility::Public);
+            }
             // Variant fields inherit their enum's visibility.
             StructFieldItem(..) if is_field_vis_inherited(tcx, def_id) => {
                 return None;
@@ -942,7 +961,9 @@ pub(crate) enum ItemKind {
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
-    KeywordItem,
+    KeywordItem {
+        xx_url_name_override_xx: Option<Symbol>,
+    },
 }
 
 impl ItemKind {
@@ -983,7 +1004,7 @@ impl ItemKind {
             | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
-            | KeywordItem => [].iter(),
+            | KeywordItem { .. } => [].iter(),
         }
     }
 

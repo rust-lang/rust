@@ -172,7 +172,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::StaticItem(..) | clean::ForeignStaticItem(..) => "Static ",
             clean::ConstantItem(..) => "Constant ",
             clean::ForeignTypeItem => "Foreign Type ",
-            clean::KeywordItem => "Keyword ",
+            clean::KeywordItem { .. } => "Keyword ",
             clean::TraitAliasItem(..) => "Trait Alias ",
             _ => {
                 // We don't generate pages for any other type.
@@ -252,7 +252,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ForeignTypeItem => {
                 write!(buf, "{}", item_foreign_type(cx, item))
             }
-            clean::KeywordItem => write!(buf, "{}", item_keyword(cx, item)),
+            clean::KeywordItem { .. } => {
+                write!(buf, "{}", item_keyword(cx, item))
+            }
             clean::TraitAliasItem(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
@@ -502,7 +504,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                     write!(
                         w,
                         "<dt>\
-                            <a class=\"{class}\" href=\"{href}\" title=\"{title1} {title2}\">\
+                            <a class=\"{class}\" href=\"{href}\" title=\"XXX {title1} {title2}\">\
                             {name}\
                             </a>\
                             {visibility_and_hidden}\
@@ -515,7 +517,15 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                         stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                         class = myitem.type_(),
                         unsafety_flag = unsafety_flag,
-                        href = print_item_path(myitem.type_(), myitem.name.unwrap().as_str()),
+                        href = print_item_path(
+                            myitem.type_(),
+                            match myitem.kind {
+                                clean::ItemKind::KeywordItem { xx_url_name_override_xx } =>
+                                    xx_url_name_override_xx,
+                                _ => None,
+                            }
+                            .or(myitem.name).unwrap().as_str()
+                        ),
                         title1 = myitem.type_(),
                         title2 = full_path(cx, myitem),
                     )?;

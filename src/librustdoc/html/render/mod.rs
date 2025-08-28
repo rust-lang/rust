@@ -130,6 +130,8 @@ pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
+    // XXX
+    pub(crate) xx_url_name_override_xx: Option<Symbol>,
     pub(crate) module_path: Vec<Symbol>,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,

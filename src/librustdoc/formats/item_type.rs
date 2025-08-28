@@ -147,7 +147,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             | clean::ImplAssocConstItem(..) => ItemType::AssocConst,
             clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
-            clean::KeywordItem => ItemType::Keyword,
+            clean::KeywordItem { .. } => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,

@@ -257,7 +257,7 @@ impl SerializedSearchIndex {
                 slot.insert(self.path_data.len());
                 let (name, module_path) = path.split_last().unwrap();
                 self.push_path(
-                    name.as_str().to_string(),
+                    name.to_string(),
                     PathData { ty, module_path: module_path.to_vec(), exact_module_path: None },
                 )
             }
@@ -523,6 +523,7 @@ impl SerializedSearchIndex {
                          parent,
                          deprecated,
                          associated_item_disambiguator,
+                         xx_url_name_override_xx,
                      }| EntryData {
                         krate: *map.get(krate).unwrap(),
                         ty: *ty,
@@ -532,6 +533,7 @@ impl SerializedSearchIndex {
                         parent: parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
                         associated_item_disambiguator: associated_item_disambiguator.clone(),
+                        xx_url_name_override_xx: xx_url_name_override_xx.clone(),
                     },
                 ),
                 self.descs[id].clone(),
@@ -790,6 +792,7 @@ struct EntryData {
     parent: Option<usize>,
     deprecated: bool,
     associated_item_disambiguator: Option<String>,
+    xx_url_name_override_xx: Option<String>,
 }
 
 impl Serialize for EntryData {
@@ -805,7 +808,14 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
         if let Some(disambig) = &self.associated_item_disambiguator {
-            seq.serialize_element(&disambig)?;
+            seq.serialize_element(disambig)?;
+        }
+        if let Some(x) = &self.xx_url_name_override_xx {
+            // FIXME: temp approach
+            if self.associated_item_disambiguator.is_none() {
+                seq.serialize_element(&self.associated_item_disambiguator)?;
+            }
+            seq.serialize_element(x)?;
         }
         seq.end()
     }
@@ -835,7 +845,9 @@ impl<'de> Deserialize<'de> for EntryData {
                 let parent: SerializedOptional32 =
                     v.next_element()?.ok_or_else(|| A::Error::missing_field("parent"))?;
                 let deprecated: u32 = v.next_element()?.unwrap_or(0);
+                // XXX: This doesn't work.
                 let associated_item_disambiguator: Option<String> = v.next_element()?;
+                let xx_url_name_override_xx: Option<String> = v.next_element()?;
                 Ok(EntryData {
                     krate,
                     ty,
@@ -845,6 +857,7 @@ impl<'de> Deserialize<'de> for EntryData {
                     parent: Option::<i32>::from(parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
                     associated_item_disambiguator,
+                    xx_url_name_override_xx,
                 })
             }
         }
@@ -1175,6 +1188,7 @@ pub(crate) fn build_index(
                 ty: item.type_(),
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
+                xx_url_name_override_xx: None,
                 module_path: fqp[..fqp.len() - 1].to_vec(),
                 desc,
                 parent: Some(parent),
@@ -1263,7 +1277,7 @@ pub(crate) fn build_index(
                 let krate = serialized_index.names.len();
                 slot.insert(krate);
                 serialized_index.push(
-                    crate_name.as_str().to_string(),
+                    crate_name.to_string(),
                     Some(PathData {
                         ty: ItemType::ExternCrate,
                         module_path: vec![],
@@ -1277,6 +1291,7 @@ pub(crate) fn build_index(
                         parent: None,
                         deprecated: false,
                         associated_item_disambiguator: None,
+                        xx_url_name_override_xx: None,
                     }),
                     crate_doc,
                     None,
@@ -1301,7 +1316,7 @@ pub(crate) fn build_index(
                             entry.insert(pathid);
                             let (name, path) = fqp.split_last().unwrap();
                             serialized_index.push_path(
-                                name.as_str().to_string(),
+                                name.to_string(),
                                 PathData {
                                     ty,
                                     module_path: path.to_vec(),
@@ -1398,7 +1413,7 @@ pub(crate) fn build_index(
             .map(|path| serialized_index.get_id_by_module_path(path));
 
         let new_entry_id = serialized_index.push(
-            item.name.as_str().to_string(),
+            item.name.to_string(),
             None,
             Some(EntryData {
                 ty: item.ty,
@@ -1418,6 +1433,7 @@ pub(crate) fn build_index(
                 } else {
                     None
                 },
+                xx_url_name_override_xx: item.xx_url_name_override_xx.map(|x| x.to_string()),
                 krate: crate_idx,
             }),
             item.desc.to_string(),
@@ -1429,7 +1445,7 @@ pub(crate) fn build_index(
         // Aliases
         // -------
         for alias in &item.aliases[..] {
-            serialized_index.push_alias(alias.as_str().to_string(), new_entry_id);
+            serialized_index.push_alias(alias.to_string(), new_entry_id);
         }
 
         // Function signature reverse index
