@@ -183,7 +183,9 @@ fn get_type_from_field<'tcx>(
     cx.tcx.try_normalize_erasing_regions(cx.typing_env(), field_ty).unwrap_or(field_ty)
 }
 
-/// Check a variant of a non-exhaustive enum for improper ctypes
+/// Check a variant of a non-exhaustive enum for improper ctypes.
+/// Returns two bools: "we have FFI-unsafety due to non-exhaustive enum" and
+/// "we have FFI-unsafety due to a non-exhaustive enum variant".
 ///
 /// We treat `#[non_exhaustive] enum` as "ensure that code will compile if new variants are added".
 /// This includes linting, on a best-effort basis. There are valid additions that are unlikely.
@@ -191,10 +193,10 @@ fn get_type_from_field<'tcx>(
 /// Adding a data-carrying variant to an existing C-like enum that is passed to C is "unlikely",
 /// so we don't need the lint to account for it.
 /// e.g. going from enum Foo { A, B, C } to enum Foo { A, B, C, D(u32) }.
-pub(crate) fn check_non_exhaustive_variant(
+pub(crate) fn flag_non_exhaustive_variant(
     non_exhaustive_variant_list: bool,
     variant: &ty::VariantDef,
-) -> ControlFlow<DiagMessage, ()> {
+) -> (bool, bool) {
     // non_exhaustive suggests it is possible that someone might break ABI
     // see: https://github.com/rust-lang/rust/issues/44109#issuecomment-537583344
     // so warn on complex enums being used outside their crate
@@ -203,15 +205,15 @@ pub(crate) fn check_non_exhaustive_variant(
         // with an enum like `#[repr(u8)] enum Enum { A(DataA), B(DataB), }`
         // but exempt enums with unit ctors like C's (e.g. from rust-bindgen)
         if variant_has_complex_ctor(variant) {
-            return ControlFlow::Break(fluent::lint_improper_ctypes_non_exhaustive);
+            return (true, false);
         }
     }
 
     if variant.field_list_has_applicable_non_exhaustive() {
-        return ControlFlow::Break(fluent::lint_improper_ctypes_non_exhaustive_variant);
+        return (false, true);
     }
 
-    ControlFlow::Continue(())
+    (false, false)
 }
 
 fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
@@ -866,39 +868,114 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        let transparent_with_all_zst_fields = if def.repr().transparent() {
-            if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
-                // Transparent newtypes have at most one non-ZST field which needs to be checked..
-                let field_ty = get_type_from_field(self.cx, field, args);
-                return self.visit_type(state, Some(ty), field_ty);
+        let mut ffires_accumulator = FfiSafe;
+
+        let (transparent_with_all_zst_fields, field_list) =
+            if !matches!(def.adt_kind(), AdtKind::Enum) && def.repr().transparent() {
+                // determine if there is 0 or 1 non-1ZST field, and which it is.
+                // (note: for enums, "transparent" means 1-variant)
+                if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
+                    // Transparent newtypes have at most one non-ZST field which needs to be checked later
+                    (false, vec![field])
+                } else {
+                    // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
+                    // `PhantomData`).
+                    (true, variant.fields.iter().collect::<Vec<_>>())
+                }
             } else {
-                // ..or have only ZST fields, which is FFI-unsafe (unless those fields are all
-                // `PhantomData`).
-                true
-            }
-        } else {
-            false
-        };
+                (false, variant.fields.iter().collect::<Vec<_>>())
+            };
 
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
-        for field in &variant.fields {
+        let mut fields_ok_list = vec![true; field_list.len()];
+
+        for (field_i, field) in field_list.into_iter().enumerate() {
             let field_ty = get_type_from_field(self.cx, field, args);
-            all_phantom &= match self.visit_type(state, Some(ty), field_ty) {
-                FfiSafe => false,
-                // `()` fields are FFI-safe!
+            let ffi_res = self.visit_type(state, Some(ty), field_ty);
+
+            // checking that this is not an FfiUnsafe due to an unit type:
+            // visit_type should be smart enough to not consider it unsafe if called from another ADT
+            #[cfg(debug_assertions)]
+            if let FfiUnsafe(ref reasons) = ffi_res {
+                if let (1, Some(FfiUnsafeExplanation { reason, .. })) =
+                    (reasons.len(), reasons.first())
+                {
+                    let FfiUnsafeReason { ty, .. } = reason.as_ref();
+                    debug_assert!(!ty.is_unit());
+                }
+            }
+
+            all_phantom &= match ffi_res {
                 FfiPhantom(..) => true,
+                FfiSafe => false,
                 r @ FfiUnsafe { .. } => {
-                    return r.wrap_all(
-                        ty,
-                        fluent::lint_improper_ctypes_struct_dueto,
-                        None,
-                    );
+                    fields_ok_list[field_i] = false;
+                    ffires_accumulator += r;
+                    false
                 }
             }
         }
 
-        if all_phantom {
+        // if we have bad fields, also report a possible transparent_with_all_zst_fields
+        // (if this combination is somehow possible)
+        // otherwise, having all fields be phantoms
+        // takes priority over transparent_with_all_zst_fields
+        if let FfiUnsafe(explanations) = ffires_accumulator {
+            // we assume the repr() of this ADT is either non-packed C or transparent.
+            debug_assert!(def.repr().c() || def.repr().transparent() || def.repr().int.is_some());
+
+            if def.repr().transparent() || matches!(def.adt_kind(), AdtKind::Enum) {
+                let field_ffires = FfiUnsafe(explanations).wrap_all(
+                    ty,
+                    fluent::lint_improper_ctypes_struct_dueto,
+                    None,
+                );
+                if transparent_with_all_zst_fields {
+                    field_ffires
+                        + FfiResult::new_with_reason(
+                            ty,
+                            fluent::lint_improper_ctypes_struct_zst,
+                            None,
+                        )
+                } else {
+                    field_ffires
+                }
+            } else {
+                // since we have a repr(C) struct/union, there's a chance that we have some unsafe fields,
+                // but also exactly one non-1ZST field that is FFI-safe:
+                // we want to suggest repr(transparent) here.
+                // (FIXME(ctypes): confirm that this makes sense for unions once #60405 / RFC2645 stabilises)
+                let non_1zst_fields = super::map_non_1zst_fields(self.cx.tcx, variant);
+                let (last_non_1zst, non_1zst_count) = non_1zst_fields.into_iter().enumerate().fold(
+                    (None, 0_usize),
+                    |(prev_nz, count), (field_i, is_nz)| {
+                        if is_nz { (Some(field_i), count + 1) } else { (prev_nz, count) }
+                    },
+                );
+                let help = if non_1zst_count == 1
+                    && last_non_1zst.map(|field_i| fields_ok_list[field_i]) == Some(true)
+                {
+                    match def.adt_kind() {
+                        AdtKind::Struct => {
+                            Some(fluent::lint_improper_ctypes_struct_consider_transparent)
+                        }
+                        AdtKind::Union => {
+                            Some(fluent::lint_improper_ctypes_union_consider_transparent)
+                        }
+                        AdtKind::Enum => bug!("cannot suggest an enum to be repr(transparent)"),
+                    }
+                } else {
+                    None
+                };
+
+                FfiUnsafe(explanations).wrap_all(
+                    ty,
+                    fluent::lint_improper_ctypes_struct_dueto,
+                    help,
+                )
+            }
+        } else if all_phantom {
             FfiPhantom(ty)
         } else if transparent_with_all_zst_fields {
             FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_struct_zst, None)
@@ -1010,22 +1087,41 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
         // Check the contained variants.
-        let ret = def.variants().iter().try_for_each(|variant| {
-            check_non_exhaustive_variant(non_exhaustive, variant)
-                .map_break(|reason| FfiResult::new_with_reason(ty, reason, None))?;
 
-            match self.visit_variant_fields(state, ty, def, variant, args) {
-                FfiSafe => ControlFlow::Continue(()),
-                r => ControlFlow::Break(r),
-            }
+        let (mut nonexhaustive_flag, mut nonexhaustive_variant_flag) = (false, false);
+        def.variants().iter().for_each(|variant| {
+            let (nonex_enum, nonex_var) = flag_non_exhaustive_variant(non_exhaustive, variant);
+            nonexhaustive_flag |= nonex_enum;
+            nonexhaustive_variant_flag |= nonex_var;
         });
-        if let ControlFlow::Break(result) = ret {
+
+        // "nonexhaustive" lints only happen outside of the crate defining the enum, so no CItemKind override
+        // (meaning: the fault lies in the function call, not the enum)
+        if nonexhaustive_flag {
+            FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_non_exhaustive, None)
+        } else if nonexhaustive_variant_flag {
+            FfiResult::new_with_reason(
+                ty,
+                fluent::lint_improper_ctypes_non_exhaustive_variant,
+                None,
+            )
+        } else {
+            let ffires = def
+                .variants()
+                .iter()
+                .map(|variant| {
+                    let variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                    // FIXME(ctypes): check that enums allow any (up to all) variants to be phantoms?
+                    // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
+                    variant_res.forbid_phantom()
+                })
+                .reduce(|r1, r2| r1 + r2)
+                .unwrap(); // always at least one variant if we hit this branch
+
             // this enum is visited in the middle of another lint,
             // so we override the "cause type" of the lint
-            // (for more detail, see comment in ``visit_struct_union`` before its call to ``result.with_overrides``)
-            result.with_overrides(Some(ty))
-        } else {
-            FfiSafe
+            // (for more detail, see comment in ``visit_struct_union`` before its call to ``ffires.with_overrides``)
+            ffires.with_overrides(Some(ty))
         }
     }
 

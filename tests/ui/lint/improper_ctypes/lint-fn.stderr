@@ -96,7 +96,7 @@ LL | pub extern "C" fn zero_size(p: ZeroSize) { }
    |                                ^^^^^^^^ not FFI-safe
    |
    = help: consider adding a member to this struct
-   = note: this struct has no fields
+   = note: `ZeroSize` has no fields
 note: the type is defined here
   --> $DIR/lint-fn.rs:25:1
    |
@@ -148,6 +148,12 @@ error: `extern` fn uses type `TransparentStr`, which is not FFI-safe
 LL | pub extern "C" fn transparent_str(p: TransparentStr) { }
    |                                      ^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: this struct/enum/union (`TransparentStr`) is FFI-unsafe due to a `&str` field
+note: the type is defined here
+  --> $DIR/lint-fn.rs:39:1
+   |
+LL | pub struct TransparentStr(&'static str);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
@@ -165,8 +171,8 @@ error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
 LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    |                                       ^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `Vec<T>`
+   = note: `Vec<T>` has unspecified layout
 
 error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
   --> $DIR/lint-fn.rs:189:41
@@ -174,8 +180,8 @@ error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
 LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    |                                         ^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `Vec<T>`
+   = note: `Vec<T>` has unspecified layout
 
 error: aborting due to 18 previous errors
 

@@ -4,8 +4,8 @@ error: `extern` block uses type `A`, which is not FFI-safe
 LL |     fn foo(x: A);
    |               ^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
+   = note: `A` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:8:1
    |
@@ -29,8 +29,8 @@ note: the type is defined here
    |
 LL | struct B {
    | ^^^^^^^^
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
+   = note: `A` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:8:1
    |
@@ -43,8 +43,8 @@ error: `extern` block uses type `A`, which is not FFI-safe
 LL |     fn qux(x: A2);
    |               ^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
+   = note: `A` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:8:1
    |
@@ -63,8 +63,8 @@ note: the type is defined here
    |
 LL | struct B {
    | ^^^^^^^^
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
+   = note: `A` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:8:1
    |
@@ -83,8 +83,8 @@ note: the type is defined here
    |
 LL | struct D {
    | ^^^^^^^^
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `A`
+   = note: `A` has unspecified layout
 note: the type is defined here
   --> $DIR/repr-rust-is-undefined.rs:8:1
    |
