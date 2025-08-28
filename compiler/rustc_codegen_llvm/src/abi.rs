@@ -375,8 +375,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
             return true;
         }
 
-        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust 
-        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM 
+        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
         // as, well, packed structs, so they won't match with those either)
         if self.type_kind(llvm_ty) == TypeKind::Struct
             && self.type_kind(rust_ty) == TypeKind::Struct

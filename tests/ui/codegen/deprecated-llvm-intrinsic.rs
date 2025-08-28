@@ -16,9 +16,10 @@ use minicore::*;
 pub struct i8x8([i8; 8]);
 
 extern "unadjusted" {
+    #![warn(deprecated_llvm_intrinsic)]
     #[link_name = "llvm.aarch64.neon.rbit.v8i8"]
     fn foo(a: i8x8) -> i8x8;
-    //~^ NOTE: Using deprecated intrinsic `llvm.aarch64.neon.rbit.v8i8`, `llvm.bitreverse.v8i8` can be used instead
+    //~^ WARN: Using deprecated intrinsic `llvm.aarch64.neon.rbit.v8i8`, `llvm.bitreverse.v8i8` can be used instead
 }
 
 #[target_feature(enable = "neon")]

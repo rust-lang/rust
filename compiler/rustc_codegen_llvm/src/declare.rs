@@ -18,6 +18,7 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_session::lint::builtin::{DEPRECATED_LLVM_INTRINSIC, UNKNOWN_LLVM_INTRINSIC};
 use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -216,22 +217,32 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             let can_upgrade =
                 unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn, false) };
 
-            if can_upgrade {
-                // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
-                if let Some(new_llfn) = new_llfn {
-                    self.tcx.dcx().emit_note(errors::DeprecatedIntrinsicWithReplacement {
-                        name,
-                        replacement: str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap(),
-                        span: span(),
+            // we can emit diagnostics for local crates only
+            if let Some(instance) = instance
+                && let Some(local_def_id) = instance.def_id().as_local()
+            {
+                let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
+                let span = self.tcx.def_span(local_def_id);
+
+                if can_upgrade {
+                    // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+                    let msg = if let Some(new_llfn) = new_llfn {
+                        format!(
+                            "Using deprecated intrinsic `{name}`, `{}` can be used instead",
+                            str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+                        )
+                    } else {
+                        format!("Using deprecated intrinsic `{name}`")
+                    };
+                    self.tcx.node_lint(DEPRECATED_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(msg).span(span);
                     });
-                } else if self.tcx.sess.opts.verbose {
-                    // At least for now, we are only emitting notes for deprecated intrinsics with no direct replacement
-                    // because they are used quite a lot in stdarch. After the stdarch uses has been removed, we can make
-                    // this always emit a note (or even an warning)
-                    self.tcx.dcx().emit_note(errors::DeprecatedIntrinsic { name, span: span() });
+                } else {
+                    // This is either plain wrong, or this can be caused by incompatible LLVM versions, we let the user decide
+                    self.tcx.node_lint(UNKNOWN_LLVM_INTRINSIC, hir_id, |d| {
+                        d.primary_message(format!("Invalid LLVM Intrinsic `{name}`")).span(span);
+                    });
                 }
-            } else {
-                self.tcx.dcx().emit_fatal(errors::InvalidIntrinsic { name, span: span() });
             }
         }
 

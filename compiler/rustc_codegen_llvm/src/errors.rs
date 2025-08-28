@@ -159,31 +159,6 @@ pub(crate) struct IntrinsicSignatureMismatch<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_intrinsic)]
-pub(crate) struct InvalidIntrinsic<'a> {
-    pub name: &'a str,
-    #[primary_span]
-    pub span: Option<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_deprecated_intrinsic)]
-pub(crate) struct DeprecatedIntrinsic<'a> {
-    pub name: &'a str,
-    #[primary_span]
-    pub span: Option<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_deprecated_intrinsic_with_replacement)]
-pub(crate) struct DeprecatedIntrinsicWithReplacement<'a> {
-    pub name: &'a str,
-    pub replacement: &'a str,
-    #[primary_span]
-    pub span: Option<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_intrinsic_wrong_arch)]
 pub(crate) struct IntrinsicWrongArch<'a> {
     pub name: &'a str,

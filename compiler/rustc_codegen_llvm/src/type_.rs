@@ -71,9 +71,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
-        unsafe {
-            llvm::LLVMGetReturnType(ty)
-        }
+        unsafe { llvm::LLVMGetReturnType(ty) }
     }
 
     pub(crate) fn func_params_types(&self, ty: &'ll Type) -> Vec<&'ll Type> {
