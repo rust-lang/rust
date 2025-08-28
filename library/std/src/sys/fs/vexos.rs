@@ -32,6 +32,7 @@ pub struct OpenOptions {
     write: bool,
     append: bool,
     truncate: bool,
+    create: bool,
     create_new: bool,
 }
 
@@ -131,7 +132,7 @@ impl FileType {
     }
 
     pub fn is_symlink(&self) -> bool {
-        // No symlinks in vexos; entries are either files or directories.
+        // No symlinks in VEXos - entries are either files or directories.
         false
     }
 }
@@ -170,7 +171,14 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, append: false, truncate: false, create_new: false }
+        OpenOptions {
+            read: false,
+            write: false,
+            append: false,
+            truncate: false,
+            create: false,
+            create_new: false,
+        }
     }
 
     pub fn read(&mut self, read: bool) {
@@ -186,7 +194,7 @@ impl OpenOptions {
         self.truncate = truncate;
     }
     pub fn create(&mut self, create: bool) {
-        self.write = create;
+        self.create = create;
     }
     pub fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
@@ -195,51 +203,65 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        // Mount sdcard volume as FAT filesystem
-        map_fresult(unsafe { vex_sdk::vexFileMountSD() })?;
-
         let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
         })?;
 
-        if opts.write && opts.read {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Files cannot be opened with read and write access",
-            ));
-        }
-        if opts.create_new {
-            let file_exists = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
-            if file_exists != 0 {
-                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File already exists"));
-            }
-        }
+        let file =
+            match (opts.read, opts.write, opts.append, opts.truncate, opts.create, opts.create_new)
+            {
+                // read + write - unsupported
+                (true, true, _, _, _, _) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "Opening files in both read and write mode is unsupported",
+                    ));
+                }
 
-        let file = if opts.read && !opts.write {
-            // The second argument to this function is ignored.
-            // Open in read only mode
-            unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) }
-        } else if opts.write && opts.append {
-            // Open in write and append mode
-            unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) }
-        } else if opts.write && opts.truncate {
-            // Open in write mode
-            unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
-        } else if opts.write {
-            unsafe {
-                // Open in read/write and append mode
-                let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
-                // Seek to beginning of the file
-                vex_sdk::vexFileSeek(fd, 0, 0);
+                // read
+                (true, false, _, false, false, false) => unsafe {
+                    vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr())
+                },
 
-                fd
-            }
-        } else {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "Files cannot be opened without read or write access",
-            ));
-        };
+                // append
+                (false, _, true, false, create, create_new) => unsafe {
+                    if create_new && vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
+                        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File exists"));
+                    } else if !create && vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::NotFound,
+                            "No such file or directory",
+                        ));
+                    }
+
+                    vex_sdk::vexFileOpenWrite(path.as_ptr())
+                },
+
+                // write
+                (false, true, false, truncate, create, create_new) => unsafe {
+                    if create_new && vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
+                        return Err(io::Error::new(io::ErrorKind::AlreadyExists, "File exists"));
+                    } else if !create && vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
+                        return Err(io::Error::new(
+                            io::ErrorKind::NotFound,
+                            "No such file or directory",
+                        ));
+                    }
+
+                    if truncate {
+                        unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
+                    } else {
+                        // Open in append, but jump to the start of the file.
+                        let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
+                        vex_sdk::vexFileSeek(fd, 0, 0);
+                        fd
+                    }
+                },
+
+                _ => {
+                    return Err(io::Error::new(io::ErrorKind::InvalidInput, "Invalid argument"));
+                }
+            };
 
         if file.is_null() {
             Err(io::Error::new(io::ErrorKind::NotFound, "Could not open file"))
@@ -288,6 +310,7 @@ impl File {
         let len = buf.len() as _;
         let buf_ptr = buf.as_mut_ptr();
         let read = unsafe { vex_sdk::vexFileRead(buf_ptr.cast(), 1, len, self.fd.0) };
+
         if read < 0 {
             Err(io::Error::new(io::ErrorKind::Other, "Could not read from file"))
         } else {
@@ -313,6 +336,7 @@ impl File {
         let buf_ptr = buf.as_ptr();
         let written =
             unsafe { vex_sdk::vexFileWrite(buf_ptr.cast_mut().cast(), 1, len as _, self.fd.0) };
+
         if written < 0 {
             Err(io::Error::new(io::ErrorKind::Other, "Could not write to file"))
         } else {
@@ -338,6 +362,7 @@ impl File {
 
     pub fn tell(&self) -> io::Result<u64> {
         let position = unsafe { vex_sdk::vexFileTell(self.fd.0) };
+
         position.try_into().map_err(|_| {
             io::Error::new(io::ErrorKind::InvalidData, "Failed to get current location in file")
         })
