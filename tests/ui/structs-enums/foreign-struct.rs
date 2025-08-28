@@ -1,17 +1,22 @@
 //@ run-pass
 #![allow(dead_code)]
-#![allow(non_camel_case_types)]
 
 // Passing enums by value
 
-
-pub enum void {}
+#[repr(C)]
+pub enum PoorQualityAnyEnum {
+   None = 0,
+   Int = 1,
+   Long = 2,
+   Float = 17,
+   Double = 18,
+}
 
 mod bindgen {
-    use super::void;
+    use super::PoorQualityAnyEnum;
 
     extern "C" {
-        pub fn printf(v: void);
+        pub fn printf(v: PoorQualityAnyEnum);
     }
 }
 

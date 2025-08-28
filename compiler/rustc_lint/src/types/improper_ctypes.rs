@@ -320,7 +320,6 @@ impl<'tcx> FfiResult<'tcx> {
     /// if the note at their core reason is one in a provided list.
     /// If the FfiResult is not FfiUnsafe, or if no reasons are plucked,
     /// then return FfiSafe.
-    #[expect(unused)]
     fn take_with_core_note(&mut self, notes: &[DiagMessage]) -> Self {
         match self {
             Self::FfiUnsafe(this) => {
@@ -733,6 +732,20 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         all_ffires
     }
 
+    /// Checks whether an uninhabited type (one without valid values) is safe-ish to have here.
+    fn visit_uninhabited(&self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
+        if state.is_in_function_return() {
+            FfiResult::FfiSafe
+        } else {
+            let desc = match ty.kind() {
+                ty::Adt(..) => fluent::lint_improper_ctypes_uninhabited_enum,
+                ty::Never => fluent::lint_improper_ctypes_uninhabited_never,
+                r @ _ => bug!("unexpected ty_kind in uninhabited type handling: {:?}", r),
+            };
+            FfiResult::new_with_reason(ty, desc, None)
+        }
+    }
+
     /// Checks if a simple numeric (int, float) type has an actual portable definition
     /// for the compile target.
     fn visit_numeric(&self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
@@ -883,6 +896,24 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             if !matches!(def.adt_kind(), AdtKind::Enum) && def.repr().transparent() {
                 // determine if there is 0 or 1 non-1ZST field, and which it is.
                 // (note: for enums, "transparent" means 1-variant)
+                if ty.is_privately_uninhabited(self.cx.tcx, self.cx.typing_env()) {
+                    // let's consider transparent structs to be maybe unsafe if uninhabited,
+                    // even if that is because of fields otherwise ignored in FFI-safety checks
+                    // FIXME(ctypes): and also maybe this should be "!is_inhabited_from" but from where?
+                    ffires_accumulator += variant
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let field_ty = get_type_from_field(self.cx, field, args);
+                            let mut field_res = self.visit_type(state, Some(ty), field_ty);
+                            field_res.take_with_core_note(&[
+                                fluent::lint_improper_ctypes_uninhabited_enum,
+                                fluent::lint_improper_ctypes_uninhabited_never,
+                            ])
+                        })
+                        .reduce(|r1, r2| r1 + r2)
+                        .unwrap() // if uninhabited, then >0 fields
+                }
                 if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                     // Transparent newtypes have at most one non-ZST field which needs to be checked later
                     (false, vec![field])
@@ -1073,8 +1104,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         use FfiResult::*;
 
         if def.variants().is_empty() {
-            // Empty enums are okay... although sort of useless.
-            return FfiSafe;
+            // Empty enums are implicitly handled as the never type:
+            return self.visit_uninhabited(state, ty);
         }
         // Check for a repr() attribute to specify the size of the
         // discriminant.
@@ -1115,17 +1146,32 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 None,
             )
         } else {
-            let ffires = def
+            // small caveat to checking the variants: we authorise up to n-1 invariants
+            // to be unsafe because uninhabited.
+            // so for now let's isolate those unsafeties
+            let mut variants_uninhabited_ffires = vec![FfiSafe; def.variants().len()];
+
+            let mut ffires = def
                 .variants()
                 .iter()
-                .map(|variant| {
-                    let variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                .enumerate()
+                .map(|(variant_i, variant)| {
+                    let mut variant_res = self.visit_variant_fields(state, ty, def, variant, args);
+                    variants_uninhabited_ffires[variant_i] = variant_res.take_with_core_note(&[
+                        fluent::lint_improper_ctypes_uninhabited_enum,
+                        fluent::lint_improper_ctypes_uninhabited_never,
+                    ]);
                     // FIXME(ctypes): check that enums allow any (up to all) variants to be phantoms?
                     // (previous code says no, but I don't know why? the problem with phantoms is that they're ZSTs, right?)
                     variant_res.forbid_phantom()
                 })
                 .reduce(|r1, r2| r1 + r2)
                 .unwrap(); // always at least one variant if we hit this branch
+
+            if variants_uninhabited_ffires.iter().all(|res| matches!(res, FfiUnsafe(..))) {
+                // if the enum is uninhabited, because all its variants are uninhabited
+                ffires += variants_uninhabited_ffires.into_iter().reduce(|r1, r2| r1 + r2).unwrap();
+            }
 
             // this enum is visited in the middle of another lint,
             // so we override the "cause type" of the lint
@@ -1303,7 +1349,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Foreign(..) => FfiSafe,
 
-            ty::Never => FfiSafe,
+            ty::Never => self.visit_uninhabited(state, ty),
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
