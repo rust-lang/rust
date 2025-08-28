@@ -879,6 +879,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
         }
 
+        // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
         fn is_builtin_attr(s: Symbol) -> bool {
             rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&s)
         }
