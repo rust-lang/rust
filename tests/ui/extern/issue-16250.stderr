@@ -5,7 +5,7 @@ LL |     pub fn foo(x: (Foo));
    |                    ^^^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = note: `Foo` has unspecified layout
 note: the type is defined here
   --> $DIR/issue-16250.rs:3:1
    |

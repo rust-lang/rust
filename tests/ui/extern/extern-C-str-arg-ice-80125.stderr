@@ -15,7 +15,7 @@ LL | pub extern "C" fn register_something(bind: ExternCallback) -> Struct {
    |                                                               ^^^^^^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = note: `Struct` has unspecified layout
 note: the type is defined here
   --> $DIR/extern-C-str-arg-ice-80125.rs:6:1
    |

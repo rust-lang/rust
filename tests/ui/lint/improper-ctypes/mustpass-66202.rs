@@ -11,7 +11,7 @@ pub struct W<T>(T);
 extern "C" {
     pub fn bare() -> ();
     pub fn normalize() -> <() as ToOwned>::Owned;
-    pub fn transparent() -> W<()>;
+    pub fn transparent() -> W<u8>;
 }
 
 fn main() {}

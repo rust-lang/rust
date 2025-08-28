@@ -5,7 +5,7 @@ LL |         fn _svdup_n_s32(op: i32) -> svint32_t;
    |                                     ^^^^^^^^^ not FFI-safe
    |
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = note: `svint32_t` has unspecified layout
 note: the type is defined here
   --> $DIR/require-target-feature.rs:21:1
    |
