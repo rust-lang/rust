@@ -37,7 +37,7 @@
     asm_experimental_arch,
     unboxed_closures
 )]
-#![allow(unused, improper_ctypes_definitions, internal_features, non_camel_case_types)]
+#![allow(unused, internal_features, non_camel_case_types)]
 #![no_std]
 #![no_core]
 
