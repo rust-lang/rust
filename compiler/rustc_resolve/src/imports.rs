@@ -1645,8 +1645,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         module.for_each_child(self, |this, ident, _, binding| {
             let res = binding.res().expect_non_local();
-            let error_ambiguity = binding.is_ambiguity_recursive() && !binding.warn_ambiguity;
-            if res != def::Res::Err && !error_ambiguity {
+            if res != def::Res::Err && !binding.is_ambiguity_recursive() {
                 let mut reexport_chain = SmallVec::new();
                 let mut next_binding = binding;
                 while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
