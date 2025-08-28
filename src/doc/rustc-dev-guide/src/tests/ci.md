@@ -22,7 +22,7 @@ jobs](#modifying-ci-jobs).
 
 ## CI workflow
 
-<!-- date-check: Oct 2024 -->
+<!-- date-check: Aug 2025 -->
 
 Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
