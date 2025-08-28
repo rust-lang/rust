@@ -81,6 +81,37 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `improper_c_var_definitions` lint detects incorrect use of
+    /// [`no_mangle`] and [`export_name`] static variable definitions.
+    /// (In other words, static variables accessible by name by foreign code.)
+    ///
+    /// [`no_mangle`]: https://doc.rust-lang.org/stable/reference/abi.html#the-no_mangle-attribute
+    /// [`export_name`]: https://doc.rust-lang.org/stable/reference/abi.html#the-export_name-attribute
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #[unsafe(no_mangle)]
+    /// # #[used]
+    /// static mut PLUGIN_ABI_MIN_VERSION: &'static str = "0.0.5";
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler has several checks to verify that types used in
+    /// static variables exposed to foreign code are safe and follow
+    /// certain rules to ensure proper compatibility with the foreign interfaces.
+    /// This lint is issued when it detects a probable mistake in a definition.
+    /// The lint usually should provide a description of the issue,
+    /// along with possibly a hint on how to resolve it.
+    pub(crate) IMPROPER_C_VAR_DEFINITIONS,
+    Warn,
+    "proper use of libc types in foreign-reachable static variable definitions"
+}
+
+declare_lint! {
     /// The `improper_c_callbacks` lint detects incorrect use of
     /// [`extern` function] pointers.
     /// (In other words, function signatures for callbacks.)
@@ -166,6 +197,7 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
     IMPROPER_C_FN_DEFINITIONS,
+    IMPROPER_C_VAR_DEFINITIONS,
     IMPROPER_C_CALLBACKS,
     USES_POWER_ALIGNMENT,
 ]);
@@ -247,6 +279,8 @@ enum CItemKind {
     ImportedExtern,
     /// `extern "C"` function definitions, to be used elsewhere -> IMPROPER_C_FN_DEFINITIONS,
     ExportedFunction,
+    /// `no_mangle`/`export_name` static variables, assumed to be used from across an FFI boundary,
+    ExportedStatic,
     /// `extern "C"` function pointers -> IMPROPER_C_CALLBACKS,
     Callback,
 }
@@ -595,6 +629,8 @@ impl VisitorState {
     // Unfortunately, "cannot call non-const operator in constants" (bitwise or?).
     const NONE: Self = Self::empty();
     const STATIC_TY: Self = Self::STATIC;
+    const EXPORTED_STATIC_TY: Self =
+        Self::from_bits(Self::STATIC.bits() | Self::DEFINED.bits()).unwrap();
     const ARGUMENT_TY_IN_DEFINITION: Self =
         Self::from_bits(Self::FUNC.bits() | Self::DEFINED.bits()).unwrap();
     const RETURN_TY_IN_DEFINITION: Self =
@@ -1645,6 +1681,14 @@ impl<'tcx> ImproperCTypesLint {
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
     }
 
+    /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type.
+    fn check_exported_static(&self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
+        let ty = cx.tcx.type_of(id).instantiate_identity();
+        let visitor = ImproperCTypesVisitor::new(cx);
+        let ffi_res = visitor.check_type(VisitorState::EXPORTED_STATIC_TY, ty);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
+    }
+
     /// Check if a function's argument types and result type are "ffi-safe".
     fn check_foreign_fn(
         &mut self,
@@ -1745,11 +1789,13 @@ impl<'tcx> ImproperCTypesLint {
         let lint = match fn_mode {
             CItemKind::ImportedExtern => IMPROPER_CTYPES,
             CItemKind::ExportedFunction => IMPROPER_C_FN_DEFINITIONS,
+            CItemKind::ExportedStatic => IMPROPER_C_VAR_DEFINITIONS,
             CItemKind::Callback => IMPROPER_C_CALLBACKS,
         };
         let desc = match fn_mode {
             CItemKind::ImportedExtern => "`extern` block",
             CItemKind::ExportedFunction => "`extern` fn",
+            CItemKind::ExportedStatic => "foreign-code-reachable static",
             CItemKind::Callback => "`extern` callback",
         };
         for reason in reasons.iter_mut() {
@@ -1817,6 +1863,25 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                 );
+
+                // FIXME: cx.tcx.has_attr no worky
+                // if matches!(item.kind, hir::ItemKind::Static(..))
+                //     && (cx.tcx.has_attr(item.owner_id, sym::no_mangle)
+                //         || cx.tcx.has_attr(item.owner_id, sym::export_name))
+                if matches!(item.kind, hir::ItemKind::Static(..)) {
+                    let is_exported_static = cx.tcx.get_all_attrs(item.owner_id).iter().any(|x| {
+                        matches!(
+                            x,
+                            hir::Attribute::Parsed(
+                                hir::attrs::AttributeKind::NoMangle(_)
+                                    | hir::attrs::AttributeKind::ExportName { .. }
+                            )
+                        )
+                    });
+                    if is_exported_static {
+                        self.check_exported_static(cx, item.owner_id, ty.span);
+                    }
+                }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
             hir::ItemKind::Fn { .. } => {}

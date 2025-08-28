@@ -339,6 +339,7 @@ fn register_builtins(store: &mut LintStore) {
         "improper_c_boundaries",
         IMPROPER_C_CALLBACKS,
         IMPROPER_C_FN_DEFINITIONS,
+        IMPROPER_C_VAR_DEFINITIONS,
         IMPROPER_CTYPES
     );
 
