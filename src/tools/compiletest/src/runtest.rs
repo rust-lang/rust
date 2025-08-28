@@ -21,14 +21,12 @@ use crate::common::{
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
     output_testname_unique,
 };
-use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::read2::{Truncated, read2_abbreviated};
+use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{ColorConfig, help, json, stamp_file_path, warning};
-
-mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
 // tidy-alphabetical-start
@@ -48,6 +46,8 @@ mod rustdoc_json;
 mod ui;
 // tidy-alphabetical-end
 
+mod compute_diff;
+mod debugger;
 #[cfg(test)]
 mod tests;
 

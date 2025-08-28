@@ -6,7 +6,7 @@ use miropt_test_tools::{MiroptTest, MiroptTestFile, files_for_miropt_test};
 use tracing::debug;
 
 use super::{Emit, TestCx, WillExecute};
-use crate::compute_diff::write_diff;
+use crate::runtest::compute_diff::write_diff;
 
 impl TestCx<'_> {
     pub(super) fn run_mir_opt_test(&self) {

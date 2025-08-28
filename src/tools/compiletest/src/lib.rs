@@ -9,7 +9,6 @@
 mod tests;
 
 pub mod common;
-pub mod compute_diff;
 mod debuggers;
 pub mod diagnostics;
 pub mod directives;
