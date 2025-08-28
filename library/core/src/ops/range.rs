@@ -742,6 +742,8 @@ impl<T: Copy> Bound<&T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(bound_copied)]
+    ///
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
