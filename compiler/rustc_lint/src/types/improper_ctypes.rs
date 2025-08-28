@@ -1876,4 +1876,52 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             self.check_foreign_fn(cx, CItemKind::ExportedFunction, id, decl);
         }
     }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, tr_it: &hir::TraitItem<'tcx>) {
+        match tr_it.kind {
+            hir::TraitItemKind::Const(hir_ty, _) => {
+                let ty = cx.tcx.type_of(hir_ty.hir_id.owner.def_id).instantiate_identity();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
+            hir::TraitItemKind::Fn(sig, trait_fn) => {
+                match trait_fn {
+                    // if the method is defined here,
+                    // there is a matching ``LateLintPass::check_fn`` call,
+                    // let's not redo that work
+                    hir::TraitFn::Provided(_) => return,
+                    hir::TraitFn::Required(_) => (),
+                }
+                let local_id = tr_it.owner_id.def_id;
+                if sig.header.abi.is_rustic_abi() {
+                    self.check_fn_for_external_abi_fnptr(cx, local_id, sig.decl);
+                } else {
+                    self.check_foreign_fn(cx, CItemKind::ExportedFunction, local_id, sig.decl);
+                }
+            }
+            hir::TraitItemKind::Type(_, ty_maybe) => {
+                if let Some(hir_ty) = ty_maybe {
+                    let ty = cx.tcx.type_of(hir_ty.hir_id.owner.def_id).instantiate_identity();
+                    self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+                }
+            }
+        }
+    }
+    fn check_impl_item(&mut self, cx: &LateContext<'tcx>, im_it: &hir::ImplItem<'tcx>) {
+        // note: we do not skip these checks eventhough they might generate dupe warnings because:
+        // - the corresponding trait might be in another crate
+        // - the corresponding trait might have some templating involved, so only the impl has the full type information
+        match im_it.kind {
+            hir::ImplItemKind::Type(hir_ty) => {
+                let ty = cx.tcx.type_of(hir_ty.hir_id.owner.def_id).instantiate_identity();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
+            hir::ImplItemKind::Fn(_sig, _) => {
+                // see ``LateLintPass::check_fn``
+            }
+            hir::ImplItemKind::Const(hir_ty, _) => {
+                let ty = cx.tcx.type_of(hir_ty.hir_id.owner.def_id).instantiate_identity();
+                self.check_type_for_external_abi_fnptr(cx, hir_ty, ty);
+            }
+        }
+    }
 }
