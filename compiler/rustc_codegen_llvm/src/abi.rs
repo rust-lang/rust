@@ -527,7 +527,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             } else {
                 // it's one of 2 cases,
                 // - either the base name is invalid
-                // - it has been superceded by something else, so the intrinsic was removed entirely
+                // - it has been superseded by something else, so the intrinsic was removed entirely
                 // to check for upgrades, we need the `llfn`, so we defer it for now
 
                 FunctionSignature::MaybeInvalid(self.rust_signature(cx))
