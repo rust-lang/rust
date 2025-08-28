@@ -331,24 +331,22 @@ pub fn is_whitespace(c: char) -> bool {
 
     matches!(
         c,
-        // Usual ASCII suspects
-        '\u{0009}'   // \t
-        | '\u{000A}' // \n
+        // End-of-line characters
+        | '\u{000A}' // line feed (\n)
         | '\u{000B}' // vertical tab
         | '\u{000C}' // form feed
-        | '\u{000D}' // \r
-        | '\u{0020}' // space
+        | '\u{000D}' // carriage return (\r)
+        | '\u{0085}' // next line (from latin1)
+        | '\u{2028}' // LINE SEPARATOR
+        | '\u{2029}' // PARAGRAPH SEPARATOR
 
-        // NEXT LINE from latin1
-        | '\u{0085}'
-
-        // Bidi markers
+        // `Default_Ignorable_Code_Point` characters
         | '\u{200E}' // LEFT-TO-RIGHT MARK
         | '\u{200F}' // RIGHT-TO-LEFT MARK
 
-        // Dedicated whitespace characters from Unicode
-        | '\u{2028}' // LINE SEPARATOR
-        | '\u{2029}' // PARAGRAPH SEPARATOR
+        // Horizontal space characters
+        | '\u{0009}'   // tab (\t)
+        | '\u{0020}' // space
     )
 }
 
