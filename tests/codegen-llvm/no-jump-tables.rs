@@ -1,12 +1,12 @@
 // Test that the `no-jump-tables` function attribute are (not) emitted when
-// the `-Zjump-tables=no` flag is (not) set.
+// the `-Cjump-tables=no` flag is (not) set.
 
 //@ add-minicore
 //@ revisions: unset set_no set_yes
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu
-//@ [set_no] compile-flags: -Zjump-tables=no
-//@ [set_yes] compile-flags: -Zjump-tables=yes
+//@ [set_no] compile-flags: -Cjump-tables=no
+//@ [set_yes] compile-flags: -Cjump-tables=yes
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
