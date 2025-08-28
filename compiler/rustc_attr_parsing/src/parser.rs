@@ -10,11 +10,11 @@ use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, NormalAttr, Path};
 use rustc_ast_pretty::pprust;
-use rustc_errors::PResult;
+use rustc_errors::{Diag, PResult};
 use rustc_hir::{self as hir, AttrPath};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, PathStyle, token_descr};
-use rustc_session::errors::report_lit_error;
+use rustc_session::errors::{create_lit_error, report_lit_error};
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -379,22 +379,23 @@ struct MetaItemListParserContext<'a, 'sess> {
 
 impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     fn parse_unsuffixed_meta_item_lit(&mut self) -> PResult<'sess, MetaItemLit> {
-        let uninterpolated_span = self.parser.token_uninterpolated_span();
-        let Some(token_lit) = self.parser.eat_token_lit() else {
-            return self.parser.handle_missing_lit(Parser::mk_meta_item_lit_char);
-        };
+        let Some(token_lit) = self.parser.eat_token_lit() else { return Err(self.expected_lit()) };
+        self.unsuffixed_meta_item_from_lit(token_lit)
+    }
 
+    fn unsuffixed_meta_item_from_lit(
+        &mut self,
+        token_lit: token::Lit,
+    ) -> PResult<'sess, MetaItemLit> {
         let lit = match MetaItemLit::from_token_lit(token_lit, self.parser.prev_token.span) {
             Ok(lit) => lit,
             Err(err) => {
-                let guar =
-                    report_lit_error(&self.parser.psess, err, token_lit, uninterpolated_span);
-                // Pack possible quotes and prefixes from the original literal into
-                // the error literal's symbol so they can be pretty-printed faithfully.
-                let suffixless_lit = token::Lit::new(token_lit.kind, token_lit.symbol, None);
-                let symbol = Symbol::intern(&suffixless_lit.to_string());
-                let token_lit = token::Lit::new(token::Err(guar), symbol, token_lit.suffix);
-                MetaItemLit::from_token_lit(token_lit, uninterpolated_span).unwrap()
+                return Err(create_lit_error(
+                    &self.parser.psess,
+                    err,
+                    token_lit,
+                    self.parser.prev_token_uninterpolated_span(),
+                ));
             }
         };
 
@@ -448,16 +449,28 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn parse_meta_item_inner(&mut self) -> PResult<'sess, MetaItemOrLitParser<'static>> {
-        match self.parse_unsuffixed_meta_item_lit() {
-            Ok(lit) => return Ok(MetaItemOrLitParser::Lit(lit)),
-            Err(err) => err.cancel(), // we provide a better error below
+        if let Some(token_lit) = self.parser.eat_token_lit() {
+            // If a literal token is parsed, we commit to parsing a MetaItemLit for better errors
+            Ok(MetaItemOrLitParser::Lit(self.unsuffixed_meta_item_from_lit(token_lit)?))
+        } else {
+            let prev_pros = self.parser.approx_token_stream_pos();
+            match self.parse_attr_item() {
+                Ok(item) => Ok(MetaItemOrLitParser::MetaItemParser(item)),
+                Err(err) => {
+                    // If `parse_attr_item` made any progress, it likely has a more precise error we should prefer
+                    // If it didn't make progress we use the `expected_lit` from below
+                    if self.parser.approx_token_stream_pos() != prev_pros {
+                        Err(err)
+                    } else {
+                        err.cancel();
+                        Err(self.expected_lit())
+                    }
+                }
+            }
         }
+    }
 
-        match self.parse_attr_item() {
-            Ok(mi) => return Ok(MetaItemOrLitParser::MetaItemParser(mi)),
-            Err(err) => err.cancel(), // we provide a better error below
-        }
-
+    fn expected_lit(&mut self) -> Diag<'sess> {
         let mut err = InvalidMetaItem {
             span: self.parser.token.span,
             descr: token_descr(&self.parser.token),
@@ -492,7 +505,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             self.parser.bump();
         }
 
-        Err(self.parser.dcx().create_err(err))
+        self.parser.dcx().create_err(err)
     }
 
     fn parse(
