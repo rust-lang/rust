@@ -1016,7 +1016,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // takes priority over transparent_with_all_zst_fields
         if let FfiUnsafe(explanations) = ffires_accumulator {
             // we assume the repr() of this ADT is either non-packed C or transparent.
-            debug_assert!(def.repr().c() || def.repr().transparent() || def.repr().int.is_some());
+            debug_assert!(
+                (def.repr().c() && !def.repr().packed())
+                    || def.repr().transparent()
+                    || def.repr().int.is_some()
+            );
 
             if def.repr().transparent() || matches!(def.adt_kind(), AdtKind::Enum) {
                 let field_ffires = FfiUnsafe(explanations).wrap_all(
@@ -1086,7 +1090,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
 
-        if !def.repr().c() && !def.repr().transparent() {
+        if !((def.repr().c() && !def.repr().packed()) || def.repr().transparent()) {
+            // FIXME(ctypes) packed reprs prevent C compatibility, right?
             return FfiResult::new_with_reason(
                 ty,
                 if def.is_struct() {
@@ -1162,7 +1167,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
         // Check for a repr() attribute to specify the size of the
         // discriminant.
-        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
+        if !(def.repr().c() && !def.repr().packed())
+            && !def.repr().transparent()
+            && def.repr().int.is_none()
+        {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
             if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
                 return self.visit_type(state, Some(ty), inner_ty);
@@ -1558,22 +1566,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         item: &'tcx hir::Item<'tcx>,
         adt_def: AdtDef<'tcx>,
     ) {
-        let tcx = cx.tcx;
         // repr(C) structs also with packed or aligned representation
         // should be ignored.
-        if adt_def.repr().c()
-            && !adt_def.repr().packed()
-            && adt_def.repr().align.is_none()
-            && tcx.sess.target.os == "aix"
-            && !adt_def.all_fields().next().is_none()
-        {
+        debug_assert!(
+            adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none()
+        );
+        if cx.tcx.sess.target.os == "aix" && !adt_def.all_fields().next().is_none() {
             let struct_variant_data = item.expect_struct().2;
             for field_def in struct_variant_data.fields().iter().skip(1) {
                 // Struct fields (after the first field) are checked for the
                 // power alignment rule, as fields after the first are likely
                 // to be the fields that are misaligned.
                 let def_id = field_def.def_id;
-                let ty = tcx.type_of(def_id).instantiate_identity();
+                let ty = cx.tcx.type_of(def_id).instantiate_identity();
                 if Self::check_arg_for_power_alignment(cx, ty) {
                     cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
                 }
