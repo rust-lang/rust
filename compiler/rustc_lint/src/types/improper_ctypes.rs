@@ -166,6 +166,23 @@ fn get_fn_sig_from_mir_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Sig<'tc
     }
 }
 
+// FIXME(ctypes): it seems that tests/ui/lint/opaque-ty-ffi-normalization-cycle.rs relies this:
+// we consider opaque aliases that normalise to something else to be unsafe.
+// ...is it the behaviour we want?
+/// a modified version of cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty)
+/// so that opaque types prevent normalisation once region erasure occurs
+fn erase_and_maybe_normalize<'tcx>(cx: &LateContext<'tcx>, value: Ty<'tcx>) -> Ty<'tcx> {
+    if (!value.has_aliases()) || value.has_opaque_types() {
+        cx.tcx.erase_and_anonymize_regions(value)
+    } else {
+        cx.tcx.try_normalize_erasing_regions(cx.typing_env(), value).unwrap_or(value)
+        // note: the code above ^^^ would only cause a call to the commented code below vvv
+        //let value = cx.tcx.erase_and_anonymize_regions(value);
+        //let mut folder = TryNormalizeAfterErasingRegionsFolder::new(cx.tcx, cx.typing_env());
+        //value.try_fold_with(&mut folder).unwrap_or(value)
+    }
+}
+
 /// Getting the (normalized) type out of a field (for, e.g., an enum variant or a tuple).
 #[inline]
 fn get_type_from_field<'tcx>(
@@ -174,7 +191,7 @@ fn get_type_from_field<'tcx>(
     args: GenericArgsRef<'tcx>,
 ) -> Ty<'tcx> {
     let field_ty = field.ty(cx.tcx, args);
-    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), field_ty).unwrap_or(field_ty)
+    erase_and_maybe_normalize(cx, field_ty)
 }
 
 fn variant_has_complex_ctor(variant: &ty::VariantDef) -> bool {
@@ -553,10 +570,7 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                     Some(item_ty) => *item_ty,
                     None => bug!("Empty tuple (AKA unit type) should be Sized, right?"),
                 };
-                let item_ty = cx
-                    .tcx
-                    .try_normalize_erasing_regions(cx.typing_env(), item_ty)
-                    .unwrap_or(item_ty);
+                let item_ty = erase_and_maybe_normalize(cx, item_ty);
                 match get_type_sizedness(cx, item_ty) {
                     s @ (TypeSizedness::MetaSized
                     | TypeSizedness::Unsized
@@ -1415,25 +1429,52 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Never => self.visit_uninhabited(state, ty),
 
-            // While opaque types are checked for earlier, if a projection in a struct field
-            // normalizes to an opaque type, then it will reach this branch.
+            // This is only half of the checking-for-opaque-aliases story:
+            // since they are liable to vanish on normalisation, we need a specific to find them through
+            // other aliases, which is called in the next branch of this `match ty.kind()` statement
             ty::Alias(ty::Opaque, ..) => {
                 FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_opaque, None)
             }
 
-            // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
+            // `extern "C" fn` function definitions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
-            ty::Param(..) | ty::Alias(ty::Projection | ty::Inherent, ..)
-                if state.can_expect_ty_params() =>
-            {
-                FfiSafe
+            // function pointers can do the same
+            //
+            // however, these ty_kind:s can also be encountered because the type isn't normalized yet.
+            ty::Param(..) | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..) => {
+                if ty.has_opaque_types() {
+                    // FIXME(ctypes): this is suboptimal because we give up
+                    // on reporting anything *else* than the opaque part of the type
+                    // but this is better than not reporting anything, or crashing
+                    self.visit_for_opaque_ty(ty).unwrap()
+                } else {
+                    // in theory, thanks to erase_and_maybe_normalize,
+                    // normalisation has already occurred
+                    debug_assert_eq!(
+                        self.cx
+                            .tcx
+                            .try_normalize_erasing_regions(self.cx.typing_env(), ty,)
+                            .unwrap_or(ty),
+                        ty,
+                    );
+
+                    if matches!(
+                        ty.kind(),
+                        ty::Param(..) | ty::Alias(ty::Projection | ty::Inherent, ..)
+                    ) && state.can_expect_ty_params()
+                    {
+                        FfiSafe
+                    } else {
+                        // ty::Alias(ty::Free), and all params/aliases for something
+                        // defined beyond the FFI boundary
+                        bug!("unexpected type in foreign function: {:?}", ty)
+                    }
+                }
             }
 
             ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
 
-            ty::Param(..)
-            | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
-            | ty::Infer(..)
+            ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
             | ty::Closure(..)
@@ -1469,10 +1510,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
-        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
-        if let Some(res) = self.visit_for_opaque_ty(ty) {
-            return res;
-        }
+        let ty = erase_and_maybe_normalize(self.cx, ty);
         self.visit_type(state, ty)
     }
 }
