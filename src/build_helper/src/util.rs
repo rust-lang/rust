@@ -3,6 +3,8 @@ use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Command;
 
+use crate::ci::CiEnv;
+
 /// Invokes `build_helper::util::detail_exit` with `cfg!(test)`
 ///
 /// This is a macro instead of a function so that it uses `cfg(test)` in the *calling* crate, not in build helper.
@@ -20,6 +22,15 @@ pub fn detail_exit(code: i32, is_test: bool) -> ! {
     if is_test {
         panic!("status code: {code}");
     } else {
+        // If we're in CI, print the current bootstrap invocation command, to make it easier to
+        // figure out what exactly has failed.
+        if CiEnv::is_ci() {
+            // Skip the first argument, as it will be some absolute path to the bootstrap binary.
+            let bootstrap_args =
+                std::env::args().skip(1).map(|a| a.to_string()).collect::<Vec<_>>().join(" ");
+            eprintln!("Bootstrap failed while executing `{bootstrap_args}`");
+        }
+
         // otherwise, exit with provided status code
         std::process::exit(code);
     }

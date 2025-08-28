@@ -237,7 +237,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let def_id = instance.def_id();
 
-        if self.tcx.has_attr(def_id, sym::rustc_const_panic_str)
+        if self.tcx.is_lang_item(def_id, LangItem::PanicDisplay)
             || self.tcx.is_lang_item(def_id, LangItem::BeginPanic)
         {
             let args = self.copy_fn_args(args);
@@ -280,22 +280,110 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
         interp_ok(match (a, b) {
             // Comparisons between integers are always known.
             (Scalar::Int(a), Scalar::Int(b)) => (a == b) as u8,
-            // Comparisons of null with an arbitrary scalar can be known if `scalar_may_be_null`
-            // indicates that the scalar can definitely *not* be null.
-            (Scalar::Int(int), ptr) | (ptr, Scalar::Int(int))
-                if int.is_null() && !self.scalar_may_be_null(ptr)? =>
-            {
-                0
+            // Comparing a pointer `ptr` with an integer `int` is equivalent to comparing
+            // `ptr-int` with null, so we can reduce this case to a `scalar_may_be_null` test.
+            (Scalar::Int(int), Scalar::Ptr(ptr, _)) | (Scalar::Ptr(ptr, _), Scalar::Int(int)) => {
+                let int = int.to_target_usize(*self.tcx);
+                // The `wrapping_neg` here may produce a value that is not
+                // a valid target usize any more... but `wrapping_offset` handles that correctly.
+                let offset_ptr = ptr.wrapping_offset(Size::from_bytes(int.wrapping_neg()), self);
+                if !self.scalar_may_be_null(Scalar::from_pointer(offset_ptr, self))? {
+                    // `ptr.wrapping_sub(int)` is definitely not equal to `0`, so `ptr != int`
+                    0
+                } else {
+                    // `ptr.wrapping_sub(int)` could be equal to `0`, but might not be,
+                    // so we cannot know for sure if `ptr == int` or not
+                    2
+                }
             }
-            // Other ways of comparing integers and pointers can never be known for sure.
-            (Scalar::Int { .. }, Scalar::Ptr(..)) | (Scalar::Ptr(..), Scalar::Int { .. }) => 2,
-            // FIXME: return a `1` for when both sides are the same pointer, *except* that
-            // some things (like functions and vtables) do not have stable addresses
-            // so we need to be careful around them (see e.g. #73722).
-            // FIXME: return `0` for at least some comparisons where we can reliably
-            // determine the result of runtime inequality tests at compile-time.
-            // Examples include comparison of addresses in different static items.
-            (Scalar::Ptr(..), Scalar::Ptr(..)) => 2,
+            (Scalar::Ptr(a, _), Scalar::Ptr(b, _)) => {
+                let (a_prov, a_offset) = a.prov_and_relative_offset();
+                let (b_prov, b_offset) = b.prov_and_relative_offset();
+                let a_allocid = a_prov.alloc_id();
+                let b_allocid = b_prov.alloc_id();
+                let a_info = self.get_alloc_info(a_allocid);
+                let b_info = self.get_alloc_info(b_allocid);
+
+                // Check if the pointers cannot be equal due to alignment
+                if a_info.align > Align::ONE && b_info.align > Align::ONE {
+                    let min_align = Ord::min(a_info.align.bytes(), b_info.align.bytes());
+                    let a_residue = a_offset.bytes() % min_align;
+                    let b_residue = b_offset.bytes() % min_align;
+                    if a_residue != b_residue {
+                        // If the two pointers have a different residue modulo their
+                        // common alignment, they cannot be equal.
+                        return interp_ok(0);
+                    }
+                    // The pointers have the same residue modulo their common alignment,
+                    // so they could be equal. Try the other checks.
+                }
+
+                if let (Some(GlobalAlloc::Static(a_did)), Some(GlobalAlloc::Static(b_did))) = (
+                    self.tcx.try_get_global_alloc(a_allocid),
+                    self.tcx.try_get_global_alloc(b_allocid),
+                ) {
+                    if a_allocid == b_allocid {
+                        debug_assert_eq!(
+                            a_did, b_did,
+                            "different static item DefIds had same AllocId? {a_allocid:?} == {b_allocid:?}, {a_did:?} != {b_did:?}"
+                        );
+                        // Comparing two pointers into the same static. As per
+                        // https://doc.rust-lang.org/nightly/reference/items/static-items.html#r-items.static.intro
+                        // a static cannot be duplicated, so if two pointers are into the same
+                        // static, they are equal if and only if their offsets are equal.
+                        (a_offset == b_offset) as u8
+                    } else {
+                        debug_assert_ne!(
+                            a_did, b_did,
+                            "same static item DefId had two different AllocIds? {a_allocid:?} != {b_allocid:?}, {a_did:?} == {b_did:?}"
+                        );
+                        // Comparing two pointers into the different statics.
+                        // We can never determine for sure that two pointers into different statics
+                        // are *equal*, but we can know that they are *inequal* if they are both
+                        // strictly in-bounds (i.e. in-bounds and not one-past-the-end) of
+                        // their respective static, as different non-zero-sized statics cannot
+                        // overlap or be deduplicated as per
+                        // https://doc.rust-lang.org/nightly/reference/items/static-items.html#r-items.static.intro
+                        // (non-deduplication), and
+                        // https://doc.rust-lang.org/nightly/reference/items/static-items.html#r-items.static.storage-disjointness
+                        // (non-overlapping).
+                        if a_offset < a_info.size && b_offset < b_info.size {
+                            0
+                        } else {
+                            // Otherwise, conservatively say we don't know.
+                            // There are some cases we could still return `0` for, e.g.
+                            // if the pointers being equal would require their statics to overlap
+                            // one or more bytes, but for simplicity we currently only check
+                            // strictly in-bounds pointers.
+                            2
+                        }
+                    }
+                } else {
+                    // All other cases we conservatively say we don't know.
+                    //
+                    // For comparing statics to non-statics, as per https://doc.rust-lang.org/nightly/reference/items/static-items.html#r-items.static.storage-disjointness
+                    // immutable statics can overlap with other kinds of allocations sometimes.
+                    //
+                    // FIXME: We could be more decisive for (non-zero-sized) mutable statics,
+                    // which cannot overlap with other kinds of allocations.
+                    //
+                    // Functions and vtables can be duplicated and deduplicated, so we
+                    // cannot be sure of runtime equality of pointers to the same one, or the
+                    // runtime inequality of pointers to different ones (see e.g. #73722),
+                    // so comparing those should return 2, whether they are the same allocation
+                    // or not.
+                    //
+                    // `GlobalAlloc::TypeId` exists mostly to prevent consteval from comparing
+                    // `TypeId`s, so comparing those should always return 2, whether they are the
+                    // same allocation or not.
+                    //
+                    // FIXME: We could revisit comparing pointers into the same
+                    // `GlobalAlloc::Memory` once https://github.com/rust-lang/rust/issues/128775
+                    // is fixed (but they can be deduplicated, so comparing pointers into different
+                    // ones should return 2).
+                    2
+                }
+            }
         })
     }
 }

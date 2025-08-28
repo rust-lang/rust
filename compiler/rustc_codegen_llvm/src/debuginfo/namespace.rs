@@ -38,7 +38,7 @@ pub(crate) fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'l
             parent_scope,
             namespace_name_string.as_ptr(),
             namespace_name_string.len(),
-            llvm::False, // ExportSymbols (only relevant for C++ anonymous namespaces)
+            llvm::FALSE, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )
     };
 

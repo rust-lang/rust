@@ -80,7 +80,7 @@ pub struct OpenOptions {
     attributes: u32,
     share_mode: u32,
     security_qos_flags: u32,
-    security_attributes: *mut c::SECURITY_ATTRIBUTES,
+    inherit_handle: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -203,7 +203,7 @@ impl OpenOptions {
             share_mode: c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
             attributes: 0,
             security_qos_flags: 0,
-            security_attributes: ptr::null_mut(),
+            inherit_handle: false,
         }
     }
 
@@ -243,8 +243,8 @@ impl OpenOptions {
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn security_attributes(&mut self, attrs: *mut c::SECURITY_ATTRIBUTES) {
-        self.security_attributes = attrs;
+    pub fn inherit_handle(&mut self, inherit: bool) {
+        self.inherit_handle = inherit;
     }
 
     fn get_access_mode(&self) -> io::Result<u32> {
@@ -307,12 +307,17 @@ impl File {
 
     fn open_native(path: &WCStr, opts: &OpenOptions) -> io::Result<File> {
         let creation = opts.get_creation_mode()?;
+        let sa = c::SECURITY_ATTRIBUTES {
+            nLength: size_of::<c::SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: opts.inherit_handle as c::BOOL,
+        };
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
-                opts.security_attributes,
+                if opts.inherit_handle { &sa } else { ptr::null() },
                 creation,
                 opts.get_flags_and_attributes(),
                 ptr::null_mut(),
@@ -1601,7 +1606,7 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
     };
     unsafe {
         let ptr = header.PathBuffer.as_mut_ptr();
-        ptr.copy_from(abs_path.as_ptr().cast::<MaybeUninit<u16>>(), abs_path.len());
+        ptr.copy_from(abs_path.as_ptr().cast_uninit(), abs_path.len());
 
         let mut ret = 0;
         cvt(c::DeviceIoControl(

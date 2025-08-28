@@ -54,23 +54,6 @@ function showMain() {
 window.rootPath = getVar("root-path");
 window.currentCrate = getVar("current-crate");
 
-function setMobileTopbar() {
-    // FIXME: It would be nicer to generate this text content directly in HTML,
-    // but with the current code it's hard to get the right information in the right place.
-    const mobileTopbar = document.querySelector(".mobile-topbar");
-    const locationTitle = document.querySelector(".sidebar h2.location");
-    if (mobileTopbar) {
-        const mobileTitle = document.createElement("h2");
-        mobileTitle.className = "location";
-        if (hasClass(document.querySelector(".rustdoc"), "crate")) {
-            mobileTitle.innerHTML = `Crate <a href="#">${window.currentCrate}</a>`;
-        } else if (locationTitle) {
-            mobileTitle.innerHTML = locationTitle.innerHTML;
-        }
-        mobileTopbar.appendChild(mobileTitle);
-    }
-}
-
 /**
  * Gets the human-readable string for the virtual-key code of the
  * given KeyboardEvent, ev.
@@ -84,6 +67,7 @@ function setMobileTopbar() {
  * So I guess you could say things are getting pretty interoperable.
  *
  * @param {KeyboardEvent} ev
+ * @returns {string}
  */
 function getVirtualKey(ev) {
     if ("key" in ev && typeof ev.key !== "undefined") {
@@ -98,18 +82,8 @@ function getVirtualKey(ev) {
 }
 
 const MAIN_ID = "main-content";
-const SETTINGS_BUTTON_ID = "settings-menu";
 const ALTERNATIVE_DISPLAY_ID = "alternative-display";
 const NOT_DISPLAYED_ID = "not-displayed";
-const HELP_BUTTON_ID = "help-button";
-
-function getSettingsButton() {
-    return document.getElementById(SETTINGS_BUTTON_ID);
-}
-
-function getHelpButton() {
-    return document.getElementById(HELP_BUTTON_ID);
-}
 
 // Returns the current URL without any query parameter or hash.
 function getNakedUrl() {
@@ -174,7 +148,7 @@ function getNotDisplayedElem() {
  * contains the displayed element (there can be only one at the same time!). So basically, we switch
  * elements between the two `<section>` elements.
  *
- * @param {HTMLElement|null} elemToDisplay
+ * @param {Element|null} elemToDisplay
  */
 function switchDisplayedElement(elemToDisplay) {
     const el = getAlternativeDisplayElem();
@@ -239,14 +213,14 @@ function preLoadCss(cssUrl) {
         document.head.append(script);
     }
 
-    const settingsButton = getSettingsButton();
-    if (settingsButton) {
-        settingsButton.onclick = event => {
+    onEachLazy(document.querySelectorAll(".settings-menu"), settingsMenu => {
+        /** @param {MouseEvent} event */
+        settingsMenu.querySelector("a").onclick = event => {
             if (event.ctrlKey || event.altKey || event.metaKey) {
                 return;
             }
             window.hideAllModals(false);
-            addClass(getSettingsButton(), "rotate");
+            addClass(settingsMenu, "rotate");
             event.preventDefault();
             // Sending request for the CSS and the JS files at the same time so it will
             // hopefully be loaded when the JS will generate the settings content.
@@ -268,20 +242,60 @@ function preLoadCss(cssUrl) {
                 }
             }, 0);
         };
-    }
+    });
 
     window.searchState = {
         rustdocToolbar: document.querySelector("rustdoc-toolbar"),
         loadingText: "Loading search results...",
-        // This will always be an HTMLInputElement, but tsc can't see that
-        // @ts-expect-error
-        input: document.getElementsByClassName("search-input")[0],
-        outputElement: () => {
+        inputElement: () => {
+            let el = document.getElementsByClassName("search-input")[0];
+            if (!el) {
+                const out = nonnull(nonnull(window.searchState.outputElement()).parentElement);
+                const hdr = document.createElement("div");
+                hdr.className = "main-heading search-results-main-heading";
+                const params = window.searchState.getQueryStringParams();
+                const autofocusParam = params.search === "" ? "autofocus" : "";
+                hdr.innerHTML = `<nav class="sub">
+                    <form class="search-form loading">
+                        <span></span> <!-- This empty span is a hacky fix for Safari: see #93184 -->
+                        <input
+                            ${autofocusParam}
+                            class="search-input"
+                            name="search"
+                            aria-label="Run search in the documentation"
+                            autocomplete="off"
+                            spellcheck="false"
+                            placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…"
+                            type="search">
+                    </form>
+                </nav><div class="search-switcher"></div>`;
+                out.insertBefore(hdr, window.searchState.outputElement());
+                el = document.getElementsByClassName("search-input")[0];
+            }
+            if (el instanceof HTMLInputElement) {
+                return el;
+            }
+            return null;
+        },
+        containerElement: () => {
             let el = document.getElementById("search");
             if (!el) {
                 el = document.createElement("section");
                 el.id = "search";
                 getNotDisplayedElem().appendChild(el);
+            }
+            return el;
+        },
+        outputElement: () => {
+            const container = window.searchState.containerElement();
+            if (!container) {
+                return null;
+            }
+            let el = container.querySelector(".search-out");
+            if (!el) {
+                el = document.createElement("div");
+                el.className = "search-out";
+                container.appendChild(el);
             }
             return el;
         },
@@ -303,25 +317,52 @@ function preLoadCss(cssUrl) {
             }
         },
         isDisplayed: () => {
-            const outputElement = window.searchState.outputElement();
-            return !!outputElement &&
-                !!outputElement.parentElement &&
-                outputElement.parentElement.id === ALTERNATIVE_DISPLAY_ID;
+            const container = window.searchState.containerElement();
+            if (!container) {
+                return false;
+            }
+            return !!container.parentElement && container.parentElement.id ===
+                ALTERNATIVE_DISPLAY_ID;
         },
         // Sets the focus on the search bar at the top of the page
         focus: () => {
-            window.searchState.input && window.searchState.input.focus();
+            const inputElement = window.searchState.inputElement();
+            window.searchState.showResults();
+            if (inputElement) {
+                inputElement.focus();
+                // Avoid glitch if something focuses the search button after clicking.
+                requestAnimationFrame(() => inputElement.focus());
+            }
         },
         // Removes the focus from the search bar.
         defocus: () => {
-            window.searchState.input && window.searchState.input.blur();
+            nonnull(window.searchState.inputElement()).blur();
         },
-        showResults: search => {
-            if (search === null || typeof search === "undefined") {
-                search = window.searchState.outputElement();
+        toggle: () => {
+            if (window.searchState.isDisplayed()) {
+                window.searchState.defocus();
+                window.searchState.hideResults();
+            } else {
+                window.searchState.focus();
             }
-            switchDisplayedElement(search);
+        },
+        showResults: () => {
             document.title = window.searchState.title;
+            if (window.searchState.isDisplayed()) {
+                return;
+            }
+            const search = window.searchState.containerElement();
+            switchDisplayedElement(search);
+            const btn = document.querySelector("#search-button a");
+            if (browserSupportsHistoryApi() && btn instanceof HTMLAnchorElement &&
+                window.searchState.getQueryStringParams().search === undefined
+            ) {
+                history.pushState(null, "", btn.href);
+            }
+            const btnLabel = document.querySelector("#search-button a span.label");
+            if (btnLabel) {
+                btnLabel.innerHTML = "Exit";
+            }
         },
         removeQueryParameters: () => {
             // We change the document title.
@@ -334,6 +375,10 @@ function preLoadCss(cssUrl) {
             switchDisplayedElement(null);
             // We also remove the query parameter from the URL.
             window.searchState.removeQueryParameters();
+            const btnLabel = document.querySelector("#search-button a span.label");
+            if (btnLabel) {
+                btnLabel.innerHTML = "Search";
+            }
         },
         getQueryStringParams: () => {
             /** @type {Object.<any, string>} */
@@ -348,11 +393,11 @@ function preLoadCss(cssUrl) {
             return params;
         },
         setup: () => {
-            const search_input = window.searchState.input;
+            let searchLoaded = false;
+            const search_input = window.searchState.inputElement();
             if (!search_input) {
                 return;
             }
-            let searchLoaded = false;
             // If you're browsing the nightly docs, the page might need to be refreshed for the
             // search to work because the hash of the JS scripts might have changed.
             function sendSearchForm() {
@@ -362,21 +407,100 @@ function preLoadCss(cssUrl) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
+                    window.rr_ = data => {
+                        window.searchIndex = data;
+                    };
+                    if (!window.StringdexOnload) {
+                        window.StringdexOnload = [];
+                    }
+                    window.StringdexOnload.push(() => {
+                        loadScript(
+                            // @ts-expect-error
+                            getVar("static-root-path") + getVar("search-js"),
+                            sendSearchForm,
+                        );
+                    });
                     // @ts-expect-error
-                    loadScript(getVar("static-root-path") + getVar("search-js"), sendSearchForm);
-                    loadScript(resourcePath("search-index", ".js"), sendSearchForm);
+                    loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
+                    loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
                 }
             }
 
             search_input.addEventListener("focus", () => {
-                window.searchState.origPlaceholder = search_input.placeholder;
-                search_input.placeholder = "Type your search here.";
                 loadSearch();
             });
 
-            if (search_input.value !== "") {
-                loadSearch();
+            const btn = document.getElementById("search-button");
+            if (btn) {
+                btn.onclick = event => {
+                    if (event.ctrlKey || event.altKey || event.metaKey) {
+                        return;
+                    }
+                    event.preventDefault();
+                    window.searchState.toggle();
+                    loadSearch();
+                };
             }
+
+            // Push and pop states are used to add search results to the browser
+            // history.
+            if (browserSupportsHistoryApi()) {
+                // Store the previous <title> so we can revert back to it later.
+                const previousTitle = document.title;
+
+                window.addEventListener("popstate", e => {
+                    const params = window.searchState.getQueryStringParams();
+                    // Revert to the previous title manually since the History
+                    // API ignores the title parameter.
+                    document.title = previousTitle;
+                    // Synchronize search bar with query string state and
+                    // perform the search. This will empty the bar if there's
+                    // nothing there, which lets you really go back to a
+                    // previous state with nothing in the bar.
+                    const inputElement = window.searchState.inputElement();
+                    if (params.search !== undefined && inputElement !== null) {
+                        loadSearch();
+                        inputElement.value = params.search;
+                        // Some browsers fire "onpopstate" for every page load
+                        // (Chrome), while others fire the event only when actually
+                        // popping a state (Firefox), which is why search() is
+                        // called both here and at the end of the startSearch()
+                        // function.
+                        e.preventDefault();
+                        window.searchState.showResults();
+                        if (params.search === "") {
+                            window.searchState.focus();
+                        }
+                    } else {
+                        // When browsing back from search results the main page
+                        // visibility must be reset.
+                        window.searchState.hideResults();
+                    }
+                });
+            }
+
+            // This is required in firefox to avoid this problem: Navigating to a search result
+            // with the keyboard, hitting enter, and then hitting back would take you back to
+            // the doc page, rather than the search that should overlay it.
+            // This was an interaction between the back-forward cache and our handlers
+            // that try to sync state between the URL and the search input. To work around it,
+            // do a small amount of re-init on page show.
+            window.onpageshow = () => {
+                const inputElement = window.searchState.inputElement();
+                const qSearch = window.searchState.getQueryStringParams().search;
+                if (qSearch !== undefined && inputElement !== null) {
+                    if (inputElement.value === "") {
+                        inputElement.value = qSearch;
+                    }
+                    window.searchState.showResults();
+                    if (qSearch === "") {
+                        loadSearch();
+                        window.searchState.focus();
+                    }
+                } else {
+                    window.searchState.hideResults();
+                }
+            };
 
             const params = window.searchState.getQueryStringParams();
             if (params.search !== undefined) {
@@ -386,13 +510,9 @@ function preLoadCss(cssUrl) {
         },
         setLoadingSearch: () => {
             const search = window.searchState.outputElement();
-            if (!search) {
-                return;
-            }
-            search.innerHTML = "<h3 class=\"search-loading\">" +
-                window.searchState.loadingText +
-                "</h3>";
-            window.searchState.showResults(search);
+            nonnull(search).innerHTML = "<h3 class=\"search-loading\">" +
+                window.searchState.loadingText + "</h3>";
+            window.searchState.showResults();
         },
         descShards: new Map(),
         loadDesc: async function({descShard, descIndex}) {
@@ -1155,13 +1275,11 @@ function preLoadCss(cssUrl) {
     }
 
     window.addEventListener("resize", () => {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
             // As a workaround to the behavior of `contains: layout` used in doc togglers,
             // tooltip popovers are positioned using javascript.
             //
             // This means when the window is resized, we need to redo the layout.
-            // @ts-expect-error
             const base = window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE;
             const force_visible = base.TOOLTIP_FORCE_VISIBLE;
             hideTooltip(false);
@@ -1207,11 +1325,9 @@ function preLoadCss(cssUrl) {
      */
     function showTooltip(e) {
         const notable_ty = e.getAttribute("data-notable-ty");
-        // @ts-expect-error
         if (!window.NOTABLE_TRAITS && notable_ty) {
             const data = document.getElementById("notable-traits-data");
             if (data) {
-                // @ts-expect-error
                 window.NOTABLE_TRAITS = JSON.parse(data.innerText);
             } else {
                 throw new Error("showTooltip() called with notable without any notable traits!");
@@ -1219,14 +1335,15 @@ function preLoadCss(cssUrl) {
         }
         // Make this function idempotent. If the tooltip is already shown, avoid doing extra work
         // and leave it alone.
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT && window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE === e) {
-            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
             return;
         }
         window.hideAllModals(false);
-        const wrapper = document.createElement("div");
+        // use Object.assign to make sure the object has the correct type
+        // with all of the correct fields before it is assigned to a variable,
+        // as typescript has no way to change the type of a variable once it is initialized.
+        const wrapper = Object.assign(document.createElement("div"), {TOOLTIP_BASE: e});
         if (notable_ty) {
             wrapper.innerHTML = "<div class=\"content\">" +
                 // @ts-expect-error
@@ -1272,11 +1389,7 @@ function preLoadCss(cssUrl) {
             );
         }
         wrapper.style.visibility = "";
-        // @ts-expect-error
         window.CURRENT_TOOLTIP_ELEMENT = wrapper;
-        // @ts-expect-error
-        window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE = e;
-        // @ts-expect-error
         clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
         wrapper.onpointerenter = ev => {
             // If this is a synthetic touch event, ignore it. A click event will be along shortly.
@@ -1311,19 +1424,15 @@ function preLoadCss(cssUrl) {
      */
     function setTooltipHoverTimeout(element, show) {
         clearTooltipHoverTimeout(element);
-        // @ts-expect-error
         if (!show && !window.CURRENT_TOOLTIP_ELEMENT) {
             // To "hide" an already hidden element, just cancel its timeout.
             return;
         }
-        // @ts-expect-error
         if (show && window.CURRENT_TOOLTIP_ELEMENT) {
             // To "show" an already visible element, just cancel its timeout.
             return;
         }
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
-            // @ts-expect-error
             window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE !== element) {
             // Don't do anything if another tooltip is already visible.
             return;
@@ -1346,24 +1455,20 @@ function preLoadCss(cssUrl) {
      */
     function clearTooltipHoverTimeout(element) {
         if (element.TOOLTIP_HOVER_TIMEOUT !== undefined) {
-            // @ts-expect-error
             removeClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             clearTimeout(element.TOOLTIP_HOVER_TIMEOUT);
             delete element.TOOLTIP_HOVER_TIMEOUT;
         }
     }
 
-    // @ts-expect-error
+    /**
+     * @param {Event & { relatedTarget: Node }} event
+     */
     function tooltipBlurHandler(event) {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(document.activeElement) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.contains(event.relatedTarget) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(document.activeElement) &&
-            // @ts-expect-error
             !window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.contains(event.relatedTarget)
         ) {
             // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
@@ -1385,30 +1490,22 @@ function preLoadCss(cssUrl) {
      *                          If set to `false`, leave keyboard focus alone.
      */
     function hideTooltip(focus) {
-        // @ts-expect-error
         if (window.CURRENT_TOOLTIP_ELEMENT) {
-            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE) {
                 if (focus) {
-                    // @ts-expect-error
                     window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.focus();
                 }
-                // @ts-expect-error
                 window.CURRENT_TOOLTIP_ELEMENT.TOOLTIP_BASE.TOOLTIP_FORCE_VISIBLE = false;
             }
-            // @ts-expect-error
             document.body.removeChild(window.CURRENT_TOOLTIP_ELEMENT);
-            // @ts-expect-error
             clearTooltipHoverTimeout(window.CURRENT_TOOLTIP_ELEMENT);
-            // @ts-expect-error
-            window.CURRENT_TOOLTIP_ELEMENT = null;
+            window.CURRENT_TOOLTIP_ELEMENT = undefined;
         }
     }
 
     onEachLazy(document.getElementsByClassName("tooltip"), e => {
         e.onclick = () => {
             e.TOOLTIP_FORCE_VISIBLE = e.TOOLTIP_FORCE_VISIBLE ? false : true;
-            // @ts-expect-error
             if (window.CURRENT_TOOLTIP_ELEMENT && !e.TOOLTIP_FORCE_VISIBLE) {
                 hideTooltip(true);
             } else {
@@ -1444,9 +1541,7 @@ function preLoadCss(cssUrl) {
             if (ev.pointerType !== "mouse") {
                 return;
             }
-            // @ts-expect-error
             if (!e.TOOLTIP_FORCE_VISIBLE && window.CURRENT_TOOLTIP_ELEMENT &&
-                // @ts-expect-error
                 !window.CURRENT_TOOLTIP_ELEMENT.contains(ev.relatedTarget)) {
                 // Tooltip pointer leave gesture:
                 //
@@ -1479,7 +1574,6 @@ function preLoadCss(cssUrl) {
                 // * https://www.nngroup.com/articles/tooltip-guidelines/
                 // * https://bjk5.com/post/44698559168/breaking-down-amazons-mega-dropdown
                 setTooltipHoverTimeout(e, false);
-                // @ts-expect-error
                 addClass(window.CURRENT_TOOLTIP_ELEMENT, "fade-out");
             }
         };
@@ -1500,15 +1594,13 @@ function preLoadCss(cssUrl) {
 
     // @ts-expect-error
     function helpBlurHandler(event) {
-        // @ts-expect-error
-        if (!getHelpButton().contains(document.activeElement) &&
-            // @ts-expect-error
-            !getHelpButton().contains(event.relatedTarget) &&
-            // @ts-expect-error
-            !getSettingsButton().contains(document.activeElement) &&
-            // @ts-expect-error
-            !getSettingsButton().contains(event.relatedTarget)
-        ) {
+        const isInPopover = onEachLazy(
+            document.querySelectorAll(".settings-menu, .help-menu"),
+            menu => {
+                return menu.contains(document.activeElement) || menu.contains(event.relatedTarget);
+            },
+        );
+        if (!isInPopover) {
             window.hidePopoverMenus();
         }
     }
@@ -1529,7 +1621,7 @@ function preLoadCss(cssUrl) {
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
-            // for the sake of brevity, we don't say "inherint impl blocks",
+            // for the sake of brevity, we don't say "inherit impl blocks",
             // although that would be more correct,
             // since trait impl blocks are collapsed by -
             ["_", "Collapse all sections, including impl blocks"],
@@ -1571,10 +1663,9 @@ function preLoadCss(cssUrl) {
 
         const container = document.createElement("div");
         if (!isHelpPage) {
-            container.className = "popover";
+            container.className = "popover content";
         }
         container.id = "help";
-        container.style.display = "none";
 
         const side_by_side = document.createElement("div");
         side_by_side.className = "side-by-side";
@@ -1588,19 +1679,17 @@ function preLoadCss(cssUrl) {
         if (isHelpPage) {
             const help_section = document.createElement("section");
             help_section.appendChild(container);
-            // @ts-expect-error
-            document.getElementById("main-content").appendChild(help_section);
-            container.style.display = "block";
+            nonnull(document.getElementById("main-content")).appendChild(help_section);
         } else {
-            const help_button = getHelpButton();
-            // @ts-expect-error
-            help_button.appendChild(container);
-
-            container.onblur = helpBlurHandler;
-            // @ts-expect-error
-            help_button.onblur = helpBlurHandler;
-            // @ts-expect-error
-            help_button.children[0].onblur = helpBlurHandler;
+            onEachLazy(document.getElementsByClassName("help-menu"), menu => {
+                if (menu.offsetWidth !== 0) {
+                    menu.appendChild(container);
+                    container.onblur = helpBlurHandler;
+                    menu.onblur = helpBlurHandler;
+                    menu.children[0].onblur = helpBlurHandler;
+                    return true;
+                }
+            });
         }
 
         return container;
@@ -1621,80 +1710,57 @@ function preLoadCss(cssUrl) {
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = () => {
-        onEachLazy(document.querySelectorAll("rustdoc-toolbar .popover"), elem => {
+        onEachLazy(document.querySelectorAll(".settings-menu .popover"), elem => {
             elem.style.display = "none";
         });
-        const button = getHelpButton();
-        if (button) {
-            removeClass(button, "help-open");
-        }
+        onEachLazy(document.querySelectorAll(".help-menu .popover"), elem => {
+            elem.parentElement.removeChild(elem);
+        });
     };
-
-    /**
-     * Returns the help menu element (not the button).
-     *
-     * @param {boolean} buildNeeded - If this argument is `false`, the help menu element won't be
-     *                                built if it doesn't exist.
-     *
-     * @return {HTMLElement}
-     */
-    function getHelpMenu(buildNeeded) {
-        // @ts-expect-error
-        let menu = getHelpButton().querySelector(".popover");
-        if (!menu && buildNeeded) {
-            menu = buildHelpMenu();
-        }
-        // @ts-expect-error
-        return menu;
-    }
 
     /**
      * Show the help popup menu.
      */
     function showHelp() {
+        window.hideAllModals(false);
         // Prevent `blur` events from being dispatched as a result of closing
         // other modals.
-        const button = getHelpButton();
-        addClass(button, "help-open");
-        // @ts-expect-error
-        button.querySelector("a").focus();
-        const menu = getHelpMenu(true);
-        if (menu.style.display === "none") {
-            // @ts-expect-error
-            window.hideAllModals();
-            menu.style.display = "";
-        }
+        onEachLazy(document.querySelectorAll(".help-menu a"), menu => {
+            if (menu.offsetWidth !== 0) {
+                menu.focus();
+                return true;
+            }
+        });
+        buildHelpMenu();
     }
 
-    const helpLink = document.querySelector(`#${HELP_BUTTON_ID} > a`);
     if (isHelpPage) {
         buildHelpMenu();
-    } else if (helpLink) {
-        helpLink.addEventListener("click", event => {
-            // By default, have help button open docs in a popover.
-            // If user clicks with a moderator, though, use default browser behavior,
-            // probably opening in a new window or tab.
-            if (!helpLink.contains(helpLink) ||
-                // @ts-expect-error
-                event.ctrlKey ||
-                // @ts-expect-error
-                event.altKey ||
-                // @ts-expect-error
-                event.metaKey) {
-                return;
-            }
-            event.preventDefault();
-            const menu = getHelpMenu(true);
-            const shouldShowHelp = menu.style.display === "none";
-            if (shouldShowHelp) {
-                showHelp();
-            } else {
-                window.hidePopoverMenus();
-            }
+    } else {
+        onEachLazy(document.querySelectorAll(".help-menu > a"), helpLink => {
+            helpLink.addEventListener(
+                "click",
+                /** @param {MouseEvent} event */
+                event => {
+                    // By default, have help button open docs in a popover.
+                    // If user clicks with a moderator, though, use default browser behavior,
+                    // probably opening in a new window or tab.
+                    if (event.ctrlKey ||
+                        event.altKey ||
+                        event.metaKey) {
+                        return;
+                    }
+                    event.preventDefault();
+                    if (document.getElementById("help")) {
+                        window.hidePopoverMenus();
+                    } else {
+                        showHelp();
+                    }
+                },
+            );
         });
     }
 
-    setMobileTopbar();
     addSidebarItems();
     addSidebarCrates();
     onHashChange(null);
@@ -1746,13 +1812,20 @@ function preLoadCss(cssUrl) {
     // On larger, "desktop-sized" viewports (though that includes many
     // tablets), it's fixed-position, appears in the left side margin,
     // and it can be activated by resizing the sidebar into nothing.
-    const sidebarButton = document.getElementById("sidebar-button");
+    let sidebarButton = document.getElementById("sidebar-button");
+    const body = document.querySelector(".main-heading");
+    if (!sidebarButton && body) {
+        sidebarButton = document.createElement("div");
+        sidebarButton.id = "sidebar-button";
+        const path = `${window.rootPath}${window.currentCrate}/all.html`;
+        sidebarButton.innerHTML = `<a href="${path}" title="show sidebar"></a>`;
+        body.insertBefore(sidebarButton, body.firstChild);
+    }
     if (sidebarButton) {
         sidebarButton.addEventListener("click", e => {
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
-            if (document.querySelector(".rustdoc.src")) {
-                // @ts-expect-error
+            if (window.rustdocToggleSrcSidebar) {
                 window.rustdocToggleSrcSidebar();
             }
             e.preventDefault();

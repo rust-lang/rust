@@ -40,7 +40,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, In
 use rustc_errors::codes::*;
 use rustc_errors::{FatalError, struct_span_code_err};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::hir_ty_lowering::FeedConstTy;
@@ -1662,7 +1662,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
-            let trait_def = cx.tcx.associated_item(p.res.def_id()).container_id(cx.tcx);
+            let trait_def = cx.tcx.parent(p.res.def_id());
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.iter().map(|x| clean_path_segment(x, cx)).collect(),
@@ -2768,7 +2768,7 @@ fn clean_maybe_renamed_item<'tcx>(
         // These kinds of item either don't need a `name` or accept a `None` one so we handle them
         // before.
         match item.kind {
-            ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
+            ItemKind::Impl(ref impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
             ItemKind::Use(path, kind) => {
                 return clean_use_statement(
                     item,
@@ -2845,11 +2845,19 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
+            // FIXME: handle attributes and derives that aren't proc macros, and macros with
+            // multiple kinds
+            ItemKind::Macro(_, macro_def, MacroKinds::BANG) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, MacroKinds::ATTR) => {
+                clean_proc_macro(item, &mut name, MacroKind::Attr, cx)
+            }
+            ItemKind::Macro(_, _, MacroKinds::DERIVE) => {
+                clean_proc_macro(item, &mut name, MacroKind::Derive, cx)
+            }
+            ItemKind::Macro(_, _, _) => todo!("Handle macros with multiple kinds"),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
@@ -2896,7 +2904,7 @@ fn clean_impl<'tcx>(
 ) -> Vec<Item> {
     let tcx = cx.tcx;
     let mut ret = Vec::new();
-    let trait_ = impl_.of_trait.as_ref().map(|t| clean_trait_ref(t, cx));
+    let trait_ = impl_.of_trait.map(|t| clean_trait_ref(&t.trait_ref, cx));
     let items = impl_
         .items
         .iter()
@@ -2922,7 +2930,10 @@ fn clean_impl<'tcx>(
         });
     let mut make_item = |trait_: Option<Path>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Box::new(Impl {
-            safety: impl_.safety,
+            safety: match impl_.of_trait {
+                Some(of_trait) => of_trait.safety,
+                None => hir::Safety::Safe,
+            },
             generics: clean_generics(impl_.generics, cx),
             trait_,
             for_,

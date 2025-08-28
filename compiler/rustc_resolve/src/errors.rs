@@ -672,6 +672,12 @@ pub(crate) struct MacroSuggMovePosition {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_fn_like)]
+    Func {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
     #[label(resolve_macro_cannot_use_as_attr)]
     Attr {
         #[primary_span]
@@ -767,6 +773,17 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
 pub(crate) struct ConsiderAddingMacroExport {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_consider_marking_as_pub_crate,
+    code = "pub(crate)",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ConsiderMarkingAsPubCrate {
+    #[primary_span]
+    pub(crate) vis_span: Span,
 }
 
 #[derive(Subdiagnostic)]

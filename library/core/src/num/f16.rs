@@ -625,6 +625,13 @@ impl f16 {
 
     /// Converts radians to degrees.
     ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// #![feature(f16)]
     /// # // FIXME(f16_f128): extendhfsf2, truncsfhf2, __gnu_h2f_ieee, __gnu_f2h_ieee missing for many platforms
@@ -640,12 +647,20 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_degrees(self) -> Self {
-        // Use a literal for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const PIS_IN_180: f16 = 57.2957795130823208767981548141051703_f16;
         self * PIS_IN_180
     }
 
     /// Converts degrees to radians.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
     ///
     /// ```
     /// #![feature(f16)]
@@ -663,7 +678,8 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
     pub const fn to_radians(self) -> f16 {
-        // Use a literal for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const RADS_PER_DEG: f16 = 0.017453292519943295769236907684886_f16;
         self * RADS_PER_DEG
     }

@@ -1,0 +1,9 @@
+error[E0268]: `break` outside of a loop or labeled block
+  --> $DIR/break-outside-loop-error-83048.rs:5:5
+   |
+LL |     break;
+   |     ^^^^^ cannot `break` outside of a loop or labeled block
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0268`.

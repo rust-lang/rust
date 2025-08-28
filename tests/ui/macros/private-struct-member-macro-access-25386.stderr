@@ -1,0 +1,14 @@
+error[E0616]: field `c_object` of struct `Item` is private
+  --> $DIR/private-struct-member-macro-access-25386.rs:20:16
+   |
+LL |         (*$var.c_object).$member.is_some()
+   |                ^^^^^^^^ private field
+...
+LL |     println!("{}", check_ptr_exist!(item, name));
+   |                    ---------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `check_ptr_exist` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0616`.

@@ -9,26 +9,22 @@ annotate-snippets = "0.11"
 derive_setters = "0.1.6"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hashes = { path = "../rustc_hashes" }
-rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
-rustc_target = { path = "../rustc_target" }
-rustc_type_ir = { path = "../rustc_type_ir" }
 serde = { version = "1.0.125", features = ["derive"] }
 serde_json = "1.0.59"
 termcolor = "1.2.0"
 termize = "0.2"
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]

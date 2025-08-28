@@ -1,7 +1,6 @@
 use std::mem;
 
 use ast::token::IdentIsRaw;
-use rustc_ast::ptr::P;
 use rustc_ast::token::{self, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
@@ -21,11 +20,13 @@ use crate::errors::{
     PathFoundAttributeInParams, PathFoundCVariadicParams, PathSingleColon, PathTripleColon,
 };
 use crate::exp;
-use crate::parser::{CommaRecoveryMode, ExprKind, RecoverColon, RecoverComma};
+use crate::parser::{
+    CommaRecoveryMode, ExprKind, FnContext, FnParseMode, RecoverColon, RecoverComma,
+};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
-pub(super) enum PathStyle {
+pub enum PathStyle {
     /// In some contexts, notably in expressions, paths with generic arguments are ambiguous
     /// with something else. For example, in expressions `segment < ....` can be interpreted
     /// as a comparison and `segment ( ....` can be interpreted as a function call.
@@ -75,7 +76,7 @@ impl<'a> Parser<'a> {
     /// `<T as U>::a`
     /// `<T as U>::F::a<S>` (without disambiguator)
     /// `<T as U>::F::a::<S>` (with disambiguator)
-    pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (P<QSelf>, Path)> {
+    pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (Box<QSelf>, Path)> {
         let lo = self.prev_token.span;
         let ty = self.parse_ty()?;
 
@@ -105,7 +106,7 @@ impl<'a> Parser<'a> {
             self.expect(exp!(PathSep))?;
         }
 
-        let qself = P(QSelf { ty, path_span, position: path.segments.len() });
+        let qself = Box::new(QSelf { ty, path_span, position: path.segments.len() });
         if !is_import_coupler {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
@@ -149,7 +150,7 @@ impl<'a> Parser<'a> {
         true
     }
 
-    pub(super) fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
+    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, Path> {
         self.parse_path_inner(style, None)
     }
 
@@ -380,7 +381,7 @@ impl<'a> Parser<'a> {
                             .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
                     }
 
-                    P(ast::GenericArgs::ParenthesizedElided(span))
+                    Box::new(ast::GenericArgs::ParenthesizedElided(span))
                 } else {
                     // `(T, U) -> R`
 
@@ -400,7 +401,13 @@ impl<'a> Parser<'a> {
 
                     let dcx = self.dcx();
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
-                        let param = p.parse_param_general(|_| false, false, false);
+                        // Inside parenthesized type arguments, we want types only, not names.
+                        let mode = FnParseMode {
+                            context: FnContext::Free,
+                            req_name: |_| false,
+                            req_body: false,
+                        };
+                        let param = p.parse_param_general(&mode, false, false);
                         param.map(move |param| {
                             if !matches!(param.pat.kind, PatKind::Missing) {
                                 dcx.emit_err(FnPathFoundNamedParams {
@@ -842,7 +849,7 @@ impl<'a> Parser<'a> {
     /// - A literal.
     /// - A numeric literal prefixed by `-`.
     /// - A single-segment path.
-    pub(super) fn expr_is_valid_const_arg(&self, expr: &P<rustc_ast::Expr>) -> bool {
+    pub(super) fn expr_is_valid_const_arg(&self, expr: &Box<rustc_ast::Expr>) -> bool {
         match &expr.kind {
             ast::ExprKind::Block(_, _)
             | ast::ExprKind::Lit(_)

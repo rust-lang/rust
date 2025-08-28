@@ -8,7 +8,6 @@ use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
@@ -430,7 +429,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
-                let bits = value.eval_bits(self.tcx, self.typing_env);
+                let bits = value.try_to_scalar_int().unwrap().to_bits_unchecked();
                 match *ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
@@ -520,75 +519,54 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Constant { value } => {
                 match ty.kind() {
                     ty::Bool => {
-                        ctor = match value.try_eval_bool(cx.tcx, cx.typing_env) {
-                            Some(b) => Bool(b),
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        ctor = Bool(value.try_to_bool().unwrap());
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                let x = match *ty.kind() {
-                                    ty::Int(ity) => {
-                                        let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
-                                        MaybeInfiniteInt::new_finite_int(bits, size)
-                                    }
-                                    _ => MaybeInfiniteInt::new_finite_uint(bits),
-                                };
-                                IntRange(IntRange::from_singleton(x))
-                            }
-                            None => Opaque(OpaqueId::new()),
+                        ctor = {
+                            let bits = value.valtree.unwrap_leaf().to_bits_unchecked();
+                            let x = match *ty.kind() {
+                                ty::Int(ity) => {
+                                    let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
+                                    MaybeInfiniteInt::new_finite_int(bits, size)
+                                }
+                                _ => MaybeInfiniteInt::new_finite_uint(bits),
+                            };
+                            IntRange(IntRange::from_singleton(x))
                         };
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F16) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Half::from_bits(bits);
-                                F16Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.valtree.unwrap_leaf().to_u16();
+                        let value = rustc_apfloat::ieee::Half::from_bits(bits.into());
+                        ctor = F16Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F32) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Single::from_bits(bits);
-                                F32Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.valtree.unwrap_leaf().to_u32();
+                        let value = rustc_apfloat::ieee::Single::from_bits(bits.into());
+                        ctor = F32Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F64) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Double::from_bits(bits);
-                                F64Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.valtree.unwrap_leaf().to_u64();
+                        let value = rustc_apfloat::ieee::Double::from_bits(bits.into());
+                        ctor = F64Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F128) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
-                            Some(bits) => {
-                                use rustc_apfloat::Float;
-                                let value = rustc_apfloat::ieee::Quad::from_bits(bits);
-                                F128Range(value, value, RangeEnd::Included)
-                            }
-                            None => Opaque(OpaqueId::new()),
-                        };
+                        use rustc_apfloat::Float;
+                        let bits = value.valtree.unwrap_leaf().to_u128();
+                        let value = rustc_apfloat::ieee::Quad::from_bits(bits);
+                        ctor = F128Range(value, value, RangeEnd::Included);
                         fields = vec![];
                         arity = 0;
                     }
@@ -630,8 +608,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
-                        let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
-                        let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
+                        let lo = lo
+                            .as_finite()
+                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
+                        let hi = hi
+                            .as_finite()
+                            .map(|c| c.try_to_scalar_int().unwrap().to_bits_unchecked());
                         match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;
@@ -739,8 +721,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 };
                 match ScalarInt::try_from_uint(bits, size) {
                     Some(scalar) => {
-                        let value = mir::Const::from_scalar(tcx, scalar.into(), ty.inner());
-                        PatRangeBoundary::Finite(value)
+                        let valtree = ty::ValTree::from_scalar_int(tcx, scalar);
+                        PatRangeBoundary::Finite(valtree)
                     }
                     // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
                     // for a type, the problem isn't that the value is too small. So it must be too
@@ -760,7 +742,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             "_".to_string()
         } else if range.is_singleton() {
             let lo = cx.hoist_pat_range_bdy(range.lo, ty);
-            let value = lo.as_finite().unwrap();
+            let value = ty::Value { ty: ty.inner(), valtree: lo.as_finite().unwrap() };
             value.to_string()
         } else {
             // We convert to an inclusive range for diagnostics.
@@ -772,7 +754,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
-                lo = PatRangeBoundary::Finite(ty.numeric_max_val(cx.tcx).unwrap());
+                let max = ty.numeric_max_val(cx.tcx).unwrap();
+                let max = ty::ValTree::from_scalar_int(cx.tcx, max.try_to_scalar_int().unwrap());
+                lo = PatRangeBoundary::Finite(max);
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi
@@ -907,7 +891,7 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
     type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
-    type StrLit = Const<'tcx>;
+    type StrLit = ty::Value<'tcx>;
     type ArmData = HirId;
     type PatData = &'p Pat<'tcx>;
 

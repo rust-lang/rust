@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{DesugaringKind, Ident, Span};
@@ -94,7 +93,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                         let fs = self.arena.alloc_from_iter(fields.iter().map(|f| {
                             let hir_id = self.lower_node_id(f.id);
-                            self.lower_attrs(hir_id, &f.attrs, f.span);
+                            self.lower_attrs(hir_id, &f.attrs, f.span, Target::PatField);
 
                             hir::PatField {
                                 hir_id,
@@ -154,7 +153,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_pat_tuple(
         &mut self,
-        pats: &[P<Pat>],
+        pats: &[Box<Pat>],
         ctx: &str,
     ) -> (&'hir [hir::Pat<'hir>], hir::DotDotPos) {
         let mut elems = Vec::with_capacity(pats.len());
@@ -209,7 +208,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[P<Pat>]) -> hir::PatKind<'hir> {
+    fn lower_pat_slice(&mut self, pats: &[Box<Pat>]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;

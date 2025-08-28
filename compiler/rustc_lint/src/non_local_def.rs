@@ -5,7 +5,7 @@ use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::{ExpnKind, MacroKind, Span, kw, sym};
+use rustc_span::{ExpnKind, Span, kw, sym};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
@@ -129,8 +129,8 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // of the `impl` definition
                 let mut collector = PathCollector { paths: Vec::new() };
                 collector.visit_ty_unambig(&impl_.self_ty);
-                if let Some(of_trait) = &impl_.of_trait {
-                    collector.visit_trait_ref(of_trait);
+                if let Some(of_trait) = impl_.of_trait {
+                    collector.visit_trait_ref(&of_trait.trait_ref);
                 }
 
                 // 1.5. Remove any path that doesn't resolve to a `DefId` or if it resolve to a
@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     },
                 )
             }
-            ItemKind::Macro(_, _macro, MacroKind::Bang)
+            ItemKind::Macro(_, _macro, _kinds)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
                 cx.emit_span_lint(

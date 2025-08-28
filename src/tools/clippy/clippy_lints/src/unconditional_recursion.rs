@@ -137,9 +137,9 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
-        && let Some(trait_) = impl_.of_trait
+        && let Some(of_trait) = impl_.of_trait
     {
-        trait_.trait_def_id()
+        of_trait.trait_ref.trait_def_id()
     } else {
         None
     }
@@ -242,8 +242,8 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.is_automatically_derived(owner_id.to_def_id())
         // It is a implementation of a trait.
-        && let Some(trait_) = impl_.of_trait
-        && let Some(trait_def_id) = trait_.trait_def_id()
+        && let Some(of_trait) = impl_.of_trait
+        && let Some(trait_def_id) = of_trait.trait_ref.trait_def_id()
         // The trait is `ToString`.
         && cx.tcx.is_diagnostic_item(sym::ToString, trait_def_id)
     {

@@ -175,6 +175,16 @@ impl<Prov: Provenance> Immediate<Prov> {
         }
         interp_ok(())
     }
+
+    pub fn has_provenance(&self) -> bool {
+        match self {
+            Immediate::Scalar(scalar) => matches!(scalar, Scalar::Ptr { .. }),
+            Immediate::ScalarPair(s1, s2) => {
+                matches!(s1, Scalar::Ptr { .. }) || matches!(s2, Scalar::Ptr { .. })
+            }
+            Immediate::Uninit => false,
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -773,7 +783,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mir_place: mir::Place<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let _span = enter_trace_span!(
+        let _trace = enter_trace_span!(
             M,
             step::eval_place_to_op,
             ?mir_place,
@@ -823,7 +833,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let _span =
+        let _trace =
             enter_trace_span!(M, step::eval_operand, ?mir_op, tracing_separate_thread = Empty);
 
         use rustc_middle::mir::Operand::*;

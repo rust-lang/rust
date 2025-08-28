@@ -16,7 +16,7 @@ use std::{fmt, panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
-use rustc_data_structures::fx::{FxHashMap, FxHasher, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_hir as hir;
@@ -409,9 +409,7 @@ pub(crate) fn run_tests(
         // We ensure temp dir destructor is called.
         std::mem::drop(temp_dir);
         times.display_times();
-        // FIXME(GuillaumeGomez): Uncomment the next line once #144297 has been merged.
-        // std::process::exit(test::ERROR_EXIT_CODE);
-        std::process::exit(101);
+        std::process::exit(test::ERROR_EXIT_CODE);
     }
 }
 
@@ -691,6 +689,10 @@ fn run_test(
             "--extern=doctest_bundle_{edition}=",
             edition = doctest.edition
         ));
+
+        // Deduplicate passed -L directory paths, since usually all dependencies will be in the
+        // same directory (e.g. target/debug/deps from Cargo).
+        let mut seen_search_dirs = FxHashSet::default();
         for extern_str in &rustdoc_options.extern_strs {
             if let Some((_cratename, path)) = extern_str.split_once('=') {
                 // Direct dependencies of the tests themselves are
@@ -700,7 +702,9 @@ fn run_test(
                     .parent()
                     .filter(|x| x.components().count() > 0)
                     .unwrap_or(Path::new("."));
-                runner_compiler.arg("-L").arg(dir);
+                if seen_search_dirs.insert(dir) {
+                    runner_compiler.arg("-L").arg(dir);
+                }
             }
         }
         let output_bundle_file = doctest

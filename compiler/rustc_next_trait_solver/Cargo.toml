@@ -11,7 +11,7 @@ rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
 rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [features]

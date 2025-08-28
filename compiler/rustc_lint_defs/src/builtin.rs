@@ -217,6 +217,7 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseError,
         reference: "issue #57571 <https://github.com/rust-lang/rust/issues/57571>",
+        report_in_deps: true,
     };
     crate_level_only
 }
@@ -2300,18 +2301,18 @@ declare_lint! {
 
 declare_lint! {
     /// The `inline_no_sanitize` lint detects incompatible use of
-    /// [`#[inline(always)]`][inline] and [`#[no_sanitize(...)]`][no_sanitize].
+    /// [`#[inline(always)]`][inline] and [`#[sanitize(xyz = "off")]`][sanitize].
     ///
     /// [inline]: https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute
-    /// [no_sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
+    /// [sanitize]: https://doc.rust-lang.org/nightly/unstable-book/language-features/no-sanitize.html
     ///
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(no_sanitize)]
+    /// #![feature(sanitize)]
     ///
     /// #[inline(always)]
-    /// #[no_sanitize(address)]
+    /// #[sanitize(address = "off")]
     /// fn x() {}
     ///
     /// fn main() {
@@ -2324,11 +2325,11 @@ declare_lint! {
     /// ### Explanation
     ///
     /// The use of the [`#[inline(always)]`][inline] attribute prevents the
-    /// the [`#[no_sanitize(...)]`][no_sanitize] attribute from working.
+    /// the [`#[sanitize(xyz = "off")]`][sanitize] attribute from working.
     /// Consider temporarily removing `inline` attribute.
     pub INLINE_NO_SANITIZE,
     Warn,
-    "detects incompatible use of `#[inline(always)]` and `#[no_sanitize(...)]`",
+    r#"detects incompatible use of `#[inline(always)]` and `#[sanitize(... = "off")]`"#,
 }
 
 declare_lint! {
@@ -5103,4 +5104,37 @@ declare_lint! {
         reference: "issue #134375 <https://github.com/rust-lang/rust/issues/134375>",
         report_in_deps: true,
     };
+}
+
+declare_lint! {
+    /// The `tail_call_track_caller` lint detects usage of `become` attempting to tail call
+    /// a function marked with `#[track_caller]`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(explicit_tail_calls)]
+    /// #![expect(incomplete_features)]
+    ///
+    /// #[track_caller]
+    /// fn f() {}
+    ///
+    /// fn g() {
+    ///     become f();
+    /// }
+    ///
+    /// g();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Due to implementation details of tail calls and `#[track_caller]` attribute, calls to
+    /// functions marked with `#[track_caller]` cannot become tail calls. As such using `become`
+    /// is no different than a normal call (except for changes in drop order).
+    pub TAIL_CALL_TRACK_CALLER,
+    Warn,
+    "detects tail calls of functions marked with `#[track_caller]`",
+    @feature_gate = explicit_tail_calls;
 }

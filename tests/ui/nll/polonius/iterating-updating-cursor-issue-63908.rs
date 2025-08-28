@@ -1,11 +1,12 @@
 #![crate_type = "lib"]
 
-// An example from #63908 of the linked-list cursor-like pattern of #46859/#48001.
+// An example from #63908 of the linked-list cursor-like pattern of #46859/#48001, where the
+// polonius alpha analysis shows the same imprecision as NLLs, unlike the datalog implementation.
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius legacy
 //@ [nll] known-bug: #63908
-//@ [polonius] check-pass
+//@ [polonius] known-bug: #63908
 //@ [polonius] compile-flags: -Z polonius=next
 //@ [legacy] check-pass
 //@ [legacy] compile-flags: -Z polonius=legacy
@@ -27,7 +28,7 @@ fn remove_last_node_recursive<T>(node_ref: &mut List<T>) {
     }
 }
 
-// NLLs fail here
+// NLLs and polonius alpha fail here
 fn remove_last_node_iterative<T>(mut node_ref: &mut List<T>) {
     loop {
         let next_ref = &mut node_ref.as_mut().unwrap().next;

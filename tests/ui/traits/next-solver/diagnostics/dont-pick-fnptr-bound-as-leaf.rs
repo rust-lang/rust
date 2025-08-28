@@ -14,7 +14,7 @@ trait Trait {}
 
 impl<T: FnPtr> Trait for T {}
 
-struct Foo;
+struct Foo; //~ HELP: the trait `Trait` is not implemented for `Foo`
 
 fn requires_trait<T: Trait>(_: T) {}
 //~^ NOTE: required by a bound in `requires_trait`
@@ -23,6 +23,6 @@ fn requires_trait<T: Trait>(_: T) {}
 fn main() {
     requires_trait(Foo);
     //~^ ERROR: the trait bound `Foo: Trait` is not satisfied
-    //~| NOTE: the trait `Trait` is not implemented for `Foo`
+    //~| NOTE: unsatisfied trait bound
     //~| NOTE: required by a bound introduced by this call
 }

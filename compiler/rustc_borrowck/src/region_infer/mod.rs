@@ -1,11 +1,9 @@
-use std::cell::OnceCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
 
-use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::scc::{self, Sccs};
+use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -24,15 +22,13 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{Level, debug, enabled, instrument, trace};
 
-use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
+use crate::constraints::graph::NormalConstraintGraph;
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
-use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
-use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
 use crate::type_check::Locations;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -44,7 +40,7 @@ use crate::{
 
 mod dump_mir;
 mod graphviz;
-mod opaque_types;
+pub(crate) mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
@@ -78,18 +74,6 @@ impl Representative {
     }
 }
 
-impl scc::Annotation for Representative {
-    fn merge_scc(self, other: Self) -> Self {
-        // Just pick the smallest one. Note that we order by tag first!
-        std::cmp::min(self, other)
-    }
-
-    // For reachability, we do nothing since the representative doesn't change.
-    fn merge_reached(self, _other: Self) -> Self {
-        self
-    }
-}
-
 pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex>;
 
 pub struct RegionInferenceContext<'tcx> {
@@ -120,20 +104,6 @@ pub struct RegionInferenceContext<'tcx> {
 
     scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
 
-    /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
-    /// `B: A`. This is used to compute the universal regions that are required
-    /// to outlive a given SCC.
-    rev_scc_graph: OnceCell<ReverseSccGraph>,
-
-    /// The "R0 member of [R1..Rn]" constraints, indexed by SCC.
-    member_constraints: Rc<MemberConstraintSet<'tcx, ConstraintSccIndex>>,
-
-    /// Records the member constraints that we applied to each scc.
-    /// This is useful for error reporting. Once constraint
-    /// propagation is done, this vector is sorted according to
-    /// `member_region_scc`.
-    member_constraints_applied: Vec<AppliedMemberConstraint>,
-
     /// Map universe indexes to information on why we created it.
     universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
@@ -148,32 +118,6 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-}
-
-/// Each time that `apply_member_constraint` is successful, it appends
-/// one of these structs to the `member_constraints_applied` field.
-/// This is used in error reporting to trace out what happened.
-///
-/// The way that `apply_member_constraint` works is that it effectively
-/// adds a new lower bound to the SCC it is analyzing: so you wind up
-/// with `'R: 'O` where `'R` is the pick-region and `'O` is the
-/// minimal viable option.
-#[derive(Debug)]
-pub(crate) struct AppliedMemberConstraint {
-    /// The SCC that was affected. (The "member region".)
-    ///
-    /// The vector if `AppliedMemberConstraint` elements is kept sorted
-    /// by this field.
-    pub(crate) member_region_scc: ConstraintSccIndex,
-
-    /// The "best option" that `apply_member_constraint` found -- this was
-    /// added as an "ad-hoc" lower-bound to `member_region_scc`.
-    pub(crate) min_choice: ty::RegionVid,
-
-    /// The "member constraint index" -- we can find out details about
-    /// the constraint from
-    /// `set.member_constraints[member_constraint_index]`.
-    pub(crate) member_constraint_index: NllMemberConstraintIndex,
 }
 
 #[derive(Debug)]
@@ -268,7 +212,6 @@ enum Trace<'a, 'tcx> {
     StartRegion,
     FromGraph(&'a OutlivesConstraint<'tcx>),
     FromStatic(RegionVid),
-    FromMember(RegionVid, RegionVid, Span),
     NotVisited,
 }
 
@@ -363,7 +306,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             liveness_constraints,
             universe_causes,
             placeholder_indices,
-            member_constraints,
         } = lowered_constraints;
 
         debug!("universal_regions: {:#?}", universal_region_relations.universal_regions);
@@ -385,9 +327,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             scc_values.merge_liveness(scc, region, &liveness_constraints);
         }
 
-        let member_constraints =
-            Rc::new(member_constraints.into_mapped(|r| constraint_sccs.scc(r)));
-
         let mut result = Self {
             definitions,
             liveness_constraints,
@@ -395,9 +334,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraint_graph,
             constraint_sccs,
             scc_annotations,
-            rev_scc_graph: OnceCell::new(),
-            member_constraints,
-            member_constraints_applied: Vec::new(),
             universe_causes,
             scc_values,
             type_tests,
@@ -550,19 +486,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_values.placeholders_contained_in(scc)
     }
 
-    /// Once region solving has completed, this function will return the member constraints that
-    /// were applied to the value of a given SCC `scc`. See `AppliedMemberConstraint`.
-    pub(crate) fn applied_member_constraints(
-        &self,
-        scc: ConstraintSccIndex,
-    ) -> &[AppliedMemberConstraint] {
-        binary_search_util::binary_search_slice(
-            &self.member_constraints_applied,
-            |applied| applied.member_region_scc,
-            &scc,
-        )
-    }
-
     /// Performs region inference and report errors if we see any
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
@@ -607,12 +530,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?errors_buffer);
 
-        if errors_buffer.is_empty() {
-            self.check_member_constraints(infcx, &mut errors_buffer);
-        }
-
-        debug!(?errors_buffer);
-
         let outlives_requirements = outlives_requirements.unwrap_or_default();
 
         if outlives_requirements.is_empty() {
@@ -642,146 +559,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
 
         // To propagate constraints, we walk the DAG induced by the
-        // SCC. For each SCC, we visit its successors and compute
+        // SCC. For each SCC `A`, we visit its successors and compute
         // their values, then we union all those values to get our
         // own.
-        for scc in self.constraint_sccs.all_sccs() {
-            self.compute_value_for_scc(scc);
-        }
-
-        // Sort the applied member constraints so we can binary search
-        // through them later.
-        self.member_constraints_applied.sort_by_key(|applied| applied.member_region_scc);
-    }
-
-    /// Computes the value of the SCC `scc_a`, which has not yet been
-    /// computed, by unioning the values of its successors.
-    /// Assumes that all successors have been computed already
-    /// (which is assured by iterating over SCCs in dependency order).
-    #[instrument(skip(self), level = "debug")]
-    fn compute_value_for_scc(&mut self, scc_a: ConstraintSccIndex) {
-        // Walk each SCC `B` such that `A: B`...
-        for &scc_b in self.constraint_sccs.successors(scc_a) {
-            debug!(?scc_b);
-            self.scc_values.add_region(scc_a, scc_b);
-        }
-
-        // Now take member constraints into account.
-        let member_constraints = Rc::clone(&self.member_constraints);
-        for m_c_i in member_constraints.indices(scc_a) {
-            self.apply_member_constraint(scc_a, m_c_i, member_constraints.choice_regions(m_c_i));
-        }
-
-        debug!(value = ?self.scc_values.region_value_str(scc_a));
-    }
-
-    /// Invoked for each `R0 member of [R1..Rn]` constraint.
-    ///
-    /// `scc` is the SCC containing R0, and `choice_regions` are the
-    /// `R1..Rn` regions -- they are always known to be universal
-    /// regions (and if that's not true, we just don't attempt to
-    /// enforce the constraint).
-    ///
-    /// The current value of `scc` at the time the method is invoked
-    /// is considered a *lower bound*. If possible, we will modify
-    /// the constraint to set it equal to one of the option regions.
-    /// If we make any changes, returns true, else false.
-    ///
-    /// This function only adds the member constraints to the region graph,
-    /// it does not check them. They are later checked in
-    /// `check_member_constraints` after the region graph has been computed.
-    #[instrument(skip(self, member_constraint_index), level = "debug")]
-    fn apply_member_constraint(
-        &mut self,
-        scc: ConstraintSccIndex,
-        member_constraint_index: NllMemberConstraintIndex,
-        choice_regions: &[ty::RegionVid],
-    ) {
-        // Create a mutable vector of the options. We'll try to winnow
-        // them down.
-        let mut choice_regions: Vec<ty::RegionVid> = choice_regions.to_vec();
-
-        // Convert to the SCC representative: sometimes we have inference
-        // variables in the member constraint that wind up equated with
-        // universal regions. The scc representative is the minimal numbered
-        // one from the corresponding scc so it will be the universal region
-        // if one exists.
-        for c_r in &mut choice_regions {
-            let scc = self.constraint_sccs.scc(*c_r);
-            *c_r = self.scc_representative(scc);
-        }
-
-        // If the member region lives in a higher universe, we currently choose
-        // the most conservative option by leaving it unchanged.
-        if !self.max_nameable_universe(scc).is_root() {
-            return;
-        }
-
-        // The existing value for `scc` is a lower-bound. This will
-        // consist of some set `{P} + {LB}` of points `{P}` and
-        // lower-bound free regions `{LB}`. As each choice region `O`
-        // is a free region, it will outlive the points. But we can
-        // only consider the option `O` if `O: LB`.
-        choice_regions.retain(|&o_r| {
-            self.scc_values
-                .universal_regions_outlived_by(scc)
-                .all(|lb| self.universal_region_relations.outlives(o_r, lb))
-        });
-        debug!(?choice_regions, "after lb");
-
-        // Now find all the *upper bounds* -- that is, each UB is a
-        // free region that must outlive the member region `R0` (`UB:
-        // R0`). Therefore, we need only keep an option `O` if `UB: O`
-        // for all UB.
-        let universal_region_relations = &self.universal_region_relations;
-        for ub in self.reverse_scc_graph().upper_bounds(scc) {
-            debug!(?ub);
-            choice_regions.retain(|&o_r| universal_region_relations.outlives(ub, o_r));
-        }
-        debug!(?choice_regions, "after ub");
-
-        // At this point we can pick any member of `choice_regions` and would like to choose
-        // it to be a small as possible. To avoid potential non-determinism we will pick the
-        // smallest such choice.
-        //
-        // Because universal regions are only partially ordered (i.e, not every two regions are
-        // comparable), we will ignore any region that doesn't compare to all others when picking
-        // the minimum choice.
-        //
-        // For example, consider `choice_regions = ['static, 'a, 'b, 'c, 'd, 'e]`, where
-        // `'static: 'a, 'static: 'b, 'a: 'c, 'b: 'c, 'c: 'd, 'c: 'e`.
-        // `['d, 'e]` are ignored because they do not compare - the same goes for `['a, 'b]`.
-        let totally_ordered_subset = choice_regions.iter().copied().filter(|&r1| {
-            choice_regions.iter().all(|&r2| {
-                self.universal_region_relations.outlives(r1, r2)
-                    || self.universal_region_relations.outlives(r2, r1)
-            })
-        });
-        // Now we're left with `['static, 'c]`. Pick `'c` as the minimum!
-        let Some(min_choice) = totally_ordered_subset.reduce(|r1, r2| {
-            let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
-            let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
-            match (r1_outlives_r2, r2_outlives_r1) {
-                (true, true) => r1.min(r2),
-                (true, false) => r2,
-                (false, true) => r1,
-                (false, false) => bug!("incomparable regions in total order"),
+        for scc_a in self.constraint_sccs.all_sccs() {
+            // Walk each SCC `B` such that `A: B`...
+            for &scc_b in self.constraint_sccs.successors(scc_a) {
+                debug!(?scc_b);
+                self.scc_values.add_region(scc_a, scc_b);
             }
-        }) else {
-            debug!("no unique minimum choice");
-            return;
-        };
-
-        // As we require `'scc: 'min_choice`, we have definitely already computed
-        // its `scc_values` at this point.
-        let min_choice_scc = self.constraint_sccs.scc(min_choice);
-        debug!(?min_choice, ?min_choice_scc);
-        if self.scc_values.add_region(scc, min_choice_scc) {
-            self.member_constraints_applied.push(AppliedMemberConstraint {
-                member_region_scc: scc,
-                min_choice,
-                member_constraint_index,
-            });
         }
     }
 
@@ -1487,11 +1273,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         {
             debug!("try_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
-            let blame_span_category = self.find_outlives_blame_span(
-                longer_fr,
-                NllRegionVariableOrigin::FreeRegion,
-                shorter_fr,
-            );
+            let blame_constraint = self
+                .best_blame_constraint(longer_fr, NllRegionVariableOrigin::FreeRegion, shorter_fr)
+                .0;
 
             // Grow `shorter_fr` until we find some non-local regions. (We
             // always will.)  We'll call them `shorter_fr+` -- they're ever
@@ -1504,8 +1288,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     subject: ClosureOutlivesSubject::Region(fr_minus),
                     outlived_free_region: fr,
-                    blame_span: blame_span_category.1.span,
-                    category: blame_span_category.0,
+                    blame_span: blame_constraint.cause.span,
+                    category: blame_constraint.category,
                 });
             }
             return RegionRelationCheckResult::Propagated;
@@ -1544,118 +1328,67 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, infcx, errors_buffer))]
-    fn check_member_constraints(
+    pub(crate) fn constraint_path_between_regions(
         &self,
-        infcx: &InferCtxt<'tcx>,
-        errors_buffer: &mut RegionErrors<'tcx>,
-    ) {
-        let member_constraints = Rc::clone(&self.member_constraints);
-        for m_c_i in member_constraints.all_indices() {
-            debug!(?m_c_i);
-            let m_c = &member_constraints[m_c_i];
-            let member_region_vid = m_c.member_region_vid;
-            debug!(
-                ?member_region_vid,
-                value = ?self.region_value_str(member_region_vid),
-            );
-            let choice_regions = member_constraints.choice_regions(m_c_i);
-            debug!(?choice_regions);
-
-            // Did the member region wind up equal to any of the option regions?
-            if let Some(o) =
-                choice_regions.iter().find(|&&o_r| self.eval_equal(o_r, m_c.member_region_vid))
-            {
-                debug!("evaluated as equal to {:?}", o);
-                continue;
-            }
-
-            // If not, report an error.
-            let member_region = ty::Region::new_var(infcx.tcx, member_region_vid);
-            errors_buffer.push(RegionErrorKind::UnexpectedHiddenRegion {
-                span: m_c.definition_span,
-                hidden_ty: m_c.hidden_ty,
-                key: m_c.key,
-                member_region,
-            });
+        from_region: RegionVid,
+        to_region: RegionVid,
+    ) -> Option<Vec<OutlivesConstraint<'tcx>>> {
+        if from_region == to_region {
+            bug!("Tried to find a path between {from_region:?} and itself!");
         }
-    }
-
-    /// We have a constraint `fr1: fr2` that is not satisfied, where
-    /// `fr2` represents some universal region. Here, `r` is some
-    /// region where we know that `fr1: r` and this function has the
-    /// job of determining whether `r` is "to blame" for the fact that
-    /// `fr1: fr2` is required.
-    ///
-    /// This is true under two conditions:
-    ///
-    /// - `r == fr2`
-    /// - `fr2` is `'static` and `r` is some placeholder in a universe
-    ///   that cannot be named by `fr1`; in that case, we will require
-    ///   that `fr1: 'static` because it is the only way to `fr1: r` to
-    ///   be satisfied. (See `add_incompatible_universe`.)
-    pub(crate) fn provides_universal_region(
-        &self,
-        r: RegionVid,
-        fr1: RegionVid,
-        fr2: RegionVid,
-    ) -> bool {
-        debug!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
-        let result = {
-            r == fr2 || {
-                fr2 == self.universal_regions().fr_static && self.cannot_name_placeholder(fr1, r)
-            }
-        };
-        debug!("provides_universal_region: result = {:?}", result);
-        result
-    }
-
-    /// If `r2` represents a placeholder region, then this returns
-    /// `true` if `r1` cannot name that placeholder in its
-    /// value; otherwise, returns `false`.
-    pub(crate) fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
-        match self.definitions[r2].origin {
-            NllRegionVariableOrigin::Placeholder(placeholder) => {
-                let r1_universe = self.definitions[r1].universe;
-                debug!(
-                    "cannot_name_value_of: universe1={r1_universe:?} placeholder={:?}",
-                    placeholder
-                );
-                r1_universe.cannot_name(placeholder.universe)
-            }
-
-            NllRegionVariableOrigin::FreeRegion | NllRegionVariableOrigin::Existential { .. } => {
-                false
-            }
-        }
-    }
-
-    /// Finds a good `ObligationCause` to blame for the fact that `fr1` outlives `fr2`.
-    pub(crate) fn find_outlives_blame_span(
-        &self,
-        fr1: RegionVid,
-        fr1_origin: NllRegionVariableOrigin,
-        fr2: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, ObligationCause<'tcx>) {
-        let BlameConstraint { category, cause, .. } = self
-            .best_blame_constraint(fr1, fr1_origin, |r| self.provides_universal_region(r, fr1, fr2))
-            .0;
-        (category, cause)
+        self.constraint_path_to(from_region, |to| to == to_region, true).map(|o| o.0)
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
-    /// an edge `'a -> 'b`) to find all paths from `from_region` to
-    /// `to_region`. The paths are accumulated into the vector
-    /// `results`. The paths are stored as a series of
-    /// `ConstraintIndex` values -- in other words, a list of *edges*.
+    /// an edge `'a -> 'b`) to find a path from `from_region` to
+    /// `to_region`.
     ///
     /// Returns: a series of constraints as well as the region `R`
     /// that passed the target test.
+    /// If `include_static_outlives_all` is `true`, then the synthetic
+    /// outlives constraints `'static -> a` for every region `a` are
+    /// considered in the search, otherwise they are ignored.
     #[instrument(skip(self, target_test), ret)]
-    pub(crate) fn find_constraint_paths_between_regions(
+    pub(crate) fn constraint_path_to(
         &self,
         from_region: RegionVid,
         target_test: impl Fn(RegionVid) -> bool,
+        include_placeholder_static: bool,
+    ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
+        self.find_constraint_path_between_regions_inner(
+            true,
+            from_region,
+            &target_test,
+            include_placeholder_static,
+        )
+        .or_else(|| {
+            self.find_constraint_path_between_regions_inner(
+                false,
+                from_region,
+                &target_test,
+                include_placeholder_static,
+            )
+        })
+    }
+
+    /// The constraints we get from equating the hidden type of each use of an opaque
+    /// with its final concrete type may end up getting preferred over other, potentially
+    /// longer constraint paths.
+    ///
+    /// Given that we compute the final concrete type by relying on this existing constraint
+    /// path, this can easily end up hiding the actual reason for why we require these regions
+    /// to be equal.
+    ///
+    /// To handle this, we first look at the path while ignoring these constraints and then
+    /// retry while considering them. This is not perfect, as the `from_region` may have already
+    /// been partially related to its argument region, so while we rely on a member constraint
+    /// to get a complete path, the most relevant step of that path already existed before then.
+    fn find_constraint_path_between_regions_inner(
+        &self,
+        ignore_opaque_type_constraints: bool,
+        from_region: RegionVid,
+        target_test: impl Fn(RegionVid) -> bool,
+        include_placeholder_static: bool,
     ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
@@ -1670,7 +1403,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         while let Some(r) = deque.pop_front() {
             debug!(
-                "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
+                "constraint_path_to: from_region={:?} r={:?} value={}",
                 from_region,
                 r,
                 self.region_value_str(r),
@@ -1697,20 +1430,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                                 locations: Locations::All(DUMMY_SP),
                                 span: DUMMY_SP,
                                 category: ConstraintCategory::Internal,
-                                variance_info: ty::VarianceDiagInfo::default(),
-                                from_closure: false,
-                            };
-                            p = c.sup;
-                            result.push(c);
-                        }
-
-                        Trace::FromMember(sup, sub, span) => {
-                            let c = OutlivesConstraint {
-                                sup,
-                                sub,
-                                locations: Locations::All(span),
-                                span,
-                                category: ConstraintCategory::OpaqueType,
                                 variance_info: ty::VarianceDiagInfo::default(),
                                 from_closure: false,
                             };
@@ -1756,22 +1475,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let edges = self.constraint_graph.outgoing_edges_from_graph(r, &self.constraints);
                 // This loop can be hot.
                 for constraint in edges {
-                    if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
-                        debug!("Ignoring illegal universe constraint: {constraint:?}");
-                        continue;
+                    match constraint.category {
+                        ConstraintCategory::OutlivesUnnameablePlaceholder(_)
+                            if !include_placeholder_static =>
+                        {
+                            debug!("Ignoring illegal placeholder constraint: {constraint:?}");
+                            continue;
+                        }
+                        ConstraintCategory::OpaqueType if ignore_opaque_type_constraints => {
+                            debug!("Ignoring member constraint: {constraint:?}");
+                            continue;
+                        }
+                        _ => {}
                     }
+
                     debug_assert_eq!(constraint.sup, r);
                     handle_trace(constraint.sub, Trace::FromGraph(constraint));
                 }
-            }
-
-            // Member constraints can also give rise to `'r: 'x` edges that
-            // were not part of the graph initially, so watch out for those.
-            // (But they are extremely rare; this loop is very cold.)
-            for constraint in self.applied_member_constraints(self.constraint_sccs.scc(r)) {
-                let sub = constraint.min_choice;
-                let p_c = &self.member_constraints[constraint.member_constraint_index];
-                handle_trace(sub, Trace::FromMember(r, sub, p_c.definition_span));
             }
         }
 
@@ -1783,37 +1503,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.max_nameable_universe(self.constraint_sccs.scc(fr1)));
-        self.find_constraint_paths_between_regions(fr1, |r| {
-            // First look for some `r` such that `fr1: r` and `r` is live at `location`
+        self.constraint_path_to(fr1, |r| {
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
             self.liveness_constraints.is_live_at(r, location)
-        })
-        .or_else(|| {
-            // If we fail to find that, we may find some `r` such that
-            // `fr1: r` and `r` is a placeholder from some universe
-            // `fr1` cannot name. This would force `fr1` to be
-            // `'static`.
-            self.find_constraint_paths_between_regions(fr1, |r| {
-                self.cannot_name_placeholder(fr1, r)
-            })
-        })
-        .or_else(|| {
-            // If we fail to find THAT, it may be that `fr1` is a
-            // placeholder that cannot "fit" into its SCC. In that
-            // case, there should be some `r` where `fr1: r` and `fr1` is a
-            // placeholder that `r` cannot name. We can blame that
-            // edge.
-            //
-            // Remember that if `R1: R2`, then the universe of R1
-            // must be able to name the universe of R2, because R2 will
-            // be at least `'empty(Universe(R2))`, and `R1` must be at
-            // larger than that.
-            self.find_constraint_paths_between_regions(fr1, |r| {
-                self.cannot_name_placeholder(r, fr1)
-            })
-        })
-        .map(|(_path, r)| r)
-        .unwrap()
+        }, true).unwrap().1
     }
 
     /// Get the region outlived by `longer_fr` and live at `element`.
@@ -1857,22 +1550,38 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// creating a constraint path that forces `R` to outlive
     /// `from_region`, and then finding the best choices within that
     /// path to blame.
-    #[instrument(level = "debug", skip(self, target_test))]
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn best_blame_constraint(
         &self,
         from_region: RegionVid,
         from_region_origin: NllRegionVariableOrigin,
-        target_test: impl Fn(RegionVid) -> bool,
+        to_region: RegionVid,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
-        // Find all paths
-        let (path, target_region) = self
-            .find_constraint_paths_between_regions(from_region, target_test)
-            .or_else(|| {
-                self.find_constraint_paths_between_regions(from_region, |r| {
-                    self.cannot_name_placeholder(from_region, r)
-                })
-            })
-            .unwrap();
+        assert!(from_region != to_region, "Trying to blame a region for itself!");
+
+        let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
+
+        // If we are passing through a constraint added because we reached an unnameable placeholder `'unnameable`,
+        // redirect search towards `'unnameable`.
+        let due_to_placeholder_outlives = path.iter().find_map(|c| {
+            if let ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable) = c.category {
+                Some(unnameable)
+            } else {
+                None
+            }
+        });
+
+        // Edge case: it's possible that `'from_region` is an unnameable placeholder.
+        let path = if let Some(unnameable) = due_to_placeholder_outlives
+            && unnameable != from_region
+        {
+            // We ignore the extra edges due to unnameable placeholders to get
+            // an explanation that was present in the original constraint graph.
+            self.constraint_path_to(from_region, |r| r == unnameable, false).unwrap().0
+        } else {
+            path
+        };
+
         debug!(
             "path={:#?}",
             path.iter()
@@ -1939,10 +1648,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // and here we prefer to blame the source (the y = x statement).
         let blame_source = match from_region_origin {
-            NllRegionVariableOrigin::FreeRegion
-            | NllRegionVariableOrigin::Existential { from_forall: false } => true,
-            NllRegionVariableOrigin::Placeholder(_)
-            | NllRegionVariableOrigin::Existential { from_forall: true } => false,
+            NllRegionVariableOrigin::FreeRegion => true,
+            NllRegionVariableOrigin::Placeholder(_) => false,
+            // `'existential: 'whatever` never results in a region error by itself.
+            // We may always infer it to `'static` afterall. This means while an error
+            // path may go through an existential, these existentials are never the
+            // `from_region`.
+            NllRegionVariableOrigin::Existential { name: _ } => {
+                unreachable!("existentials can outlive everything")
+            }
         };
 
         // To pick a constraint to blame, we organize constraints by how interesting we expect them
@@ -1975,7 +1689,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ConstraintCategory::Cast {
                     unsize_to: Some(unsize_ty),
                     is_implicit_coercion: true,
-                } if target_region == self.universal_regions().fr_static
+                } if to_region == self.universal_regions().fr_static
                     // Mirror the note's condition, to minimize how often this diverts blame.
                     && let ty::Adt(_, args) = unsize_ty.kind()
                     && args.iter().any(|arg| arg.as_type().is_some_and(|ty| ty.is_trait()))
@@ -2013,7 +1727,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::IllegalUniverse => 7,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_) => 7,
                 ConstraintCategory::Internal => 8,
             };
 
@@ -2049,6 +1763,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         } else {
             path[best_choice]
         };
+
+        assert!(
+            !matches!(
+                best_constraint.category,
+                ConstraintCategory::OutlivesUnnameablePlaceholder(_)
+            ),
+            "Illegal placeholder constraint blamed; should have redirected to other region relation"
+        );
 
         let blame_constraint = BlameConstraint {
             category: best_constraint.category,
@@ -2097,11 +1819,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // This is `pub` because it's used by unstable external borrowck data users, see `consumers.rs`.
     pub fn constraint_sccs(&self) -> &ConstraintSccs {
         &self.constraint_sccs
-    }
-
-    /// Access to the region graph, built from the outlives constraints.
-    pub(crate) fn region_graph(&self) -> RegionGraph<'_, 'tcx, graph::Normal> {
-        self.constraint_graph.region_graph(&self.constraints, self.universal_regions().fr_static)
     }
 
     /// Returns the representative `RegionVid` for a given SCC.

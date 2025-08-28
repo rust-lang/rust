@@ -1,72 +1,1169 @@
 pub(crate) mod encode;
 
+use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, VecDeque};
+use std::path::Path;
 
-use encode::{bitmap_to_string, write_vlqhex_to_string};
 use rustc_ast::join_path_syms;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_span::symbol::{Symbol, kw};
-use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
+use serde::de::{self, Deserializer, Error as _};
+use serde::ser::{SerializeSeq, Serializer};
+use serde::{Deserialize, Serialize};
+use stringdex::internals as stringdex_internals;
 use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::clean::{self, utils};
+use crate::error::Error;
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::ordered_json::OrderedJson;
 use crate::html::render::{self, IndexItem, IndexItemFunctionType, RenderType, RenderTypeId};
 
-/// The serialized search description sharded version
-///
-/// The `index` is a JSON-encoded list of names and other information.
-///
-/// The desc has newlined descriptions, split up by size into 128KiB shards.
-/// For example, `(4, "foo\nbar\nbaz\nquux")`.
-///
-/// There is no single, optimal size for these shards, because it depends on
-/// configuration values that we can't predict or control, such as the version
-/// of HTTP used (HTTP/1.1 would work better with larger files, while HTTP/2
-/// and 3 are more agnostic), transport compression (gzip, zstd, etc), whether
-/// the search query is going to produce a large number of results or a small
-/// number, the bandwidth delay product of the network...
-///
-/// Gzipping some standard library descriptions to guess what transport
-/// compression will do, the compressed file sizes can be as small as 4.9KiB
-/// or as large as 18KiB (ignoring the final 1.9KiB shard of leftovers).
-/// A "reasonable" range for files is for them to be bigger than 1KiB,
-/// since that's about the amount of data that can be transferred in a
-/// single TCP packet, and 64KiB, the maximum amount of data that
-/// TCP can transfer in a single round trip without extensions.
-///
-/// [1]: https://en.wikipedia.org/wiki/Maximum_transmission_unit#MTUs_for_common_media
-/// [2]: https://en.wikipedia.org/wiki/Sliding_window_protocol#Basic_concept
-/// [3]: https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/description-tcp-features
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub(crate) struct SerializedSearchIndex {
-    pub(crate) index: OrderedJson,
-    pub(crate) desc: Vec<(usize, String)>,
+    // data from disk
+    names: Vec<String>,
+    path_data: Vec<Option<PathData>>,
+    entry_data: Vec<Option<EntryData>>,
+    descs: Vec<String>,
+    function_data: Vec<Option<FunctionData>>,
+    alias_pointers: Vec<Option<usize>>,
+    // inverted index for concrete types and generics
+    type_data: Vec<Option<TypeData>>,
+    /// inverted index of generics
+    ///
+    /// - The outermost list has one entry per alpha-normalized generic.
+    ///
+    /// - The second layer is sorted by number of types that appear in the
+    ///   type signature. The search engine iterates over these in order from
+    ///   smallest to largest. Functions with less stuff in their type
+    ///   signature are more likely to be what the user wants, because we never
+    ///   show functions that are *missing* parts of the query, so removing..
+    ///
+    /// - The final layer is the list of functions.
+    generic_inverted_index: Vec<Vec<Vec<u32>>>,
+    // generated in-memory backref cache
+    #[serde(skip)]
+    crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize>,
 }
 
-const DESC_INDEX_SHARD_LEN: usize = 128 * 1024;
+impl SerializedSearchIndex {
+    fn load(doc_root: &Path, resource_suffix: &str) -> Result<SerializedSearchIndex, Error> {
+        let mut names: Vec<String> = Vec::new();
+        let mut path_data: Vec<Option<PathData>> = Vec::new();
+        let mut entry_data: Vec<Option<EntryData>> = Vec::new();
+        let mut descs: Vec<String> = Vec::new();
+        let mut function_data: Vec<Option<FunctionData>> = Vec::new();
+        let mut type_data: Vec<Option<TypeData>> = Vec::new();
+        let mut alias_pointers: Vec<Option<usize>> = Vec::new();
+
+        let mut generic_inverted_index: Vec<Vec<Vec<u32>>> = Vec::new();
+
+        match perform_read_strings(resource_suffix, doc_root, "name", &mut names) {
+            Ok(()) => {
+                perform_read_serde(resource_suffix, doc_root, "path", &mut path_data)?;
+                perform_read_serde(resource_suffix, doc_root, "entry", &mut entry_data)?;
+                perform_read_strings(resource_suffix, doc_root, "desc", &mut descs)?;
+                perform_read_serde(resource_suffix, doc_root, "function", &mut function_data)?;
+                perform_read_serde(resource_suffix, doc_root, "type", &mut type_data)?;
+                perform_read_serde(resource_suffix, doc_root, "alias", &mut alias_pointers)?;
+                perform_read_postings(
+                    resource_suffix,
+                    doc_root,
+                    "generic_inverted_index",
+                    &mut generic_inverted_index,
+                )?;
+            }
+            Err(_) => {
+                names.clear();
+            }
+        }
+        fn perform_read_strings(
+            resource_suffix: &str,
+            doc_root: &Path,
+            column_name: &str,
+            column: &mut Vec<String>,
+        ) -> Result<(), Error> {
+            let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
+            let column_path = doc_root.join(format!("search.index/{column_name}/"));
+            stringdex_internals::read_data_from_disk_column(
+                root_path,
+                column_name.as_bytes(),
+                column_path.clone(),
+                &mut |_id, item| {
+                    column.push(String::from_utf8(item.to_vec())?);
+                    Ok(())
+                },
+            )
+            .map_err(
+                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
+                    file: column_path,
+                    error: format!("failed to read column from disk: {error}"),
+                },
+            )
+        }
+        fn perform_read_serde(
+            resource_suffix: &str,
+            doc_root: &Path,
+            column_name: &str,
+            column: &mut Vec<Option<impl for<'de> Deserialize<'de> + 'static>>,
+        ) -> Result<(), Error> {
+            let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
+            let column_path = doc_root.join(format!("search.index/{column_name}/"));
+            stringdex_internals::read_data_from_disk_column(
+                root_path,
+                column_name.as_bytes(),
+                column_path.clone(),
+                &mut |_id, item| {
+                    if item.is_empty() {
+                        column.push(None);
+                    } else {
+                        column.push(Some(serde_json::from_slice(item)?));
+                    }
+                    Ok(())
+                },
+            )
+            .map_err(
+                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
+                    file: column_path,
+                    error: format!("failed to read column from disk: {error}"),
+                },
+            )
+        }
+        fn perform_read_postings(
+            resource_suffix: &str,
+            doc_root: &Path,
+            column_name: &str,
+            column: &mut Vec<Vec<Vec<u32>>>,
+        ) -> Result<(), Error> {
+            let root_path = doc_root.join(format!("search.index/root{resource_suffix}.js"));
+            let column_path = doc_root.join(format!("search.index/{column_name}/"));
+            stringdex_internals::read_data_from_disk_column(
+                root_path,
+                column_name.as_bytes(),
+                column_path.clone(),
+                &mut |_id, buf| {
+                    let mut postings = Vec::new();
+                    encode::read_postings_from_string(&mut postings, buf);
+                    column.push(postings);
+                    Ok(())
+                },
+            )
+            .map_err(
+                |error: stringdex_internals::ReadDataError<Box<dyn std::error::Error>>| Error {
+                    file: column_path,
+                    error: format!("failed to read column from disk: {error}"),
+                },
+            )
+        }
+
+        assert_eq!(names.len(), path_data.len());
+        assert_eq!(path_data.len(), entry_data.len());
+        assert_eq!(entry_data.len(), descs.len());
+        assert_eq!(descs.len(), function_data.len());
+        assert_eq!(function_data.len(), type_data.len());
+        assert_eq!(type_data.len(), alias_pointers.len());
+
+        // generic_inverted_index is not the same length as other columns,
+        // because it's actually a completely different set of objects
+
+        let mut crate_paths_index: FxHashMap<(ItemType, Vec<Symbol>), usize> = FxHashMap::default();
+        for (i, (name, path_data)) in names.iter().zip(path_data.iter()).enumerate() {
+            if let Some(path_data) = path_data {
+                let full_path = if path_data.module_path.is_empty() {
+                    vec![Symbol::intern(name)]
+                } else {
+                    let mut full_path = path_data.module_path.to_vec();
+                    full_path.push(Symbol::intern(name));
+                    full_path
+                };
+                crate_paths_index.insert((path_data.ty, full_path), i);
+            }
+        }
+
+        Ok(SerializedSearchIndex {
+            names,
+            path_data,
+            entry_data,
+            descs,
+            function_data,
+            type_data,
+            alias_pointers,
+            generic_inverted_index,
+            crate_paths_index,
+        })
+    }
+    fn push(
+        &mut self,
+        name: String,
+        path_data: Option<PathData>,
+        entry_data: Option<EntryData>,
+        desc: String,
+        function_data: Option<FunctionData>,
+        type_data: Option<TypeData>,
+        alias_pointer: Option<usize>,
+    ) -> usize {
+        let index = self.names.len();
+        assert_eq!(self.names.len(), self.path_data.len());
+        if let Some(path_data) = &path_data
+            && let name = Symbol::intern(&name)
+            && let fqp = if path_data.module_path.is_empty() {
+                vec![name]
+            } else {
+                let mut v = path_data.module_path.clone();
+                v.push(name);
+                v
+            }
+            && let Some(&other_path) = self.crate_paths_index.get(&(path_data.ty, fqp))
+            && self.path_data.get(other_path).map_or(false, Option::is_some)
+        {
+            self.path_data.push(None);
+        } else {
+            self.path_data.push(path_data);
+        }
+        self.names.push(name);
+        assert_eq!(self.entry_data.len(), self.descs.len());
+        self.entry_data.push(entry_data);
+        assert_eq!(self.descs.len(), self.function_data.len());
+        self.descs.push(desc);
+        assert_eq!(self.function_data.len(), self.type_data.len());
+        self.function_data.push(function_data);
+        assert_eq!(self.type_data.len(), self.alias_pointers.len());
+        self.type_data.push(type_data);
+        self.alias_pointers.push(alias_pointer);
+        index
+    }
+    fn push_path(&mut self, name: String, path_data: PathData) -> usize {
+        self.push(name, Some(path_data), None, String::new(), None, None, None)
+    }
+    fn push_type(&mut self, name: String, path_data: PathData, type_data: TypeData) -> usize {
+        self.push(name, Some(path_data), None, String::new(), None, Some(type_data), None)
+    }
+    fn push_alias(&mut self, name: String, alias_pointer: usize) -> usize {
+        self.push(name, None, None, String::new(), None, None, Some(alias_pointer))
+    }
+
+    fn get_id_by_module_path(&mut self, path: &[Symbol]) -> usize {
+        let ty = if path.len() == 1 { ItemType::ExternCrate } else { ItemType::Module };
+        match self.crate_paths_index.entry((ty, path.to_vec())) {
+            Entry::Occupied(index) => *index.get(),
+            Entry::Vacant(slot) => {
+                slot.insert(self.path_data.len());
+                let (name, module_path) = path.split_last().unwrap();
+                self.push_path(
+                    name.as_str().to_string(),
+                    PathData { ty, module_path: module_path.to_vec(), exact_module_path: None },
+                )
+            }
+        }
+    }
+
+    pub(crate) fn union(mut self, other: &SerializedSearchIndex) -> SerializedSearchIndex {
+        let other_entryid_offset = self.names.len();
+        let mut map_other_pathid_to_self_pathid: Vec<usize> = Vec::new();
+        let mut skips = FxHashSet::default();
+        for (other_pathid, other_path_data) in other.path_data.iter().enumerate() {
+            if let Some(other_path_data) = other_path_data {
+                let mut fqp = other_path_data.module_path.clone();
+                let name = Symbol::intern(&other.names[other_pathid]);
+                fqp.push(name);
+                let self_pathid = other_entryid_offset + other_pathid;
+                let self_pathid = match self.crate_paths_index.entry((other_path_data.ty, fqp)) {
+                    Entry::Vacant(slot) => {
+                        slot.insert(self_pathid);
+                        self_pathid
+                    }
+                    Entry::Occupied(existing_entryid) => {
+                        skips.insert(other_pathid);
+                        let self_pathid = *existing_entryid.get();
+                        let new_type_data = match (
+                            self.type_data[self_pathid].take(),
+                            other.type_data[other_pathid].as_ref(),
+                        ) {
+                            (Some(self_type_data), None) => Some(self_type_data),
+                            (None, Some(other_type_data)) => Some(TypeData {
+                                search_unbox: other_type_data.search_unbox,
+                                inverted_function_signature_index: other_type_data
+                                    .inverted_function_signature_index
+                                    .iter()
+                                    .cloned()
+                                    .map(|mut list: Vec<u32>| {
+                                        for fnid in &mut list {
+                                            assert!(
+                                                other.function_data
+                                                    [usize::try_from(*fnid).unwrap()]
+                                                .is_some(),
+                                            );
+                                            // this is valid because we call `self.push()` once, exactly, for every entry,
+                                            // even if we're just pushing a tombstone
+                                            *fnid += u32::try_from(other_entryid_offset).unwrap();
+                                        }
+                                        list
+                                    })
+                                    .collect(),
+                            }),
+                            (Some(mut self_type_data), Some(other_type_data)) => {
+                                for (size, other_list) in other_type_data
+                                    .inverted_function_signature_index
+                                    .iter()
+                                    .enumerate()
+                                {
+                                    while self_type_data.inverted_function_signature_index.len()
+                                        <= size
+                                    {
+                                        self_type_data
+                                            .inverted_function_signature_index
+                                            .push(Vec::new());
+                                    }
+                                    self_type_data.inverted_function_signature_index[size].extend(
+                                        other_list.iter().copied().map(|fnid| {
+                                            assert!(
+                                                other.function_data[usize::try_from(fnid).unwrap()]
+                                                    .is_some(),
+                                            );
+                                            // this is valid because we call `self.push()` once, exactly, for every entry,
+                                            // even if we're just pushing a tombstone
+                                            fnid + u32::try_from(other_entryid_offset).unwrap()
+                                        }),
+                                    )
+                                }
+                                Some(self_type_data)
+                            }
+                            (None, None) => None,
+                        };
+                        self.type_data[self_pathid] = new_type_data;
+                        self_pathid
+                    }
+                };
+                map_other_pathid_to_self_pathid.push(self_pathid);
+            } else {
+                // if this gets used, we want it to crash
+                // this should be impossible as a valid index, since some of the
+                // memory must be used for stuff other than the list
+                map_other_pathid_to_self_pathid.push(!0);
+            }
+        }
+        for other_entryid in 0..other.names.len() {
+            if skips.contains(&other_entryid) {
+                // we push tombstone entries to keep the IDs lined up
+                self.push(String::new(), None, None, String::new(), None, None, None);
+            } else {
+                self.push(
+                    other.names[other_entryid].clone(),
+                    other.path_data[other_entryid].clone(),
+                    other.entry_data[other_entryid].as_ref().map(|other_entry_data| EntryData {
+                        parent: other_entry_data
+                            .parent
+                            .map(|parent| map_other_pathid_to_self_pathid[parent])
+                            .clone(),
+                        module_path: other_entry_data
+                            .module_path
+                            .map(|path| map_other_pathid_to_self_pathid[path])
+                            .clone(),
+                        exact_module_path: other_entry_data
+                            .exact_module_path
+                            .map(|exact_path| map_other_pathid_to_self_pathid[exact_path])
+                            .clone(),
+                        krate: map_other_pathid_to_self_pathid[other_entry_data.krate],
+                        ..other_entry_data.clone()
+                    }),
+                    other.descs[other_entryid].clone(),
+                    other.function_data[other_entryid].as_ref().map(|function_data| FunctionData {
+                        function_signature: {
+                            let (mut func, _offset) =
+                                IndexItemFunctionType::read_from_string_without_param_names(
+                                    function_data.function_signature.as_bytes(),
+                                );
+                            fn map_fn_sig_item(
+                                map_other_pathid_to_self_pathid: &mut Vec<usize>,
+                                ty: &mut RenderType,
+                            ) {
+                                match ty.id {
+                                    None => {}
+                                    Some(RenderTypeId::Index(generic)) if generic < 0 => {}
+                                    Some(RenderTypeId::Index(id)) => {
+                                        let id = usize::try_from(id).unwrap();
+                                        let id = map_other_pathid_to_self_pathid[id];
+                                        assert!(id != !0);
+                                        ty.id =
+                                            Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
+                                    }
+                                    _ => unreachable!(),
+                                }
+                                if let Some(generics) = &mut ty.generics {
+                                    for generic in generics {
+                                        map_fn_sig_item(map_other_pathid_to_self_pathid, generic);
+                                    }
+                                }
+                                if let Some(bindings) = &mut ty.bindings {
+                                    for (param, constraints) in bindings {
+                                        *param = match *param {
+                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
+                                                param
+                                            }
+                                            RenderTypeId::Index(id) => {
+                                                let id = usize::try_from(id).unwrap();
+                                                let id = map_other_pathid_to_self_pathid[id];
+                                                assert!(id != !0);
+                                                RenderTypeId::Index(isize::try_from(id).unwrap())
+                                            }
+                                            _ => unreachable!(),
+                                        };
+                                        for constraint in constraints {
+                                            map_fn_sig_item(
+                                                map_other_pathid_to_self_pathid,
+                                                constraint,
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            for input in &mut func.inputs {
+                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, input);
+                            }
+                            for output in &mut func.output {
+                                map_fn_sig_item(&mut map_other_pathid_to_self_pathid, output);
+                            }
+                            for clause in &mut func.where_clause {
+                                for entry in clause {
+                                    map_fn_sig_item(&mut map_other_pathid_to_self_pathid, entry);
+                                }
+                            }
+                            let mut result =
+                                String::with_capacity(function_data.function_signature.len());
+                            func.write_to_string_without_param_names(&mut result);
+                            result
+                        },
+                        param_names: function_data.param_names.clone(),
+                    }),
+                    other.type_data[other_entryid].as_ref().map(|type_data| TypeData {
+                        inverted_function_signature_index: type_data
+                            .inverted_function_signature_index
+                            .iter()
+                            .cloned()
+                            .map(|mut list| {
+                                for fnid in &mut list {
+                                    assert!(
+                                        other.function_data[usize::try_from(*fnid).unwrap()]
+                                            .is_some(),
+                                    );
+                                    // this is valid because we call `self.push()` once, exactly, for every entry,
+                                    // even if we're just pushing a tombstone
+                                    *fnid += u32::try_from(other_entryid_offset).unwrap();
+                                }
+                                list
+                            })
+                            .collect(),
+                        search_unbox: type_data.search_unbox,
+                    }),
+                    other.alias_pointers[other_entryid]
+                        .map(|alias_pointer| alias_pointer + other_entryid_offset),
+                );
+            }
+        }
+        for (i, other_generic_inverted_index) in other.generic_inverted_index.iter().enumerate() {
+            for (size, other_list) in other_generic_inverted_index.iter().enumerate() {
+                let self_generic_inverted_index = match self.generic_inverted_index.get_mut(i) {
+                    Some(self_generic_inverted_index) => self_generic_inverted_index,
+                    None => {
+                        self.generic_inverted_index.push(Vec::new());
+                        self.generic_inverted_index.last_mut().unwrap()
+                    }
+                };
+                while self_generic_inverted_index.len() <= size {
+                    self_generic_inverted_index.push(Vec::new());
+                }
+                self_generic_inverted_index[size].extend(
+                    other_list
+                        .iter()
+                        .copied()
+                        .map(|fnid| fnid + u32::try_from(other_entryid_offset).unwrap()),
+                );
+            }
+        }
+        self
+    }
+
+    pub(crate) fn sort(self) -> SerializedSearchIndex {
+        let mut idlist: Vec<usize> = (0..self.names.len()).collect();
+        // nameless entries are tombstones, and will be removed after sorting
+        // sort shorter names first, so that we can present them in order out of search.js
+        idlist.sort_by_key(|&id| {
+            (
+                self.names[id].is_empty(),
+                self.names[id].len(),
+                &self.names[id],
+                self.entry_data[id].as_ref().map_or("", |entry| self.names[entry.krate].as_str()),
+                self.path_data[id].as_ref().map_or(&[][..], |entry| &entry.module_path[..]),
+            )
+        });
+        let map = FxHashMap::from_iter(
+            idlist.iter().enumerate().map(|(new_id, &old_id)| (old_id, new_id)),
+        );
+        let mut new = SerializedSearchIndex::default();
+        for &id in &idlist {
+            if self.names[id].is_empty() {
+                break;
+            }
+            new.push(
+                self.names[id].clone(),
+                self.path_data[id].clone(),
+                self.entry_data[id].as_ref().map(
+                    |EntryData {
+                         krate,
+                         ty,
+                         module_path,
+                         exact_module_path,
+                         parent,
+                         deprecated,
+                         associated_item_disambiguator,
+                     }| EntryData {
+                        krate: *map.get(krate).unwrap(),
+                        ty: *ty,
+                        module_path: module_path.and_then(|path_id| map.get(&path_id).copied()),
+                        exact_module_path: exact_module_path
+                            .and_then(|path_id| map.get(&path_id).copied()),
+                        parent: parent.and_then(|path_id| map.get(&path_id).copied()),
+                        deprecated: *deprecated,
+                        associated_item_disambiguator: associated_item_disambiguator.clone(),
+                    },
+                ),
+                self.descs[id].clone(),
+                self.function_data[id].as_ref().map(
+                    |FunctionData { function_signature, param_names }| FunctionData {
+                        function_signature: {
+                            let (mut func, _offset) =
+                                IndexItemFunctionType::read_from_string_without_param_names(
+                                    function_signature.as_bytes(),
+                                );
+                            fn map_fn_sig_item(map: &FxHashMap<usize, usize>, ty: &mut RenderType) {
+                                match ty.id {
+                                    None => {}
+                                    Some(RenderTypeId::Index(generic)) if generic < 0 => {}
+                                    Some(RenderTypeId::Index(id)) => {
+                                        let id = usize::try_from(id).unwrap();
+                                        let id = *map.get(&id).unwrap();
+                                        assert!(id != !0);
+                                        ty.id =
+                                            Some(RenderTypeId::Index(isize::try_from(id).unwrap()));
+                                    }
+                                    _ => unreachable!(),
+                                }
+                                if let Some(generics) = &mut ty.generics {
+                                    for generic in generics {
+                                        map_fn_sig_item(map, generic);
+                                    }
+                                }
+                                if let Some(bindings) = &mut ty.bindings {
+                                    for (param, constraints) in bindings {
+                                        *param = match *param {
+                                            param @ RenderTypeId::Index(generic) if generic < 0 => {
+                                                param
+                                            }
+                                            RenderTypeId::Index(id) => {
+                                                let id = usize::try_from(id).unwrap();
+                                                let id = *map.get(&id).unwrap();
+                                                assert!(id != !0);
+                                                RenderTypeId::Index(isize::try_from(id).unwrap())
+                                            }
+                                            _ => unreachable!(),
+                                        };
+                                        for constraint in constraints {
+                                            map_fn_sig_item(map, constraint);
+                                        }
+                                    }
+                                }
+                            }
+                            for input in &mut func.inputs {
+                                map_fn_sig_item(&map, input);
+                            }
+                            for output in &mut func.output {
+                                map_fn_sig_item(&map, output);
+                            }
+                            for clause in &mut func.where_clause {
+                                for entry in clause {
+                                    map_fn_sig_item(&map, entry);
+                                }
+                            }
+                            let mut result = String::with_capacity(function_signature.len());
+                            func.write_to_string_without_param_names(&mut result);
+                            result
+                        },
+                        param_names: param_names.clone(),
+                    },
+                ),
+                self.type_data[id].as_ref().map(
+                    |TypeData { search_unbox, inverted_function_signature_index }| {
+                        let inverted_function_signature_index: Vec<Vec<u32>> =
+                            inverted_function_signature_index
+                                .iter()
+                                .cloned()
+                                .map(|mut list| {
+                                    for id in &mut list {
+                                        *id = u32::try_from(
+                                            *map.get(&usize::try_from(*id).unwrap()).unwrap(),
+                                        )
+                                        .unwrap();
+                                    }
+                                    list.sort();
+                                    list
+                                })
+                                .collect();
+                        TypeData { search_unbox: *search_unbox, inverted_function_signature_index }
+                    },
+                ),
+                self.alias_pointers[id].and_then(|alias| map.get(&alias).copied()),
+            );
+        }
+        new.generic_inverted_index = self
+            .generic_inverted_index
+            .into_iter()
+            .map(|mut postings| {
+                for list in postings.iter_mut() {
+                    let mut new_list: Vec<u32> = list
+                        .iter()
+                        .copied()
+                        .filter_map(|id| u32::try_from(*map.get(&usize::try_from(id).ok()?)?).ok())
+                        .collect();
+                    new_list.sort();
+                    *list = new_list;
+                }
+                postings
+            })
+            .collect();
+        new
+    }
+
+    pub(crate) fn write_to(self, doc_root: &Path, resource_suffix: &str) -> Result<(), Error> {
+        let SerializedSearchIndex {
+            names,
+            path_data,
+            entry_data,
+            descs,
+            function_data,
+            type_data,
+            alias_pointers,
+            generic_inverted_index,
+            crate_paths_index: _,
+        } = self;
+        let mut serialized_root = Vec::new();
+        serialized_root.extend_from_slice(br#"rr_('{"normalizedName":{"I":""#);
+        let normalized_names = names
+            .iter()
+            .map(|name| {
+                if name.contains("_") {
+                    name.replace("_", "").to_ascii_lowercase()
+                } else {
+                    name.to_ascii_lowercase()
+                }
+            })
+            .collect::<Vec<String>>();
+        let names_search_tree = stringdex_internals::tree::encode_search_tree_ukkonen(
+            normalized_names.iter().map(|name| name.as_bytes()),
+        );
+        let dir_path = doc_root.join(format!("search.index/"));
+        let _ = std::fs::remove_dir_all(&dir_path); // if already missing, no problem
+        stringdex_internals::write_tree_to_disk(
+            &names_search_tree,
+            &dir_path,
+            &mut serialized_root,
+        )
+        .map_err(|error| Error {
+            file: dir_path,
+            error: format!("failed to write name tree to disk: {error}"),
+        })?;
+        std::mem::drop(names_search_tree);
+        serialized_root.extend_from_slice(br#"","#);
+        serialized_root.extend_from_slice(&perform_write_strings(
+            doc_root,
+            "normalizedName",
+            normalized_names.into_iter(),
+        )?);
+        serialized_root.extend_from_slice(br#"},"crateNames":{"#);
+        let mut crates: Vec<&[u8]> = entry_data
+            .iter()
+            .filter_map(|entry_data| Some(names[entry_data.as_ref()?.krate].as_bytes()))
+            .collect();
+        crates.sort();
+        crates.dedup();
+        serialized_root.extend_from_slice(&perform_write_strings(
+            doc_root,
+            "crateNames",
+            crates.into_iter(),
+        )?);
+        serialized_root.extend_from_slice(br#"},"name":{"#);
+        serialized_root.extend_from_slice(&perform_write_strings(doc_root, "name", names.iter())?);
+        serialized_root.extend_from_slice(br#"},"path":{"#);
+        serialized_root.extend_from_slice(&perform_write_serde(doc_root, "path", path_data)?);
+        serialized_root.extend_from_slice(br#"},"entry":{"#);
+        serialized_root.extend_from_slice(&perform_write_serde(doc_root, "entry", entry_data)?);
+        serialized_root.extend_from_slice(br#"},"desc":{"#);
+        serialized_root.extend_from_slice(&perform_write_strings(
+            doc_root,
+            "desc",
+            descs.into_iter(),
+        )?);
+        serialized_root.extend_from_slice(br#"},"function":{"#);
+        serialized_root.extend_from_slice(&perform_write_serde(
+            doc_root,
+            "function",
+            function_data,
+        )?);
+        serialized_root.extend_from_slice(br#"},"type":{"#);
+        serialized_root.extend_from_slice(&perform_write_serde(doc_root, "type", type_data)?);
+        serialized_root.extend_from_slice(br#"},"alias":{"#);
+        serialized_root.extend_from_slice(&perform_write_serde(doc_root, "alias", alias_pointers)?);
+        serialized_root.extend_from_slice(br#"},"generic_inverted_index":{"#);
+        serialized_root.extend_from_slice(&perform_write_postings(
+            doc_root,
+            "generic_inverted_index",
+            generic_inverted_index,
+        )?);
+        serialized_root.extend_from_slice(br#"}}')"#);
+        fn perform_write_strings(
+            doc_root: &Path,
+            dirname: &str,
+            mut column: impl Iterator<Item = impl AsRef<[u8]> + Clone> + ExactSizeIterator,
+        ) -> Result<Vec<u8>, Error> {
+            let dir_path = doc_root.join(format!("search.index/{dirname}"));
+            stringdex_internals::write_data_to_disk(&mut column, &dir_path).map_err(|error| Error {
+                file: dir_path,
+                error: format!("failed to write column to disk: {error}"),
+            })
+        }
+        fn perform_write_serde(
+            doc_root: &Path,
+            dirname: &str,
+            column: Vec<Option<impl Serialize>>,
+        ) -> Result<Vec<u8>, Error> {
+            perform_write_strings(
+                doc_root,
+                dirname,
+                column.into_iter().map(|value| {
+                    if let Some(value) = value {
+                        serde_json::to_vec(&value).unwrap()
+                    } else {
+                        Vec::new()
+                    }
+                }),
+            )
+        }
+        fn perform_write_postings(
+            doc_root: &Path,
+            dirname: &str,
+            column: Vec<Vec<Vec<u32>>>,
+        ) -> Result<Vec<u8>, Error> {
+            perform_write_strings(
+                doc_root,
+                dirname,
+                column.into_iter().map(|postings| {
+                    let mut buf = Vec::new();
+                    encode::write_postings_to_string(&postings, &mut buf);
+                    buf
+                }),
+            )
+        }
+        std::fs::write(
+            doc_root.join(format!("search.index/root{resource_suffix}.js")),
+            serialized_root,
+        )
+        .map_err(|error| Error {
+            file: doc_root.join(format!("search.index/root{resource_suffix}.js")),
+            error: format!("failed to write root to disk: {error}"),
+        })?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug)]
+struct EntryData {
+    krate: usize,
+    ty: ItemType,
+    module_path: Option<usize>,
+    exact_module_path: Option<usize>,
+    parent: Option<usize>,
+    deprecated: bool,
+    associated_item_disambiguator: Option<String>,
+}
+
+impl Serialize for EntryData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.krate)?;
+        seq.serialize_element(&self.ty)?;
+        seq.serialize_element(&self.module_path.map(|id| id + 1).unwrap_or(0))?;
+        seq.serialize_element(&self.exact_module_path.map(|id| id + 1).unwrap_or(0))?;
+        seq.serialize_element(&self.parent.map(|id| id + 1).unwrap_or(0))?;
+        seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
+        if let Some(disambig) = &self.associated_item_disambiguator {
+            seq.serialize_element(&disambig)?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for EntryData {
+    fn deserialize<D>(deserializer: D) -> Result<EntryData, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct EntryDataVisitor;
+        impl<'de> de::Visitor<'de> for EntryDataVisitor {
+            type Value = EntryData;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "path data")
+            }
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<EntryData, A::Error> {
+                let krate: usize =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("krate"))?;
+                let ty: ItemType =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("ty"))?;
+                let module_path: SerializedOptional32 =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("module_path"))?;
+                let exact_module_path: SerializedOptional32 = v
+                    .next_element()?
+                    .ok_or_else(|| A::Error::missing_field("exact_module_path"))?;
+                let parent: SerializedOptional32 =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("parent"))?;
+                let deprecated: u32 = v.next_element()?.unwrap_or(0);
+                let associated_item_disambiguator: Option<String> = v.next_element()?;
+                Ok(EntryData {
+                    krate,
+                    ty,
+                    module_path: Option::<i32>::from(module_path).map(|path| path as usize),
+                    exact_module_path: Option::<i32>::from(exact_module_path)
+                        .map(|path| path as usize),
+                    parent: Option::<i32>::from(parent).map(|path| path as usize),
+                    deprecated: deprecated != 0,
+                    associated_item_disambiguator,
+                })
+            }
+        }
+        deserializer.deserialize_any(EntryDataVisitor)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PathData {
+    ty: ItemType,
+    module_path: Vec<Symbol>,
+    exact_module_path: Option<Vec<Symbol>>,
+}
+
+impl Serialize for PathData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.ty)?;
+        seq.serialize_element(&if self.module_path.is_empty() {
+            String::new()
+        } else {
+            join_path_syms(&self.module_path)
+        })?;
+        if let Some(ref path) = self.exact_module_path {
+            seq.serialize_element(&if path.is_empty() {
+                String::new()
+            } else {
+                join_path_syms(path)
+            })?;
+        }
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for PathData {
+    fn deserialize<D>(deserializer: D) -> Result<PathData, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct PathDataVisitor;
+        impl<'de> de::Visitor<'de> for PathDataVisitor {
+            type Value = PathData;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "path data")
+            }
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<PathData, A::Error> {
+                let ty: ItemType =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("ty"))?;
+                let module_path: String =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("module_path"))?;
+                let exact_module_path: Option<String> =
+                    v.next_element()?.and_then(SerializedOptionalString::into);
+                Ok(PathData {
+                    ty,
+                    module_path: if module_path.is_empty() {
+                        vec![]
+                    } else {
+                        module_path.split("::").map(Symbol::intern).collect()
+                    },
+                    exact_module_path: exact_module_path.map(|path| {
+                        if path.is_empty() {
+                            vec![]
+                        } else {
+                            path.split("::").map(Symbol::intern).collect()
+                        }
+                    }),
+                })
+            }
+        }
+        deserializer.deserialize_any(PathDataVisitor)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct TypeData {
+    /// If set to "true", the generics can be matched without having to
+    /// mention the type itself. The truth table, assuming `Unboxable`
+    /// has `search_unbox = true` and `Inner` has `search_unbox = false`
+    ///
+    /// | **query**          | `Unboxable<Inner>` | `Inner` | `Inner<Unboxable>` |
+    /// |--------------------|--------------------|---------|--------------------|
+    /// | `Inner`            | yes                | yes     | yes                |
+    /// | `Unboxable`        | yes                | no      | no                 |
+    /// | `Unboxable<Inner>` | yes                | no      | no                 |
+    /// | `Inner<Unboxable>` | no                 | no      | yes                |
+    search_unbox: bool,
+    /// List of functions that mention this type in their type signature.
+    ///
+    /// - The outermost list has one entry per alpha-normalized generic.
+    ///
+    /// - The second layer is sorted by number of types that appear in the
+    ///   type signature. The search engine iterates over these in order from
+    ///   smallest to largest. Functions with less stuff in their type
+    ///   signature are more likely to be what the user wants, because we never
+    ///   show functions that are *missing* parts of the query, so removing..
+    ///
+    /// - The final layer is the list of functions.
+    inverted_function_signature_index: Vec<Vec<u32>>,
+}
+
+impl Serialize for TypeData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if self.search_unbox || !self.inverted_function_signature_index.is_empty() {
+            let mut seq = serializer.serialize_seq(None)?;
+            if !self.inverted_function_signature_index.is_empty() {
+                let mut buf = Vec::new();
+                encode::write_postings_to_string(&self.inverted_function_signature_index, &mut buf);
+                let mut serialized_result = Vec::new();
+                stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+                seq.serialize_element(&String::from_utf8(serialized_result).unwrap())?;
+            }
+            if self.search_unbox {
+                seq.serialize_element(&1)?;
+            }
+            seq.end()
+        } else {
+            None::<()>.serialize(serializer)
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for TypeData {
+    fn deserialize<D>(deserializer: D) -> Result<TypeData, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct TypeDataVisitor;
+        impl<'de> de::Visitor<'de> for TypeDataVisitor {
+            type Value = TypeData;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "type data")
+            }
+            fn visit_none<E>(self) -> Result<TypeData, E> {
+                Ok(TypeData { inverted_function_signature_index: vec![], search_unbox: false })
+            }
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<TypeData, A::Error> {
+                let inverted_function_signature_index: String =
+                    v.next_element()?.unwrap_or(String::new());
+                let search_unbox: u32 = v.next_element()?.unwrap_or(0);
+                let mut idx: Vec<u8> = Vec::new();
+                stringdex_internals::decode::read_base64_from_bytes(
+                    inverted_function_signature_index.as_bytes(),
+                    &mut idx,
+                )
+                .unwrap();
+                let mut inverted_function_signature_index = Vec::new();
+                encode::read_postings_from_string(&mut inverted_function_signature_index, &idx);
+                Ok(TypeData { inverted_function_signature_index, search_unbox: search_unbox == 1 })
+            }
+        }
+        deserializer.deserialize_any(TypeDataVisitor)
+    }
+}
+
+enum SerializedOptionalString {
+    None,
+    Some(String),
+}
+
+impl From<SerializedOptionalString> for Option<String> {
+    fn from(me: SerializedOptionalString) -> Option<String> {
+        match me {
+            SerializedOptionalString::Some(string) => Some(string),
+            SerializedOptionalString::None => None,
+        }
+    }
+}
+
+impl Serialize for SerializedOptionalString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            SerializedOptionalString::Some(string) => string.serialize(serializer),
+            SerializedOptionalString::None => 0.serialize(serializer),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for SerializedOptionalString {
+    fn deserialize<D>(deserializer: D) -> Result<SerializedOptionalString, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SerializedOptionalStringVisitor;
+        impl<'de> de::Visitor<'de> for SerializedOptionalStringVisitor {
+            type Value = SerializedOptionalString;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "0 or string")
+            }
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<SerializedOptionalString, E> {
+                if v != 0 {
+                    return Err(E::missing_field("not 0"));
+                }
+                Ok(SerializedOptionalString::None)
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> Result<SerializedOptionalString, E> {
+                Ok(SerializedOptionalString::Some(v))
+            }
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<SerializedOptionalString, E> {
+                Ok(SerializedOptionalString::Some(v.to_string()))
+            }
+        }
+        deserializer.deserialize_any(SerializedOptionalStringVisitor)
+    }
+}
+
+enum SerializedOptional32 {
+    None,
+    Some(i32),
+}
+
+impl From<SerializedOptional32> for Option<i32> {
+    fn from(me: SerializedOptional32) -> Option<i32> {
+        match me {
+            SerializedOptional32::Some(number) => Some(number),
+            SerializedOptional32::None => None,
+        }
+    }
+}
+
+impl Serialize for SerializedOptional32 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            &SerializedOptional32::Some(number) if number < 0 => number.serialize(serializer),
+            &SerializedOptional32::Some(number) => (number + 1).serialize(serializer),
+            &SerializedOptional32::None => 0.serialize(serializer),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for SerializedOptional32 {
+    fn deserialize<D>(deserializer: D) -> Result<SerializedOptional32, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SerializedOptional32Visitor;
+        impl<'de> de::Visitor<'de> for SerializedOptional32Visitor {
+            type Value = SerializedOptional32;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "integer")
+            }
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<SerializedOptional32, E> {
+                Ok(match v {
+                    0 => SerializedOptional32::None,
+                    v if v < 0 => SerializedOptional32::Some(v as i32),
+                    v => SerializedOptional32::Some(v as i32 - 1),
+                })
+            }
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<SerializedOptional32, E> {
+                Ok(match v {
+                    0 => SerializedOptional32::None,
+                    v => SerializedOptional32::Some(v as i32 - 1),
+                })
+            }
+        }
+        deserializer.deserialize_any(SerializedOptional32Visitor)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionData {
+    function_signature: String,
+    param_names: Vec<String>,
+}
+
+impl Serialize for FunctionData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut seq = serializer.serialize_seq(None)?;
+        seq.serialize_element(&self.function_signature)?;
+        seq.serialize_element(&self.param_names)?;
+        seq.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for FunctionData {
+    fn deserialize<D>(deserializer: D) -> Result<FunctionData, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct FunctionDataVisitor;
+        impl<'de> de::Visitor<'de> for FunctionDataVisitor {
+            type Value = FunctionData;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "fn data")
+            }
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<FunctionData, A::Error> {
+                let function_signature: String = v
+                    .next_element()?
+                    .ok_or_else(|| A::Error::missing_field("function_signature"))?;
+                let param_names: Vec<String> =
+                    v.next_element()?.ok_or_else(|| A::Error::missing_field("param_names"))?;
+                Ok(FunctionData { function_signature, param_names })
+            }
+        }
+        deserializer.deserialize_any(FunctionDataVisitor)
+    }
+}
 
 /// Builds the search index from the collected metadata
 pub(crate) fn build_index(
     krate: &clean::Crate,
     cache: &mut Cache,
     tcx: TyCtxt<'_>,
-) -> SerializedSearchIndex {
-    // Maps from ID to position in the `crate_paths` array.
-    let mut itemid_to_pathid = FxHashMap::default();
-    let mut primitives = FxHashMap::default();
-    let mut associated_types = FxHashMap::default();
-
-    // item type, display path, re-exported internal path
-    let mut crate_paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)> = vec![];
+    doc_root: &Path,
+    resource_suffix: &str,
+) -> Result<SerializedSearchIndex, Error> {
+    let mut search_index = std::mem::take(&mut cache.search_index);
 
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
@@ -74,15 +1171,15 @@ pub(crate) fn build_index(
     {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
             let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
-            cache.search_index.push(IndexItem {
+            search_index.push(IndexItem {
                 ty: item.type_(),
                 defid: item.item_id.as_def_id(),
                 name: item.name.unwrap(),
-                path: join_path_syms(&fqp[..fqp.len() - 1]),
+                module_path: fqp[..fqp.len() - 1].to_vec(),
                 desc,
                 parent: Some(parent),
                 parent_idx: None,
-                exact_path: None,
+                exact_module_path: None,
                 impl_id,
                 search_type: get_function_type_for_search(
                     item,
@@ -97,85 +1194,299 @@ pub(crate) fn build_index(
         }
     }
 
-    let crate_doc =
-        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
-
-    #[derive(Eq, Ord, PartialEq, PartialOrd)]
-    struct SerSymbolAsStr(Symbol);
-
-    impl Serialize for SerSymbolAsStr {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            self.0.as_str().serialize(serializer)
-        }
-    }
-
-    type AliasMap = BTreeMap<SerSymbolAsStr, Vec<usize>>;
-    // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
-    // we need the alias element to have an array of items.
-    let mut aliases: AliasMap = BTreeMap::new();
-
     // Sort search index items. This improves the compressibility of the search index.
-    cache.search_index.sort_unstable_by(|k1, k2| {
+    search_index.sort_unstable_by(|k1, k2| {
         // `sort_unstable_by_key` produces lifetime errors
         // HACK(rustdoc): should not be sorting `CrateNum` or `DefIndex`, this will soon go away, too
-        let k1 = (&k1.path, k1.name.as_str(), &k1.ty, k1.parent.map(|id| (id.index, id.krate)));
-        let k2 = (&k2.path, k2.name.as_str(), &k2.ty, k2.parent.map(|id| (id.index, id.krate)));
+        let k1 =
+            (&k1.module_path, k1.name.as_str(), &k1.ty, k1.parent.map(|id| (id.index, id.krate)));
+        let k2 =
+            (&k2.module_path, k2.name.as_str(), &k2.ty, k2.parent.map(|id| (id.index, id.krate)));
         Ord::cmp(&k1, &k2)
     });
 
-    // Set up alias indexes.
-    for (i, item) in cache.search_index.iter().enumerate() {
-        for alias in &item.aliases[..] {
-            aliases.entry(SerSymbolAsStr(*alias)).or_default().push(i);
+    // Now, convert to an on-disk search index format
+    //
+    // if there's already a search index, load it into memory and add the new entries to it
+    // otherwise, do nothing
+    let mut serialized_index = SerializedSearchIndex::load(doc_root, resource_suffix)?;
+
+    // The crate always goes first in this list
+    let crate_name = krate.name(tcx);
+    let crate_doc =
+        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
+    let crate_idx = {
+        let crate_path = (ItemType::ExternCrate, vec![crate_name]);
+        match serialized_index.crate_paths_index.entry(crate_path) {
+            Entry::Occupied(index) => {
+                let index = *index.get();
+                serialized_index.descs[index] = crate_doc;
+                for type_data in serialized_index.type_data.iter_mut() {
+                    if let Some(TypeData { inverted_function_signature_index, .. }) = type_data {
+                        for list in &mut inverted_function_signature_index[..] {
+                            list.retain(|fnid| {
+                                serialized_index.entry_data[usize::try_from(*fnid).unwrap()]
+                                    .as_ref()
+                                    .unwrap()
+                                    .krate
+                                    != index
+                            });
+                        }
+                    }
+                }
+                for i in (index + 1)..serialized_index.entry_data.len() {
+                    // if this crate has been built before, replace its stuff with new
+                    if let Some(EntryData { krate, .. }) = serialized_index.entry_data[i]
+                        && krate == index
+                    {
+                        serialized_index.entry_data[i] = None;
+                        serialized_index.descs[i] = String::new();
+                        serialized_index.function_data[i] = None;
+                        if serialized_index.path_data[i].is_none() {
+                            serialized_index.names[i] = String::new();
+                        }
+                    }
+                    if let Some(alias_pointer) = serialized_index.alias_pointers[i]
+                        && serialized_index.entry_data[alias_pointer].is_none()
+                    {
+                        serialized_index.alias_pointers[i] = None;
+                        if serialized_index.path_data[i].is_none()
+                            && serialized_index.entry_data[i].is_none()
+                        {
+                            serialized_index.names[i] = String::new();
+                        }
+                    }
+                }
+                index
+            }
+            Entry::Vacant(slot) => {
+                let krate = serialized_index.names.len();
+                slot.insert(krate);
+                serialized_index.push(
+                    crate_name.as_str().to_string(),
+                    Some(PathData {
+                        ty: ItemType::ExternCrate,
+                        module_path: vec![],
+                        exact_module_path: None,
+                    }),
+                    Some(EntryData {
+                        krate,
+                        ty: ItemType::ExternCrate,
+                        module_path: None,
+                        exact_module_path: None,
+                        parent: None,
+                        deprecated: false,
+                        associated_item_disambiguator: None,
+                    }),
+                    crate_doc,
+                    None,
+                    None,
+                    None,
+                );
+                krate
+            }
+        }
+    };
+
+    // First, populate associated item parents
+    let crate_items: Vec<&mut IndexItem> = search_index
+        .iter_mut()
+        .map(|item| {
+            item.parent_idx = item.parent.and_then(|defid| {
+                cache.paths.get(&defid).map(|&(ref fqp, ty)| {
+                    let pathid = serialized_index.names.len();
+                    match serialized_index.crate_paths_index.entry((ty, fqp.clone())) {
+                        Entry::Occupied(entry) => *entry.get(),
+                        Entry::Vacant(entry) => {
+                            entry.insert(pathid);
+                            let (name, path) = fqp.split_last().unwrap();
+                            serialized_index.push_path(
+                                name.as_str().to_string(),
+                                PathData {
+                                    ty,
+                                    module_path: path.to_vec(),
+                                    exact_module_path: if let Some(exact_path) =
+                                        cache.exact_paths.get(&defid)
+                                        && let Some((name2, exact_path)) = exact_path.split_last()
+                                        && name == name2
+                                    {
+                                        Some(exact_path.to_vec())
+                                    } else {
+                                        None
+                                    },
+                                },
+                            );
+                            usize::try_from(pathid).unwrap()
+                        }
+                    }
+                })
+            });
+
+            if let Some(defid) = item.defid
+                && item.parent_idx.is_none()
+            {
+                // If this is a re-export, retain the original path.
+                // Associated items don't use this.
+                // Their parent carries the exact fqp instead.
+                let exact_fqp = cache
+                    .exact_paths
+                    .get(&defid)
+                    .or_else(|| cache.external_paths.get(&defid).map(|(fqp, _)| fqp));
+                item.exact_module_path = exact_fqp.and_then(|fqp| {
+                    // Re-exports only count if the name is exactly the same.
+                    // This is a size optimization, since it means we only need
+                    // to store the name once (and the path is re-used for everything
+                    // exported from this same module). It's also likely to Do
+                    // What I Mean, since if a re-export changes the name, it might
+                    // also be a change in semantic meaning.
+                    if fqp.last() != Some(&item.name) {
+                        return None;
+                    }
+                    let path =
+                        if item.ty == ItemType::Macro && tcx.has_attr(defid, sym::macro_export) {
+                            // `#[macro_export]` always exports to the crate root.
+                            vec![tcx.crate_name(defid.krate)]
+                        } else {
+                            if fqp.len() < 2 {
+                                return None;
+                            }
+                            fqp[..fqp.len() - 1].to_vec()
+                        };
+                    if path == item.module_path {
+                        return None;
+                    }
+                    Some(path)
+                });
+            } else if let Some(parent_idx) = item.parent_idx {
+                let i = usize::try_from(parent_idx).unwrap();
+                item.module_path =
+                    serialized_index.path_data[i].as_ref().unwrap().module_path.clone();
+                item.exact_module_path =
+                    serialized_index.path_data[i].as_ref().unwrap().exact_module_path.clone();
+            }
+
+            &mut *item
+        })
+        .collect();
+
+    // Now, find anywhere that the same name is used for two different items
+    // these need a disambiguator hash for lints
+    let mut associated_item_duplicates = FxHashMap::<(usize, ItemType, Symbol), usize>::default();
+    for item in crate_items.iter().map(|x| &*x) {
+        if item.impl_id.is_some()
+            && let Some(parent_idx) = item.parent_idx
+        {
+            let count =
+                associated_item_duplicates.entry((parent_idx, item.ty, item.name)).or_insert(0);
+            *count += 1;
         }
     }
 
-    // Reduce `DefId` in paths into smaller sequential numbers,
-    // and prune the paths that do not appear in the index.
-    let mut lastpath = "";
-    let mut lastpathid = 0isize;
+    // now populate the actual entries, type data, and function data
+    for item in crate_items {
+        assert_eq!(
+            item.parent.is_some(),
+            item.parent_idx.is_some(),
+            "`{}` is missing idx",
+            item.name
+        );
 
-    // First, on function signatures
-    let mut search_index = std::mem::take(&mut cache.search_index);
-    for item in search_index.iter_mut() {
-        fn insert_into_map<F: std::hash::Hash + Eq>(
-            map: &mut FxHashMap<F, isize>,
-            itemid: F,
-            lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
-            item_type: ItemType,
+        let module_path = Some(serialized_index.get_id_by_module_path(&item.module_path));
+        let exact_module_path = item
+            .exact_module_path
+            .as_ref()
+            .map(|path| serialized_index.get_id_by_module_path(path));
+
+        let new_entry_id = serialized_index.push(
+            item.name.as_str().to_string(),
+            None,
+            Some(EntryData {
+                ty: item.ty,
+                parent: item.parent_idx,
+                module_path,
+                exact_module_path,
+                deprecated: item.deprecation.is_some(),
+                associated_item_disambiguator: if let Some(impl_id) = item.impl_id
+                    && let Some(parent_idx) = item.parent_idx
+                    && associated_item_duplicates
+                        .get(&(parent_idx, item.ty, item.name))
+                        .copied()
+                        .unwrap_or(0)
+                        > 1
+                {
+                    Some(render::get_id_for_impl(tcx, ItemId::DefId(impl_id)))
+                } else {
+                    None
+                },
+                krate: crate_idx,
+            }),
+            item.desc.to_string(),
+            None, // filled in after all the types have been indexed
+            None,
+            None,
+        );
+
+        // Aliases
+        // -------
+        for alias in &item.aliases[..] {
+            serialized_index.push_alias(alias.as_str().to_string(), new_entry_id);
+        }
+
+        // Function signature reverse index
+        // --------------------------------
+        fn insert_into_map(
+            ty: ItemType,
             path: &[Symbol],
             exact_path: Option<&[Symbol]>,
             search_unbox: bool,
+            serialized_index: &mut SerializedSearchIndex,
+            used_in_function_signature: &mut BTreeSet<isize>,
         ) -> RenderTypeId {
-            match map.entry(itemid) {
-                Entry::Occupied(entry) => RenderTypeId::Index(*entry.get()),
-                Entry::Vacant(entry) => {
-                    let pathid = *lastpathid;
-                    entry.insert(pathid);
-                    *lastpathid += 1;
-                    crate_paths.push((
-                        item_type,
-                        path.to_vec(),
-                        exact_path.map(|path| path.to_vec()),
-                        search_unbox,
-                    ));
-                    RenderTypeId::Index(pathid)
+            let pathid = serialized_index.names.len();
+            let pathid = match serialized_index.crate_paths_index.entry((ty, path.to_vec())) {
+                Entry::Occupied(entry) => {
+                    let id = *entry.get();
+                    if serialized_index.type_data[id].as_mut().is_none() {
+                        serialized_index.type_data[id] = Some(TypeData {
+                            search_unbox,
+                            inverted_function_signature_index: Vec::new(),
+                        });
+                    } else if search_unbox {
+                        serialized_index.type_data[id].as_mut().unwrap().search_unbox = true;
+                    }
+                    id
                 }
-            }
+                Entry::Vacant(entry) => {
+                    entry.insert(pathid);
+                    let (name, path) = path.split_last().unwrap();
+                    serialized_index.push_type(
+                        name.to_string(),
+                        PathData {
+                            ty,
+                            module_path: path.to_vec(),
+                            exact_module_path: if let Some(exact_path) = exact_path
+                                && let Some((name2, exact_path)) = exact_path.split_last()
+                                && name == name2
+                            {
+                                Some(exact_path.to_vec())
+                            } else {
+                                None
+                            },
+                        },
+                        TypeData { search_unbox, inverted_function_signature_index: Vec::new() },
+                    );
+                    pathid
+                }
+            };
+            used_in_function_signature.insert(isize::try_from(pathid).unwrap());
+            RenderTypeId::Index(isize::try_from(pathid).unwrap())
         }
 
         fn convert_render_type_id(
             id: RenderTypeId,
             cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, isize>,
-            primitives: &mut FxHashMap<Symbol, isize>,
-            associated_types: &mut FxHashMap<Symbol, isize>,
-            lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
+            serialized_index: &mut SerializedSearchIndex,
+            used_in_function_signature: &mut BTreeSet<isize>,
             tcx: TyCtxt<'_>,
         ) -> Option<RenderTypeId> {
             use crate::clean::PrimitiveType;
@@ -183,7 +1494,9 @@ pub(crate) fn build_index(
             let search_unbox = match id {
                 RenderTypeId::Mut => false,
                 RenderTypeId::DefId(defid) => utils::has_doc_flag(tcx, defid, sym::search_unbox),
-                RenderTypeId::Primitive(PrimitiveType::Reference | PrimitiveType::Tuple) => true,
+                RenderTypeId::Primitive(
+                    PrimitiveType::Reference | PrimitiveType::RawPointer | PrimitiveType::Tuple,
+                ) => true,
                 RenderTypeId::Primitive(..) => false,
                 RenderTypeId::AssociatedType(..) => false,
                 // this bool is only used by `insert_into_map`, so it doesn't matter what we set here
@@ -192,39 +1505,55 @@ pub(crate) fn build_index(
             };
             match id {
                 RenderTypeId::Mut => Some(insert_into_map(
-                    primitives,
-                    kw::Mut,
-                    lastpathid,
-                    crate_paths,
                     ItemType::Keyword,
                     &[kw::Mut],
                     None,
                     search_unbox,
+                    serialized_index,
+                    used_in_function_signature,
                 )),
                 RenderTypeId::DefId(defid) => {
                     if let Some(&(ref fqp, item_type)) =
                         paths.get(&defid).or_else(|| external_paths.get(&defid))
                     {
-                        let exact_fqp = exact_paths
-                            .get(&defid)
-                            .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp))
-                            // Re-exports only count if the name is exactly the same.
-                            // This is a size optimization, since it means we only need
-                            // to store the name once (and the path is re-used for everything
-                            // exported from this same module). It's also likely to Do
-                            // What I Mean, since if a re-export changes the name, it might
-                            // also be a change in semantic meaning.
-                            .filter(|this_fqp| this_fqp.last() == fqp.last());
-                        Some(insert_into_map(
-                            itemid_to_pathid,
-                            ItemId::DefId(defid),
-                            lastpathid,
-                            crate_paths,
-                            item_type,
-                            fqp,
-                            exact_fqp.map(|x| &x[..]).filter(|exact_fqp| exact_fqp != fqp),
-                            search_unbox,
-                        ))
+                        if tcx.lang_items().fn_mut_trait() == Some(defid)
+                            || tcx.lang_items().fn_once_trait() == Some(defid)
+                            || tcx.lang_items().fn_trait() == Some(defid)
+                        {
+                            let name = *fqp.last().unwrap();
+                            // Make absolutely sure we use this single, correct path,
+                            // because search.js needs to match. If we don't do this,
+                            // there are three different paths that these traits may
+                            // appear to come from.
+                            Some(insert_into_map(
+                                item_type,
+                                &[sym::core, sym::ops, name],
+                                Some(&[sym::core, sym::ops, name]),
+                                search_unbox,
+                                serialized_index,
+                                used_in_function_signature,
+                            ))
+                        } else {
+                            let exact_fqp = exact_paths
+                                .get(&defid)
+                                .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp))
+                                .map(|v| &v[..])
+                                // Re-exports only count if the name is exactly the same.
+                                // This is a size optimization, since it means we only need
+                                // to store the name once (and the path is re-used for everything
+                                // exported from this same module). It's also likely to Do
+                                // What I Mean, since if a re-export changes the name, it might
+                                // also be a change in semantic meaning.
+                                .filter(|this_fqp| this_fqp.last() == fqp.last());
+                            Some(insert_into_map(
+                                item_type,
+                                fqp,
+                                exact_fqp,
+                                search_unbox,
+                                serialized_index,
+                                used_in_function_signature,
+                            ))
+                        }
                     } else {
                         None
                     }
@@ -232,26 +1561,25 @@ pub(crate) fn build_index(
                 RenderTypeId::Primitive(primitive) => {
                     let sym = primitive.as_sym();
                     Some(insert_into_map(
-                        primitives,
-                        sym,
-                        lastpathid,
-                        crate_paths,
                         ItemType::Primitive,
                         &[sym],
                         None,
                         search_unbox,
+                        serialized_index,
+                        used_in_function_signature,
                     ))
                 }
-                RenderTypeId::Index(_) => Some(id),
+                RenderTypeId::Index(index) => {
+                    used_in_function_signature.insert(index);
+                    Some(id)
+                }
                 RenderTypeId::AssociatedType(sym) => Some(insert_into_map(
-                    associated_types,
-                    sym,
-                    lastpathid,
-                    crate_paths,
                     ItemType::AssocType,
                     &[sym],
                     None,
                     search_unbox,
+                    serialized_index,
+                    used_in_function_signature,
                 )),
             }
         }
@@ -259,11 +1587,8 @@ pub(crate) fn build_index(
         fn convert_render_type(
             ty: &mut RenderType,
             cache: &mut Cache,
-            itemid_to_pathid: &mut FxHashMap<ItemId, isize>,
-            primitives: &mut FxHashMap<Symbol, isize>,
-            associated_types: &mut FxHashMap<Symbol, isize>,
-            lastpathid: &mut isize,
-            crate_paths: &mut Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
+            serialized_index: &mut SerializedSearchIndex,
+            used_in_function_signature: &mut BTreeSet<isize>,
             tcx: TyCtxt<'_>,
         ) {
             if let Some(generics) = &mut ty.generics {
@@ -271,11 +1596,8 @@ pub(crate) fn build_index(
                     convert_render_type(
                         item,
                         cache,
-                        itemid_to_pathid,
-                        primitives,
-                        associated_types,
-                        lastpathid,
-                        crate_paths,
+                        serialized_index,
+                        used_in_function_signature,
                         tcx,
                     );
                 }
@@ -285,11 +1607,8 @@ pub(crate) fn build_index(
                     let converted_associated_type = convert_render_type_id(
                         *associated_type,
                         cache,
-                        itemid_to_pathid,
-                        primitives,
-                        associated_types,
-                        lastpathid,
-                        crate_paths,
+                        serialized_index,
+                        used_in_function_signature,
                         tcx,
                     );
                     let Some(converted_associated_type) = converted_associated_type else {
@@ -300,11 +1619,8 @@ pub(crate) fn build_index(
                         convert_render_type(
                             constraint,
                             cache,
-                            itemid_to_pathid,
-                            primitives,
-                            associated_types,
-                            lastpathid,
-                            crate_paths,
+                            serialized_index,
+                            used_in_function_signature,
                             tcx,
                         );
                     }
@@ -318,24 +1634,74 @@ pub(crate) fn build_index(
             ty.id = convert_render_type_id(
                 id,
                 cache,
-                itemid_to_pathid,
-                primitives,
-                associated_types,
-                lastpathid,
-                crate_paths,
+                serialized_index,
+                used_in_function_signature,
                 tcx,
             );
+            use crate::clean::PrimitiveType;
+            // These cases are added to the inverted index, but not actually included
+            // in the signature. There's a matching set of cases in the
+            // `unifyFunctionTypeIsMatchCandidate` function, for the slow path.
+            match id {
+                // typeNameIdOfArrayOrSlice
+                RenderTypeId::Primitive(PrimitiveType::Array | PrimitiveType::Slice) => {
+                    insert_into_map(
+                        ItemType::Primitive,
+                        &[Symbol::intern("[]")],
+                        None,
+                        false,
+                        serialized_index,
+                        used_in_function_signature,
+                    );
+                }
+                RenderTypeId::Primitive(PrimitiveType::Tuple | PrimitiveType::Unit) => {
+                    // typeNameIdOfArrayOrSlice
+                    insert_into_map(
+                        ItemType::Primitive,
+                        &[Symbol::intern("()")],
+                        None,
+                        false,
+                        serialized_index,
+                        used_in_function_signature,
+                    );
+                }
+                // typeNameIdOfHof
+                RenderTypeId::Primitive(PrimitiveType::Fn) => {
+                    insert_into_map(
+                        ItemType::Primitive,
+                        &[Symbol::intern("->")],
+                        None,
+                        false,
+                        serialized_index,
+                        used_in_function_signature,
+                    );
+                }
+                RenderTypeId::DefId(did)
+                    if tcx.lang_items().fn_mut_trait() == Some(did)
+                        || tcx.lang_items().fn_once_trait() == Some(did)
+                        || tcx.lang_items().fn_trait() == Some(did) =>
+                {
+                    insert_into_map(
+                        ItemType::Primitive,
+                        &[Symbol::intern("->")],
+                        None,
+                        false,
+                        serialized_index,
+                        used_in_function_signature,
+                    );
+                }
+                // not special
+                _ => {}
+            }
         }
         if let Some(search_type) = &mut item.search_type {
+            let mut used_in_function_signature = BTreeSet::new();
             for item in &mut search_type.inputs {
                 convert_render_type(
                     item,
                     cache,
-                    &mut itemid_to_pathid,
-                    &mut primitives,
-                    &mut associated_types,
-                    &mut lastpathid,
-                    &mut crate_paths,
+                    &mut serialized_index,
+                    &mut used_in_function_signature,
                     tcx,
                 );
             }
@@ -343,11 +1709,8 @@ pub(crate) fn build_index(
                 convert_render_type(
                     item,
                     cache,
-                    &mut itemid_to_pathid,
-                    &mut primitives,
-                    &mut associated_types,
-                    &mut lastpathid,
-                    &mut crate_paths,
+                    &mut serialized_index,
+                    &mut used_in_function_signature,
                     tcx,
                 );
             }
@@ -356,464 +1719,56 @@ pub(crate) fn build_index(
                     convert_render_type(
                         trait_,
                         cache,
-                        &mut itemid_to_pathid,
-                        &mut primitives,
-                        &mut associated_types,
-                        &mut lastpathid,
-                        &mut crate_paths,
+                        &mut serialized_index,
+                        &mut used_in_function_signature,
                         tcx,
                     );
                 }
             }
-        }
-    }
-
-    let Cache { ref paths, ref exact_paths, ref external_paths, .. } = *cache;
-
-    // Then, on parent modules
-    let crate_items: Vec<&IndexItem> = search_index
-        .iter_mut()
-        .map(|item| {
-            item.parent_idx =
-                item.parent.and_then(|defid| match itemid_to_pathid.entry(ItemId::DefId(defid)) {
-                    Entry::Occupied(entry) => Some(*entry.get()),
-                    Entry::Vacant(entry) => {
-                        let pathid = lastpathid;
-                        entry.insert(pathid);
-                        lastpathid += 1;
-
-                        if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                            let exact_fqp = exact_paths
-                                .get(&defid)
-                                .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp))
-                                .filter(|exact_fqp| {
-                                    exact_fqp.last() == Some(&item.name) && *exact_fqp != fqp
-                                });
-                            crate_paths.push((
-                                short,
-                                fqp.clone(),
-                                exact_fqp.cloned(),
-                                utils::has_doc_flag(tcx, defid, sym::search_unbox),
-                            ));
-                            Some(pathid)
-                        } else {
-                            None
-                        }
-                    }
-                });
-
-            if let Some(defid) = item.defid
-                && item.parent_idx.is_none()
-            {
-                // If this is a re-export, retain the original path.
-                // Associated items don't use this.
-                // Their parent carries the exact fqp instead.
-                let exact_fqp = exact_paths
-                    .get(&defid)
-                    .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp));
-                item.exact_path = exact_fqp.and_then(|fqp| {
-                    // Re-exports only count if the name is exactly the same.
-                    // This is a size optimization, since it means we only need
-                    // to store the name once (and the path is re-used for everything
-                    // exported from this same module). It's also likely to Do
-                    // What I Mean, since if a re-export changes the name, it might
-                    // also be a change in semantic meaning.
-                    if fqp.last() != Some(&item.name) {
-                        return None;
-                    }
-                    let path =
-                        if item.ty == ItemType::Macro && tcx.has_attr(defid, sym::macro_export) {
-                            // `#[macro_export]` always exports to the crate root.
-                            tcx.crate_name(defid.krate).to_string()
-                        } else {
-                            if fqp.len() < 2 {
-                                return None;
-                            }
-                            join_path_syms(&fqp[..fqp.len() - 1])
-                        };
-                    if path == item.path {
-                        return None;
-                    }
-                    Some(path)
-                });
-            } else if let Some(parent_idx) = item.parent_idx {
-                let i = <isize as TryInto<usize>>::try_into(parent_idx).unwrap();
-                item.path = {
-                    let p = &crate_paths[i].1;
-                    join_path_syms(&p[..p.len() - 1])
-                };
-                item.exact_path =
-                    crate_paths[i].2.as_ref().map(|xp| join_path_syms(&xp[..xp.len() - 1]));
-            }
-
-            // Omit the parent path if it is same to that of the prior item.
-            if lastpath == item.path {
-                item.path.clear();
-            } else {
-                lastpath = &item.path;
-            }
-
-            &*item
-        })
-        .collect();
-
-    // Find associated items that need disambiguators
-    let mut associated_item_duplicates = FxHashMap::<(isize, ItemType, Symbol), usize>::default();
-
-    for &item in &crate_items {
-        if item.impl_id.is_some()
-            && let Some(parent_idx) = item.parent_idx
-        {
-            let count =
-                associated_item_duplicates.entry((parent_idx, item.ty, item.name)).or_insert(0);
-            *count += 1;
-        }
-    }
-
-    let associated_item_disambiguators = crate_items
-        .iter()
-        .enumerate()
-        .filter_map(|(index, item)| {
-            let impl_id = ItemId::DefId(item.impl_id?);
-            let parent_idx = item.parent_idx?;
-            let count = *associated_item_duplicates.get(&(parent_idx, item.ty, item.name))?;
-            if count > 1 { Some((index, render::get_id_for_impl(tcx, impl_id))) } else { None }
-        })
-        .collect::<Vec<_>>();
-
-    struct CrateData<'a> {
-        items: Vec<&'a IndexItem>,
-        paths: Vec<(ItemType, Vec<Symbol>, Option<Vec<Symbol>>, bool)>,
-        // The String is alias name and the vec is the list of the elements with this alias.
-        //
-        // To be noted: the `usize` elements are indexes to `items`.
-        aliases: &'a AliasMap,
-        // Used when a type has more than one impl with an associated item with the same name.
-        associated_item_disambiguators: &'a Vec<(usize, String)>,
-        // A list of shard lengths encoded as vlqhex. See the comment in write_vlqhex_to_string
-        // for information on the format.
-        desc_index: String,
-        // A list of items with no description. This is eventually turned into a bitmap.
-        empty_desc: Vec<u32>,
-    }
-
-    struct Paths {
-        ty: ItemType,
-        name: Symbol,
-        path: Option<usize>,
-        exact_path: Option<usize>,
-        search_unbox: bool,
-    }
-
-    impl Serialize for Paths {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&self.ty)?;
-            seq.serialize_element(self.name.as_str())?;
-            if let Some(ref path) = self.path {
-                seq.serialize_element(path)?;
-            }
-            if let Some(ref path) = self.exact_path {
-                assert!(self.path.is_some());
-                seq.serialize_element(path)?;
-            }
-            if self.search_unbox {
-                if self.path.is_none() {
-                    seq.serialize_element(&None::<u8>)?;
-                }
-                if self.exact_path.is_none() {
-                    seq.serialize_element(&None::<u8>)?;
-                }
-                seq.serialize_element(&1)?;
-            }
-            seq.end()
-        }
-    }
-
-    impl Serialize for CrateData<'_> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut extra_paths = FxHashMap::default();
-            // We need to keep the order of insertion, hence why we use an `IndexMap`. Then we will
-            // insert these "extra paths" (which are paths of items from external crates) into the
-            // `full_paths` list at the end.
-            let mut revert_extra_paths = FxIndexMap::default();
-            let mut mod_paths = FxHashMap::default();
-            for (index, item) in self.items.iter().enumerate() {
-                if item.path.is_empty() {
-                    continue;
-                }
-                mod_paths.insert(&item.path, index);
-            }
-            let mut paths = Vec::with_capacity(self.paths.len());
-            for &(ty, ref path, ref exact, search_unbox) in &self.paths {
-                if path.len() < 2 {
-                    paths.push(Paths {
-                        ty,
-                        name: path[0],
-                        path: None,
-                        exact_path: None,
-                        search_unbox,
-                    });
-                    continue;
-                }
-                let full_path = join_path_syms(&path[..path.len() - 1]);
-                let full_exact_path = exact
-                    .as_ref()
-                    .filter(|exact| exact.last() == path.last() && exact.len() >= 2)
-                    .map(|exact| join_path_syms(&exact[..exact.len() - 1]));
-                let exact_path = extra_paths.len() + self.items.len();
-                let exact_path = full_exact_path.as_ref().map(|full_exact_path| match extra_paths
-                    .entry(full_exact_path.clone())
-                {
-                    Entry::Occupied(entry) => *entry.get(),
-                    Entry::Vacant(entry) => {
-                        if let Some(index) = mod_paths.get(&full_exact_path) {
-                            return *index;
-                        }
-                        entry.insert(exact_path);
-                        if !revert_extra_paths.contains_key(&exact_path) {
-                            revert_extra_paths.insert(exact_path, full_exact_path.clone());
-                        }
-                        exact_path
-                    }
-                });
-                if let Some(index) = mod_paths.get(&full_path) {
-                    paths.push(Paths {
-                        ty,
-                        name: *path.last().unwrap(),
-                        path: Some(*index),
-                        exact_path,
-                        search_unbox,
-                    });
-                    continue;
-                }
-                // It means it comes from an external crate so the item and its path will be
-                // stored into another array.
+            let search_type_size = search_type.size() +
+                // Artificially give struct fields a size of 8 instead of their real
+                // size of 2. This is because search.js sorts them to the end, so
+                // by pushing them down, we prevent them from blocking real 2-arity functions.
                 //
-                // `index` is put after the last `mod_paths`
-                let index = extra_paths.len() + self.items.len();
-                match extra_paths.entry(full_path.clone()) {
-                    Entry::Occupied(entry) => {
-                        paths.push(Paths {
-                            ty,
-                            name: *path.last().unwrap(),
-                            path: Some(*entry.get()),
-                            exact_path,
-                            search_unbox,
-                        });
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(index);
-                        if !revert_extra_paths.contains_key(&index) {
-                            revert_extra_paths.insert(index, full_path);
-                        }
-                        paths.push(Paths {
-                            ty,
-                            name: *path.last().unwrap(),
-                            path: Some(index),
-                            exact_path,
-                            search_unbox,
-                        });
-                    }
-                }
-            }
-
-            // Direct exports use adjacent arrays for the current crate's items,
-            // but re-exported exact paths don't.
-            let mut re_exports = Vec::new();
-            for (item_index, item) in self.items.iter().enumerate() {
-                if let Some(exact_path) = item.exact_path.as_ref() {
-                    if let Some(path_index) = mod_paths.get(&exact_path) {
-                        re_exports.push((item_index, *path_index));
-                    } else {
-                        let path_index = extra_paths.len() + self.items.len();
-                        let path_index = match extra_paths.entry(exact_path.clone()) {
-                            Entry::Occupied(entry) => *entry.get(),
-                            Entry::Vacant(entry) => {
-                                entry.insert(path_index);
-                                if !revert_extra_paths.contains_key(&path_index) {
-                                    revert_extra_paths.insert(path_index, exact_path.clone());
-                                }
-                                path_index
-                            }
-                        };
-                        re_exports.push((item_index, path_index));
-                    }
-                }
-            }
-
-            let mut names = Vec::with_capacity(self.items.len());
-            let mut types = String::with_capacity(self.items.len());
-            let mut full_paths = Vec::with_capacity(self.items.len());
-            let mut parents = String::with_capacity(self.items.len());
-            let mut parents_backref_queue = VecDeque::new();
-            let mut functions = String::with_capacity(self.items.len());
-            let mut deprecated = Vec::with_capacity(self.items.len());
-
-            let mut type_backref_queue = VecDeque::new();
-
-            let mut last_name = None;
-            for (index, item) in self.items.iter().enumerate() {
-                let n = item.ty as u8;
-                let c = char::from(n + b'A');
-                assert!(c <= 'z', "item types must fit within ASCII printables");
-                types.push(c);
-
-                assert_eq!(
-                    item.parent.is_some(),
-                    item.parent_idx.is_some(),
-                    "`{}` is missing idx",
-                    item.name
-                );
-                assert!(
-                    parents_backref_queue.len() <= 16,
-                    "the string encoding only supports 16 slots of lookback"
-                );
-                let parent: i32 = item.parent_idx.map(|x| x + 1).unwrap_or(0).try_into().unwrap();
-                if let Some(idx) = parents_backref_queue.iter().position(|p: &i32| *p == parent) {
-                    parents.push(
-                        char::try_from('0' as u32 + u32::try_from(idx).unwrap())
-                            .expect("last possible value is '?'"),
-                    );
-                } else if parent == 0 {
-                    write_vlqhex_to_string(parent, &mut parents);
+                // The number 8 is arbitrary. We want it big, but not enormous,
+                // because the postings list has to fill in an empty array for each
+                // unoccupied size.
+                if item.ty.is_fn_like() { 0 } else { 16 };
+            serialized_index.function_data[new_entry_id] = Some(FunctionData {
+                function_signature: {
+                    let mut function_signature = String::new();
+                    search_type.write_to_string_without_param_names(&mut function_signature);
+                    function_signature
+                },
+                param_names: search_type
+                    .param_names
+                    .iter()
+                    .map(|sym| sym.map(|sym| sym.to_string()).unwrap_or(String::new()))
+                    .collect::<Vec<String>>(),
+            });
+            for index in used_in_function_signature {
+                let postings = if index >= 0 {
+                    assert!(serialized_index.path_data[index as usize].is_some());
+                    &mut serialized_index.type_data[index as usize]
+                        .as_mut()
+                        .unwrap()
+                        .inverted_function_signature_index
                 } else {
-                    parents_backref_queue.push_front(parent);
-                    write_vlqhex_to_string(parent, &mut parents);
-                    if parents_backref_queue.len() > 16 {
-                        parents_backref_queue.pop_back();
+                    let generic_id = usize::try_from(-index).unwrap() - 1;
+                    for _ in serialized_index.generic_inverted_index.len()..=generic_id {
+                        serialized_index.generic_inverted_index.push(Vec::new());
                     }
+                    &mut serialized_index.generic_inverted_index[generic_id]
+                };
+                while postings.len() <= search_type_size {
+                    postings.push(Vec::new());
                 }
-
-                if Some(item.name.as_str()) == last_name {
-                    names.push("");
-                } else {
-                    names.push(item.name.as_str());
-                    last_name = Some(item.name.as_str());
-                }
-
-                if !item.path.is_empty() {
-                    full_paths.push((index, &item.path));
-                }
-
-                match &item.search_type {
-                    Some(ty) => ty.write_to_string(&mut functions, &mut type_backref_queue),
-                    None => functions.push('`'),
-                }
-
-                if item.deprecation.is_some() {
-                    // bitmasks always use 1-indexing for items, with 0 as the crate itself
-                    deprecated.push(u32::try_from(index + 1).unwrap());
-                }
+                postings[search_type_size].push(new_entry_id as u32);
             }
-
-            for (index, path) in &revert_extra_paths {
-                full_paths.push((*index, path));
-            }
-
-            let param_names: Vec<(usize, String)> = {
-                let mut prev = Vec::new();
-                let mut result = Vec::new();
-                for (index, item) in self.items.iter().enumerate() {
-                    if let Some(ty) = &item.search_type
-                        && let my = ty
-                            .param_names
-                            .iter()
-                            .filter_map(|sym| sym.map(|sym| sym.to_string()))
-                            .collect::<Vec<_>>()
-                        && my != prev
-                    {
-                        result.push((index, my.join(",")));
-                        prev = my;
-                    }
-                }
-                result
-            };
-
-            let has_aliases = !self.aliases.is_empty();
-            let mut crate_data =
-                serializer.serialize_struct("CrateData", if has_aliases { 13 } else { 12 })?;
-            crate_data.serialize_field("t", &types)?;
-            crate_data.serialize_field("n", &names)?;
-            crate_data.serialize_field("q", &full_paths)?;
-            crate_data.serialize_field("i", &parents)?;
-            crate_data.serialize_field("f", &functions)?;
-            crate_data.serialize_field("D", &self.desc_index)?;
-            crate_data.serialize_field("p", &paths)?;
-            crate_data.serialize_field("r", &re_exports)?;
-            crate_data.serialize_field("b", &self.associated_item_disambiguators)?;
-            crate_data.serialize_field("c", &bitmap_to_string(&deprecated))?;
-            crate_data.serialize_field("e", &bitmap_to_string(&self.empty_desc))?;
-            crate_data.serialize_field("P", &param_names)?;
-            if has_aliases {
-                crate_data.serialize_field("a", &self.aliases)?;
-            }
-            crate_data.end()
         }
     }
 
-    let (empty_desc, desc) = {
-        let mut empty_desc = Vec::new();
-        let mut result = Vec::new();
-        let mut set = String::new();
-        let mut len: usize = 0;
-        let mut item_index: u32 = 0;
-        for desc in std::iter::once(&crate_doc).chain(crate_items.iter().map(|item| &item.desc)) {
-            if desc.is_empty() {
-                empty_desc.push(item_index);
-                item_index += 1;
-                continue;
-            }
-            if set.len() >= DESC_INDEX_SHARD_LEN {
-                result.push((len, std::mem::take(&mut set)));
-                len = 0;
-            } else if len != 0 {
-                set.push('\n');
-            }
-            set.push_str(desc);
-            len += 1;
-            item_index += 1;
-        }
-        result.push((len, std::mem::take(&mut set)));
-        (empty_desc, result)
-    };
-
-    let desc_index = {
-        let mut desc_index = String::with_capacity(desc.len() * 4);
-        for &(len, _) in desc.iter() {
-            write_vlqhex_to_string(len.try_into().unwrap(), &mut desc_index);
-        }
-        desc_index
-    };
-
-    assert_eq!(
-        crate_items.len() + 1,
-        desc.iter().map(|(len, _)| *len).sum::<usize>() + empty_desc.len()
-    );
-
-    // The index, which is actually used to search, is JSON
-    // It uses `JSON.parse(..)` to actually load, since JSON
-    // parses faster than the full JavaScript syntax.
-    let crate_name = krate.name(tcx);
-    let data = CrateData {
-        items: crate_items,
-        paths: crate_paths,
-        aliases: &aliases,
-        associated_item_disambiguators: &associated_item_disambiguators,
-        desc_index,
-        empty_desc,
-    };
-    let index = OrderedJson::array_unsorted([
-        OrderedJson::serialize(crate_name.as_str()).unwrap(),
-        OrderedJson::serialize(data).unwrap(),
-    ]);
-    SerializedSearchIndex { index, desc }
+    Ok(serialized_index.sort())
 }
 
 pub(crate) fn get_function_type_for_search(
@@ -902,7 +1857,7 @@ fn get_index_type_id(
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
         clean::BorrowedRef { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::Reference)),
-        clean::RawPointer(_, ref type_) => get_index_type_id(type_, rgen),
+        clean::RawPointer { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::RawPointer)),
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
@@ -1160,7 +2115,8 @@ fn simplify_fn_type<'a, 'tcx>(
                 generics: Some(ty_generics),
             });
         }
-        Type::BorrowedRef { lifetime: _, mutability, ref type_ } => {
+        Type::BorrowedRef { lifetime: _, mutability, ref type_ }
+        | Type::RawPointer(mutability, ref type_) => {
             let mut ty_generics = Vec::new();
             if mutability.is_mut() {
                 ty_generics.push(RenderType {

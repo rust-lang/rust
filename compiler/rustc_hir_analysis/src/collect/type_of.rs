@@ -251,7 +251,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
-                _ => icx.lower_ty(*self_ty),
+                _ => icx.lower_ty(self_ty),
             },
             ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);

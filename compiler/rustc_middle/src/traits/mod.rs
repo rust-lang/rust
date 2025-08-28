@@ -760,6 +760,9 @@ pub enum DynCompatibilityViolation {
     // Supertrait has a non-lifetime `for<T>` binder.
     SupertraitNonLifetimeBinder(SmallVec<[Span; 1]>),
 
+    // Trait has a `const Trait` supertrait.
+    SupertraitConst(SmallVec<[Span; 1]>),
+
     /// Method has something illegal.
     Method(Symbol, MethodViolationCode, Span),
 
@@ -784,6 +787,9 @@ impl DynCompatibilityViolation {
             }
             DynCompatibilityViolation::SupertraitNonLifetimeBinder(_) => {
                 "where clause cannot reference non-lifetime `for<...>` variables".into()
+            }
+            DynCompatibilityViolation::SupertraitConst(_) => {
+                "it cannot have a `const` supertrait".into()
             }
             DynCompatibilityViolation::Method(name, MethodViolationCode::StaticMethod(_), _) => {
                 format!("associated function `{name}` has no `self` parameter").into()
@@ -842,7 +848,8 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SizedSelf(_)
             | DynCompatibilityViolation::SupertraitSelf(_)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..) => {
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(..)
+            | DynCompatibilityViolation::SupertraitConst(_) => {
                 DynCompatibilityViolationSolution::None
             }
             DynCompatibilityViolation::Method(
@@ -873,15 +880,17 @@ impl DynCompatibilityViolation {
         match self {
             DynCompatibilityViolation::SupertraitSelf(spans)
             | DynCompatibilityViolation::SizedSelf(spans)
-            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans) => spans.clone(),
+            | DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans)
+            | DynCompatibilityViolation::SupertraitConst(spans) => spans.clone(),
             DynCompatibilityViolation::AssocConst(_, span)
             | DynCompatibilityViolation::GAT(_, span)
-            | DynCompatibilityViolation::Method(_, _, span)
-                if *span != DUMMY_SP =>
-            {
-                smallvec![*span]
+            | DynCompatibilityViolation::Method(_, _, span) => {
+                if *span != DUMMY_SP {
+                    smallvec![*span]
+                } else {
+                    smallvec![]
+                }
             }
-            _ => smallvec![],
         }
     }
 }

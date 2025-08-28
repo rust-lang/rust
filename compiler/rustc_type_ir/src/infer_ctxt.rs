@@ -1,7 +1,6 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
-use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -19,8 +18,7 @@ use crate::{self as ty, Interner};
 ///
 /// If neither of these functions are available, feel free to reach out to
 /// t-types for help.
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -92,6 +90,8 @@ pub enum TypingMode<I: Interner> {
     PostAnalysis,
 }
 
+impl<I: Interner> Eq for TypingMode<I> {}
+
 impl<I: Interner> TypingMode<I> {
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
@@ -146,10 +146,6 @@ pub trait InferCtxtLike: Sized {
     /// use the new trait solver, things will break badly.
     fn next_trait_solver(&self) -> bool {
         true
-    }
-
-    fn in_hir_typeck(&self) -> bool {
-        false
     }
 
     fn typing_mode(&self) -> TypingMode<Self::Interner>;

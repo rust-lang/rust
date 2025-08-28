@@ -1,9 +1,10 @@
 //@ ignore-compare-mode-polonius (explicit revisions)
-//@ revisions: nll polonius_next polonius
-//@ [polonius_next] check-pass
-//@ [polonius_next] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] compile-flags: -Zpolonius
+//@ revisions: nll polonius legacy
+//@ [nll] known-bug: #46589
+//@ [polonius] known-bug: #46589
+//@ [polonius] compile-flags: -Zpolonius=next
+//@ [legacy] check-pass
+//@ [legacy] compile-flags: -Zpolonius=legacy
 
 struct Foo;
 
@@ -22,7 +23,6 @@ impl Foo {
         *other = match (*other).get_self() {
             Some(s) => s,
             None => (*other).new_self()
-            //[nll]~^ ERROR cannot borrow `**other` as mutable more than once at a time [E0499]
         };
 
         let c = other;

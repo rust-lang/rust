@@ -17,7 +17,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use derive_setters::Setters;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend};
 use rustc_error_messages::{FluentArgs, SpanLabel};
 use rustc_lexer;
@@ -1853,7 +1853,7 @@ impl HumanEmitter {
                             && line_idx + 1 == annotated_file.lines.len(),
                     );
 
-                    let mut to_add = FxHashMap::default();
+                    let mut to_add = FxIndexMap::default();
 
                     for (depth, style) in depths {
                         // FIXME(#120456) - is `swap_remove` correct?
@@ -3546,7 +3546,7 @@ pub fn detect_confusion_type(sm: &SourceMap, suggested: &str, sp: Span) -> Confu
 
         for (f, s) in iter::zip(found.chars(), suggested.chars()) {
             if f != s {
-                if f.to_lowercase().to_string() == s.to_lowercase().to_string() {
+                if f.eq_ignore_ascii_case(&s) {
                     // Check for case differences (any character that differs only in case)
                     if ascii_confusables.contains(&f) || ascii_confusables.contains(&s) {
                         has_case_diff = true;

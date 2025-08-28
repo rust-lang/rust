@@ -1961,6 +1961,42 @@ impl<T> Option<T> {
             _ => None,
         }
     }
+
+    /// Reduces two options into one, using the provided function if both are `Some`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, if only one of `self` and `other` is `Some`, that one is returned.
+    /// If both `self` and `other` are `None`, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_reduce)]
+    ///
+    /// let s12 = Some(12);
+    /// let s17 = Some(17);
+    /// let n = None;
+    /// let f = |a, b| a + b;
+    ///
+    /// assert_eq!(s12.reduce(s17, f), Some(29));
+    /// assert_eq!(s12.reduce(n, f), Some(12));
+    /// assert_eq!(n.reduce(s17, f), Some(17));
+    /// assert_eq!(n.reduce(n, f), None);
+    /// ```
+    #[unstable(feature = "option_reduce", issue = "144273")]
+    pub fn reduce<U, R, F>(self, other: Option<U>, f: F) -> Option<R>
+    where
+        T: Into<R>,
+        U: Into<R>,
+        F: FnOnce(T, U) -> R,
+    {
+        match (self, other) {
+            (Some(a), Some(b)) => Some(f(a, b)),
+            (Some(a), _) => Some(a.into()),
+            (_, Some(b)) => Some(b.into()),
+            _ => None,
+        }
+    }
 }
 
 impl<T, U> Option<(T, U)> {
@@ -2095,9 +2131,9 @@ impl<T> Option<&mut T> {
 impl<T, E> Option<Result<T, E>> {
     /// Transposes an `Option` of a [`Result`] into a [`Result`] of an `Option`.
     ///
-    /// [`None`] will be mapped to <code>[Ok]\([None])</code>.
-    /// <code>[Some]\([Ok]\(\_))</code> and <code>[Some]\([Err]\(\_))</code> will be mapped to
-    /// <code>[Ok]\([Some]\(\_))</code> and <code>[Err]\(\_)</code>.
+    /// <code>[Some]\([Ok]\(\_))</code> is mapped to <code>[Ok]\([Some]\(\_))</code>,
+    /// <code>[Some]\([Err]\(\_))</code> is mapped to <code>[Err]\(\_)</code>,
+    /// and [`None`] will be mapped to <code>[Ok]\([None])</code>.
     ///
     /// # Examples
     ///
@@ -2105,9 +2141,9 @@ impl<T, E> Option<Result<T, E>> {
     /// #[derive(Debug, Eq, PartialEq)]
     /// struct SomeErr;
     ///
-    /// let x: Result<Option<i32>, SomeErr> = Ok(Some(5));
-    /// let y: Option<Result<i32, SomeErr>> = Some(Ok(5));
-    /// assert_eq!(x, y.transpose());
+    /// let x: Option<Result<i32, SomeErr>> = Some(Ok(5));
+    /// let y: Result<Option<i32>, SomeErr> = Ok(Some(5));
+    /// assert_eq!(x.transpose(), y);
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]

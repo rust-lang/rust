@@ -2165,6 +2165,8 @@ options! {
         "hash algorithm of source files used to check freshness in cargo (`blake3` or `sha256`)"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
+    codegen_source_order: bool = (false, parse_bool, [UNTRACKED],
+        "emit mono items in the order of spans in source files (default: no)"),
     contract_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for contract pre- and post-conditions (default: no)"),
     coverage_options: CoverageOptions = (CoverageOptions::default(), parse_coverage_options, [TRACKED],
@@ -2293,6 +2295,8 @@ options! {
         - hashes of green query instances
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],

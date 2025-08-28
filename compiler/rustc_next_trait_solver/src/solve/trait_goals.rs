@@ -6,18 +6,20 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Interner, Movability, TraitPredicate, TraitRef, TypeVisitableExt as _, TypingMode,
-    Upcast as _, elaborate,
+    self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
+    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
-use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidatesFrom, Candidate};
+use crate::solve::assembly::{
+    self, AllowInferenceConstraints, AssembleCandidatesFrom, Candidate, FailedCandidateInfo,
+};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    NoSolution, ParamEnvSource, QueryResult, has_only_region_constraints,
+    MergeCandidateInfo, NoSolution, ParamEnvSource, QueryResult, has_only_region_constraints,
 };
 
 impl<D, I> assembly::GoalKind<D> for TraitPredicate<I>
@@ -131,19 +133,26 @@ where
             cx: I,
             clause_def_id: I::DefId,
             goal_def_id: I::DefId,
+            polarity: PredicatePolarity,
         ) -> bool {
             clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
             // check for a `MetaSized` supertrait being matched against a `Sized` assumption.
             //
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
-                || (cx.is_lang_item(clause_def_id, TraitSolverLangItem::Sized)
+                || (polarity == PredicatePolarity::Positive
+                    && cx.is_lang_item(clause_def_id, TraitSolverLangItem::Sized)
                     && cx.is_lang_item(goal_def_id, TraitSolverLangItem::MetaSized))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
             && trait_clause.polarity() == goal.predicate.polarity
-            && trait_def_id_matches(ecx.cx(), trait_clause.def_id(), goal.predicate.def_id())
+            && trait_def_id_matches(
+                ecx.cx(),
+                trait_clause.def_id(),
+                goal.predicate.def_id(),
+                goal.predicate.polarity,
+            )
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.trait_ref.args,
                 trait_clause.skip_binder().trait_ref.args,
@@ -166,6 +175,8 @@ where
         // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
         // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
         // are syntactic sugar for a lack of bounds so don't need this.
+        // We don't need to check polarity, `fast_reject_assumption` already rejected non-`Positive`
+        // polarity `Sized` assumptions as matching non-`Positive` `MetaSized` goals.
         if ecx.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::MetaSized)
             && ecx.cx().is_lang_item(trait_clause.def_id(), TraitSolverLangItem::Sized)
         {
@@ -1344,9 +1355,10 @@ where
     pub(super) fn merge_trait_candidates(
         &mut self,
         mut candidates: Vec<Candidate<I>>,
+        failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         if let TypingMode::Coherence = self.typing_mode() {
-            return if let Some(response) = self.try_merge_candidates(&candidates) {
+            return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {
                 self.flounder(&candidates).map(|r| (r, None))
@@ -1376,10 +1388,41 @@ where
             let where_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .collect();
-            return if let Some(response) = self.try_merge_candidates(&where_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
+            if let Some((response, info)) = self.try_merge_candidates(&where_bounds) {
+                match info {
+                    // If there's an always applicable candidate, the result of all
+                    // other candidates does not matter. This means we can ignore
+                    // them when checking whether we've reached a fixpoint.
+                    //
+                    // We always prefer the first always applicable candidate, even if a
+                    // later candidate is also always applicable and would result in fewer
+                    // reruns. We could slightly improve this by e.g. searching for another
+                    // always applicable candidate which doesn't depend on any cycle heads.
+                    //
+                    // NOTE: This is optimization is observable in case there is an always
+                    // applicable global candidate and another non-global candidate which only
+                    // applies because of a provisional result. I can't even think of a test
+                    // case where this would occur and even then, this would not be unsound.
+                    // Supporting this makes the code more involved, so I am just going to
+                    // ignore this for now.
+                    MergeCandidateInfo::AlwaysApplicable(i) => {
+                        for (j, c) in where_bounds.into_iter().enumerate() {
+                            if i != j {
+                                self.ignore_candidate_head_usages(c.head_usages)
+                            }
+                        }
+                        // If a where-bound does not apply, we don't actually get a
+                        // candidate for it. We manually track the head usages
+                        // of all failed `ParamEnv` candidates instead.
+                        self.ignore_candidate_head_usages(
+                            failed_candidate_info.param_env_head_usages,
+                        );
+                    }
+                    MergeCandidateInfo::EqualResponse => {}
+                }
+                return Ok((response, Some(TraitGoalProvenVia::ParamEnv)));
             } else {
-                Ok((self.bail_with_ambiguity(&where_bounds), None))
+                return Ok((self.bail_with_ambiguity(&where_bounds), None));
             };
         }
 
@@ -1387,7 +1430,7 @@ where
             let alias_bounds: Vec<_> = candidates
                 .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
                 .collect();
-            return if let Some(response) = self.try_merge_candidates(&alias_bounds) {
+            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::AliasBound)))
             } else {
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
@@ -1412,7 +1455,7 @@ where
             TraitGoalProvenVia::Misc
         };
 
-        if let Some(response) = self.try_merge_candidates(&candidates) {
+        if let Some((response, _)) = self.try_merge_candidates(&candidates) {
             Ok((response, Some(proven_via)))
         } else {
             self.flounder(&candidates).map(|r| (r, None))
@@ -1424,8 +1467,9 @@ where
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
-        let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-        self.merge_trait_candidates(candidates)
+        let (candidates, failed_candidate_info) =
+            self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
+        self.merge_trait_candidates(candidates, failed_candidate_info)
     }
 
     fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {

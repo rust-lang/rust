@@ -3036,6 +3036,9 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Entries for the current and parent directories (typically `.` and `..`) are
 /// skipped.
 ///
+/// The order in which `read_dir` returns entries can change between calls. If reproducible
+/// ordering is required, the entries should be explicitly sorted.
+///
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `opendir` function on Unix
@@ -3119,7 +3122,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// On UNIX-like systems, this function will update the permission bits
 /// of the file pointed to by the symlink.
 ///
-/// Note that this behavior can lead to privalage escalation vulnerabilities,
+/// Note that this behavior can lead to privilege escalation vulnerabilities,
 /// where the ability to create a symlink in one directory allows you to
 /// cause the permissions of another file or directory to be modified.
 ///
@@ -3154,6 +3157,25 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_permissions(path.as_ref(), perm.0)
+}
+
+/// Set the permissions of a file, unless it is a symlink.
+///
+/// Note that the non-final path elements are allowed to be symlinks.
+///
+/// # Platform-specific behavior
+///
+/// Currently unimplemented on Windows.
+///
+/// On Unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
+///
+/// This behavior may change in the future.
+///
+/// [`FilesystemLoop`]: crate::io::ErrorKind::FilesystemLoop
+#[doc(alias = "chmod", alias = "SetFileAttributes")]
+#[unstable(feature = "set_permissions_nofollow", issue = "141607")]
+pub fn set_permissions_nofollow<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
+    fs_imp::set_permissions_nofollow(path.as_ref(), perm)
 }
 
 impl DirBuilder {

@@ -158,7 +158,8 @@ pub struct InferCtxtInner<'tcx> {
     region_assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 
     /// `-Znext-solver`: Successfully proven goals during HIR typeck which
-    /// reference inference variables and get reproven after writeback.
+    /// reference inference variables and get reproven in case MIR type check
+    /// fails to prove something.
     ///
     /// See the documentation of `InferCtxt::in_hir_typeck` for more details.
     hir_typeck_potentially_region_dependent_goals: Vec<PredicateObligation<'tcx>>,
@@ -484,17 +485,7 @@ pub enum NllRegionVariableOrigin {
     Placeholder(ty::PlaceholderRegion),
 
     Existential {
-        /// If this is true, then this variable was created to represent a lifetime
-        /// bound in a `for` binder. For example, it might have been created to
-        /// represent the lifetime `'a` in a type like `for<'a> fn(&'a u32)`.
-        /// Such variables are created when we are trying to figure out if there
-        /// is any valid instantiation of `'a` that could fit into some scenario.
-        ///
-        /// This is used to inform error reporting: in the case that we are trying to
-        /// determine whether there is any valid instantiation of a `'a` variable that meets
-        /// some constraint C, we want to blame the "source" of that `for` type,
-        /// rather than blaming the source of the constraint C.
-        from_forall: bool,
+        name: Option<Symbol>,
     },
 }
 
@@ -792,22 +783,30 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().num_vars()
     }
 
+    pub fn next_ty_vid(&self, span: Span) -> TyVid {
+        self.next_ty_vid_with_origin(TypeVariableOrigin { span, param_def_id: None })
+    }
+
+    pub fn next_ty_vid_with_origin(&self, origin: TypeVariableOrigin) -> TyVid {
+        self.inner.borrow_mut().type_variables().new_var(self.universe(), origin)
+    }
+
+    pub fn next_ty_vid_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> TyVid {
+        let origin = TypeVariableOrigin { span, param_def_id: None };
+        self.inner.borrow_mut().type_variables().new_var(universe, origin)
+    }
+
     pub fn next_ty_var(&self, span: Span) -> Ty<'tcx> {
         self.next_ty_var_with_origin(TypeVariableOrigin { span, param_def_id: None })
     }
 
     pub fn next_ty_var_with_origin(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
-        let vid = self.inner.borrow_mut().type_variables().new_var(self.universe(), origin);
+        let vid = self.next_ty_vid_with_origin(origin);
         Ty::new_var(self.tcx, vid)
     }
 
-    pub fn next_ty_var_id_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> TyVid {
-        let origin = TypeVariableOrigin { span, param_def_id: None };
-        self.inner.borrow_mut().type_variables().new_var(universe, origin)
-    }
-
     pub fn next_ty_var_in_universe(&self, span: Span, universe: ty::UniverseIndex) -> Ty<'tcx> {
-        let vid = self.next_ty_var_id_in_universe(span, universe);
+        let vid = self.next_ty_vid_in_universe(span, universe);
         Ty::new_var(self.tcx, vid)
     }
 

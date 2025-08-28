@@ -8,7 +8,6 @@ use std::str;
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
@@ -213,6 +212,12 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("p8:128:128:128:48", "p8:128:128")
         }
     }
+    if llvm_version < (22, 0, 0) {
+        if sess.target.arch == "avr" {
+            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
+            target_data_layout = target_data_layout.replace("n8:16", "n8")
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
@@ -372,6 +377,15 @@ pub(crate) unsafe fn create_module<'ll>(
         }
     }
 
+    if let Some(regparm_count) = sess.opts.unstable_opts.regparm {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Error,
+            "NumRegisterParameters",
+            regparm_count,
+        );
+    }
+
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
         if sess.target.arch == "aarch64" {
             llvm::add_module_flag_u32(
@@ -455,6 +469,15 @@ pub(crate) unsafe fn create_module<'ll>(
                 1,
             );
         }
+    }
+
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        llvm::add_module_flag_u32(
+            llmod,
+            llvm::ModuleFlagMergeBehavior::Override,
+            "indirect_branch_cs_prefix",
+            1,
+        );
     }
 
     match (sess.opts.unstable_opts.small_data_threshold, sess.target.small_data_threshold_support())
@@ -654,10 +677,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 impl<'ll> SimpleCx<'ll> {
-    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
-        assert_eq!(self.type_kind(ty), TypeKind::Function);
-        unsafe { llvm::LLVMGetReturnType(ty) }
-    }
     pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
         unsafe { llvm::LLVMGlobalGetValueType(val) }
     }
@@ -682,7 +701,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn get_const_int(&self, ty: &'ll Type, val: u64) -> &'ll Value {
-        unsafe { llvm::LLVMConstInt(ty, val, llvm::False) }
+        unsafe { llvm::LLVMConstInt(ty, val, llvm::FALSE) }
     }
 
     pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
@@ -720,16 +739,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe {
             llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         }
-    }
-
-    pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
-        let mut functions = vec![];
-        let mut func = unsafe { llvm::LLVMGetFirstFunction(self.llmod()) };
-        while let Some(f) = func {
-            functions.push(f);
-            func = unsafe { llvm::LLVMGetNextFunction(f) }
-        }
-        functions
     }
 }
 

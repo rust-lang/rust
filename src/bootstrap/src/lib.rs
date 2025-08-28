@@ -37,14 +37,14 @@ use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
 mod core;
 mod utils;
 
 pub use core::builder::PathSet;
+#[cfg(feature = "tracing")]
+pub use core::builder::STEP_SPAN_TARGET;
 pub use core::config::flags::{Flags, Subcommand};
 pub use core::config::{ChangeId, Config};
 
@@ -53,7 +53,9 @@ use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
-pub use utils::helpers::PanicTracker;
+pub use utils::helpers::{PanicTracker, symlink_dir};
+#[cfg(feature = "tracing")]
+pub use utils::tracing::setup_tracing;
 
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
@@ -160,6 +162,20 @@ impl CodegenBackendKind {
 
     pub fn is_gcc(&self) -> bool {
         matches!(self, Self::Gcc)
+    }
+}
+
+impl std::str::FromStr for CodegenBackendKind {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "" => Err("Invalid empty backend name"),
+            "gcc" => Ok(Self::Gcc),
+            "llvm" => Ok(Self::Llvm),
+            "cranelift" => Ok(Self::Cranelift),
+            _ => Ok(Self::Custom(s.to_string())),
+        }
     }
 }
 
@@ -277,7 +293,7 @@ pub enum DependencyType {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
@@ -355,7 +371,7 @@ pub enum RemapScheme {
     NonCompiler,
 }
 
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
 pub enum CLang {
     C,
     Cxx,
@@ -408,6 +424,25 @@ forward! {
     tempdir() -> PathBuf,
     llvm_link_shared() -> bool,
     download_rustc() -> bool,
+}
+
+/// A mostly temporary helper struct before we can migrate everything in bootstrap to use
+/// the concept of a build compiler.
+struct HostAndStage {
+    host: TargetSelection,
+    stage: u32,
+}
+
+impl From<(TargetSelection, u32)> for HostAndStage {
+    fn from((host, stage): (TargetSelection, u32)) -> Self {
+        Self { host, stage }
+    }
+}
+
+impl From<Compiler> for HostAndStage {
+    fn from(compiler: Compiler) -> Self {
+        Self { host: compiler.host, stage: compiler.stage }
+    }
 }
 
 impl Build {
@@ -859,14 +894,17 @@ impl Build {
         if self.config.rust_optimize.is_release() { "release" } else { "debug" }
     }
 
-    fn tools_dir(&self, compiler: Compiler) -> PathBuf {
-        let out = self.out.join(compiler.host).join(format!("stage{}-tools-bin", compiler.stage));
+    fn tools_dir(&self, build_compiler: Compiler) -> PathBuf {
+        let out = self
+            .out
+            .join(build_compiler.host)
+            .join(format!("stage{}-tools-bin", build_compiler.stage + 1));
         t!(fs::create_dir_all(&out));
         out
     }
 
     /// Returns the root directory for all output generated in a particular
-    /// stage when running with a particular host compiler.
+    /// stage when being built with a particular build compiler.
     ///
     /// The mode indicates what the root directory is for.
     fn stage_out(&self, build_compiler: Compiler, mode: Mode) -> PathBuf {
@@ -876,15 +914,17 @@ impl Build {
             (None, "bootstrap-tools")
         }
         fn staged_tool(build_compiler: Compiler) -> (Option<u32>, &'static str) {
-            (Some(build_compiler.stage), "tools")
+            (Some(build_compiler.stage + 1), "tools")
         }
 
         let (stage, suffix) = match mode {
+            // Std is special, stage N std is built with stage N rustc
             Mode::Std => (Some(build_compiler.stage), "std"),
-            Mode::Rustc => (Some(build_compiler.stage), "rustc"),
-            Mode::Codegen => (Some(build_compiler.stage), "codegen"),
+            // The rest of things are built with stage N-1 rustc
+            Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
+            Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
-            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage), "tools"),
+            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage + 1), "tools"),
             Mode::ToolTarget => {
                 // If we're not cross-compiling (the common case), share the target directory with
                 // bootstrap tools to reuse the build cache.
@@ -907,8 +947,8 @@ impl Build {
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self, compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
-        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
+    fn cargo_out(&self, build_compiler: Compiler, mode: Mode, target: TargetSelection) -> PathBuf {
+        self.stage_out(build_compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory of LLVM for `target`
@@ -1067,45 +1107,14 @@ impl Build {
         }
     }
 
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_clippy(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Clippy, self.config.stage, what, self.config.host_target, target)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_check(
-        &self,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>>,
-        custom_stage: Option<u32>,
-    ) -> Option<gha::Group> {
-        self.msg(
-            Kind::Check,
-            custom_stage.unwrap_or(self.config.stage),
-            what,
-            self.config.host_target,
-            target,
-        )
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_doc(
-        &self,
-        compiler: Compiler,
-        what: impl Display,
-        target: impl Into<Option<TargetSelection>> + Copy,
-    ) -> Option<gha::Group> {
-        self.msg(Kind::Doc, compiler.stage, what, compiler.host, target.into())
-    }
-
-    /// Return a `Group` guard for a [`Step`] that is built for each `--stage`.
+    /// Return a `Group` guard for a [`Step`] that:
+    /// - Performs `action`
+    /// - On `what`
+    ///   - Where `what` possibly corresponds to a `mode`
+    /// - `action` is performed using the given build compiler (`host_and_stage`).
+    ///   - Since some steps do not use the concept of a build compiler yet, it is also possible
+    ///     to pass the host and stage explicitly.
+    /// - With a given `target`.
     ///
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1113,19 +1122,36 @@ impl Build {
     fn msg(
         &self,
         action: impl Into<Kind>,
-        stage: u32,
         what: impl Display,
-        host: impl Into<Option<TargetSelection>>,
+        mode: impl Into<Option<Mode>>,
+        host_and_stage: impl Into<HostAndStage>,
         target: impl Into<Option<TargetSelection>>,
     ) -> Option<gha::Group> {
+        let host_and_stage = host_and_stage.into();
+        let actual_stage = match mode.into() {
+            // Std has the same stage as the compiler that builds it
+            Some(Mode::Std) => host_and_stage.stage,
+            // Other things have stage corresponding to their build compiler + 1
+            Some(
+                Mode::Rustc
+                | Mode::Codegen
+                | Mode::ToolBootstrap
+                | Mode::ToolTarget
+                | Mode::ToolStd
+                | Mode::ToolRustc,
+            )
+            | None => host_and_stage.stage + 1,
+        };
+
         let action = action.into().description();
-        let msg = |fmt| format!("{action} stage{stage} {what}{fmt}");
+        let msg = |fmt| format!("{action} stage{actual_stage} {what}{fmt}");
         let msg = if let Some(target) = target.into() {
-            let host = host.into().unwrap();
+            let build_stage = host_and_stage.stage;
+            let host = host_and_stage.host;
             if host == target {
-                msg(format_args!(" ({target})"))
+                msg(format_args!(" (stage{build_stage} -> stage{actual_stage}, {target})"))
             } else {
-                msg(format_args!(" ({host} -> {target})"))
+                msg(format_args!(" (stage{build_stage}:{host} -> stage{actual_stage}:{target})"))
             }
         } else {
             msg(format_args!(""))
@@ -1146,27 +1172,6 @@ impl Build {
     ) -> Option<gha::Group> {
         let action = action.into().description();
         let msg = format!("{action} {what} for {target}");
-        self.group(&msg)
-    }
-
-    #[must_use = "Groups should not be dropped until the Step finishes running"]
-    #[track_caller]
-    fn msg_rustc_tool(
-        &self,
-        action: impl Into<Kind>,
-        build_stage: u32,
-        what: impl Display,
-        host: TargetSelection,
-        target: TargetSelection,
-    ) -> Option<gha::Group> {
-        let action = action.into().description();
-        let msg = |fmt| format!("{action} {what} {fmt}");
-
-        let msg = if host == target {
-            msg(format_args!("(stage{build_stage} -> stage{}, {target})", build_stage + 1))
-        } else {
-            msg(format_args!("(stage{build_stage}:{host} -> stage{}:{target})", build_stage + 1))
-        };
         self.group(&msg)
     }
 
@@ -1752,6 +1757,7 @@ impl Build {
     ///
     /// If `src` is a symlink, `src` will be resolved to the actual path
     /// and copied to `dst` instead of the symlink itself.
+    #[track_caller]
     pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
         self.copy_link_internal(src, dst, true);
     }
@@ -1760,6 +1766,7 @@ impl Build {
     /// Attempts to use hard links if possible, falling back to copying.
     /// You can neither rely on this being a copy nor it being a link,
     /// so do not write to dst.
+    #[track_caller]
     pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
 
@@ -1774,6 +1781,7 @@ impl Build {
         }
     }
 
+    #[track_caller]
     fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
         if self.config.dry_run() {
             return;
@@ -1782,6 +1790,10 @@ impl Build {
         if src == dst {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("file-copy-link", ?src, ?dst);
+
         if let Err(e) = fs::remove_file(dst)
             && cfg!(windows)
             && e.kind() != io::ErrorKind::NotFound
@@ -1824,6 +1836,7 @@ impl Build {
     /// Links the `src` directory recursively to `dst`. Both are assumed to exist
     /// when this function is called.
     /// Will attempt to use hard links if possible and fall back to copying.
+    #[track_caller]
     pub fn cp_link_r(&self, src: &Path, dst: &Path) {
         if self.config.dry_run() {
             return;
@@ -1846,12 +1859,14 @@ impl Build {
     /// Will attempt to use hard links if possible and fall back to copying.
     /// Unwanted files or directories can be skipped
     /// by returning `false` from the filter function.
+    #[track_caller]
     pub fn cp_link_filtered(&self, src: &Path, dst: &Path, filter: &dyn Fn(&Path) -> bool) {
         // Immediately recurse with an empty relative path
         self.cp_link_filtered_recurse(src, dst, Path::new(""), filter)
     }
 
     // Inner function does the actual work
+    #[track_caller]
     fn cp_link_filtered_recurse(
         &self,
         src: &Path,
@@ -1871,7 +1886,6 @@ impl Build {
                     self.create_dir(&dst);
                     self.cp_link_filtered_recurse(&path, &dst, &relative, filter);
                 } else {
-                    let _ = fs::remove_file(&dst);
                     self.copy_link(&path, &dst, FileType::Regular);
                 }
             }
@@ -1913,10 +1927,15 @@ impl Build {
         t!(fs::read_to_string(path))
     }
 
+    #[track_caller]
     fn create_dir(&self, dir: &Path) {
         if self.config.dry_run() {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("dir-create", ?dir);
+
         t!(fs::create_dir_all(dir))
     }
 
@@ -1924,7 +1943,25 @@ impl Build {
         if self.config.dry_run() {
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("dir-remove", ?dir);
+
         t!(fs::remove_dir_all(dir))
+    }
+
+    /// Make sure that `dir` will be an empty existing directory after this function ends.
+    /// If it existed before, it will be first deleted.
+    fn clear_dir(&self, dir: &Path) {
+        if self.config.dry_run() {
+            return;
+        }
+
+        #[cfg(feature = "tracing")]
+        let _span = trace_io!("dir-clear", ?dir);
+
+        let _ = std::fs::remove_dir_all(dir);
+        self.create_dir(dir);
     }
 
     fn read_dir(&self, dir: &Path) -> impl Iterator<Item = fs::DirEntry> {
@@ -2016,13 +2053,13 @@ to download LLVM rather than building it.
         &self.config.exec_ctx
     }
 
-    pub fn report_summary(&self, start_time: Instant) {
-        self.config.exec_ctx.profiler().report_summary(start_time);
+    pub fn report_summary(&self, path: &Path, start_time: Instant) {
+        self.config.exec_ctx.profiler().report_summary(path, start_time);
     }
 
     #[cfg(feature = "tracing")]
-    pub fn report_step_graph(self) {
-        self.step_graph.into_inner().store_to_dot_files();
+    pub fn report_step_graph(self, directory: &Path) {
+        self.step_graph.into_inner().store_to_dot_files(directory);
     }
 }
 

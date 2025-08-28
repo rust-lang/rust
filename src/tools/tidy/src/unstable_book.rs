@@ -6,6 +6,8 @@ use crate::features::{CollectedFeatures, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book";
 
+pub const ENV_VARS_DIR: &str = "src/compiler-environment-variables";
+
 pub const COMPILER_FLAGS_DIR: &str = "src/compiler-flags";
 
 pub const LANG_FEATURES_DIR: &str = "src/language-features";

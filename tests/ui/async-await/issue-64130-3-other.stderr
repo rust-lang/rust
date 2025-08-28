@@ -5,8 +5,13 @@ LL | async fn bar() {
    | -------------- within this `impl Future<Output = ()>`
 ...
 LL |     is_qux(bar());
-   |            ^^^^^ within `impl Future<Output = ()>`, the trait `Qux` is not implemented for `Foo`
+   |            ^^^^^ unsatisfied trait bound
    |
+help: within `impl Future<Output = ()>`, the trait `Qux` is not implemented for `Foo`
+  --> $DIR/issue-64130-3-other.rs:10:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
 note: future does not implement `Qux` as this value is used across an await
   --> $DIR/issue-64130-3-other.rs:18:11
    |

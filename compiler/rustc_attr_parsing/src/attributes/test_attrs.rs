@@ -1,11 +1,4 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_span::{Symbol, sym};
-
-use crate::attributes::{AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
 
 pub(crate) struct IgnoreParser;
 
@@ -13,7 +6,12 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
-    const TEMPLATE: AttributeTemplate = template!(Word, NameValueStr: "reason");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
+    const TEMPLATE: AttributeTemplate = template!(
+        Word, NameValueStr: "reason",
+        "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::Ignore {
@@ -23,7 +21,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                 ArgParser::NameValue(name_value) => {
                     let Some(str_value) = name_value.value_as_str() else {
                         let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
-                            .suggestions(false, "ignore");
+                            .suggestions(cx.attr_style, "ignore");
                         let span = cx.attr_span;
                         cx.emit_lint(
                             AttributeLintKind::IllFormedAttributeInput { suggestions },
@@ -34,8 +32,8 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
                     Some(str_value)
                 }
                 ArgParser::List(_) => {
-                    let suggestions =
-                        <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "ignore");
+                    let suggestions = <Self as SingleAttributeParser<S>>::TEMPLATE
+                        .suggestions(cx.attr_style, "ignore");
                     let span = cx.attr_span;
                     cx.emit_lint(AttributeLintKind::IllFormedAttributeInput { suggestions }, span);
                     return None;
@@ -51,8 +49,12 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate =
-        template!(Word, List: r#"expected = "reason""#, NameValueStr: "reason");
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
+    const TEMPLATE: AttributeTemplate = template!(
+        Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
+        "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
+    );
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
@@ -79,7 +81,7 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
                         return None;
                     };
                     if !single.path().word_is(sym::expected) {
-                        cx.expected_specific_argument_strings(list.span, vec!["expected"]);
+                        cx.expected_specific_argument_strings(list.span, &[sym::expected]);
                         return None;
                     }
                     let Some(nv) = single.args().name_value() else {

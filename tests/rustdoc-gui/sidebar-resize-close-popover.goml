@@ -2,7 +2,7 @@
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 // normal resizing
@@ -12,7 +12,7 @@ assert-css: ("#settings", {"display": "none"})
 
 // Now same thing, but for source code
 go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
-click: "#settings-menu"
+click: "rustdoc-toolbar .settings-menu"
 wait-for: "#settings"
 assert-css: ("#settings", {"display": "block"})
 assert-property: (".sidebar", {"clientWidth": "49"})

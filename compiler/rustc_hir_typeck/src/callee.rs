@@ -511,7 +511,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Untranslatable diagnostics are okay for rustc internals
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
+                if self.has_rustc_attrs
+                    && self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses)
+                {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
@@ -894,7 +896,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
+        if self.has_rustc_attrs && self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
             return;
         }
 
@@ -910,7 +912,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // const stability checking here too, I guess.
         if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
-            // FIXME(const_trait_impl): Use this span with a better cause code.
             for (idx, (cond, pred_span)) in
                 q.instantiate(self.tcx, callee_args).into_iter().enumerate()
             {

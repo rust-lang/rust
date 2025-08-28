@@ -16,7 +16,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{self, *};
+use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, ValTree, ValTreeKind};
 use rustc_pattern_analysis::constructor::RangeEnd;
@@ -428,47 +428,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
+                let guard_scope = arm
+                    .guard
+                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
                 self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let old_dedup_scope =
-                        mem::replace(&mut this.fixed_temps_scope, Some(arm.scope));
+                    this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
+                        // `if let` guard temps needing deduplicating will be in the guard scope.
+                        let old_dedup_scope =
+                            mem::replace(&mut this.fixed_temps_scope, guard_scope);
 
-                    // `try_to_place` may fail if it is unable to resolve the given
-                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                    // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
-                    // if the only match arm is a wildcard (`_`).
-                    // Example:
-                    // ```
-                    // let foo = (0, 1);
-                    // let c = || {
-                    //    match foo { _ => () };
-                    // };
-                    // ```
-                    let scrutinee_place = scrutinee_place_builder.try_to_place(this);
-                    let opt_scrutinee_place =
-                        scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
-                    let scope = this.declare_bindings(
-                        None,
-                        arm.span,
-                        &arm.pattern,
-                        arm.guard,
-                        opt_scrutinee_place,
-                    );
+                        // `try_to_place` may fail if it is unable to resolve the given
+                        // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                        // a scrutinee place. `scrutinee_place_builder` will fail to be resolved
+                        // if the only match arm is a wildcard (`_`).
+                        // Example:
+                        // ```
+                        // let foo = (0, 1);
+                        // let c = || {
+                        //    match foo { _ => () };
+                        // };
+                        // ```
+                        let scrutinee_place = scrutinee_place_builder.try_to_place(this);
+                        let opt_scrutinee_place =
+                            scrutinee_place.as_ref().map(|place| (Some(place), scrutinee_span));
+                        let scope = this.declare_bindings(
+                            None,
+                            arm.span,
+                            &arm.pattern,
+                            arm.guard,
+                            opt_scrutinee_place,
+                        );
 
-                    let arm_block = this.bind_pattern(
-                        outer_source_info,
-                        branch,
-                        &built_match_tree.fake_borrow_temps,
-                        scrutinee_span,
-                        Some((arm, match_scope)),
-                    );
+                        let arm_block = this.bind_pattern(
+                            outer_source_info,
+                            branch,
+                            &built_match_tree.fake_borrow_temps,
+                            scrutinee_span,
+                            Some((arm, match_scope)),
+                        );
 
-                    this.fixed_temps_scope = old_dedup_scope;
+                        this.fixed_temps_scope = old_dedup_scope;
 
-                    if let Some(source_scope) = scope {
-                        this.source_scope = source_scope;
-                    }
+                        if let Some(source_scope) = scope {
+                            this.source_scope = source_scope;
+                        }
 
-                    this.expr_into_dest(destination, arm_block, arm.body)
+                        this.expr_into_dest(destination, arm_block, arm.body)
+                    })
                 })
                 .into_block()
             })
@@ -1239,7 +1245,7 @@ struct Ascription<'tcx> {
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
-    Constant { value: mir::Const<'tcx> },
+    Constant { value: ty::Value<'tcx> },
     Range(Arc<PatRange<'tcx>>),
     Slice { len: usize, variable_length: bool },
     Deref { temp: Place<'tcx>, mutability: Mutability },
@@ -1310,13 +1316,13 @@ enum TestKind<'tcx> {
     If,
 
     /// Test for equality with value, possibly after an unsizing coercion to
-    /// `ty`,
+    /// `cast_ty`,
     Eq {
-        value: Const<'tcx>,
+        value: ty::Value<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
         // types and `&[T]` types are converted back into patterns, so this can
-        // only be `&str`, `f32` or `f64`.
-        ty: Ty<'tcx>,
+        // only be `&str` or floats.
+        cast_ty: Ty<'tcx>,
     },
 
     /// Test whether the value falls within an inclusive or exclusive range.
@@ -1351,8 +1357,8 @@ pub(crate) struct Test<'tcx> {
 enum TestBranch<'tcx> {
     /// Success branch, used for tests with two possible outcomes.
     Success,
-    /// Branch corresponding to this constant.
-    Constant(Const<'tcx>, u128),
+    /// Branch corresponding to this constant. Must be a scalar.
+    Constant(ty::Value<'tcx>),
     /// Branch corresponding to this variant.
     Variant(VariantIdx),
     /// Failure branch for tests with two possible outcomes, and "otherwise" branch for other tests.
@@ -1360,8 +1366,8 @@ enum TestBranch<'tcx> {
 }
 
 impl<'tcx> TestBranch<'tcx> {
-    fn as_constant(&self) -> Option<&Const<'tcx>> {
-        if let Self::Constant(v, _) = self { Some(v) } else { None }
+    fn as_constant(&self) -> Option<ty::Value<'tcx>> {
+        if let Self::Constant(v) = self { Some(*v) } else { None }
     }
 }
 
@@ -2517,7 +2523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // bindings and temporaries created for and by the guard. As a result, the drop order
             // for the arm will correspond to the binding order of the final sub-branch lowered.
             if matches!(schedule_drops, ScheduleDrops::No) {
-                self.clear_top_scope(arm.scope);
+                self.clear_match_arm_and_guard_scopes(arm.scope);
             }
 
             let source_info = self.source_info(guard_span);

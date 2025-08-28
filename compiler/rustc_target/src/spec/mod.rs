@@ -50,6 +50,7 @@ use rustc_abi::{
     Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -875,6 +876,12 @@ impl FromStr for PanicStrategy {
 
 crate::json::serde_deserialize_from_str!(PanicStrategy);
 
+impl IntoDiagArg for PanicStrategy {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.desc().to_string()))
+    }
+}
+
 impl ToJson for PanicStrategy {
     fn to_json(&self) -> Json {
         match *self {
@@ -1518,6 +1525,8 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
+into_diag_arg_using_display!(SplitDebuginfo);
+
 #[derive(Clone, Debug, PartialEq, Eq, serde_derive::Deserialize)]
 #[serde(tag = "kind")]
 #[serde(rename_all = "kebab-case")]
@@ -1795,6 +1804,8 @@ impl fmt::Display for StackProtector {
     }
 }
 
+into_diag_arg_using_display!(StackProtector);
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum BinaryFormat {
     Coff,
@@ -1943,6 +1954,7 @@ supported_targets! {
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+    ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
@@ -2105,6 +2117,7 @@ supported_targets! {
 
     ("msp430-none-elf", msp430_none_elf),
 
+    ("aarch64_be-unknown-hermit", aarch64_be_unknown_hermit),
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("riscv64gc-unknown-hermit", riscv64gc_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
@@ -2137,6 +2150,7 @@ supported_targets! {
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
     ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
+    ("riscv64a23-unknown-linux-gnu", riscv64a23_unknown_linux_gnu),
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
@@ -2147,6 +2161,7 @@ supported_targets! {
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
+    ("aarch64_be-unknown-none-softfloat", aarch64_be_unknown_none_softfloat),
     ("aarch64-unknown-nuttx", aarch64_unknown_nuttx),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
@@ -2623,8 +2638,6 @@ pub struct TargetOptions {
     /// If we give emcc .o files that are actually .bc files it
     /// will 'just work'.
     pub obj_is_bitcode: bool,
-    /// Content of the LLVM cmdline section associated with embedded bitcode.
-    pub bitcode_llvm_cmdline: StaticCow<str>,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -2988,7 +3001,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
-            bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,
@@ -3808,3 +3820,5 @@ impl fmt::Display for TargetTuple {
         write!(f, "{}", self.debug_tuple())
     }
 }
+
+into_diag_arg_using_display!(&TargetTuple);

@@ -12,9 +12,13 @@ use rustc_middle::ty::UniverseIndex;
 use super::*;
 
 fn render_outlives_constraint(constraint: &OutlivesConstraint<'_>) -> String {
-    match constraint.locations {
-        Locations::All(_) => "All(...)".to_string(),
-        Locations::Single(loc) => format!("{loc:?}"),
+    if let ConstraintCategory::OutlivesUnnameablePlaceholder(unnameable) = constraint.category {
+        format!("{unnameable:?} unnameable")
+    } else {
+        match constraint.locations {
+            Locations::All(_) => "All(...)".to_string(),
+            Locations::Single(loc) => format!("{loc:?}"),
+        }
     }
 }
 
@@ -41,7 +45,22 @@ fn render_region_vid<'tcx>(
         "".to_string()
     };
 
-    format!("{:?}{universe_str}{external_name_str}", rvid)
+    let extra_info = match regioncx.region_definition(rvid).origin {
+        NllRegionVariableOrigin::FreeRegion => "".to_string(),
+        NllRegionVariableOrigin::Placeholder(p) => match p.bound.kind {
+            ty::BoundRegionKind::Named(def_id) => {
+                format!(" (for<{}>)", tcx.item_name(def_id))
+            }
+            ty::BoundRegionKind::ClosureEnv | ty::BoundRegionKind::Anon => " (for<'_>)".to_string(),
+            ty::BoundRegionKind::NamedAnon(_) => {
+                bug!("only used for pretty printing")
+            }
+        },
+        NllRegionVariableOrigin::Existential { name: Some(name), .. } => format!(" (ex<{name}>)"),
+        NllRegionVariableOrigin::Existential { .. } => format!(" (ex<'_>)"),
+    };
+
+    format!("{:?}{universe_str}{external_name_str}{extra_info}", rvid)
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {

@@ -79,6 +79,7 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     #[instrument(level = "trace", skip(self, tcx, body))]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
+        move_to_copy_pointers(tcx, body);
         while propagate_ssa(tcx, body) {}
     }
 
@@ -87,11 +88,43 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
     }
 }
 
+/// The SSA analysis done by [`SsaLocals`] treats [`Operand::Move`] as a read, even though in
+/// general [`Operand::Move`] represents pass-by-pointer where the callee can overwrite the
+/// pointee (Miri always considers the place deinitialized). CopyProp has a similar trick to
+/// turn [`Operand::Move`] into [`Operand::Copy`] when required for an optimization, but in this
+/// pass we just turn all moves of pointers into copies because pointers should be by-value anyway.
+fn move_to_copy_pointers<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let mut visitor = MoveToCopyVisitor { tcx, local_decls: &body.local_decls };
+    for (bb, data) in body.basic_blocks.as_mut_preserves_cfg().iter_enumerated_mut() {
+        visitor.visit_basic_block_data(bb, data);
+    }
+
+    struct MoveToCopyVisitor<'a, 'tcx> {
+        tcx: TyCtxt<'tcx>,
+        local_decls: &'a IndexVec<Local, LocalDecl<'tcx>>,
+    }
+
+    impl<'a, 'tcx> MutVisitor<'tcx> for MoveToCopyVisitor<'a, 'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.tcx
+        }
+
+        fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
+            if let Operand::Move(place) = *operand {
+                if place.ty(self.local_decls, self.tcx).ty.is_any_ptr() {
+                    *operand = Operand::Copy(place);
+                }
+            }
+            self.super_operand(operand, loc);
+        }
+    }
+}
+
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let typing_env = body.typing_env(tcx);
     let ssa = SsaLocals::new(tcx, body, typing_env);
 
-    let mut replacer = compute_replacement(tcx, body, &ssa);
+    let mut replacer = compute_replacement(tcx, body, ssa);
     debug!(?replacer.targets);
     debug!(?replacer.allowed_replacements);
     debug!(?replacer.storage_to_remove);
@@ -119,7 +152,7 @@ enum Value<'tcx> {
 fn compute_replacement<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    ssa: &SsaLocals,
+    ssa: SsaLocals,
 ) -> Replacer<'tcx> {
     let always_live_locals = always_storage_live_locals(body);
 
@@ -138,7 +171,7 @@ fn compute_replacement<'tcx>(
     // reborrowed references.
     let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
-    let fully_replaceable_locals = fully_replaceable_locals(ssa);
+    let fully_replaceable_locals = fully_replaceable_locals(&ssa);
 
     // Returns true iff we can use `place` as a pointee.
     //

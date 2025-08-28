@@ -242,13 +242,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 match evt {
                     AccessEvent::Read(_) => {
-                        // FIXME: ProvenanceMap should have something like get_range().
-                        let p_map = alloc.provenance();
-                        for idx in overlap {
-                            // If a provenance was read by the foreign code, expose it.
-                            if let Some(prov) = p_map.get(Size::from_bytes(idx), this) {
-                                this.expose_provenance(prov)?;
-                            }
+                        // If a provenance was read by the foreign code, expose it.
+                        for prov in alloc.provenance().get_range(this, overlap.into()) {
+                            this.expose_provenance(prov)?;
                         }
                     }
                     AccessEvent::Write(_, certain) => {

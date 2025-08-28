@@ -20,7 +20,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{DiagCtxtHandle, FatalError, Level};
+use rustc_errors::{DiagCtxtHandle, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -46,10 +46,10 @@ use crate::llvm::{self, DiagnosticInfo};
 use crate::type_::Type;
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
-pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> FatalError {
+pub(crate) fn llvm_err<'a>(dcx: DiagCtxtHandle<'_>, err: LlvmError<'a>) -> ! {
     match llvm::last_error() {
-        Some(llvm_err) => dcx.emit_almost_fatal(WithLlvmError(err, llvm_err)),
-        None => dcx.emit_almost_fatal(err),
+        Some(llvm_err) => dcx.emit_fatal(WithLlvmError(err, llvm_err)),
+        None => dcx.emit_fatal(err),
     }
 }
 
@@ -63,7 +63,7 @@ fn write_output_file<'ll>(
     file_type: llvm::FileType,
     self_profiler_ref: &SelfProfilerRef,
     verify_llvm_ir: bool,
-) -> Result<(), FatalError> {
+) {
     debug!("write_output_file output={:?} dwo_output={:?}", output, dwo_output);
     let output_c = path_to_c_string(output);
     let dwo_output_c;
@@ -100,7 +100,7 @@ fn write_output_file<'ll>(
         }
     }
 
-    result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
+    result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
 pub(crate) fn create_informational_target_machine(
@@ -112,7 +112,7 @@ pub(crate) fn create_informational_target_machine(
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false, only_base_features);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
-        .unwrap_or_else(|err| llvm_err(sess.dcx(), err).raise())
+        .unwrap_or_else(|err| llvm_err(sess.dcx(), err))
 }
 
 pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -139,7 +139,7 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
-    .unwrap_or_else(|err| llvm_err(tcx.dcx(), err).raise())
+    .unwrap_or_else(|err| llvm_err(tcx.dcx(), err))
 }
 
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
@@ -565,7 +565,7 @@ pub(crate) unsafe fn llvm_optimize(
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
     autodiff_stage: AutodiffStage,
-) -> Result<(), FatalError> {
+) {
     // Enzyme:
     // The whole point of compiler based AD is to differentiate optimized IR instead of unoptimized
     // source code. However, benchmarks show that optimizations increasing the code size
@@ -704,7 +704,7 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_plugins.len(),
         )
     };
-    result.into_result().map_err(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
+    result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
 // Unsafe due to LLVM calls.
@@ -713,7 +713,7 @@ pub(crate) fn optimize(
     dcx: DiagCtxtHandle<'_>,
     module: &mut ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-) -> Result<(), FatalError> {
+) {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
 
     let llcx = &*module.module_llvm.llcx;
@@ -765,7 +765,7 @@ pub(crate) fn optimize(
                 opt_stage,
                 autodiff_stage,
             )
-        }?;
+        };
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = unsafe { ThinBuffer::from_raw_ptr(thin_lto_buffer) };
             module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
@@ -793,14 +793,13 @@ pub(crate) fn optimize(
             }
         }
     }
-    Ok(())
 }
 
 pub(crate) fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-) -> Result<CompiledModule, FatalError> {
+) -> CompiledModule {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
@@ -862,7 +861,7 @@ pub(crate) fn codegen(
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
                     module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
-                embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, &thin_bc);
+                embed_bitcode(cgcx, llcx, llmod, &thin_bc);
             }
         }
 
@@ -909,7 +908,9 @@ pub(crate) fn codegen(
                 record_artifact_size(&cgcx.prof, "llvm_ir", &out);
             }
 
-            result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteIr { path: &out }))?;
+            result
+                .into_result()
+                .unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteIr { path: &out }));
         }
 
         if config.emit_asm {
@@ -940,7 +941,7 @@ pub(crate) fn codegen(
                 llvm::FileType::AssemblyFile,
                 &cgcx.prof,
                 config.verify_llvm_ir,
-            )?;
+            );
         }
 
         match config.emit_obj {
@@ -976,7 +977,7 @@ pub(crate) fn codegen(
                     llvm::FileType::ObjectFile,
                     &cgcx.prof,
                     config.verify_llvm_ir,
-                )?;
+                );
             }
 
             EmitObj::Bitcode => {
@@ -1009,7 +1010,7 @@ pub(crate) fn codegen(
         && cgcx.target_can_use_split_dwarf
         && cgcx.split_debuginfo != SplitDebuginfo::Off
         && cgcx.split_dwarf_kind == SplitDwarfKind::Split;
-    Ok(module.into_compiled_module(
+    module.into_compiled_module(
         config.emit_obj != EmitObj::None,
         dwarf_object_emitted,
         config.emit_bc,
@@ -1017,7 +1018,7 @@ pub(crate) fn codegen(
         config.emit_ir,
         &cgcx.output_filenames,
         cgcx.invocation_temp.as_deref(),
-    ))
+    )
 }
 
 fn create_section_with_flags_asm(section_name: &str, section_flags: &str, data: &[u8]) -> Vec<u8> {
@@ -1058,7 +1059,6 @@ fn embed_bitcode(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     llcx: &llvm::Context,
     llmod: &llvm::Module,
-    cmdline: &str,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1074,7 +1074,9 @@ fn embed_bitcode(
     // * Mach-O - this is for macOS. Inspecting the source code for the native
     //   linker here shows that the `.llvmbc` and `.llvmcmd` sections are
     //   automatically skipped by the linker. In that case there's nothing extra
-    //   that we need to do here.
+    //   that we need to do here. We do need to make sure that the
+    //   `__LLVM,__cmdline` section exists even though it is empty as otherwise
+    //   ld64 rejects the object file.
     //
     // * Wasm - the native LLD linker is hard-coded to skip `.llvmbc` and
     //   `.llvmcmd` sections, so there's nothing extra we need to do.
@@ -1109,9 +1111,9 @@ fn embed_bitcode(
 
         llvm::set_section(llglobal, bitcode_section_name(cgcx));
         llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-        llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
+        llvm::LLVMSetGlobalConstant(llglobal, llvm::TRUE);
 
-        let llconst = common::bytes_in_context(llcx, cmdline.as_bytes());
+        let llconst = common::bytes_in_context(llcx, &[]);
         let llglobal = llvm::add_global(llmod, common::val_ty(llconst), c"rustc.embedded.cmdline");
         llvm::set_initializer(llglobal, llconst);
         let section = if cgcx.target_is_like_darwin {
@@ -1128,7 +1130,7 @@ fn embed_bitcode(
         let section_flags = if cgcx.is_pe_coff { "n" } else { "e" };
         let asm = create_section_with_flags_asm(".llvmbc", section_flags, bitcode);
         llvm::append_module_inline_asm(llmod, &asm);
-        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, cmdline.as_bytes());
+        let asm = create_section_with_flags_asm(".llvmcmd", section_flags, &[]);
         llvm::append_module_inline_asm(llmod, &asm);
     }
 }

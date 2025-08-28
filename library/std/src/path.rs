@@ -1191,7 +1191,7 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "const_pathbuf_osstring_new", issue = "141520")]
+    #[rustc_const_stable(feature = "const_pathbuf_osstring_new", since = "CURRENT_RUSTC_VERSION")]
     pub const fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
@@ -2105,6 +2105,38 @@ impl PartialEq for PathBuf {
     }
 }
 
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<str> for PathBuf {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        &*self == other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<PathBuf> for str {
+    #[inline]
+    fn eq(&self, other: &PathBuf) -> bool {
+        other == self
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<String> for PathBuf {
+    #[inline]
+    fn eq(&self, other: &String) -> bool {
+        **self == **other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<PathBuf> for String {
+    #[inline]
+    fn eq(&self, other: &PathBuf) -> bool {
+        other == self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for PathBuf {
     fn hash<H: Hasher>(&self, h: &mut H) {
@@ -2678,7 +2710,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(path_file_prefix)]
     /// use std::path::Path;
     ///
     /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
@@ -2693,7 +2724,7 @@ impl Path {
     ///
     /// [`Path::file_stem`]: Path::file_stem
     ///
-    #[unstable(feature = "path_file_prefix", issue = "86319")]
+    #[stable(feature = "path_file_prefix", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, _after)| Some(before))
@@ -3367,6 +3398,39 @@ impl PartialEq for Path {
     }
 }
 
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<str> for Path {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        let other: &OsStr = other.as_ref();
+        self == other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<Path> for str {
+    #[inline]
+    fn eq(&self, other: &Path) -> bool {
+        other == self
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<String> for Path {
+    #[inline]
+    fn eq(&self, other: &String) -> bool {
+        self == &*other
+    }
+}
+
+#[stable(feature = "eq_str_for_path", since = "CURRENT_RUSTC_VERSION")]
+impl cmp::PartialEq<Path> for String {
+    #[inline]
+    fn eq(&self, other: &Path) -> bool {
+        other == self
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
@@ -3613,19 +3677,13 @@ impl_cmp_os_str!(<'a> Cow<'a, Path>, OsString);
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
-    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+        "prefix not found".fmt(f)
     }
 }
 
 #[stable(since = "1.7.0", feature = "strip_prefix")]
-impl Error for StripPrefixError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "prefix not found"
-    }
-}
+impl Error for StripPrefixError {}
 
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 impl fmt::Display for NormalizeError {

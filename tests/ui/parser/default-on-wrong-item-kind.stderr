@@ -78,6 +78,16 @@ LL |     default trait foo = Ord;
    |
    = note: only associated `fn`, `const`, and `type` items can be `default`
 
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:22:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
 error: an item macro invocation cannot be `default`
   --> $DIR/default-on-wrong-item-kind.rs:25:5
    |
@@ -274,6 +284,16 @@ LL |     default trait foo = Ord;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider moving the trait alias out to a nearby module scope
+
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:56:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
 
 error: implementation is not supported in `extern` blocks
   --> $DIR/default-on-wrong-item-kind.rs:56:5
@@ -489,6 +509,16 @@ LL |     default trait foo = Ord;
    |
    = help: consider moving the trait alias out to a nearby module scope
 
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:93:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
 error: implementation is not supported in `trait`s or `impl`s
   --> $DIR/default-on-wrong-item-kind.rs:93:5
    |
@@ -703,6 +733,16 @@ LL |     default trait foo = Ord;
    |
    = help: consider moving the trait alias out to a nearby module scope
 
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:130:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
 error: implementation is not supported in `trait`s or `impl`s
   --> $DIR/default-on-wrong-item-kind.rs:130:5
    |
@@ -759,5 +799,5 @@ LL |     default macro_rules! foo {}
    |
    = help: consider moving the macro definition out to a nearby module scope
 
-error: aborting due to 95 previous errors
+error: aborting due to 99 previous errors
 

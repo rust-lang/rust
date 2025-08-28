@@ -12,10 +12,11 @@ use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_apfloat::{Float, FloatConvert};
-use rustc_hir::attrs::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
+use rustc_hir::attrs::InlineAttr;
+use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -280,16 +281,16 @@ impl interpret::Provenance for Provenance {
         Ok(())
     }
 
-    fn join(left: Option<Self>, right: Option<Self>) -> Option<Self> {
+    fn join(left: Self, right: Self) -> Option<Self> {
         match (left, right) {
             // If both are the *same* concrete tag, that is the result.
             (
-                Some(Provenance::Concrete { alloc_id: left_alloc, tag: left_tag }),
-                Some(Provenance::Concrete { alloc_id: right_alloc, tag: right_tag }),
-            ) if left_alloc == right_alloc && left_tag == right_tag => left,
+                Provenance::Concrete { alloc_id: left_alloc, tag: left_tag },
+                Provenance::Concrete { alloc_id: right_alloc, tag: right_tag },
+            ) if left_alloc == right_alloc && left_tag == right_tag => Some(left),
             // If one side is a wildcard, the best possible outcome is that it is equal to the other
             // one, and we use that.
-            (Some(Provenance::Wildcard), o) | (o, Some(Provenance::Wildcard)) => o,
+            (Provenance::Wildcard, o) | (o, Provenance::Wildcard) => Some(o),
             // Otherwise, fall back to `None`.
             _ => None,
         }
@@ -1076,7 +1077,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 .target_features
                 .iter()
                 .filter(|&feature| {
-                    !feature.implied && !ecx.tcx.sess.target_features.contains(&feature.name)
+                    feature.kind != TargetFeatureKind::Implied && !ecx.tcx.sess.target_features.contains(&feature.name)
                 })
                 .fold(String::new(), |mut s, feature| {
                     if !s.is_empty() {
@@ -1111,6 +1112,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         // For foreign items, try to see if we can emulate them.
         if ecx.tcx.is_foreign_item(instance.def_id()) {
+            let _trace = enter_trace_span!("emulate_foreign_item");
             // An external function call that does not have a MIR body. We either find MIR elsewhere
             // or emulate its effect.
             // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
@@ -1123,6 +1125,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
 
         // Otherwise, load the MIR.
+        let _trace = enter_trace_span!("load_mir");
         interp_ok(Some((ecx.load_mir(instance.def, None)?, instance)))
     }
 
@@ -1394,6 +1397,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                 genmc_ctx.memory_load(machine, ptr.addr(), range.size)?,
             GlobalDataRaceHandler::Vclocks(_data_race) => {
+                let _trace = enter_trace_span!(data_race::before_memory_read);
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) = &alloc_extra.data_race
                 else {
                     unreachable!();
@@ -1429,6 +1433,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 genmc_ctx.memory_store(machine, ptr.addr(), range.size)?;
             }
             GlobalDataRaceHandler::Vclocks(_global_state) => {
+                let _trace = enter_trace_span!(data_race::before_memory_write);
                 let AllocDataRaceHandler::Vclocks(data_race, weak_memory) =
                     &mut alloc_extra.data_race
                 else {
@@ -1465,6 +1470,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                 genmc_ctx.handle_dealloc(machine, ptr.addr(), size, align, kind)?,
             GlobalDataRaceHandler::Vclocks(_global_state) => {
+                let _trace = enter_trace_span!(data_race::before_memory_deallocation);
                 let data_race = alloc_extra.data_race.as_vclocks_mut().unwrap();
                 data_race.write(
                     alloc_id,
@@ -1675,6 +1681,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         local: mir::Local,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &frame.extra.data_race {
+            let _trace = enter_trace_span!(data_race::after_local_read);
             data_race.local_read(local, &ecx.machine);
         }
         interp_ok(())
@@ -1686,6 +1693,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         storage_live: bool,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &ecx.frame().extra.data_race {
+            let _trace = enter_trace_span!(data_race::after_local_write);
             data_race.local_write(local, storage_live, &ecx.machine);
         }
         interp_ok(())
@@ -1708,6 +1716,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if let Some(data_race) =
             &machine.threads.active_thread_stack().last().unwrap().extra.data_race
         {
+            let _trace = enter_trace_span!(data_race::after_local_moved_to_memory);
             data_race.local_moved_to_memory(
                 local,
                 alloc_info.data_race.as_vclocks_mut().unwrap(),

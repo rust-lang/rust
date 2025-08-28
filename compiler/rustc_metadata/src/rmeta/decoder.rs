@@ -1530,7 +1530,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
-                ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
+                ast::MacroDef { macro_rules, body: Box::new(body) }
             }
             _ => bug!(),
         }
@@ -2012,6 +2012,22 @@ impl CrateMetadata {
 
     pub(crate) fn is_proc_macro_crate(&self) -> bool {
         self.root.is_proc_macro_crate()
+    }
+
+    pub(crate) fn proc_macros_for_crate(
+        &self,
+        krate: CrateNum,
+        cstore: &CStore,
+    ) -> impl Iterator<Item = DefId> {
+        gen move {
+            for def_id in self.root.proc_macro_data.as_ref().into_iter().flat_map(move |data| {
+                data.macros
+                    .decode(CrateMetadataRef { cdata: self, cstore })
+                    .map(move |index| DefId { index, krate })
+            }) {
+                yield def_id;
+            }
+        }
     }
 
     pub(crate) fn name(&self) -> Symbol {

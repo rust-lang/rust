@@ -148,11 +148,6 @@ pub(crate) fn compute_regions<'tcx>(
     let (closure_region_requirements, nll_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
 
-    if let Some(guar) = nll_errors.has_errors() {
-        // Suppress unhelpful extra errors in `infer_opaque_types`.
-        infcx.set_tainted_by_errors(guar);
-    }
-
     NllOutput {
         regioncx,
         polonius_input: polonius_facts.map(Box::new),

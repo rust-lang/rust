@@ -27,7 +27,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
-use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
+use rustc_trait_selection::opaque_types::opaque_type_has_defining_use_args;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
 
@@ -45,7 +45,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_args = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_args);
+        let rustc_dump_user_args =
+            self.has_rustc_attrs && self.tcx.has_attr(item_def_id, sym::rustc_dump_user_args);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_args);
         for param in body.params {
@@ -74,7 +75,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_coroutine_interior();
+        wbcx.visit_transmutes();
         wbcx.visit_offset_of_container_types();
+        wbcx.visit_potentially_region_dependent_goals();
 
         wbcx.typeck_results.rvalue_scopes =
             mem::take(&mut self.typeck_results.borrow_mut().rvalue_scopes);
@@ -532,8 +535,36 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_transmutes(&mut self) {
+        let tcx = self.tcx();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for &(from, to, hir_id) in self.fcx.deferred_transmute_checks.borrow().iter() {
+            let span = tcx.hir_span(hir_id);
+            let from = self.resolve(from, &span);
+            let to = self.resolve(to, &span);
+            self.typeck_results.transmutes_to_check.push((from, to, hir_id));
+        }
+    }
+
+    fn visit_opaque_types_next(&mut self) {
+        let mut fcx_typeck_results = self.fcx.typeck_results.borrow_mut();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for hidden_ty in fcx_typeck_results.concrete_opaque_types.values() {
+            assert!(!hidden_ty.has_infer());
+        }
+
+        assert_eq!(self.typeck_results.concrete_opaque_types.len(), 0);
+        self.typeck_results.concrete_opaque_types =
+            mem::take(&mut fcx_typeck_results.concrete_opaque_types);
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
+        if self.fcx.next_trait_solver() {
+            return self.visit_opaque_types_next();
+        }
+
         let tcx = self.tcx();
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
@@ -544,17 +575,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-
-            if !self.fcx.next_trait_solver() {
-                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                    && alias_ty.args == opaque_type_key.args
-                {
-                    continue;
-                }
+            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
             }
 
-            if let Err(err) = check_opaque_type_parameter_valid(
+            if let Err(err) = opaque_type_has_defining_use_args(
                 &self.fcx,
                 opaque_type_key,
                 hidden_type.span,
@@ -762,6 +790,32 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_potentially_region_dependent_goals(&mut self) {
+        let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
+        if let None = self.fcx.tainted_by_errors() {
+            for obligation in obligations {
+                let (predicate, mut cause) =
+                    self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
+                if predicate.has_non_region_infer() {
+                    self.fcx.dcx().span_delayed_bug(
+                        cause.span,
+                        format!("unexpected inference variable after writeback: {predicate:?}"),
+                    );
+                } else {
+                    let predicate = self.tcx().erase_regions(predicate);
+                    if cause.has_infer() || cause.has_placeholders() {
+                        // We can't use the the obligation cause as it references
+                        // information local to this query.
+                        cause = self.fcx.misc(cause.span);
+                    }
+                    self.typeck_results
+                        .potentially_region_dependent_goals
+                        .insert((predicate, cause));
+                }
+            }
+        }
+    }
+
     fn resolve<T>(&mut self, value: T, span: &dyn Locatable) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -883,6 +937,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self, outer_exclusive_binder, new_err))]
     fn handle_term<T>(
         &mut self,
         value: T,

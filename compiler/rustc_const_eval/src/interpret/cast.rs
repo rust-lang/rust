@@ -16,8 +16,8 @@ use super::{
     FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy, err_inval, interp_ok, throw_ub,
     throw_ub_custom,
 };
-use crate::fluent_generated as fluent;
 use crate::interpret::Writeable;
+use crate::{enter_trace_span, fluent_generated as fluent};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn cast(
@@ -81,13 +81,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::FnDef(def_id, args) => {
-                        let instance = ty::Instance::resolve_for_fn_ptr(
-                            *self.tcx,
-                            self.typing_env,
-                            def_id,
-                            args,
-                        )
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                        let instance = {
+                            let _trace = enter_trace_span!(M, resolve::resolve_for_fn_ptr, ?def_id);
+                            ty::Instance::resolve_for_fn_ptr(
+                                *self.tcx,
+                                self.typing_env,
+                                def_id,
+                                args,
+                            )
+                            .ok_or_else(|| err_inval!(TooGeneric))?
+                        };
 
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
@@ -114,12 +117,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
                     ty::Closure(def_id, args) => {
-                        let instance = ty::Instance::resolve_closure(
-                            *self.tcx,
-                            def_id,
-                            args,
-                            ty::ClosureKind::FnOnce,
-                        );
+                        let instance = {
+                            let _trace = enter_trace_span!(M, resolve::resolve_closure, ?def_id);
+                            ty::Instance::resolve_closure(
+                                *self.tcx,
+                                def_id,
+                                args,
+                                ty::ClosureKind::FnOnce,
+                            )
+                        };
                         let fn_ptr = self.fn_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }

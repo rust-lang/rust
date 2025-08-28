@@ -307,11 +307,14 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     stub.reserve_section_headers();
     stub.reserve_dynsym();
     stub.reserve_dynstr();
+    let verdef_count = 1 + vers.len();
+    let mut dynamic_entries = 2; // DT_SONAME, DT_NULL
     if !vers.is_empty() {
         stub.reserve_gnu_versym();
-        stub.reserve_gnu_verdef(1 + vers.len(), 1 + vers.len());
+        stub.reserve_gnu_verdef(verdef_count, verdef_count);
+        dynamic_entries += 1; // DT_VERDEFNUM
     }
-    stub.reserve_dynamic(2); // DT_SONAME, DT_NULL
+    stub.reserve_dynamic(dynamic_entries);
 
     // First write the ELF header with the arch information.
     let e_machine = match (arch, sub_arch) {
@@ -443,9 +446,13 @@ fn create_elf_raw_dylib_stub(sess: &Session, soname: &str, symbols: &[DllImport]
     // .dynamic
     // the DT_SONAME will be used by the linker to populate DT_NEEDED
     // which the loader uses to find the library.
-    // DT_NULL terminates the .dynamic table.
     stub.write_align_dynamic();
     stub.write_dynamic_string(elf::DT_SONAME, soname);
+    // LSB section "2.7. Symbol Versioning" requires `DT_VERDEFNUM` to be reliable.
+    if verdef_count > 1 {
+        stub.write_dynamic(elf::DT_VERDEFNUM, verdef_count as u64);
+    }
+    // DT_NULL terminates the .dynamic table.
     stub.write_dynamic(elf::DT_NULL, 0);
 
     stub_buf

@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                 );
             },
             ItemKind::Impl(imp)
-                if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_def_id())
+                if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_ref.trait_def_id())
                     && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
                     && error_def_id == trait_def_id
                     && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)

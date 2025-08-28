@@ -8,7 +8,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
-#![feature(autodiff)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
@@ -139,6 +138,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         PartialEq: partial_eq::expand_deriving_partial_eq,
         PartialOrd: partial_ord::expand_deriving_partial_ord,
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
+        From: from::expand_deriving_from,
     }
 
     let client = rustc_proc_macro::bridge::client::Client::expand1(rustc_proc_macro::quote);

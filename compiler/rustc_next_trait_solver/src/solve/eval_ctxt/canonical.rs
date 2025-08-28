@@ -57,7 +57,6 @@ where
     /// This expects `goal` and `opaque_types` to be eager resolved.
     pub(super) fn canonicalize_goal(
         &self,
-        is_hir_typeck_root_goal: bool,
         goal: Goal<I, I::Predicate>,
         opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
@@ -65,7 +64,6 @@ where
         let canonical = Canonicalizer::canonicalize_input(
             self.delegate,
             &mut orig_values,
-            is_hir_typeck_root_goal,
             QueryInput {
                 goal,
                 predefined_opaques_in_body: self

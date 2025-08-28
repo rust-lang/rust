@@ -22,5 +22,5 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end

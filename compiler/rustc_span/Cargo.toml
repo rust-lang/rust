@@ -19,6 +19,6 @@ rustc_serialize = { path = "../rustc_serialize" }
 scoped-tls = "1.0"
 sha1 = "0.10.0"
 sha2 = "0.10.1"
-tracing = "0.1"
+tracing.workspace = true
 unicode-width = "0.2.0"
 # tidy-alphabetical-end

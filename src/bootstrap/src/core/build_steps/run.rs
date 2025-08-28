@@ -5,24 +5,25 @@
 
 use std::path::PathBuf;
 
+use build_helper::exit;
 use clap_complete::{Generator, shells};
 
 use crate::core::build_steps::dist::distdir;
 use crate::core::build_steps::test;
 use crate::core::build_steps::tool::{self, RustcPrivateCompilers, SourceType, Tool};
 use crate::core::build_steps::vendor::{Vendor, default_paths_to_vendor};
-use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::get_completion;
 use crate::utils::exec::command;
 use crate::{Mode, t};
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BuildManifest;
 
 impl Step for BuildManifest {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/build-manifest")
@@ -56,12 +57,12 @@ impl Step for BuildManifest {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct BumpStage0;
 
 impl Step for BumpStage0 {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/bump-stage0")
@@ -78,12 +79,12 @@ impl Step for BumpStage0 {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ReplaceVersionPlaceholder;
 
 impl Step for ReplaceVersionPlaceholder {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/replace-version-placeholder")
@@ -100,28 +101,31 @@ impl Step for ReplaceVersionPlaceholder {
     }
 }
 
+/// Invoke the Miri tool on a specified file.
+///
+/// Note that Miri always executed on the host, as it is an interpreter.
+/// That means that `x run miri --target FOO` will build miri for the host,
+/// prepare a miri sysroot for the target `FOO` and then execute miri with
+/// the target `FOO`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
+    /// The build compiler that will build miri and the target compiler to which miri links.
+    compilers: RustcPrivateCompilers,
+    /// The target which will miri interpret.
     target: TargetSelection,
 }
 
 impl Step for Miri {
     type Output = ();
-    const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/miri")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { target: run.target });
-    }
+        let builder = run.builder;
 
-    fn run(self, builder: &Builder<'_>) {
-        let host = builder.build.host_target;
-        let target = self.target;
-
-        // `x run` uses stage 0 by default but miri does not work well with stage 0.
+        // `x run` uses stage 0 by default, but miri does not work well with stage 0.
         // Change the stage to 1 if it's not set explicitly.
         let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
             builder.top_stage
@@ -130,14 +134,22 @@ impl Step for Miri {
         };
 
         if stage == 0 {
-            eprintln!("miri cannot be run at stage 0");
-            std::process::exit(1);
+            eprintln!("ERROR: miri cannot be run at stage 0");
+            exit!(1);
         }
 
-        // This compiler runs on the host, we'll just use it for the target.
-        let compilers = RustcPrivateCompilers::new(builder, stage, target);
-        let miri_build = builder.ensure(tool::Miri::from_compilers(compilers));
-        let host_compiler = miri_build.build_compiler;
+        // Miri always runs on the host, because it can interpret code for any target
+        let compilers = RustcPrivateCompilers::new(builder, stage, builder.host_target);
+
+        run.builder.ensure(Miri { compilers, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.build.host_target;
+        let compilers = self.compilers;
+        let target = self.target;
+
+        builder.ensure(tool::Miri::from_compilers(compilers));
 
         // Get a target sysroot for Miri.
         let miri_sysroot =
@@ -148,7 +160,7 @@ impl Step for Miri {
         // add_rustc_lib_path does not add the path that contains librustc_driver-<...>.so.
         let mut miri = tool::prepare_tool_cargo(
             builder,
-            host_compiler,
+            compilers.build_compiler(),
             Mode::ToolRustc,
             host,
             Kind::Run,
@@ -168,14 +180,18 @@ impl Step for Miri {
 
         miri.into_cmd().run(builder);
     }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::run("miri", self.target).built_by(self.compilers.build_compiler()))
+    }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
 impl Step for CollectLicenseMetadata {
     type Output = PathBuf;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/collect-license-metadata")
@@ -201,12 +217,12 @@ impl Step for CollectLicenseMetadata {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
     type Output = Vec<PathBuf>;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/generate-copyright")
@@ -265,12 +281,12 @@ impl Step for GenerateCopyright {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct GenerateWindowsSys;
 
 impl Step for GenerateWindowsSys {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/generate-windows-sys")
@@ -327,12 +343,12 @@ impl Step for GenerateCompletions {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct UnicodeTableGenerator;
 
 impl Step for UnicodeTableGenerator {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/unicode-table-generator")
@@ -349,12 +365,12 @@ impl Step for UnicodeTableGenerator {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct FeaturesStatusDump;
 
 impl Step for FeaturesStatusDump {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/features-status-dump")
@@ -409,14 +425,14 @@ impl Step for CyclicStep {
 ///
 /// The coverage-dump tool is an internal detail of coverage tests, so this run
 /// step is only needed when testing coverage-dump manually.
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CoverageDump;
 
 impl Step for CoverageDump {
     type Output = ();
 
     const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/coverage-dump")
@@ -438,7 +454,7 @@ pub struct Rustfmt;
 
 impl Step for Rustfmt {
     type Output = ();
-    const ONLY_HOSTS: bool = true;
+    const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustfmt")

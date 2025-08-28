@@ -1,14 +1,7 @@
-use rustc_feature::{AttributeTemplate, template};
-use rustc_hir::attrs::{AttributeKind, CoverageAttrKind, OptimizeAttr, UsedBy};
+use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, SanitizerSet, UsedBy};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, Symbol, sym};
 
-use super::{
-    AcceptMapping, AttributeOrder, AttributeParser, CombineAttributeParser, ConvertFn,
-    NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
-};
-use crate::context::{AcceptContext, FinalizeContext, Stage};
-use crate::parser::ArgParser;
+use super::prelude::*;
 use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
 
 pub(crate) struct OptimizeParser;
@@ -17,7 +10,14 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
-    const TEMPLATE: AttributeTemplate = template!(List: "size|speed|none");
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+    ]);
+    const TEMPLATE: AttributeTemplate = template!(List: &["size", "speed", "none"]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
@@ -35,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
             _ => {
-                cx.expected_specific_argument(single.span(), vec!["size", "speed", "none"]);
+                cx.expected_specific_argument(single.span(), &[sym::size, sym::speed, sym::none]);
                 OptimizeAttr::Default
             }
         };
@@ -49,6 +49,15 @@ pub(crate) struct ColdParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::ForeignFn),
+        Allow(Target::Closure),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Cold;
 }
 
@@ -58,11 +67,22 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Closure),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Impl { of_trait: true }),
+        Allow(Target::Impl { of_trait: false }),
+        Allow(Target::Mod),
+        Allow(Target::Crate),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::off, sym::on]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let Some(args) = args.list() else {
-            cx.expected_specific_argument_and_list(cx.attr_span, vec!["on", "off"]);
+            cx.expected_specific_argument_and_list(cx.attr_span, &[sym::on, sym::off]);
             return None;
         };
 
@@ -71,7 +91,8 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
             return None;
         };
 
-        let fail_incorrect_argument = |span| cx.expected_specific_argument(span, vec!["on", "off"]);
+        let fail_incorrect_argument =
+            |span| cx.expected_specific_argument(span, &[sym::on, sym::off]);
 
         let Some(arg) = arg.meta_item() else {
             fail_incorrect_argument(args.span);
@@ -97,6 +118,17 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Static),
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+        Warn(Target::MacroDef),
+        Warn(Target::MacroCall),
+    ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
@@ -138,6 +170,13 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
                 this.span = Some(cx.attr_span);
             }
         })];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::MacroCall),
+    ]);
 
     fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // FIXME(jdonszelmann): upgrade this list to *parsed* attributes
@@ -230,6 +269,19 @@ pub(crate) struct TrackCallerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::ForeignFn),
+        Allow(Target::Closure),
+        Warn(Target::MacroDef),
+        Warn(Target::Arm),
+        Warn(Target::Field),
+        Warn(Target::MacroCall),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 }
 
@@ -237,6 +289,12 @@ pub(crate) struct NoMangleParser;
 impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
+        Allow(Target::Fn),
+        Allow(Target::Static),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;
 }
 
@@ -253,7 +311,7 @@ pub(crate) struct UsedParser {
 impl<S: Stage> AttributeParser<S> for UsedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::used],
-        template!(Word, List: "compiler|linker"),
+        template!(Word, List: &["compiler", "linker"]),
         |group: &mut Self, cx, args| {
             let used_by = match args {
                 ArgParser::NoArgs => UsedBy::Linker,
@@ -289,7 +347,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                             UsedBy::Linker
                         }
                         _ => {
-                            cx.expected_specific_argument(l.span(), vec!["compiler", "linker"]);
+                            cx.expected_specific_argument(l.span(), &[sym::compiler, sym::linker]);
                             return;
                         }
                     }
@@ -310,6 +368,8 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
             }
         },
     )];
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Warn(Target::MacroCall)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
@@ -321,56 +381,207 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
     }
 }
 
+fn parse_tf_attribute<'c, S: Stage>(
+    cx: &'c mut AcceptContext<'_, '_, S>,
+    args: &'c ArgParser<'_>,
+) -> impl IntoIterator<Item = (Symbol, Span)> + 'c {
+    let mut features = Vec::new();
+    let ArgParser::List(list) = args else {
+        cx.expected_list(cx.attr_span);
+        return features;
+    };
+    if list.is_empty() {
+        cx.warn_empty_attribute(cx.attr_span);
+        return features;
+    }
+    for item in list.mixed() {
+        let Some(name_value) = item.meta_item() else {
+            cx.expected_name_value(item.span(), Some(sym::enable));
+            return features;
+        };
+
+        // Validate name
+        let Some(name) = name_value.path().word_sym() else {
+            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            return features;
+        };
+        if name != sym::enable {
+            cx.expected_name_value(name_value.path().span(), Some(sym::enable));
+            return features;
+        }
+
+        // Use value
+        let Some(name_value) = name_value.args().name_value() else {
+            cx.expected_name_value(item.span(), Some(sym::enable));
+            return features;
+        };
+        let Some(value_str) = name_value.value_as_str() else {
+            cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
+            return features;
+        };
+        for feature in value_str.as_str().split(",") {
+            features.push((Symbol::intern(feature), item.span()));
+        }
+    }
+    features
+}
+
 pub(crate) struct TargetFeatureParser;
 
 impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
-    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature(items, span);
-    const TEMPLATE: AttributeTemplate = template!(List: "enable = \"feat1, feat2\"");
+    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
+        features: items,
+        attr_span: span,
+        was_forced: false,
+    };
+    const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,
         args: &'c ArgParser<'_>,
     ) -> impl IntoIterator<Item = Self::Item> + 'c {
-        let mut features = Vec::new();
-        let ArgParser::List(list) = args else {
+        parse_tf_attribute(cx, args)
+    }
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::Statement),
+        Warn(Target::Field),
+        Warn(Target::Arm),
+        Warn(Target::MacroDef),
+        Warn(Target::MacroCall),
+    ]);
+}
+
+pub(crate) struct ForceTargetFeatureParser;
+
+impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
+    type Item = (Symbol, Span);
+    const PATH: &[Symbol] = &[sym::force_target_feature];
+    const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
+        features: items,
+        attr_span: span,
+        was_forced: true,
+    };
+    const TEMPLATE: AttributeTemplate = template!(List: &["enable = \"feat1, feat2\""]);
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+
+    fn extend<'c>(
+        cx: &'c mut AcceptContext<'_, '_, S>,
+        args: &'c ArgParser<'_>,
+    ) -> impl IntoIterator<Item = Self::Item> + 'c {
+        parse_tf_attribute(cx, args)
+    }
+}
+
+pub(crate) struct SanitizeParser;
+
+impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
+    const PATH: &[Symbol] = &[sym::sanitize];
+
+    // FIXME: still checked in check_attrs.rs
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
+
+    const TEMPLATE: AttributeTemplate = template!(List: &[
+        r#"address = "on|off""#,
+        r#"kernel_address = "on|off""#,
+        r#"cfi = "on|off""#,
+        r#"hwaddress = "on|off""#,
+        r#"kcfi = "on|off""#,
+        r#"memory = "on|off""#,
+        r#"memtag = "on|off""#,
+        r#"shadow_call_stack = "on|off""#,
+        r#"thread = "on|off""#
+    ]);
+
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(list) = args.list() else {
             cx.expected_list(cx.attr_span);
-            return features;
+            return None;
         };
-        if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
-            return features;
-        }
+
+        let mut on_set = SanitizerSet::empty();
+        let mut off_set = SanitizerSet::empty();
+
         for item in list.mixed() {
-            let Some(name_value) = item.meta_item() else {
-                cx.expected_name_value(item.span(), Some(sym::enable));
-                return features;
+            let Some(item) = item.meta_item() else {
+                cx.expected_name_value(item.span(), None);
+                continue;
             };
 
-            // Validate name
-            let Some(name) = name_value.path().word_sym() else {
-                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
-                return features;
+            let path = item.path().word_sym();
+            let Some(value) = item.args().name_value() else {
+                cx.expected_name_value(item.span(), path);
+                continue;
             };
-            if name != sym::enable {
-                cx.expected_name_value(name_value.path().span(), Some(sym::enable));
-                return features;
-            }
 
-            // Use value
-            let Some(name_value) = name_value.args().name_value() else {
-                cx.expected_name_value(item.span(), Some(sym::enable));
-                return features;
+            let mut apply = |s: SanitizerSet| {
+                let is_on = match value.value_as_str() {
+                    Some(sym::on) => true,
+                    Some(sym::off) => false,
+                    Some(_) => {
+                        cx.expected_specific_argument_strings(
+                            value.value_span,
+                            &[sym::on, sym::off],
+                        );
+                        return;
+                    }
+                    None => {
+                        cx.expected_string_literal(value.value_span, Some(value.value_as_lit()));
+                        return;
+                    }
+                };
+
+                if is_on {
+                    on_set |= s;
+                } else {
+                    off_set |= s;
+                }
             };
-            let Some(value_str) = name_value.value_as_str() else {
-                cx.expected_string_literal(name_value.value_span, Some(name_value.value_as_lit()));
-                return features;
-            };
-            for feature in value_str.as_str().split(",") {
-                features.push((Symbol::intern(feature), item.span()));
+
+            match path {
+                Some(sym::address) | Some(sym::kernel_address) => {
+                    apply(SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS)
+                }
+                Some(sym::cfi) => apply(SanitizerSet::CFI),
+                Some(sym::kcfi) => apply(SanitizerSet::KCFI),
+                Some(sym::memory) => apply(SanitizerSet::MEMORY),
+                Some(sym::memtag) => apply(SanitizerSet::MEMTAG),
+                Some(sym::shadow_call_stack) => apply(SanitizerSet::SHADOWCALLSTACK),
+                Some(sym::thread) => apply(SanitizerSet::THREAD),
+                Some(sym::hwaddress) => apply(SanitizerSet::HWADDRESS),
+                _ => {
+                    cx.expected_specific_argument_strings(
+                        item.path().span(),
+                        &[
+                            sym::address,
+                            sym::cfi,
+                            sym::kcfi,
+                            sym::memory,
+                            sym::memtag,
+                            sym::shadow_call_stack,
+                            sym::thread,
+                            sym::hwaddress,
+                        ],
+                    );
+                    continue;
+                }
             }
         }
-        features
+
+        Some(AttributeKind::Sanitize { on_set, off_set, span: cx.attr_span })
     }
 }

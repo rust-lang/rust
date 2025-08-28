@@ -56,7 +56,7 @@ impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'tcx>(
-        &mut self,
+        &self,
         cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl<'_>,

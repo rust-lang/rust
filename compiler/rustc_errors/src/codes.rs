@@ -20,6 +20,8 @@ impl fmt::Display for ErrCode {
     }
 }
 
+rustc_error_messages::into_diag_arg_using_display!(ErrCode);
+
 macro_rules! define_error_code_constants_and_diagnostics_table {
     ($($name:ident: $num:literal,)*) => (
         $(

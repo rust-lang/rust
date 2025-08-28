@@ -146,7 +146,7 @@ impl<'ty> FieldInnerTy<'ty> {
             };
 
             let path = &ty_path.path;
-            let ty = path.segments.iter().last().unwrap();
+            let ty = path.segments.last().unwrap();
             let syn::PathArguments::AngleBracketed(bracketed) = &ty.arguments else {
                 panic!("expected bracketed generic arguments");
             };

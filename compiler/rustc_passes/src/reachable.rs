@@ -423,6 +423,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     if !tcx.def_kind(def_id).has_codegen_attrs() {
         return false;
     }
+
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     codegen_attrs.contains_extern_indicator()
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by

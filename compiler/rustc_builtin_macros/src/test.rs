@@ -4,7 +4,6 @@
 use std::assert_matches::assert_matches;
 use std::iter;
 
-use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
@@ -78,7 +77,7 @@ pub(crate) fn expand_test_case(
     }
 
     let ret = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
+        Annotatable::Stmt(Box::new(ecx.stmt_item(item.span, item)))
     } else {
         Annotatable::Item(item)
     };
@@ -131,7 +130,7 @@ pub(crate) fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -155,7 +154,7 @@ pub(crate) fn expand_test_or_bench(
     };
     if check_result.is_err() {
         return if is_stmt {
-            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+            vec![Annotatable::Stmt(Box::new(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
@@ -201,7 +200,7 @@ pub(crate) fn expand_test_or_bench(
     // `-Cinstrument-coverage` builds.
     // This requires `#[allow_internal_unstable(coverage_attribute)]` on the
     // corresponding macro declaration in `core::macros`.
-    let coverage_off = |mut expr: P<ast::Expr>| {
+    let coverage_off = |mut expr: Box<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
         expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
         expr
@@ -388,11 +387,11 @@ pub(crate) fn expand_test_or_bench(
     if is_stmt {
         vec![
             // Access to libtest under a hygienic name
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_extern))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_extern))),
             // The generated test case
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_const))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, test_const))),
             // The original item
-            Annotatable::Stmt(P(cx.stmt_item(sp, item))),
+            Annotatable::Stmt(Box::new(cx.stmt_item(sp, item))),
         ]
     } else {
         vec![

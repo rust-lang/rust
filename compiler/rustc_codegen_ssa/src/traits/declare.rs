@@ -1,5 +1,6 @@
+use rustc_hir::attrs::Linkage;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::mono::{Linkage, Visibility};
+use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::Instance;
 
 pub trait PreDefineCodegenMethods<'tcx> {

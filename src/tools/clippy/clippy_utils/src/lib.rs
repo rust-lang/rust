@@ -460,6 +460,23 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
+/// If the expression is a path to a local (with optional projections),
+/// returns the canonical `HirId` of the local.
+///
+/// For example, `x.field[0].field2` would return the `HirId` of `x`.
+pub fn path_to_local_with_projections(expr: &Expr<'_>) -> Option<HirId> {
+    match expr.kind {
+        ExprKind::Field(recv, _) | ExprKind::Index(recv, _, _) => path_to_local_with_projections(recv),
+        ExprKind::Path(QPath::Resolved(
+            _,
+            Path {
+                res: Res::Local(local), ..
+            },
+        )) => Some(*local),
+        _ => None,
+    }
+}
+
 pub trait MaybePath<'hir> {
     fn hir_id(&self) -> HirId;
     fn qpath_opt(&self) -> Option<&QPath<'hir>>;
@@ -528,8 +545,9 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, owner: OwnerId) -> Option<&'tcx TraitRef<'tcx>> {
     if let Node::Item(item) = cx.tcx.hir_node(cx.tcx.hir_owner_parent(owner))
         && let ItemKind::Impl(impl_) = &item.kind
+        && let Some(of_trait) = impl_.of_trait
     {
-        return impl_.of_trait.as_ref();
+        return Some(&of_trait.trait_ref);
     }
     None
 }

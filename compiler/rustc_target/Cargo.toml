@@ -5,9 +5,10 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
+bitflags.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
@@ -16,7 +17,7 @@ serde = "1.0.219"
 serde_derive = "1.0.219"
 serde_json = "1.0.59"
 serde_path_to_error = "0.1.17"
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end
 
 [dependencies.object]

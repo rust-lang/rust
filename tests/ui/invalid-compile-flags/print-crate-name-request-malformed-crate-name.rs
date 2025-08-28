@@ -2,4 +2,4 @@
 // See also <https://github.com/rust-lang/rust/issues/122001>.
 
 //@ compile-flags: --print=crate-name
-#![crate_name = concat!("wrapped")] //~ ERROR malformed `crate_name` attribute input
+#![crate_name = concat!("wrapped")] //~ ERROR attribute value must be a literal

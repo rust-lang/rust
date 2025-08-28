@@ -17,15 +17,25 @@ PROVIDE(__vcodesig_type = 0);               /* V5_SIG_TYPE_USER     */
 PROVIDE(__vcodesig_owner = 2);              /* V5_SIG_OWNER_PARTNER */
 PROVIDE(__vcodesig_options = 0);            /* none (0)             */
 
-PROVIDE(__user_ram_start = 0x03800000);
-PROVIDE(__user_ram_length = 48M);
-PROVIDE(__user_ram_end = __user_ram_start + __user_ram_length); /* 0x8000000 */
+__user_ram_start = 0x03800000;
+__user_ram_end   = 0x08000000;
+/* (0x48 =) 72 MiB length */
+__user_ram_length = __user_ram_start - __user_ram_end;
 
-PROVIDE(__code_signature_length = 0x20);
+/*
+ * VEXos provides a method for pre-loading a "linked file" at a specified
+ * address in User RAM, conventionally near the end, after the primary
+ * program binary. We need to be sure not to place any data in that location,
+ * so we allow the user of this linker script to inform the start address of
+ * this blob.
+ */
+PROVIDE(__linked_file_length = 0);
+PROVIDE(__linked_file_end = __user_ram_end);
+PROVIDE(__linked_file_start = __linked_file_end - __linked_file_length);
 
 PROVIDE(__stack_length = 4M);
-PROVIDE(__heap_end = __user_ram_end - __stack_length);
-PROVIDE(__user_length = __heap_start - __user_ram_start);
+PROVIDE(__stack_top = __linked_file_start);
+PROVIDE(__stack_bottom = __linked_file_start - __stack_length);
 
 MEMORY {
     USER_RAM (RWX) : ORIGIN = __user_ram_start, LENGTH = __user_ram_length
@@ -44,7 +54,7 @@ SECTIONS {
         LONG(__vcodesig_options)
 
         FILL(0)
-        . = __user_ram_start + __code_signature_length;
+        . = __user_ram_start + 0x20;
     } > USER_RAM
 
     /*
@@ -125,7 +135,8 @@ SECTIONS {
      */
     .heap (NOLOAD) : {
         __heap_start = .;
-        . = __heap_end;
+        . = __stack_bottom;
+        __heap_end = .;
     } > USER_RAM
 
     .stack (NOLOAD) : ALIGN(8) {

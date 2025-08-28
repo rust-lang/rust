@@ -3,9 +3,9 @@
 // was a well-formed `MetaItem`.
 
 fn main() {
-    foo() //~ WARNING use of deprecated function `foo`
+    foo()
 }
 
 #[deprecated(note = test)]
-//~^ ERROR expected unsuffixed literal, found `test`
+//~^ ERROR expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found `test`
 fn foo() {}

@@ -28,22 +28,6 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
-pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: AttributeKind) -> bool {
-    llvm::HasAttributeAtIndex(llfn, idx, attr)
-}
-
-pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
-    llvm::HasStringAttribute(llfn, name)
-}
-
-pub(crate) fn remove_from_llfn(llfn: &Value, place: AttributePlace, kind: AttributeKind) {
-    llvm::RemoveRustEnumAttributeAtIndex(llfn, place, kind);
-}
-
-pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
-    llvm::RemoveStringAttrFromFn(llfn, name);
-}
-
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
@@ -436,6 +420,16 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::ALLOCATOR_ZEROED)
     {
         to_add.push(create_alloc_family_attr(cx.llcx));
+        if let Some(zv) =
+            cx.tcx.get_attr(instance.def_id(), rustc_span::sym::rustc_allocator_zeroed_variant)
+            && let Some(name) = zv.value_str()
+        {
+            to_add.push(llvm::CreateAttrStringValue(
+                cx.llcx,
+                "alloc-variant-zeroed",
+                &mangle_internal_symbol(cx.tcx, name.as_str()),
+            ));
+        }
         // apply to argument place instead of function
         let alloc_align = AttributeKind::AllocAlign.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(1), &[alloc_align]);
@@ -513,7 +507,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", module));
 
             let name =
-                codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
+                codegen_fn_attrs.symbol_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
             let name = name.as_str();
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
         }

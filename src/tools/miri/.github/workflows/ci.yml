@@ -69,12 +69,6 @@ jobs:
           sudo apt update
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
-      - name: Install rustup on Windows ARM
-        if: ${{ matrix.os == 'windows-11-arm' }}
-        run: |
-            curl -LOs https://static.rust-lang.org/rustup/dist/aarch64-pc-windows-msvc/rustup-init.exe
-            ./rustup-init.exe -y --no-modify-path
-            echo "$USERPROFILE/.cargo/bin" >> "$GITHUB_PATH"
       - uses: ./.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"
@@ -169,7 +163,13 @@ jobs:
         run: rustup toolchain install nightly --profile minimal
       - name: Install rustup-toolchain-install-master
         run: cargo install -f rustup-toolchain-install-master
-      - name: Push changes to a branch and create PR
+      # Create a token for the next step so it can create a PR that actually runs CI.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      - name: pull changes from rustc and create PR
         run: |
           # Make it easier to see what happens.
           set -x
@@ -198,9 +198,9 @@ jobs:
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
           git push -u origin $BRANCH
-          gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
+          gh pr create -B master --title 'Automatic Rustup' --body "Update \`rustc\` to https://github.com/rust-lang/rust/commit/$(cat rust-version)."
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   cron-fail-notify:
     name: cronjob failure notification

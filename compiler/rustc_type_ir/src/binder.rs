@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
@@ -23,17 +21,15 @@ use crate::{self as ty, Interner};
 /// for more details.
 ///
 /// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
-#[derive_where(Clone; I: Interner, T: Clone)]
+#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(Hash; I: Interner, T: Hash)]
-#[derive_where(PartialEq; I: Interner, T: PartialEq)]
-#[derive_where(Eq; I: Interner, T: Eq)]
-#[derive_where(Debug; I: Interner, T: Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct Binder<I: Interner, T> {
     value: T,
     bound_vars: I::BoundVarKinds,
 }
+
+impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
 
 // FIXME: We manually derive `Lift` because the `derive(Lift_Generic)` doesn't
 // understand how to turn `T` to `T::Lifted` in the output `type Lifted`.
@@ -356,14 +352,9 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 /// `instantiate`.
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/ty_module/early_binder.html> for more details.
-#[derive_where(Clone; I: Interner, T: Clone)]
-#[derive_where(Copy; I: Interner, T: Copy)]
-#[derive_where(PartialEq; I: Interner, T: PartialEq)]
-#[derive_where(Eq; I: Interner, T: Eq)]
-#[derive_where(Ord; I: Interner, T: Ord)]
+#[derive_where(Clone, PartialEq, Ord, Hash, Debug; I: Interner, T)]
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
-#[derive_where(Hash; I: Interner, T: Hash)]
-#[derive_where(Debug; I: Interner, T: Debug)]
+#[derive_where(Copy; I: Interner, T: Copy)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -373,6 +364,8 @@ pub struct EarlyBinder<I: Interner, T> {
     #[derive_where(skip(Debug))]
     _tcx: PhantomData<fn() -> I>,
 }
+
+impl<I: Interner, T: Eq> Eq for EarlyBinder<I, T> {}
 
 /// For early binders, you should first call `instantiate` before using any visitors.
 #[cfg(feature = "nightly")]

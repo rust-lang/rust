@@ -12,7 +12,11 @@ use super::MATCH_BOOL;
 
 pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     // Type of expression is `bool`.
-    if *cx.typeck_results().expr_ty(scrutinee).kind() == ty::Bool {
+    if *cx.typeck_results().expr_ty(scrutinee).kind() == ty::Bool
+        && arms
+            .iter()
+            .all(|arm| arm.pat.walk_short(|p| !matches!(p.kind, PatKind::Binding(..))))
+    {
         span_lint_and_then(
             cx,
             MATCH_BOOL,

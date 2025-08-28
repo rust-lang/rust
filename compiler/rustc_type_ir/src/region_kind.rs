@@ -125,7 +125,7 @@ rustc_index::newtype_index! {
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-#[derive_where(Clone, Copy, Hash, PartialEq, Eq; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
@@ -154,7 +154,7 @@ pub enum RegionKind<I: Interner> {
     /// parameters via `tcx.liberate_late_bound_regions`. They are then treated
     /// the same way as `ReEarlyParam` while inside of the function.
     ///
-    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-params/early-late-bound-summary.html> for
+    /// See <https://rustc-dev-guide.rust-lang.org/early_late_parameters.html> for
     /// more info about early and late bound lifetime parameters.
     ReLateParam(I::LateParamRegion),
 
@@ -176,6 +176,8 @@ pub enum RegionKind<I: Interner> {
     /// A region that resulted from some other error. Used exclusively for diagnostics.
     ReError(I::ErrorGuaranteed),
 }
+
+impl<I: Interner> Eq for RegionKind<I> {}
 
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

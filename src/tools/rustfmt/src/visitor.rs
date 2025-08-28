@@ -874,7 +874,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         !is_skip_attr(segments)
     }
 
-    fn walk_mod_items(&mut self, items: &[rustc_ast::ptr::P<ast::Item>]) {
+    fn walk_mod_items(&mut self, items: &[Box<ast::Item>]) {
         self.visit_items_with_reordering(&ptr_vec_to_ref_vec(items));
     }
 
@@ -942,7 +942,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();
         self.push_str(&ident_str);
 
-        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans, _) = mod_kind {
+        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans) = mod_kind {
             let ast::ModSpans {
                 inner_span,
                 inject_use_span: _,

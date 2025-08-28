@@ -130,11 +130,11 @@ pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
     pub(crate) defid: Option<DefId>,
     pub(crate) name: Symbol,
-    pub(crate) path: String,
+    pub(crate) module_path: Vec<Symbol>,
     pub(crate) desc: String,
     pub(crate) parent: Option<DefId>,
-    pub(crate) parent_idx: Option<isize>,
-    pub(crate) exact_path: Option<String>,
+    pub(crate) parent_idx: Option<usize>,
+    pub(crate) exact_module_path: Option<Vec<Symbol>>,
     pub(crate) impl_id: Option<DefId>,
     pub(crate) search_type: Option<IndexItemFunctionType>,
     pub(crate) aliases: Box<[Symbol]>,
@@ -150,6 +150,19 @@ struct RenderType {
 }
 
 impl RenderType {
+    fn size(&self) -> usize {
+        let mut size = 1;
+        if let Some(generics) = &self.generics {
+            size += generics.iter().map(RenderType::size).sum::<usize>();
+        }
+        if let Some(bindings) = &self.bindings {
+            for (_, constraints) in bindings.iter() {
+                size += 1;
+                size += constraints.iter().map(RenderType::size).sum::<usize>();
+            }
+        }
+        size
+    }
     // Types are rendered as lists of lists, because that's pretty compact.
     // The contents of the lists are always integers in self-terminating hex
     // form, handled by `RenderTypeId::write_to_string`, so no commas are
@@ -191,6 +204,62 @@ impl RenderType {
             write_optional_id(self.id, string);
         }
     }
+    fn read_from_bytes(string: &[u8]) -> (RenderType, usize) {
+        let mut i = 0;
+        if string[i] == b'{' {
+            i += 1;
+            let (id, offset) = RenderTypeId::read_from_bytes(&string[i..]);
+            i += offset;
+            let generics = if string[i] == b'{' {
+                i += 1;
+                let mut generics = Vec::new();
+                while string[i] != b'}' {
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    i += offset;
+                    generics.push(ty);
+                }
+                assert!(string[i] == b'}');
+                i += 1;
+                Some(generics)
+            } else {
+                None
+            };
+            let bindings = if string[i] == b'{' {
+                i += 1;
+                let mut bindings = Vec::new();
+                while string[i] == b'{' {
+                    i += 1;
+                    let (binding, boffset) = RenderTypeId::read_from_bytes(&string[i..]);
+                    i += boffset;
+                    let mut bconstraints = Vec::new();
+                    assert!(string[i] == b'{');
+                    i += 1;
+                    while string[i] != b'}' {
+                        let (constraint, coffset) = RenderType::read_from_bytes(&string[i..]);
+                        i += coffset;
+                        bconstraints.push(constraint);
+                    }
+                    assert!(string[i] == b'}');
+                    i += 1;
+                    bindings.push((binding.unwrap(), bconstraints));
+                    assert!(string[i] == b'}');
+                    i += 1;
+                }
+                assert!(string[i] == b'}');
+                i += 1;
+                Some(bindings)
+            } else {
+                None
+            };
+            assert!(string[i] == b'}');
+            i += 1;
+            (RenderType { id, generics, bindings }, i)
+        } else {
+            let (id, offset) = RenderTypeId::read_from_bytes(string);
+            i += offset;
+            (RenderType { id, generics: None, bindings: None }, i)
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -212,7 +281,20 @@ impl RenderTypeId {
             RenderTypeId::Index(idx) => (*idx).try_into().unwrap(),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        search_index::encode::write_vlqhex_to_string(id, string);
+        search_index::encode::write_signed_vlqhex_to_string(id, string);
+    }
+    fn read_from_bytes(string: &[u8]) -> (Option<RenderTypeId>, usize) {
+        let Some((value, offset)) = search_index::encode::read_signed_vlqhex_from_string(string)
+        else {
+            return (None, 0);
+        };
+        let value = isize::try_from(value).unwrap();
+        let ty = match value {
+            ..0 => Some(RenderTypeId::Index(value)),
+            0 => None,
+            1.. => Some(RenderTypeId::Index(value - 1)),
+        };
+        (ty, offset)
     }
 }
 
@@ -226,12 +308,64 @@ pub(crate) struct IndexItemFunctionType {
 }
 
 impl IndexItemFunctionType {
-    fn write_to_string<'a>(
-        &'a self,
-        string: &mut String,
-        backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
-    ) {
-        assert!(backref_queue.len() <= 16);
+    fn size(&self) -> usize {
+        self.inputs.iter().map(RenderType::size).sum::<usize>()
+            + self.output.iter().map(RenderType::size).sum::<usize>()
+            + self
+                .where_clause
+                .iter()
+                .map(|constraints| constraints.iter().map(RenderType::size).sum::<usize>())
+                .sum::<usize>()
+    }
+    fn read_from_string_without_param_names(string: &[u8]) -> (IndexItemFunctionType, usize) {
+        let mut i = 0;
+        if string[i] == b'`' {
+            return (
+                IndexItemFunctionType {
+                    inputs: Vec::new(),
+                    output: Vec::new(),
+                    where_clause: Vec::new(),
+                    param_names: Vec::new(),
+                },
+                1,
+            );
+        }
+        assert_eq!(b'{', string[i]);
+        i += 1;
+        fn read_args_from_string(string: &[u8]) -> (Vec<RenderType>, usize) {
+            let mut i = 0;
+            let mut params = Vec::new();
+            if string[i] == b'{' {
+                // multiple params
+                i += 1;
+                while string[i] != b'}' {
+                    let (ty, offset) = RenderType::read_from_bytes(&string[i..]);
+                    i += offset;
+                    params.push(ty);
+                }
+                i += 1;
+            } else if string[i] != b'}' {
+                let (tyid, offset) = RenderTypeId::read_from_bytes(&string[i..]);
+                params.push(RenderType { id: tyid, generics: None, bindings: None });
+                i += offset;
+            }
+            (params, i)
+        }
+        let (inputs, offset) = read_args_from_string(&string[i..]);
+        i += offset;
+        let (output, offset) = read_args_from_string(&string[i..]);
+        i += offset;
+        let mut where_clause = Vec::new();
+        while string[i] != b'}' {
+            let (constraint, offset) = read_args_from_string(&string[i..]);
+            i += offset;
+            where_clause.push(constraint);
+        }
+        assert_eq!(b'}', string[i], "{} {}", String::from_utf8_lossy(&string), i);
+        i += 1;
+        (IndexItemFunctionType { inputs, output, where_clause, param_names: Vec::new() }, i)
+    }
+    fn write_to_string_without_param_names<'a>(&'a self, string: &mut String) {
         // If we couldn't figure out a type, just write 0,
         // which is encoded as `` ` `` (see RenderTypeId::write_to_string).
         let has_missing = self
@@ -241,18 +375,7 @@ impl IndexItemFunctionType {
             .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
             string.push('`');
-        } else if let Some(idx) = backref_queue.iter().position(|other| *other == self) {
-            // The backref queue has 16 items, so backrefs use
-            // a single hexit, disjoint from the ones used for numbers.
-            string.push(
-                char::try_from('0' as u32 + u32::try_from(idx).unwrap())
-                    .expect("last possible value is '?'"),
-            );
         } else {
-            backref_queue.push_front(self);
-            if backref_queue.len() > 16 {
-                backref_queue.pop_back();
-            }
             string.push('{');
             match &self.inputs[..] {
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
@@ -906,6 +1029,7 @@ fn assoc_const(
 ) -> impl fmt::Display {
     let tcx = cx.tcx();
     fmt::from_fn(move |w| {
+        render_attributes_in_code(w, it, &" ".repeat(indent), cx);
         write!(
             w,
             "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
@@ -1013,10 +1137,10 @@ fn assoc_method(
         let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
             header_len += 4;
             let indent_str = "    ";
-            write!(w, "{}", render_attributes_in_pre(meth, indent_str, cx))?;
+            render_attributes_in_code(w, meth, indent_str, cx);
             (4, indent_str, Ending::NoNewline)
         } else {
-            render_attributes_in_code(w, meth, cx);
+            render_attributes_in_code(w, meth, "", cx);
             (0, "", Ending::Newline)
         };
         write!(
@@ -1186,28 +1310,28 @@ fn render_assoc_item(
     })
 }
 
-// When an attribute is rendered inside a `<pre>` tag, it is formatted using
-// a whitespace prefix and newline.
-fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
-    fmt::from_fn(move |f| {
-        for a in it.attributes(cx.tcx(), cx.cache()) {
-            writeln!(f, "{prefix}{a}")?;
-        }
-        Ok(())
-    })
-}
-
 struct CodeAttribute(String);
 
-fn render_code_attribute(code_attr: CodeAttribute, w: &mut impl fmt::Write) {
-    write!(w, "<div class=\"code-attribute\">{}</div>", code_attr.0).unwrap();
+fn render_code_attribute(prefix: &str, code_attr: CodeAttribute, w: &mut impl fmt::Write) {
+    write!(
+        w,
+        "<div class=\"code-attribute\">{prefix}{attr}</div>",
+        prefix = prefix,
+        attr = code_attr.0
+    )
+    .unwrap();
 }
 
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
-fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
+fn render_attributes_in_code(
+    w: &mut impl fmt::Write,
+    it: &clean::Item,
+    prefix: &str,
+    cx: &Context<'_>,
+) {
     for attr in it.attributes(cx.tcx(), cx.cache()) {
-        render_code_attribute(CodeAttribute(attr), w);
+        render_code_attribute(prefix, CodeAttribute(attr), w);
     }
 }
 
@@ -1219,7 +1343,7 @@ fn render_repr_attributes_in_code(
     item_type: ItemType,
 ) {
     if let Some(repr) = clean::repr_attributes(cx.tcx(), cx.cache(), def_id, item_type) {
-        render_code_attribute(CodeAttribute(repr), w);
+        render_code_attribute("", CodeAttribute(repr), w);
     }
 }
 

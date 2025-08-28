@@ -936,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Node::ImplItem(item) => {
                 // If it doesn't impl a trait, we can add a return type
                 let Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Impl(&hir::Impl { of_trait, .. }),
+                    kind: hir::ItemKind::Impl(hir::Impl { of_trait, .. }),
                     ..
                 }) = self.tcx.parent_hir_node(item.hir_id())
                 else {
@@ -2377,6 +2377,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
                 .filter_map(|variant| {
                     let sole_field = &variant.single_field();
+
+                    // When expected_ty and expr_ty are the same ADT, we prefer to compare their internal generic params,
+                    // When the current variant has a sole field whose type is still an unresolved inference variable,
+                    // suggestions would be often wrong. So suppress the suggestion. See #145294.
+                    if let (ty::Adt(exp_adt, _), ty::Adt(act_adt, _)) = (expected.kind(), expr_ty.kind())
+                        && exp_adt.did() == act_adt.did()
+                        && sole_field.ty(self.tcx, args).is_ty_var() {
+                            return None;
+                    }
 
                     let field_is_local = sole_field.did.is_local();
                     let field_is_accessible =

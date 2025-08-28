@@ -27,8 +27,9 @@ use crate::{enter_trace_span, fluent_generated as fluent};
 pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
-    /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
-    /// make the place inaccessible for the duration of the function call.
+    /// Allow for the argument to be passed in-place: destroy the value originally stored at that
+    /// place and make the place inaccessible for the duration of the function call. This *must* be
+    /// an in-memory place so that we can do the proper alias checks.
     InPlace(MPlaceTy<'tcx, Prov>),
 }
 
@@ -346,7 +347,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         destination: &PlaceTy<'tcx, M::Provenance>,
         mut cont: ReturnContinuation,
     ) -> InterpResult<'tcx> {
-        let _span = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
+        let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
 
         // Compute callee information.
         // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
@@ -379,6 +380,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         }
 
+        // *Before* pushing the new frame, determine whether the return destination is in memory.
+        // Need to use `place_to_op` to be *sure* we get the mplace if there is one.
+        let destination_mplace = self.place_to_op(destination)?.as_mplace_or_imm().left();
+
+        // Push the "raw" frame -- this leaves locals uninitialized.
         self.push_stack_frame_raw(instance, body, destination, cont)?;
 
         // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -496,7 +502,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             // Protect return place for in-place return value passing.
             // We only need to protect anything if this is actually an in-memory place.
-            if let Left(mplace) = destination.as_mplace_or_local() {
+            if let Some(mplace) = destination_mplace {
                 M::protect_in_place_function_argument(self, &mplace)?;
             }
 
@@ -527,7 +533,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        let _span =
+        let _trace =
             enter_trace_span!(M, step::init_fn_call, tracing_separate_thread = Empty, ?fn_val)
                 .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", fn_val));
 
@@ -731,18 +737,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) {
         let tcx = *self.tcx;
 
-        let trait_def_id = tcx.trait_of_assoc(def_id).unwrap();
-        let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
+        let trait_def_id = tcx.parent(def_id);
+        let virtual_trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, virtual_instance.args);
         let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
         let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
 
-        let concrete_method = Instance::expect_resolve_for_vtable(
-            tcx,
-            self.typing_env,
-            def_id,
-            virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
-            self.cur_span(),
-        );
+        let concrete_method = {
+            let _trace = enter_trace_span!(M, resolve::expect_resolve_for_vtable, ?def_id);
+            Instance::expect_resolve_for_vtable(
+                tcx,
+                self.typing_env,
+                def_id,
+                virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+                self.cur_span(),
+            )
+        };
         assert_eq!(concrete_instance, concrete_method);
     }
 
@@ -825,7 +834,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 place
             }
         };
-        let instance = ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty);
+        let instance = {
+            let _trace =
+                enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
+            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
+        };
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
         let arg = self.mplace_to_ref(&place)?;

@@ -261,53 +261,72 @@ pub unsafe fn atomic_fence<const ORD: AtomicOrdering>();
 pub unsafe fn atomic_singlethreadfence<const ORD: AtomicOrdering>();
 
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_read_data<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub const fn prefetch_read_data<T, const LOCALITY: i32>(data: *const T) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_write_data<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub const fn prefetch_write_data<T, const LOCALITY: i32>(data: *const T) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_read_instruction<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub const fn prefetch_read_instruction<T, const LOCALITY: i32>(data: *const T) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+}
+
 /// The `prefetch` intrinsic is a hint to the code generator to insert a prefetch instruction
-/// if supported; otherwise, it is a no-op.
+/// for the given address if supported; otherwise, it is a no-op.
 /// Prefetches have no effect on the behavior of the program but can change its performance
 /// characteristics.
 ///
-/// The `locality` argument must be a constant integer and is a temporal locality specifier
-/// ranging from (0) - no locality, to (3) - extremely local keep in cache.
+/// The `LOCALITY` argument is a temporal locality specifier ranging from (0) - no locality,
+/// to (3) - extremely local keep in cache.
 ///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn prefetch_write_instruction<T>(data: *const T, locality: i32);
+#[miri::intrinsic_fallback_is_spec]
+pub const fn prefetch_write_instruction<T, const LOCALITY: i32>(data: *const T) {
+    // This operation is a no-op, unless it is overridden by the backend.
+    let _ = data;
+}
 
 /// Executes a breakpoint trap, for inspection by a debugger.
 ///
@@ -3156,6 +3175,44 @@ pub const unsafe fn copysignf64(x: f64, y: f64) -> f64;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn copysignf128(x: f128, y: f128) -> f128;
+
+/// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
+/// with `df` as the derivative function and `args` as its arguments.
+///
+/// Used internally as the body of `df` when expanding the `#[autodiff_forward]`
+/// and `#[autodiff_reverse]` attribute macros.
+///
+/// Type Parameters:
+/// - `F`: The original function to differentiate. Must be a function item.
+/// - `G`: The derivative function. Must be a function item.
+/// - `T`: A tuple of arguments passed to `df`.
+/// - `R`: The return type of the derivative function.
+///
+/// This shows where the `autodiff` intrinsic is used during macro expansion:
+///
+/// ```rust,ignore (macro example)
+/// #[autodiff_forward(df1, Dual, Const, Dual)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     unimplemented!()
+/// }
+/// ```
+///
+/// expands to:
+///
+/// ```rust,ignore (macro example)
+/// #[rustc_autodiff]
+/// #[inline(never)]
+/// pub fn f1(x: &[f64], y: f64) -> f64 {
+///     ::core::panicking::panic("not implemented")
+/// }
+/// #[rustc_autodiff(Forward, 1, Dual, Const, Dual)]
+/// pub fn df1(x: &[f64], bx_0: &[f64], y: f64) -> (f64, f64) {
+///     ::core::intrinsics::autodiff(f1::<>, df1::<>, (x, bx_0, y))
+/// }
+/// ```
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn autodiff<F, G, T: crate::marker::Tuple, R>(f: F, df: G, args: T) -> R;
 
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]

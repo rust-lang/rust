@@ -1,0 +1,61 @@
+error[E0284]: type annotations needed for `SmallCString<_>`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:5:36
+   |
+LL |     SmallCString::try_from(p).map(|cstr| cstr);
+   |     ------------                   ^^^^
+   |     |
+   |     type must be known at this point
+   |
+note: required by a const generic parameter in `SmallCString`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:11:25
+   |
+LL | pub struct SmallCString<const N: usize> {}
+   |                         ^^^^^^^^^^^^^^ required by this const generic parameter in `SmallCString`
+help: consider giving this closure parameter an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
+   |                                        +++++++++++++++++
+
+error[E0284]: type annotations needed for `SmallCString<_>`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:5:36
+   |
+LL |     SmallCString::try_from(p).map(|cstr| cstr);
+   |     ------------                   ^^^^
+   |     |
+   |     type must be known at this point
+   |
+note: required for `SmallCString<_>` to implement `TryFrom<()>`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:13:22
+   |
+LL | impl<const N: usize> TryFrom<()> for SmallCString<N> {
+   |      --------------  ^^^^^^^^^^^     ^^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+help: consider giving this closure parameter an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
+   |                                        +++++++++++++++++
+
+error[E0284]: type annotations needed for `SmallCString<_>`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:5:36
+   |
+LL |     SmallCString::try_from(p).map(|cstr| cstr);
+   |     -------------------------      ^^^^
+   |     |
+   |     type must be known at this point
+   |
+note: required for `SmallCString<_>` to implement `TryFrom<()>`
+  --> $DIR/try-from-with-const-genericsrs-98299.rs:13:22
+   |
+LL | impl<const N: usize> TryFrom<()> for SmallCString<N> {
+   |      --------------  ^^^^^^^^^^^     ^^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound introduced here
+help: consider giving this closure parameter an explicit type, where the value of const parameter `N` is specified
+   |
+LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
+   |                                        +++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

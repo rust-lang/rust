@@ -8,21 +8,25 @@ extern crate std as s1;
 #[macro_use(5)]
 //~^ ERROR malformed `macro_use` attribute input
 //~| NOTE expected a valid identifier here
+//~| NOTE for more information, visit
 extern crate std as s2;
 
 #[macro_use(a = "b")]
 //~^ ERROR malformed `macro_use` attribute input
 //~| NOTE didn't expect any arguments here
+//~| NOTE for more information, visit
 extern crate std as s3;
 
 #[macro_use(a(b))]
 //~^ ERROR malformed `macro_use` attribute input
 //~| NOTE didn't expect any arguments here
+//~| NOTE for more information, visit
 extern crate std as s4;
 
 #[macro_use(a::b)]
 //~^ ERROR malformed `macro_use` attribute input
 //~| NOTE expected a valid identifier here
+//~| NOTE for more information, visit
 extern crate std as s5;
 
 #[macro_use(a)]

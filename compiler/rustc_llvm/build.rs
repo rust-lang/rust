@@ -226,7 +226,6 @@ fn main() {
     rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
     cfg.file("llvm-wrapper/PassWrapper.cpp")
         .file("llvm-wrapper/RustWrapper.cpp")
-        .file("llvm-wrapper/ArchiveWrapper.cpp")
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
         .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
@@ -255,7 +254,7 @@ fn main() {
         println!("cargo:rustc-link-lib=kstat");
     }
 
-    if (target.starts_with("arm") && !target.contains("freebsd")) && !target.contains("ohos")
+    if (target.starts_with("arm") && !target.contains("freebsd") && !target.contains("ohos"))
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")
         || target.starts_with("powerpc-")

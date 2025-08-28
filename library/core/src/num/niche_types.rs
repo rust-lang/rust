@@ -178,3 +178,18 @@ impl NotAllOnesHelper for u64 {
 impl NotAllOnesHelper for i64 {
     type Type = I64NotAllOnes;
 }
+
+define_valid_range_type! {
+    pub struct CodePointInner(u32 as u32 in 0..=0x10ffff);
+}
+
+impl CodePointInner {
+    pub const ZERO: Self = CodePointInner::new(0).unwrap();
+}
+
+impl Default for CodePointInner {
+    #[inline]
+    fn default() -> Self {
+        Self::ZERO
+    }
+}

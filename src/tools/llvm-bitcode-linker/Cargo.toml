@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 anyhow = "1.0"
-tracing = "0.1"
-tracing-subscriber = {version = "0.3.0", features = ["std"] }
+tracing.workspace = true
+tracing-subscriber = { version = "0.3.0", features = ["std"] }
 clap = { version = "4.3", features = ["derive"] }
 thiserror = "1.0.24"

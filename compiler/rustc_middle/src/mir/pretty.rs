@@ -929,7 +929,10 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
-            Drop { place, .. } => write!(fmt, "drop({place:?})"),
+            Drop { place, async_fut: None, .. } => write!(fmt, "drop({place:?})"),
+            Drop { place, async_fut: Some(async_fut), .. } => {
+                write!(fmt, "async drop({place:?}; poll={async_fut:?})")
+            }
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
@@ -1789,7 +1792,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
                 ascii.push('╼');
                 i += ptr_size;
             }
-        } else if let Some(prov) = alloc.provenance().get(i, &tcx) {
+        } else if let Some((prov, idx)) = alloc.provenance().get_byte(i, &tcx) {
             // Memory with provenance must be defined
             assert!(
                 alloc.init_mask().is_range_initialized(alloc_range(i, Size::from_bytes(1))).is_ok()
@@ -1799,7 +1802,7 @@ pub fn write_allocation_bytes<'tcx, Prov: Provenance, Extra, Bytes: AllocBytes>(
             // Format is similar to "oversized" above.
             let j = i.bytes_usize();
             let c = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + 1)[0];
-            write!(w, "╾{c:02x}{prov:#?} (1 ptr byte)╼")?;
+            write!(w, "╾{c:02x}{prov:#?} (ptr fragment {idx})╼")?;
             i += Size::from_bytes(1);
         } else if alloc
             .init_mask()
@@ -1932,7 +1935,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                         let args = tcx.lift(args).unwrap();
                         let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
                         p.print_alloc_ids = true;
-                        p.print_value_path(variant_def.def_id, args)?;
+                        p.pretty_print_value_path(variant_def.def_id, args)?;
                         fmt.write_str(&p.into_buffer())?;
 
                         match variant_def.ctor_kind() {
@@ -1974,7 +1977,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut p = FmtPrinter::new(tcx, Namespace::ValueNS);
             p.print_alloc_ids = true;
-            p.print_value_path(*d, s)?;
+            p.pretty_print_value_path(*d, s)?;
             fmt.write_str(&p.into_buffer())?;
             return Ok(());
         }

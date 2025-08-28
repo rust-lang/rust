@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.15.4"
+version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5971ac85611da7067dbfcabef3c70ebb5606018acd9e2a3903a0da507521e0d5"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
@@ -140,9 +140,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.174"
+version = "0.2.175"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
+checksum = "6a82ae493e598baaea5209805c49bbf2ea7de956d50d7da0da1164f9c6d28543"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -169,9 +169,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.37.2"
+version = "0.37.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3e3d0a7419f081f4a808147e845310313a39f322d7ae1f996b7f001d6cbed04"
+checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
 dependencies = [
  "memchr",
  "rustc-std-workspace-alloc",
@@ -192,7 +192,6 @@ name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "cfg-if",
  "libc",
  "rustc-std-workspace-core",
  "unwind",
@@ -336,10 +335,9 @@ dependencies = [
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
- "alloc",
- "cfg-if",
- "core",
  "libc",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
@@ -376,7 +374,6 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
  "libc",
  "rustc-std-workspace-core",
  "unwinding",

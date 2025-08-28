@@ -312,6 +312,12 @@ def default_build_triple(verbose):
 
     kernel, cputype, processor = uname.decode(default_encoding).split(maxsplit=2)
 
+    # ON NetBSD, use `uname -p` to set the CPU type
+    if kernel == "NetBSD":
+        cputype = (
+            subprocess.check_output(["uname", "-p"]).strip().decode(default_encoding)
+        )
+
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
     kerneltype_mapper = {
@@ -433,10 +439,16 @@ def default_build_triple(verbose):
             kernel = "linux-androideabi"
         else:
             kernel += "eabihf"
-    elif cputype in {"armv7l", "armv8l"}:
+    elif cputype in {"armv6hf", "earmv6hf"}:
+        cputype = "armv6"
+        if kernel == "unknown-netbsd":
+            kernel += "-eabihf"
+    elif cputype in {"armv7l", "earmv7hf", "armv8l"}:
         cputype = "armv7"
         if kernel == "linux-android":
             kernel = "linux-androideabi"
+        elif kernel == "unknown-netbsd":
+            kernel += "-eabihf"
         else:
             kernel += "eabihf"
     elif cputype == "mips":

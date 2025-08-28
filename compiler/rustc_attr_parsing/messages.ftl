@@ -10,6 +10,14 @@ attr_parsing_empty_attribute =
     unused attribute
     .suggestion = remove this attribute
 
+attr_parsing_invalid_target = `#[{$name}]` attribute cannot be used on {$target}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+    .suggestion = remove the attribute
+attr_parsing_invalid_target_lint = `#[{$name}]` attribute cannot be used on {$target}
+    .warn = {-attr_parsing_previously_accepted}
+    .help = `#[{$name}]` can {$only}be applied to {$applied}
+    .suggestion = remove the attribute
+
 attr_parsing_empty_confusables =
     expected at least one confusable name
 attr_parsing_expected_one_cfg_pattern =
@@ -78,6 +86,12 @@ attr_parsing_invalid_repr_hint_no_value =
 attr_parsing_invalid_since =
     'since' must be a Rust version number, such as "1.31.0"
 
+attr_parsing_invalid_style = {$is_used_as_inner ->
+        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
+        *[other] the `#![{$name}]` attribute can only be used at the crate root
+    }
+    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+
 attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
     .note = the value may not exceed `u16::MAX`
 
@@ -132,6 +146,7 @@ attr_parsing_unknown_version_literal =
 attr_parsing_unrecognized_repr_hint =
     unrecognized representation hint
     .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
+    .note = for more information, visit <https://doc.rust-lang.org/reference/type-layout.html?highlight=repr#representations>
 
 attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
@@ -161,3 +176,22 @@ attr_parsing_unused_multiple =
 
 -attr_parsing_previously_accepted =
     this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+attr_parsing_meta_bad_delim = wrong meta list delimiters
+attr_parsing_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
+
+attr_parsing_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
+    .label = usage of unsafe attribute
+attr_parsing_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
+
+attr_parsing_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
+    .label = this is not an unsafe attribute
+    .suggestion = remove the `unsafe(...)`
+    .note = extraneous unsafe is not allowed in attributes
+
+attr_parsing_invalid_meta_item = expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found {$descr}
+    .remove_neg_sugg = negative numbers are not literals, try removing the `-` sign
+    .quote_ident_sugg = surround the identifier with quotation marks to make it into a string literal
+
+attr_parsing_suffixed_literal_in_attribute = suffixed literals are not allowed in attributes
+    .help = instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)

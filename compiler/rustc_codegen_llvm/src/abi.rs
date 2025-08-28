@@ -24,6 +24,7 @@ use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -41,12 +42,13 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 6] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
-    (ArgAttribute::NoCapture, llvm::AttributeKind::NoCapture),
+    (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
+    (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
 ];
 
 fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
@@ -82,6 +84,12 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
         }
         for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
             if regular.contains(attr) {
+                // captures(...) is only available since LLVM 21.
+                if (attr == ArgAttribute::CapturesReadOnly || attr == ArgAttribute::CapturesAddress)
+                    && llvm_util::get_version() < (21, 0, 0)
+                {
+                    continue;
+                }
                 attrs.push(llattr.create_attr(cx.llcx));
             }
         }
@@ -500,7 +508,16 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                 }
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
-                    apply(attrs);
+                    let i = apply(attrs);
+                    if cx.sess().opts.optimize != config::OptLevel::No
+                        && llvm_util::get_version() >= (21, 0, 0)
+                    {
+                        attributes::apply_to_llfn(
+                            llfn,
+                            llvm::AttributePlace::Argument(i),
+                            &[llvm::AttributeKind::DeadOnReturn.create_attr(cx.llcx)],
+                        );
+                    }
                 }
                 PassMode::Indirect { attrs, meta_attrs: Some(meta_attrs), on_stack } => {
                     assert!(!on_stack);

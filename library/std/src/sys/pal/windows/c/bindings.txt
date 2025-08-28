@@ -2158,6 +2158,7 @@ GetCurrentDirectoryW
 GetCurrentProcess
 GetCurrentProcessId
 GetCurrentThread
+GetCurrentThreadId
 GetEnvironmentStringsW
 GetEnvironmentVariableW
 GetExitCodeProcess
@@ -2185,7 +2186,6 @@ GetSystemInfo
 GetSystemTimeAsFileTime
 GetSystemTimePreciseAsFileTime
 GetTempPathW
-GetThreadId
 GetUserProfileDirectoryW
 GetWindowsDirectoryW
 HANDLE

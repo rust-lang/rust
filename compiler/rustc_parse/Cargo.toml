@@ -5,11 +5,10 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags = "2.4.1"
-rustc-literal-escaper = "0.0.5"
+bitflags.workspace = true
+rustc-literal-escaper.workspace = true
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
-rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
@@ -19,8 +18,8 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
-thin-vec = "0.2.12"
-tracing = "0.1"
+thin-vec.workspace = true
+tracing.workspace = true
 unicode-normalization = "0.1.11"
 unicode-width = "0.2.0"
 # tidy-alphabetical-end

@@ -1,4 +1,4 @@
-error: invalid label name `'static`
+error: labels cannot use keyword names
   --> $DIR/issue-52437.rs:2:13
    |
 LL |     [(); &(&'static: loop { |x| {}; }) as *const _ as usize]

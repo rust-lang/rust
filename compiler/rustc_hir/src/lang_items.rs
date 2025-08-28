@@ -286,6 +286,7 @@ language_item_table! {
     Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
     PanicNounwind,           sym::panic_nounwind,      panic_nounwind,             Target::Fn,             GenericRequirement::Exact(0);
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
+    PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
@@ -436,6 +437,9 @@ language_item_table! {
     DefaultTrait1,           sym::default_trait1,      default_trait1_trait,       Target::Trait,          GenericRequirement::None;
 
     ContractCheckEnsures,     sym::contract_check_ensures,      contract_check_ensures_fn,      Target::Fn, GenericRequirement::None;
+
+    // Reborrowing related lang-items
+    Reborrow,                sym::reborrow,            reborrow,                   Target::Trait,          GenericRequirement::Exact(0);
 }
 
 /// The requirement imposed on the generics of a lang item

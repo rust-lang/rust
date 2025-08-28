@@ -1,15 +1,24 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
+//@ revisions: aarch64_be_unknown_hermit
+//@ [aarch64_be_unknown_hermit] compile-flags: --target aarch64_be-unknown-hermit
+//@ [aarch64_be_unknown_hermit] needs-llvm-components: aarch64
 //@ revisions: aarch64_be_unknown_linux_gnu
 //@ [aarch64_be_unknown_linux_gnu] compile-flags: --target aarch64_be-unknown-linux-gnu
 //@ [aarch64_be_unknown_linux_gnu] needs-llvm-components: aarch64
 //@ revisions: aarch64_be_unknown_linux_gnu_ilp32
 //@ [aarch64_be_unknown_linux_gnu_ilp32] compile-flags: --target aarch64_be-unknown-linux-gnu_ilp32
 //@ [aarch64_be_unknown_linux_gnu_ilp32] needs-llvm-components: aarch64
+//@ revisions: aarch64_be_unknown_linux_musl
+//@ [aarch64_be_unknown_linux_musl] compile-flags: --target aarch64_be-unknown-linux-musl
+//@ [aarch64_be_unknown_linux_musl] needs-llvm-components: aarch64
 //@ revisions: aarch64_be_unknown_netbsd
 //@ [aarch64_be_unknown_netbsd] compile-flags: --target aarch64_be-unknown-netbsd
 //@ [aarch64_be_unknown_netbsd] needs-llvm-components: aarch64
+//@ revisions: aarch64_be_unknown_none_softfloat
+//@ [aarch64_be_unknown_none_softfloat] compile-flags: --target aarch64_be-unknown-none-softfloat
+//@ [aarch64_be_unknown_none_softfloat] needs-llvm-components: aarch64
 //@ revisions: aarch64_kmc_solid_asp3
 //@ [aarch64_kmc_solid_asp3] compile-flags: --target aarch64-kmc-solid_asp3
 //@ [aarch64_kmc_solid_asp3] needs-llvm-components: aarch64
@@ -475,6 +484,9 @@
 //@ revisions: riscv64gc_unknown_linux_gnu
 //@ [riscv64gc_unknown_linux_gnu] compile-flags: --target riscv64gc-unknown-linux-gnu
 //@ [riscv64gc_unknown_linux_gnu] needs-llvm-components: riscv
+//@ revisions: riscv64a23_unknown_linux_gnu
+//@ [riscv64a23_unknown_linux_gnu] compile-flags: --target riscv64a23-unknown-linux-gnu
+//@ [riscv64a23_unknown_linux_gnu] needs-llvm-components: riscv
 //@ revisions: riscv64gc_unknown_linux_musl
 //@ [riscv64gc_unknown_linux_musl] compile-flags: --target riscv64gc-unknown-linux-musl
 //@ [riscv64gc_unknown_linux_musl] needs-llvm-components: riscv

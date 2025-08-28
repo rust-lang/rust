@@ -1,11 +1,12 @@
 #![crate_type = "lib"]
 
-// An example from #57165 of the linked-list cursor-like pattern of #46859/#48001.
+// An example from #57165 of the linked-list cursor-like pattern of #46859/#48001, where the
+// polonius alpha analysis shows the same imprecision as NLLs, unlike the datalog implementation.
 
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius legacy
 //@ [nll] known-bug: #57165
-//@ [polonius] check-pass
+//@ [polonius] known-bug: #57165
 //@ [polonius] compile-flags: -Z polonius=next
 //@ [legacy] check-pass
 //@ [legacy] compile-flags: -Z polonius=legacy
@@ -22,7 +23,7 @@ fn no_control_flow() {
     }
 }
 
-// NLLs fail here
+// NLLs and polonius alpha fail here
 fn conditional() {
     let mut b = Some(Box::new(X { next: None }));
     let mut p = &mut b;

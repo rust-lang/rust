@@ -16,6 +16,9 @@
 #![crate_type = "lib"]
 #![allow(dead_code)]
 #![allow(deprecated)]
+#![feature(derive_from)]
+
+use std::from::From;
 
 // Empty struct.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -38,11 +41,26 @@ struct PackedPoint {
     y: u32,
 }
 
+#[derive(Clone, Copy, Debug, Default, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct TupleSingleField(u32);
+
+#[derive(Clone, Copy, Debug, Default, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct SingleField {
+    foo: bool,
+}
+
 // A large struct. Note: because this derives `Copy`, it gets the simple
 // `clone` implemention that just does `*self`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Big {
-    b1: u32, b2: u32, b3: u32, b4: u32, b5: u32, b6: u32, b7: u32, b8: u32,
+    b1: u32,
+    b2: u32,
+    b3: u32,
+    b4: u32,
+    b5: u32,
+    b6: u32,
+    b7: u32,
+    b8: u32,
 }
 
 // It is more efficient to compare scalar types before non-scalar types.
@@ -86,7 +104,7 @@ struct PackedManualCopy(u32);
 impl Copy for PackedManualCopy {}
 
 // A struct with an unsized field. Some derives are not usable in this case.
-#[derive(Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, From, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct Unsized([u32]);
 
 trait Trait {
@@ -117,7 +135,7 @@ enum Enum0 {}
 // A single-variant enum.
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum Enum1 {
-    Single { x: u32 }
+    Single { x: u32 },
 }
 
 // A C-like, fieldless enum with a single variant.
@@ -143,7 +161,10 @@ enum Mixed {
     P,
     Q,
     R(u32),
-    S { d1: Option<u32>, d2: Option<i32> },
+    S {
+        d1: Option<u32>,
+        d2: Option<i32>,
+    },
 }
 
 // When comparing enum variant it is more efficient to compare scalar types before non-scalar types.

@@ -224,41 +224,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         use ty::GenericArg;
         use ty::print::Printer;
 
-        struct AbsolutePathPrinter<'tcx> {
+        struct ConflictingPathPrinter<'tcx> {
             tcx: TyCtxt<'tcx>,
             segments: Vec<Symbol>,
         }
 
-        impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
+        impl<'tcx> Printer<'tcx> for ConflictingPathPrinter<'tcx> {
             fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
             fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_dyn_existential(
                 &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
             fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
-                unreachable!(); // because `path_generic_args` ignores the `GenericArgs`
+                unreachable!(); // because `print_path_with_generic_args` ignores the `GenericArgs`
             }
 
-            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
+            fn print_crate_name(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum)];
                 Ok(())
             }
 
-            fn path_qualified(
+            fn print_path_with_qualified(
                 &mut self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
@@ -266,7 +266,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append_impl(
+            fn print_path_with_impl(
                 &mut self,
                 _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _self_ty: Ty<'tcx>,
@@ -275,7 +275,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Err(fmt::Error)
             }
 
-            fn path_append(
+            fn print_path_with_simple(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
@@ -285,7 +285,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 Ok(())
             }
 
-            fn path_generic_args(
+            fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
@@ -300,28 +300,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    let mut p = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    let mut p = ConflictingPathPrinter { tcx: self.tcx, segments: vec![] };
                     p.print_def_path(def_id, &[]).map(|_| p.segments)
                 };
 
-                // We compare strings because DefPath can be different
-                // for imported and non-imported crates
+                // We compare strings because DefPath can be different for imported and
+                // non-imported crates.
                 let expected_str = self.tcx.def_path_str(did1);
                 let found_str = self.tcx.def_path_str(did2);
                 let Ok(expected_abs) = abs_path(did1) else { return false };
                 let Ok(found_abs) = abs_path(did2) else { return false };
-                let same_path = || -> Result<_, PrintError> {
-                    Ok(expected_str == found_str || expected_abs == found_abs)
-                };
-                // We want to use as unique a type path as possible. If both types are "locally
-                // known" by the same name, we use the "absolute path" which uses the original
-                // crate name instead.
-                let (expected, found) = if expected_str == found_str {
-                    (join_path_syms(&expected_abs), join_path_syms(&found_abs))
-                } else {
-                    (expected_str.clone(), found_str.clone())
-                };
-                if same_path().unwrap_or(false) {
+                let same_path = expected_str == found_str || expected_abs == found_abs;
+                if same_path {
+                    // We want to use as unique a type path as possible. If both types are "locally
+                    // known" by the same name, we use the "absolute path" which uses the original
+                    // crate name instead.
+                    let (expected, found) = if expected_str == found_str {
+                        (join_path_syms(&expected_abs), join_path_syms(&found_abs))
+                    } else {
+                        (expected_str.clone(), found_str.clone())
+                    };
+
                     // We've displayed "expected `a::b`, found `a::b`". We add context to
                     // differentiate the different cases where that might happen.
                     let expected_crate_name = self.tcx.crate_name(did1.krate);
@@ -459,7 +458,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
-                    } else {
+                    } else if !span.overlaps(cause.span) {
                         let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
@@ -1620,8 +1619,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         {
             let e = self.tcx.erase_regions(e);
             let f = self.tcx.erase_regions(f);
-            let expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
-            let found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+            let mut expected = with_forced_trimmed_paths!(e.sort_string(self.tcx));
+            let mut found = with_forced_trimmed_paths!(f.sort_string(self.tcx));
+            if let ObligationCauseCode::Pattern { span, .. } = cause.code()
+                && let Some(span) = span
+                && !span.from_expansion()
+                && cause.span.from_expansion()
+            {
+                // When the type error comes from a macro like `assert!()`, and we are pointing at
+                // code the user wrote the cause and effect are reversed as the expected value is
+                // what the macro expanded to.
+                (found, expected) = (expected, found);
+            }
             if expected == found {
                 label_or_note(span, terr.to_string(self.tcx));
             } else {
@@ -2144,7 +2153,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, long_ty_path),
+            ValuePairs::Terms(exp_found) => {
+                self.expected_found_str_term(cause, exp_found, long_ty_path)
+            }
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2183,6 +2194,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     fn expected_found_str_term(
         &self,
+        cause: &ObligationCause<'tcx>,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
         long_ty_path: &mut Option<PathBuf>,
     ) -> Option<(DiagStyledString, DiagStyledString)> {
@@ -2190,8 +2202,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if exp_found.references_error() {
             return None;
         }
+        let (mut expected, mut found) = (exp_found.expected, exp_found.found);
 
-        Some(match (exp_found.expected.kind(), exp_found.found.kind()) {
+        if let ObligationCauseCode::Pattern { span, .. } = cause.code()
+            && let Some(span) = span
+            && !span.from_expansion()
+            && cause.span.from_expansion()
+        {
+            // When the type error comes from a macro like `assert!()`, and we are pointing at
+            // code the user wrote, the cause and effect are reversed as the expected value is
+            // what the macro expanded to. So if the user provided a `Type` when the macro is
+            // written in such a way that a `bool` was expected, we want to print:
+            // = note: expected `bool`
+            //            found `Type`"
+            // but as far as the compiler is concerned, after expansion what was expected was `Type`
+            // = note: expected `Type`
+            //            found `bool`"
+            // so we reverse them here to match user expectation.
+            (expected, found) = (found, expected);
+        }
+
+        Some(match (expected.kind(), found.kind()) {
             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
                 let (mut exp, mut fnd) = self.cmp(expected, found);
                 // Use the terminal width as the basis to determine when to compress the printed

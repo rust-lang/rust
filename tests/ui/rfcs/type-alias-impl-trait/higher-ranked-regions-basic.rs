@@ -31,6 +31,7 @@ mod capture_tait {
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR hidden type for `capture_tait::Opq0` captures lifetime that does not appear in bounds
+    //~| ERROR expected generic lifetime parameter, found `'a`
 }
 
 mod capture_tait_complex_pass {
@@ -41,6 +42,7 @@ mod capture_tait_complex_pass {
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~| ERROR: expected generic lifetime parameter, found `'b`
 }
 
 // Same as the above, but make sure that different placeholder regions are not equal.
@@ -51,7 +53,8 @@ mod capture_tait_complex_fail {
     type Opq2 = impl for<'a> Trait<'a, Ty = Opq1<'a>>;
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
-    //~^ ERROR hidden type for `capture_tait_complex_fail::Opq0<'a>` captures lifetime that does not appear in bounds
+    //~^ ERROR expected generic lifetime parameter, found `'a`
+    //~| ERROR expected generic lifetime parameter, found `'a`
 }
 
 // non-defining use because 'static is used.
@@ -80,6 +83,7 @@ mod constrain_pass {
     #[define_opaque(Opq2)]
     fn test() -> Opq2 {}
     //~^ ERROR: expected generic lifetime parameter, found `'a`
+    //~| ERROR: expected generic lifetime parameter, found `'a`
 }
 
 fn main() {}

@@ -9,7 +9,7 @@ macro_rules! define_other_core {
 }
 
 fn main() {
-    core::panic!();
+    core::panic!(); //~ ERROR: `core` is ambiguous
 }
 
 define_other_core!();

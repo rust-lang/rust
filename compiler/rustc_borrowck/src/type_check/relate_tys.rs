@@ -124,8 +124,13 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         // by using `ty_vid rel B` and then finally and end by equating `ty_vid` to
         // the opaque.
         let mut enable_subtyping = |ty, opaque_is_expected| {
-            let ty_vid = infcx.next_ty_var_id_in_universe(self.span(), ty::UniverseIndex::ROOT);
-
+            // We create the fresh inference variable in the highest universe.
+            // In theory we could limit it to the highest universe in the args of
+            // the opaque but that isn't really worth the effort.
+            //
+            // We'll make sure that the opaque type can actually name everything
+            // in its hidden type later on.
+            let ty_vid = infcx.next_ty_vid(self.span());
             let variance = if opaque_is_expected {
                 self.ambient_variance
             } else {
@@ -216,7 +221,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                     *ex_reg_var
                 } else {
                     let ex_reg_var =
-                        self.next_existential_region_var(true, br.kind.get_name(infcx.infcx.tcx));
+                        self.next_existential_region_var(br.kind.get_name(infcx.infcx.tcx));
                     debug!(?ex_reg_var);
                     reg_map.insert(br, ex_reg_var);
 
@@ -244,17 +249,9 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn next_existential_region_var(
-        &mut self,
-        from_forall: bool,
-        name: Option<Symbol>,
-    ) -> ty::Region<'tcx> {
-        let origin = NllRegionVariableOrigin::Existential { from_forall };
-
-        let reg_var =
-            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name));
-
-        reg_var
+    fn next_existential_region_var(&mut self, name: Option<Symbol>) -> ty::Region<'tcx> {
+        let origin = NllRegionVariableOrigin::Existential { name };
+        self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name))
     }
 
     #[instrument(skip(self), level = "debug")]

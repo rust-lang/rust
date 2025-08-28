@@ -17,8 +17,12 @@ ast_passes_abi_must_not_have_parameters_or_return_type=
 
 ast_passes_abi_must_not_have_return_type=
     invalid signature for `extern {$abi}` function
-    .note = functions with the "custom" ABI cannot have a return type
+    .note = functions with the {$abi} ABI cannot have a return type
     .help = remove the return type
+
+ast_passes_abi_x86_interrupt =
+    invalid signature for `extern "x86-interrupt"` function
+    .note = functions with the "x86-interrupt" ABI must be have either 1 or 2 parameters (but found {$param_count})
 
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
@@ -31,6 +35,13 @@ ast_passes_assoc_fn_without_body =
 ast_passes_assoc_type_without_body =
     associated type in `impl` without body
     .suggestion = provide a definition for the type
+
+ast_passes_async_fn_in_const_trait_or_trait_impl =
+    async functions are not allowed in `const` {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    }
+    .label = associated functions of `const` cannot be declared `async`
 
 ast_passes_at_least_one_trait = at least one trait must be specified
 
@@ -101,6 +112,10 @@ ast_passes_extern_types_cannot = `type`s inside `extern` blocks cannot have {$de
 ast_passes_extern_without_abi = `extern` declarations without an explicit ABI are disallowed
     .suggestion = specify an ABI
     .help = prior to Rust 2024, a default ABI was inferred
+
+ast_passes_extern_without_abi_sugg = `extern` declarations without an explicit ABI are deprecated
+    .label = ABI should be specified here
+    .suggestion = explicitly specify the {$default_abi} ABI
 
 ast_passes_feature_on_non_nightly = `#![feature]` may not be used on the {$channel} release channel
     .suggestion = remove the attribute
@@ -174,11 +189,6 @@ ast_passes_generic_default_trailing = generic parameters with a default must be 
 
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
-
-ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
-    .because = {$annotation} because of this
-    .type = inherent impl for this type
-    .only_trait = only trait implementations may be annotated with {$annotation}
 
 ast_passes_item_invalid_safety = items outside of `unsafe extern {"{ }"}` cannot be declared with `safe` safety qualifier
     .suggestion = remove safe from this item

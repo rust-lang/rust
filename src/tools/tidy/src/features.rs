@@ -9,6 +9,7 @@
 //! * All unstable lang features have tests to ensure they are actually unstable.
 //! * Language features in a group are sorted by feature name.
 
+use std::collections::BTreeSet;
 use std::collections::hash_map::{Entry, HashMap};
 use std::ffi::OsStr;
 use std::num::NonZeroU32;
@@ -21,6 +22,7 @@ use crate::walk::{filter_dirs, filter_not_rust, walk, walk_many};
 mod tests;
 
 mod version;
+use regex::Regex;
 use version::Version;
 
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
@@ -622,4 +624,37 @@ fn map_lib_features(
             }
         },
     );
+}
+
+fn should_document(var: &str) -> bool {
+    if var.starts_with("RUSTC_") || var.starts_with("RUST_") || var.starts_with("UNSTABLE_RUSTDOC_")
+    {
+        return true;
+    }
+    ["SDKROOT", "QNX_TARGET", "COLORTERM", "TERM"].contains(&var)
+}
+
+pub fn collect_env_vars(compiler: &Path) -> BTreeSet<String> {
+    let env_var_regex: Regex = Regex::new(r#"env::var(_os)?\("([^"]+)"#).unwrap();
+
+    let mut vars = BTreeSet::new();
+    walk(
+        compiler,
+        // skip build scripts, tests, and non-rust files
+        |path, _is_dir| {
+            filter_dirs(path)
+                || filter_not_rust(path)
+                || path.ends_with("build.rs")
+                || path.ends_with("tests.rs")
+        },
+        &mut |_entry, contents| {
+            for env_var in env_var_regex.captures_iter(contents).map(|c| c.get(2).unwrap().as_str())
+            {
+                if should_document(env_var) {
+                    vars.insert(env_var.to_owned());
+                }
+            }
+        },
+    );
+    vars
 }

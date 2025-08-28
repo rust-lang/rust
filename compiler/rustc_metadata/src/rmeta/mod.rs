@@ -11,7 +11,7 @@ use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_hir::attrs::StrippedCfgItem;
-use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
+use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, MacroKinds};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;

@@ -52,7 +52,7 @@ jobs:
       run_type: ${{ steps.jobs.outputs.run_type }}
     steps:
       - name: Checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Test citool
         # Only test citool on the auto branch, to reduce latency of the calculate matrix job
         # on PR/try builds.
@@ -113,16 +113,16 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
 
-      # Free up disk space on Linux and Windows by removing preinstalled components that
+      # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
       # less disk space.
       - name: free up disk space
-        run: src/ci/scripts/free-disk-space.sh
+        run: src/ci/scripts/free-disk-space-linux.sh
         if: matrix.free_disk
 
       # If we don't need to free up disk space then just report how much space we have
@@ -313,7 +313,7 @@ jobs:
     if: ${{ !cancelled() && contains(fromJSON('["auto", "try"]'), needs.calculate_matrix.outputs.run_type) }}
     steps:
       - name: checkout the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       # Calculate the exit status of the whole CI workflow.

@@ -135,6 +135,8 @@ use crate::ops::Index;
 /// ]);
 /// ```
 ///
+/// ## `Entry` API
+///
 /// `HashMap` implements an [`Entry` API](#method.entry), which allows
 /// for complex methods of getting, setting, updating and removing keys and
 /// their values:
@@ -166,6 +168,8 @@ use crate::ops::Index;
 /// // modify an entry before an insert with in-place mutation
 /// player_stats.entry("mana").and_modify(|mana| *mana += 200).or_insert(100);
 /// ```
+///
+/// ## Usage with custom key types
 ///
 /// The easiest way to use `HashMap` with a custom key type is to derive [`Eq`] and [`Hash`].
 /// We must also derive [`PartialEq`].
@@ -1871,12 +1875,7 @@ impl<'a, K: Debug, V: Debug> fmt::Display for OccupiedError<'a, K, V> {
 }
 
 #[unstable(feature = "map_try_insert", issue = "82766")]
-impl<'a, K: fmt::Debug, V: fmt::Debug> Error for OccupiedError<'a, K, V> {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "key already exists"
-    }
-}
+impl<'a, K: Debug, V: Debug> Error for OccupiedError<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S> {

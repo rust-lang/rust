@@ -359,6 +359,20 @@ parse_generics_in_path = unexpected generic arguments in path
 
 parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
 parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+
+parse_hidden_unicode_codepoints = unicode codepoint changing visible direction of text present in {$label}
+    .label = this {$label} contains {$count ->
+        [one] an invisible
+        *[other] invisible
+    } unicode text flow control {$count ->
+        [one] codepoint
+        *[other] codepoints
+    }
+    .note = these kind of unicode codepoints change the way text flows on applications that support them, but can cause confusion because they change the order of characters on the screen
+    .suggestion_remove = if their presence wasn't intentional, you can remove them
+    .suggestion_escape = if you want to keep them but make them visible in your source code, you can escape them
+    .no_suggestion_note_escape = if you want to keep them but make them visible in your source code, you can escape them: {$escaped}
+
 parse_if_expression_missing_condition = missing condition for `if` expression
     .condition_label = expected condition here
     .block_label = if this block is the condition of the `if` expression, then it must be followed by another block
@@ -436,11 +450,6 @@ parse_inner_doc_comment_not_permitted = expected outer doc comment
     .label_does_not_annotate_this = the inner doc comment doesn't annotate this {$item}
     .sugg_change_inner_to_outer = to annotate the {$item}, change the doc comment from inner to outer style
 
-parse_invalid_attr_unsafe = `{$name}` is not an unsafe attribute
-    .label = this is not an unsafe attribute
-    .suggestion = remove the `unsafe(...)`
-    .note = extraneous unsafe is not allowed in attributes
-
 parse_invalid_block_macro_segment = cannot use a `block` macro fragment here
     .label = the `block` fragment is within this context
     .suggestion = wrap this in another block
@@ -467,9 +476,6 @@ parse_invalid_dyn_keyword = invalid `dyn` keyword
 
 parse_invalid_expression_in_let_else = a `{$operator}` expression cannot be directly assigned in `let...else`
 parse_invalid_identifier_with_leading_number = identifiers cannot start with a number
-
-parse_invalid_label =
-    invalid label name `{$name}`
 
 parse_invalid_literal_suffix_on_tuple_index = suffixes on a tuple index are invalid
     .label = invalid suffix `{$suffix}`
@@ -499,6 +505,8 @@ parse_invalid_unicode_escape = invalid unicode character escape
 
 parse_invalid_variable_declaration =
     invalid variable declaration
+
+parse_keyword_label = labels cannot use keyword names
 
 parse_keyword_lifetime =
     lifetimes cannot use keyword names
@@ -601,7 +609,6 @@ parse_maybe_report_ambiguous_plus =
     ambiguous `+` in a type
     .suggestion = use parentheses to disambiguate
 
-parse_meta_bad_delim = wrong meta list delimiters
 parse_meta_bad_delim_suggestion = the delimiters should be `(` and `)`
 
 parse_mismatched_closing_delimiter = mismatched closing delimiter: `{$delimiter}`
@@ -642,7 +649,7 @@ parse_missing_for_in_trait_impl = missing `for` in a trait impl
     .suggestion = add `for` here
 
 parse_missing_in_in_for_loop = missing `in` in `for` loop
-    .use_in_not_of = try using `in` here instead
+    .use_in = try using `in` here instead
     .add_in = try adding `in` here
 
 parse_missing_let_before_mut = missing keyword
@@ -747,9 +754,6 @@ parse_overlong_unicode_escape = overlong unicode escape
 parse_parentheses_with_struct_fields = invalid `struct` delimiters or `fn` call arguments
     .suggestion_braces_for_struct = if `{$type}` is a struct, use braces as delimiters
     .suggestion_no_fields_for_fn = if `{$type}` is a function, use the arguments directly
-
-parse_parenthesized_lifetime = parenthesized lifetime bounds are not supported
-parse_parenthesized_lifetime_suggestion = remove the parentheses
 
 parse_path_double_colon = path separator must be a double colon
     .suggestion = use a double colon instead
@@ -862,12 +866,17 @@ parse_too_many_hashes = too many `#` symbols: raw strings may be delimited by up
 
 parse_too_short_hex_escape = numeric character escape is too short
 
-parse_trailing_vert_not_allowed = a trailing `|` is not allowed in an or-pattern
-    .suggestion = remove the `{$token}`
+parse_trailing_vert_not_allowed = a trailing `{$token}` is not allowed in an or-pattern
+parse_trailing_vert_not_allowed_suggestion = remove the `{$token}`
 
 parse_trait_alias_cannot_be_auto = trait aliases cannot be `auto`
 parse_trait_alias_cannot_be_const = trait aliases cannot be `const`
 parse_trait_alias_cannot_be_unsafe = trait aliases cannot be `unsafe`
+
+parse_trait_impl_modifier_in_inherent_impl = inherent impls cannot be {$modifier_name}
+    .because = {$modifier_name} because of this
+    .type = inherent impl for this type
+    .note = only trait implementations may be annotated with `{$modifier}`
 
 parse_transpose_dyn_or_impl = `for<...>` expected after `{$kw}`, not before
     .suggestion = move `{$kw}` before the `for<...>`
@@ -987,10 +996,6 @@ parse_unmatched_angle_brackets = {$num_extra_brackets ->
             [one] remove extra angle bracket
            *[other] remove extra angle brackets
         }
-
-parse_unsafe_attr_outside_unsafe = unsafe attribute used without unsafe
-    .label = usage of unsafe attribute
-parse_unsafe_attr_outside_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 
 
 parse_unskipped_whitespace = whitespace symbol '{$ch}' is not skipped

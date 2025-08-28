@@ -3,7 +3,6 @@
 
 use serde::{Deserialize, Deserializer};
 
-use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::{DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
@@ -270,9 +269,9 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_profiler, profiler, "build");
 
     let current_optimized_compiler_builtins =
-        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        current_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     let optimized_compiler_builtins =
-        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins);
+        ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
     // We always build the in-tree compiler on cross targets, so we only care
@@ -391,6 +390,8 @@ pub(crate) fn parse_codegen_backends(
     backends: Vec<String>,
     section: &str,
 ) -> Vec<CodegenBackendKind> {
+    const CODEGEN_BACKEND_PREFIX: &str = "rustc_codegen_";
+
     let mut found_backends = vec![];
     for backend in &backends {
         if let Some(stripped) = backend.strip_prefix(CODEGEN_BACKEND_PREFIX) {
@@ -413,6 +414,10 @@ pub(crate) fn parse_codegen_backends(
             backend => CodegenBackendKind::Custom(backend.to_string()),
         };
         found_backends.push(backend);
+    }
+    if found_backends.is_empty() {
+        eprintln!("ERROR: `{section}.codegen-backends` should not be set to `[]`");
+        exit!(1);
     }
     found_backends
 }

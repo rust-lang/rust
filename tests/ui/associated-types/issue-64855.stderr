@@ -2,8 +2,13 @@ error[E0277]: the trait bound `Bar<T>: Foo` is not satisfied
   --> $DIR/issue-64855.rs:9:19
    |
 LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
-   |                   ^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bar<T>`
+   |                   ^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `Foo` is not implemented for `Bar<T>`
+  --> $DIR/issue-64855.rs:9:1
+   |
+LL | pub struct Bar<T>(<Self as Foo>::Type) where Self: ;
+   | ^^^^^^^^^^^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-64855.rs:5:1
    |

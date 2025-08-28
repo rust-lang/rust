@@ -171,14 +171,15 @@ codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphizati
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
 
-codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
-    .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
-
 codegen_ssa_invalid_windows_subsystem = invalid windows subsystem `{$subsystem}`, only `windows` and `console` are allowed
 
 codegen_ssa_ld64_unimplemented_modifier = `as-needed` modifier not implemented yet for ld64
 
 codegen_ssa_lib_def_write_failure = failed to write lib.def file: {$error}
+
+codegen_ssa_link_exe_status_stack_buffer_overrun = 0xc0000409 is `STATUS_STACK_BUFFER_OVERRUN`
+    .abort_note = this may have been caused by a program abort and not a stack buffer overrun
+    .event_log_note = consider checking the Application Event Log for Windows Error Reporting events to see the fail fast error code
 
 codegen_ssa_link_exe_unexpected_error = `link.exe` returned an unexpected error
 
@@ -396,6 +397,9 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_xcrun_about =
+    the SDK is needed by the linker to know where to find symbols in system libraries and for embedding the SDK version in the final object file
 
 codegen_ssa_xcrun_command_line_tools_insufficient =
     when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode

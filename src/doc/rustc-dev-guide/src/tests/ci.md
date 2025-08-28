@@ -84,16 +84,15 @@ resources to run the full test suite for each commit on every PR.
 > Thus, it is a good idea to run `./x doc xxx` locally for any doc comment
 > changes to help catch these early.
 
-PR jobs are defined in the `pr` section of [`jobs.yml`]. They run under the
-`rust-lang/rust` repository, and their results can be observed directly on the
-PR, in the "CI checks" section at the bottom of the PR page.
+PR jobs are defined in the `pr` section of [`jobs.yml`]. Their results can be observed
+directly on the PR, in the "CI checks" section at the bottom of the PR page.
 
 ### Auto builds
 
 Before a commit can be merged into the `master` branch, it needs to pass our
 complete test suite. We call this an `auto` build. This build runs tens of CI
 jobs that exercise various tests across operating systems and targets. The full
-test suite is quite slow; it can take two hours or more until all the `auto` CI
+test suite is quite slow; it can take several hours until all the `auto` CI
 jobs finish.
 
 Most platforms only run the build steps, some run a restricted set of tests,
@@ -136,14 +135,21 @@ By default, if you send a comment with `@bors try`, the jobs defined in the `try
 [`jobs.yml`] will be executed. We call this mode a "fast try build". Such a try build
 will not execute any tests, and it will allow compilation warnings. It is useful when you want to
 get an optimized toolchain as fast as possible, for a crater run or performance benchmarks,
-even if it might not be working fully correctly.
+even if it might not be working fully correctly. If you want to do a full build for the default try job,
+specify its job name in a job pattern (explained below).
 
-If you want to run a custom CI job in a try build and make sure that it passes all tests and does
-not produce any compilation warnings, you can select CI jobs to be executed by adding lines
-containing `try-job: <job pattern>` to the PR description. All such specified jobs will be executed
-in the try build once the `@bors try` command is used on the PR.
+If you want to run custom CI job(s) in a try build and make sure that they pass all tests and do
+not produce any compilation warnings, you can select CI jobs to be executed by specifying a *job pattern*,
+which can be used in one of two ways:
+- You can add a set of `try-job: <job pattern>` directives to the PR description (described below) and then
+  simply run `@bors try`. CI will read these directives and run the jobs that you have specified. This is
+  useful if you want to rerun the same set of try jobs multiple times, after incrementally modifying a PR.
+- You can specify the job pattern using the `jobs` parameter of the try command: `@bors try jobs=<job pattern>`.
+  This is useful for one-off try builds with specific jobs. Note that the `jobs` parameter has a higher priority
+  than the PR description directives.
+  - There can also be multiple patterns specified, e.g. `@bors try jobs=job1,job2,job3`.
 
-Each pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
+Each job pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
 glob patterns, you might want to wrap them in backticks (`` ` ``) to avoid GitHub rendering
 the pattern as Markdown.
@@ -182,26 +188,19 @@ of [`jobs.yml`]:
 > However, it can be less flexible because you cannot adjust the set of tests
 > that are exercised this way.
 
-Try jobs are defined in the `try` section of [`jobs.yml`]. They are executed on
-the `try` branch under the `rust-lang/rust` repository and
+Try builds are executed on the `try` branch under the `rust-lang/rust` repository and
 their results can be seen [here](https://github.com/rust-lang/rust/actions),
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
-Note that if you start the default try job using `@bors try`, it will skip building several `dist` components and running post-optimization tests, to make the build duration shorter. If you want to execute the full build as it would happen before a merge, add an explicit `try-job` pattern with the name of the default try job (currently `dist-x86_64-linux`).
+Multiple try builds can execute concurrently across different PRs, but there can be at most
+a single try build running on a single PR at any given time.
 
-Multiple try builds can execute concurrently across different PRs.
-
-<div class="warning">
-
-Bors identifies try jobs by commit hash. This means that if you have two PRs
-containing the same (latest) commits, running `@bors try` will result in the
-*same* try job and it really confuses `bors`. Please refrain from doing so.
-
-</div>
+Note that try builds are handled using the new [bors][new-bors] implementation.
 
 [rustc-perf]: https://github.com/rust-lang/rustc-perf
 [crater]: https://github.com/rust-lang/crater
+[new-bors]: https://github.com/rust-lang/bors
 
 ### Modifying CI jobs
 

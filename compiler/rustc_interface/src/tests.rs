@@ -689,6 +689,7 @@ fn test_unstable_options_tracking_hash() {
     // Make sure that changing an [UNTRACKED] option leaves the hash unchanged.
     // tidy-alphabetical-start
     untracked!(assert_incr_state, Some(String::from("loaded")));
+    untracked!(codegen_source_order, true);
     untracked!(deduplicate_diagnostics, false);
     untracked!(dump_dep_graph, true);
     untracked!(dump_mir, Some(String::from("abc")));
@@ -806,6 +807,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(hint_mostly_unused, true);
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);
+    tracked!(indirect_branch_cs_prefix, true);
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
