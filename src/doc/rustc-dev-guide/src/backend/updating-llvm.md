@@ -1,6 +1,6 @@
 # Updating LLVM
 
-<!-- date-check: Aug 2024 -->
+<!-- date-check: Aug 2025 -->
 Rust supports building against multiple LLVM versions:
 
 * Tip-of-tree for the current LLVM development branch is usually supported
@@ -93,7 +93,7 @@ An example PR:
 
 ## New LLVM Release Updates
 
-<!-- date-check: Jul 2023 -->
+<!-- date-check: Aug 2025 -->
 
 Unlike bugfixes,
 updating to a new release of LLVM typically requires a lot more work.
