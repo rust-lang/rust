@@ -131,7 +131,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     });
                     matches!(local_ref_pass_mode, Some(&PassMode::Indirect {..}) | None) &&
                     // Drop unsupported projections.
-                    // FIXME: Add a test case.
                     place.projection.iter().all(|p| p.can_use_in_debuginfo()) &&
                         // Only pointers can be calculated addresses.
                         bx.type_kind(bx.val_ty(place_ref.val.llval)) == TypeKind::Pointer

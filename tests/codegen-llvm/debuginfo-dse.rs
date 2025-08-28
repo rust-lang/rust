@@ -113,6 +113,21 @@ pub fn zst(zst: ZST, v: &i32) -> i32 {
     *v
 }
 
+#[no_mangle]
+fn index(slice: &[i32; 4], idx: usize) -> i32 {
+    // CHECK-LABEL: define {{.*}} i32 @index
+    // CHECK: bb1:
+    // CHECK-NEXT: #dbg_value(ptr poison, [[VAR_index_from_var:![0-9]+]], !DIExpression()
+    // CODEGEN: bb3:
+    // CHECK-NEXT: #dbg_value(ptr %slice, [[VAR_const_index_from_start:![0-9]+]], !DIExpression()
+    // CHECK-NEXT: #dbg_value(ptr poison, [[VAR_const_index_from_end:![0-9]+]], !DIExpression()
+    let index_from_var = &slice[idx];
+    let [ref const_index_from_start, .., ref const_index_from_end] = slice[..] else {
+        return 0;
+    };
+    slice[0]
+}
+
 // CHECK-DAG: [[VAR_invalid_ref_of_ref_foo]] = !DILocalVariable(name: "invalid_ref_of_ref_foo"
 // OPTIMIZED-DAG: [[VAR_ref_foo]] = !DILocalVariable(name: "ref_foo"
 // CHECK-DAG: [[VAR_ref_v0]] = !DILocalVariable(name: "ref_v0"
@@ -126,6 +141,9 @@ pub fn zst(zst: ZST, v: &i32) -> i32 {
 // CHECK-DAG: [[VAR_fragment_f]] = !DILocalVariable(name: "fragment_f"
 // CHECK-DAG: [[VAR_tuple_dead]] = !DILocalVariable(name: "tuple_dead"
 // CHECK-DAG: [[VAR_deref_dead]] = !DILocalVariable(name: "deref_dead"
-// CHECK-DAG: [[ARG_dead_first_foo]] = !DILocalVariable(name: "dead_first_foo", arg: 1
+// CHECK-DAG: [[ARG_dead_first_foo]] = !DILocalVariable(name: "dead_first_foo"
 // CHECK-DAG: [[VAR_dead_first_v0]] = !DILocalVariable(name: "dead_first_v0"
+// CHECK-DAG: [[VAR_index_from_var]] = !DILocalVariable(name: "index_from_var"
+// CHECK-DAG: [[VAR_const_index_from_start]] = !DILocalVariable(name: "const_index_from_start"
+// CHECK-DAG: [[VAR_const_index_from_end]] = !DILocalVariable(name: "const_index_from_end"
 // CHECK-DAG: [[VAR_zst_ref]] = !DILocalVariable(name: "zst_ref"
