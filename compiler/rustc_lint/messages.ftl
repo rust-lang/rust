@@ -413,6 +413,9 @@ lint_improper_ctypes_struct_zst = `{$ty}` contains only zero-sized fields
 lint_improper_ctypes_tuple_help = consider using a struct instead
 lint_improper_ctypes_tuple_reason = tuples have unspecified layout
 
+lint_improper_ctypes_uninhabited_enum = zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
+lint_improper_ctypes_uninhabited_never = the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
+
 lint_improper_ctypes_union_consider_transparent = `{$ty}` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
 lint_improper_ctypes_union_fieldless_help = consider adding a member to this union
 lint_improper_ctypes_union_fieldless_reason = this union has no fields
