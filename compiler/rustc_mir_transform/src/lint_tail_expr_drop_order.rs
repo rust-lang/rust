@@ -12,8 +12,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, ClearCrossCrate, Local, Location, Place, StatementKind, TerminatorKind,
-    dump_mir,
+    self, BasicBlock, Body, ClearCrossCrate, Local, Location, MirDumper, Place, StatementKind,
+    TerminatorKind,
 };
 use rustc_middle::ty::significant_drop_order::{
     extract_component_with_significant_dtor, ty_dtor_span,
@@ -227,7 +227,10 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
         return;
     }
 
-    dump_mir(tcx, false, "lint_tail_expr_drop_order", &0 as _, body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "lint_tail_expr_drop_order", body) {
+        dumper.dump_mir(body);
+    }
+
     let locals_with_user_names = collect_user_names(body);
     let is_closure_like = tcx.is_closure_like(def_id.to_def_id());
 
