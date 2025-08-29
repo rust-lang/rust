@@ -431,6 +431,7 @@ impl<T: ?Sized + Error> Error for ThinBox<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "thin_box", issue = "92791")]
 impl<T> From<T> for ThinBox<T> {
     #[inline(always)]

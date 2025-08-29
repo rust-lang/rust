@@ -4242,6 +4242,7 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueArc<T, A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T> From<T> for UniqueArc<T> {
     #[inline(always)]
