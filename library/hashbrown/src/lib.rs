@@ -46,6 +46,10 @@
     all(feature = "nightly", target_arch = "loongarch64"),
     feature(stdarch_loongarch)
 )]
+#![cfg_attr(
+    all(feature = "nightly", feature = "default-hasher"),
+    feature(hasher_prefixfree_extras)
+)]
 
 #[cfg(test)]
 #[macro_use]

@@ -47,7 +47,7 @@ default = ["default-hasher", "inline-more", "allocator-api2", "equivalent", "raw
 
 # Enables use of nightly features. This is only guaranteed to work on the latest
 # version of nightly Rust.
-nightly = ["bumpalo/allocator_api"]
+nightly = ["foldhash?/nightly", "bumpalo/allocator_api"]
 
 # Enables the RustcEntry API used to provide the standard library's Entry API.
 rustc-internal-api = []

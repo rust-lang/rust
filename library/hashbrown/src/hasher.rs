@@ -63,6 +63,13 @@ impl Hasher for DefaultHasher {
         write_isize(isize),
     }
 
+    // feature(hasher_prefixfree_extras)
+    #[cfg(feature = "nightly")]
+    forward_writes! {
+        write_length_prefix(usize),
+        write_str(&str),
+    }
+
     #[inline(always)]
     fn finish(&self) -> u64 {
         self.inner.finish()
