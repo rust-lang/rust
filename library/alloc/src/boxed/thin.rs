@@ -430,3 +430,11 @@ impl<T: ?Sized + Error> Error for ThinBox<T> {
         self.deref().source()
     }
 }
+
+#[unstable(feature = "thin_box", issue = "92791")]
+impl<T> From<T> for ThinBox<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}

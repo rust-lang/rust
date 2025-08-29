@@ -4243,6 +4243,14 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueArc<T, A> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> From<T> for UniqueArc<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> Unpin for UniqueArc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
