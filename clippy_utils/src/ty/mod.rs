@@ -1344,6 +1344,14 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     }
 }
 
+/// Check if `ty` is an `Option<T>` or a `Result<T, E>` and return its argument type (`T`) if it is.
+pub fn option_or_result_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args) if matches!(adt.opt_diag_name(cx), Some(sym::Option | sym::Result)) => Some(args.type_at(0)),
+        _ => None,
+    }
+}
+
 /// Check if a Ty<'_> of `Iterator` contains any mutable access to non-owning types by checking if
 /// it contains fields of mutable references or pointers, or references/pointers to non-`Freeze`
 /// types, or `PhantomData` types containing any of the previous. This can be used to check whether
