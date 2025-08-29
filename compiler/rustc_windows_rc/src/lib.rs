@@ -44,7 +44,8 @@ pub fn compile_windows_resource_file(
 
     // This is just "major.minor.patch" and a "-dev", "-nightly" or similar suffix
     let rel_version = env::var("CFG_RELEASE").unwrap();
-    let product_name = format!("Rust {}", &rel_version);
+
+    let product_name = product_name(env::var("CFG_RELEASE_CHANNEL").unwrap());
 
     // remove the suffix, if present and parse into [`ResourceVersion`]
     let version = parse_version(rel_version.split("-").next().unwrap_or("0.0.0"))
@@ -78,6 +79,13 @@ pub fn compile_windows_resource_file(
         res_path.display()
     );
     res_path
+}
+
+fn product_name(channel: String) -> String {
+    format!(
+        "Rust Compiler{}",
+        if channel == "stable" { "".to_string() } else { format!(" ({})", channel) }
+    )
 }
 
 /// Windows resources store versions as four 16-bit integers.
