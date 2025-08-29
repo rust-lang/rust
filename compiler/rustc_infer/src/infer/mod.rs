@@ -764,6 +764,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                self.sub_ty_vids_raw(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -999,6 +1000,35 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
+    /// Searches for an opaque type key whose hidden type is related to `ty_vid`.
+    ///
+    /// This only checks for a subtype relation, it does not require equality.
+    pub fn find_opaque_type_related_to_vid(&self, ty_vid: TyVid) -> Option<ty::AliasTy<'tcx>> {
+        // Avoid accidentally allowing more code to compile with the old solver.
+        if !self.next_trait_solver() {
+            return None;
+        }
+
+        let ty_sub_vid = self.sub_root_var(ty_vid);
+        let inner = &mut *self.inner.borrow_mut();
+        // This is iffy, can't call `type_variables()` as we're already
+        // borrowing the `opaque_type_storage` here.
+        let mut type_variables = inner.type_variable_storage.with_log(&mut inner.undo_log);
+        let opaque = inner
+            .opaque_type_storage
+            .iter_opaque_types()
+            .find(|(_, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind() {
+                    let opaque_sub_vid = type_variables.sub_root_var(hidden_vid);
+                    opaque_sub_vid == ty_sub_vid
+                } else {
+                    false
+                }
+            })
+            .map(|(key, _)| ty::AliasTy::new_from_args(self.tcx, key.def_id.to_def_id(), key.args));
+        opaque
+    }
+
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
@@ -1122,6 +1152,14 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
+    }
+
+    pub fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.inner.borrow_mut().type_variables().sub(a, b);
+    }
+
+    pub fn sub_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.inner.borrow_mut().type_variables().sub_root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {

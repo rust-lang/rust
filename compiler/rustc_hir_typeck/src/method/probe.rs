@@ -403,15 +403,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
+                let (ParamEnvAnd { param_env: _, value: self_ty }, var_values) =
                     infcx.instantiate_canonical(span, &query_input.canonical);
                 debug!(?self_ty, ?query_input, "probe_op: Mode::Path");
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
-                        self_ty: self.make_query_response_ignoring_pending_obligations(
-                            canonical_inference_vars,
-                            self_ty,
-                        ),
+                        self_ty: self
+                            .make_query_response_ignoring_pending_obligations(var_values, self_ty),
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
@@ -629,7 +627,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .collect();
         (steps, autoderef_via_deref.reached_recursion_limit())
     };
-    let final_ty = autoderef_via_deref.final_ty(true);
+    let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
