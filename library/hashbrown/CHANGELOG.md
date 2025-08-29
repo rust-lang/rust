@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0](https://github.com/rust-lang/hashbrown/compare/v0.15.5...v0.16.0) - 2025-08-28
+
+### Changed
+
 - Bump foldhash, the default hasher, to 0.2.0.
+- Replaced `DefaultHashBuilder` with a newtype wrapper around `foldhash` instead
+  of re-exporting it directly.
 
 ## [0.15.5](https://github.com/rust-lang/hashbrown/compare/v0.15.4...v0.15.5) - 2025-08-07
 
