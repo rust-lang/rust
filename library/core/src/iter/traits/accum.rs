@@ -1,5 +1,5 @@
 use crate::iter;
-use crate::num::Wrapping;
+use crate::num::{Saturating, Wrapping};
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
@@ -98,6 +98,61 @@ macro_rules! integer_sum_product {
     );
 }
 
+macro_rules! saturating_integer_sum_product {
+    (@impls $zero:expr, $one:expr, $doc:expr, #[$attr:meta], $($a:ty)*) => ($(
+        #[$attr]
+        #[doc = $doc]
+        impl Sum for $a {
+            fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+                iter.fold(
+                    $zero,
+                    |a, b| a + b,
+                )
+            }
+        }
+
+        #[$attr]
+        #[doc = $doc]
+        impl Product for $a {
+            fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
+                iter.fold(
+                    $one,
+                    |a, b| a * b,
+                )
+            }
+        }
+
+        #[$attr]
+        #[doc = $doc]
+        impl<'a> Sum<&'a $a> for $a {
+            fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
+                iter.fold(
+                    $zero,
+                    |a, b| a + b,
+                )
+            }
+        }
+
+        #[$attr]
+        #[doc = $doc]
+        impl<'a> Product<&'a $a> for $a {
+            fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
+                iter.fold(
+                    $one,
+                    |a, b| a * b,
+                )
+            }
+        }
+    )*);
+    ($($a:ty)*) => (
+        saturating_integer_sum_product!(@impls Saturating(0), Saturating(1),
+                "The short-circuiting behavior of this implementation is unspecified. If you care about \
+                short-circuiting, use [`Iterator::fold`] directly.",
+                #[stable(feature = "saturating_iter_arith", since = "CURRENT_RUSTC_VERSION")],
+                $(Saturating<$a>)*);
+    );
+}
+
 macro_rules! float_sum_product {
     ($($a:ident)*) => ($(
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
@@ -147,6 +202,7 @@ macro_rules! float_sum_product {
 }
 
 integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+saturating_integer_sum_product! { u8 u16 u32 u64 u128 usize }
 float_sum_product! { f32 f64 }
 
 #[stable(feature = "iter_arith_traits_result", since = "1.16.0")]
