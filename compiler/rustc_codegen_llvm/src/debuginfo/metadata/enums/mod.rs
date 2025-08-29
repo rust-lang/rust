@@ -10,7 +10,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::CoroutineLayout;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef};
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 
 use super::type_map::{DINodeCreationResult, UniqueTypeId};
 use super::{SmallVec, size_and_align_of};
@@ -30,13 +30,14 @@ mod native;
 pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
+    span: Span,
 ) -> DINodeCreationResult<'ll> {
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
     };
 
-    let enum_type_and_layout = cx.layout_of(enum_type);
+    let enum_type_and_layout = cx.spanned_layout_of(enum_type, span);
 
     if wants_c_like_enum_debuginfo(cx.tcx, enum_type_and_layout) {
         return build_c_style_enum_di_node(cx, enum_adt_def, enum_type_and_layout);
