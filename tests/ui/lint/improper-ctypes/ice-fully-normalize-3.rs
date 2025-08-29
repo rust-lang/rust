@@ -1,6 +1,9 @@
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
+// Issue: https://github.com/rust-lang/rust/issues/73249
+// "ICE: could not fully normalize"
+
 pub trait Baz {}
 
 impl Baz for u32 {}
@@ -12,13 +15,13 @@ fn assign() -> Qux {
     3
 }
 
-#[repr(transparent)]
+#[repr(C)]
 pub struct A {
     x: Qux,
 }
 
 extern "C" {
-    pub fn lint_me() -> A; //~ ERROR: uses type `A`
+    pub fn lint_me() -> A; //~ ERROR: `extern` block uses type `A`
 }
 
 fn main() {}
