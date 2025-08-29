@@ -9,7 +9,6 @@
 mod tests;
 
 pub mod common;
-pub mod compute_diff;
 mod debuggers;
 pub mod diagnostics;
 pub mod directives;
@@ -44,7 +43,6 @@ use crate::common::{
 };
 use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig};
-use crate::util::logv;
 
 /// Creates the `Config` instance for this invocation of compiletest.
 ///
@@ -477,51 +475,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
     }
 }
 
-pub fn log_config(config: &Config) {
-    let c = config;
-    logv(c, "configuration:".to_string());
-    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {}", config.run_lib_path));
-    logv(c, format!("rustc_path: {}", config.rustc_path));
-    logv(c, format!("cargo_path: {:?}", config.cargo_path));
-    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-
-    logv(c, format!("src_root: {}", config.src_root));
-    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root));
-
-    logv(c, format!("build_root: {}", config.build_root));
-    logv(c, format!("build_test_suite_root: {}", config.build_test_suite_root));
-
-    logv(c, format!("sysroot_base: {}", config.sysroot_base));
-
-    logv(c, format!("stage: {}", config.stage));
-    logv(c, format!("stage_id: {}", config.stage_id));
-    logv(c, format!("mode: {}", config.mode));
-    logv(c, format!("run_ignored: {}", config.run_ignored));
-    logv(c, format!("filters: {:?}", config.filters));
-    logv(c, format!("skip: {:?}", config.skip));
-    logv(c, format!("filter_exact: {}", config.filter_exact));
-    logv(
-        c,
-        format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
-    );
-    logv(c, format!("runner: {}", opt_str(&config.runner)));
-    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
-    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
-    logv(c, format!("target: {}", config.target));
-    logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {}", config.android_cross_path));
-    logv(c, format!("adb_path: {}", config.adb_path));
-    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
-    logv(c, format!("adb_device_status: {}", config.adb_device_status));
-    logv(c, format!("ar: {}", config.ar));
-    logv(c, format!("target-linker: {:?}", config.target_linker));
-    logv(c, format!("host-linker: {:?}", config.host_linker));
-    logv(c, format!("verbose: {}", config.verbose));
-    logv(c, format!("minicore_path: {}", config.minicore_path));
-    logv(c, "\n".to_string());
-}
-
 pub fn opt_str(maybestr: &Option<String>) -> &str {
     match *maybestr {
         None => "(none)",
@@ -538,6 +491,8 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 
 /// Called by `main` after the config has been parsed.
 pub fn run_tests(config: Arc<Config>) {
+    debug!(?config, "run_tests");
+
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
     // It will be created later on.

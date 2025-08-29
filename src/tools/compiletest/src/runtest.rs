@@ -7,7 +7,7 @@ use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::sync::Arc;
-use std::{env, iter, str};
+use std::{env, fmt, iter, str};
 
 use build_helper::fs::remove_and_create_dir_all;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -21,14 +21,12 @@ use crate::common::{
     UI_WINDOWS_SVG, expected_output_path, incremental_dir, output_base_dir, output_base_name,
     output_testname_unique,
 };
-use crate::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::read2::{Truncated, read2_abbreviated};
-use crate::util::{Utf8PathBufExt, add_dylib_path, logv, static_regex};
+use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
+use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{ColorConfig, help, json, stamp_file_path, warning};
-
-mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
 // tidy-alphabetical-start
@@ -48,6 +46,8 @@ mod rustdoc_json;
 mod ui;
 // tidy-alphabetical-end
 
+mod compute_diff;
+mod debugger;
 #[cfg(test)]
 mod tests;
 
@@ -1459,7 +1459,7 @@ impl<'test> TestCx<'test> {
     ) -> ProcRes {
         let cmdline = {
             let cmdline = self.make_cmdline(&command, lib_path);
-            logv(self.config, format!("executing {}", cmdline));
+            self.logv(format_args!("executing {cmdline}"));
             cmdline
         };
 
@@ -2004,6 +2004,18 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> Utf8PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
+    }
+
+    /// Prints a message to (captured) stdout if `config.verbose` is true.
+    /// The message is also logged to `tracing::debug!` regardles of verbosity.
+    ///
+    /// Use `format_args!` as the argument to perform formatting if required.
+    fn logv(&self, message: impl fmt::Display) {
+        debug!("{message}");
+        if self.config.verbose {
+            // Note: `./x test ... --verbose --no-capture` is needed to see this print.
+            println!("{message}");
+        }
     }
 
     /// Prefix to print before error messages. Normally just `error`, but also
@@ -2666,8 +2678,8 @@ impl<'test> TestCx<'test> {
         //
         // It's not possible to detect paths in the error messages generally, but this is a
         // decent enough heuristic.
-        static_regex!(
-                r#"(?x)
+        let re = static_regex!(
+            r#"(?x)
                 (?:
                   # Match paths that don't include spaces.
                   (?:\\[\pL\pN\.\-_']+)+\.\pL+
@@ -2675,11 +2687,8 @@ impl<'test> TestCx<'test> {
                   # If the path starts with a well-known root, then allow spaces and no file extension.
                   \$(?:DIR|SRC_DIR|TEST_BUILD_DIR|BUILD_DIR|LIB_DIR)(?:\\[\pL\pN\.\-_'\ ]+)+
                 )"#
-            )
-            .replace_all(&output, |caps: &Captures<'_>| {
-                println!("{}", &caps[0]);
-                caps[0].replace(r"\", "/")
-            })
+        );
+        re.replace_all(&output, |caps: &Captures<'_>| caps[0].replace(r"\", "/"))
             .replace("\r\n", "\n")
     }
 
