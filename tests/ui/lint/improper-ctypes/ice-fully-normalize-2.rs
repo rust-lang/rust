@@ -3,6 +3,9 @@
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
+// Issue: https://github.com/rust-lang/rust/issues/73249
+// "ICE: could not fully normalize"
+
 trait Baz {}
 
 impl Baz for () {}
