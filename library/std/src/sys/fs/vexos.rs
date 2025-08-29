@@ -4,6 +4,7 @@ use crate::fs::TryLockError;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
+use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 
@@ -63,23 +64,21 @@ impl FileAttr {
     }
 
     fn from_path(path: &Path) -> io::Result<Self> {
-        let c_path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
-            io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
-        })?;
+        run_path_with_cstr(path, &|c_path| {
+            let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
+            let is_dir = file_type == 3;
 
-        let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
-        let is_dir = file_type == 3;
+            // We can't get the size if its a directory because we cant open it as a file
+            if is_dir {
+                Ok(Self { size: 0, is_dir: true })
+            } else {
+                let mut opts = OpenOptions::new();
+                opts.read(true);
+                let file = File::open(path, &opts)?;
 
-        // We can't get the size if its a directory because we cant open it as a file
-        if is_dir {
-            Ok(Self { size: 0, is_dir: true })
-        } else {
-            let mut opts = OpenOptions::new();
-            opts.read(true);
-            let file = File::open(path, &opts)?;
-
-            Self::from_fd(file.fd.0)
-        }
+                Self::from_fd(file.fd.0)
+            }
+        })
     }
 
     pub fn size(&self) -> u64 {
@@ -203,13 +202,15 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
-            io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte")
-        })?;
-
-        let file =
-            match (opts.read, opts.write, opts.append, opts.truncate, opts.create, opts.create_new)
-            {
+        run_path_with_cstr(path, &|path| {
+            let file = match (
+                opts.read,
+                opts.write,
+                opts.append,
+                opts.truncate,
+                opts.create,
+                opts.create_new,
+            ) {
                 // read + write - unsupported
                 (true, true, _, _, _, _) => {
                     return Err(io::Error::new(
@@ -277,11 +278,12 @@ impl File {
                 }
             };
 
-        if file.is_null() {
-            Err(io::Error::new(io::ErrorKind::NotFound, "Could not open file"))
-        } else {
-            Ok(Self { fd: FileDesc(file) })
-        }
+            if file.is_null() {
+                Err(io::Error::new(io::ErrorKind::NotFound, "Could not open file"))
+            } else {
+                Ok(Self { fd: FileDesc(file) })
+            }
+        })
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
@@ -509,10 +511,7 @@ pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
-    let path = CString::new(path.as_os_str().as_encoded_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Path contained a null byte"))?;
-
-    Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0)
+    run_path_with_cstr(path, &|path| Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0))
 }
 
 pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
