@@ -23,13 +23,13 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialEq),+> PartialEq for ($($T,)+) {
+            impl<$(${concat($T, _)}, $T: PartialEq<${concat($T, _)}>),+> PartialEq<($(${concat($T, _)},)+)> for ($($T,)+) {
                 #[inline]
-                fn eq(&self, other: &($($T,)+)) -> bool {
+                fn eq(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     $( ${ignore($T)} self.${index()} == other.${index()} )&&+
                 }
                 #[inline]
-                fn ne(&self, other: &($($T,)+)) -> bool {
+                fn ne(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     $( ${ignore($T)} self.${index()} != other.${index()} )||+
                 }
             }
@@ -66,42 +66,42 @@ macro_rules! tuple_impls {
         maybe_tuple_doc! {
             $($T)+ @
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
+            impl<$(${concat($T, _)}, $T: PartialOrd<${concat($T, _)}>),+> PartialOrd<($(${concat($T, _)},)+)> for ($($T,)+)
             {
                 #[inline]
-                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
+                fn partial_cmp(&self, other: &($(${concat($T, _)},)+)) -> Option<Ordering> {
                     lexical_partial_cmp!($( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn lt(&self, other: &($($T,)+)) -> bool {
+                fn lt(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     lexical_ord!(lt, __chaining_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn le(&self, other: &($($T,)+)) -> bool {
+                fn le(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     lexical_ord!(le, __chaining_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn ge(&self, other: &($($T,)+)) -> bool {
+                fn ge(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     lexical_ord!(ge, __chaining_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn gt(&self, other: &($($T,)+)) -> bool {
+                fn gt(&self, other: &($(${concat($T, _)},)+)) -> bool {
                     lexical_ord!(gt, __chaining_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_lt(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                fn __chaining_lt(&self, other: &($(${concat($T, _)},)+)) -> ControlFlow<bool> {
                     lexical_chain!(__chaining_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_le(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                fn __chaining_le(&self, other: &($(${concat($T, _)},)+)) -> ControlFlow<bool> {
                     lexical_chain!(__chaining_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_gt(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                fn __chaining_gt(&self, other: &($(${concat($T, _)},)+)) -> ControlFlow<bool> {
                     lexical_chain!(__chaining_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
-                fn __chaining_ge(&self, other: &($($T,)+)) -> ControlFlow<bool> {
+                fn __chaining_ge(&self, other: &($(${concat($T, _)},)+)) -> ControlFlow<bool> {
                     lexical_chain!(__chaining_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
             }
