@@ -18,6 +18,9 @@ pub fn main() {
     objc::class!(123);
     //~^ ERROR malformed `rustc_objc_class` attribute input [E0539]
 
+    objc::class!("NSObject\0");
+    //~^ ERROR `rustc_objc_class` may not contain null characters
+
     let s = "alloc";
     objc::selector!(s);
     //~^ ERROR attribute value must be a literal
@@ -27,4 +30,7 @@ pub fn main() {
 
     objc::selector!(123);
     //~^ ERROR malformed `rustc_objc_selector` attribute input [E0539]
+
+    objc::selector!("alloc\0");
+    //~^ ERROR `rustc_objc_selector` may not contain null characters
 }
