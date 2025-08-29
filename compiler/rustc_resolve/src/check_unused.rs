@@ -204,7 +204,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
                 .r
                 .extern_prelude
                 .get(&Macros20NormalizedIdent::new(extern_crate.ident))
-                .is_none_or(|entry| entry.introduced_by_item)
+                .is_none_or(|entry| entry.introduced_by_item())
             {
                 continue;
             }

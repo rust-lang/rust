@@ -1028,15 +1028,20 @@ impl<'ra> NameBindingData<'ra> {
 #[derive(Default, Clone)]
 struct ExternPreludeEntry<'ra> {
     /// Binding from an `extern crate` item.
-    item_binding: Option<NameBinding<'ra>>,
+    /// The boolean flag is true is `item_binding` is non-redundant, happens either when
+    /// `only_item` is true, or when `extern crate` introducing `item_binding` used renaming.
+    item_binding: Option<(NameBinding<'ra>, /* introduced by item */ bool)>,
     /// Binding from an `--extern` flag, lazily populated on first use.
     flag_binding: Cell<Option<NameBinding<'ra>>>,
     /// There was no `--extern` flag introducing this name,
     /// `flag_binding` doesn't need to be populated.
     only_item: bool,
-    /// `item_binding` is non-redundant, happens either when `only_item` is true,
-    /// or when `extern crate` introducing `item_binding` used renaming.
-    introduced_by_item: bool,
+}
+
+impl ExternPreludeEntry<'_> {
+    fn introduced_by_item(&self) -> bool {
+        matches!(self.item_binding, Some((_, true)))
+    }
 }
 
 struct DeriveData {
@@ -2062,12 +2067,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
-            if used == Used::Scope {
-                if let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)) {
-                    if !entry.introduced_by_item && entry.item_binding == Some(used_binding) {
-                        return;
-                    }
-                }
+            if used == Used::Scope
+                && let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident))
+                && entry.item_binding == Some((used_binding, false))
+            {
+                return;
             }
             let old_used = self.import_use_map.entry(import).or_insert(used);
             if *old_used < used {
@@ -2226,7 +2230,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: bool,
     ) -> Option<NameBinding<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
-        entry.and_then(|entry| entry.item_binding).map(|binding| {
+        entry.and_then(|entry| entry.item_binding).map(|(binding, _)| {
             if finalize {
                 self.get_mut().record_use(ident, binding, Used::Scope);
             }
