@@ -473,6 +473,33 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
+            // Check whether the MIR body is malformed. Usually it's due to normalization overflow.
+            // FIXME: I assume that there are few type errors at post-analysis stage, but not
+            // entirely sure.
+            // Plenty of code paths later assume that everything can be normalized.
+            // Check normalization here to provide better diagnostics.
+            let body = tcx.instance_mir(instance.def);
+            let normalization_failed = body.local_decls.iter().any(|local| {
+                instance
+                    .try_instantiate_mir_and_normalize_erasing_regions(
+                        tcx,
+                        ty::TypingEnv::fully_monomorphized(),
+                        ty::EarlyBinder::bind(local.ty),
+                    )
+                    .is_err()
+            });
+            if normalization_failed {
+                let def_id = instance.def_id();
+                let def_span = tcx.def_span(def_id);
+                let def_path_str = tcx.def_path_str(def_id);
+                tcx.dcx().emit_fatal(RecursionLimit {
+                    span: starting_item.span,
+                    instance,
+                    def_span,
+                    def_path_str,
+                });
+            }
+
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 let (used, mentioned) = tcx.items_of_instance((instance, mode));
                 used_items.extend(used.into_iter().copied());
