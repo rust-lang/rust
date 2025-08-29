@@ -1469,24 +1469,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn structurally_resolve_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.try_structurally_resolve_type(sp, ty);
 
-        if !ty.is_ty_var() {
-            ty
-        } else {
-            let e = self.tainted_by_errors().unwrap_or_else(|| {
-                self.err_ctxt()
-                    .emit_inference_failure_err(
-                        self.body_id,
-                        sp,
-                        ty.into(),
-                        TypeAnnotationNeeded::E0282,
-                        true,
-                    )
-                    .emit()
-            });
-            let err = Ty::new_error(self.tcx, e);
-            self.demand_suptype(sp, err, ty);
-            err
-        }
+        if !ty.is_ty_var() { ty } else { self.type_must_be_known_at_this_point(sp, ty) }
+    }
+
+    #[cold]
+    pub(crate) fn type_must_be_known_at_this_point(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let guar = self.tainted_by_errors().unwrap_or_else(|| {
+            self.err_ctxt()
+                .emit_inference_failure_err(
+                    self.body_id,
+                    sp,
+                    ty.into(),
+                    TypeAnnotationNeeded::E0282,
+                    true,
+                )
+                .emit()
+        });
+        let err = Ty::new_error(self.tcx, guar);
+        self.demand_suptype(sp, err, ty);
+        err
     }
 
     pub(crate) fn structurally_resolve_const(

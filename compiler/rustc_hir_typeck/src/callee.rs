@@ -15,7 +15,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -78,7 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => self.check_expr(callee_expr),
         };
 
-        let expr_ty = self.structurally_resolve_type(call_expr.span, original_callee_ty);
+        let expr_ty = self.try_structurally_resolve_type(call_expr.span, original_callee_ty);
 
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let mut result = None;
@@ -200,7 +200,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
+        let adjusted_ty =
+            self.try_structurally_resolve_type(autoderef.span(), autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -295,6 +296,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // so we wind up with `FnMut::call_mut(&mut *f, ())`.
             ty::Ref(..) if autoderef.step_count() == 0 => {
                 return None;
+            }
+
+            ty::Infer(ty::TyVar(vid)) => {
+                // If we end up with an inference variable which is not the hidden type of
+                // an opaque, emit an error.
+                if let Some(alias_ty) = self.find_opaque_type_related_to_vid(vid) {
+                    return self
+                        .try_overloaded_call_traits_for_alias(call_expr, alias_ty, arg_exprs)
+                        .map(|(autoref, method)| {
+                            let mut adjustments = self.adjust_steps(autoderef);
+                            adjustments.extend(autoref);
+                            self.apply_adjustments(callee_expr, adjustments);
+                            CallStep::Overloaded(method)
+                        });
+                } else {
+                    self.type_must_be_known_at_this_point(autoderef.span(), adjusted_ty);
+                    return None;
+                }
             }
 
             ty::Error(_) => {
@@ -395,6 +414,102 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 return Some((autoref, method));
+            }
+        }
+
+        None
+    }
+
+    fn try_overloaded_call_trait(
+        &self,
+        call_expr: &hir::Expr<'_>,
+        call_ty: Ty<'tcx>,
+        opt_arg_exprs: Option<&'tcx [hir::Expr<'tcx>]>,
+        opt_trait_def_id: Option<DefId>,
+        method_name: Symbol,
+        borrow: bool,
+    ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
+        let Some(trait_def_id) = opt_trait_def_id else {
+            return None;
+        };
+
+        let opt_input_type = opt_arg_exprs.map(|arg_exprs| {
+            Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
+        });
+
+        let Some(ok) = self.lookup_method_for_operator(
+            self.misc(call_expr.span),
+            method_name,
+            trait_def_id,
+            call_ty,
+            opt_input_type,
+        ) else {
+            return None;
+        };
+        let method = self.register_infer_ok_obligations(ok);
+        let mut autoref = None;
+        if borrow {
+            // Check for &self vs &mut self in the method signature. Since this is either
+            // the Fn or FnMut trait, it should be one of those.
+            let ty::Ref(_, _, mutbl) = *method.sig.inputs()[0].kind() else {
+                bug!("Expected `FnMut`/`Fn` to take receiver by-ref/by-mut")
+            };
+
+            // For initial two-phase borrow
+            // deployment, conservatively omit
+            // overloaded function call ops.
+            let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::No);
+
+            autoref = Some(Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                target: method.sig.inputs()[0],
+            });
+        }
+
+        Some((autoref, method))
+    }
+
+    fn try_overloaded_call_traits_for_alias(
+        &self,
+        call_expr: &'tcx hir::Expr<'tcx>,
+        alias_ty: ty::AliasTy<'tcx>,
+        arg_exprs: &'tcx [rustc_hir::Expr<'tcx>],
+    ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
+        let call_ty = alias_ty.to_ty(self.tcx);
+
+        let call_traits = [
+            (self.tcx.lang_items().fn_trait(), sym::call, true),
+            (self.tcx.lang_items().fn_mut_trait(), sym::call_mut, true),
+            (self.tcx.lang_items().fn_once_trait(), sym::call_once, false),
+            (self.tcx.lang_items().async_fn_trait(), sym::async_call, true),
+            (self.tcx.lang_items().async_fn_mut_trait(), sym::async_call_mut, true),
+            (self.tcx.lang_items().async_fn_once_trait(), sym::async_call_once, false),
+        ];
+        // We only want to try a call trait if it shows up in the bounds
+        // of the opaque. We confirm the first one that shows up in the
+        // bounds list, which can lead to inference weirdness but doesn't
+        // matter today.
+        for clause in
+            self.tcx.item_self_bounds(alias_ty.def_id).iter_instantiated(self.tcx, alias_ty.args)
+        {
+            let Some(poly_trait_ref) = clause.as_trait_clause() else {
+                continue;
+            };
+
+            if let Some(&(opt_trait_def_id, method_name, borrow)) =
+                call_traits.iter().find(|(trait_def_id, _, _)| {
+                    trait_def_id.is_some_and(|trait_def_id| trait_def_id == poly_trait_ref.def_id())
+                })
+                && let Some(confirmed) = self.try_overloaded_call_trait(
+                    call_expr,
+                    call_ty,
+                    Some(arg_exprs),
+                    opt_trait_def_id,
+                    method_name,
+                    borrow,
+                )
+            {
+                return Some(confirmed);
             }
         }
 
