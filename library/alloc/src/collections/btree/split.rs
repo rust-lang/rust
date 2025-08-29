@@ -1,5 +1,5 @@
 use core::alloc::Allocator;
-use core::borrow::Borrow;
+use core::cmp::Comparable;
 
 use super::node::ForceResult::*;
 use super::node::Root;
@@ -31,13 +31,9 @@ impl<K, V> Root<K, V> {
     /// and if the ordering of `Q` corresponds to that of `K`.
     /// If `self` respects all `BTreeMap` tree invariants, then both
     /// `self` and the returned tree will respect those invariants.
-    pub(super) fn split_off<Q: ?Sized + Ord, A: Allocator + Clone>(
-        &mut self,
-        key: &Q,
-        alloc: A,
-    ) -> Self
+    pub(super) fn split_off<Q: ?Sized, A: Allocator + Clone>(&mut self, key: &Q, alloc: A) -> Self
     where
-        K: Borrow<Q>,
+        K: Comparable<Q>,
     {
         let left_root = self;
         let mut right_root = Root::new_pillar(left_root.height(), alloc.clone());
