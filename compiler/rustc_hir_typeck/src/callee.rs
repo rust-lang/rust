@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
 
-        match autoderef.final_ty(false).kind() {
+        match autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
                 let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
                 self.check_call_abi(abi, call_expr.span);
@@ -200,8 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty =
-            self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {

@@ -2918,7 +2918,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Emits an error if we deref an infer variable, like calling `.field` on a base type
         // of `&_`. We can also use this to suppress unnecessary "missing field" errors that
         // will follow ambiguity errors.
-        let final_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        let final_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
         if let ty::Error(_) = final_ty.kind() {
             return final_ty;
         }
