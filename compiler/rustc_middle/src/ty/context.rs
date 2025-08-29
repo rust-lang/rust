@@ -52,7 +52,7 @@ use rustc_session::{Limit, Session};
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::{SolverLangItem, SolverTraitLangItem};
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{
     CollectAndApply, Interner, TypeFlags, TypeFoldable, WithCachedTypeInfo, elaborate, search_graph,
@@ -93,6 +93,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type DefId = DefId;
     type LocalDefId = LocalDefId;
+    type TraitId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -483,20 +484,32 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
 
-    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> DefId {
-        self.require_lang_item(trait_lang_item_to_lang_item(lang_item), DUMMY_SP)
+    fn require_lang_item(self, lang_item: SolverLangItem) -> DefId {
+        self.require_lang_item(solver_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
-    fn is_lang_item(self, def_id: DefId, lang_item: TraitSolverLangItem) -> bool {
-        self.is_lang_item(def_id, trait_lang_item_to_lang_item(lang_item))
+    fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> DefId {
+        self.require_lang_item(solver_trait_lang_item_to_lang_item(lang_item), DUMMY_SP)
+    }
+
+    fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
+        self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
+    }
+
+    fn is_trait_lang_item(self, def_id: DefId, lang_item: SolverTraitLangItem) -> bool {
+        self.is_lang_item(def_id, solver_trait_lang_item_to_lang_item(lang_item))
     }
 
     fn is_default_trait(self, def_id: DefId) -> bool {
         self.is_default_trait(def_id)
     }
 
-    fn as_lang_item(self, def_id: DefId) -> Option<TraitSolverLangItem> {
-        lang_item_to_trait_lang_item(self.lang_items().from_def_id(def_id)?)
+    fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
+        lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
+    }
+
+    fn as_trait_lang_item(self, def_id: DefId) -> Option<SolverTraitLangItem> {
+        lang_item_to_solver_trait_lang_item(self.lang_items().from_def_id(def_id)?)
     }
 
     fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
@@ -727,16 +740,19 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 }
 
 macro_rules! bidirectional_lang_item_map {
-    ($($name:ident),+ $(,)?) => {
-        fn trait_lang_item_to_lang_item(lang_item: TraitSolverLangItem) -> LangItem {
+    (
+        $solver_ty:ident, $to_solver:ident, $from_solver:ident;
+        $($name:ident),+ $(,)?
+    ) => {
+        fn $from_solver(lang_item: $solver_ty) -> LangItem {
             match lang_item {
-                $(TraitSolverLangItem::$name => LangItem::$name,)+
+                $($solver_ty::$name => LangItem::$name,)+
             }
         }
 
-        fn lang_item_to_trait_lang_item(lang_item: LangItem) -> Option<TraitSolverLangItem> {
+        fn $to_solver(lang_item: LangItem) -> Option<$solver_ty> {
             Some(match lang_item {
-                $(LangItem::$name => TraitSolverLangItem::$name,)+
+                $(LangItem::$name => $solver_ty::$name,)+
                 _ => return None,
             })
         }
@@ -744,40 +760,50 @@ macro_rules! bidirectional_lang_item_map {
 }
 
 bidirectional_lang_item_map! {
+    SolverLangItem, lang_item_to_solver_lang_item, solver_lang_item_to_lang_item;
+
+// tidy-alphabetical-start
+    AsyncFnKindUpvars,
+    AsyncFnOnceOutput,
+    CallOnceFuture,
+    CallRefFuture,
+    CoroutineReturn,
+    CoroutineYield,
+    DynMetadata,
+    FutureOutput,
+    Metadata,
+    Option,
+    Poll,
+// tidy-alphabetical-end
+}
+
+bidirectional_lang_item_map! {
+    SolverTraitLangItem, lang_item_to_solver_trait_lang_item, solver_trait_lang_item_to_lang_item;
+
 // tidy-alphabetical-start
     AsyncFn,
     AsyncFnKindHelper,
-    AsyncFnKindUpvars,
     AsyncFnMut,
     AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
     BikeshedGuaranteedNoDrop,
-    CallOnceFuture,
-    CallRefFuture,
     Clone,
     Copy,
     Coroutine,
-    CoroutineReturn,
-    CoroutineYield,
     Destruct,
     DiscriminantKind,
     Drop,
-    DynMetadata,
     Fn,
     FnMut,
     FnOnce,
     FnPtrTrait,
     FusedIterator,
     Future,
-    FutureOutput,
     Iterator,
     MetaSized,
-    Metadata,
-    Option,
     PointeeSized,
     PointeeTrait,
-    Poll,
     Sized,
     TransmuteTrait,
     Tuple,

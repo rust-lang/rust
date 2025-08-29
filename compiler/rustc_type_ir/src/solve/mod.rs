@@ -7,7 +7,7 @@ use derive_where::derive_where;
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::lang_items::TraitSolverLangItem;
+use crate::lang_items::SolverTraitLangItem;
 use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
@@ -386,10 +386,10 @@ pub enum SizedTraitKind {
 
 impl SizedTraitKind {
     /// Returns `DefId` of corresponding language item.
-    pub fn require_lang_item<I: Interner>(self, cx: I) -> I::DefId {
-        cx.require_lang_item(match self {
-            SizedTraitKind::Sized => TraitSolverLangItem::Sized,
-            SizedTraitKind::MetaSized => TraitSolverLangItem::MetaSized,
+    pub fn require_lang_item<I: Interner>(self, cx: I) -> I::TraitId {
+        cx.require_trait_lang_item(match self {
+            SizedTraitKind::Sized => SolverTraitLangItem::Sized,
+            SizedTraitKind::MetaSized => SolverTraitLangItem::MetaSized,
         })
     }
 }
