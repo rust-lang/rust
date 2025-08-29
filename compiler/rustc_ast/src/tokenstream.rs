@@ -3,15 +3,6 @@
 //! `TokenStream`s represent syntactic objects before they are converted into ASTs.
 //! A `TokenStream` is, roughly speaking, a sequence of [`TokenTree`]s,
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
-//!
-//! ## Ownership
-//!
-//! `TokenStream`s are persistent data structures constructed as ropes with reference
-//! counted-children. In general, this means that calling an operation on a `TokenStream`
-//! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
-//! the original. This essentially coerces `TokenStream`s into "views" of their subparts,
-//! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
-//! ownership of the original.
 
 use std::borrow::Cow;
 use std::ops::Range;
