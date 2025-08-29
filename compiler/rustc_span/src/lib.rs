@@ -24,11 +24,13 @@
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(test)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to
