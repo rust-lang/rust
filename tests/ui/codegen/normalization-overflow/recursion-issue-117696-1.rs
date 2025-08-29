@@ -1,4 +1,4 @@
-//@ known-bug: #117696
+//@ build-fail
 fn main() {
     let mut it = (Empty);
     rec(&mut it);
@@ -23,6 +23,7 @@ where
 {
     if () == () {
         T::count(it);
+        //~^ ERROR: reached the recursion limit while instantiating
     } else {
         rec(identity(&mut it))
     }
