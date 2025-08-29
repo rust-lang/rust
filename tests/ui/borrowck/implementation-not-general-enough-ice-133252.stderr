@@ -23,7 +23,7 @@ LL |         force_send(async_load(&not_static));
 LL |     }
    |     - `not_static` dropped here while still borrowed
    |
-note: requirement that `not_static` is borrowed for `'1` introduced here
+note: requirement for `'1` introduced here
   --> $DIR/implementation-not-general-enough-ice-133252.rs:16:18
    |
 LL | fn force_send<T: Send>(_: T) {}
