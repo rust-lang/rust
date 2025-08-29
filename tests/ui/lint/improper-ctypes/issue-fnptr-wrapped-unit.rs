@@ -1,5 +1,8 @@
 //@ check-pass
-#![deny(improper_ctypes_definitions, improper_ctypes)]
+#![deny(improper_ctypes_definitions)]
+
+// Issue: https://github.com/rust-lang/rust/issues/113436
+// `()` in (fnptr!) return types and ADT fields should be safe
 
 #[repr(C)]
 pub struct Wrap<T>(T);
