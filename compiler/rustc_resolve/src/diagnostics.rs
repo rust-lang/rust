@@ -1846,7 +1846,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let extern_prelude_ambiguity = || {
             self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
                 entry.item_binding.map(|(b, _)| b) == Some(b1)
-                    && entry.flag_binding.get() == Some(b2)
+                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().binding()) == Some(b2)
             })
         };
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {

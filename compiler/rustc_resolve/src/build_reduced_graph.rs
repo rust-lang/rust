@@ -1014,8 +1014,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
                     item_binding: Some((imported_binding, true)),
-                    flag_binding: Cell::new(None),
-                    only_item: true,
+                    flag_binding: None,
                 }),
             };
         }
