@@ -49,7 +49,7 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
-                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not)), Pointer(Unsize)
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
                          // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
@@ -96,7 +96,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref('?11, Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +148,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref('?11, Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -881,7 +881,7 @@ fn adjust_index() {
 fn test() {
     let x = [1, 2, 3];
     x[2] = 6;
- // ^ adjustments: Borrow(Ref('?8, Mut))
+ // ^ adjustments: Borrow(Ref('?0, Mut))
 }
     ",
     );
@@ -906,11 +906,11 @@ impl core::ops::IndexMut<usize> for StructMut {
 }
 fn test() {
     Struct[0];
- // ^^^^^^ adjustments: Borrow(Ref('?2, Not))
+ // ^^^^^^ adjustments: Borrow(Ref('?0, Not))
     StructMut[0];
- // ^^^^^^^^^ adjustments: Borrow(Ref('?5, Not))
+ // ^^^^^^^^^ adjustments: Borrow(Ref('?1, Not))
     &mut StructMut[0];
-      // ^^^^^^^^^ adjustments: Borrow(Ref('?8, Mut))
+      // ^^^^^^^^^ adjustments: Borrow(Ref('?2, Mut))
 }",
     );
 }

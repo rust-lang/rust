@@ -101,7 +101,10 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     generics::Generics,
     infer::unify::InferenceTable,
-    next_solver::{DbInterner, mapping::convert_ty_for_result},
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, convert_ty_for_result},
+    },
 };
 
 pub use autoderef::autoderef;
@@ -957,8 +960,10 @@ pub fn callable_sig_from_fn_trait(
     )
     .build();
 
-    if !table.try_obligation(trait_ref.clone().cast(Interner)).no_solution() {
-        table.register_obligation(trait_ref.clone().cast(Interner));
+    let goal: Goal = trait_ref.clone().cast(Interner);
+    let pred = goal.to_nextsolver(table.interner);
+    if !table.try_obligation(goal).no_solution() {
+        table.register_obligation(pred);
         let return_ty = table.normalize_projection_ty(projection);
         for fn_x in [FnTrait::Fn, FnTrait::FnMut, FnTrait::FnOnce] {
             let fn_x_trait = fn_x.get_id(db, krate)?;

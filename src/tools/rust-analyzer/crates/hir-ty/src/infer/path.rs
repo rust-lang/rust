@@ -10,7 +10,15 @@ use hir_expand::name::Name;
 use stdx::never;
 
 use crate::{
-    builder::ParamKind, consteval, error_lifetime, generics::generics, infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext, method_resolution::{self, VisibleFromModule}, next_solver::mapping::ChalkToNextSolver, to_chalk_trait_id, InferenceDiagnostic, Interner, LifetimeElisionKind, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId
+    InferenceDiagnostic, Interner, LifetimeElisionKind, Substitution, TraitRef, TraitRefExt, Ty,
+    TyBuilder, TyExt, TyKind, ValueTyDefId,
+    builder::ParamKind,
+    consteval, error_lifetime,
+    generics::generics,
+    infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
+    method_resolution::{self, VisibleFromModule},
+    next_solver::mapping::ChalkToNextSolver,
+    to_chalk_trait_id,
 };
 
 use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
@@ -384,7 +392,7 @@ impl InferenceContext<'_> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Substitution)> {
-        let ty = self.resolve_ty_shallow(ty);
+        let ty = self.table.structurally_resolve_type(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

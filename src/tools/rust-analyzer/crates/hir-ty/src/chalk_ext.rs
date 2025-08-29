@@ -245,26 +245,30 @@ impl TyExt for Ty {
     }
 
     fn impl_trait_bounds(&self, db: &dyn HirDatabase) -> Option<Vec<QuantifiedWhereClause>> {
+        let handle_async_block_type_impl_trait = |def: DefWithBodyId| {
+            let krate = def.module(db).krate();
+            if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
+                // This is only used by type walking.
+                // Parameters will be walked outside, and projection predicate is not used.
+                // So just provide the Future trait.
+                let impl_bound = Binders::empty(
+                    Interner,
+                    WhereClause::Implemented(TraitRef {
+                        trait_id: to_chalk_trait_id(future_trait),
+                        substitution: Substitution::empty(Interner),
+                    }),
+                );
+                Some(vec![impl_bound])
+            } else {
+                None
+            }
+        };
+
         match self.kind(Interner) {
             TyKind::OpaqueType(opaque_ty_id, subst) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
-                        let krate = def.module(db).krate();
-                        if let Some(future_trait) = LangItem::Future.resolve_trait(db, krate) {
-                            // This is only used by type walking.
-                            // Parameters will be walked outside, and projection predicate is not used.
-                            // So just provide the Future trait.
-                            let impl_bound = Binders::empty(
-                                Interner,
-                                WhereClause::Implemented(TraitRef {
-                                    trait_id: to_chalk_trait_id(future_trait),
-                                    substitution: Substitution::empty(Interner),
-                                }),
-                            );
-                            Some(vec![impl_bound])
-                        } else {
-                            None
-                        }
+                        handle_async_block_type_impl_trait(def)
                     }
                     ImplTraitId::ReturnTypeImplTrait(func, idx) => {
                         db.return_type_impl_traits(func).map(|it| {
@@ -299,8 +303,9 @@ impl TyExt for Ty {
                             data.substitute(Interner, &opaque_ty.substitution)
                         })
                     }
-                    // It always has an parameter for Future::Output type.
-                    ImplTraitId::AsyncBlockTypeImplTrait(..) => unreachable!(),
+                    ImplTraitId::AsyncBlockTypeImplTrait(def, _) => {
+                        return handle_async_block_type_impl_trait(def);
+                    }
                 };
 
                 predicates.map(|it| it.into_value_and_skipped_binders().0)

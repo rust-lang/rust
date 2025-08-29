@@ -21,9 +21,17 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::unify::InferenceTable, next_solver::{
-        infer::{DbInternerInferExt, InferCtxt}, mapping::{convert_canonical_args_for_result, ChalkToNextSolver}, util::mini_canonicalize, DbInterner, GenericArg, Predicate, SolverContext, Span
-    }, utils::UnevaluatedConstEvaluatorFolder, AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy, ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause
+    AliasEq, AliasTy, Canonical, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
+    ProjectionTyExt, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
+    db::HirDatabase,
+    infer::unify::InferenceTable,
+    next_solver::{
+        DbInterner, GenericArg, Predicate, SolverContext, Span,
+        infer::{DbInternerInferExt, InferCtxt},
+        mapping::{ChalkToNextSolver, convert_canonical_args_for_result},
+        util::mini_canonicalize,
+    },
+    utils::UnevaluatedConstEvaluatorFolder,
 };
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
@@ -282,30 +290,18 @@ pub fn next_trait_solve(
     }
 }
 
-pub fn next_trait_solve_canonical<'db>(
-    db: &'db dyn HirDatabase,
-    krate: Crate,
-    block: Option<BlockId>,
+pub fn next_trait_solve_canonical_in_ctxt<'db>(
+    infer_ctxt: &InferCtxt<'db>,
     goal: crate::next_solver::Canonical<'db, crate::next_solver::Goal<'db, Predicate<'db>>>,
 ) -> NextTraitSolveResult {
-    // FIXME: should use analysis_in_body, but that needs GenericDefId::Block
-    let context = SolverContext(
-        DbInterner::new_with(db, Some(krate), block)
-            .infer_ctxt()
-            .build(TypingMode::non_body_analysis()),
-    );
+    let context = SolverContext(infer_ctxt.clone());
 
     tracing::info!(?goal);
 
-    let (goal, var_values) =
-        context.instantiate_canonical(&goal);
+    let (goal, var_values) = context.instantiate_canonical(&goal);
     tracing::info!(?var_values);
 
-    let res = context.evaluate_root_goal(
-        goal.clone(),
-        Span::dummy(),
-        None
-    );
+    let res = context.evaluate_root_goal(goal, Span::dummy(), None);
 
     let vars =
         var_values.var_values.iter().map(|g| context.0.resolve_vars_if_possible(g)).collect();
@@ -318,13 +314,10 @@ pub fn next_trait_solve_canonical<'db>(
     match res {
         Err(_) => NextTraitSolveResult::NoSolution,
         Ok((_, Certainty::Yes, args)) => NextTraitSolveResult::Certain(
-            convert_canonical_args_for_result(DbInterner::new_with(db, Some(krate), block), args)
+            convert_canonical_args_for_result(infer_ctxt.interner, args),
         ),
         Ok((_, Certainty::Maybe(_), args)) => {
-            let subst = convert_canonical_args_for_result(
-                DbInterner::new_with(db, Some(krate), block),
-                args,
-            );
+            let subst = convert_canonical_args_for_result(infer_ctxt.interner, args);
             NextTraitSolveResult::Uncertain(chalk_ir::Canonical {
                 binders: subst.binders,
                 value: subst.value.subst,

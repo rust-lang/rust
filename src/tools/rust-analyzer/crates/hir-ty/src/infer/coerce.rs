@@ -8,24 +8,27 @@
 use std::iter;
 
 use chalk_ir::{BoundVar, Mutability, TyKind, TyVariableKind, cast::Cast};
-use hir_def::{
-    hir::ExprId,
-    lang_item::LangItem,
-};
+use hir_def::{hir::ExprId, lang_item::LangItem};
 use rustc_type_ir::solve::Certainty;
 use stdx::always;
 use triomphe::Arc;
 
 use crate::{
-    autoderef::{Autoderef, AutoderefKind}, db::HirDatabase, infer::{
+    Canonical, FnAbi, FnPointer, FnSig, Goal, Interner, Lifetime, Substitution, TraitEnvironment,
+    Ty, TyBuilder, TyExt,
+    autoderef::{Autoderef, AutoderefKind},
+    db::HirDatabase,
+    infer::{
         Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
         TypeError, TypeMismatch,
-    }, utils::ClosureSubst, Canonical, FnAbi, FnPointer, FnSig, Goal, InEnvironment, Interner, Lifetime, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt
+    },
+    next_solver,
+    utils::ClosureSubst,
 };
 
 use super::unify::InferenceTable;
 
-pub(crate) type CoerceResult = Result<InferOk<(Vec<Adjustment>, Ty)>, TypeError>;
+pub(crate) type CoerceResult<'db> = Result<InferOk<'db, (Vec<Adjustment>, Ty)>, TypeError>;
 
 /// Do not require any adjustments, i.e. coerce `x -> x`.
 fn identity(_: Ty) -> Vec<Adjustment> {
@@ -37,11 +40,11 @@ fn simple(kind: Adjust) -> impl FnOnce(Ty) -> Vec<Adjustment> {
 }
 
 /// This always returns `Ok(...)`.
-fn success(
+fn success<'db>(
     adj: Vec<Adjustment>,
     target: Ty,
-    goals: Vec<InEnvironment<Goal>>,
-) -> CoerceResult {
+    goals: Vec<next_solver::Goal<'db, next_solver::Predicate<'db>>>,
+) -> CoerceResult<'db> {
     Ok(InferOk { goals, value: (adj, target) })
 }
 
@@ -107,9 +110,9 @@ impl CoerceMany {
     ///    coerce both to function pointers;
     ///  - if we were concerned with lifetime subtyping, we'd need to look for a
     ///    least upper bound.
-    pub(super) fn coerce(
+    pub(super) fn coerce<'db>(
         &mut self,
-        ctx: &mut InferenceContext<'_>,
+        ctx: &mut InferenceContext<'db>,
         expr: Option<ExprId>,
         expr_ty: &Ty,
         cause: CoercionCause,
@@ -276,7 +279,7 @@ impl InferenceContext<'_> {
     }
 }
 
-impl InferenceTable<'_> {
+impl<'db> InferenceTable<'db> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(crate) fn coerce(
@@ -285,8 +288,8 @@ impl InferenceTable<'_> {
         to_ty: &Ty,
         coerce_never: CoerceNever,
     ) -> Result<(Vec<Adjustment>, Ty), TypeError> {
-        let from_ty = self.resolve_ty_shallow(from_ty);
-        let to_ty = self.resolve_ty_shallow(to_ty);
+        let from_ty = self.structurally_resolve_type(from_ty);
+        let to_ty = self.structurally_resolve_type(to_ty);
         match self.coerce_inner(from_ty, &to_ty, coerce_never) {
             Ok(InferOk { value: (adjustments, ty), goals }) => {
                 self.register_infer_ok(InferOk { value: (), goals });
@@ -299,10 +302,15 @@ impl InferenceTable<'_> {
         }
     }
 
-    fn coerce_inner(&mut self, from_ty: Ty, to_ty: &Ty, coerce_never: CoerceNever) -> CoerceResult {
+    fn coerce_inner(
+        &mut self,
+        from_ty: Ty,
+        to_ty: &Ty,
+        coerce_never: CoerceNever,
+    ) -> CoerceResult<'db> {
         if from_ty.is_never() {
             if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(Interner) {
-                self.set_diverging(*tv, TyVariableKind::General, true);
+                self.set_diverging(*tv, TyVariableKind::General);
             }
             if coerce_never == CoerceNever::Yes {
                 // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
@@ -370,7 +378,7 @@ impl InferenceTable<'_> {
     }
 
     /// Unify two types (using sub or lub) and produce a specific coercion.
-    fn unify_and<F>(&mut self, t1: &Ty, t2: &Ty, f: F) -> CoerceResult
+    fn unify_and<F>(&mut self, t1: &Ty, t2: &Ty, f: F) -> CoerceResult<'db>
     where
         F: FnOnce(Ty) -> Vec<Adjustment>,
     {
@@ -378,7 +386,7 @@ impl InferenceTable<'_> {
             .and_then(|InferOk { goals, .. }| success(f(t1.clone()), t1.clone(), goals))
     }
 
-    fn coerce_ptr(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult {
+    fn coerce_ptr(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> CoerceResult<'db> {
         let (is_ref, from_mt, from_inner) = match from_ty.kind(Interner) {
             TyKind::Ref(mt, _, ty) => (true, mt, ty),
             TyKind::Raw(mt, ty) => (false, mt, ty),
@@ -420,7 +428,7 @@ impl InferenceTable<'_> {
         to_ty: &Ty,
         to_mt: Mutability,
         to_lt: &Lifetime,
-    ) -> CoerceResult {
+    ) -> CoerceResult<'db> {
         let (_from_lt, from_mt) = match from_ty.kind(Interner) {
             TyKind::Ref(mt, lt, _) => {
                 coerce_mutabilities(*mt, to_mt)?;
@@ -524,7 +532,7 @@ impl InferenceTable<'_> {
     }
 
     /// Attempts to coerce from the type of a Rust function item into a function pointer.
-    fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> CoerceResult {
+    fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> CoerceResult<'db> {
         match to_ty.kind(Interner) {
             TyKind::Function(_) => {
                 let from_sig = from_ty.callable_sig(self.db).expect("FnDef had no sig");
@@ -566,7 +574,7 @@ impl InferenceTable<'_> {
         from_ty: Ty,
         from_f: &FnPointer,
         to_ty: &Ty,
-    ) -> CoerceResult {
+    ) -> CoerceResult<'db> {
         self.coerce_from_safe_fn(
             from_ty,
             from_f,
@@ -583,7 +591,7 @@ impl InferenceTable<'_> {
         to_ty: &Ty,
         to_unsafe: F,
         normal: G,
-    ) -> CoerceResult
+    ) -> CoerceResult<'db>
     where
         F: FnOnce(Ty) -> Vec<Adjustment>,
         G: FnOnce(Ty) -> Vec<Adjustment>,
@@ -606,7 +614,7 @@ impl InferenceTable<'_> {
         from_ty: Ty,
         from_substs: &Substitution,
         to_ty: &Ty,
-    ) -> CoerceResult {
+    ) -> CoerceResult<'db> {
         match to_ty.kind(Interner) {
             // if from_substs is non-capturing (FIXME)
             TyKind::Function(fn_ty) => {
@@ -631,7 +639,7 @@ impl InferenceTable<'_> {
     /// Coerce a type using `from_ty: CoerceUnsized<ty_ty>`
     ///
     /// See: <https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html>
-    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> CoerceResult {
+    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> CoerceResult<'db> {
         // These 'if' statements require some explanation.
         // The `CoerceUnsized` trait is special - it is only
         // possible to write `impl CoerceUnsized<B> for A` where
@@ -707,12 +715,9 @@ impl InferenceTable<'_> {
 
         let goal: Goal = coerce_unsized_tref.cast(Interner);
 
-        self.commit_if_ok(|table| {
-            match table.solve_obligation(goal) {
-                Ok(Certainty::Yes) => Ok(()),
-                Ok(Certainty::Maybe(_)) => Ok(()),
-                Err(_) => Err(TypeError),
-            }
+        self.commit_if_ok(|table| match table.solve_obligation(goal) {
+            Ok(Certainty::Yes) => Ok(()),
+            _ => Err(TypeError),
         })?;
 
         let unsize =

@@ -23,9 +23,29 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef::{builtin_deref, deref_by_trait, Autoderef}, consteval, generics::generics, infer::{
-        coerce::{CoerceMany, CoerceNever, CoercionCause}, find_continuable, pat::contains_explicit_ref_binding, BreakableKind
-    }, lang_items::lang_items_for_bin_op, lower::{lower_to_chalk_mutability, path::{substs_from_args_and_bindings, GenericArgsLowerer, TypeLikeConst}, ParamLoweringMode}, mapping::{from_chalk, ToChalk}, method_resolution::{self, VisibleFromModule}, next_solver::mapping::ChalkToNextSolver, primitive::{self, UintTy}, static_lifetime, to_chalk_trait_id, traits::FnTrait, Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext, DeclOrigin, IncorrectGenericsLenKind, Interner, LifetimeElisionKind, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
+    DeclOrigin, IncorrectGenericsLenKind, Interner, LifetimeElisionKind, Rawness, Scalar,
+    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    autoderef::{Autoderef, builtin_deref, deref_by_trait},
+    consteval,
+    generics::generics,
+    infer::{
+        BreakableKind,
+        coerce::{CoerceMany, CoerceNever, CoercionCause},
+        find_continuable,
+        pat::contains_explicit_ref_binding,
+    },
+    lang_items::lang_items_for_bin_op,
+    lower::{
+        ParamLoweringMode, lower_to_chalk_mutability,
+        path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
+    },
+    mapping::{ToChalk, from_chalk},
+    method_resolution::{self, VisibleFromModule},
+    next_solver::mapping::ChalkToNextSolver,
+    primitive::{self, UintTy},
+    static_lifetime, to_chalk_trait_id,
+    traits::FnTrait,
 };
 
 use super::{
@@ -383,7 +403,7 @@ impl InferenceContext<'_> {
                     let matchee_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                     let mut all_arms_diverge = Diverges::Always;
                     for arm in arms.iter() {
-                        let input_ty = self.resolve_ty_shallow(&input_ty);
+                        let input_ty = self.table.structurally_resolve_type(&input_ty);
                         self.infer_top_pat(arm.pat, &input_ty, None);
                     }
 
@@ -633,7 +653,7 @@ impl InferenceContext<'_> {
             &Expr::Box { expr } => self.infer_expr_box(expr, expected),
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none(), ExprIsRead::Yes);
-                let inner_ty = self.resolve_ty_shallow(&inner_ty);
+                let inner_ty = self.table.structurally_resolve_type(&inner_ty);
                 // FIXME: Note down method resolution her
                 match op {
                     UnaryOp::Deref => {
@@ -651,7 +671,7 @@ impl InferenceContext<'_> {
                             );
                         }
                         if let Some(derefed) = builtin_deref(self.table.db, &inner_ty, true) {
-                            self.resolve_ty_shallow(derefed)
+                            self.table.structurally_resolve_type(derefed)
                         } else {
                             deref_by_trait(&mut self.table, inner_ty, false)
                                 .unwrap_or_else(|| self.err_ty())
@@ -807,10 +827,10 @@ impl InferenceContext<'_> {
                 let index_ty = self.infer_expr(*index, &Expectation::none(), ExprIsRead::Yes);
 
                 if let Some(index_trait) = self.resolve_lang_trait(LangItem::Index) {
-                    let canonicalized = ChalkToNextSolver::from_nextsolver(self.canonicalize(base_ty.clone().to_nextsolver(self.table.interner)), self.table.interner);
+                    let canonicalized =
+                        self.canonicalize(base_ty.clone().to_nextsolver(self.table.interner));
                     let receiver_adjustments = method_resolution::resolve_indexing_op(
-                        self.db,
-                        self.table.trait_env.clone(),
+                        &mut self.table,
                         canonicalized,
                         index_trait,
                     );
@@ -983,7 +1003,7 @@ impl InferenceContext<'_> {
                     // allows them to be inferred based on how they are used later in the
                     // function.
                     if is_input {
-                        let ty = this.resolve_ty_shallow(&ty);
+                        let ty = this.table.structurally_resolve_type(&ty);
                         match ty.kind(Interner) {
                             TyKind::FnDef(def, parameters) => {
                                 let fnptr_ty = TyKind::Function(
@@ -1405,9 +1425,10 @@ impl InferenceContext<'_> {
             // use knowledge of built-in binary ops, which can sometimes help inference
             let builtin_ret = self.enforce_builtin_binop_types(&lhs_ty, &rhs_ty, op);
             self.unify(&builtin_ret, &ret_ty);
+            builtin_ret
+        } else {
+            ret_ty
         }
-
-        ret_ty
     }
 
     fn infer_block(
@@ -1660,7 +1681,8 @@ impl InferenceContext<'_> {
             None => {
                 // no field found, lets attempt to resolve it like a function so that IDE things
                 // work out while people are typing
-                let canonicalized_receiver = self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
+                let canonicalized_receiver =
+                    self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
                 let resolved = method_resolution::lookup_method(
                     self.db,
                     &canonicalized_receiver,
@@ -1806,7 +1828,8 @@ impl InferenceContext<'_> {
         expected: &Expectation,
     ) -> Ty {
         let receiver_ty = self.infer_expr_inner(receiver, &Expectation::none(), ExprIsRead::Yes);
-        let canonicalized_receiver = self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
+        let canonicalized_receiver =
+            self.canonicalize(receiver_ty.clone().to_nextsolver(self.table.interner));
 
         let resolved = method_resolution::lookup_method(
             self.db,
@@ -2216,7 +2239,7 @@ impl InferenceContext<'_> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
-        let callable_ty = self.resolve_ty_shallow(callable_ty);
+        let callable_ty = self.table.structurally_resolve_type(callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates =
@@ -2305,9 +2328,9 @@ impl InferenceContext<'_> {
 
     /// Dereferences a single level of immutable referencing.
     fn deref_ty_if_possible(&mut self, ty: &Ty) -> Ty {
-        let ty = self.resolve_ty_shallow(ty);
+        let ty = self.table.structurally_resolve_type(ty);
         match ty.kind(Interner) {
-            TyKind::Ref(Mutability::Not, _, inner) => self.resolve_ty_shallow(inner),
+            TyKind::Ref(Mutability::Not, _, inner) => self.table.structurally_resolve_type(inner),
             _ => ty,
         }
     }

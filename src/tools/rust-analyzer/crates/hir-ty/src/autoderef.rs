@@ -13,7 +13,7 @@ use triomphe::Arc;
 
 use crate::{
     Canonical, Goal, Interner, ProjectionTyExt, TraitEnvironment, Ty, TyBuilder, TyKind,
-    db::HirDatabase, infer::unify::InferenceTable,
+    db::HirDatabase, infer::unify::InferenceTable, next_solver::mapping::ChalkToNextSolver,
 };
 
 const AUTODEREF_RECURSION_LIMIT: usize = 20;
@@ -98,7 +98,7 @@ impl<'table, 'db> Autoderef<'table, 'db> {
         explicit: bool,
         use_receiver_trait: bool,
     ) -> Self {
-        let ty = table.resolve_ty_shallow(&ty);
+        let ty = table.structurally_resolve_type(&ty);
         Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit, use_receiver_trait }
     }
 
@@ -114,7 +114,7 @@ impl<'table, 'db> Autoderef<'table, 'db, usize> {
         explicit: bool,
         use_receiver_trait: bool,
     ) -> Self {
-        let ty = table.resolve_ty_shallow(&ty);
+        let ty = table.structurally_resolve_type(&ty);
         Autoderef { table, ty, at_start: true, steps: 0, explicit, use_receiver_trait }
     }
 }
@@ -160,7 +160,7 @@ pub(crate) fn autoderef_step(
     use_receiver_trait: bool,
 ) -> Option<(AutoderefKind, Ty)> {
     if let Some(derefed) = builtin_deref(table.db, &ty, explicit) {
-        Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
+        Some((AutoderefKind::Builtin, table.structurally_resolve_type(derefed)))
     } else {
         Some((AutoderefKind::Overloaded, deref_by_trait(table, ty, use_receiver_trait)?))
     }
@@ -187,7 +187,7 @@ pub(crate) fn deref_by_trait(
     use_receiver_trait: bool,
 ) -> Option<Ty> {
     let _p = tracing::info_span!("deref_by_trait").entered();
-    if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
+    if table.structurally_resolve_type(&ty).inference_var(Interner).is_some() {
         // don't try to deref unknown variables
         return None;
     }
@@ -229,8 +229,8 @@ pub(crate) fn deref_by_trait(
         return None;
     }
 
-    table.register_obligation(implements_goal);
+    table.register_obligation(implements_goal.to_nextsolver(table.interner));
 
     let result = table.normalize_projection_ty(projection);
-    Some(table.resolve_ty_shallow(&result))
+    Some(table.structurally_resolve_type(&result))
 }

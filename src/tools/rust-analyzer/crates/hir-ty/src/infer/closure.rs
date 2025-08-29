@@ -39,6 +39,7 @@ use crate::{
     infer::{BreakableKind, CoerceMany, Diverges, coerce::CoerceNever},
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
+    next_solver::mapping::ChalkToNextSolver,
     to_assoc_type_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits},
@@ -437,10 +438,10 @@ impl InferenceContext<'_> {
             associated_ty_id: to_assoc_type_id(future_output),
             substitution: Substitution::from1(Interner, ret_param_future.clone()),
         });
-        self.table.register_obligation(
+        let goal: crate::Goal =
             crate::AliasEq { alias: future_projection, ty: ret_param_future_output.clone() }
-                .cast(Interner),
-        );
+                .cast(Interner);
+        self.table.register_obligation(goal.to_nextsolver(self.table.interner));
 
         Some(FnSubst(Substitution::from_iter(
             Interner,
@@ -568,7 +569,10 @@ impl InferenceContext<'_> {
         let supplied_sig = self.supplied_sig_of_closure(body, ret_type, arg_types, closure_kind);
 
         let snapshot = self.table.snapshot();
-        if !self.table.unify::<_, crate::next_solver::GenericArgs<'_>>(&expected_sig.substitution.0, &supplied_sig.expected_sig.substitution.0) {
+        if !self.table.unify::<_, crate::next_solver::GenericArgs<'_>>(
+            &expected_sig.substitution.0,
+            &supplied_sig.expected_sig.substitution.0,
+        ) {
             self.table.rollback_to(snapshot);
         }
 

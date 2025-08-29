@@ -55,10 +55,9 @@ use stdx::{always, never};
 use triomphe::Arc;
 
 use crate::{
-    AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
-    ImplTraitIdx, InEnvironment, IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId,
-    ParamLoweringMode, PathLoweringDiagnostic, ProjectionTy, Substitution, TraitEnvironment, Ty,
-    TyBuilder, TyExt,
+    AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, ImplTraitId, ImplTraitIdx,
+    IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId, ParamLoweringMode,
+    PathLoweringDiagnostic, ProjectionTy, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
     db::HirDatabase,
     fold_tys,
     generics::Generics,
@@ -70,6 +69,7 @@ use crate::{
     },
     lower::{ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic},
     mir::MirSpan,
+    next_solver::{self, mapping::ChalkToNextSolver},
     static_lifetime, to_assoc_type_id,
     traits::FnTrait,
     utils::UnevaluatedConstEvaluatorFolder,
@@ -182,13 +182,13 @@ impl BindingMode {
 }
 
 #[derive(Debug)]
-pub(crate) struct InferOk<T> {
+pub(crate) struct InferOk<'db, T> {
     value: T,
-    goals: Vec<InEnvironment<Goal>>,
+    goals: Vec<next_solver::Goal<'db, next_solver::Predicate<'db>>>,
 }
 
-impl<T> InferOk<T> {
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> InferOk<U> {
+impl<'db, T> InferOk<'db, T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> InferOk<'db, U> {
         InferOk { value: f(self.value), goals: self.goals }
     }
 }
@@ -203,7 +203,7 @@ pub enum InferenceTyDiagnosticSource {
 
 #[derive(Debug)]
 pub(crate) struct TypeError;
-pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
+pub(crate) type InferResult<'db, T> = Result<InferOk<'db, T>, TypeError>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum InferenceDiagnostic {
@@ -832,6 +832,7 @@ impl<'db> InferenceContext<'db> {
             coercion_casts,
             diagnostics: _,
         } = &mut result;
+        table.resolve_obligations_as_possible();
         table.fallback_if_possible();
 
         // Comment from rustc:
@@ -1480,7 +1481,8 @@ impl<'db> InferenceContext<'db> {
     }
 
     fn push_obligation(&mut self, o: DomainGoal) {
-        self.table.register_obligation(o.cast(Interner));
+        let goal: crate::Goal = o.cast(Interner);
+        self.table.register_obligation(goal.to_nextsolver(self.table.interner));
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -1746,7 +1748,7 @@ impl<'db> InferenceContext<'db> {
 
                     ty = self.table.insert_type_vars(ty);
                     ty = self.table.normalize_associated_types_in(ty);
-                    ty = self.table.resolve_ty_shallow(&ty);
+                    ty = self.table.structurally_resolve_type(&ty);
                     if ty.is_unknown() {
                         return (self.err_ty(), None);
                     }
@@ -1817,7 +1819,7 @@ impl<'db> InferenceContext<'db> {
         let ty = match ty.kind(Interner) {
             TyKind::Alias(AliasTy::Projection(proj_ty)) => {
                 let ty = self.table.normalize_projection_ty(proj_ty.clone());
-                self.table.resolve_ty_shallow(&ty)
+                self.table.structurally_resolve_type(&ty)
             }
             _ => ty,
         };
@@ -2047,7 +2049,7 @@ impl Expectation {
     fn adjust_for_branches(&self, table: &mut unify::InferenceTable<'_>) -> Expectation {
         match self {
             Expectation::HasType(ety) => {
-                let ety = table.resolve_ty_shallow(ety);
+                let ety = table.structurally_resolve_type(ety);
                 if ety.is_ty_var() { Expectation::None } else { Expectation::HasType(ety) }
             }
             Expectation::RValueLikeUnsized(ety) => Expectation::RValueLikeUnsized(ety.clone()),

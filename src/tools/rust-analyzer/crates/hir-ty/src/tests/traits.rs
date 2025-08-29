@@ -1,6 +1,8 @@
 use cov_mark::check;
 use expect_test::expect;
 
+use crate::tests::infer_with_mismatches;
+
 use super::{check, check_infer, check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
@@ -2460,7 +2462,7 @@ use core::ops::Index;
 
 type Key<S: UnificationStoreBase> = <S as UnificationStoreBase>::Key;
 
-pub trait UnificationStoreBase: Index<Output = Key<Self>> {
+pub trait UnificationStoreBase: Index<usize, Output = Key<Self>> {
     type Key;
 
     fn len(&self) -> usize;
@@ -3634,8 +3636,7 @@ fn minimized() {
 
 #[test]
 fn no_builtin_binop_expectation_for_general_ty_var() {
-    // FIXME: Ideally type mismatch should be reported on `take_u32(42 - p)`.
-    check_types(
+    infer_with_mismatches(
         r#"
 //- minicore: add
 use core::ops::Add;
@@ -3659,6 +3660,7 @@ fn minimized() {
     take_u32(42 + p);
 }
 "#,
+        true,
     );
 }
 
@@ -4188,6 +4190,8 @@ fn g<P: PointerFamily>(p: <P as PointerFamily>::Pointer<i32>) {
     );
 }
 
+// FIXME(next-solver): Was `&'a T` but now getting error lifetime.
+// This might be fixed once we migrate into next-solver fully without chalk-ir in lowering.
 #[test]
 fn gats_with_impl_trait() {
     // FIXME: the last function (`fn i()`) is not valid Rust as of this writing because you cannot
@@ -4211,21 +4215,21 @@ fn f<T>(v: impl Trait) {
 }
 fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
     let a = v.get::<T>();
-      //^ &'a T
+      //^ &'? T
     let a = v.get::<()>();
       //^ <impl Trait<Assoc<T> = &'a T> as Trait>::Assoc<()>
 }
 fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
-      //^ &'a i32
+      //^ &'? i32
     let a = v.get::<i64>();
-      //^ &'a i64
+      //^ &'? i64
 }
 fn i<'a>(v: impl Trait<Assoc<i32> = &'a i32, Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
-      //^ &'a i32
+      //^ &'? i32
     let a = v.get::<i64>();
-      //^ &'a i64
+      //^ &'? i64
 }
     "#,
     );
@@ -4255,8 +4259,8 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
             127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
             164..195 '{     ...f(); }': ()
             170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + '?)
-            170..184 'v.get::<i32>()': {unknown}
-            170..192 'v.get:...eref()': &'? {unknown}
+            170..184 'v.get::<i32>()': <dyn Trait<Assoc<i32> = &'a i32> + '? as Trait>::Assoc<i32>
+            170..192 'v.get:...eref()': {unknown}
         "#]],
     );
 }
@@ -4931,6 +4935,8 @@ fn main() {
     );
 }
 
+// FIXME(next-solver): Was `<D as Deserializer<'de>>::Error` but now getting error lifetime.
+// This might be fixed once we migrate into next-solver fully without chalk-ir in lowering.
 #[test]
 fn new_solver_crash_1() {
     check_infer(
@@ -4947,7 +4953,7 @@ where
 "#,
         expect![[r#"
             84..86 'de': D
-            135..138 '{ }': <D as Deserializer<'de>>::Error
+            135..138 '{ }': <D as Deserializer<'?>>::Error
         "#]],
     );
 }

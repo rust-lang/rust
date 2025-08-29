@@ -2,7 +2,10 @@ use expect_test::{Expect, expect};
 use hir::{FilePosition, FileRange};
 use ide_db::{
     EditionedFileId, FxHashSet,
-    base_db::{SourceDatabase, salsa::Durability},
+    base_db::{
+        SourceDatabase,
+        salsa::{self, Durability},
+    },
 };
 use test_utils::RangeOrOffset;
 use triomphe::Arc;
@@ -116,7 +119,7 @@ fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
         let rule: SsrRule = rule.parse().unwrap();
         match_finder.add_rule(rule).unwrap();
     }
-    let edits = match_finder.edits();
+    let edits = salsa::attach(&db, || match_finder.edits());
     if edits.is_empty() {
         panic!("No edits were made");
     }
@@ -155,8 +158,12 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     )
     .unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
-    let matched_strings: Vec<String> =
-        match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
+    let matched_strings: Vec<String> = salsa::attach(&db, || match_finder.matches())
+        .flattened()
+        .matches
+        .iter()
+        .map(|m| m.matched_text())
+        .collect();
     if matched_strings != expected && !expected.is_empty() {
         print_match_debug_info(&match_finder, position.file_id, expected[0]);
     }

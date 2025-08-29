@@ -503,7 +503,10 @@ impl<'db> InferCtxt<'db> {
     }
 
     pub fn next_ty_vid(&self) -> TyVid {
-        self.inner.borrow_mut().type_variables().new_var(self.universe(), TypeVariableOrigin { param_def_id: None })
+        self.inner
+            .borrow_mut()
+            .type_variables()
+            .new_var(self.universe(), TypeVariableOrigin { param_def_id: None })
     }
 
     pub fn next_ty_var_with_origin(&self, origin: TypeVariableOrigin) -> Ty<'db> {
@@ -526,11 +529,13 @@ impl<'db> InferCtxt<'db> {
     }
 
     pub fn next_const_vid(&self) -> ConstVid {
-        self
-            .inner
+        self.inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVariableValue::Unknown { origin: ConstVariableOrigin { param_def_id: None }, universe: self.universe() })
+            .new_key(ConstVariableValue::Unknown {
+                origin: ConstVariableOrigin { param_def_id: None },
+                universe: self.universe(),
+            })
             .vid
     }
 
@@ -566,9 +571,7 @@ impl<'db> InferCtxt<'db> {
     }
 
     pub fn next_float_var(&self) -> Ty<'db> {
-        let next_float_var_id =
-            self.inner.borrow_mut().float_unification_table().new_key(FloatVarValue::Unknown);
-        Ty::new_float_var(self.interner, next_float_var_id)
+        Ty::new_float_var(self.interner, self.next_float_vid())
     }
 
     pub fn next_float_vid(&self) -> FloatVid {
@@ -815,9 +818,7 @@ impl<'db> InferCtxt<'db> {
         match value {
             IntVarValue::IntType(ty) => Some(Ty::new_int(self.interner, ty)),
             IntVarValue::UintType(ty) => Some(Ty::new_uint(self.interner, ty)),
-            IntVarValue::Unknown => {
-                None
-            }
+            IntVarValue::Unknown => None,
         }
     }
 
@@ -839,9 +840,7 @@ impl<'db> InferCtxt<'db> {
         let value = inner.float_unification_table().probe_value(vid);
         match value {
             FloatVarValue::Known(ty) => Some(Ty::new_float(self.interner, ty)),
-            FloatVarValue::Unknown => {
-                None
-            }
+            FloatVarValue::Unknown => None,
         }
     }
 

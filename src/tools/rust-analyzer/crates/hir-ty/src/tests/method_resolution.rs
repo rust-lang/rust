@@ -1876,9 +1876,9 @@ impl Foo {
 }
 fn test() {
     Foo.foo();
-  //^^^ adjustments: Borrow(Ref('?1, Not))
+  //^^^ adjustments: Borrow(Ref('?0, Not))
     (&Foo).foo();
-  // ^^^^ adjustments: Deref(None), Borrow(Ref('?3, Not))
+  // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not))
 }
 "#,
     );
@@ -1892,7 +1892,7 @@ fn receiver_adjustment_unsize_array() {
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Borrow(Ref('?7, Not)), Pointer(Unsize)
+} //^ adjustments: Borrow(Ref('?0, Not)), Pointer(Unsize)
 "#,
     );
 }
@@ -2105,7 +2105,7 @@ impl Foo {
 }
 fn test() {
     Box::new(Foo).foo();
-  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref('?5, Not))
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref('?0, Not))
 }
 "#,
     );
@@ -2123,7 +2123,7 @@ impl Foo {
 use core::mem::ManuallyDrop;
 fn test() {
     ManuallyDrop::new(Foo).foo();
-  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('?6, Not))
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('?0, Not))
 }
 "#,
     );
