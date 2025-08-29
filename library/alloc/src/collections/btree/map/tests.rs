@@ -1,4 +1,5 @@
 use core::assert_matches;
+use std::borrow::Borrow;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::AtomicUsize;
