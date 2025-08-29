@@ -131,6 +131,7 @@ mod handlers {
     mod convert_match_to_let_else;
     mod convert_named_struct_to_tuple_struct;
     mod convert_nested_function_to_closure;
+    mod convert_range_for_to_while;
     mod convert_to_guarded_return;
     mod convert_tuple_return_type_to_struct;
     mod convert_tuple_struct_to_named_struct;
@@ -268,6 +269,7 @@ mod handlers {
             convert_match_to_let_else::convert_match_to_let_else,
             convert_named_struct_to_tuple_struct::convert_named_struct_to_tuple_struct,
             convert_nested_function_to_closure::convert_nested_function_to_closure,
+            convert_range_for_to_while::convert_range_for_to_while,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_return_type_to_struct::convert_tuple_return_type_to_struct,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
