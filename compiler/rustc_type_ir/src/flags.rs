@@ -133,6 +133,9 @@ bitflags::bitflags! {
 
         /// Does this type have any coroutines in it?
         const HAS_TY_CORO                 = 1 << 24;
+
+        /// Does this type have any Infer(TyVar(_)) in it?
+        const HAS_INFER_TY_VAR            = 1 << 25;
     }
 }
 
@@ -267,9 +270,10 @@ impl<I: Interner> FlagComputation<I> {
                 ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
                     self.add_flags(TypeFlags::HAS_TY_FRESH)
                 }
-
-                ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
-                    self.add_flags(TypeFlags::HAS_TY_INFER)
+                ty::IntVar(_) | ty::FloatVar(_) => self.add_flags(TypeFlags::HAS_TY_INFER),
+                ty::TyVar(_) => {
+                    self.add_flags(TypeFlags::HAS_INFER_TY_VAR);
+                    self.add_flags(TypeFlags::HAS_TY_INFER);
                 }
             },
 
