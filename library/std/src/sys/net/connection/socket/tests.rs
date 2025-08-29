@@ -12,8 +12,8 @@ fn no_lookup_host_duplicates() {
         *addrs.entry(sa).or_insert(0) += 1;
     }
     assert_eq!(
-        addrs.iter().filter(|&(_, &v)| v > 1).collect::<Vec<_>>(),
-        vec![],
+        addrs.into_iter().filter(|&(_, v)| v > 1).collect::<Vec<_>>(),
+        [],
         "There should be no duplicate localhost entries"
     );
 }

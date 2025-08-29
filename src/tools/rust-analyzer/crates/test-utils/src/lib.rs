@@ -363,7 +363,7 @@ fn main() {
 
     assert_eq!(
         res[..3],
-        [("x", "def".into()), ("y", "def".into()), ("zoo", "type:\ni32\n".into())]
+        [("x", "def".to_owned()), ("y", "def".to_owned()), ("zoo", "type:\ni32\n".to_owned())]
     );
     assert_eq!(res[3].0.len(), 115);
 }
@@ -384,7 +384,7 @@ fn main() {
         .map(|(range, ann)| (&text[range], ann))
         .collect::<Vec<_>>();
 
-    assert_eq!(res, [("x", "a".into()), ("y", "b".into()), ("(x,   y)", "c".into())]);
+    assert_eq!(res, [("x", "a".to_owned()), ("y", "b".to_owned()), ("(x,   y)", "c".to_owned())]);
 }
 
 /// Returns `false` if slow tests should not run, otherwise returns `true` and

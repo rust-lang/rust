@@ -670,7 +670,7 @@ fn test_top_level_options_tracked_no_crate() {
         real_rust_source_base_dir,
         Some("/home/bors/rust/.rustup/toolchains/nightly/lib/rustlib/src/rust".into())
     );
-    tracked!(remap_path_prefix, vec![("/home/bors/rust".into(), "src".into())]);
+    tracked!(remap_path_prefix, vec![(PathBuf::from("/home/bors/rust"), PathBuf::from("src"))]);
     // tidy-alphabetical-end
 }
 

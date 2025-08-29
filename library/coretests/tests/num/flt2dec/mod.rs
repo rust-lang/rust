@@ -194,10 +194,10 @@ where
     let v: T = TestableFloat::ldexpi(x, e);
     let decoded = decode_finite(v);
 
-    try_exact!(f(&decoded) => &mut buf, &expected, expectedk;
+    try_exact!(f(&decoded) => &mut buf, expected, expectedk;
                "exact mismatch for v={x}p{e}{t}: actual {actual:?}, expected {expected:?}",
                x = x, e = e, t = tstr);
-    try_fixed!(f(&decoded) => &mut buf, expectedk - expected.len() as i16, &expected, expectedk;
+    try_fixed!(f(&decoded) => &mut buf, expectedk - expected.len() as i16, expected, expectedk;
                "fixed mismatch for v={x}p{e}{t}: actual {actual:?}, expected {expected:?}",
                x = x, e = e, t = tstr);
 }

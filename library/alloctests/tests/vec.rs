@@ -505,10 +505,10 @@ fn zero_sized_values() {
 
 #[test]
 fn test_partition() {
-    assert_eq!([].into_iter().partition(|x: &i32| *x < 3), (vec![], vec![]));
-    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 4), (vec![1, 2, 3], vec![]));
-    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 2), (vec![1], vec![2, 3]));
-    assert_eq!([1, 2, 3].into_iter().partition(|x| *x < 0), (vec![], vec![1, 2, 3]));
+    assert_eq!([].into_iter().partition::<Vec<_>, _>(|x: &i32| *x < 3), ([], []));
+    assert_eq!([1, 2, 3].into_iter().partition::<Vec<_>, _>(|x| *x < 4), ([1, 2, 3], []));
+    assert_eq!([1, 2, 3].into_iter().partition::<Vec<_>, _>(|x| *x < 2), ([1], [2, 3]));
+    assert_eq!([1, 2, 3].into_iter().partition::<Vec<_>, _>(|x| *x < 0), ([], [1, 2, 3]));
 }
 
 #[test]
