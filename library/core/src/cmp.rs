@@ -1535,6 +1535,82 @@ pub macro PartialOrd($item:item) {
     /* compiler built-in */
 }
 
+/// Key equivalence trait.
+///
+/// This trait allows hash table lookup to be customized.
+///
+/// # Contract
+///
+/// The implementor **must** hash like `Q`, if it is hashable.
+#[unstable(feature = "comparable_trait", issue = "145986")]
+pub trait Equivalent<Q> {
+    /// Compare self to `key` and return `true` if they are equal.
+    #[unstable(feature = "comparable_trait", issue = "145986")]
+    fn equivalent(&self, key: Q) -> bool;
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<'a, Q: ?Sized, K: ?Sized> Equivalent<&'a Q> for K
+where
+    K: crate::borrow::Borrow<Q>,
+    Q: Eq,
+{
+    #[inline]
+    fn equivalent(&self, key: &'a Q) -> bool {
+        PartialEq::eq(self.borrow(), key)
+    }
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<'a, Q1: ?Sized, K1, Q2: ?Sized, K2> Equivalent<(&'a Q1, &'a Q2)> for (K1, K2)
+where
+    Q1: Eq,
+    K1: crate::borrow::Borrow<Q1>,
+    Q2: Eq,
+    K2: crate::borrow::Borrow<Q2>,
+{
+    #[inline]
+    fn equivalent(&self, key: (&'a Q1, &'a Q2)) -> bool {
+        PartialEq::eq(self.0.borrow(), key.0) && PartialEq::eq(self.1.borrow(), key.1)
+    }
+}
+
+/// Key ordering trait.
+///
+/// This trait allows ordered map lookup to be customized.
+#[unstable(feature = "comparable_trait", issue = "145986")]
+pub trait Comparable<Q> {
+    /// Compare self to `key` and return their ordering.
+    #[unstable(feature = "comparable_trait", issue = "145986")]
+    fn compare(&self, key: Q) -> Ordering;
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<'a, Q: ?Sized, K: ?Sized> Comparable<&'a Q> for K
+where
+    K: crate::borrow::Borrow<Q>,
+    Q: Ord,
+{
+    #[inline]
+    fn compare(&self, key: &'a Q) -> Ordering {
+        Ord::cmp(self.borrow(), key)
+    }
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<'a, Q1: ?Sized, K1, Q2: ?Sized, K2> Comparable<(&'a Q1, &'a Q2)> for (K1, K2)
+where
+    Q1: Ord,
+    K1: crate::borrow::Borrow<Q1>,
+    Q2: Ord,
+    K2: crate::borrow::Borrow<Q2>,
+{
+    #[inline]
+    fn compare(&self, key: (&'a Q1, &'a Q2)) -> Ordering {
+        Ord::cmp(self.0.borrow(), key.0).then_with(|| Ord::cmp(self.1.borrow(), key.1))
+    }
+}
+
 /// Compares and returns the minimum of two values.
 ///
 /// Returns the first argument if the comparison determines them to be equal.
