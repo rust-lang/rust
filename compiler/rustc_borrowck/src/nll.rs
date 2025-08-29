@@ -8,8 +8,8 @@ use std::str::FromStr;
 use polonius_engine::{Algorithm, AllFacts, Output};
 use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
-use rustc_middle::mir::{Body, PassWhere, Promoted, create_dump_file, dump_enabled, dump_mir};
+use rustc_middle::mir::pretty::PrettyPrintMirOptions;
+use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -68,7 +68,9 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     // Replace all remaining regions with fresh inference variables.
     renumber::renumber_mir(infcx, body, promoted);
 
-    dump_mir(infcx.tcx, false, "renumber", &0, body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(infcx.tcx, "renumber", body) {
+        dumper.dump_mir(body);
+    }
 
     universal_regions
 }
@@ -175,9 +177,7 @@ pub(super) fn dump_nll_mir<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let tcx = infcx.tcx;
-    if !dump_enabled(tcx, "nll", body.source.def_id()) {
-        return;
-    }
+    let Some(dumper) = MirDumper::new(tcx, "nll", body) else { return };
 
     // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
     // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
@@ -188,27 +188,24 @@ pub(super) fn dump_nll_mir<'tcx>(
             MirIncludeSpans::On | MirIncludeSpans::Nll
         ),
     };
-    dump_mir_with_options(
-        tcx,
-        false,
-        "nll",
-        &0,
-        body,
-        |pass_where, out| {
-            emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
-        },
-        options,
-    );
+
+    let extra_data = &|pass_where, out: &mut dyn std::io::Write| {
+        emit_nll_mir(tcx, regioncx, closure_region_requirements, borrow_set, pass_where, out)
+    };
+
+    let dumper = dumper.set_extra_data(extra_data).set_options(options);
+
+    dumper.dump_mir(body);
 
     // Also dump the region constraint graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "regioncx.all.dot", false, "nll", &0, body)?;
+        let mut file = dumper.create_dump_file("regioncx.all.dot", body)?;
         regioncx.dump_graphviz_raw_constraints(tcx, &mut file)?;
     };
 
     // Also dump the region constraint SCC graph as a graphviz file.
     let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "regioncx.scc.dot", false, "nll", &0, body)?;
+        let mut file = dumper.create_dump_file("regioncx.scc.dot", body)?;
         regioncx.dump_graphviz_scc_constraints(tcx, &mut file)?;
     };
 }
