@@ -2486,9 +2486,7 @@ intrinsics:
           name: "llvm.frinn.{neon_type}"
           links:
             - link: "llvm.roundeven.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vrintn.{neon_type}"
-              arch: arm
+              arch: aarch64,arm64ec,arm
 
   - name: "vrndn{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to even"
@@ -2510,9 +2508,7 @@ intrinsics:
           name: "llvm.frinn.{neon_type}"
           links:
             - link: "llvm.roundeven.{neon_type}"
-              arch: aarch64,arm64ec
-            - link: "llvm.arm.neon.vrintn.{neon_type}"
-              arch: arm
+              arch: aarch64,arm64ec,arm
 
   - name: "vqadd{neon_type.no}"
     doc: Saturating add

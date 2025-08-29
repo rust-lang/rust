@@ -58256,10 +58256,9 @@ pub fn vrhaddq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v4f16"
         )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f16")]
         fn _vrndn_f16(a: float16x4_t) -> float16x4_t;
     }
     unsafe { _vrndn_f16(a) }
@@ -58279,10 +58278,9 @@ pub fn vrndn_f16(a: float16x4_t) -> float16x4_t {
 pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v8f16"
         )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v8f16")]
         fn _vrndnq_f16(a: float16x8_t) -> float16x8_t;
     }
     unsafe { _vrndnq_f16(a) }
@@ -58308,10 +58306,9 @@ pub fn vrndnq_f16(a: float16x8_t) -> float16x8_t {
 pub fn vrndn_f32(a: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v2f32"
         )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v2f32")]
         fn _vrndn_f32(a: float32x2_t) -> float32x2_t;
     }
     unsafe { _vrndn_f32(a) }
@@ -58337,10 +58334,9 @@ pub fn vrndn_f32(a: float32x2_t) -> float32x2_t {
 pub fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm"),
             link_name = "llvm.roundeven.v4f32"
         )]
-        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f32")]
         fn _vrndnq_f32(a: float32x4_t) -> float32x4_t;
     }
     unsafe { _vrndnq_f32(a) }
