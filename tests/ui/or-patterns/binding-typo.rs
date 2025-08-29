@@ -1,0 +1,26 @@
+// Issue #51976
+//@ run-rustfix
+#![deny(unused_variables)] //~ NOTE: the lint level is defined here
+enum Lol {
+    Foo,
+    Bar,
+}
+
+fn foo(x: (Lol, Lol)) {
+    use Lol::*;
+    match x {
+        (Foo, Bar) | (Ban, Foo) => {}
+        //~^ ERROR: variable `Ban` is not bound in all patterns
+        //~| HELP: you might have meant to use the similarly named previously used binding `Bar`
+        //~| NOTE: pattern doesn't bind `Ban`
+        //~| NOTE: variable not in all patterns
+        //~| ERROR: variable `Ban` is assigned to, but never used
+        //~| NOTE: consider using `_Ban` instead
+        _ => {}
+    }
+}
+
+fn main() {
+    use Lol::*;
+    foo((Foo, Bar));
+}
