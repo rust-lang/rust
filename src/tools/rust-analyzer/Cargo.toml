@@ -163,7 +163,7 @@ temp-dir = "0.1.16"
 text-size = "1.1.1"
 tracing = "0.1.41"
 tracing-tree = "0.4.0"
-tracing-subscriber = { version = "0.3.19", default-features = false, features = [
+tracing-subscriber = { version = "0.3.20", default-features = false, features = [
     "registry",
     "fmt",
     "local-time",
