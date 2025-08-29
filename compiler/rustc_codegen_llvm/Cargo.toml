@@ -13,10 +13,10 @@ bitflags.workspace = true
 # by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
 gimli = "0.31"
 itertools.workspace = true
-libc = "0.2"
-measureme = "12.0.1"
+libc.workspace = true
+measureme.workspace = true
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
-rustc-demangle = "0.1.21"
+rustc-demangle.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
@@ -38,7 +38,7 @@ rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json.workspace = true
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing.workspace = true
 # tidy-alphabetical-end

@@ -37,9 +37,9 @@ rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-serde_json = "1.0.59"
+serde_json.workspace = true
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tempfile = "3.2"
+tempfile.workspace = true
 thin-vec.workspace = true
 thorin-dwp = "0.9"
 tracing.workspace = true
@@ -48,7 +48,7 @@ wasm-encoder = "0.219"
 
 [target.'cfg(unix)'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2.50"
+libc.workspace = true
 # tidy-alphabetical-end
 
 [dependencies.object]
