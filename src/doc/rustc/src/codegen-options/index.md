@@ -211,8 +211,8 @@ with coverage tools other than those built and shipped with the compiler.
 
 ## jump-tables
 
-This option is used to allow or prevent the LLVM codegen backend from creating
-jump tables when lowering switches.
+This option is used to allow or prevent the LLVM or GCC codegen backend from
+creating jump tables when lowering switches.
 
 * `y`, `yes`, `on`, `true` or no value: allow jump tables (the default).
 * `n`, `no`, `off` or `false`: disable jump tables.
