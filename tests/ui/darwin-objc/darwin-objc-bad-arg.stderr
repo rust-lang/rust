@@ -1,0 +1,51 @@
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:12:18
+   |
+LL |     objc::class!(s);
+   |                  ^
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:15:18
+   |
+LL |     objc::class!(NSObject);
+   |                  ^^^^^^^^
+
+ WARN rustc_errors::emitter Invalid span $SRC_DIR/core/src/os/darwin/objc.rs:LL:COL (#6), error=SourceNotAvailable { filename: Real(Remapped { local_path: None, virtual_name: "$SRC_DIR/core/src/os/darwin/objc.rs" }) }
+error[E0539]: malformed `rustc_objc_class` attribute input
+  --> $DIR/darwin-objc-bad-arg.rs:18:5
+   |
+LL |     objc::class!(123);
+   |     ^^^^^^^^^^^^^---^
+   |     |            |
+   |     |            expected a string literal here
+   |     help: must be of the form: `#[rustc_objc_class = "ClassName"]`
+   |
+   = note: this error originates in the macro `objc::class` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:22:21
+   |
+LL |     objc::selector!(s);
+   |                     ^
+
+error: attribute value must be a literal
+  --> $DIR/darwin-objc-bad-arg.rs:25:21
+   |
+LL |     objc::selector!(alloc);
+   |                     ^^^^^
+
+ WARN rustc_errors::emitter Invalid span $SRC_DIR/core/src/os/darwin/objc.rs:LL:COL (#9), error=SourceNotAvailable { filename: Real(Remapped { local_path: None, virtual_name: "$SRC_DIR/core/src/os/darwin/objc.rs" }) }
+error[E0539]: malformed `rustc_objc_selector` attribute input
+  --> $DIR/darwin-objc-bad-arg.rs:28:5
+   |
+LL |     objc::selector!(123);
+   |     ^^^^^^^^^^^^^^^^---^
+   |     |               |
+   |     |               expected a string literal here
+   |     help: must be of the form: `#[rustc_objc_selector = "methodName"]`
+   |
+   = note: this error originates in the macro `objc::selector` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0539`.
