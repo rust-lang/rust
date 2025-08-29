@@ -600,7 +600,7 @@ impl<T: fmt::Debug> fmt::Debug for OnceLock<T> {
         let mut d = f.debug_tuple("OnceLock");
         match self.get() {
             Some(v) => d.field(v),
-            None => d.field(&format_args!("<uninit>")),
+            None => d.field_with(|f| f.write_str("<uninit>")),
         };
         d.finish()
     }

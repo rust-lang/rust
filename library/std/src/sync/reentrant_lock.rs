@@ -373,7 +373,7 @@ impl<T: fmt::Debug + ?Sized> fmt::Debug for ReentrantLock<T> {
         let mut d = f.debug_struct("ReentrantLock");
         match self.try_lock() {
             Some(v) => d.field("data", &&*v),
-            None => d.field("data", &format_args!("<locked>")),
+            None => d.field_with("data", |f| f.write_str("<locked>")),
         };
         d.finish_non_exhaustive()
     }

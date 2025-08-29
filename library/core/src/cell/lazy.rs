@@ -364,7 +364,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
         let mut d = f.debug_tuple("LazyCell");
         match LazyCell::get(self) {
             Some(data) => d.field(data),
-            None => d.field(&format_args!("<uninit>")),
+            None => d.field_with(|f| f.write_str("<uninit>")),
         };
         d.finish()
     }

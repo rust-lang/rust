@@ -395,7 +395,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyLock<T, F> {
         let mut d = f.debug_tuple("LazyLock");
         match LazyLock::get(self) {
             Some(v) => d.field(v),
-            None => d.field(&format_args!("<uninit>")),
+            None => d.field_with(|f| f.write_str("<uninit>")),
         };
         d.finish()
     }

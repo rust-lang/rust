@@ -684,7 +684,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
                 d.field("data", &&**err.get_ref());
             }
             Err(TryLockError::WouldBlock) => {
-                d.field("data", &format_args!("<locked>"));
+                d.field_with("data", |f| f.write_str("<locked>"));
             }
         }
         d.field("poisoned", &self.poison.get());
