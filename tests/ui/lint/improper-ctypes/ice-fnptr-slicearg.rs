@@ -1,6 +1,9 @@
 #![crate_type = "lib"]
 #![deny(improper_c_fn_definitions, improper_c_callbacks)]
 
+// Issue: https://github.com/rust-lang/rust/issues/94223
+// ice when a FnPtr has an unsized array argument
+
 pub fn bad(f: extern "C" fn([u8])) {}
 //~^ ERROR `extern` callback uses type `[u8]`, which is not FFI-safe
 

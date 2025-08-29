@@ -1,6 +1,9 @@
 //@ check-pass
 #![deny(improper_ctypes)]
 
+// Issue: https://github.com/rust-lang/rust/issues/73249
+// "ICE: could not fully normalize"
+
 pub trait Foo {
     type Assoc: 'static;
 }
