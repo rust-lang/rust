@@ -22,10 +22,13 @@
 #![allow(dead_code, unused_macros)]
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::ffi::CStr;
+use crate::ffi::{CStr, c_char, c_void};
 use crate::marker::PhantomData;
-use crate::sync::atomic::{self, Atomic, AtomicPtr, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::{mem, ptr};
+
+#[cfg(test)]
+mod tests;
 
 // We can use true weak linkage on ELF targets.
 #[cfg(all(unix, not(target_vendor = "apple")))]
@@ -64,7 +67,7 @@ impl<F: Copy> ExternWeak<F> {
 
 pub(crate) macro dlsym {
     (fn $name:ident($($param:ident : $t:ty),* $(,)?) -> $ret:ty;) => (
-         dlsym!(
+        dlsym!(
             #[link_name = stringify!($name)]
             fn $name($($param : $t),*) -> $ret;
         );
@@ -78,16 +81,23 @@ pub(crate) macro dlsym {
         let $name = &DLSYM;
     )
 }
+
 pub(crate) struct DlsymWeak<F> {
-    name: &'static str,
+    /// A pointer to the nul-terminated name of the symbol.
+    // Use a pointer instead of `&'static CStr` to save space.
+    name: *const c_char,
     func: Atomic<*mut libc::c_void>,
     _marker: PhantomData<F>,
 }
 
 impl<F> DlsymWeak<F> {
     pub(crate) const fn new(name: &'static str) -> Self {
+        let Ok(name) = CStr::from_bytes_with_nul(name.as_bytes()) else {
+            panic!("not a nul-terminated string")
+        };
+
         DlsymWeak {
-            name,
+            name: name.as_ptr(),
             func: AtomicPtr::new(ptr::without_provenance_mut(1)),
             _marker: PhantomData,
         }
@@ -95,45 +105,41 @@ impl<F> DlsymWeak<F> {
 
     #[inline]
     pub(crate) fn get(&self) -> Option<F> {
-        unsafe {
-            // Relaxed is fine here because we fence before reading through the
-            // pointer (see the comment below).
-            match self.func.load(Ordering::Relaxed) {
-                func if func.addr() == 1 => self.initialize(),
-                func if func.is_null() => None,
-                func => {
-                    let func = mem::transmute_copy::<*mut libc::c_void, F>(&func);
-                    // The caller is presumably going to read through this value
-                    // (by calling the function we've dlsymed). This means we'd
-                    // need to have loaded it with at least C11's consume
-                    // ordering in order to be guaranteed that the data we read
-                    // from the pointer isn't from before the pointer was
-                    // stored. Rust has no equivalent to memory_order_consume,
-                    // so we use an acquire fence (sorry, ARM).
-                    //
-                    // Now, in practice this likely isn't needed even on CPUs
-                    // where relaxed and consume mean different things. The
-                    // symbols we're loading are probably present (or not) at
-                    // init, and even if they aren't the runtime dynamic loader
-                    // is extremely likely have sufficient barriers internally
-                    // (possibly implicitly, for example the ones provided by
-                    // invoking `mprotect`).
-                    //
-                    // That said, none of that's *guaranteed*, and so we fence.
-                    atomic::fence(Ordering::Acquire);
-                    Some(func)
-                }
-            }
+        // The caller is presumably going to read through this value
+        // (by calling the function we've dlsymed). This means we'd
+        // need to have loaded it with at least C11's consume
+        // ordering in order to be guaranteed that the data we read
+        // from the pointer isn't from before the pointer was
+        // stored. Rust has no equivalent to memory_order_consume,
+        // so we use an acquire load (sorry, ARM).
+        //
+        // Now, in practice this likely isn't needed even on CPUs
+        // where relaxed and consume mean different things. The
+        // symbols we're loading are probably present (or not) at
+        // init, and even if they aren't the runtime dynamic loader
+        // is extremely likely have sufficient barriers internally
+        // (possibly implicitly, for example the ones provided by
+        // invoking `mprotect`).
+        //
+        // That said, none of that's *guaranteed*, so we use acquire.
+        match self.func.load(Ordering::Acquire) {
+            func if func.addr() == 1 => self.initialize(),
+            func if func.is_null() => None,
+            func => Some(unsafe { mem::transmute_copy::<*mut c_void, F>(&func) }),
         }
     }
 
     // Cold because it should only happen during first-time initialization.
     #[cold]
-    unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(size_of::<F>(), size_of::<*mut libc::c_void>());
+    fn initialize(&self) -> Option<F> {
+        const {
+            if size_of::<F>() != size_of::<*mut libc::c_void>() {
+                panic!("not a function pointer")
+            }
+        }
 
-        let val = unsafe { fetch(self.name) };
-        // This synchronizes with the acquire fence in `get`.
+        let val = unsafe { libc::dlsym(libc::RTLD_DEFAULT, self.name) };
+        // This synchronizes with the acquire load in `get`.
         self.func.store(val, Ordering::Release);
 
         if val.is_null() {
@@ -144,13 +150,8 @@ impl<F> DlsymWeak<F> {
     }
 }
 
-unsafe fn fetch(name: &str) -> *mut libc::c_void {
-    let name = match CStr::from_bytes_with_nul(name.as_bytes()) {
-        Ok(cstr) => cstr,
-        Err(..) => return ptr::null_mut(),
-    };
-    unsafe { libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) }
-}
+unsafe impl<F> Send for DlsymWeak<F> {}
+unsafe impl<F> Sync for DlsymWeak<F> {}
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
