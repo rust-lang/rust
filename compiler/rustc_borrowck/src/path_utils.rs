@@ -2,8 +2,9 @@ use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
-use rustc_middle::ty::TyCtxt;
+use rustc_data_structures::unord::UnordMap;
+use rustc_middle::mir::{BasicBlock, Body, Local, Location, Place, PlaceRef, ProjectionElem};
+use rustc_middle::ty::{CapturedPlace, TyCtxt};
 use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
@@ -133,7 +134,7 @@ pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
 /// of a closure type.
 pub(crate) fn is_upvar_field_projection<'tcx>(
     tcx: TyCtxt<'tcx>,
-    upvars: &[&rustc_middle::ty::CapturedPlace<'tcx>],
+    upvars: &[&CapturedPlace<'tcx>],
     place_ref: PlaceRef<'tcx>,
     body: &Body<'tcx>,
 ) -> Option<FieldIdx> {
@@ -157,5 +158,26 @@ pub(crate) fn is_upvar_field_projection<'tcx>(
             }
         }
         _ => None,
+    }
+}
+
+pub(crate) fn is_relocated_upvar_field_projection<'tcx>(
+    upvars: &[&CapturedPlace<'tcx>],
+    local_from_upvars: &UnordMap<Local, FieldIdx>,
+    mut place_ref: PlaceRef<'tcx>,
+) -> Option<FieldIdx> {
+    let mut by_ref = false;
+
+    if let Some((place_base, ProjectionElem::Deref)) = place_ref.last_projection() {
+        place_ref = place_base;
+        by_ref = true;
+    }
+    if let Some(local) = place_ref.as_local()
+        && let Some(&field) = local_from_upvars.get(&local)
+        && (!by_ref || upvars[field.index()].is_by_ref())
+    {
+        Some(field)
+    } else {
+        None
     }
 }
