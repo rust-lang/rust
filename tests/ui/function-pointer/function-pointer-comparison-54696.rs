@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/54696
 //@ run-pass
 
 #![allow(unpredictable_function_pointer_comparisons)]

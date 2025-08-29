@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/7364
 use std::cell::RefCell;
 
 // Regression test for issue 7364

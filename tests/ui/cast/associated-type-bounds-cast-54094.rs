@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/54094
 //@ check-pass
 trait Zoo {
     type X;

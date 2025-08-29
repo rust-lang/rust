@@ -1,5 +1,5 @@
 warning: trait `Foo` is never used
-  --> $DIR/trait-method-self-param-error-7575.rs:4:7
+  --> $DIR/trait-method-resolution-7575.rs:4:7
    |
 LL | trait Foo {
    |       ^^^

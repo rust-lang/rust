@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/53568
 // Regression test for an NLL-related ICE (#53568) -- we failed to
 // resolve inference variables in "custom type-ops".
 //

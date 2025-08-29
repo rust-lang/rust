@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/7344
 //@ run-pass
 #![allow(unused_must_use)]
 

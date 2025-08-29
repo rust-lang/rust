@@ -1,5 +1,5 @@
 warning: method `dummy` is never used
-  --> $DIR/mut-trait-coercion-8248.rs:5:8
+  --> $DIR/coerce-mut-trait-object-8248.rs:5:8
    |
 LL | trait A {
    |       - method in this trait
