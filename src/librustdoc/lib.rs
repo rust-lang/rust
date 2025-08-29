@@ -760,7 +760,9 @@ fn run_renderer<
                 tcx.dcx().struct_fatal(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
-                msg.note(format!("failed to create or modify \"{file}\""));
+                msg.note(format!("failed to create or modify {e}"));
+            } else {
+                msg.note(format!("failed to create or modify file: {e}"));
             }
             msg.emit();
         }
