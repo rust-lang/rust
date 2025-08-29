@@ -7,7 +7,7 @@ edition = "2024"
 # tidy-alphabetical-start
 bitflags.workspace = true
 libloading = "0.8.0"
-odht = { version = "0.3.1", features = ["nightly"] }
+odht.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
@@ -30,11 +30,11 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-tempfile = "3.7.1"
+tempfile.workspace = true
 tracing.workspace = true
 # tidy-alphabetical-end
 
 [target.'cfg(target_os = "aix")'.dependencies]
 # tidy-alphabetical-start
-libc = "0.2"
+libc.workspace = true
 # tidy-alphabetical-end

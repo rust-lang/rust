@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 blake3 = "1.5.2"
-derive-where = "1.2.7"
-indexmap = { version = "2.0.0" }
+derive-where.workspace = true
+indexmap.workspace = true
 itoa = "1.0"
 md5 = { package = "md-5", version = "0.10.0" }
 rustc_arena = { path = "../rustc_arena" }
@@ -16,7 +16,7 @@ rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
-scoped-tls = "1.0"
+scoped-tls.workspace = true
 sha1 = "0.10.0"
 sha2 = "0.10.1"
 tracing.workspace = true

@@ -5,9 +5,9 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-either = "1"
+either.workspace = true
 rustc_abi = { path = "../rustc_abi" }
-rustc_apfloat = "0.2.0"
+rustc_apfloat.workspace = true
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

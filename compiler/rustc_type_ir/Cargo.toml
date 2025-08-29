@@ -6,10 +6,10 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags.workspace = true
-derive-where = "1.2.7"
+derive-where.workspace = true
 ena = "0.14.3"
-indexmap = "2.0.0"
-rustc-hash = "2.0.0"
+indexmap.workspace = true
+rustc-hash.workspace = true
 rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_error_messages = { path = "../rustc_error_messages", optional = true }
