@@ -11,7 +11,7 @@ LL |     }
 LL | }
    | - `line` dropped here while still borrowed
    |
-note: requirement that `line` is borrowed for `'static` introduced here
+note: requirement for `'static` introduced here
   --> $DIR/regions-pattern-typing-issue-19552.rs:1:21
    |
 LL | fn assert_static<T: 'static>(_t: T) {}

@@ -32,7 +32,7 @@ fn needs_static() {
     //~| NOTE borrowed value does not live long enoug
 
     fn needs_static(_: impl Sized + 'static) {}
-    //~^ NOTE requirement that `x` is borrowed for `'static` introduced here
+    //~^ NOTE requirement for `'static` introduced here
     needs_static(a);
     //~^ NOTE argument requires that `x` is borrowed for `'static`
 }
@@ -80,7 +80,7 @@ fn needs_static_mut() {
     //~| NOTE borrowed value does not live long enough
 
     fn needs_static(_: impl Sized + 'static) {}
-    //~^ NOTE requirement that `x` is borrowed for `'static` introduced here
+    //~^ NOTE requirement for `'static` introduced here
     needs_static(a);
     //~^ NOTE argument requires that `x` is borrowed for `'static`
 }

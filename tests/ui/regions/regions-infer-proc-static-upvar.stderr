@@ -12,7 +12,7 @@ LL | |     });
 LL |   }
    |   - `x` dropped here while still borrowed
    |
-note: requirement that `x` is borrowed for `'static` introduced here
+note: requirement for `'static` introduced here
   --> $DIR/regions-infer-proc-static-upvar.rs:4:19
    |
 LL | fn foo<F:FnOnce()+'static>(_p: F) { }
