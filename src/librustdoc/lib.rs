@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(round_char_boundary))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -13,7 +14,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
-#![feature(round_char_boundary)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![warn(rustc::internal)]
