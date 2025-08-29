@@ -3031,6 +3031,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let mut err = self.path_does_not_live_long_enough(borrow_span, &name);
 
+        if let BorrowExplanation::MustBeValidFor { ref path, region_name, .. } = explanation {
+            for constraint in path {
+                if let ConstraintCategory::Predicate(pred) = constraint.category
+                    && !pred.is_dummy()
+                {
+                    err.span_note(pred, format!("requirement that {name} is borrowed for `{region_name}` introduced here"));
+                }
+            }
+        }
         if let Some(annotation) = self.annotate_argument_and_return_for_borrow(borrow) {
             let region_name = annotation.emit(self, &mut err);
 
