@@ -3,7 +3,7 @@
 use core::fmt;
 use core::future::Future;
 use core::marker::Tuple;
-use core::ops::{Coroutine, CoroutineState};
+use core::ops::{Coroutine, CoroutineState, Receiver};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
@@ -22,7 +22,9 @@ use core::task::{Context, Poll};
 /// Rust compiler that something is `Sync` in practice.
 ///
 /// ## Examples
-/// Using a non-`Sync` future prevents the wrapping struct from being `Sync`
+///
+/// Using a non-`Sync` future prevents the wrapping struct from being `Sync`:
+///
 /// ```compile_fail
 /// use core::cell::Cell;
 ///
@@ -44,6 +46,7 @@ use core::task::{Context, Poll};
 ///
 /// `Exclusive` ensures the struct is `Sync` without stripping the future of its
 /// functionality.
+///
 /// ```
 /// #![feature(exclusive_wrapper)]
 /// use core::cell::Cell;
@@ -109,8 +112,8 @@ impl<T: Sized> Exclusive<T> {
     #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn into_inner(self) -> T {
-        self.inner
+    pub const fn into_inner(exclusive: Self) -> T {
+        exclusive.inner
     }
 }
 
@@ -119,8 +122,8 @@ impl<T: ?Sized> Exclusive<T> {
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn get_mut(&mut self) -> &mut T {
-        &mut self.inner
+    pub const fn get_mut(exclusive: &mut Self) -> &mut T {
+        &mut exclusive.inner
     }
 
     /// Gets pinned exclusive access to the underlying value.
@@ -132,10 +135,10 @@ impl<T: ?Sized> Exclusive<T> {
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
-    pub const fn get_pin_mut(self: Pin<&mut Self>) -> Pin<&mut T> {
+    pub const fn get_pin_mut(exclusive: Pin<&mut Self>) -> Pin<&mut T> {
         // SAFETY: `Exclusive` can only produce `&mut T` if itself is unpinned
         // `Pin::map_unchecked_mut` is not const, so we do this conversion manually
-        unsafe { Pin::new_unchecked(&mut self.get_unchecked_mut().inner) }
+        unsafe { Pin::new_unchecked(&mut exclusive.get_unchecked_mut().inner) }
     }
 
     /// Build a _mutable_ reference to an `Exclusive<T>` from
@@ -179,7 +182,7 @@ where
     type Output = F::Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
-        self.into_inner().call_once(args)
+        Self::into_inner(self).call_once(args)
     }
 }
 
@@ -190,7 +193,7 @@ where
     Args: Tuple,
 {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
-        self.get_mut().call_mut(args)
+        Self::get_mut(self).call_mut(args)
     }
 }
 
@@ -203,7 +206,7 @@ where
 
     #[inline]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        self.get_pin_mut().poll(cx)
+        Self::get_pin_mut(self).poll(cx)
     }
 }
 
@@ -217,6 +220,15 @@ where
 
     #[inline]
     fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume(self.get_pin_mut(), arg)
+        G::resume(Self::get_pin_mut(self), arg)
     }
+}
+
+// FIXME: implement `DerefMut` when this becomes possible
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<T> Receiver for Exclusive<T>
+where
+    T: ?Sized,
+{
+    type Target = T;
 }
