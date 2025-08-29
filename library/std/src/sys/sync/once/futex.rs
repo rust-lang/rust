@@ -76,6 +76,11 @@ impl Once {
     }
 
     #[inline]
+    pub const fn new_complete() -> Once {
+        Once { state_and_queued: Futex::new(COMPLETE) }
+    }
+
+    #[inline]
     pub fn is_completed(&self) -> bool {
         // Use acquire ordering to make all initialization changes visible to the
         // current thread.

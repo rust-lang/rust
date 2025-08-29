@@ -82,6 +82,13 @@ impl Once {
         Once { inner: sys::Once::new() }
     }
 
+    /// Creates a new `Once` value that starts already completed.
+    #[inline]
+    #[must_use]
+    pub(crate) const fn new_complete() -> Once {
+        Once { inner: sys::Once::new_complete() }
+    }
+
     /// Performs an initialization routine once and only once. The given closure
     /// will be executed if this is the first time `call_once` has been called,
     /// and otherwise the routine will *not* be invoked.

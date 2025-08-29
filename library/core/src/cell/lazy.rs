@@ -370,6 +370,16 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
     }
 }
 
+#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T, F> From<T> for LazyCell<T, F> {
+    /// Constructs a `LazyCell` that starts already initialized
+    /// with the provided value.
+    #[inline]
+    fn from(value: T) -> Self {
+        Self { state: UnsafeCell::new(State::Init(value)) }
+    }
+}
+
 #[cold]
 #[inline(never)]
 const fn panic_poisoned() -> ! {
