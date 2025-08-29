@@ -447,7 +447,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let result = libc::find_path(
             crate::ptr::null_mut(),
-            libc::path_base_directory::B_FIND_PATH_IMAGE_PATH,
+            libc::B_FIND_PATH_IMAGE_PATH,
             crate::ptr::null_mut(),
             name.as_mut_ptr(),
             name.len(),
