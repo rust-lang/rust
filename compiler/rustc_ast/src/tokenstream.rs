@@ -3,15 +3,6 @@
 //! `TokenStream`s represent syntactic objects before they are converted into ASTs.
 //! A `TokenStream` is, roughly speaking, a sequence of [`TokenTree`]s,
 //! which are themselves a single [`Token`] or a `Delimited` subsequence of tokens.
-//!
-//! ## Ownership
-//!
-//! `TokenStream`s are persistent data structures constructed as ropes with reference
-//! counted-children. In general, this means that calling an operation on a `TokenStream`
-//! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
-//! the original. This essentially coerces `TokenStream`s into "views" of their subparts,
-//! and a borrowed `TokenStream` is sufficient to build an owned `TokenStream` without taking
-//! ownership of the original.
 
 use std::borrow::Cow;
 use std::ops::Range;
@@ -95,17 +86,6 @@ impl TokenTree {
                 Cow::Borrowed(_) => Cow::Borrowed(self),
             },
             _ => Cow::Borrowed(self),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for TokenStream
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        for sub_tt in self.iter() {
-            sub_tt.hash_stable(hcx, hasher);
         }
     }
 }
@@ -556,10 +536,6 @@ pub struct AttrsTarget {
     pub tokens: LazyAttrTokenStream,
 }
 
-/// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
-
 /// Indicates whether a token can join with the following token to form a
 /// compound token. Used for conversions to `proc_macro::Spacing`. Also used to
 /// guide pretty-printing, which is where the `JointHidden` value (which isn't
@@ -620,58 +596,9 @@ pub enum Spacing {
     JointHidden,
 }
 
-impl TokenStream {
-    /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
-    /// separating the two arguments with a comma for diagnostic suggestions.
-    pub fn add_comma(&self) -> Option<(TokenStream, Span)> {
-        // Used to suggest if a user writes `foo!(a b);`
-        let mut suggestion = None;
-        let mut iter = self.0.iter().enumerate().peekable();
-        while let Some((pos, ts)) = iter.next() {
-            if let Some((_, next)) = iter.peek() {
-                let sp = match (&ts, &next) {
-                    (_, TokenTree::Token(Token { kind: token::Comma, .. }, _)) => continue,
-                    (
-                        TokenTree::Token(token_left, Spacing::Alone),
-                        TokenTree::Token(token_right, _),
-                    ) if (token_left.is_non_reserved_ident() || token_left.is_lit())
-                        && (token_right.is_non_reserved_ident() || token_right.is_lit()) =>
-                    {
-                        token_left.span
-                    }
-                    (TokenTree::Delimited(sp, ..), _) => sp.entire(),
-                    _ => continue,
-                };
-                let sp = sp.shrink_to_hi();
-                let comma = TokenTree::token_alone(token::Comma, sp);
-                suggestion = Some((pos, comma, sp));
-            }
-        }
-        if let Some((pos, comma, sp)) = suggestion {
-            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
-            let parts = self.0.split_at(pos + 1);
-            new_stream.extend_from_slice(parts.0);
-            new_stream.push(comma);
-            new_stream.extend_from_slice(parts.1);
-            return Some((TokenStream::new(new_stream), sp));
-        }
-        None
-    }
-}
-
-impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
-        TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
-    }
-}
-
-impl Eq for TokenStream {}
-
-impl PartialEq<TokenStream> for TokenStream {
-    fn eq(&self, other: &TokenStream) -> bool {
-        self.iter().eq(other.iter())
-    }
-}
+/// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
+#[derive(Clone, Debug, Default, Encodable, Decodable)]
+pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
@@ -845,6 +772,68 @@ impl TokenStream {
             } else {
                 vec![TokenTree::token_joint_hidden(token::Pound, span), body]
             }
+        }
+    }
+
+    /// Given a `TokenStream` with a `Stream` of only two arguments, return a new `TokenStream`
+    /// separating the two arguments with a comma for diagnostic suggestions.
+    pub fn add_comma(&self) -> Option<(TokenStream, Span)> {
+        // Used to suggest if a user writes `foo!(a b);`
+        let mut suggestion = None;
+        let mut iter = self.0.iter().enumerate().peekable();
+        while let Some((pos, ts)) = iter.next() {
+            if let Some((_, next)) = iter.peek() {
+                let sp = match (&ts, &next) {
+                    (_, TokenTree::Token(Token { kind: token::Comma, .. }, _)) => continue,
+                    (
+                        TokenTree::Token(token_left, Spacing::Alone),
+                        TokenTree::Token(token_right, _),
+                    ) if (token_left.is_non_reserved_ident() || token_left.is_lit())
+                        && (token_right.is_non_reserved_ident() || token_right.is_lit()) =>
+                    {
+                        token_left.span
+                    }
+                    (TokenTree::Delimited(sp, ..), _) => sp.entire(),
+                    _ => continue,
+                };
+                let sp = sp.shrink_to_hi();
+                let comma = TokenTree::token_alone(token::Comma, sp);
+                suggestion = Some((pos, comma, sp));
+            }
+        }
+        if let Some((pos, comma, sp)) = suggestion {
+            let mut new_stream = Vec::with_capacity(self.0.len() + 1);
+            let parts = self.0.split_at(pos + 1);
+            new_stream.extend_from_slice(parts.0);
+            new_stream.push(comma);
+            new_stream.extend_from_slice(parts.1);
+            return Some((TokenStream::new(new_stream), sp));
+        }
+        None
+    }
+}
+
+impl PartialEq<TokenStream> for TokenStream {
+    fn eq(&self, other: &TokenStream) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl Eq for TokenStream {}
+
+impl FromIterator<TokenTree> for TokenStream {
+    fn from_iter<I: IntoIterator<Item = TokenTree>>(iter: I) -> Self {
+        TokenStream::new(iter.into_iter().collect::<Vec<TokenTree>>())
+    }
+}
+
+impl<CTX> HashStable<CTX> for TokenStream
+where
+    CTX: crate::HashStableContext,
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        for sub_tt in self.iter() {
+            sub_tt.hash_stable(hcx, hasher);
         }
     }
 }

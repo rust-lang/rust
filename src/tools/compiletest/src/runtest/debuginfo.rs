@@ -10,7 +10,6 @@ use super::debugger::DebuggerCommands;
 use super::{Debugger, Emit, ProcRes, TestCx, Truncated, WillExecute};
 use crate::common::Config;
 use crate::debuggers::{extract_gdb_version, is_android_gdb_target};
-use crate::util::logv;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
@@ -234,7 +233,7 @@ impl TestCx<'_> {
                 gdb.args(debugger_opts);
                 // FIXME(jieyouxu): don't pass an empty Path
                 let cmdline = self.make_cmdline(&gdb, Utf8Path::new(""));
-                logv(self.config, format!("executing {}", cmdline));
+                self.logv(format_args!("executing {cmdline}"));
                 cmdline
             };
 

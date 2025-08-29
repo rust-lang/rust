@@ -2,9 +2,6 @@ use std::env;
 use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use tracing::*;
-
-use crate::common::Config;
 
 #[cfg(test)]
 mod tests;
@@ -24,14 +21,6 @@ pub fn lib_path_env_var() -> &'static str {
 }
 fn path_div() -> &'static str {
     ";"
-}
-
-pub fn logv(config: &Config, s: String) {
-    debug!("{}", s);
-    if config.verbose {
-        // Note: `./x test ... --verbose --no-capture` is needed to see this print.
-        println!("{}", s);
-    }
 }
 
 pub trait Utf8PathBufExt {
