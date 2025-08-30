@@ -69,6 +69,10 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// The `#[rustc_objc_class = "..."]` attribute.
+    pub objc_class: Option<Symbol>,
+    /// The `#[rustc_objc_selector = "..."]` attribute.
+    pub objc_selector: Option<Symbol>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable, PartialEq, Eq)]
@@ -185,6 +189,8 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            objc_class: None,
+            objc_selector: None,
         }
     }
 

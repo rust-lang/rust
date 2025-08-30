@@ -270,6 +270,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MustUse { .. }
                     | AttributeKind::CrateName { .. }
+                    | AttributeKind::ObjcClass { .. }
+                    | AttributeKind::ObjcSelector { .. }
                 ) => { /* do nothing  */ }
                 Attribute::Unparsed(attr_item) => {
                     style = Some(attr_item.style);
