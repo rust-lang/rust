@@ -8,6 +8,15 @@ use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 
+#[expect(dead_code)]
+#[path = "unsupported.rs"]
+mod unsupported_fs;
+
+pub use unsupported_fs::{
+    DirBuilder, FilePermissions, FileTimes, ReadDir, canonicalize, link, remove_dir_all, rename,
+    rmdir, set_perm, symlink, unlink,
+};
+
 #[derive(Debug)]
 struct FileDesc(*mut vex_sdk::FIL);
 
@@ -20,8 +29,6 @@ pub enum FileAttr {
     Dir,
     File { size: u64 },
 }
-
-pub struct ReadDir(!);
 
 pub struct DirEntry {
     path: PathBuf,
@@ -37,19 +44,10 @@ pub struct OpenOptions {
     create_new: bool,
 }
 
-#[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
-
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions {}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
     is_dir: bool,
 }
-
-#[derive(Debug)]
-pub struct DirBuilder {}
 
 impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
@@ -110,21 +108,6 @@ impl FileAttr {
     }
 }
 
-impl FilePermissions {
-    pub fn readonly(&self) -> bool {
-        false
-    }
-
-    pub fn set_readonly(&mut self, _readonly: bool) {
-        panic!("Perimissions do not exist")
-    }
-}
-
-impl FileTimes {
-    pub fn set_accessed(&mut self, _t: SystemTime) {}
-    pub fn set_modified(&mut self, _t: SystemTime) {}
-}
-
 impl FileType {
     pub fn is_dir(&self) -> bool {
         self.is_dir
@@ -137,38 +120,6 @@ impl FileType {
     pub fn is_symlink(&self) -> bool {
         // No symlinks in VEXos - entries are either files or directories.
         false
-    }
-}
-
-impl fmt::Debug for ReadDir {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
-    }
-}
-
-impl Iterator for ReadDir {
-    type Item = io::Result<DirEntry>;
-
-    fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        self.0
-    }
-}
-
-impl DirEntry {
-    pub fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    pub fn file_name(&self) -> OsString {
-        self.path.file_name().unwrap_or_default().into()
-    }
-
-    pub fn metadata(&self) -> io::Result<FileAttr> {
-        stat(&self.path)
-    }
-
-    pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(self.metadata()?.file_type())
     }
 }
 
@@ -474,16 +425,6 @@ impl File {
     }
 }
 
-impl DirBuilder {
-    pub fn new() -> DirBuilder {
-        DirBuilder {}
-    }
-
-    pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
-        unsupported()
-    }
-}
-
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("File").field("fd", &self.fd.0).finish()
@@ -495,51 +436,8 @@ impl Drop for File {
     }
 }
 
-pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
-    // While there *is* a userspace function for reading file directories,
-    // the necessary implementation cannot currently be done cleanly, as
-    // VEXos does not expose directory length to user programs.
-    //
-    // This means that we would need to create a large fixed-length buffer
-    // and hope that the folder's contents didn't exceed that buffer's length,
-    // which obviously isn't behavior we want to rely on in the standard library.
-    unsupported()
-}
-
-pub fn unlink(_p: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn rmdir(_p: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
-    unsupported()
-}
-
 pub fn exists(path: &Path) -> io::Result<bool> {
     run_path_with_cstr(path, &|path| Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0))
-}
-
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
-}
-
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
-    unsupported()
-}
-
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
-    unsupported()
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
@@ -549,10 +447,6 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     // Symlinks aren't supported in this filesystem
     stat(p)
-}
-
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
