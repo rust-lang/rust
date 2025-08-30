@@ -1,0 +1,78 @@
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:2:18
+   |
+LL | fn return_type<T>(t: T) {
+   |                   - `t` has type `T`
+LL |     let x: u32 = t(1);
+   |                  ^---
+   |                  |
+   |                  call expression requires function
+   |
+help: consider restricting type parameter `T` with trait `Fn`
+   |
+LL | fn return_type<T: Fn(i32) -> u32>(t: T) {
+   |                 ++++++++++++++++
+
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:7:13
+   |
+LL | fn unknown_return_type<T>(t: T) {
+   |                           - `t` has type `T`
+LL |     let x = t();
+   |             ^--
+   |             |
+   |             call expression requires function
+   |
+help: consider restricting type parameter `T` with trait `Fn`
+   |
+LL | fn unknown_return_type<T: Fn()>(t: T) {
+   |                         ++++++
+
+error[E0618]: expected function, found `Vec<T>`
+  --> $DIR/suggest-call-on-generic-param.rs:12:5
+   |
+LL | fn nested_return_type<T>(t: Vec<T>) {
+   |                          - `t` has type `Vec<T>`
+LL |     t();
+   |     ^--
+   |     |
+   |     call expression requires function
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | fn nested_return_type<T>(t: Vec<T>) where Vec<T>: Fn() {
+   |                                     ++++++++++++++++++
+
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:17:5
+   |
+LL | fn no_return_type<T>(t: T) {
+   |                      - `t` has type `T`
+LL |     t(1, 2, true);
+   |     ^------------
+   |     |
+   |     call expression requires function
+   |
+help: consider restricting type parameter `T` with trait `Fn`
+   |
+LL | fn no_return_type<T: Fn(i32, i32, bool)>(t: T) {
+   |                    ++++++++++++++++++++
+
+error[E0618]: expected function, found `T`
+  --> $DIR/suggest-call-on-generic-param.rs:22:5
+   |
+LL | fn existing_bound<T: Copy>(t: T) {
+   |                            - `t` has type `T`
+LL |     t(false);
+   |     ^-------
+   |     |
+   |     call expression requires function
+   |
+help: consider further restricting type parameter `T` with trait `Fn`
+   |
+LL | fn existing_bound<T: Copy + Fn(bool)>(t: T) {
+   |                           ++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0618`.
