@@ -392,7 +392,9 @@ impl<A: Allocator> Box<dyn Any, A> {
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
-        debug_assert!(self.is::<T>());
+        if core::ub_checks::check_library_ub() {
+            assert!(self.is::<T>());
+        }
         unsafe {
             let (raw, alloc): (*mut dyn Any, _) = Box::into_raw_with_allocator(self);
             Box::from_raw_in(raw as *mut T, alloc)
@@ -451,7 +453,9 @@ impl<A: Allocator> Box<dyn Any + Send, A> {
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
-        debug_assert!(self.is::<T>());
+        if core::ub_checks::check_library_ub() {
+            assert!(self.is::<T>());
+        }
         unsafe {
             let (raw, alloc): (*mut (dyn Any + Send), _) = Box::into_raw_with_allocator(self);
             Box::from_raw_in(raw as *mut T, alloc)
@@ -510,7 +514,9 @@ impl<A: Allocator> Box<dyn Any + Send + Sync, A> {
     #[inline]
     #[unstable(feature = "downcast_unchecked", issue = "90850")]
     pub unsafe fn downcast_unchecked<T: Any>(self) -> Box<T, A> {
-        debug_assert!(self.is::<T>());
+        if core::ub_checks::check_library_ub() {
+            assert!(self.is::<T>());
+        }
         unsafe {
             let (raw, alloc): (*mut (dyn Any + Send + Sync), _) =
                 Box::into_raw_with_allocator(self);
