@@ -53,5 +53,5 @@
   "target-family": [
     "unix"
   ],
-  "target-pointer-width": "64"
+  "target-pointer-width": 64
 }
