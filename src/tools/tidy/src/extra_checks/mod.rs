@@ -303,7 +303,7 @@ fn check_impl(
     }
 
     if js_lint {
-        rustdoc_js::lint(outdir, librustdoc_path, tools_path)?;
+        rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless)?;
         rustdoc_js::es_check(outdir, librustdoc_path)?;
     }
 
