@@ -8,10 +8,20 @@ enum Lol {
 
 fn foo(x: (Lol, Lol)) {
     use Lol::*;
-    match x {
+    match &x {
         (Foo, Bar) | (Bar, Foo) => {}
         //~^ ERROR: variable `Ban` is not bound in all patterns
         //~| HELP: you might have meant to use the similarly named previously used binding `Bar`
+        //~| NOTE: pattern doesn't bind `Ban`
+        //~| NOTE: variable not in all patterns
+        //~| ERROR: variable `Ban` is assigned to, but never used
+        //~| NOTE: consider using `_Ban` instead
+        _ => {}
+    }
+    match &x {
+        (Foo, _) | (Bar, Foo) => {}
+        //~^ ERROR: variable `Ban` is not bound in all patterns
+        //~| HELP: you might have meant to use the similarly named unit variant `Bar`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
         //~| ERROR: variable `Ban` is assigned to, but never used
