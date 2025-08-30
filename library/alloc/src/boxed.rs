@@ -194,8 +194,8 @@ use core::hash::{Hash, Hasher};
 use core::marker::{Tuple, Unsize};
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
-    AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
-    DerefPure, DispatchFromDyn, LegacyReceiver,
+    AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, ControlFlow, Coroutine, CoroutineState, Deref,
+    DerefMut, DerefPure, DispatchFromDyn, FromResidual, LegacyReceiver, Residual, Try,
 };
 use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull, Unique};
@@ -388,6 +388,93 @@ impl<T> Box<T> {
     #[inline]
     pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_zeroed_in(Global)
+    }
+
+    /// Maps the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and the result is returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::map(b, f)` instead of `b.map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::map(b, |i| i + 7);
+    /// assert_eq!(*new, 14);
+    /// ```
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> Box<U> {
+        if size_of::<T>() == size_of::<U>() && align_of::<U>().is_multiple_of(align_of::<T>()) {
+            let ptr = Box::into_raw(this);
+            unsafe {
+                ptr.cast::<U>().write(f(ptr.read()));
+                Box::from_raw(ptr.cast::<U>())
+            }
+        } else {
+            Box::new(f(*this))
+        }
+    }
+
+    /// Attempts to map the value in a box, reusing the allocation if possible.
+    ///
+    /// `f` is called on the value in the box, and if the operation succeeds, the result is
+    /// returned, also boxed.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::try_map(b, f)` instead of `b.try_map(f)`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(smart_pointer_try_map)]
+    ///
+    /// let b = Box::new(7);
+    /// let new = Box::try_map(b, u32::try_from).unwrap();
+    /// assert_eq!(*new, 7);
+    /// ```
+    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    pub fn try_map<R>(
+        this: Self,
+        f: impl FnOnce(T) -> R,
+    ) -> <R::Residual as Residual<Box<R::Output>>>::TryType
+    where
+        R: Try,
+        R::Residual: Residual<Box<R::Output>>,
+    {
+        if size_of::<T>() == size_of::<R::Output>()
+            && align_of::<R::Output>().is_multiple_of(align_of::<T>())
+        {
+            let ptr = Box::into_raw(this);
+            unsafe {
+                match f(ptr.read()).branch() {
+                    ControlFlow::Continue(c) => {
+                        ptr.cast::<R::Output>().write(c);
+                        <R::Residual as Residual<Box<R::Output>>>::TryType::from_output(
+                            Box::from_raw(ptr.cast::<R::Output>()),
+                        )
+                    }
+                    ControlFlow::Break(b) => {
+                        drop(Box::from_raw(ptr));
+                        <R::Residual as Residual<Box<R::Output>>>::TryType::from_residual(b)
+                    }
+                }
+            }
+        } else {
+            match f(*this).branch() {
+                ControlFlow::Continue(c) => {
+                    <R::Residual as Residual<Box<R::Output>>>::TryType::from_output(Box::new(c))
+                }
+                ControlFlow::Break(b) => {
+                    <R::Residual as Residual<Box<R::Output>>>::TryType::from_residual(b)
+                }
+            }
+        }
     }
 }
 
