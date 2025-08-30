@@ -12,6 +12,11 @@ mod raw;
 // `OwnedFd`, `AsFd`, etc.
 mod owned;
 
+// `CommandExt`, etc.
+#[cfg(unix)]
+#[unstable(feature = "command_pass_fds", issue = "144989")]
+pub mod process;
+
 // Implementations for `AsRawFd` etc. for network types.
 #[cfg(not(target_os = "trusty"))]
 mod net;
