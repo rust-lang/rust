@@ -8,6 +8,7 @@ use core::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn};
 use core::ptr::{self, NonNull};
 
 use crate::alloc::Global;
+use crate::raw_rc::raw_rc::RawRc;
 use crate::raw_rc::rc_layout::{RcLayout, RcLayoutExt};
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 use crate::raw_rc::{RefCounter, RefCounts};
@@ -342,6 +343,32 @@ where
     #[cfg(not(no_global_oom_handling))]
     pub(super) unsafe fn set_ptr(&mut self, ptr: NonNull<T>) {
         self.ptr = ptr;
+    }
+
+    /// Creates a `RawRc` object if there are non-zero strong reference counts.
+    ///
+    /// # Safety
+    ///
+    /// `self` should only be handled by the same `RefCounter` implementation.
+    pub(crate) unsafe fn upgrade<R>(&self) -> Option<RawRc<T, A>>
+    where
+        A: Clone,
+        R: RefCounter,
+    {
+        unsafe fn inner<R>(value_ptr: NonNull<()>) -> bool
+        where
+            R: RefCounter,
+        {
+            (!is_dangling(value_ptr))
+                && unsafe {
+                    R::from_raw_counter(RcValuePointer::new(value_ptr).strong_count_ptr().as_ref())
+                        .upgrade()
+                }
+        }
+
+        unsafe {
+            inner::<R>(self.ptr.cast()).then(|| RawRc::from_raw_parts(self.ptr, self.alloc.clone()))
+        }
     }
 
     /// Returns a pointer to the value location of the reference-counted allocation, assume `self`
