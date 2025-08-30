@@ -806,6 +806,35 @@ impl<'a> Parser<'a> {
                     }
                     true
                 });
+
+                struct IdentFinder {
+                    idents: Vec<Ident>,
+                    /// If a block references one of the bindings introduced by the let pattern,
+                    /// we likely meant to use `if let`.
+                    /// This is pre-expansion, so if we encounter
+                    /// `let Some(x) = foo() { println!("{x}") }` we won't find it.
+                    references_ident: bool = false,
+                    /// If a block has a `return`, then we know with high certainty that it was
+                    /// meant to be let-else.
+                    has_return: bool = false,
+                }
+
+                impl<'a> Visitor<'a> for IdentFinder {
+                    fn visit_ident(&mut self, ident: &Ident) {
+                        for i in &self.idents {
+                            if ident.name == i.name {
+                                self.references_ident = true;
+                            }
+                        }
+                    }
+                    fn visit_expr(&mut self, node: &'a Expr) {
+                        if let ExprKind::Ret(..) = node.kind {
+                            self.has_return = true;
+                        }
+                        walk_expr(self, node);
+                    }
+                }
+
                 // Collect all bindings in pattern and see if they appear in the block. Likely meant
                 // to write `if let`. See if the block has a return. Likely meant to write
                 // `let else`.
@@ -1130,32 +1159,5 @@ impl<'a> Parser<'a> {
 
     pub(super) fn mk_block_err(&self, span: Span, guar: ErrorGuaranteed) -> Box<Block> {
         self.mk_block(thin_vec![self.mk_stmt_err(span, guar)], BlockCheckMode::Default, span)
-    }
-}
-
-struct IdentFinder {
-    idents: Vec<Ident>,
-    /// If a block references one of the bindings introduced by the let pattern, we likely meant to
-    /// use `if let`.
-    /// This is pre-expansion, so if we encounter `let Some(x) = foo() { println!("{x}") }` we won't
-    /// find it.
-    references_ident: bool = false,
-    /// If a block has a `return`, then we know with high certainty that the
-    has_return: bool = false,
-}
-
-impl<'a> Visitor<'a> for IdentFinder {
-    fn visit_ident(&mut self, ident: &Ident) {
-        for i in &self.idents {
-            if ident.name == i.name {
-                self.references_ident = true;
-            }
-        }
-    }
-    fn visit_expr(&mut self, node: &'a Expr) {
-        if let ExprKind::Ret(..) = node.kind {
-            self.has_return = true;
-        }
-        walk_expr(self, node);
     }
 }
