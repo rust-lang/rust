@@ -233,8 +233,7 @@ fn missing_items_err(
     };
 
     // Obtain the level of indentation ending in `sugg_sp`.
-    let padding =
-        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
+    let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
     let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
         (Vec::new(), Vec::new(), Vec::new());
 
@@ -357,6 +356,10 @@ fn bounds_from_generic_predicates<'tcx>(
     let mut types_str = vec![];
     for (ty, bounds) in types {
         if let ty::Param(_) = ty.kind() {
+            let ty_str = ty.to_string();
+            if ty_str.contains("impl ") {
+                continue;
+            }
             let mut bounds_str = vec![];
             for bound in bounds {
                 let mut projections_str = vec![];
@@ -377,9 +380,9 @@ fn bounds_from_generic_predicates<'tcx>(
                 }
             }
             if bounds_str.is_empty() {
-                types_str.push(ty.to_string());
+                types_str.push(ty_str);
             } else {
-                types_str.push(format!("{}: {}", ty, bounds_str.join(" + ")));
+                types_str.push(format!("{}: {}", ty_str, bounds_str.join(" + ")));
             }
         } else {
             // Avoid suggesting the following:
@@ -476,7 +479,7 @@ fn fn_sig_suggestion<'tcx>(
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
-    // not be present in the `fn` definition, not will we account for renamed
+    // not be present in the `fn` definition, nor will we account for renamed
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
