@@ -270,8 +270,11 @@ declare namespace rustdoc {
      */
     interface TypeData {
         searchUnbox: boolean,
-        invertedFunctionSignatureIndex: RoaringBitmap[],
+        invertedFunctionInputsIndex: RoaringBitmap[],
+        invertedFunctionOutputIndex: RoaringBitmap[],
     }
+
+    type TypeInvertedIndexPolarity = "invertedFunctionInputsIndex" | "invertedFunctionOutputIndex";
 
     /**
      * A search entry of some sort.

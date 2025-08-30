@@ -289,8 +289,26 @@ impl SerializedSearchIndex {
                             (Some(self_type_data), None) => Some(self_type_data),
                             (None, Some(other_type_data)) => Some(TypeData {
                                 search_unbox: other_type_data.search_unbox,
-                                inverted_function_signature_index: other_type_data
-                                    .inverted_function_signature_index
+                                inverted_function_inputs_index: other_type_data
+                                    .inverted_function_inputs_index
+                                    .iter()
+                                    .cloned()
+                                    .map(|mut list: Vec<u32>| {
+                                        for fnid in &mut list {
+                                            assert!(
+                                                other.function_data
+                                                    [usize::try_from(*fnid).unwrap()]
+                                                .is_some(),
+                                            );
+                                            // this is valid because we call `self.push()` once, exactly, for every entry,
+                                            // even if we're just pushing a tombstone
+                                            *fnid += u32::try_from(other_entryid_offset).unwrap();
+                                        }
+                                        list
+                                    })
+                                    .collect(),
+                                inverted_function_output_index: other_type_data
+                                    .inverted_function_output_index
                                     .iter()
                                     .cloned()
                                     .map(|mut list: Vec<u32>| {
@@ -310,18 +328,42 @@ impl SerializedSearchIndex {
                             }),
                             (Some(mut self_type_data), Some(other_type_data)) => {
                                 for (size, other_list) in other_type_data
-                                    .inverted_function_signature_index
+                                    .inverted_function_inputs_index
                                     .iter()
                                     .enumerate()
                                 {
-                                    while self_type_data.inverted_function_signature_index.len()
+                                    while self_type_data.inverted_function_inputs_index.len()
                                         <= size
                                     {
                                         self_type_data
-                                            .inverted_function_signature_index
+                                            .inverted_function_inputs_index
                                             .push(Vec::new());
                                     }
-                                    self_type_data.inverted_function_signature_index[size].extend(
+                                    self_type_data.inverted_function_inputs_index[size].extend(
+                                        other_list.iter().copied().map(|fnid| {
+                                            assert!(
+                                                other.function_data[usize::try_from(fnid).unwrap()]
+                                                    .is_some(),
+                                            );
+                                            // this is valid because we call `self.push()` once, exactly, for every entry,
+                                            // even if we're just pushing a tombstone
+                                            fnid + u32::try_from(other_entryid_offset).unwrap()
+                                        }),
+                                    )
+                                }
+                                for (size, other_list) in other_type_data
+                                    .inverted_function_output_index
+                                    .iter()
+                                    .enumerate()
+                                {
+                                    while self_type_data.inverted_function_output_index.len()
+                                        <= size
+                                    {
+                                        self_type_data
+                                            .inverted_function_output_index
+                                            .push(Vec::new());
+                                    }
+                                    self_type_data.inverted_function_output_index[size].extend(
                                         other_list.iter().copied().map(|fnid| {
                                             assert!(
                                                 other.function_data[usize::try_from(fnid).unwrap()]
@@ -443,8 +485,25 @@ impl SerializedSearchIndex {
                         param_names: function_data.param_names.clone(),
                     }),
                     other.type_data[other_entryid].as_ref().map(|type_data| TypeData {
-                        inverted_function_signature_index: type_data
-                            .inverted_function_signature_index
+                        inverted_function_inputs_index: type_data
+                            .inverted_function_inputs_index
+                            .iter()
+                            .cloned()
+                            .map(|mut list| {
+                                for fnid in &mut list {
+                                    assert!(
+                                        other.function_data[usize::try_from(*fnid).unwrap()]
+                                            .is_some(),
+                                    );
+                                    // this is valid because we call `self.push()` once, exactly, for every entry,
+                                    // even if we're just pushing a tombstone
+                                    *fnid += u32::try_from(other_entryid_offset).unwrap();
+                                }
+                                list
+                            })
+                            .collect(),
+                        inverted_function_output_index: type_data
+                            .inverted_function_output_index
                             .iter()
                             .cloned()
                             .map(|mut list| {
@@ -599,9 +658,13 @@ impl SerializedSearchIndex {
                     },
                 ),
                 self.type_data[id].as_ref().map(
-                    |TypeData { search_unbox, inverted_function_signature_index }| {
-                        let inverted_function_signature_index: Vec<Vec<u32>> =
-                            inverted_function_signature_index
+                    |TypeData {
+                         search_unbox,
+                         inverted_function_inputs_index,
+                         inverted_function_output_index,
+                     }| {
+                        let inverted_function_inputs_index: Vec<Vec<u32>> =
+                            inverted_function_inputs_index
                                 .iter()
                                 .cloned()
                                 .map(|mut list| {
@@ -615,7 +678,26 @@ impl SerializedSearchIndex {
                                     list
                                 })
                                 .collect();
-                        TypeData { search_unbox: *search_unbox, inverted_function_signature_index }
+                        let inverted_function_output_index: Vec<Vec<u32>> =
+                            inverted_function_output_index
+                                .iter()
+                                .cloned()
+                                .map(|mut list| {
+                                    for id in &mut list {
+                                        *id = u32::try_from(
+                                            *map.get(&usize::try_from(*id).unwrap()).unwrap(),
+                                        )
+                                        .unwrap();
+                                    }
+                                    list.sort();
+                                    list
+                                })
+                                .collect();
+                        TypeData {
+                            search_unbox: *search_unbox,
+                            inverted_function_inputs_index,
+                            inverted_function_output_index,
+                        }
                     },
                 ),
                 self.alias_pointers[id].and_then(|alias| map.get(&alias).copied()),
@@ -934,18 +1016,20 @@ struct TypeData {
     /// | `Unboxable<Inner>` | yes                | no      | no                 |
     /// | `Inner<Unboxable>` | no                 | no      | yes                |
     search_unbox: bool,
-    /// List of functions that mention this type in their type signature.
+    /// List of functions that mention this type in their type signature,
+    /// on the left side of the `->` arrow.
     ///
-    /// - The outermost list has one entry per alpha-normalized generic.
-    ///
-    /// - The second layer is sorted by number of types that appear in the
+    /// - The outer layer is sorted by number of types that appear in the
     ///   type signature. The search engine iterates over these in order from
     ///   smallest to largest. Functions with less stuff in their type
     ///   signature are more likely to be what the user wants, because we never
     ///   show functions that are *missing* parts of the query, so removing..
     ///
-    /// - The final layer is the list of functions.
-    inverted_function_signature_index: Vec<Vec<u32>>,
+    /// - The inner layer is the list of functions.
+    inverted_function_inputs_index: Vec<Vec<u32>>,
+    /// List of functions that mention this type in their type signature,
+    /// on the right side of the `->` arrow.
+    inverted_function_output_index: Vec<Vec<u32>>,
 }
 
 impl Serialize for TypeData {
@@ -953,15 +1037,21 @@ impl Serialize for TypeData {
     where
         S: Serializer,
     {
-        if self.search_unbox || !self.inverted_function_signature_index.is_empty() {
+        if self.search_unbox
+            || !self.inverted_function_inputs_index.is_empty()
+            || !self.inverted_function_output_index.is_empty()
+        {
             let mut seq = serializer.serialize_seq(None)?;
-            if !self.inverted_function_signature_index.is_empty() {
-                let mut buf = Vec::new();
-                encode::write_postings_to_string(&self.inverted_function_signature_index, &mut buf);
-                let mut serialized_result = Vec::new();
-                stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
-                seq.serialize_element(&String::from_utf8(serialized_result).unwrap())?;
-            }
+            let mut buf = Vec::new();
+            encode::write_postings_to_string(&self.inverted_function_inputs_index, &mut buf);
+            let mut serialized_result = Vec::new();
+            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+            seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
+            buf.clear();
+            serialized_result.clear();
+            encode::write_postings_to_string(&self.inverted_function_output_index, &mut buf);
+            stringdex_internals::encode::write_base64_to_bytes(&buf, &mut serialized_result);
+            seq.serialize_element(&str::from_utf8(&serialized_result).unwrap())?;
             if self.search_unbox {
                 seq.serialize_element(&1)?;
             }
@@ -984,21 +1074,39 @@ impl<'de> Deserialize<'de> for TypeData {
                 write!(formatter, "type data")
             }
             fn visit_none<E>(self) -> Result<TypeData, E> {
-                Ok(TypeData { inverted_function_signature_index: vec![], search_unbox: false })
+                Ok(TypeData {
+                    inverted_function_inputs_index: vec![],
+                    inverted_function_output_index: vec![],
+                    search_unbox: false,
+                })
             }
             fn visit_seq<A: de::SeqAccess<'de>>(self, mut v: A) -> Result<TypeData, A::Error> {
-                let inverted_function_signature_index: String =
+                let inverted_function_inputs_index: String =
+                    v.next_element()?.unwrap_or(String::new());
+                let inverted_function_output_index: String =
                     v.next_element()?.unwrap_or(String::new());
                 let search_unbox: u32 = v.next_element()?.unwrap_or(0);
                 let mut idx: Vec<u8> = Vec::new();
                 stringdex_internals::decode::read_base64_from_bytes(
-                    inverted_function_signature_index.as_bytes(),
+                    inverted_function_inputs_index.as_bytes(),
                     &mut idx,
                 )
                 .unwrap();
-                let mut inverted_function_signature_index = Vec::new();
-                encode::read_postings_from_string(&mut inverted_function_signature_index, &idx);
-                Ok(TypeData { inverted_function_signature_index, search_unbox: search_unbox == 1 })
+                let mut inverted_function_inputs_index = Vec::new();
+                encode::read_postings_from_string(&mut inverted_function_inputs_index, &idx);
+                idx.clear();
+                stringdex_internals::decode::read_base64_from_bytes(
+                    inverted_function_output_index.as_bytes(),
+                    &mut idx,
+                )
+                .unwrap();
+                let mut inverted_function_output_index = Vec::new();
+                encode::read_postings_from_string(&mut inverted_function_output_index, &idx);
+                Ok(TypeData {
+                    inverted_function_inputs_index,
+                    inverted_function_output_index,
+                    search_unbox: search_unbox == 1,
+                })
             }
         }
         deserializer.deserialize_any(TypeDataVisitor)
@@ -1222,8 +1330,16 @@ pub(crate) fn build_index(
                 let index = *index.get();
                 serialized_index.descs[index] = crate_doc;
                 for type_data in serialized_index.type_data.iter_mut() {
-                    if let Some(TypeData { inverted_function_signature_index, .. }) = type_data {
-                        for list in &mut inverted_function_signature_index[..] {
+                    if let Some(TypeData {
+                        inverted_function_inputs_index,
+                        inverted_function_output_index,
+                        ..
+                    }) = type_data
+                    {
+                        for list in inverted_function_inputs_index
+                            .iter_mut()
+                            .chain(inverted_function_output_index.iter_mut())
+                        {
                             list.retain(|fnid| {
                                 serialized_index.entry_data[usize::try_from(*fnid).unwrap()]
                                     .as_ref()
@@ -1449,7 +1565,8 @@ pub(crate) fn build_index(
                     if serialized_index.type_data[id].as_mut().is_none() {
                         serialized_index.type_data[id] = Some(TypeData {
                             search_unbox,
-                            inverted_function_signature_index: Vec::new(),
+                            inverted_function_inputs_index: Vec::new(),
+                            inverted_function_output_index: Vec::new(),
                         });
                     } else if search_unbox {
                         serialized_index.type_data[id].as_mut().unwrap().search_unbox = true;
@@ -1473,7 +1590,11 @@ pub(crate) fn build_index(
                                 None
                             },
                         },
-                        TypeData { search_unbox, inverted_function_signature_index: Vec::new() },
+                        TypeData {
+                            inverted_function_inputs_index: Vec::new(),
+                            inverted_function_output_index: Vec::new(),
+                            search_unbox,
+                        },
                     );
                     pathid
                 }
@@ -1695,13 +1816,14 @@ pub(crate) fn build_index(
             }
         }
         if let Some(search_type) = &mut item.search_type {
-            let mut used_in_function_signature = BTreeSet::new();
+            let mut used_in_function_inputs = BTreeSet::new();
+            let mut used_in_function_output = BTreeSet::new();
             for item in &mut search_type.inputs {
                 convert_render_type(
                     item,
                     cache,
                     &mut serialized_index,
-                    &mut used_in_function_signature,
+                    &mut used_in_function_inputs,
                     tcx,
                 );
             }
@@ -1710,19 +1832,43 @@ pub(crate) fn build_index(
                     item,
                     cache,
                     &mut serialized_index,
-                    &mut used_in_function_signature,
+                    &mut used_in_function_output,
                     tcx,
                 );
             }
+            let mut used_in_constraints = Vec::new();
             for constraint in &mut search_type.where_clause {
+                let mut used_in_constraint = BTreeSet::new();
                 for trait_ in &mut constraint[..] {
                     convert_render_type(
                         trait_,
                         cache,
                         &mut serialized_index,
-                        &mut used_in_function_signature,
+                        &mut used_in_constraint,
                         tcx,
                     );
+                }
+                used_in_constraints.push(used_in_constraint);
+            }
+            loop {
+                let mut inserted_any = false;
+                for (i, used_in_constraint) in used_in_constraints.iter().enumerate() {
+                    let id = !(i as isize);
+                    if used_in_function_inputs.contains(&id)
+                        && !used_in_function_inputs.is_superset(&used_in_constraint)
+                    {
+                        used_in_function_inputs.extend(used_in_constraint.iter().copied());
+                        inserted_any = true;
+                    }
+                    if used_in_function_output.contains(&id)
+                        && !used_in_function_output.is_superset(&used_in_constraint)
+                    {
+                        used_in_function_output.extend(used_in_constraint.iter().copied());
+                        inserted_any = true;
+                    }
+                }
+                if !inserted_any {
+                    break;
                 }
             }
             let search_type_size = search_type.size() +
@@ -1746,13 +1892,13 @@ pub(crate) fn build_index(
                     .map(|sym| sym.map(|sym| sym.to_string()).unwrap_or(String::new()))
                     .collect::<Vec<String>>(),
             });
-            for index in used_in_function_signature {
+            for index in used_in_function_inputs {
                 let postings = if index >= 0 {
                     assert!(serialized_index.path_data[index as usize].is_some());
                     &mut serialized_index.type_data[index as usize]
                         .as_mut()
                         .unwrap()
-                        .inverted_function_signature_index
+                        .inverted_function_inputs_index
                 } else {
                     let generic_id = usize::try_from(-index).unwrap() - 1;
                     for _ in serialized_index.generic_inverted_index.len()..=generic_id {
@@ -1763,7 +1909,30 @@ pub(crate) fn build_index(
                 while postings.len() <= search_type_size {
                     postings.push(Vec::new());
                 }
-                postings[search_type_size].push(new_entry_id as u32);
+                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
+                    postings[search_type_size].push(new_entry_id as u32);
+                }
+            }
+            for index in used_in_function_output {
+                let postings = if index >= 0 {
+                    assert!(serialized_index.path_data[index as usize].is_some());
+                    &mut serialized_index.type_data[index as usize]
+                        .as_mut()
+                        .unwrap()
+                        .inverted_function_output_index
+                } else {
+                    let generic_id = usize::try_from(-index).unwrap() - 1;
+                    for _ in serialized_index.generic_inverted_index.len()..=generic_id {
+                        serialized_index.generic_inverted_index.push(Vec::new());
+                    }
+                    &mut serialized_index.generic_inverted_index[generic_id]
+                };
+                while postings.len() <= search_type_size {
+                    postings.push(Vec::new());
+                }
+                if postings[search_type_size].last() != Some(&(new_entry_id as u32)) {
+                    postings[search_type_size].push(new_entry_id as u32);
+                }
             }
         }
     }
