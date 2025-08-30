@@ -104,6 +104,19 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: C.rotate_left(128), C);
             }
 
+            fn test_funnel_shift() {
+                // Shifting by 0 should have no effect
+                assert_eq_const_safe!($T: <$T>::funnel_shl(A, B, 0), A);
+                assert_eq_const_safe!($T: <$T>::funnel_shr(A, B, 0), B);
+
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_0, _1, 4), 0b1111);
+                assert_eq_const_safe!($T: <$T>::funnel_shr(_0, _1, 4), _1 >> 4);
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_1, _0, 4), _1 << 4);
+
+                assert_eq_const_safe!($T: <$T>::funnel_shl(_1, _1, 4), <$T>::rotate_left(_1, 4));
+                assert_eq_const_safe!($T: <$T>::funnel_shr(_1, _1, 4), <$T>::rotate_right(_1, 4));
+            }
+
             fn test_swap_bytes() {
                 assert_eq_const_safe!($T: A.swap_bytes().swap_bytes(), A);
                 assert_eq_const_safe!($T: B.swap_bytes().swap_bytes(), B);
@@ -148,6 +161,12 @@ macro_rules! uint_module {
                 assert_eq_const_safe!(Option<$T>: (10 as $T).checked_div(2), Some(5));
                 assert_eq_const_safe!(Option<$T>: (5 as $T).checked_div(0), None);
             }
+        }
+
+        #[test]
+        #[should_panic = "attempt to funnel shift left with overflow"]
+        fn test_funnel_shift_overflow() {
+            let _ = <$T>::funnel_shl(A, B, 150);
         }
 
         #[test]
