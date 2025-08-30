@@ -4,7 +4,6 @@
 
 #![crate_type = "lib"]
 #![feature(iter_repeat_n)]
-#![feature(array_repeat)]
 
 #[derive(Clone)]
 pub struct NotCopy(u16);
