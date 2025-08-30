@@ -788,6 +788,7 @@ pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T 
     let mut false_val = MaybeUninit::new(false_val);
 
     struct DropOnPanic<T> {
+        // Invariant: valid pointer and points to an initialized `MaybeUninit`.
         inner: *mut MaybeUninit<T>,
     }
 
@@ -806,12 +807,11 @@ pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T 
     // value that is  not selected.
     unsafe {
         // Extract the selected value first, ensure it is dropped as well if dropping the unselected
-        // value panics.
-        let (guard, drop) = crate::intrinsics::select_unpredictable(
-            condition,
-            (true_ptr, false_ptr),
-            (false_ptr, true_ptr),
-        );
+        // value panics. We construct a temporary by-pointer guard around the selected value while
+        // dropping the unselected value. Arguments overlap here, so we can not use mutable
+        // reference for these arguments.
+        let guard = crate::intrinsics::select_unpredictable(condition, true_ptr, false_ptr);
+        let drop = crate::intrinsics::select_unpredictable(condition, false_ptr, true_ptr);
 
         // SAFETY: both pointers are to valid `MaybeUninit`, in both variants they do not alias but
         // the two arguments we have selected from did alias each other.
