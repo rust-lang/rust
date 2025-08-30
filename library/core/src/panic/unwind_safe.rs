@@ -311,3 +311,11 @@ impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
         self.0.size_hint()
     }
 }
+
+#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+impl<T> From<T> for AssertUnwindSafe<T> {
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self(value)
+    }
+}
