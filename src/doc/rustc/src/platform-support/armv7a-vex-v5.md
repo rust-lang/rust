@@ -4,7 +4,7 @@
 
 Allows compiling user programs for the [VEX V5 Brain](https://www.vexrobotics.com/276-4810.html), a microcontroller for educational and competitive robotics.
 
-Rust support for this target is not affiliated with VEX Robotics or IFI.
+Rust support for this target is not affiliated with VEX Robotics or IFI, and does not link to any official VEX SDK.
 
 ## Target maintainers
 
@@ -17,11 +17,24 @@ This target is maintained by members of the [vexide](https://github.com/vexide) 
 
 ## Requirements
 
-This target is cross-compiled and currently requires `#![no_std]`. Dynamic linking is unsupported.
+This target is cross-compiled. Dynamic linking is unsupported.
 
-When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (soft float ABI).
+`#![no_std]` crates can be built using `build-std` to build `core` and `panic_abort` and optionally `alloc`. Unwinding panics are not yet supported on this target.
 
-This target generates binaries in the ELF format that may uploaded to the brain with external tools.
+`std` has only partial support due platform limitations. Notably:
+- `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding, as this is a single-threaded environment.
+- `std::time` has full support for `Instant`, but no support for `SystemTime`.
+- `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to to USB channel 1 on this platform and are not differentiated.
+- `std::fs` has limited support for reading or writing to files. Directory operations, file deletion, and some file opening features are unsupported and will return errors.
+- A global allocator implemented on top of `dlmalloc` is provided.
+- Modules that do not need to interact with the OS beyond allocation such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc are fully supported.
+- Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
+
+In order to support some APIs, users are expected to provide a supporting runtime SDK for `libstd` to link against. This library may be provided either by [`vex-sdk-build`](https://github.com/vexide/vex-sdk/tree/main/packages/vex-sdk-build) (which will download an official SDK from VEX) or through an open-source implementation such as [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable).
+
+When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (softfp ABI).
+
+This target generates binaries in the ELF format that may be uploaded to the brain with external tools.
 
 ## Building the target
 
@@ -29,10 +42,7 @@ You can build Rust with support for this target by adding it to the `target` lis
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will either need to build Rust with the target enabled (see
-"Building the target" above), or build your own copy of `core` by using
-`build-std` or similar.
+Rust does not yet ship pre-compiled artifacts for this target. To compile for this target, you will either need to build Rust with the target enabled (see "Building the target" above), or build your own copy of `core` by using `build-std` or similar.
 
 When the compiler builds a binary, an ELF build artifact will be produced. Additional tools are required for this artifact to be recognizable to VEXos as a user program.
 

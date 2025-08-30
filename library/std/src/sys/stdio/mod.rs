@@ -29,6 +29,10 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
+    target_os = "vexos" => {
+        mod vexos;
+        pub use vexos::*;
+    }
     target_os = "wasi" => {
         mod wasi;
         pub use wasi::*;
