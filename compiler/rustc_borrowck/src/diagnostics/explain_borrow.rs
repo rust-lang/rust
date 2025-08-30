@@ -416,6 +416,19 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
+
+                for constraint in path {
+                    if let ConstraintCategory::Predicate(pred) = constraint.category
+                        && !pred.is_dummy()
+                    {
+                        err.span_note(
+                            pred,
+                            format!("requirement for `{region_name}` introduced here"),
+                        );
+                        break;
+                    }
+                }
+
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}
