@@ -858,7 +858,9 @@ impl<'input> Parser<'input> {
             self.errors.insert(
                 0,
                 ParseError {
-                    description: "expected format parameter to occur after `:`".to_owned(),
+                    description:
+                        "expected alignment specifier after `:` in format string; example: `{:>?}`"
+                            .to_owned(),
                     note: None,
                     label: format!("expected `{}` to occur after `:`", alignment),
                     span: range,
