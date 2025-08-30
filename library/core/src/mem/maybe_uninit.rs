@@ -277,17 +277,13 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// may not be preserved in `MaybeUninit<U>`. Interpreting the representation of `u` at type `T` again (i.e., `transmute(u)` above) may thus
 /// be undefined behavior or yield a value different from `t` due to those bytes being lost. This is an active area of discussion, and this code
 /// may become sound in the future.
-
-/// If byte offsets exists at which `T`'s representation does not permit uninitialized bytes but
-/// `U`'s representation does (e.g. due to padding), then the bytes in `T` at these offsets may
-/// not be preserved in `u`, and so `transmute(u)` may produce a `T` with uninitialized bytes at
-/// these offsets. This is an active area of discussion, and this code may become sound in the future.
 ///
 /// Note that, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
 ///
-/// # Provenance
+/// ## Provenance
 ///
-/// `MaybeUninit` values may contain [pointer provenance][provenance]. Concretely, for any
+/// As stated above, `MaybeUninit` permits any byte value at any byte offset. This includes values
+/// which contain [pointer provenance][provenance]. A possibly useful implication is that, for any
 /// value, `p: P`, which contains provenance, transmuting `p` to `MaybeUninit<[u8; size_of::<P>]>`
 /// and then back to `P` will produce a value identical to `p`, including provenance.
 ///
