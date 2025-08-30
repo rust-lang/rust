@@ -98,7 +98,6 @@ extern "C" fn fn_i64_i64(num: i64) -> i64 {
 // wasm32-unknown: .functype fn_i128_i128 (i32, i64, i64) -> ()
 // wasm32-wasip1: .functype fn_i128_i128 (i32, i64, i64) -> ()
 // wasm64-unknown: .functype fn_i128_i128 (i64, i64, i64) -> ()
-#[allow(improper_ctypes_definitions)]
 #[no_mangle]
 #[unsafe(naked)]
 extern "C" fn fn_i128_i128(num: i128) -> i128 {

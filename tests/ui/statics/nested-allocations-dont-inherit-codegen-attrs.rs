@@ -1,5 +1,7 @@
 //@ build-pass
 
+#![allow(improper_c_var_definitions)]
+
 // Make sure that the nested static allocation for `FOO` doesn't inherit `no_mangle`.
 #[no_mangle]
 pub static mut FOO: &mut [i32] = &mut [42];
