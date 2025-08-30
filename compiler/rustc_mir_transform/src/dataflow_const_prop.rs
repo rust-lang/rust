@@ -489,11 +489,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::ShallowInitBox(..)
             | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
             }
+            Rvalue::ShallowInitBox(..) => bug!("ShallowInitBox must not appear in runtime MIR"),
         };
         ValueOrPlace::Value(val)
     }

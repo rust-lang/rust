@@ -255,12 +255,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            ShallowInitBox(ref operand, _) => {
-                let src = self.eval_operand(operand, None)?;
-                let v = self.read_immediate(&src)?;
-                self.write_immediate(*v, &dest)?;
-            }
-
             Cast(cast_kind, ref operand, cast_ty) => {
                 let src = self.eval_operand(operand, None)?;
                 let cast_ty =
@@ -281,6 +275,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 self.copy_op_allow_transmute(&op, &dest)?;
             }
+
+            ShallowInitBox(..) => bug!("ShallowInitBox must not appear in runtime MIR"),
         }
 
         trace!("{:?}", self.dump_place(&dest));

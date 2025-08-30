@@ -7,7 +7,7 @@
 fn move_from_inner() {
     // CHECK-LABEL: fn move_from_inner(
     // CHECK:   debug x => [[x:_.*]];
-    // CHECK:   [[box:_.*]] = ShallowInitBox(
+    // CHECK:   [[box:_.*]] = move {{_.*}} as std::boxed::Box<S> (Transmute);
     // CHECK:   [[ptr:_.*]] = copy (([[box]].0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
     // CHECK:   (*[[ptr]]) = S::new() -> [return: [[ret:bb.*]], unwind: [[unwind:bb.*]]];
     // CHECK: [[ret]]: {
@@ -34,7 +34,7 @@ fn move_from_inner() {
 // EMIT_MIR box_expr.main.ElaborateDrops.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK:   [[box:_.*]] = ShallowInitBox(
+    // CHECK:   [[box:_.*]] = move {{_.*}} as std::boxed::Box<S> (Transmute);
     // CHECK:   [[ptr:_.*]] = copy (([[box]].0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
     // CHECK:   (*[[ptr]]) = S::new() -> [return: [[ret:bb.*]], unwind: [[unwind:bb.*]]];
     // CHECK: [[ret]]: {

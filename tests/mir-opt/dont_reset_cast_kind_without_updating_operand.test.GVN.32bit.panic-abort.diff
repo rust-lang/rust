@@ -123,7 +123,7 @@
           StorageDead(_19);
           StorageDead(_18);
           StorageDead(_16);
-          _3 = ShallowInitBox(copy _14, ());
+          _3 = copy _14 as std::boxed::Box<()> (Transmute);
           _15 = copy ((_3.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
 -         (*_15) = move _4;
 +         (*_15) = const ();

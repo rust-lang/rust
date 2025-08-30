@@ -129,8 +129,8 @@ pub enum RuntimePhase {
     /// disallowed:
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
-    /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     /// * [`Rvalue::CopyForDeref`]
+    /// * [`Rvalue::ShallowInitBox`]
     /// * [`PlaceElem::OpaqueCast`]
     /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
     ///
