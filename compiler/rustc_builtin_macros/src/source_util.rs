@@ -10,7 +10,6 @@ use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
 };
 use rustc_expand::module::DirOwnership;
-use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
@@ -150,7 +149,7 @@ pub(crate) fn expand_include<'cx>(
                     INCOMPLETE_INCLUDE,
                     self.p.token.span,
                     self.node_id,
-                    BuiltinLintDiag::IncompleteInclude,
+                    errors::IncompleteInclude,
                 );
             }
             Some(expr)

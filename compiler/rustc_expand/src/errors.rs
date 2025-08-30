@@ -2,9 +2,13 @@ use std::borrow::Cow;
 
 use rustc_ast::ast;
 use rustc_errors::codes::*;
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_session::Limit;
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
+
+#[derive(LintDiagnostic)]
+#[diag(expand_cfg_attr_no_attributes)]
+pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(Diagnostic)]
 #[diag(expand_expr_repeat_no_syntax_vars)]
@@ -27,6 +31,8 @@ pub(crate) struct CountRepetitionMisplaced {
     pub span: Span,
 }
 
+// FIXME(fmease): "Combine"/assimilate VarStillRepeating and MetaVariableStillRepeating
+
 #[derive(Diagnostic)]
 #[diag(expand_var_still_repeating)]
 pub(crate) struct VarStillRepeating {
@@ -35,12 +41,35 @@ pub(crate) struct VarStillRepeating {
     pub ident: MacroRulesNormalizedIdent,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(expand_metavariable_still_repeating)]
+pub(crate) struct MetaVariableStillRepeating {
+    pub name: MacroRulesNormalizedIdent,
+    #[label]
+    pub label: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_metavariable_wrong_operator)]
+pub(crate) struct MetaVariableWrongOperator {
+    #[label(expand_binder_label)]
+    pub binder: Span,
+    #[label(expand_occurrence_label)]
+    pub occurrence: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(expand_meta_var_dif_seq_matchers)]
 pub(crate) struct MetaVarsDifSeqMatchers {
     #[primary_span]
     pub span: Span,
     pub msg: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_unknown_macro_variable)]
+pub(crate) struct UnknownMacroVariable {
+    pub name: MacroRulesNormalizedIdent,
 }
 
 #[derive(Diagnostic)]
@@ -345,6 +374,15 @@ pub(crate) struct DuplicateMatcherBinding {
     pub prev: Span,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(expand_duplicate_matcher_binding)]
+pub(crate) struct DuplicateMatcherBindingLint {
+    #[label]
+    pub span: Span,
+    #[label(expand_label2)]
+    pub prev: Span,
+}
+
 #[derive(Diagnostic)]
 #[diag(expand_missing_fragment_specifier)]
 #[note]
@@ -500,4 +538,12 @@ pub(crate) struct MacroArgsBadDelimSugg {
     pub open: Span,
     #[suggestion_part(code = ")")]
     pub close: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(expand_unused_doc_comment)]
+#[help]
+pub(crate) struct UnusedDocComment {
+    #[label]
+    pub span: Span,
 }

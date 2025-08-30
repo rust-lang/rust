@@ -979,7 +979,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             LEGACY_DERIVE_HELPERS,
                             node_id,
                             ident.span,
-                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
+                            errors::LegacyDeriveHelpers { span: binding.span },
                         );
                     }
                 }
