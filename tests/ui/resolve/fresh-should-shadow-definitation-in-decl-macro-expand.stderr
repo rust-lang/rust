@@ -1,0 +1,58 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-decl-macro-expand.rs:27:17
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro m() { f() }
+   |                 ^ not found in this scope
+...
+LL |     fn f() -> FnF { 42 }
+   |        - you might have meant to refer to this function
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-decl-macro-expand.rs:42:17
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     fn f() -> FnF { 42 }
+   |        - you might have meant to refer to this function
+LL |     let a2: BindingF = m!();
+LL |     macro m() { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-decl-macro-expand.rs:56:17
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+LL |     fn f() -> FnF { 42 }
+   |        - you might have meant to refer to this function
+...
+LL |     macro m() { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-decl-macro-expand.rs:56:17
+   |
+LL |     fn f() -> FnF { 42 }
+   |        - you might have meant to refer to this function
+LL |
+LL |     let a1: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     macro m() { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

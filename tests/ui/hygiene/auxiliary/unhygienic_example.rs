@@ -14,7 +14,7 @@ macro_rules! unhygienic_macro {
         use my_crate::f;
         f();
 
-        g(); // (3) unhygienic: `g` needs to be in scope at use site.
+        g(); // (3) hygienic: `g` resolves to (a)
 
         $crate::g(); // (4) hygienic: this always resolves to (a)
     }

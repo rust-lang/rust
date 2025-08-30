@@ -1,4 +1,3 @@
-//@ check-pass
 #![allow(dead_code)]
 
 //@ aux-build:legacy_interaction.rs
@@ -20,9 +19,9 @@ extern crate legacy_interaction;
 mod def_site {
     // Unless this macro opts out of hygiene, it should resolve the same wherever it is invoked.
     pub macro m2() {
-        ::legacy_interaction::m!();
+        ::legacy_interaction::m!();         //~ ERROR cannot find function `g` in this scope
         f(); // This should resolve to (1)
-        fn g() {} // We want (2) resolve to this, not to (4)
+        fn g() {}
     }
 }
 
