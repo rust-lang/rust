@@ -4,7 +4,10 @@
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // Validation forces more things into memory, which we can't have here.
 //@compile-flags: -Zmiri-disable-validation
+
 #![feature(custom_mir, core_intrinsics)]
+#![allow(unused)]
+
 use std::intrinsics::mir::*;
 
 pub struct S(i32);
