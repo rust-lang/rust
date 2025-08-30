@@ -193,8 +193,9 @@ impl<'a> Location<'a> {
     /// This is useful for interop with APIs that expect C/C++ `__FILE__` or
     /// `std::source_location::file_name`, both of which return a nul-terminated `const char*`.
     #[must_use]
-    #[unstable(feature = "file_with_nul", issue = "141727")]
     #[inline]
+    #[stable(feature = "file_with_nul", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "file_with_nul", since = "CURRENT_RUSTC_VERSION")]
     pub const fn file_as_c_str(&self) -> &'a CStr {
         let filename = self.filename.as_ptr();
 
