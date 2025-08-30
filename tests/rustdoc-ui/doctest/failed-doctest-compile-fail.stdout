@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test $DIR/failed-doctest-compile-fail.rs - Foo (line 9) - compile fail ... FAILED
 
 failures:

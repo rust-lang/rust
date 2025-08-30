@@ -1,5 +1,5 @@
 
-running 1 test
+running 1 standalone doctest
 test remapped_path/remap-path-prefix-invalid-doctest.rs - SomeStruct (line 10) ... FAILED
 
 failures:

@@ -54,6 +54,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         &mut self,
         _test_count: usize,
         _shuffle_seed: Option<u64>,
+        _group_kind: super::TestGroupKind,
     ) -> io::Result<()> {
         // We write xml header on run start
         self.write_message("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
@@ -197,7 +198,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 fn parse_class_name(desc: &TestDesc) -> (String, String) {
     match desc.test_type {
         TestType::UnitTest => parse_class_name_unit(desc),
-        TestType::DocTest => parse_class_name_doc(desc),
+        TestType::DocTest { merged: _ } => parse_class_name_doc(desc),
         TestType::IntegrationTest => parse_class_name_integration(desc),
         TestType::Unknown => (String::from("unknown"), String::from(desc.name.as_slice())),
     }
