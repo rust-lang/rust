@@ -1,5 +1,5 @@
-warning: this function depends on never type fallback being `()`
-  --> $DIR/impl_trait_fallback.rs:8:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/impl_trait_fallback.rs:6:1
    |
 LL | fn should_ret_unit() -> impl T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,17 +8,17 @@ LL | fn should_ret_unit() -> impl T {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: T` will fail
-  --> $DIR/impl_trait_fallback.rs:8:25
+  --> $DIR/impl_trait_fallback.rs:6:25
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
-warning: 1 warning emitted
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function depends on never type fallback being `()`
-  --> $DIR/impl_trait_fallback.rs:8:1
+error: this function depends on never type fallback being `()`
+  --> $DIR/impl_trait_fallback.rs:6:1
    |
 LL | fn should_ret_unit() -> impl T {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -27,9 +27,9 @@ LL | fn should_ret_unit() -> impl T {
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: T` will fail
-  --> $DIR/impl_trait_fallback.rs:8:25
+  --> $DIR/impl_trait_fallback.rs:6:25
    |
 LL | fn should_ret_unit() -> impl T {
    |                         ^^^^^^
-   = note: `#[warn(dependency_on_unit_never_type_fallback)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
+   = note: `#[deny(dependency_on_unit_never_type_fallback)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 
