@@ -8,8 +8,8 @@ use super::{
 };
 use crate::fmt::{self, Write};
 use crate::iter::{
-    Chain, Copied, Filter, FlatMap, Flatten, FusedIterator, Map, TrustedLen, TrustedRandomAccess,
-    TrustedRandomAccessNoCoerce,
+    Chain, Copied, Filter, FlatMap, Flatten, FusedIterator, Map, PeekableIterator, TrustedLen,
+    TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::num::NonZero;
 use crate::ops::Try;
@@ -129,6 +129,14 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
         // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
         // the resulting `ch` is a valid Unicode Scalar Value.
         unsafe { next_code_point_reverse(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "132973")]
+impl<'a> PeekableIterator for Chars<'a> {
+    fn peek_with<T>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> T) -> T {
+        let tmp = self.clone().next();
+        func(tmp.as_ref())
     }
 }
 
