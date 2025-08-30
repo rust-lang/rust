@@ -13,7 +13,48 @@ LL +         (Foo, Bar) | (Bar, Foo) => {}
    |
 
 error[E0408]: variable `Ban` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:23:9
+  --> $DIR/binding-typo-2.rs:24:9
+   |
+LL |         (Foo, _) | (Ban, Foo) => {}
+   |         ^^^^^^^^    --- variable not in all patterns
+   |         |
+   |         pattern doesn't bind `Ban`
+   |
+help: you might have meant to use the similarly named unit variant `Bar`
+   |
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Bar, Foo) => {}
+   |
+
+error[E0408]: variable `Non` is not bound in all patterns
+  --> $DIR/binding-typo-2.rs:43:15
+   |
+LL |         Non | None => {}
+   |         ---   ^^^^ pattern doesn't bind `Non`
+   |         |
+   |         variable not in all patterns
+   |
+help: you might have meant to use the similarly named previously used binding `None`
+   |
+LL |         None | None => {}
+   |            +
+
+error[E0408]: variable `Non` is not bound in all patterns
+  --> $DIR/binding-typo-2.rs:53:15
+   |
+LL |         Non | Some(_) => {}
+   |         ---   ^^^^^^^ pattern doesn't bind `Non`
+   |         |
+   |         variable not in all patterns
+   |
+help: you might have meant to use the similarly named unit variant `None`
+   |
+LL -         Non | Some(_) => {}
+LL +         core::option::Option::None | Some(_) => {}
+   |
+
+error[E0408]: variable `Ban` is not bound in all patterns
+  --> $DIR/binding-typo-2.rs:68:9
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |         ^^^^^^^^    --- variable not in all patterns
@@ -28,39 +69,31 @@ LL +         (Foo, _) | (Bar, Foo) => {}
 help: you might have meant to use the similarly named unit struct `Bay`
    |
 LL -         (Foo, _) | (Ban, Foo) => {}
-LL +         (Foo, _) | (::Bay, Foo) => {}
+LL +         (Foo, _) | (Bay, Foo) => {}
    |
 help: you might have meant to use the similarly named constant `Bat`
    |
 LL -         (Foo, _) | (Ban, Foo) => {}
-LL +         (Foo, _) | (::Bat, Foo) => {}
+LL +         (Foo, _) | (Bat, Foo) => {}
    |
 
-error[E0408]: variable `Non` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:41:16
+error[E0408]: variable `Ban` is not bound in all patterns
+  --> $DIR/binding-typo-2.rs:85:9
    |
-LL |         (Non | None)=> {}
-   |          ---   ^^^^ pattern doesn't bind `Non`
-   |          |
-   |          variable not in all patterns
+LL |         (Foo, _) | (Ban, Foo) => {}
+   |         ^^^^^^^^    --- variable not in all patterns
+   |         |
+   |         pattern doesn't bind `Ban`
    |
-help: you might have meant to use the similarly named previously used binding `None`
+help: you might have meant to use the similarly named unit variant `Bar`
    |
-LL |         (None | None)=> {}
-   |             +
-
-error[E0408]: variable `Non` is not bound in all patterns
-  --> $DIR/binding-typo-2.rs:51:16
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Bar, Foo) => {}
    |
-LL |         (Non | Some(_))=> {}
-   |          ---   ^^^^^^^ pattern doesn't bind `Non`
-   |          |
-   |          variable not in all patterns
+help: you might have meant to use the similarly named constant `Bat`
    |
-help: you might have meant to use the similarly named unit variant `None`
-   |
-LL -         (Non | Some(_))=> {}
-LL +         (core::option::Option::None | Some(_))=> {}
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Bat, Foo) => {}
    |
 
 error: variable `Ban` is assigned to, but never used
@@ -75,33 +108,131 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
+help: you might have meant to pattern match on the similarly named variant `Bar`
+   |
+LL -         (Foo, Bar) | (Ban, Foo) => {}
+LL +         (Foo, Bar) | (Lol::Bar, Foo) => {}
+   |
 
 error: variable `Ban` is assigned to, but never used
-  --> $DIR/binding-typo-2.rs:23:21
+  --> $DIR/binding-typo-2.rs:24:21
    |
 LL |         (Foo, _) | (Ban, Foo) => {}
    |                     ^^^
    |
    = note: consider using `_Ban` instead
+help: you might have meant to pattern match on the similarly named variant `Bar`
+   |
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Lol::Bar, Foo) => {}
+   |
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:35:9
+  --> $DIR/binding-typo-2.rs:36:9
    |
 LL |         Non => {}
-   |         ^^^ help: if this is intentional, prefix it with an underscore: `_Non`
+   |         ^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         _Non => {}
+   |         +
+help: you might have meant to pattern match on the similarly named variant `None`
+   |
+LL -         Non => {}
+LL +         std::prelude::v1::None => {}
+   |
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:41:10
+  --> $DIR/binding-typo-2.rs:43:9
    |
-LL |         (Non | None)=> {}
-   |          ^^^ help: if this is intentional, prefix it with an underscore: `_Non`
+LL |         Non | None => {}
+   |         ^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         _Non | None => {}
+   |         +
+help: you might have meant to pattern match on the similarly named variant `None`
+   |
+LL -         Non | None => {}
+LL +         std::prelude::v1::None | None => {}
+   |
 
 error: unused variable: `Non`
-  --> $DIR/binding-typo-2.rs:51:10
+  --> $DIR/binding-typo-2.rs:53:9
    |
-LL |         (Non | Some(_))=> {}
-   |          ^^^ help: if this is intentional, prefix it with an underscore: `_Non`
+LL |         Non | Some(_) => {}
+   |         ^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         _Non | Some(_) => {}
+   |         +
+help: you might have meant to pattern match on the similarly named variant `None`
+   |
+LL -         Non | Some(_) => {}
+LL +         std::prelude::v1::None | Some(_) => {}
+   |
 
-error: aborting due to 9 previous errors
+error: variable `Ban` is assigned to, but never used
+  --> $DIR/binding-typo-2.rs:68:21
+   |
+LL |         (Foo, _) | (Ban, Foo) => {}
+   |                     ^^^
+   |
+   = note: consider using `_Ban` instead
+help: you might have meant to pattern match on the similarly named variant `Bar`
+   |
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Lol::Bar, Foo) => {}
+   |
+
+error: variable `Ban` is assigned to, but never used
+  --> $DIR/binding-typo-2.rs:85:21
+   |
+LL |         (Foo, _) | (Ban, Foo) => {}
+   |                     ^^^
+   |
+   = note: consider using `_Ban` instead
+help: you might have meant to pattern match on the similarly named variant `Bar`
+   |
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Lol::Bar, Foo) => {}
+   |
+
+error: unused variable: `Ban`
+  --> $DIR/binding-typo-2.rs:97:10
+   |
+LL |         (Ban, _) => {}
+   |          ^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         (_Ban, _) => {}
+   |          +
+help: you might have meant to pattern match on the similarly named variant `Bar`
+   |
+LL -         (Ban, _) => {}
+LL +         (Lol::Bar, _) => {}
+   |
+
+error: unused variable: `Ban`
+  --> $DIR/binding-typo-2.rs:103:9
+   |
+LL |         Ban => {}
+   |         ^^^
+   |
+help: if this is intentional, prefix it with an underscore
+   |
+LL |         _Ban => {}
+   |         +
+help: you might have meant to pattern match on the similarly named struct `Bay`
+   |
+LL -         Ban => {}
+LL +         Bay => {}
+   |
+
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0408`.

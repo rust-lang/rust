@@ -17,6 +17,7 @@ fn foo(x: (Lol, Lol)) {
         //~| NOTE: variable not in all patterns
         //~| ERROR: variable `Ban` is assigned to, but never used
         //~| NOTE: consider using `_Ban` instead
+        //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
     match &x {
@@ -27,15 +28,18 @@ fn foo(x: (Lol, Lol)) {
         //~| NOTE: variable not in all patterns
         //~| ERROR: variable `Ban` is assigned to, but never used
         //~| NOTE: consider using `_Ban` instead
+        //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
     match Some(42) {
+        Some(_) => {}
         Non => {}
         //~^ ERROR: unused variable: `Non`
         //~| HELP: if this is intentional, prefix it with an underscore
-        _ => {}
+        //~| HELP: you might have meant to pattern match on the similarly named
     }
     match Some(42) {
+        Some(_) => {}
         Non | None => {}
         //~^ ERROR: unused variable: `Non`
         //~| HELP: if this is intentional, prefix it with an underscore
@@ -43,7 +47,7 @@ fn foo(x: (Lol, Lol)) {
         //~| NOTE: pattern doesn't bind `Non`
         //~| NOTE: variable not in all patterns
         //~| HELP: you might have meant to use the similarly named previously used binding `None`
-        _ => {}
+        //~| HELP: you might have meant to pattern match on the similarly named
     }
     match Some(42) {
         Non | Some(_) => {}
@@ -53,14 +57,13 @@ fn foo(x: (Lol, Lol)) {
         //~| NOTE: pattern doesn't bind `Non`
         //~| NOTE: variable not in all patterns
         //~| HELP: you might have meant to use the similarly named unit variant `None`
-        _ => {}
+        //~| HELP: you might have meant to pattern match on the similarly named
     }
 }
 fn bar(x: (Lol, Lol)) {
     use Lol::*;
     use Bat;
     use Bay;
-    use std::option::Option::None;
     match &x {
         (Foo, _) | (Ban, Foo) => {}
         //~^ ERROR: variable `Ban` is not bound in all patterns
@@ -71,6 +74,7 @@ fn bar(x: (Lol, Lol)) {
         //~| NOTE: variable not in all patterns
         //~| ERROR: variable `Ban` is assigned to, but never used
         //~| NOTE: consider using `_Ban` instead
+        //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
     }
 }
@@ -86,7 +90,20 @@ fn baz(x: (Lol, Lol)) {
         //~| NOTE: variable not in all patterns
         //~| ERROR: variable `Ban` is assigned to, but never used
         //~| NOTE: consider using `_Ban` instead
+        //~| HELP: you might have meant to pattern match on the similarly named
         _ => {}
+    }
+    match &x {
+        (Ban, _) => {}
+        //~^ ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
+        //~| HELP: you might have meant to pattern match on the similarly named
+    }
+    match Bay {
+        Ban => {}
+        //~^ ERROR: unused variable: `Ban`
+        //~| HELP: if this is intentional, prefix it with an underscore
+        //~| HELP: you might have meant to pattern match on the similarly named
     }
 }
 

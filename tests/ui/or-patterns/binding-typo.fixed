@@ -1,6 +1,6 @@
 // Issue #51976
 //@ run-rustfix
-#![deny(unused_variables)] //~ NOTE: the lint level is defined here
+#![allow(unused_variables)] // allowed so we don't get overlapping suggestions
 enum Lol {
     Foo,
     Bar,
@@ -14,8 +14,6 @@ fn foo(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named previously used binding `Bar`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
         _ => {}
     }
     match &x {
@@ -24,8 +22,6 @@ fn foo(x: (Lol, Lol)) {
         //~| HELP: you might have meant to use the similarly named unit variant `Bar`
         //~| NOTE: pattern doesn't bind `Ban`
         //~| NOTE: variable not in all patterns
-        //~| ERROR: variable `Ban` is assigned to, but never used
-        //~| NOTE: consider using `_Ban` instead
         _ => {}
     }
 }
