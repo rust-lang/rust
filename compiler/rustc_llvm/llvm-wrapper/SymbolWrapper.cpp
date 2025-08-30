@@ -103,28 +103,9 @@ LLVMRustGetSymbols(char *BufPtr, size_t BufLen, void *State,
 #define TRUE_PTR (void *)1
 #define FALSE_PTR (void *)0
 
-extern "C" bool LLVMRustIs64BitSymbolicFile(char *BufPtr, size_t BufLen) {
-  std::unique_ptr<MemoryBuffer> Buf = MemoryBuffer::getMemBuffer(
-      StringRef(BufPtr, BufLen), StringRef("LLVMRustGetSymbolsObject"), false);
-  SmallString<0> SymNameBuf;
-  auto SymName = raw_svector_ostream(SymNameBuf);
-
-  // Code starting from this line is copied from s64BitSymbolicFile in
-  // ArchiveWriter.cpp.
-  // In the scenario when LLVMContext is populated SymbolicFile will contain a
-  // reference to it, thus SymbolicFile should be destroyed first.
-  LLVMContext Context;
-  Expected<std::unique_ptr<object::SymbolicFile>> ObjOrErr =
-      getSymbolicFile(Buf->getMemBufferRef(), Context);
-  if (!ObjOrErr) {
-    return false;
-  }
-  std::unique_ptr<object::SymbolicFile> Obj = std::move(*ObjOrErr);
-
-  return Obj != nullptr ? Obj->is64Bit() : false;
-}
-
-extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
+bool withBufferAsSymbolicFile(
+    char *BufPtr, size_t BufLen,
+    std::function<bool(object::SymbolicFile &)> Callback) {
   std::unique_ptr<MemoryBuffer> Buf = MemoryBuffer::getMemBuffer(
       StringRef(BufPtr, BufLen), StringRef("LLVMRustGetSymbolsObject"), false);
   SmallString<0> SymNameBuf;
@@ -139,29 +120,63 @@ extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
     return false;
   }
   std::unique_ptr<object::SymbolicFile> Obj = std::move(*ObjOrErr);
-
   if (Obj == nullptr) {
     return false;
   }
+  return Callback(*Obj);
+}
 
-  // Code starting from this line is copied from isECObject in
-  // ArchiveWriter.cpp with an extra #if to work with LLVM 17.
-  if (Obj->isCOFF())
-    return cast<llvm::object::COFFObjectFile>(&*Obj)->getMachine() !=
-           COFF::IMAGE_FILE_MACHINE_ARM64;
+extern "C" bool LLVMRustIs64BitSymbolicFile(char *BufPtr, size_t BufLen) {
+  return withBufferAsSymbolicFile(
+      BufPtr, BufLen, [](object::SymbolicFile &Obj) { return Obj.is64Bit(); });
+}
 
-  if (Obj->isCOFFImportFile())
-    return cast<llvm::object::COFFImportFile>(&*Obj)->getMachine() !=
-           COFF::IMAGE_FILE_MACHINE_ARM64;
+extern "C" bool LLVMRustIsECObject(char *BufPtr, size_t BufLen) {
+  return withBufferAsSymbolicFile(
+      BufPtr, BufLen, [](object::SymbolicFile &Obj) {
+        // Code starting from this line is copied from isECObject in
+        // ArchiveWriter.cpp with an extra #if to work with LLVM 17.
+        if (Obj.isCOFF())
+          return cast<llvm::object::COFFObjectFile>(&Obj)->getMachine() !=
+                 COFF::IMAGE_FILE_MACHINE_ARM64;
 
-  if (Obj->isIR()) {
-    Expected<std::string> TripleStr =
-        getBitcodeTargetTriple(Obj->getMemoryBufferRef());
-    if (!TripleStr)
-      return false;
-    Triple T(*TripleStr);
-    return T.isWindowsArm64EC() || T.getArch() == Triple::x86_64;
-  }
+        if (Obj.isCOFFImportFile())
+          return cast<llvm::object::COFFImportFile>(&Obj)->getMachine() !=
+                 COFF::IMAGE_FILE_MACHINE_ARM64;
 
-  return false;
+        if (Obj.isIR()) {
+          Expected<std::string> TripleStr =
+              getBitcodeTargetTriple(Obj.getMemoryBufferRef());
+          if (!TripleStr)
+            return false;
+          Triple T(*TripleStr);
+          return T.isWindowsArm64EC() || T.getArch() == Triple::x86_64;
+        }
+
+        return false;
+      });
+}
+
+extern "C" bool LLVMRustIsAnyArm64Coff(char *BufPtr, size_t BufLen) {
+  return withBufferAsSymbolicFile(
+      BufPtr, BufLen, [](object::SymbolicFile &Obj) {
+        // Code starting from this line is copied from isAnyArm64COFF in
+        // ArchiveWriter.cpp.
+        if (Obj.isCOFF())
+          return COFF::isAnyArm64(cast<COFFObjectFile>(&Obj)->getMachine());
+
+        if (Obj.isCOFFImportFile())
+          return COFF::isAnyArm64(cast<COFFImportFile>(&Obj)->getMachine());
+
+        if (Obj.isIR()) {
+          Expected<std::string> TripleStr =
+              getBitcodeTargetTriple(Obj.getMemoryBufferRef());
+          if (!TripleStr)
+            return false;
+          Triple T(*TripleStr);
+          return T.isOSWindows() && T.getArch() == Triple::aarch64;
+        }
+
+        return false;
+      });
 }
