@@ -74,6 +74,7 @@ use crate::alloc;
 use crate::raw_rc::rc_layout::RcLayout;
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 
+mod raw_weak;
 mod rc_layout;
 mod rc_value_pointer;
 
