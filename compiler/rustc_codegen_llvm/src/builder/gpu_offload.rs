@@ -12,7 +12,7 @@ use crate::llvm::{self, Linkage, Type, Value};
 use crate::{LlvmCodegenBackend, SimpleCx, attributes};
 
 pub(crate) fn handle_gpu_code<'ll>(
-    _cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
     cx: &'ll SimpleCx<'_>,
 ) {
     // The offload memory transfer type for each kernel
@@ -26,8 +26,8 @@ pub(crate) fn handle_gpu_code<'ll>(
             kernels.push(kernel);
         }
     }
-
     gen_call_handling(&cx, &kernels, &o_types);
+    crate::builder::gpu_wrapper::gen_image_wrapper_module(&cgcx);
 }
 
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
