@@ -55,7 +55,7 @@ impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
     fn from_fd(fd: *mut vex_sdk::FIL) -> io::Result<Self> {
         // `vexFileSize` returns -1 upon error, so u64::try_from will fail on error.
-        if let Some(size) = u64::try_from(unsafe { vex_sdk::vexFileSize(fd) }) {
+        if let Ok(size) = u64::try_from(unsafe { vex_sdk::vexFileSize(fd) }) {
             Ok(Self::File { size })
         } else {
             Err(io::Error::new(io::ErrorKind::InvalidData, "Failed to get file size"))
@@ -64,7 +64,7 @@ impl FileAttr {
 
     fn from_path(path: &Path) -> io::Result<Self> {
         // vexFileStatus returns 3 if the given path is a directory.
-        const FILE_STATUS_DIR: i32 = 3;
+        const FILE_STATUS_DIR: u32 = 3;
 
         run_path_with_cstr(path, &|c_path| {
             let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
@@ -84,7 +84,7 @@ impl FileAttr {
 
     pub fn size(&self) -> u64 {
         match self {
-            Self::File { size } => size,
+            Self::File { size } => *size,
             Self::Dir => 0,
         }
     }
@@ -94,7 +94,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        self == FileAttr::Dir
+        FileType { is_dir: matches!(self, FileAttr::Dir) }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -160,7 +160,7 @@ impl DirEntry {
     }
 
     pub fn file_name(&self) -> OsString {
-        self.path.file_name().unwrap_or_default()
+        self.path.file_name().unwrap_or_default().into()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -235,14 +235,14 @@ impl File {
                     create,
                     create_new,
                 } => unsafe {
-                    if create_new {
+                    if *create_new {
                         if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
                             return Err(io::Error::new(
                                 io::ErrorKind::AlreadyExists,
                                 "File exists",
                             ));
                         }
-                    } else if !create {
+                    } else if !*create {
                         if vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
                             return Err(io::Error::new(
                                 io::ErrorKind::NotFound,
@@ -263,14 +263,14 @@ impl File {
                     create,
                     create_new,
                 } => unsafe {
-                    if create_new {
+                    if *create_new {
                         if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
                             return Err(io::Error::new(
                                 io::ErrorKind::AlreadyExists,
                                 "File exists",
                             ));
                         }
-                    } else if !create {
+                    } else if !*create {
                         if vex_sdk::vexFileStatus(path.as_ptr()) == 0 {
                             return Err(io::Error::new(
                                 io::ErrorKind::NotFound,
@@ -279,7 +279,7 @@ impl File {
                         }
                     }
 
-                    if truncate {
+                    if *truncate {
                         unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
                     } else {
                         // Open in append, but jump to the start of the file.
@@ -434,7 +434,7 @@ impl File {
                     // we have to calculate the offset from the end of the file ourselves.
                     map_fresult(vex_sdk::vexFileSeek(
                         self.fd.0,
-                        try_convert_offset(self.file_attr()?.size as i64 + offset)?,
+                        try_convert_offset(self.file_attr()?.size() as i64 + offset)?,
                         SEEK_SET,
                     ))?
                 }
