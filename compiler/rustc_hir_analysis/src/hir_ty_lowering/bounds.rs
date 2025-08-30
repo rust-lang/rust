@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
@@ -509,14 +509,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// the `trait_ref` here will be `for<'a> T: Iterator`.
     /// The `constraint` data however is from *inside* the binder
     /// (e.g., `&'a u32`) and hence may reference bound regions.
-    #[instrument(level = "debug", skip(self, bounds, duplicates, path_span))]
+    #[instrument(level = "debug", skip(self, bounds, path_span))]
     pub(super) fn lower_assoc_item_constraint(
         &self,
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
-        duplicates: &mut FxIndexMap<DefId, Span>,
         path_span: Span,
         predicate_filter: PredicateFilter,
     ) -> Result<(), ErrorGuaranteed> {
@@ -571,18 +570,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 candidate.def_id(),
             )
             .expect("failed to find associated item");
-
-        duplicates
-            .entry(assoc_item.def_id)
-            .and_modify(|prev_span| {
-                self.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
-                    span: constraint.span,
-                    prev_span: *prev_span,
-                    item_name: constraint.ident,
-                    def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
-                });
-            })
-            .or_insert(constraint.span);
 
         let projection_term = if let ty::AssocTag::Fn = assoc_tag {
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);
