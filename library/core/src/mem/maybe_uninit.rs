@@ -273,7 +273,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// }
 /// ```
 ///
-/// If `T` contains initialized bytes at byte offsets where `U` contains padding bytes, these
+/// If the representation of `t` contains initialized bytes at byte offsets where `U` contains padding bytes, these
 /// may not be preserved in `MaybeUninit<U>`, and so `transmute(u)` may produce a `T` with
 /// uninitialized bytes in these positions. This is an active area of discussion, and this code
 /// may become sound in the future.
