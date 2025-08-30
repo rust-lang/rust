@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `clippy`
+error[E0433]: cannot find module or crate `clippy` in the crate root
   --> $DIR/tool-mod-child.rs:2:5
    |
 LL | use clippy::a::b;
@@ -20,7 +20,7 @@ help: you might be missing a crate named `clippy`, add it to your project and im
 LL + extern crate clippy;
    |
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `rustdoc`
+error[E0433]: cannot find module or crate `rustdoc` in the crate root
   --> $DIR/tool-mod-child.rs:5:5
    |
 LL | use rustdoc::a::b;

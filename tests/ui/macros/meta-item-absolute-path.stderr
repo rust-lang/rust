@@ -1,10 +1,10 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `Absolute`
+error[E0433]: cannot find module or crate `Absolute` in the crate root
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
    |            ^^^^^^^^ use of unresolved module or unlinked crate `Absolute`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `Absolute`
+error[E0433]: cannot find module or crate `Absolute` in the crate root
   --> $DIR/meta-item-absolute-path.rs:1:12
    |
 LL | #[derive(::Absolute)]
