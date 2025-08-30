@@ -36,7 +36,7 @@ pub unsafe extern "C" fn _start() -> ! {
     ptr::write_bytes(
         &raw mut __bss_start,
         0,
-        (&raw mut __bss_end).offset_from(&raw mut __bss_start) as usize,
+        (&raw mut __bss_end).offset_from_unsigned(&raw mut __bss_start),
     );
 
     main();

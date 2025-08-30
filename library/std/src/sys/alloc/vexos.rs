@@ -5,7 +5,7 @@ use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
-// symbols defined in the target linkerscript
+// Symbols for heap section boundaries defined in the target's linkerscript
 unsafe extern "C" {
     static mut __heap_start: u8;
     static mut __heap_end: u8;
@@ -21,10 +21,12 @@ unsafe impl dlmalloc::Allocator for Vexos {
         static INIT: AtomicBool = AtomicBool::new(false);
 
         if !INIT.swap(true, Ordering::Relaxed) {
+            // This target has no growable heap, as user memory has a fixed
+            // size/location and VEXos does not manage allocation for us.
             unsafe {
                 (
-                    (&raw mut __heap_start).cast(),
-                    (&raw const __heap_end).byte_offset_from(ptr::addr_of!(__heap_start)) as _,
+                    (&raw mut __heap_start).cast::<u8>(),
+                    (&raw const __heap_end).offset_from_unsigned(&raw const __heap_start),
                     0,
                 )
             }
@@ -63,7 +65,7 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
-        // guarantees unique and non-reentrant access to the allocator.
+        // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
     }
@@ -71,7 +73,7 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
-        // guarantees unique and non-reentrant access to the allocator.
+        // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
     }
@@ -79,7 +81,7 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
-        // guarantees unique and non-reentrant access to the allocator.
+        // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
     }
@@ -87,7 +89,7 @@ unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         // SAFETY: DLMALLOC access is guaranteed to be safe because we are a single-threaded target, which
-        // guarantees unique and non-reentrant access to the allocator.
+        // guarantees unique and non-reentrant access to the allocator. As such, no allocator lock is used.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
         unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }
     }
