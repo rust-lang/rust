@@ -1008,16 +1008,13 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         let msg = format!("extern crate `{ident}` already in extern prelude");
                         self.r.tcx.dcx().span_delayed_bug(item.span, msg);
                     } else {
-                        entry.item_binding = Some(imported_binding);
-                        entry.introduced_by_item = orig_name.is_some();
+                        entry.item_binding = Some((imported_binding, orig_name.is_some()));
                     }
                     entry
                 }
                 Entry::Vacant(vacant) => vacant.insert(ExternPreludeEntry {
-                    item_binding: Some(imported_binding),
-                    flag_binding: Cell::new(None),
-                    only_item: true,
-                    introduced_by_item: true,
+                    item_binding: Some((imported_binding, true)),
+                    flag_binding: None,
                 }),
             };
         }

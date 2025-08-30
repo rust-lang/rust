@@ -322,7 +322,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let from_item = self
             .extern_prelude
             .get(&Macros20NormalizedIdent::new(ident))
-            .is_none_or(|entry| entry.introduced_by_item);
+            .is_none_or(|entry| entry.introduced_by_item());
         // Only suggest removing an import if both bindings are to the same def, if both spans
         // aren't dummy spans. Further, if both bindings are imports, then the ident must have
         // been introduced by an item.
@@ -1845,7 +1845,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let AmbiguityError { kind, ident, b1, b2, misc1, misc2, .. } = *ambiguity_error;
         let extern_prelude_ambiguity = || {
             self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
-                entry.item_binding == Some(b1) && entry.flag_binding.get() == Some(b2)
+                entry.item_binding.map(|(b, _)| b) == Some(b1)
+                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().binding()) == Some(b2)
             })
         };
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {

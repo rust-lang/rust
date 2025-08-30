@@ -32,7 +32,7 @@ use std::sync::Arc;
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
 use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
-use imports::{Import, ImportData, ImportKind, NameResolution};
+use imports::{Import, ImportData, ImportKind, NameResolution, PendingBinding};
 use late::{
     ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
     UnnecessaryQualification,
@@ -1025,18 +1025,26 @@ impl<'ra> NameBindingData<'ra> {
     }
 }
 
-#[derive(Default, Clone)]
 struct ExternPreludeEntry<'ra> {
     /// Binding from an `extern crate` item.
-    item_binding: Option<NameBinding<'ra>>,
+    /// The boolean flag is true is `item_binding` is non-redundant, happens either when
+    /// `flag_binding` is `None`, or when `extern crate` introducing `item_binding` used renaming.
+    item_binding: Option<(NameBinding<'ra>, /* introduced by item */ bool)>,
     /// Binding from an `--extern` flag, lazily populated on first use.
-    flag_binding: Cell<Option<NameBinding<'ra>>>,
-    /// There was no `--extern` flag introducing this name,
-    /// `flag_binding` doesn't need to be populated.
-    only_item: bool,
-    /// `item_binding` is non-redundant, happens either when `only_item` is true,
-    /// or when `extern crate` introducing `item_binding` used renaming.
-    introduced_by_item: bool,
+    flag_binding: Option<Cell<PendingBinding<'ra>>>,
+}
+
+impl ExternPreludeEntry<'_> {
+    fn introduced_by_item(&self) -> bool {
+        matches!(self.item_binding, Some((_, true)))
+    }
+
+    fn flag() -> Self {
+        ExternPreludeEntry {
+            item_binding: None,
+            flag_binding: Some(Cell::new(PendingBinding::Pending)),
+        }
+    }
 }
 
 struct DeriveData {
@@ -1528,7 +1536,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && let name = Symbol::intern(name)
                     && name.can_be_raw()
                 {
-                    Some((Macros20NormalizedIdent::with_dummy_span(name), Default::default()))
+                    let ident = Macros20NormalizedIdent::with_dummy_span(name);
+                    Some((ident, ExternPreludeEntry::flag()))
                 } else {
                     None
                 }
@@ -1536,11 +1545,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect();
 
         if !attr::contains_name(attrs, sym::no_core) {
-            extern_prelude
-                .insert(Macros20NormalizedIdent::with_dummy_span(sym::core), Default::default());
+            let ident = Macros20NormalizedIdent::with_dummy_span(sym::core);
+            extern_prelude.insert(ident, ExternPreludeEntry::flag());
             if !attr::contains_name(attrs, sym::no_std) {
-                extern_prelude
-                    .insert(Macros20NormalizedIdent::with_dummy_span(sym::std), Default::default());
+                let ident = Macros20NormalizedIdent::with_dummy_span(sym::std);
+                extern_prelude.insert(ident, ExternPreludeEntry::flag());
             }
         }
 
@@ -2062,12 +2071,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             // Avoid marking `extern crate` items that refer to a name from extern prelude,
             // but not introduce it, as used if they are accessed from lexical scope.
-            if used == Used::Scope {
-                if let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)) {
-                    if !entry.introduced_by_item && entry.item_binding == Some(used_binding) {
-                        return;
-                    }
-                }
+            if used == Used::Scope
+                && let Some(entry) = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident))
+                && entry.item_binding == Some((used_binding, false))
+            {
+                return;
             }
             let old_used = self.import_use_map.entry(import).or_insert(used);
             if *old_used < used {
@@ -2226,7 +2234,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         finalize: bool,
     ) -> Option<NameBinding<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
-        entry.and_then(|entry| entry.item_binding).map(|binding| {
+        entry.and_then(|entry| entry.item_binding).map(|(binding, _)| {
             if finalize {
                 self.get_mut().record_use(ident, binding, Used::Scope);
             }
@@ -2236,31 +2244,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
-        entry.and_then(|entry| match entry.flag_binding.get() {
-            Some(binding) => {
-                if finalize {
-                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
-                }
-                Some(binding)
-            }
-            None if entry.only_item => None,
-            None => {
-                let crate_id = if finalize {
-                    self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
-                } else {
-                    self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
-                };
-                match crate_id {
-                    Some(crate_id) => {
-                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
-                        let binding =
-                            self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT);
-                        entry.flag_binding.set(Some(binding));
-                        Some(binding)
+        entry.and_then(|entry| entry.flag_binding.as_ref()).and_then(|flag_binding| {
+            let binding = match flag_binding.get() {
+                PendingBinding::Ready(binding) => {
+                    if finalize {
+                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                     }
-                    None => finalize.then_some(self.dummy_binding),
+                    binding
                 }
-            }
+                PendingBinding::Pending => {
+                    let crate_id = if finalize {
+                        self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
+                    } else {
+                        self.cstore_mut().maybe_process_path_extern(self.tcx, ident.name)
+                    };
+                    crate_id.map(|crate_id| {
+                        let res = Res::Def(DefKind::Mod, crate_id.as_def_id());
+                        self.arenas.new_pub_res_binding(res, DUMMY_SP, LocalExpnId::ROOT)
+                    })
+                }
+            };
+            flag_binding.set(PendingBinding::Ready(binding));
+            binding.or_else(|| finalize.then_some(self.dummy_binding))
         })
     }
 
