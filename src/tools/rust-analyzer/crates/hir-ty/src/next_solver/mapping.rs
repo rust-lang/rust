@@ -1207,7 +1207,10 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                                 SolverDefId::TraitId(id) => to_chalk_trait_id(id),
                                 _ => unreachable!(),
                             };
-                            let substitution = chalk_ir::Substitution::empty(Interner);
+                            let substitution = chalk_ir::Substitution::from1(
+                                Interner,
+                                convert_ty_for_result(interner, self_ty),
+                            );
                             let trait_ref = chalk_ir::TraitRef { trait_id, substitution };
                             chalk_ir::WhereClause::Implemented(trait_ref)
                         }

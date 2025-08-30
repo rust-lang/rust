@@ -53,6 +53,8 @@ use super::OperandKind;
 
 mod as_place;
 mod pattern_matching;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone)]
 struct LoopBlocks {
