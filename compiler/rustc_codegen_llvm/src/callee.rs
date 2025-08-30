@@ -31,6 +31,11 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
     debug!("get_fn({:?}: {:?}) => {}", instance, instance.ty(cx.tcx(), cx.typing_env()), sym);
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
+    if fn_abi.conv == rustc_abi::CanonAbi::GpuKernel {
+        dbg!("found gpu fn2!");
+    } else {
+        dbg!("asdf2!");
+    }
 
     let llfn = if let Some(llfn) = cx.get_declared_value(sym) {
         llfn
@@ -69,6 +74,11 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             llvm::set_dllimport_storage_class(llfn);
             llfn
         } else {
+            //if Some(fn_abi) = fn_abi {
+                if fn_abi.conv == rustc_abi::CanonAbi::GpuKernel {
+                    dbg!("found gpu fn!");
+                }
+            //}
             cx.declare_fn(sym, fn_abi, Some(instance))
         };
         debug!("get_fn: not casting pointer!");
