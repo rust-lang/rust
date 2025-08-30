@@ -2,7 +2,7 @@
 // emitted correctly.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clinker-plugin-lto -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static
+//@ compile-flags: -Clinker-plugin-lto -Copt-level=0 -Zsanitizer=cfi -Ctarget-feature=-crt-static -C unsafe-allow-abi-mismatch=sanitizer
 #![crate_type = "bin"]
 #![feature(linkage)]
 

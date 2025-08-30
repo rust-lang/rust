@@ -1,7 +1,7 @@
 // Verifies that integer types are normalized.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers -Copt-level=0
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-normalize-integers
 
 #![crate_type = "lib"]
 

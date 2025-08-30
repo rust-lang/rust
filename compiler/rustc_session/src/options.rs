@@ -83,9 +83,76 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
+mod target_modifier_consistency_check {
+    use super::*;
+    pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
+        let mut lparsed: SanitizerSet = Default::default();
+        let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
+        parse::parse_sanitizers(&mut lparsed, lval);
+
+        let mut rparsed: SanitizerSet = Default::default();
+        let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
+        parse::parse_sanitizers(&mut rparsed, rval);
+
+        // Some sanitizers need to be target modifiers, and some do not.
+        // For now, we should mark all sanitizers as target modifiers except for these:
+        // AddressSanitizer, LeakSanitizer
+        let tmod_sanitizers = SanitizerSet::MEMORY
+            | SanitizerSet::THREAD
+            | SanitizerSet::HWADDRESS
+            | SanitizerSet::CFI
+            | SanitizerSet::MEMTAG
+            | SanitizerSet::SHADOWCALLSTACK
+            | SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::SAFESTACK
+            | SanitizerSet::DATAFLOW;
+
+        lparsed & tmod_sanitizers == rparsed & tmod_sanitizers
+    }
+    pub(super) fn sanitizer_cfi_normalize_integers(
+        opts: &Options,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For kCFI, the helper flag -Zsanitizer-cfi-normalize-integers should also be a target modifier
+        if opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 impl TargetModifier {
     pub fn extend(&self) -> ExtendedTargetModifierInfo {
         self.opt.reparse(&self.value_name)
+    }
+    // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
+    // When other is None, consistency with default value is checked
+    pub fn consistent(&self, opts: &Options, other: Option<&TargetModifier>) -> bool {
+        assert!(other.is_none() || self.opt == other.unwrap().opt);
+        match self.opt {
+            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
+                UnstableOptionsTargetModifiers::sanitizer => {
+                    return target_modifier_consistency_check::sanitizer(self, other);
+                }
+                UnstableOptionsTargetModifiers::sanitizer_cfi_normalize_integers => {
+                    return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
+                        opts, self, other,
+                    );
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+        match other {
+            Some(other) => self.extend().tech_value == other.extend().tech_value,
+            None => false,
+        }
     }
 }
 
@@ -2504,13 +2571,13 @@ written to standard error output)"),
     retpoline_external_thunk: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
         target features (default: no)"),
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED TARGET_MODIFIER],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable generalizing pointer types (default: no)"),
-    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED TARGET_MODIFIER],
         "enable normalizing integer types (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
