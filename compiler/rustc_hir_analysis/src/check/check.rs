@@ -978,7 +978,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                         tcx.ensure_ok().fn_sig(def_id);
                         let item = tcx.hir_foreign_item(item);
                         let hir::ForeignItemKind::Fn(sig, ..) = item.kind else { bug!() };
-                        require_c_abi_if_c_variadic(tcx, sig.decl, abi, item.span);
+                        check_c_variadic_abi(tcx, sig.decl, abi, item.span);
                     }
                     DefKind::Static { .. } => {
                         tcx.ensure_ok().codegen_fn_attrs(def_id);

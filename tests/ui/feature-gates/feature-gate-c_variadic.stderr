@@ -1,3 +1,9 @@
+error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+  --> $DIR/feature-gate-c_variadic.rs:7:45
+   |
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) { }
+   |                                             ^^^^^^^
+
 error[E0658]: C-variadic functions are unstable
   --> $DIR/feature-gate-c_variadic.rs:3:1
    |
@@ -8,6 +14,16 @@ LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
    = help: add `#![feature(c_variadic)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error[E0658]: C-variadic functions are unstable
+  --> $DIR/feature-gate-c_variadic.rs:7:5
+   |
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #44930 <https://github.com/rust-lang/rust/issues/44930> for more information
+   = help: add `#![feature(c_variadic)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
