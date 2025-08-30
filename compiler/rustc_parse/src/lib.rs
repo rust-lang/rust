@@ -6,6 +6,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
+#![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
