@@ -1,5 +1,4 @@
 use core::f64;
-use core::f64::consts;
 
 use super::{assert_approx_eq, assert_biteq};
 
@@ -25,63 +24,6 @@ fn test_mul_add() {
     assert_biteq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
     assert_biteq!(8.9f64.mul_add(inf, 3.2), inf);
     assert_biteq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
-}
-
-#[test]
-fn test_recip() {
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_biteq!(1.0f64.recip(), 1.0);
-    assert_biteq!(2.0f64.recip(), 0.5);
-    assert_biteq!((-0.4f64).recip(), -2.5);
-    assert_biteq!(0.0f64.recip(), inf);
-    assert!(nan.recip().is_nan());
-    assert_biteq!(inf.recip(), 0.0);
-    assert_biteq!(neg_inf.recip(), -0.0);
-}
-
-#[test]
-fn test_powi() {
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_approx_eq!(1.0f64.powi(1), 1.0);
-    assert_approx_eq!((-3.1f64).powi(2), 9.61);
-    assert_approx_eq!(5.9f64.powi(-2), 0.028727);
-    assert_biteq!(8.3f64.powi(0), 1.0);
-    assert!(nan.powi(2).is_nan());
-    assert_biteq!(inf.powi(3), inf);
-    assert_biteq!(neg_inf.powi(2), inf);
-}
-
-#[test]
-fn test_to_degrees() {
-    let pi: f64 = consts::PI;
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_biteq!(0.0f64.to_degrees(), 0.0);
-    assert_approx_eq!((-5.8f64).to_degrees(), -332.315521);
-    assert_biteq!(pi.to_degrees(), 180.0);
-    assert!(nan.to_degrees().is_nan());
-    assert_biteq!(inf.to_degrees(), inf);
-    assert_biteq!(neg_inf.to_degrees(), neg_inf);
-}
-
-#[test]
-fn test_to_radians() {
-    let pi: f64 = consts::PI;
-    let nan: f64 = f64::NAN;
-    let inf: f64 = f64::INFINITY;
-    let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_biteq!(0.0f64.to_radians(), 0.0);
-    assert_approx_eq!(154.6f64.to_radians(), 2.698279);
-    assert_approx_eq!((-332.31f64).to_radians(), -5.799903);
-    assert_biteq!(180.0f64.to_radians(), pi);
-    assert!(nan.to_radians().is_nan());
-    assert_biteq!(inf.to_radians(), inf);
-    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
