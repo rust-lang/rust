@@ -5,15 +5,27 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, Instance, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt,Instance, TypeVisitableExt};
 use rustc_session::config::CrateType;
 use rustc_target::spec::RelocModel;
 use tracing::debug;
+
+use rustc_target::callconv::FnAbi;
 
 use crate::context::CodegenCx;
 use crate::errors::SymbolAlreadyDefined;
 use crate::type_of::LayoutLlvmExt;
 use crate::{base, llvm};
+
+fn my_fn_abi<'tcx>(abi: &FnAbi<'tcx, Ty<'tcx>> ) -> FnAbi<'tcx, Ty<'tcx>> {
+    let mut myABI = abi.clone();
+    dbg!(&myABI.args);
+    let val = myABI.clone().args[0].clone();
+    myABI.args = Box::new([val.clone(), val.clone()]);
+    dbg!(&myABI.args);
+    myABI
+}
+
 
 impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn predefine_static(
@@ -54,7 +66,15 @@ impl<'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         assert!(!instance.args.has_infer());
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-        let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
+        let fn_abi = if fn_abi.conv == rustc_abi::CanonAbi::GpuKernel {
+            dbg!("found gpu fn!");
+            fn_abi.clone()
+            //my_fn_abi(fn_abi)
+        } else {
+            //dbg!("asdf!");
+            fn_abi.clone()
+        };
+        let lldecl = self.declare_fn(symbol_name, &fn_abi, Some(instance));
         llvm::set_linkage(lldecl, base::linkage_to_llvm(linkage));
         let attrs = self.tcx.codegen_instance_attrs(instance.def);
         base::set_link_section(lldecl, &attrs);
