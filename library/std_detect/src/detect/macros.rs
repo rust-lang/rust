@@ -3,11 +3,10 @@
 #[unstable(feature = "stdarch_internal", issue = "none")]
 macro_rules! detect_feature {
     ($feature:tt, $feature_lit:tt) => {
-        $crate::detect_feature!($feature, $feature_lit : $feature_lit)
+        cfg!(target_feature = $feature_lit) || $crate::detect::__is_feature_detected::$feature()
     };
-    ($feature:tt, $feature_lit:tt : $($target_feature_lit:tt),*) => {
-        $(cfg!(target_feature = $target_feature_lit) ||)*
-            $crate::detect::__is_feature_detected::$feature()
+    ($feature:tt, $feature_lit:tt : cfg($target_feature_cfg:meta)) => {
+        cfg!($target_feature_cfg) || $crate::detect::__is_feature_detected::$feature()
     };
     ($feature:tt, $feature_lit:tt, without cfg check: true) => {
         $crate::detect::__is_feature_detected::$feature()
@@ -17,14 +16,16 @@ macro_rules! detect_feature {
 #[allow(unused_macros, reason = "it's used in the features! macro below")]
 macro_rules! check_cfg_feature {
     ($feature:tt, $feature_lit:tt) => {
-        check_cfg_feature!($feature, $feature_lit : $feature_lit)
+        cfg!(target_feature = $feature_lit);
     };
-    ($feature:tt, $feature_lit:tt : $($target_feature_lit:tt),*) => {
-        $(cfg!(target_feature = $target_feature_lit);)*
+    ($feature:tt, $feature_lit:tt : cfg($target_feature_cfg:meta)) => {
+        cfg!($target_feature_cfg);
     };
     ($feature:tt, $feature_lit:tt, without cfg check: $feature_cfg_check:literal) => {
         #[allow(unexpected_cfgs, reason = $feature_lit)]
-        { cfg!(target_feature = $feature_lit) }
+        {
+            cfg!(target_feature = $feature_lit)
+        }
     };
 }
 
@@ -39,7 +40,7 @@ macro_rules! features {
       $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
       $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
           $(without cfg check: $feature_cfg_check:tt;)?
-          $(implied by target_features: [$($target_feature_lit:tt),*];)?
+          $(implied by cfg($target_feature_cfg:meta);)?
           $(#[$feature_comment:meta])*)*
     ) => {
         #[macro_export]
@@ -50,7 +51,12 @@ macro_rules! features {
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
-                    $crate::detect_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?)
+                    $crate::detect_feature!(
+                        $feature,
+                        $feature_lit
+                        $(, without cfg check: $feature_cfg_check)?
+                        $(: cfg($target_feature_cfg))?
+                    )
                 };
             )*
             $(
@@ -135,7 +141,12 @@ macro_rules! features {
         #[deny(unfulfilled_lint_expectations)]
         const _: () = {
             $(
-                check_cfg_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?);
+                check_cfg_feature!(
+                    $feature,
+                    $feature_lit
+                    $(, without cfg check: $feature_cfg_check)?
+                    $(: cfg($target_feature_cfg))?
+                );
             )*
         };
 
