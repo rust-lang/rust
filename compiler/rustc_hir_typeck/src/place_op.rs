@@ -109,8 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         index_ty: Ty<'tcx>,
         index_expr: &hir::Expr<'_>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
-        let adjusted_ty =
-            self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})",
