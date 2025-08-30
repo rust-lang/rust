@@ -531,4 +531,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 rustc built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
     },
+    ChangeInfo {
+        change_id: 145976,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.break-on-ice` to control if internal compiler errors cause a debug break on Windows.",
+    },
 ];

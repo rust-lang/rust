@@ -65,6 +65,7 @@ define_config! {
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
         std_features: Option<BTreeSet<String>> = "std-features",
+        break_on_ice: Option<bool> = "break-on-ice",
     }
 }
 
@@ -355,6 +356,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         download_rustc: _,
         validate_mir_opts: _,
         frame_pointers: _,
+        break_on_ice: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
