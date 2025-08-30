@@ -118,21 +118,23 @@ Number of file 0 mappings: 4
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#12} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 00, a7, 01, 0a, 00, 16]
+Raw bytes (15): 0x[01, 01, 00, 02, 00, a7, 01, 01, 00, 09, 00, 00, 0a, 00, 16]
 Number of files: 1
 - file 0 => $DIR/closure.rs
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 167, 10) to (start + 0, 22)
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 167, 1) to (start + 0, 9)
+- Code(Zero) at (prev + 0, 10) to (start + 0, 22)
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#13} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 00, ad, 01, 11, 00, 1d]
+Raw bytes (15): 0x[01, 01, 00, 02, 00, ac, 01, 0d, 00, 15, 00, 01, 11, 00, 1d]
 Number of files: 1
 - file 0 => $DIR/closure.rs
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 173, 17) to (start + 0, 29)
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 172, 13) to (start + 0, 21)
+- Code(Zero) at (prev + 1, 17) to (start + 0, 29)
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#14}
@@ -289,30 +291,33 @@ Number of file 0 mappings: 7
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#5}
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 8c, 01, 46, 00, 4e]
+Raw bytes (15): 0x[01, 01, 00, 02, 01, 8c, 01, 3d, 00, 45, 01, 00, 46, 00, 4e]
 Number of files: 1
 - file 0 => $DIR/closure.rs
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 140, 70) to (start + 0, 78)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 140, 61) to (start + 0, 69)
+- Code(Counter(0)) at (prev + 0, 70) to (start + 0, 78)
 Highest counter ID seen: c0
 
 Function name: closure::main::{closure#6}
-Raw bytes (10): 0x[01, 01, 00, 01, 01, 8d, 01, 4a, 00, 56]
+Raw bytes (15): 0x[01, 01, 00, 02, 01, 8d, 01, 41, 00, 49, 01, 00, 4a, 00, 56]
 Number of files: 1
 - file 0 => $DIR/closure.rs
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 141, 74) to (start + 0, 86)
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 141, 65) to (start + 0, 73)
+- Code(Counter(0)) at (prev + 0, 74) to (start + 0, 86)
 Highest counter ID seen: c0
 
 Function name: closure::main::{closure#7} (unused)
-Raw bytes (10): 0x[01, 01, 00, 01, 00, 8e, 01, 44, 00, 50]
+Raw bytes (15): 0x[01, 01, 00, 02, 00, 8e, 01, 3b, 00, 43, 00, 00, 44, 00, 50]
 Number of files: 1
 - file 0 => $DIR/closure.rs
 Number of expressions: 0
-Number of file 0 mappings: 1
-- Code(Zero) at (prev + 142, 68) to (start + 0, 80)
+Number of file 0 mappings: 2
+- Code(Zero) at (prev + 142, 59) to (start + 0, 67)
+- Code(Zero) at (prev + 0, 68) to (start + 0, 80)
 Highest counter ID seen: (none)
 
 Function name: closure::main::{closure#8} (unused)
