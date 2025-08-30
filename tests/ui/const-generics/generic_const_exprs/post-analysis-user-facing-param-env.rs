@@ -11,7 +11,6 @@ where
 {
     fn unimplemented(self, _: &Foo) -> Self::Output {
         //~^ ERROR method `unimplemented` is not a member of trait `std::ops::Add`
-        //~| ERROR type annotations needed
         loop {}
     }
 }

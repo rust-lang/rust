@@ -1612,11 +1612,7 @@ crate_def! {
 pub struct AssocItem {
     pub def_id: AssocDef,
     pub kind: AssocKind,
-    pub container: AssocItemContainer,
-
-    /// If this is an item in an impl of a trait then this is the `DefId` of
-    /// the associated item on the trait that this implements.
-    pub trait_item_def_id: Option<AssocDef>,
+    pub container: AssocContainer,
 }
 
 #[derive(Clone, PartialEq, Debug, Eq, Serialize)]
@@ -1636,9 +1632,11 @@ pub enum AssocKind {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum AssocItemContainer {
+pub enum AssocContainer {
+    InherentImpl,
+    /// The `AssocDef` points to the trait item being implemented.
+    TraitImpl(AssocDef),
     Trait,
-    Impl,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Serialize)]
