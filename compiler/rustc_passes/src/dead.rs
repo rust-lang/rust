@@ -521,8 +521,14 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let old_maybe_typeck_results =
-            self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
+        let typeck_results = self.tcx.typeck_body(body);
+
+        // The result shouldn't be tainted, otherwise it will cause ICE.
+        if typeck_results.tainted_by_errors.is_some() {
+            return;
+        }
+
+        let old_maybe_typeck_results = self.maybe_typeck_results.replace(typeck_results);
         let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
