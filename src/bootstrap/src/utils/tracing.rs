@@ -168,7 +168,11 @@ mod inner {
     impl TracingGuard {
         pub fn copy_to_dir(self, dir: &std::path::Path) {
             drop(self.guard);
-            std::fs::rename(&self.chrome_tracing_path, dir.join("chrome-trace.json")).unwrap();
+            crate::utils::helpers::move_file(
+                &self.chrome_tracing_path,
+                dir.join("chrome-trace.json"),
+            )
+            .unwrap();
         }
     }
 
