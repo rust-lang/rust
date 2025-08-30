@@ -23,14 +23,11 @@ pub fn get(
         QueryConfig::Cargo(sysroot, cargo_toml, _) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.env("RUSTC_BOOTSTRAP", "1");
-            cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS).args([
-                "--",
-                "-Z",
-                "unstable-options",
-            ]);
+            cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
+            cmd.args(["--", "-Z", "unstable-options"]);
             match utf8_stdout(&mut cmd) {
                 Ok(output) => return process(output),
                 Err(e) => {
