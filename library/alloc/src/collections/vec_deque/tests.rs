@@ -479,12 +479,12 @@ fn make_contiguous_big_head() {
 
     // 012......9876543
     assert_eq!(tester.capacity(), 15);
-    assert_eq!((&[9, 8, 7, 6, 5, 4, 3] as &[_], &[0, 1, 2] as &[_]), tester.as_slices());
+    assert_eq!(tester.as_slices(), ([9, 8, 7, 6, 5, 4, 3], [0, 1, 2]));
 
     let expected_start = tester.as_slices().1.len();
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
-    assert_eq!((&[9, 8, 7, 6, 5, 4, 3, 0, 1, 2] as &[_], &[] as &[_]), tester.as_slices());
+    assert_eq!(tester.as_slices(), ([9, 8, 7, 6, 5, 4, 3, 0, 1, 2], []));
 }
 
 #[test]
@@ -503,7 +503,7 @@ fn make_contiguous_big_tail() {
     let expected_start = 0;
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
-    assert_eq!((&[9, 8, 0, 1, 2, 3, 4, 5, 6, 7] as &[_], &[] as &[_]), tester.as_slices());
+    assert_eq!(tester.as_slices(), ([9, 8, 0, 1, 2, 3, 4, 5, 6, 7], []));
 }
 
 #[test]
@@ -525,8 +525,8 @@ fn make_contiguous_small_free() {
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!(
-        (&['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as &[_], &[] as &[_]),
-        tester.as_slices()
+        tester.as_slices(),
+        (['M', 'L', 'K', 'J', 'I', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], [])
     );
 
     tester.clear();
@@ -543,8 +543,8 @@ fn make_contiguous_small_free() {
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!(
-        (&['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'I', 'J', 'K', 'L', 'M'] as &[_], &[] as &[_]),
-        tester.as_slices()
+        tester.as_slices(),
+        (['H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'I', 'J', 'K', 'L', 'M'], [])
     );
 }
 
@@ -570,12 +570,8 @@ fn make_contiguous_head_to_end() {
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!(
-        (
-            &['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
-                as &[_],
-            &[] as &[_]
-        ),
-        tester.as_slices()
+        tester.as_slices(),
+        (['P', 'O', 'N', 'M', 'L', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'], [])
     );
 
     tester.clear();
@@ -592,12 +588,8 @@ fn make_contiguous_head_to_end() {
     tester.make_contiguous();
     assert_eq!(tester.head, expected_start);
     assert_eq!(
-        (
-            &['K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'L', 'M', 'N', 'O', 'P']
-                as &[_],
-            &[] as &[_]
-        ),
-        tester.as_slices()
+        tester.as_slices(),
+        (['K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A', 'L', 'M', 'N', 'O', 'P'], [])
     );
 }
 
