@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -922,6 +922,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
+        if self.body.local_decls[place.local].is_deref_temp()
+            && !place.is_indirect_first_projection()
+        {
+            if cntxt != PlaceContext::MutatingUse(MutatingUseContext::Store)
+                || place.as_local().is_none()
+            {
+                self.fail(
+                    location,
+                    format!("`DerefTemp` locals must only be dereferenced or directly assigned to"),
+                );
+            }
+        }
+
         self.super_place(place, cntxt, location);
     }
 
@@ -934,7 +947,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             };
         }
         match rvalue {
-            Rvalue::Use(_) | Rvalue::CopyForDeref(_) => {}
+            Rvalue::Use(_) => {}
+            Rvalue::CopyForDeref(_) => {
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                    self.fail(location, "`CopyForDeref` should have been removed in runtime MIR");
+                }
+            }
             Rvalue::Aggregate(kind, fields) => match **kind {
                 AggregateKind::Tuple => {}
                 AggregateKind::Array(dest) => {
@@ -1432,12 +1450,27 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                if let Rvalue::CopyForDeref(place) = rvalue {
-                    if place.ty(&self.body.local_decls, self.tcx).ty.builtin_deref(true).is_none() {
-                        self.fail(
-                            location,
-                            "`CopyForDeref` should only be used for dereferenceable types",
-                        )
+
+                if let Some(local) = dest.as_local() {
+                    if let LocalInfo::DerefTemp { alias_for } =
+                        self.body.local_decls[local].local_info()
+                    {
+                        if let Rvalue::CopyForDeref(place) = rvalue {
+                            if place != alias_for {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Assigning `{place:?}` to `DerefTemp` that \
+                                        should be alias for `{alias_for:?}`"
+                                    ),
+                                )
+                            }
+                        } else {
+                            self.fail(
+                                location,
+                                "assignment to a `DerefTemp` must use `CopyForDeref`",
+                            )
+                        }
                     }
                 }
             }
@@ -1609,5 +1642,36 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         self.super_terminator(terminator, location);
+    }
+
+    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        if let LocalInfo::DerefTemp { alias_for } = local_decl.local_info() {
+            if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) {
+                self.fail(
+                    START_BLOCK.start_location(),
+                    "`DerefTemp` should have been removed in runtime MIR",
+                );
+            } else {
+                if local_decl.ty.builtin_deref(true).is_none() {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        "`DerefTemp` should only be used for dereferenceable types",
+                    )
+                }
+
+                let alias_for_ty = alias_for.ty(self.body, self.tcx).ty;
+                if local_decl.ty != alias_for_ty {
+                    self.fail(
+                        START_BLOCK.start_location(),
+                        format!(
+                            "type of `DerefTemp` ({:?}) doesn't match place it aliases ({:?})",
+                            local_decl.ty, alias_for_ty
+                        ),
+                    )
+                }
+            }
+        }
+
+        self.super_local_decl(local, local_decl);
     }
 }
