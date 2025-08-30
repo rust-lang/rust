@@ -1,3 +1,5 @@
+//@ compile-flags: -Zcontract-checks=yes
+
 #![feature(contracts)]
 #![allow(incomplete_features)]
 
