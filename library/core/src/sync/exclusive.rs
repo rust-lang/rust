@@ -220,3 +220,14 @@ where
         G::resume(self.get_pin_mut(), arg)
     }
 }
+
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+impl<T> AsMut<T> for Exclusive<T>
+where
+    T: ?Sized,
+{
+    #[inline(always)]
+    fn as_mut(&mut self) -> &mut T {
+        self.get_mut()
+    }
+}
