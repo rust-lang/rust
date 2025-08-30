@@ -25,7 +25,7 @@ LL |         let mut value = false;
    |                         ^^^^^
    |
    = help: maybe it is overwritten before being read?
-   = note: `#[warn(unused_assignments)]` on by default
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
 
 warning: 2 warnings emitted
 
