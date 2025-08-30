@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
             description: Some("x86_64 Trusty".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: Some(false),
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:
