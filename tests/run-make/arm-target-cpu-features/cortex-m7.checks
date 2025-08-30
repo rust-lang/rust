@@ -1,0 +1,7 @@
+// Cortex-M7 does not have Advanced SIMD, so don't check anything in vadd_f32_q.
+CHECK-LABEL: vadd_f32_q:
+
+// Cortex-M7 enables double-precision.
+CHECK-LABEL: vadd_f64:
+CHECK: vadd.f64 d0, d0, d1
+CHECK: bx lr
