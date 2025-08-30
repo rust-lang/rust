@@ -1,7 +1,6 @@
 use crate::{
     AssistConfig,
     assist_context::{AssistContext, Assists},
-    utils::add_cfg_attrs_to,
 };
 use hir::{HasCrate, Semantics};
 use ide_db::{
@@ -13,8 +12,8 @@ use ide_db::{
 use syntax::{
     AstNode,
     ast::{
-        self, AssocItem, BlockExpr, GenericParam, HasGenericParams, HasName, HasTypeBounds,
-        HasVisibility, edit_in_place::Indent, make,
+        self, AssocItem, BlockExpr, GenericParam, HasAttrs, HasGenericParams, HasName,
+        HasTypeBounds, HasVisibility, edit_in_place::Indent, make,
     },
     syntax_editor::Position,
 };
@@ -96,6 +95,7 @@ pub(crate) fn generate_blanket_trait_impl(
             }
 
             let impl_ = make::impl_trait(
+                cfg_attrs(&traitd),
                 is_unsafe,
                 traitd.generic_param_list(),
                 trait_gen_args,
@@ -120,13 +120,10 @@ pub(crate) fn generate_blanket_trait_impl(
                         continue;
                     }
                     let f = todo_fn(&method, ctx.config).clone_for_update();
-                    add_cfg_attrs_to(&method, &f);
                     f.indent(1.into());
                     assoc_item_list.add_item(AssocItem::Fn(f));
                 }
             }
-
-            add_cfg_attrs_to(&traitd, &impl_);
 
             impl_.indent(indent);
 
@@ -138,10 +135,10 @@ pub(crate) fn generate_blanket_trait_impl(
                 ],
             );
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(self_ty) = impl_.self_ty() {
-                    builder.add_tabstop_before(cap, self_ty);
-                }
+            if let Some(cap) = ctx.config.snippet_cap
+                && let Some(self_ty) = impl_.self_ty()
+            {
+                builder.add_tabstop_before(cap, self_ty);
             }
 
             builder.add_file_edits(ctx.vfs_file_id(), edit);
@@ -271,6 +268,7 @@ fn ty_bound_is(bound: &ast::TypeBound, s: &str) -> bool {
 fn todo_fn(f: &ast::Fn, config: &AssistConfig) -> ast::Fn {
     let params = f.param_list().unwrap_or_else(|| make::param_list(None, None));
     make::fn_(
+        cfg_attrs(f),
         f.visibility(),
         f.name().unwrap_or_else(|| make::name("unnamed")),
         f.generic_param_list(),
@@ -292,6 +290,10 @@ fn default_block(config: &AssistConfig) -> BlockExpr {
         ExprFillDefaultMode::Default => make::ext::expr_todo(),
     };
     make::block_expr(None, Some(expr))
+}
+
+fn cfg_attrs(node: &impl HasAttrs) -> impl Iterator<Item = ast::Attr> {
+    node.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"))
 }
 
 #[cfg(test)]
