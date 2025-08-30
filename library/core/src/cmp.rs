@@ -1510,6 +1510,54 @@ pub macro PartialOrd($item:item) {
     /* compiler built-in */
 }
 
+/// Key equivalence trait.
+///
+/// This trait allows hash table lookup to be customized.
+///
+/// # Contract
+///
+/// The implementor **must** hash like `Q`, if it is hashable.
+#[unstable(feature = "comparable_trait", issue = "145986")]
+pub trait Equivalent<Q: ?Sized> {
+    /// Compare self to `key` and return `true` if they are equal.
+    #[unstable(feature = "comparable_trait", issue = "145986")]
+    fn equivalent(&self, key: &Q) -> bool;
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<K: ?Sized, Q: ?Sized> Equivalent<Q> for K
+where
+    K: crate::borrow::Borrow<Q>,
+    Q: Eq,
+{
+    #[inline]
+    fn equivalent(&self, key: &Q) -> bool {
+        PartialEq::eq(self.borrow(), key)
+    }
+}
+
+/// Key ordering trait.
+///
+/// This trait allows ordered map lookup to be customized.
+#[unstable(feature = "comparable_trait", issue = "145986")]
+pub trait Comparable<Q: ?Sized>: Equivalent<Q> {
+    /// Compare self to `key` and return their ordering.
+    #[unstable(feature = "comparable_trait", issue = "145986")]
+    fn compare(&self, key: &Q) -> Ordering;
+}
+
+#[unstable(feature = "comparable_trait", issue = "145986")]
+impl<K: ?Sized, Q: ?Sized> Comparable<Q> for K
+where
+    K: crate::borrow::Borrow<Q>,
+    Q: Ord,
+{
+    #[inline]
+    fn compare(&self, key: &Q) -> Ordering {
+        Ord::cmp(self.borrow(), key)
+    }
+}
+
 /// Compares and returns the minimum of two values.
 ///
 /// Returns the first argument if the comparison determines them to be equal.

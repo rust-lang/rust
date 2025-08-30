@@ -23,16 +23,16 @@ type AssociatedTy = dyn Trait<ExpressionStack = i32, Bar = i32>;
 //~^ ERROR associated type `ExpressionStack` not found
 //[rustc_private_enabled]~| NOTE there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
 
-// Attempt to get a suggestion for `hashbrown::Equivalent`
-trait Trait2<K>: Equivalent<K> {}
+// Attempt to get a suggestion for `gimli::read::Relocate`
+trait Trait2<K>: Relocate<K> {}
 //~^ ERROR cannot find trait
 //~| NOTE not found
 
-// Attempt to get a suggestion for `hashbrown::Equivalent::equivalent`
-fn trait_member<T>(val: &T, key: &K) -> bool {
+// Attempt to get a suggestion for `gimli::read::Relocate::relocate_address`
+fn trait_member<T>(val: &T, key: K) -> bool {
     //~^ ERROR cannot find type `K`
     //~| NOTE similarly named
-    val.equivalent(key)
+    val.relocate_address(key, 0).is_ok()
 }
 
 // Attempt to get a suggestion for `memchr::memchr2`

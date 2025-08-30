@@ -107,6 +107,7 @@
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(coerce_unsized)]
+#![feature(comparable_trait)]
 #![feature(const_default)]
 #![feature(const_eval_select)]
 #![feature(const_heap)]

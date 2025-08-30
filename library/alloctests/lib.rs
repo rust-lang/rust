@@ -20,6 +20,7 @@
 #![feature(assert_matches)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
+#![feature(comparable_trait)]
 #![feature(core_intrinsics)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
