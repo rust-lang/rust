@@ -1375,14 +1375,6 @@ impl<'tcx> Ty<'tcx> {
                     _ => self,
                 };
 
-                // FIXME(#86868): We should be canonicalizing, or else moving this to a method of inference
-                // context, or *something* like that, but for now just avoid passing inference
-                // variables to queries that can't cope with them. Instead, conservatively
-                // return "true" (may change drop order).
-                if query_ty.has_infer() {
-                    return true;
-                }
-
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 let erased = tcx.normalize_erasing_regions(typing_env, query_ty);
