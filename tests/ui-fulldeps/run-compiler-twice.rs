@@ -12,6 +12,7 @@
 
 extern crate rustc_driver;
 extern crate rustc_interface;
+extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 
@@ -81,7 +82,8 @@ fn compile(code: String, output: PathBuf, sysroot: Sysroot, linker: Option<&Path
         let krate = rustc_interface::passes::parse(&compiler.sess);
         let linker = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
             let _ = tcx.analysis(());
-            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)
+            let metadata = Default::default();
+            Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend, metadata)
         });
         linker.link(&compiler.sess, &*compiler.codegen_backend);
     });

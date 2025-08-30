@@ -60,8 +60,8 @@ use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config};
-use rustc_span::FileName;
 use rustc_span::def_id::LOCAL_CRATE;
+use rustc_span::{FileName, sym};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -383,7 +383,31 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 }
             }
 
-            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
+            // Hook for tests. This must be shortly before the
+            // `has_errors_or_delayed_bugs` check below for
+            // `tests/ui/treat-err-as-bug/span_delayed_bug.rs` to work.
+            if let Some((def_id, _)) = tcx.entry_fn(())
+                && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
+            {
+                tcx.ensure_ok().trigger_delayed_bug(def_id);
+            }
+
+            // Don't emit metadata or do codegen if there were any errors.
+            //
+            // Note: checking for delayed bugs here is aggressive. If we have
+            // no errors but one or more delayed bugs, the `raise_fatal` call
+            // will instantly ICE when the DiagCtxt is dropped. I.e. this check
+            // serves as a kind of barrier, giving no opportunity for a
+            // subsequent error (e.g. during codegen) to nullify a delayed bug.
+            // The rationale is that delayed bugs are likely to cause more ICEs
+            // during codegen, obscuring the original problem.
+            if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
+                guar.raise_fatal();
+            }
+
+            let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
+
+            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend, metadata))
         });
 
         // Linking is done outside the `compiler.enter()` so that the
