@@ -60,8 +60,6 @@
 //! - Converting `Option<Rc<T>>` to `Option<&T>` without checking for `None` values.
 //! - Converting `&[Rc<T>]` to `&[&T]` with zero cost.
 
-#![allow(dead_code)]
-
 use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
 use core::mem;
@@ -71,6 +69,9 @@ use core::sync::atomic::Atomic;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc;
+pub(crate) use crate::raw_rc::raw_rc::RawRc;
+pub(crate) use crate::raw_rc::raw_unique_rc::RawUniqueRc;
+pub(crate) use crate::raw_rc::raw_weak::RawWeak;
 use crate::raw_rc::rc_layout::RcLayout;
 use crate::raw_rc::rc_value_pointer::RcValuePointer;
 
