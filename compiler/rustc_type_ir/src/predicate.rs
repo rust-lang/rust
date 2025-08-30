@@ -486,6 +486,7 @@ pub enum AliasTermKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     ProjectionTy,
+    UnresolvedTy,
     /// An associated type in an inherent `impl`
     InherentTy,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
@@ -502,6 +503,7 @@ pub enum AliasTermKind {
     ProjectionConst,
     /// A top level const item not part of a trait or impl.
     FreeConst,
+    UnresolvedConst,
     /// An associated const in an inherent `impl`
     InherentConst,
 }
@@ -513,6 +515,8 @@ impl AliasTermKind {
             AliasTermKind::ProjectionConst => "associated const",
             AliasTermKind::InherentTy => "inherent associated type",
             AliasTermKind::InherentConst => "inherent associated const",
+            AliasTermKind::UnresolvedTy => "unresolved type alias",
+            AliasTermKind::UnresolvedConst => "unresolved const alias",
             AliasTermKind::OpaqueTy => "opaque type",
             AliasTermKind::FreeTy => "type alias",
             AliasTermKind::FreeConst => "unevaluated constant",
@@ -523,12 +527,14 @@ impl AliasTermKind {
     pub fn is_type(self) -> bool {
         match self {
             AliasTermKind::ProjectionTy
+            | AliasTermKind::UnresolvedTy
             | AliasTermKind::InherentTy
             | AliasTermKind::OpaqueTy
             | AliasTermKind::FreeTy => true,
 
             AliasTermKind::UnevaluatedConst
             | AliasTermKind::ProjectionConst
+            | AliasTermKind::UnresolvedConst
             | AliasTermKind::InherentConst
             | AliasTermKind::FreeConst => false,
         }
@@ -538,6 +544,7 @@ impl AliasTermKind {
 impl From<ty::AliasTyKind> for AliasTermKind {
     fn from(value: ty::AliasTyKind) -> Self {
         match value {
+            ty::Unresolved => AliasTermKind::UnresolvedTy,
             ty::Projection => AliasTermKind::ProjectionTy,
             ty::Opaque => AliasTermKind::OpaqueTy,
             ty::Free => AliasTermKind::FreeTy,
@@ -607,13 +614,15 @@ impl<I: Interner> AliasTerm<I> {
     pub fn expect_ty(self, interner: I) -> ty::AliasTy<I> {
         match self.kind(interner) {
             AliasTermKind::ProjectionTy
+            | AliasTermKind::UnresolvedTy
             | AliasTermKind::InherentTy
             | AliasTermKind::OpaqueTy
             | AliasTermKind::FreeTy => {}
-            AliasTermKind::InherentConst
+            AliasTermKind::ProjectionConst
+            | AliasTermKind::UnresolvedConst
+            | AliasTermKind::InherentConst
             | AliasTermKind::FreeConst
-            | AliasTermKind::UnevaluatedConst
-            | AliasTermKind::ProjectionConst => {
+            | AliasTermKind::UnevaluatedConst => {
                 panic!("Cannot turn `UnevaluatedConst` into `AliasTy`")
             }
         }
@@ -632,6 +641,11 @@ impl<I: Interner> AliasTerm<I> {
                 ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
             .into(),
+            AliasTermKind::UnresolvedTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Unresolved,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            ).into(),
             AliasTermKind::InherentTy => Ty::new_alias(
                 interner,
                 ty::AliasTyKind::Inherent,
@@ -651,6 +665,7 @@ impl<I: Interner> AliasTerm<I> {
             )
             .into(),
             AliasTermKind::FreeConst
+            | AliasTermKind::UnresolvedConst
             | AliasTermKind::InherentConst
             | AliasTermKind::UnevaluatedConst
             | AliasTermKind::ProjectionConst => I::Const::new_unevaluated(

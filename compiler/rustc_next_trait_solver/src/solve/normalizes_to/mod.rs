@@ -57,6 +57,8 @@ where
                 self.normalize_free_alias(goal)
             }
             ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
+            // FIXME(thispr)
+            ty::AliasTermKind::UnresolvedTy | ty::AliasTermKind::UnresolvedConst => todo!(),
         }
     }
 
@@ -156,6 +158,9 @@ where
                 }
             }
             ty::AliasTermKind::OpaqueTy
+            // FIXME(thispr): are we only handling rigid aliases here?
+            | ty::AliasTermKind::UnresolvedTy
+            | ty::AliasTermKind::UnresolvedConst
             | ty::AliasTermKind::InherentTy
             | ty::AliasTermKind::InherentConst
             | ty::AliasTermKind::FreeTy

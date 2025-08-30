@@ -2715,6 +2715,14 @@ rustc_queries! {
     /// Returns the set of sanitizers that is explicitly disabled for this def.
     query disabled_sanitizers_for(key: LocalDefId) -> SanitizerSet {
         desc { |tcx| "checking what set of sanitizers are enabled on `{}`", tcx.def_path_str(key) }
+    }
+
+    query candidates_for_unresolved_alias(key: DefId) -> ty::UnresolvedAliasCandidates<'tcx> {
+        desc { |tcx|
+            "computing candidates for unresolved alias: `{}`",
+            tcx.def_path_str(key),
+        }
+        separate_provide_extern
         feedable
     }
 }

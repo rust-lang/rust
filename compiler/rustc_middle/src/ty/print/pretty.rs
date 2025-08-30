@@ -800,7 +800,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
-            ty::Alias(ty::Projection | ty::Inherent | ty::Free, ref data) => data.print(self)?,
+            ty::Alias(ty::Unresolved | ty::Projection | ty::Inherent | ty::Free, ref data) => data.print(self)?,
             ty::Placeholder(placeholder) => placeholder.print(self)?,
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
@@ -3121,6 +3121,9 @@ define_print! {
                     p.print_def_path(self.def_id, self.args)?;
                 }
             }
+            // FIXME(thispr): lol
+            ty::AliasTermKind::UnresolvedTy
+            | ty::AliasTermKind::UnresolvedConst => todo!(),
             ty::AliasTermKind::FreeTy
             | ty::AliasTermKind::FreeConst
             | ty::AliasTermKind::OpaqueTy

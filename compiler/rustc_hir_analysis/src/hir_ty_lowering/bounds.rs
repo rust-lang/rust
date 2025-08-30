@@ -559,6 +559,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint.ident,
                 path_span,
                 Some(constraint),
+            )
+            .select_bound(
+                self,
+                AssocItemQSelf::Trait(trait_ref.def_id()),
+                assoc_tag,
+                constraint.ident,
+                path_span,
+                Some(constraint),
             )?
         };
 
@@ -806,18 +814,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }) =>
             {
                 let self_ty = self.lower_ty(hir_self_ty);
-                let (item_def_id, bound) = match self.resolve_type_relative_path(
-                    self_ty,
-                    hir_self_ty,
-                    ty::AssocTag::Fn,
-                    segment,
-                    hir_ty.hir_id,
-                    hir_ty.span,
-                    None,
-                ) {
-                    Ok(result) => result,
-                    Err(guar) => return Ty::new_error(tcx, guar),
-                };
+
+                // FIXME(unresolved_aliases): Force a resolution here
+                todo!()
+
+                // let (item_def_id, bound) = match self.resolve_type_relative_path(
+                //     self_ty,
+                //     hir_self_ty,
+                //     ty::AssocTag::Fn,
+                //     segment,
+                //     hir_ty.hir_id,
+                //     hir_ty.span,
+                //     None,
+                // ) {
+                //     Ok(result) => result,
+                //     Err(guar) => return Ty::new_error(tcx, guar),
+                // };
 
                 // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
                 // which may happen via a higher-ranked where clause or supertrait.
@@ -825,23 +837,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // support it, it just makes things a lot more difficult to support in
                 // `resolve_bound_vars`, since we'd need to introduce those as elided
                 // bound vars on the where clause too.
-                if bound.has_bound_vars() {
-                    return Ty::new_error(
-                        tcx,
-                        self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                            span: hir_ty.span,
-                            inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
-                            bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder()),
-                            mpart_sugg: None,
-                            what: tcx.def_descr(item_def_id),
-                        }),
-                    );
-                }
+                // if bound.has_bound_vars() {
+                //     return Ty::new_error(
+                //         tcx,
+                //         self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
+                //             span: hir_ty.span,
+                //             inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
+                //             bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder()),
+                //             mpart_sugg: None,
+                //             what: tcx.def_descr(item_def_id),
+                //         }),
+                //     );
+                // }
 
-                match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
-                    Err(guar) => Ty::new_error(tcx, guar),
-                }
+                // match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
+                //     Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                //     Err(guar) => Ty::new_error(tcx, guar),
+                // }
             }
             _ => self.lower_ty(hir_ty),
         }

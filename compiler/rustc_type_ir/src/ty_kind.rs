@@ -42,6 +42,7 @@ pub enum AliasTyKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
     Projection,
+    Unresolved,
     /// An associated type in an inherent `impl`
     Inherent,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
@@ -57,6 +58,7 @@ impl AliasTyKind {
     pub fn descr(self) -> &'static str {
         match self {
             AliasTyKind::Projection => "associated type",
+            AliasTyKind::Unresolved => "unresolved type alias",
             AliasTyKind::Inherent => "inherent associated type",
             AliasTyKind::Opaque => "opaque type",
             AliasTyKind::Free => "type alias",

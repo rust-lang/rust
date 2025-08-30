@@ -279,6 +279,8 @@ impl<I: Interner> FlagComputation<I> {
 
             ty::Alias(kind, data) => {
                 self.add_flags(match kind {
+                    // FIXME(thispr): Add TypeFlags::HAS_TY_UNRESOLVED?
+                    ty::Unresolved => todo!(),
                     ty::Projection => TypeFlags::HAS_TY_PROJECTION,
                     ty::Free => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque => TypeFlags::HAS_TY_OPAQUE,

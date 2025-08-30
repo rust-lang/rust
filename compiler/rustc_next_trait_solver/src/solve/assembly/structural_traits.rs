@@ -49,7 +49,7 @@ where
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
+        | ty::Alias(ty::Unresolved | ty::Projection | ty::Inherent | ty::Free, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Infer(_) => {

@@ -703,7 +703,7 @@ where
             }
 
             ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
-            ty::Alias(ty::Inherent | ty::Free, _) => {
+            ty::Alias(ty::Unresolved | ty::Inherent | ty::Free, _) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return;
             }

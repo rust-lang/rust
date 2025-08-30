@@ -209,7 +209,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
             ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
-            ty::Alias(ty::Free, _) => "type alias".into(),
+            ty::Alias(ty::Unresolved | ty::Free, _) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(ty::Opaque, ..) => "opaque type".into(),
         }

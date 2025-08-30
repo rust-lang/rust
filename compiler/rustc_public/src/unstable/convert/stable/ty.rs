@@ -17,6 +17,8 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         match self {
             ty::Projection => crate::ty::AliasKind::Projection,
+            // FIXME(thispr):
+            ty::Unresolved => todo!(),
             ty::Inherent => crate::ty::AliasKind::Inherent,
             ty::Opaque => crate::ty::AliasKind::Opaque,
             ty::Free => crate::ty::AliasKind::Free,
