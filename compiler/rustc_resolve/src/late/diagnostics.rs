@@ -2903,7 +2903,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
                     let (msg, sugg) = match source {
                         PathSource::Type | PathSource::PreciseCapturingArg(TypeNS) => {
-                            ("you might be missing a type parameter", ident)
+                            ("you might be missing a type parameter", ident.clone())
                         }
                         PathSource::Expr(_) | PathSource::PreciseCapturingArg(ValueNS) => (
                             "you might be missing a const parameter",
@@ -2911,6 +2911,31 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         ),
                         _ => return None,
                     };
+
+                    // Heuristically determine whether a type name is likely intended to be a generic.
+                    //
+                    // We apply three rules:
+                    // 1. Short names (like `T`, `U`, `E`) are common for generics.
+                    // 2. Certain well-known names (e.g., `Item`, `Output`, `Error`) are commonly used as generics.
+                    // 3. Names in UpperCamelCase are more likely to be concrete types.
+                    //
+                    // This approach may produce false positives or negatives, but works well in most cases.
+
+                    let common_generic_names: &[&str] = &[
+                        "Item", "Output", "Error", "Target", "Value", "Args",
+                        "Res", "Ret", "This", "Iter", "Type",
+                    ];
+                    let is_common_generic = common_generic_names.contains(&&*ident);
+                    let looks_like_camel_case = ident
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_uppercase())
+                        && ident.chars().skip(1).any(|c| c.is_lowercase());
+
+                    // If it's not a known generic name and looks like a concrete type, skip the suggestion.
+                    if !is_common_generic && looks_like_camel_case && ident.len() > 3 {
+                        return None;
+                    }
                     let (span, sugg) = if let [.., param] = &generics.params[..] {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
