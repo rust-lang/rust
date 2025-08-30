@@ -58,7 +58,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
         Allow(Target::AssocTy),
         Allow(Target::AssocConst),
         Allow(Target::Variant),
-        Allow(Target::Impl { of_trait: false }), //FIXME This does not make sense
+        Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
         Error(Target::WherePredicate),
     ]);
