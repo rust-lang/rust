@@ -9,14 +9,16 @@ use cc::windows_registry;
 /// The template for the Windows resource file.
 const RESOURCE_TEMPLATE: &str = include_str!("../rustc.rc.in");
 
-const VFT_APP: u32 = 0x00000001; // VFT_APP
-const VFT_DLL: u32 = 0x00000002; // VFT_DLL
-
+/// A subset of the possible values for the `FILETYPE` field in a Windows resource file
+///
+/// See the `dwFileType` member of [VS_FIXEDFILEINFO](https://learn.microsoft.com/en-us/windows/win32/api/verrsrc/ns-verrsrc-vs_fixedfileinfo#members)
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
 pub enum VersionInfoFileType {
-    App = VFT_APP,
-    Dll = VFT_DLL,
+    /// `VFT_APP` - The file is an application.
+    App = 0x00000001,
+    /// `VFT_DLL` - The file is a dynamic link library.
+    Dll = 0x00000002,
 }
 
 /// Create and compile a Windows resource file with the product and file version information for the rust compiler.
