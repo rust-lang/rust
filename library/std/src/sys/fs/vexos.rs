@@ -11,10 +11,9 @@ use crate::sys::{unsupported, unsupported_err};
 #[expect(dead_code)]
 #[path = "unsupported.rs"]
 mod unsupported_fs;
-
 pub use unsupported_fs::{
-    DirBuilder, FilePermissions, FileTimes, ReadDir, canonicalize, link, remove_dir_all, rename,
-    rmdir, set_perm, symlink, unlink,
+    DirBuilder, FileTimes, canonicalize, link, readlink, remove_dir_all, rename, rmdir, symlink,
+    unlink,
 };
 
 #[derive(Debug)]
@@ -30,6 +29,8 @@ pub enum FileAttr {
     File { size: u64 },
 }
 
+pub struct ReadDir(!);
+
 pub struct DirEntry {
     path: PathBuf,
 }
@@ -43,6 +44,9 @@ pub struct OpenOptions {
     create: bool,
     create_new: bool,
 }
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct FilePermissions {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
@@ -108,6 +112,16 @@ impl FileAttr {
     }
 }
 
+impl FilePermissions {
+    pub fn readonly(&self) -> bool {
+        false
+    }
+
+    pub fn set_readonly(&mut self, _readonly: bool) {
+        panic!("Perimissions do not exist")
+    }
+}
+
 impl FileType {
     pub fn is_dir(&self) -> bool {
         self.is_dir
@@ -120,6 +134,38 @@ impl FileType {
     pub fn is_symlink(&self) -> bool {
         // No symlinks in VEXos - entries are either files or directories.
         false
+    }
+}
+
+impl fmt::Debug for ReadDir {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
+    }
+}
+
+impl Iterator for ReadDir {
+    type Item = io::Result<DirEntry>;
+
+    fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        self.0
+    }
+}
+
+impl DirEntry {
+    pub fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    pub fn file_name(&self) -> OsString {
+        self.path.file_name().unwrap_or_default().into()
+    }
+
+    pub fn metadata(&self) -> io::Result<FileAttr> {
+        stat(&self.path)
+    }
+
+    pub fn file_type(&self) -> io::Result<FileType> {
+        Ok(self.metadata()?.file_type())
     }
 }
 
@@ -434,6 +480,21 @@ impl Drop for File {
     fn drop(&mut self) {
         unsafe { vex_sdk::vexFileClose(self.fd.0) };
     }
+}
+
+pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
+    // While there *is* a userspace function for reading file directories,
+    // the necessary implementation cannot currently be done cleanly, as
+    // VEXos does not expose directory length to user programs.
+    //
+    // This means that we would need to create a large fixed-length buffer
+    // and hope that the folder's contents didn't exceed that buffer's length,
+    // which obviously isn't behavior we want to rely on in the standard library.
+    unsupported()
+}
+
+pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
