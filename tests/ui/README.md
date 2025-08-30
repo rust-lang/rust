@@ -953,7 +953,7 @@ This directory is a small tree of `mod` dependencies, but the root, `foo.rs`, is
 
 Tests for checking missing trait bounds, and their diagnostics.
 
-**FIMXE**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
+**FIXME**: Maybe a subdirectory of `ui/trait-bounds` would be more appropriate.
 
 ## `tests/ui/modules/`
 
