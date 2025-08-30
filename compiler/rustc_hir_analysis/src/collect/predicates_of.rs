@@ -174,12 +174,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
     };
 
-    if let Node::TraitItem(item) = node {
-        let mut bounds = Vec::new();
-        icx.lowerer().add_default_trait_item_bounds(item, &mut bounds);
-        predicates.extend(bounds);
-    }
-
     let generics = tcx.generics_of(def_id);
 
     // Below we'll consider the bounds on the type parameters (including `Self`)
