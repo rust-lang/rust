@@ -1777,7 +1777,7 @@ mod snapshot {
         insta::assert_snapshot!(
             ctx.config("check")
                 .path("compiler")
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
@@ -1803,7 +1803,7 @@ mod snapshot {
             ctx.config("check")
                 .path("compiler")
                 .stage(1)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
@@ -1817,7 +1817,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [check] rustc 1 <host> -> rustc 2 <host> (74 crates)
+        [check] rustc 1 <host> -> rustc 2 <host> (75 crates)
         ");
     }
 
@@ -1833,7 +1833,7 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [check] rustc 1 <host> -> std 1 <target1>
-        [check] rustc 1 <host> -> rustc 2 <target1> (74 crates)
+        [check] rustc 1 <host> -> rustc 2 <target1> (75 crates)
         [check] rustc 1 <host> -> rustc 2 <target1>
         [check] rustc 1 <host> -> Rustdoc 2 <target1>
         [check] rustc 1 <host> -> rustc_codegen_cranelift 2 <target1>
@@ -1929,7 +1929,7 @@ mod snapshot {
             ctx.config("check")
                 .paths(&["library", "compiler"])
                 .args(&args)
-                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (74 crates)");
+                .render_steps(), @"[check] rustc 0 <host> -> rustc 1 <host> (75 crates)");
     }
 
     #[test]
