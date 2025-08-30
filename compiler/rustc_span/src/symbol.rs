@@ -2269,6 +2269,8 @@ symbols! {
         unboxed_closures,
         unchecked_add,
         unchecked_div,
+        unchecked_funnel_shl,
+        unchecked_funnel_shr,
         unchecked_mul,
         unchecked_rem,
         unchecked_shl,
