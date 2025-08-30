@@ -1262,6 +1262,64 @@ fn string<W: Write>(
     }
 }
 
+fn generate_link_to_def(
+    out: &mut impl Write,
+    text_s: &str,
+    klass: Class,
+    href_context: &Option<HrefContext<'_, '_>>,
+    def_span: Span,
+    open_tag: bool,
+) -> bool {
+    if let Some(href_context) = href_context
+        && let Some(href) =
+            href_context.context.shared.span_correspondence_map.get(&def_span).and_then(|href| {
+                let context = href_context.context;
+                // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
+                // one to the documentation page and one to the source definition.
+                // FIXME: currently, external items only generate a link to their documentation,
+                // a link to their definition can be generated using this:
+                // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
+                match href {
+                    LinkFromSrc::Local(span) => {
+                        context.href_from_span_relative(*span, &href_context.current_href)
+                    }
+                    LinkFromSrc::External(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                            .ok()
+                            .map(|(url, _, _)| url)
+                    }
+                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
+                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                        context,
+                        Some(href_context.root_path),
+                    )
+                    .ok()
+                    .map(|(url, _, _)| url),
+                    LinkFromSrc::Doc(def_id) => {
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                            .ok()
+                            .map(|(doc_link, _, _)| doc_link)
+                    }
+                }
+            })
+    {
+        if !open_tag {
+            // We're already inside an element which has the same klass, no need to give it
+            // again.
+            write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+        } else {
+            let klass_s = klass.as_html();
+            if klass_s.is_empty() {
+                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+            } else {
+                write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
+            }
+        }
+        return true;
+    }
+    false
+}
+
 /// This function writes `text` into `out` with some modifications depending on `klass`:
 ///
 /// * If `klass` is `None`, `text` is written into `out` with no modification.
@@ -1291,10 +1349,14 @@ fn string_without_closing_tag<T: Display>(
         return Some("</span>");
     };
 
+    let mut added_links = false;
     let mut text_s = text.to_string();
     if text_s.contains("::") {
+        let mut span = def_span.with_hi(def_span.lo());
         text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
+            span = span.with_hi(span.hi() + BytePos(t.len() as _));
             match t {
+                "::" => write!(&mut path, "::"),
                 "self" | "Self" => write!(
                     &mut path,
                     "<span class=\"{klass}\">{t}</span>",
@@ -1307,58 +1369,24 @@ fn string_without_closing_tag<T: Display>(
                         klass = Class::KeyWord.as_html(),
                     )
                 }
-                t => write!(&mut path, "{t}"),
+                t => {
+                    if !t.is_empty()
+                        && generate_link_to_def(&mut path, t, klass, href_context, span, open_tag)
+                    {
+                        added_links = true;
+                        write!(&mut path, "</a>")
+                    } else {
+                        write!(&mut path, "{t}")
+                    }
+                }
             }
             .expect("Failed to build source HTML path");
+            span = span.with_lo(span.lo() + BytePos(t.len() as _));
             path
         });
     }
 
-    if let Some(href_context) = href_context
-        && let Some(href) = href_context.context.shared.span_correspondence_map.get(&def_span)
-        && let Some(href) = {
-            let context = href_context.context;
-            // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
-            // one to the documentation page and one to the source definition.
-            // FIXME: currently, external items only generate a link to their documentation,
-            // a link to their definition can be generated using this:
-            // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
-            match href {
-                LinkFromSrc::Local(span) => {
-                    context.href_from_span_relative(*span, &href_context.current_href)
-                }
-                LinkFromSrc::External(def_id) => {
-                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                        .ok()
-                        .map(|(url, _, _)| url)
-                }
-                LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                    PrimitiveType::primitive_locations(context.tcx())[prim],
-                    context,
-                    Some(href_context.root_path),
-                )
-                .ok()
-                .map(|(url, _, _)| url),
-                LinkFromSrc::Doc(def_id) => {
-                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                        .ok()
-                        .map(|(doc_link, _, _)| doc_link)
-                }
-            }
-        }
-    {
-        if !open_tag {
-            // We're already inside an element which has the same klass, no need to give it
-            // again.
-            write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-        } else {
-            let klass_s = klass.as_html();
-            if klass_s.is_empty() {
-                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-            } else {
-                write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
-            }
-        }
+    if !added_links && generate_link_to_def(out, &text_s, klass, href_context, def_span, open_tag) {
         return Some("</a>");
     }
     if !open_tag {
