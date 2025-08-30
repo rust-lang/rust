@@ -422,6 +422,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // to detect potential ambiguities.
         let mut innermost_result: Option<(NameBinding<'_>, Flags)> = None;
         let mut determinacy = Determinacy::Determined;
+        let mut extern_prelude_item_binding = None;
+        let mut extern_prelude_flag_binding = None;
         // Shadowed bindings don't need to be marked as used or non-speculatively loaded.
         macro finalize_scope() {
             if innermost_result.is_none() { finalize } else { None }
@@ -558,7 +560,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Scope::ExternPreludeItems => {
                         // FIXME: use `finalize_scope` here.
                         match this.reborrow().extern_prelude_get_item(ident, finalize.is_some()) {
-                            Some(binding) => Ok((binding, Flags::empty())),
+                            Some(binding) => {
+                                extern_prelude_item_binding = Some(binding);
+                                Ok((binding, Flags::empty()))
+                            }
                             None => Err(Determinacy::determined(
                                 this.graph_root.unexpanded_invocations.borrow().is_empty(),
                             )),
@@ -566,7 +571,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     Scope::ExternPreludeFlags => {
                         match this.extern_prelude_get_flag(ident, finalize_scope!().is_some()) {
-                            Some(binding) => Ok((binding, Flags::empty())),
+                            Some(binding) => {
+                                extern_prelude_flag_binding = Some(binding);
+                                Ok((binding, Flags::empty()))
+                            }
                             None => Err(Determinacy::Determined),
                         }
                     }
@@ -686,7 +694,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } else {
                                     None
                                 };
-                                if let Some(kind) = ambiguity_error_kind {
+                                // Skip ambiguity errors for extern flag bindings "overridden"
+                                // by extern item bindings.
+                                // FIXME: Remove with lang team approval.
+                                let issue_145575_hack = Some(binding)
+                                    == extern_prelude_flag_binding
+                                    && extern_prelude_item_binding.is_some()
+                                    && extern_prelude_item_binding != Some(innermost_binding);
+                                if let Some(kind) = ambiguity_error_kind
+                                    && !issue_145575_hack
+                                {
                                     let misc = |f: Flags| {
                                         if f.contains(Flags::MISC_SUGGEST_CRATE) {
                                             AmbiguityErrorMisc::SuggestCrate
