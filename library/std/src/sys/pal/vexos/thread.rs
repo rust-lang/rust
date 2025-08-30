@@ -1,14 +1,13 @@
-#[expect(dead_code)]
-#[path = "unsupported.rs"]
-mod unsupported_thread;
-
-pub use unsupported_thread::{DEFAULT_MIN_STACK_SIZE, available_parallelism, current_os_id};
-
 use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::time::{Duration, Instant};
+
+#[expect(dead_code)]
+#[path = "../unsupported/thread.rs"]
+mod unsupported_thread;
+pub use unsupported_thread::{DEFAULT_MIN_STACK_SIZE, available_parallelism};
 
 pub struct Thread(!);
 
@@ -53,4 +52,8 @@ impl Thread {
     pub fn join(self) {
         self.0
     }
+}
+
+pub(crate) fn current_os_id() -> Option<u64> {
+    None
 }
