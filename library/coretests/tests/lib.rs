@@ -95,7 +95,6 @@
 #![feature(std_internals)]
 #![feature(step_trait)]
 #![feature(str_internals)]
-#![feature(strict_provenance_atomic_ptr)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
 #![feature(trusted_len)]
