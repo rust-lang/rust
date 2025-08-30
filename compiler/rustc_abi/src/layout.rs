@@ -660,12 +660,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut align = dl.aggregate_align;
             let mut max_repr_align = repr.align;
             let mut unadjusted_abi_align = align.abi;
+            let mut inhabited_variants = 0;
 
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
                     let mut st = self.univariant(v, repr, StructKind::AlwaysSized).ok()?;
                     st.variants = Variants::Single { index: j, variants: None };
+                    if !st.uninhabited {
+                        inhabited_variants += 1;
+                    }
 
                     align = align.max(st.align);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
@@ -675,14 +679,29 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 })
                 .collect::<Option<IndexVec<VariantIdx, _>>>()?;
 
+            if inhabited_variants < 2 {
+                // If there's only one inhabited variant, the no-tag layout will be equivalent to
+                // what the niched layout would be. Returning `None` here lets us assume there is
+                // another inhabited variant which simplifies the rest of the layout computation.
+                return None;
+            }
+
+            // Choose the largest variant, picking an inhabited variant in a tie
             let largest_variant_index = variant_layouts
                 .iter_enumerated()
-                .max_by_key(|(_i, layout)| layout.size.bytes())
+                .max_by_key(|(_i, layout)| (layout.size.bytes(), !layout.uninhabited))
                 .map(|(i, _layout)| i)?;
 
+            if variant_layouts[largest_variant_index].uninhabited {
+                // If the largest variant is uninhabited, then filling its niche would give
+                // a worse layout than the tagged layout.
+                return None;
+            }
+
             let all_indices = variants.indices();
-            let needs_disc =
-                |index: VariantIdx| index != largest_variant_index && !absent(&variants[index]);
+            let needs_disc = |index: VariantIdx| {
+                index != largest_variant_index && !variant_layouts[index].uninhabited
+            };
             let niche_variants = all_indices.clone().find(|v| needs_disc(*v)).unwrap()
                 ..=all_indices.rev().find(|v| needs_disc(*v)).unwrap();
 
@@ -699,6 +718,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let all_variants_fit = variant_layouts.iter_enumerated_mut().all(|(i, layout)| {
                 if i == largest_variant_index {
                     return true;
+                } else if layout.uninhabited {
+                    // This variant doesn't need to hold space for the niche,
+                    // it just needs to be at-most-as big and aligned as the enum.
+                    return layout.size <= size && layout.align.abi <= align.abi;
                 }
 
                 layout.largest_niche = None;
@@ -743,14 +766,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
             let largest_niche = Niche::from_scalar(dl, niche_offset, niche_scalar);
 
-            let others_zst = variant_layouts
-                .iter_enumerated()
-                .all(|(i, layout)| i == largest_variant_index || layout.size == Size::ZERO);
+            let others_zst_or_uninhabited = variant_layouts.iter_enumerated().all(|(i, layout)| {
+                i == largest_variant_index || layout.size == Size::ZERO || layout.uninhabited
+            });
             let same_size = size == variant_layouts[largest_variant_index].size;
             let same_align = align == variant_layouts[largest_variant_index].align;
 
             let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
-            let abi = if same_size && same_align && others_zst {
+            let abi = if same_size && same_align && others_zst_or_uninhabited {
                 match variant_layouts[largest_variant_index].backend_repr {
                     // When the total alignment and size match, we can use the
                     // same ABI as the scalar variant with the reserved niche.
