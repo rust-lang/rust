@@ -10,8 +10,8 @@ pub mod m {
 fn main() {
     let y = 1;
     match y {
-       a | b => {} //~  ERROR variable `a` is not bound in all patterns
-                   //~| ERROR variable `b` is not bound in all patterns
+        a | b => {} //~  ERROR variable `a` is not bound in all patterns
+        //~| ERROR variable `b` is not bound in all patterns
     }
 
     let x = (E::A, E::B);

@@ -986,6 +986,18 @@ pub(crate) struct VariableNotInAllPatterns {
     pub(crate) span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    resolve_variable_is_a_typo,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct PatternBindingTypo {
+    #[suggestion_part(code = "{typo}")]
+    pub(crate) spans: Vec<Span>,
+    pub(crate) typo: Symbol,
+}
+
 #[derive(Diagnostic)]
 #[diag(resolve_name_defined_multiple_time)]
 #[note]

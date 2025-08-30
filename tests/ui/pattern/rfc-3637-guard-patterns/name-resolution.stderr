@@ -5,6 +5,12 @@ LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
    |          ^^^^^^^^^^^^        - variable not in all patterns
    |          |
    |          pattern doesn't bind `y`
+   |
+help: you might have meant to use the similarly named previously used binding `x`
+   |
+LL -         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+LL +         ((Ok(x) if y) | (Err(x) if x),) => x && y,
+   |
 
 error[E0408]: variable `x` is not bound in all patterns
   --> $DIR/name-resolution.rs:37:25
@@ -13,6 +19,12 @@ LL |         ((Ok(x) if y) | (Err(y) if x),) => x && y,
    |              -          ^^^^^^^^^^^^^ pattern doesn't bind `x`
    |              |
    |              variable not in all patterns
+   |
+help: you might have meant to use the similarly named previously used binding `y`
+   |
+LL -         ((Ok(x) if y) | (Err(y) if x),) => x && y,
+LL +         ((Ok(y) if y) | (Err(y) if x),) => x && y,
+   |
 
 error[E0408]: variable `x` is not bound in all patterns
   --> $DIR/name-resolution.rs:63:28

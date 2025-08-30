@@ -230,8 +230,8 @@ enum Used {
 #[derive(Debug)]
 struct BindingError {
     name: Ident,
-    origin: BTreeSet<Span>,
-    target: BTreeSet<Span>,
+    origin: Vec<(Span, ast::Pat)>,
+    target: Vec<ast::Pat>,
     could_be_path: bool,
 }
 

@@ -1,0 +1,31 @@
+error[E0408]: variable `Ban` is not bound in all patterns
+  --> $DIR/binding-typo.rs:12:9
+   |
+LL |         (Foo, Bar) | (Ban, Foo) => {}
+   |         ^^^^^^^^^^    --- variable not in all patterns
+   |         |
+   |         pattern doesn't bind `Ban`
+   |
+help: you might have meant to use the similarly named previously used binding `Bar`
+   |
+LL -         (Foo, Bar) | (Ban, Foo) => {}
+LL +         (Foo, Bar) | (Bar, Foo) => {}
+   |
+
+error[E0408]: variable `Ban` is not bound in all patterns
+  --> $DIR/binding-typo.rs:20:9
+   |
+LL |         (Foo, _) | (Ban, Foo) => {}
+   |         ^^^^^^^^    --- variable not in all patterns
+   |         |
+   |         pattern doesn't bind `Ban`
+   |
+help: you might have meant to use the similarly named unit variant `Bar`
+   |
+LL -         (Foo, _) | (Ban, Foo) => {}
+LL +         (Foo, _) | (Bar, Foo) => {}
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0408`.

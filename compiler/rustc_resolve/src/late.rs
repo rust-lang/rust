@@ -8,7 +8,6 @@
 
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 use std::collections::hash_map::Entry;
 use std::mem::{replace, swap, take};
 
@@ -3682,31 +3681,30 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // 2) Record any missing bindings or binding mode inconsistencies.
         for (map_outer, pat_outer) in not_never_pats.iter() {
             // Check against all arms except for the same pattern which is always self-consistent.
-            let inners = not_never_pats
-                .iter()
-                .filter(|(_, pat)| pat.id != pat_outer.id)
-                .flat_map(|(map, _)| map);
+            let inners = not_never_pats.iter().filter(|(_, pat)| pat.id != pat_outer.id);
 
-            for (&name, binding_inner) in inners {
-                match map_outer.get(&name) {
-                    None => {
-                        // The inner binding is missing in the outer.
-                        let binding_error =
-                            missing_vars.entry(name).or_insert_with(|| BindingError {
-                                name,
-                                origin: BTreeSet::new(),
-                                target: BTreeSet::new(),
-                                could_be_path: name.as_str().starts_with(char::is_uppercase),
-                            });
-                        binding_error.origin.insert(binding_inner.span);
-                        binding_error.target.insert(pat_outer.span);
-                    }
-                    Some(binding_outer) => {
-                        if binding_outer.annotation != binding_inner.annotation {
-                            // The binding modes in the outer and inner bindings differ.
-                            inconsistent_vars
-                                .entry(name)
-                                .or_insert((binding_inner.span, binding_outer.span));
+            for (map, pat) in inners {
+                for (&name, binding_inner) in map {
+                    match map_outer.get(&name) {
+                        None => {
+                            // The inner binding is missing in the outer.
+                            let binding_error =
+                                missing_vars.entry(name).or_insert_with(|| BindingError {
+                                    name,
+                                    origin: Default::default(),
+                                    target: Default::default(),
+                                    could_be_path: name.as_str().starts_with(char::is_uppercase),
+                                });
+                            binding_error.origin.push((binding_inner.span, (***pat).clone()));
+                            binding_error.target.push((***pat_outer).clone());
+                        }
+                        Some(binding_outer) => {
+                            if binding_outer.annotation != binding_inner.annotation {
+                                // The binding modes in the outer and inner bindings differ.
+                                inconsistent_vars
+                                    .entry(name)
+                                    .or_insert((binding_inner.span, binding_outer.span));
+                            }
                         }
                     }
                 }
@@ -3719,7 +3717,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 v.could_be_path = false;
             }
             self.report_error(
-                *v.origin.iter().next().unwrap(),
+                v.origin.iter().next().unwrap().0,
                 ResolutionError::VariableNotBoundInPattern(v, self.parent_scope),
             );
         }

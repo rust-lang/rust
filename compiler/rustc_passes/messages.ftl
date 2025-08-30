@@ -687,6 +687,7 @@ passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
 
 passes_unused_var_remove_field = unused variable: `{$name}`
 passes_unused_var_remove_field_suggestion = try removing the field
+passes_unused_var_typo = you might have meant to pattern match on the similarly named {$kind} `{$item_name}`
 
 passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
 
