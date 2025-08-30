@@ -1,12 +1,15 @@
+extern crate test;
+use test::Bencher;
+
 use super::*;
 
 macro_rules! test {
-    (case: $test_name:ident,
+    (case: $name:ident,
      text: $text:expr,
      lines: $lines:expr,
      multi_byte_chars: $multi_byte_chars:expr,) => {
         #[test]
-        fn $test_name() {
+        fn ${concat(test_, $name)}() {
             let (lines, multi_byte_chars) = analyze_source_file($text);
 
             let expected_lines: Vec<RelativeBytePos> =
@@ -106,4 +109,35 @@ test!(
     text: "01\t345\n789abcΔf01234567\u{07}9\nbcΔf",
     lines: vec![0, 7, 27],
     multi_byte_chars: vec![(13, 2), (29, 2)],
+);
+
+macro_rules! bench {
+    (case: $name:ident,
+     text: $text:expr,
+     repeat: $repeat:expr,) => {
+        #[bench]
+        fn ${concat(bench_, $name)}(b: &mut Bencher) {
+            use std::hint::black_box;
+            let text = $text.repeat($repeat);
+            b.iter(|| black_box(analyze_source_file(&text)));
+        }
+    };
+}
+
+bench!(
+    case: empty_text,
+    text: "",
+    repeat: 1,
+);
+
+bench!(
+    case: newlines_short,
+    text: "a\nc",
+    repeat: 50,
+);
+
+bench!(
+    case: newlines_long,
+    text: "012345678\nabcdef012345678\na",
+    repeat: 50,
 );

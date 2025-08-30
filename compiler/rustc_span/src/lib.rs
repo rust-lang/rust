@@ -18,17 +18,20 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![cfg_attr(bootstrap, feature(round_char_boundary))]
+#![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(cfg_select)]
 #![feature(core_io_borrowed_buf)]
 #![feature(if_let_guard)]
+#![feature(macro_metavar_expr_concat)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(test)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to
