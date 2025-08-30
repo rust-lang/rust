@@ -420,6 +420,48 @@ impl<T, A> RawRc<T, A> {
         unsafe { Self::from_raw_parts(ptr.as_ptr().cast(), alloc) }
     }
 
+    #[cfg(not(no_global_oom_handling))]
+    unsafe fn new_cyclic_impl<F, R>(mut weak: RawWeak<T, A>, data_fn: F) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        use crate::raw_rc::raw_unique_rc::RawUniqueRc;
+        use crate::raw_rc::raw_weak::WeakGuard;
+
+        let guard = unsafe { WeakGuard::<T, A, R>::new(&mut weak) };
+        let data = data_fn(&guard);
+
+        mem::forget(guard);
+
+        unsafe { RawUniqueRc::from_weak_with_value(weak, data).into_rc::<R>() }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) unsafe fn new_cyclic<F, R>(data_fn: F) -> Self
+    where
+        A: Allocator + Default,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        let weak = RawWeak::new_uninit::<0>();
+
+        unsafe { Self::new_cyclic_impl::<F, R>(weak, data_fn) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) unsafe fn new_cyclic_in<F, R>(data_fn: F, alloc: A) -> Self
+    where
+        A: Allocator,
+        F: FnOnce(&RawWeak<T, A>) -> T,
+        R: RefCounter,
+    {
+        let weak = RawWeak::new_uninit_in::<0>(alloc);
+
+        unsafe { Self::new_cyclic_impl::<F, R>(weak, data_fn) }
+    }
+
     pub(crate) unsafe fn into_inner<R>(self) -> Option<T>
     where
         A: Allocator,
