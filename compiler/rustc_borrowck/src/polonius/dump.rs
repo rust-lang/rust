@@ -2,9 +2,7 @@ use std::io;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_index::IndexVec;
-use rustc_middle::mir::pretty::{
-    PassWhere, PrettyPrintMirOptions, create_dump_file, dump_enabled, dump_mir_to_writer,
-};
+use rustc_middle::mir::pretty::{MirDumper, PassWhere, PrettyPrintMirOptions};
 use rustc_middle::mir::{Body, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
@@ -33,22 +31,41 @@ pub(crate) fn dump_polonius_mir<'tcx>(
         return;
     }
 
-    if !dump_enabled(tcx, "polonius", body.source.def_id()) {
-        return;
-    }
+    let Some(dumper) = MirDumper::new(tcx, "polonius", body) else { return };
 
     let polonius_diagnostics =
         polonius_diagnostics.expect("missing diagnostics context with `-Zpolonius=next`");
 
-    let _: io::Result<()> = try {
-        let mut file = create_dump_file(tcx, "html", false, "polonius", &0, body)?;
-        emit_polonius_dump(
+    let extra_data = &|pass_where, out: &mut dyn io::Write| {
+        emit_polonius_mir(
             tcx,
+            regioncx,
+            closure_region_requirements,
+            borrow_set,
+            &polonius_diagnostics.localized_outlives_constraints,
+            pass_where,
+            out,
+        )
+    };
+    // We want the NLL extra comments printed by default in NLL MIR dumps. Specifying `-Z
+    // mir-include-spans` on the CLI still has priority.
+    let options = PrettyPrintMirOptions {
+        include_extra_comments: matches!(
+            tcx.sess.opts.unstable_opts.mir_include_spans,
+            MirIncludeSpans::On | MirIncludeSpans::Nll
+        ),
+    };
+
+    let dumper = dumper.set_extra_data(extra_data).set_options(options);
+
+    let _: io::Result<()> = try {
+        let mut file = dumper.create_dump_file("html", body)?;
+        emit_polonius_dump(
+            &dumper,
             body,
             regioncx,
             borrow_set,
             &polonius_diagnostics.localized_outlives_constraints,
-            closure_region_requirements,
             &mut file,
         )?;
     };
@@ -61,12 +78,11 @@ pub(crate) fn dump_polonius_mir<'tcx>(
 /// - a mermaid graph of the NLL regions and the constraints between them
 /// - a mermaid graph of the NLL SCCs and the constraints between them
 fn emit_polonius_dump<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    dumper: &MirDumper<'_, '_, 'tcx>,
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // Prepare the HTML dump file prologue.
@@ -79,15 +95,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "Raw MIR dump")?;
     writeln!(out, "<pre><code>")?;
-    emit_html_mir(
-        tcx,
-        body,
-        regioncx,
-        borrow_set,
-        &localized_outlives_constraints,
-        closure_region_requirements,
-        out,
-    )?;
+    emit_html_mir(dumper, body, out)?;
     writeln!(out, "</code></pre>")?;
     writeln!(out, "</div>")?;
 
@@ -116,7 +124,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL regions")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_regions(tcx, regioncx, out)?;
+    emit_mermaid_nll_regions(dumper.tcx(), regioncx, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -124,7 +132,7 @@ fn emit_polonius_dump<'tcx>(
     writeln!(out, "<div>")?;
     writeln!(out, "NLL SCCs")?;
     writeln!(out, "<pre class='mermaid'>")?;
-    emit_mermaid_nll_sccs(tcx, regioncx, out)?;
+    emit_mermaid_nll_sccs(dumper.tcx(), regioncx, out)?;
     writeln!(out, "</pre>")?;
     writeln!(out, "</div>")?;
 
@@ -149,45 +157,14 @@ fn emit_polonius_dump<'tcx>(
 
 /// Emits the polonius MIR, as escaped HTML.
 fn emit_html_mir<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    dumper: &MirDumper<'_, '_, 'tcx>,
     body: &Body<'tcx>,
-    regioncx: &RegionInferenceContext<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
-    closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     out: &mut dyn io::Write,
 ) -> io::Result<()> {
     // Buffer the regular MIR dump to be able to escape it.
     let mut buffer = Vec::new();
 
-    // We want the NLL extra comments printed by default in NLL MIR dumps. Specifying `-Z
-    // mir-include-spans` on the CLI still has priority.
-    let options = PrettyPrintMirOptions {
-        include_extra_comments: matches!(
-            tcx.sess.opts.unstable_opts.mir_include_spans,
-            MirIncludeSpans::On | MirIncludeSpans::Nll
-        ),
-    };
-
-    dump_mir_to_writer(
-        tcx,
-        "polonius",
-        &0,
-        body,
-        &mut buffer,
-        |pass_where, out| {
-            emit_polonius_mir(
-                tcx,
-                regioncx,
-                closure_region_requirements,
-                borrow_set,
-                localized_outlives_constraints,
-                pass_where,
-                out,
-            )
-        },
-        options,
-    )?;
+    dumper.dump_mir_to_writer(body, &mut buffer)?;
 
     // Escape the handful of characters that need it. We don't need to be particularly efficient:
     // we're actually writing into a buffered writer already. Note that MIR dumps are valid UTF-8.

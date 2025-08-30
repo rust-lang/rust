@@ -605,7 +605,9 @@ pub(super) fn create_coroutine_drop_shim<'tcx>(
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
     body.source.instance = coroutine_instance;
-    dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop", &body) {
+        dumper.dump_mir(&body);
+    }
     body.source.instance = drop_instance;
 
     // Creating a coroutine drop shim happens on `Analysis(PostCleanup) -> Runtime(Initial)`
@@ -696,7 +698,9 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
         None,
     );
 
-    dump_mir(tcx, false, "coroutine_drop_async", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_async", &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }
@@ -741,7 +745,9 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
 
-    dump_mir(tcx, false, "coroutine_drop_proxy_async", &0, &body, |_, _| Ok(()));
+    if let Some(dumper) = MirDumper::new(tcx, "coroutine_drop_proxy_async", &body) {
+        dumper.dump_mir(&body);
+    }
 
     body
 }
