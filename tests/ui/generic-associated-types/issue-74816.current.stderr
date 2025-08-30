@@ -27,8 +27,8 @@ LL |     type Associated: Trait1 = Self;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Trait2::Associated`
 help: consider further restricting `Self`
    |
-LL | trait Trait2: Sized {
-   |             +++++++
+LL | trait Trait2: std::marker::Sized {
+   |             ++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

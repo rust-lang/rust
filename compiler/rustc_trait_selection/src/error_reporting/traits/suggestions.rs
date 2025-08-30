@@ -28,7 +28,7 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
-    with_forced_trimmed_paths, with_no_trimmed_paths, with_types_for_suggestion,
+    with_crate_prefix, with_forced_trimmed_paths, with_no_trimmed_paths, with_types_for_suggestion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -221,15 +221,24 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
             (_, None) => predicate_constraint(hir_generics, trait_pred.upcast(tcx)),
             (None, Some((ident, []))) => (
                 ident.span.shrink_to_hi(),
-                format!(": {}", trait_pred.print_modifiers_and_trait_path()),
+                with_crate_prefix!(with_no_trimmed_paths!(format!(
+                    ": {}",
+                    trait_pred.print_modifiers_and_trait_path()
+                ))),
             ),
             (_, Some((_, [.., bounds]))) => (
                 bounds.span().shrink_to_hi(),
-                format!(" + {}", trait_pred.print_modifiers_and_trait_path()),
+                with_crate_prefix!(with_no_trimmed_paths!(format!(
+                    " + {}",
+                    trait_pred.print_modifiers_and_trait_path()
+                ))),
             ),
             (Some(_), Some((_, []))) => (
                 hir_generics.span.shrink_to_hi(),
-                format!(": {}", trait_pred.print_modifiers_and_trait_path()),
+                with_crate_prefix!(with_no_trimmed_paths!(format!(
+                    ": {}",
+                    trait_pred.print_modifiers_and_trait_path()
+                ))),
             ),
         };
 
@@ -384,9 +393,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
-                    let mut constraint = with_no_trimmed_paths!(
-                        trait_pred.print_modifiers_and_trait_path().to_string()
-                    );
+                    let mut constraint = with_crate_prefix!(with_no_trimmed_paths!(format!(
+                        "{}",
+                        trait_pred.print_modifiers_and_trait_path()
+                    )));
 
                     if let Some((name, term)) = associated_ty {
                         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.

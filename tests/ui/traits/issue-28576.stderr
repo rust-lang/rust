@@ -11,8 +11,8 @@ LL | pub trait Foo<RHS=Self> {
    |               ^^^^^^^^ required by the implicit `Sized` requirement on this type parameter in `Foo`
 help: consider further restricting `Self`
    |
-LL | pub trait Bar: Foo<Assoc=()> + Sized {
-   |                              +++++++
+LL | pub trait Bar: Foo<Assoc=()> + std::marker::Sized {
+   |                              ++++++++++++++++++++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL | pub trait Foo<RHS: ?Sized=Self> {
