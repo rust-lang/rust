@@ -277,8 +277,16 @@ pub fn main() {
     assert_eq!(size_of::<EnumSingle4>(), 1);
     assert_eq!(size_of::<EnumSingle5>(), 1);
 
-    assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(),
-               size_of::<EnumWithMaybeUninhabitedVariant<()>>());
+    assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(), size_of::<&'static ()>());
+    assert_eq!(
+        size_of::<EnumWithMaybeUninhabitedVariant<(!, u8)>>(),
+        2 * size_of::<&'static ()>(),
+    );
+    assert_eq!(
+        size_of::<EnumWithMaybeUninhabitedVariant<(!, usize)>>(),
+        2 * size_of::<&'static ()>(),
+    );
+    assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<()>>(), 2 * size_of::<&'static ()>());
     assert_eq!(size_of::<NicheFilledEnumWithAbsentVariant>(), size_of::<&'static ()>());
 
     assert_eq!(size_of::<NicheFieldOrder1>(), 24);
