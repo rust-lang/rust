@@ -258,7 +258,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// A `MaybeUninit<T>` has no validity requirement – any sequence of bytes of the appropriate length,
 /// initialized to any value or uninitialized, are a valid value of `MaybeUninit<T>`.
 ///
-/// Note that "round-tripping" via `MaybeUninit` does not always result in the original value.
+/// However, "round-tripping" via `MaybeUninit` does not always result in the original value.
 /// Concretely, given distinct `T` and `U` where `size_of::<T>() == size_of::<U>()`, the following
 /// code is not guaranteed to be sound:
 ///
