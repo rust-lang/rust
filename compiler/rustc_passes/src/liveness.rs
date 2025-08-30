@@ -1583,7 +1583,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         });
 
         let can_remove = match pat.kind {
-            hir::PatKind::Struct(_, fields, true) => {
+            hir::PatKind::Struct(_, fields, Some(_)) => {
                 // if all fields are shorthand, remove the struct field, otherwise, mark with _ as prefix
                 fields.iter().all(|f| f.is_shorthand)
             }

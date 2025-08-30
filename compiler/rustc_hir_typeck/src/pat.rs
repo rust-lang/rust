@@ -605,7 +605,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             PatKind::Struct(_, fields, has_rest_pat) => match opt_path_res.unwrap() {
                 Ok(ResolvedPat { ty, kind: ResolvedPatKind::Struct { variant } }) => self
-                    .check_pat_struct(pat, fields, has_rest_pat, ty, variant, expected, pat_info),
+                    .check_pat_struct(
+                        pat,
+                        fields,
+                        has_rest_pat.is_some(),
+                        ty,
+                        variant,
+                        expected,
+                        pat_info,
+                    ),
                 Err(guar) => {
                     let ty_err = Ty::new_error(self.tcx, guar);
                     for field in fields {
@@ -2428,7 +2436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let len = unmentioned_fields.len();
         let (prefix, postfix, sp) = match fields {
             [] => match &pat.kind {
-                PatKind::Struct(path, [], false) => {
+                PatKind::Struct(path, [], None) => {
                     (" { ", " }", path.span().shrink_to_hi().until(pat.span.shrink_to_hi()))
                 }
                 _ => return err,

@@ -3922,7 +3922,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn record_patterns_with_skipped_bindings(&mut self, pat: &Pat, rest: &ast::PatFieldsRest) {
         match rest {
-            ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) => {
+            ast::PatFieldsRest::Rest(_) | ast::PatFieldsRest::Recovered(_) => {
                 // Record that the pattern doesn't introduce all the bindings it could.
                 if let Some(partial_res) = self.r.partial_res_map.get(&pat.id)
                     && let Some(res) = partial_res.full_res()

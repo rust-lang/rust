@@ -754,7 +754,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.ident(name);
                 sub.if_some(|p| self.pat(p));
             },
-            PatKind::Struct(ref qpath, fields, ignore) => {
+            PatKind::Struct(ref qpath, fields, etc) => {
+                let ignore = etc.is_some();
                 bind!(self, qpath, fields);
                 kind!("Struct(ref {qpath}, {fields}, {ignore})");
                 self.qpath(qpath, pat);
