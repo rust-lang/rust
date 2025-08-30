@@ -92,11 +92,7 @@ pub trait Delegate: Sized {
         input: <Self::Cx as Cx>::Input,
         result: <Self::Cx as Cx>::Result,
     ) -> bool;
-    fn on_stack_overflow(
-        cx: Self::Cx,
-        input: <Self::Cx as Cx>::Input,
-        inspect: &mut Self::ProofTreeBuilder,
-    ) -> <Self::Cx as Cx>::Result;
+    fn on_stack_overflow(cx: Self::Cx, input: <Self::Cx as Cx>::Input) -> <Self::Cx as Cx>::Result;
     fn on_fixpoint_overflow(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
@@ -703,6 +699,31 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
     }
 
+    pub fn evaluate_root_goal_for_proof_tree(
+        cx: X,
+        root_depth: usize,
+        input: X::Input,
+        inspect: &mut D::ProofTreeBuilder,
+    ) -> X::Result {
+        let mut this = SearchGraph::<D>::new(root_depth);
+        let available_depth = AvailableDepth(root_depth);
+        let step_kind_from_parent = PathKind::Inductive; // is never used
+        this.stack.push(StackEntry {
+            input,
+            step_kind_from_parent,
+            available_depth,
+            provisional_result: None,
+            required_depth: 0,
+            heads: Default::default(),
+            encountered_overflow: false,
+            usages: None,
+            candidate_usages: None,
+            nested_goals: Default::default(),
+        });
+        let evaluation_result = this.evaluate_goal_in_task(cx, input, inspect);
+        evaluation_result.result
+    }
+
     /// Probably the most involved method of the whole solver.
     ///
     /// While goals get computed via `D::compute_goal`, this function handles
@@ -718,7 +739,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let Some(available_depth) =
             AvailableDepth::allowed_depth_for_nested::<D>(self.root_depth, &self.stack)
         else {
-            return self.handle_overflow(cx, input, inspect);
+            return self.handle_overflow(cx, input);
         };
 
         // We check the provisional cache before checking the global cache. This simplifies
@@ -833,12 +854,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         result
     }
 
-    fn handle_overflow(
-        &mut self,
-        cx: X,
-        input: X::Input,
-        inspect: &mut D::ProofTreeBuilder,
-    ) -> X::Result {
+    fn handle_overflow(&mut self, cx: X, input: X::Input) -> X::Result {
         if let Some(last) = self.stack.last_mut() {
             last.encountered_overflow = true;
             // If computing a goal `B` depends on another goal `A` and
@@ -853,7 +869,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         debug!("encountered stack overflow");
-        D::on_stack_overflow(cx, input, inspect)
+        D::on_stack_overflow(cx, input)
     }
 
     /// When reevaluating a goal with a changed provisional result, all provisional cache entry

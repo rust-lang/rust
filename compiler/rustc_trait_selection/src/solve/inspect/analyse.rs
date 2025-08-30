@@ -37,7 +37,7 @@ pub struct InspectGoal<'a, 'tcx> {
     orig_values: Vec<ty::GenericArg<'tcx>>,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,
-    evaluation_kind: inspect::GoalEvaluationKind<TyCtxt<'tcx>>,
+    final_revision: &'tcx inspect::Probe<TyCtxt<'tcx>>,
     normalizes_to_term_hack: Option<NormalizesToTermHack<'tcx>>,
     source: GoalSource,
 }
@@ -249,7 +249,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                     // `InspectGoal::new` so that the goal has the right result (and maintains
                     // the impression that we don't do this normalizes-to infer hack at all).
                     let (nested, proof_tree) = infcx.evaluate_root_goal_for_proof_tree(goal, span);
-                    let nested_goals_result = nested.and_then(|(nested, _)| {
+                    let nested_goals_result = nested.and_then(|nested| {
                         normalizes_to_term_hack.constrain_and(
                             infcx,
                             span,
@@ -391,15 +391,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
 
     pub fn candidates(&'a self) -> Vec<InspectCandidate<'a, 'tcx>> {
         let mut candidates = vec![];
-        let last_eval_step = match &self.evaluation_kind {
-            // An annoying edge case in case the recursion limit is 0.
-            inspect::GoalEvaluationKind::Overflow => return vec![],
-            inspect::GoalEvaluationKind::Evaluation { final_revision } => final_revision,
-        };
-
         let mut nested_goals = vec![];
-        self.candidates_recur(&mut candidates, &mut nested_goals, &last_eval_step);
-
+        self.candidates_recur(&mut candidates, &mut nested_goals, &self.final_revision);
         candidates
     }
 
@@ -426,7 +419,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     ) -> Self {
         let infcx = <&SolverDelegate<'tcx>>::from(infcx);
 
-        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, kind, result } = root;
+        let inspect::GoalEvaluation { uncanonicalized_goal, orig_values, final_revision, result } =
+            root;
         // If there's a normalizes-to goal, AND the evaluation result with the result of
         // constraining the normalizes-to RHS and computing the nested goals.
         let result = result.and_then(|ok| {
@@ -441,7 +435,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             orig_values,
             goal: eager_resolve_vars(infcx, uncanonicalized_goal),
             result,
-            evaluation_kind: kind,
+            final_revision,
             normalizes_to_term_hack: term_hack_and_nested_certainty.map(|(n, _)| n),
             source,
         }

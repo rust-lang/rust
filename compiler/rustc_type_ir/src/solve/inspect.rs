@@ -45,31 +45,18 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 /// for the `CanonicalVarValues` of the canonicalized goal.
 /// We use this to map any [CanonicalState] from the local `InferCtxt`
 /// of the solver query to the `InferCtxt` of the caller.
-#[derive_where(PartialEq, Hash; I: Interner)]
+#[derive_where(PartialEq, Eq, Hash; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
-    pub kind: GoalEvaluationKind<I>,
+    pub final_revision: I::ProbeRef,
     pub result: QueryResult<I>,
 }
-
-impl<I: Interner> Eq for GoalEvaluation<I> {}
-
-#[derive_where(PartialEq, Hash, Debug; I: Interner)]
-pub enum GoalEvaluationKind<I: Interner> {
-    Overflow,
-    Evaluation {
-        /// This is always `ProbeKind::Root`.
-        final_revision: Probe<I>,
-    },
-}
-
-impl<I: Interner> Eq for GoalEvaluationKind<I> {}
 
 /// A self-contained computation during trait solving. This either
 /// corresponds to a `EvalCtxt::probe(_X)` call or the root evaluation
 /// of a goal.
-#[derive_where(PartialEq, Hash, Debug; I: Interner)]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub struct Probe<I: Interner> {
     /// What happened inside of this probe in chronological order.
     pub steps: Vec<ProbeStep<I>>,
@@ -77,9 +64,7 @@ pub struct Probe<I: Interner> {
     pub final_state: CanonicalState<I, ()>,
 }
 
-impl<I: Interner> Eq for Probe<I> {}
-
-#[derive_where(PartialEq, Hash, Debug; I: Interner)]
+#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum ProbeStep<I: Interner> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
@@ -98,12 +83,10 @@ pub enum ProbeStep<I: Interner> {
     MakeCanonicalResponse { shallow_certainty: Certainty },
 }
 
-impl<I: Interner> Eq for ProbeStep<I> {}
-
 /// What kind of probe we're in. In case the probe represents a candidate, or
 /// the final result of the current goal - via [ProbeKind::Root] - we also
 /// store the [QueryResult].
-#[derive_where(Clone, Copy, PartialEq, Hash, Debug; I: Interner)]
+#[derive_where(Clone, Copy, PartialEq, Eq, Hash, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 pub enum ProbeKind<I: Interner> {
     /// The root inference context while proving a goal.
@@ -128,5 +111,3 @@ pub enum ProbeKind<I: Interner> {
     /// Checking that a rigid alias is well-formed.
     RigidAlias { result: QueryResult<I> },
 }
-
-impl<I: Interner> Eq for ProbeKind<I> {}

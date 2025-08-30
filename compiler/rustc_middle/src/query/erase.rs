@@ -6,6 +6,7 @@ use rustc_span::ErrorGuaranteed;
 
 use crate::mir::interpret::EvalToValTreeResult;
 use crate::query::CyclePlaceholder;
+use crate::traits::solve;
 use crate::ty::adjustment::CoerceUnsizedInfo;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, traits};
@@ -217,6 +218,10 @@ impl EraseType for ty::Binder<'_, &'_ ty::List<Ty<'_>>> {
 
 impl<T0, T1> EraseType for (&'_ T0, &'_ T1) {
     type Result = [u8; size_of::<(&'static (), &'static ())>()];
+}
+
+impl<T0> EraseType for (solve::QueryResult<'_>, &'_ T0) {
+    type Result = [u8; size_of::<(solve::QueryResult<'static>, &'static ())>()];
 }
 
 impl<T0, T1> EraseType for (&'_ T0, &'_ [T1]) {
