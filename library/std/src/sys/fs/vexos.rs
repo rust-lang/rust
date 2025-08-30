@@ -16,9 +16,9 @@ pub struct File {
 }
 
 #[derive(Clone)]
-pub struct FileAttr {
-    size: u64,
-    is_dir: bool,
+pub enum FileAttr {
+    Dir,
+    File { size: u64 },
 }
 
 pub struct ReadDir(!);
@@ -54,23 +54,24 @@ pub struct DirBuilder {}
 impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
     fn from_fd(fd: *mut vex_sdk::FIL) -> io::Result<Self> {
-        let size = unsafe { vex_sdk::vexFileSize(fd) };
-
-        if size >= 0 {
-            Ok(Self { size: size as u64, is_dir: false })
+        // `vexFileSize` returns -1 upon error, so u64::try_from will fail on error.
+        if let Some(size) = u64::try_from(unsafe { vex_sdk::vexFileSize(fd) }) {
+            Ok(Self::File { size })
         } else {
             Err(io::Error::new(io::ErrorKind::InvalidData, "Failed to get file size"))
         }
     }
 
     fn from_path(path: &Path) -> io::Result<Self> {
+        // vexFileStatus returns 3 if the given path is a directory.
+        const FILE_STATUS_DIR: i32 = 3;
+
         run_path_with_cstr(path, &|c_path| {
             let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
-            let is_dir = file_type == 3;
 
             // We can't get the size if its a directory because we cant open it as a file
-            if is_dir {
-                Ok(Self { size: 0, is_dir: true })
+            if file_type == FILE_STATUS_DIR {
+                Ok(Self::Dir)
             } else {
                 let mut opts = OpenOptions::new();
                 opts.read(true);
@@ -82,7 +83,10 @@ impl FileAttr {
     }
 
     pub fn size(&self) -> u64 {
-        self.size
+        match self {
+            Self::File { size } => size,
+            Self::Dir => 0,
+        }
     }
 
     pub fn perm(&self) -> FilePermissions {
@@ -90,7 +94,7 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType { is_dir: self.is_dir }
+        self == FileAttr::Dir
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -156,7 +160,7 @@ impl DirEntry {
     }
 
     pub fn file_name(&self) -> OsString {
-        self.path.file_name().unwrap_or(crate::ffi::OsStr::new("")).to_os_string()
+        self.path.file_name().unwrap_or_default()
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
@@ -203,16 +207,9 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         run_path_with_cstr(path, &|path| {
-            let file = match (
-                opts.read,
-                opts.write,
-                opts.append,
-                opts.truncate,
-                opts.create,
-                opts.create_new,
-            ) {
+            let file = match opts {
                 // read + write - unsupported
-                (true, true, _, _, _, _) => {
+                OpenOptions { read: true, write: true, .. } => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
                         "Opening files with read and write access is unsupported on this target",
@@ -220,12 +217,24 @@ impl File {
                 }
 
                 // read
-                (true, false, _, false, false, false) => unsafe {
-                    vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr())
-                },
+                OpenOptions {
+                    read: true,
+                    write: false,
+                    append: _,
+                    truncate: false,
+                    create: false,
+                    create_new: false,
+                } => unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) },
 
                 // append
-                (false, _, true, false, create, create_new) => unsafe {
+                OpenOptions {
+                    read: false,
+                    write: _,
+                    append: true,
+                    truncate: false,
+                    create,
+                    create_new,
+                } => unsafe {
                     if create_new {
                         if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
                             return Err(io::Error::new(
@@ -246,7 +255,14 @@ impl File {
                 },
 
                 // write
-                (false, true, false, truncate, create, create_new) => unsafe {
+                OpenOptions {
+                    read: false,
+                    write: true,
+                    append: false,
+                    truncate,
+                    create,
+                    create_new,
+                } => unsafe {
                     if create_new {
                         if vex_sdk::vexFileStatus(path.as_ptr()) != 0 {
                             return Err(io::Error::new(
