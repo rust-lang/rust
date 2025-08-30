@@ -1,4 +1,4 @@
-#[link(name = "foo", cfg())] //~ ERROR link cfg must have a single predicate argument
+#[link(name = "foo", cfg())] //~ ERROR malformed `link` attribute input
 extern "C" {}
 
 fn main() {}

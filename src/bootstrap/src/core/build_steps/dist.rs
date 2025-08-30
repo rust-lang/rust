@@ -96,6 +96,8 @@ impl Step for Docs {
     }
 }
 
+/// Builds the `rust-docs-json` installer component.
+/// It contains the documentation of the standard library in JSON format.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct JsonDocs {
     build_compiler: Compiler,
@@ -113,12 +115,11 @@ impl Step for JsonDocs {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(JsonDocs {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
             target: run.target,
         });
     }
 
-    /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let target = self.target;
         let directory = builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
@@ -134,6 +135,10 @@ impl Step for JsonDocs {
         tarball.is_preview(true);
         tarball.add_bulk_dir(directory, dest);
         Some(tarball.generate())
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::dist("json-docs", self.target).built_by(self.build_compiler))
     }
 }
 
@@ -764,22 +769,7 @@ pub struct Std {
 
 impl Std {
     pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
-        // This is an important optimization mainly for CI.
-        // Normally, to build stage N libstd, we need stage N rustc.
-        // However, if we know that we will uplift libstd from stage 1 anyway, building the stage N
-        // rustc can be wasteful.
-        // In particular, if we do a cross-compiling dist stage 2 build from T1 to T2, we need:
-        // - stage 2 libstd for T2 (uplifted from stage 1, where it was built by T1 rustc)
-        // - stage 2 rustc for T2
-        // However, without this optimization, we would also build stage 2 rustc for **T1**, which
-        // is completely wasteful.
-        let build_compiler =
-            if compile::Std::should_be_uplifted_from_stage_1(builder, builder.top_stage, target) {
-                builder.compiler(1, builder.host_target)
-            } else {
-                builder.compiler(builder.top_stage, builder.host_target)
-            };
-        Std { build_compiler, target }
+        Std { build_compiler: builder.compiler_for_std(builder.top_stage), target }
     }
 }
 

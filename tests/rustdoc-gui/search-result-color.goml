@@ -7,7 +7,8 @@ define-function: (
     [
         theme, count_color, desc_color, path_color, bottom_border_color, keyword_color,
         struct_color, associatedtype_color, tymethod_color, method_color, structfield_color,
-        structfield_hover_color, macro_color, fn_color, hover_path_color, hover_background, grey
+        structfield_hover_color, macro_color, fn_color, hover_path_color, hover_background,
+        attribute_color, grey
     ],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
@@ -45,6 +46,11 @@ define-function: (
             "result_kind": "keyword",
             "color": |keyword_color|,
             "hover_color": |keyword_color|,
+        })
+        call-function: ("check-result-color", {
+            "result_kind": "attribute",
+            "color": |attribute_color|,
+            "hover_color": |attribute_color|,
         })
         call-function: ("check-result-color", {
             "result_kind": "struct",
@@ -155,6 +161,7 @@ call-function: ("check-search-color", {
     "path_color": "#0096cf",
     "bottom_border_color": "#aaa3",
     "keyword_color": "#39afd7",
+    "attribute_color": "#39afd7",
     "struct_color": "#ffa0a5",
     "associatedtype_color": "#39afd7",
     "tymethod_color": "#fdd687",
@@ -176,6 +183,7 @@ call-function: ("check-search-color", {
     "path_color": "#ddd",
     "bottom_border_color": "#aaa3",
     "keyword_color": "#d2991d",
+    "attribute_color": "#d2991d",
     "struct_color": "#2dbfb8",
     "associatedtype_color": "#d2991d",
     "tymethod_color": "#2bab63",
@@ -197,6 +205,7 @@ call-function: ("check-search-color", {
     "path_color": "#000",
     "bottom_border_color": "#aaa3",
     "keyword_color": "#3873ad",
+    "attribute_color": "#3873ad",
     "struct_color": "#ad378a",
     "associatedtype_color": "#3873ad",
     "tymethod_color": "#ad7c37",

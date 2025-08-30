@@ -1,7 +1,10 @@
-//@ only-windows
-//@ only-x86
-#[link(name = "foo", kind = "raw-dylib", import_name_type = "unknown")]
-//~^ ERROR unknown import name type `unknown`, expected one of: decorated, noprefix, undecorated
-extern "C" { }
+//@ add-core-stubs
+//@ compile-flags: --target i686-pc-windows-msvc
+//@ needs-llvm-components: x86
+#![feature(no_core, rustc_attrs, lang_items)]
+#![no_core]
+#![crate_type = "lib"]
 
-fn main() {}
+#[link(name = "foo", kind = "raw-dylib", import_name_type = "unknown")]
+//~^ ERROR malformed
+extern "C" { }

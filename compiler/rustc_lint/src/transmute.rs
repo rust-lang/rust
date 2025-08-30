@@ -169,19 +169,25 @@ fn check_int_to_ptr_transmute<'tcx>(
         expr.hir_id,
         expr.span,
         IntegerToPtrTransmutes {
-            suggestion: if dst.is_ref() {
-                IntegerToPtrTransmutesSuggestion::ToRef {
-                    dst: *inner_ty,
-                    suffix,
-                    ref_mutbl: mutbl.prefix_str(),
-                    start_call: expr.span.shrink_to_lo().until(arg.span),
-                }
+            suggestion: if layout_inner_ty.is_sized() {
+                Some(if dst.is_ref() {
+                    IntegerToPtrTransmutesSuggestion::ToRef {
+                        dst: *inner_ty,
+                        suffix,
+                        ref_mutbl: mutbl.prefix_str(),
+                        start_call: expr.span.shrink_to_lo().until(arg.span),
+                    }
+                } else {
+                    IntegerToPtrTransmutesSuggestion::ToPtr {
+                        dst: *inner_ty,
+                        suffix,
+                        start_call: expr.span.shrink_to_lo().until(arg.span),
+                    }
+                })
             } else {
-                IntegerToPtrTransmutesSuggestion::ToPtr {
-                    dst: *inner_ty,
-                    suffix,
-                    start_call: expr.span.shrink_to_lo().until(arg.span),
-                }
+                // We can't suggest using `with_exposed_provenance` for unsized type
+                // so don't suggest anything.
+                None
             },
         },
     );

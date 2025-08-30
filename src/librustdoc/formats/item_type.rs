@@ -57,6 +57,7 @@ pub(crate) enum ItemType {
     TraitAlias = 25,
     // This number is reserved for use in JavaScript
     // Generic = 26,
+    Attribute = 27,
 }
 
 impl Serialize for ItemType {
@@ -148,6 +149,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
             clean::KeywordItem => ItemType::Keyword,
+            clean::AttributeItem => ItemType::Attribute,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,
             clean::ProcMacroItem(mac) => match mac.kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -236,6 +238,7 @@ impl ItemType {
             ItemType::ProcAttribute => "attr",
             ItemType::ProcDerive => "derive",
             ItemType::TraitAlias => "traitalias",
+            ItemType::Attribute => "attribute",
         }
     }
     pub(crate) fn is_method(&self) -> bool {

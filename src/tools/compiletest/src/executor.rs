@@ -1,5 +1,9 @@
 //! This module contains a reimplementation of the subset of libtest
 //! functionality needed by compiletest.
+//!
+//! FIXME(Zalathar): Much of this code was originally designed to mimic libtest
+//! as closely as possible, for ease of migration. Now that libtest is no longer
+//! used, we can potentially redesign things to be a better fit for compiletest.
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -207,7 +211,7 @@ impl TestOutcome {
 ///
 /// Adapted from `filter_tests` in libtest.
 ///
-/// FIXME(#139660): After the libtest dependency is removed, redesign the whole filtering system to
+/// FIXME(#139660): Now that libtest has been removed, redesign the whole filtering system to
 /// do a better job of understanding and filtering _paths_, instead of being tied to libtest's
 /// substring/exact matching behaviour.
 fn filter_tests(opts: &Config, tests: Vec<CollectedTest>) -> Vec<CollectedTest> {
@@ -249,7 +253,7 @@ fn get_concurrency() -> usize {
     }
 }
 
-/// Information needed to create a `test::TestDescAndFn`.
+/// Information that was historically needed to create a libtest `TestDescAndFn`.
 pub(crate) struct CollectedTest {
     pub(crate) desc: CollectedTestDesc,
     pub(crate) config: Arc<Config>,
@@ -257,7 +261,7 @@ pub(crate) struct CollectedTest {
     pub(crate) revision: Option<String>,
 }
 
-/// Information needed to create a `test::TestDesc`.
+/// Information that was historically needed to create a libtest `TestDesc`.
 pub(crate) struct CollectedTestDesc {
     pub(crate) name: String,
     pub(crate) ignore: bool,
@@ -272,18 +276,6 @@ pub enum ColorConfig {
     AutoColor,
     AlwaysColor,
     NeverColor,
-}
-
-/// Format of the test results output.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum OutputFormat {
-    /// Verbose output
-    Pretty,
-    /// Quiet output
-    #[default]
-    Terse,
-    /// JSON output
-    Json,
 }
 
 /// Whether test is expected to panic or not.

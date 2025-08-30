@@ -382,6 +382,7 @@ cfg_select! {
         unsafe extern "C" {}
     }
     target_os = "netbsd" => {
+        #[link(name = "execinfo")]
         #[link(name = "pthread")]
         #[link(name = "rt")]
         unsafe extern "C" {}

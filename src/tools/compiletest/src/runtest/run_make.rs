@@ -308,7 +308,7 @@ impl TestCx<'_> {
         let stdout = String::from_utf8_lossy(&stdout).into_owned();
         let stderr = String::from_utf8_lossy(&stderr).into_owned();
         // This conditions on `status.success()` so we don't print output twice on error.
-        // NOTE: this code is called from a libtest thread, so it's hidden by default unless --nocapture is passed.
+        // NOTE: this code is called from an executor thread, so it's hidden by default unless --no-capture is passed.
         self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
         if !status.success() {
             let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };

@@ -267,39 +267,29 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 #[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
-    #[cfg(target_arch = "x86")]
-    {
-        // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-        unsafe { crate::arch::x86::_mm_pause() };
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    {
-        // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-        unsafe { crate::arch::x86_64::_mm_pause() };
-    }
-
-    #[cfg(target_arch = "riscv32")]
-    {
-        crate::arch::riscv32::pause();
-    }
-
-    #[cfg(target_arch = "riscv64")]
-    {
-        crate::arch::riscv64::pause();
-    }
-
-    #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
-    {
-        // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
-        unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) };
-    }
-
-    #[cfg(all(target_arch = "arm", target_feature = "v6"))]
-    {
-        // SAFETY: the `cfg` attr ensures that we only execute this on arm targets
-        // with support for the v6 feature.
-        unsafe { crate::arch::arm::__yield() };
+    crate::cfg_select! {
+        target_arch = "x86" => {
+            // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
+            unsafe { crate::arch::x86::_mm_pause() }
+        }
+        target_arch = "x86_64" => {
+            // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
+            unsafe { crate::arch::x86_64::_mm_pause() }
+        }
+        target_arch = "riscv32" => crate::arch::riscv32::pause(),
+        target_arch = "riscv64" => crate::arch::riscv64::pause(),
+        any(target_arch = "aarch64", target_arch = "arm64ec") => {
+            // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
+            unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) }
+        }
+        all(target_arch = "arm", target_feature = "v6") => {
+            // SAFETY: the `cfg` attr ensures that we only execute this on arm targets
+            // with support for the v6 feature.
+            unsafe { crate::arch::arm::__yield() }
+        }
+        target_arch = "loongarch32" => crate::arch::loongarch32::ibar::<0>(),
+        target_arch = "loongarch64" => crate::arch::loongarch64::ibar::<0>(),
+        _ => { /* do nothing */ }
     }
 }
 
