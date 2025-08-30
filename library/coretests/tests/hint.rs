@@ -23,7 +23,7 @@ fn select_unpredictable_drop() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic = "message canary"]
 fn select_unpredictable_drop_on_panic() {
     use core::cell::Cell;
 
@@ -37,7 +37,7 @@ fn select_unpredictable_drop_on_panic() {
         fn drop(&mut self) {
             let value = self.cell.get();
             self.cell.set(self.write);
-            assert_eq!(value, self.expect);
+            assert_eq!(value, self.expect, "message canary");
         }
     }
 
@@ -55,6 +55,5 @@ fn select_unpredictable_drop_on_panic() {
     // 3. `armed` drops during unwind, writes 0 and does not panic as 0xdead == 0xdead
     //
     // If `selected` is not dropped, `armed` panics as 1 != 0xdead
-    let _unreachable =
-        core::hint::select_unpredictable(core::hint::black_box(true), selected, unselected);
+    let _unreachable = core::hint::select_unpredictable(true, selected, unselected);
 }
