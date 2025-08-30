@@ -167,6 +167,7 @@ generate! {
     from_ne_bytes,
     from_ptr,
     from_raw,
+    from_raw_parts,
     from_str_radix,
     fs,
     fuse,
