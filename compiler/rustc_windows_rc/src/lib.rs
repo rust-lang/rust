@@ -40,27 +40,27 @@ pub fn compile_windows_resource_file(
 
     let mut resource_script = RESOURCE_TEMPLATE.to_string();
 
-    // Set the string product version to the same thing as `rustc --version`
-    let product_version = env::var("CFG_VERSION").unwrap_or("unknown".to_string());
-    let file_version = &product_version;
+    // Set the string product and file version to the same thing as `rustc --version`
+    let descriptive_version = env::var("CFG_VERSION").unwrap_or("unknown".to_string());
 
-    // This is just "major.minor.patch" and a "-dev", "-nightly" or similar suffix
-    let rel_version = env::var("CFG_RELEASE").unwrap();
-
+    // Set the product name to "Rust Compiler" or "Rust Compiler (nightly)" etc
     let product_name = product_name(env::var("CFG_RELEASE_CHANNEL").unwrap());
 
+    // For the numeric version we need `major,minor,patch,build`.
+    // Extract them from `CFG_RELEASE` which is "major.minor.patch" and a "-dev", "-nightly" or similar suffix
+    let cfg_release = env::var("CFG_RELEASE").unwrap();
     // remove the suffix, if present and parse into [`ResourceVersion`]
-    let version = parse_version(rel_version.split("-").next().unwrap_or("0.0.0"))
+    let version = parse_version(cfg_release.split("-").next().unwrap_or("0.0.0"))
         .expect("valid CFG_RELEASE version");
 
     resource_script = resource_script
         .replace("@RUSTC_FILEDESCRIPTION_STR@", file_description)
         .replace("@RUSTC_FILETYPE@", &format!("{}", filetype as u32))
         .replace("@RUSTC_FILEVERSION_QUAD@", &version.to_quad_string())
-        .replace("@RUSTC_FILEVERSION_STR@", file_version)
+        .replace("@RUSTC_FILEVERSION_STR@", &descriptive_version)
         .replace("@RUSTC_PRODUCTNAME_STR@", &product_name)
         .replace("@RUSTC_PRODUCTVERSION_QUAD@", &version.to_quad_string())
-        .replace("@RUSTC_PRODUCTVERSION_STR@", &product_version);
+        .replace("@RUSTC_PRODUCTVERSION_STR@", &descriptive_version);
 
     let rc_path = resources_dir.join(file_stem.with_extension("rc"));
     fs::write(&rc_path, resource_script)
