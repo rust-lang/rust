@@ -460,7 +460,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             span,
                             leaf_trait_predicate,
                         );
-                        self.note_version_mismatch(&mut err, leaf_trait_predicate);
+                        self.note_version_mismatch(&mut err, &obligation, leaf_trait_predicate);
                         self.suggest_remove_await(&obligation, &mut err);
                         self.suggest_derive(&obligation, &mut err, leaf_trait_predicate);
 
@@ -2358,6 +2358,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn note_version_mismatch(
         &self,
         err: &mut Diag<'_>,
+        obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let get_trait_impls = |trait_def_id| {
@@ -2384,6 +2385,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let traits_with_same_path =
             traits_with_same_path.into_items().into_sorted_stable_ord_by_key(|(p, _)| p);
         let mut suggested = false;
+
         for (_, trait_with_same_path) in traits_with_same_path {
             let trait_impls = get_trait_impls(trait_with_same_path);
             if trait_impls.is_empty() {
@@ -2399,6 +2401,71 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let crate_msg =
                 format!("perhaps two different versions of crate `{trait_crate}` are being used?");
             err.note(crate_msg);
+            suggested = true;
+        }
+
+        if suggested {
+            return true;
+        }
+
+        let trait_def_id = trait_pred.def_id();
+        let trait_name = self.tcx.item_name(trait_def_id);
+        let trait_krate_name = self.tcx.crate_name(trait_def_id.krate);
+
+        // If there are multiple different versions of a crate in the dependency graph, there is already
+        // a suggestion designed for this purpose in the rustc_hir_typeck compiler crate
+        if self
+            .tcx
+            .all_traits_including_private()
+            .find(|def_id| {
+                def_id.krate != trait_def_id.krate
+                    && self.tcx.crate_name(def_id.krate) == trait_krate_name
+                    && self.tcx.item_name(def_id) == trait_name
+            })
+            .is_some()
+        {
+            return false;
+        }
+
+        let trait_has_same_params = |other_trait_def_id: DefId| -> bool {
+            let trait_generics = self.tcx.generics_of(trait_def_id);
+            let other_trait_generics = self.tcx.generics_of(other_trait_def_id);
+
+            if trait_generics.count() != other_trait_generics.count() {
+                return false;
+            }
+            trait_generics.own_params.iter().zip(other_trait_generics.own_params.iter()).all(
+                |(a, b)| {
+                    (matches!(a.kind, ty::GenericParamDefKind::Type { .. })
+                        && matches!(b.kind, ty::GenericParamDefKind::Type { .. }))
+                        || (matches!(a.kind, ty::GenericParamDefKind::Lifetime,)
+                            && matches!(b.kind, ty::GenericParamDefKind::Lifetime))
+                        || (matches!(a.kind, ty::GenericParamDefKind::Const { .. })
+                            && matches!(b.kind, ty::GenericParamDefKind::Const { .. }))
+                },
+            )
+        };
+        let trait_name = self.tcx.item_name(trait_def_id);
+        if let Some(other_trait_def_id) = self.tcx.all_traits_including_private().find(|def_id| {
+            trait_def_id != *def_id
+                && trait_name == self.tcx.item_name(def_id)
+                && trait_has_same_params(*def_id)
+                && self.predicate_must_hold_modulo_regions(&Obligation::new(
+                    self.tcx,
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    trait_pred.map_bound(|tr| ty::TraitPredicate {
+                        trait_ref: ty::TraitRef::new(self.tcx, *def_id, tr.trait_ref.args),
+                        ..tr
+                    }),
+                ))
+        }) {
+            err.note(format!(
+                "`{}` implements similarly named `{}`, but not `{}`",
+                trait_pred.self_ty(),
+                self.tcx.def_path_str(other_trait_def_id),
+                trait_pred.print_modifiers_and_trait_path()
+            ));
             suggested = true;
         }
         suggested
