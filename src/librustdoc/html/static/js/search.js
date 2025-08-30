@@ -4031,7 +4031,11 @@ class DocSearch {
                         return empty_postings_list;
                     }
                     const typeFilter = itemTypeFromName(elem.typeFilter);
-                    const searchResults = await index.search(elem.normalizedPathLast);
+                    const [searchResults, upla, uplb] = await Promise.all([
+                        index.search(elem.normalizedPathLast),
+                        unpackPostingsListAll(elem.generics, polarity),
+                        unpackPostingsListBindings(elem.bindings, polarity),
+                    ]);
                     /**
                      * @type {Promise<[
                      *     number,
@@ -4196,8 +4200,6 @@ class DocSearch {
                         })) {
                             continue;
                         }
-                        const upla = await unpackPostingsListAll(elem.generics, polarity);
-                        const uplb = await unpackPostingsListBindings(elem.bindings, polarity);
                         for (const {invertedIndex: genericsIdx, queryElem: generics} of upla) {
                             for (const {invertedIndex: bindingsIdx, queryElem: bindings} of uplb) {
                                 results.push({
@@ -4303,7 +4305,12 @@ class DocSearch {
                             queryElem: new Map(),
                         }];
                     }
-                    const firstKeyIds = await index.search(firstKey);
+                    elems.delete(firstKey);
+                    const [firstKeyIds, firstPostingsList, remainingAll] = await Promise.all([
+                        index.search(firstKey),
+                        unpackPostingsListAll(firstList, polarity),
+                        unpackPostingsListBindings(elems, polarity),
+                    ]);
                     if (!firstKeyIds) {
                         // User specified a non-existent key.
                         return [{
@@ -4311,11 +4318,6 @@ class DocSearch {
                             queryElem: new Map(),
                         }];
                     }
-                    elems.delete(firstKey);
-                    const [firstPostingsList, remainingAll] = await Promise.all([
-                        unpackPostingsListAll(firstList, polarity),
-                        unpackPostingsListBindings(elems, polarity),
-                    ]);
                     /** @type {PostingsList<Map<number, rustdoc.QueryElement[]>>[]} */
                     const results = [];
                     for (const keyId of firstKeyIds.matches().entries()) {
