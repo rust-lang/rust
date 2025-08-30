@@ -123,6 +123,7 @@ declare_passes! {
     mod check_packed_ref : CheckPackedRef;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
+    mod add_move_metadata : AddMoveMetadata;
 
     mod copy_prop : CopyProp;
     mod coroutine : StateTransform;
@@ -578,6 +579,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
         &impossible_predicates::ImpossiblePredicates,
+        &add_move_metadata::AddMoveMetadata,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::PostAnalysis,
