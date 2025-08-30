@@ -5,6 +5,7 @@ enum Lol {
     Bar,
 }
 const Bat: () = ();
+const Battery: () = ();
 struct Bay;
 
 fn foo(x: (Lol, Lol)) {
@@ -62,8 +63,8 @@ fn foo(x: (Lol, Lol)) {
 }
 fn bar(x: (Lol, Lol)) {
     use Lol::*;
-    use Bat;
-    use Bay;
+    use ::Bat;
+    use ::Bay;
     match &x {
         (Foo, _) | (Ban, Foo) => {}
         //~^ ERROR: variable `Ban` is not bound in all patterns
@@ -104,6 +105,12 @@ fn baz(x: (Lol, Lol)) {
         //~^ ERROR: unused variable: `Ban`
         //~| HELP: if this is intentional, prefix it with an underscore
         //~| HELP: you might have meant to pattern match on the similarly named
+    }
+    match () {
+        Batery => {}
+        //~^ ERROR: unused variable: `Batery`
+        //~| HELP: if this is intentional, prefix it with an underscore
+        //~| HELP: you might have meant to pattern match on the similarly named constant
     }
 }
 

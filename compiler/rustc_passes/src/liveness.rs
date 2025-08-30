@@ -1716,8 +1716,25 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     }
                 }
             }
-            // FIXME(estebank): look for consts of the same type with similar names as well, not
-            // just unit structs and variants.
+            if typo.is_none() {
+                for (hir_id, _, span) in &hir_ids_and_spans {
+                    let ty = self.typeck_results.node_type(*hir_id);
+                    // Look for consts of the same type with similar names as well, not just unit
+                    // structs and variants.
+                    for def_id in self.ir.tcx.hir_body_owners() {
+                        if let DefKind::Const = self.ir.tcx.def_kind(def_id)
+                            && self.ir.tcx.type_of(def_id).instantiate_identity() == ty
+                        {
+                            typo = Some(errors::PatternTypo {
+                                span: *span,
+                                code: with_no_trimmed_paths!(self.ir.tcx.def_path_str(def_id)),
+                                kind: "constant".to_string(),
+                                item_name: self.ir.tcx.item_name(def_id).to_string(),
+                            });
+                        }
+                    }
+                }
+            }
             if is_assigned {
                 self.ir.tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
