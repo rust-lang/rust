@@ -925,7 +925,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
 
-    let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
+    let dep_type = Arc::new(DepsType { dep_names: rustc_query_impl::dep_kind_names() });
     let dep_graph = setup_dep_graph(sess, crate_name, &dep_type);
 
     let cstore =
