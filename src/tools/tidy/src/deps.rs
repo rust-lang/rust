@@ -490,6 +490,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "wit-bindgen",
     // tidy-alphabetical-end
 ];
 
@@ -798,7 +799,10 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) 
             continue;
         }
 
-        if !seen_pkgs.insert(&*pkg.name) {
+        // Skip the `wasi` crate here which the standard library explicitly
+        // depends on two version of (one for the `wasm32-wasip1` target and
+        // another for the `wasm32-wasip2` target).
+        if pkg.name.to_string() != "wasi" && !seen_pkgs.insert(&*pkg.name) {
             tidy_error!(
                 bad,
                 "duplicate package `{}` is not allowed for the standard library",

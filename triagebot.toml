@@ -450,7 +450,8 @@ trigger_files = [
 
 [autolabel."O-wasi"]
 trigger_files = [
-    "library/std/src/sys/pal/wasi",
+    "library/std/src/sys/pal/wasip1",
+    "library/std/src/sys/pal/wasip2",
     "library/std/src/os/wasi"
 ]
 

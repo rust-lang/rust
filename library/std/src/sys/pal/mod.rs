@@ -49,9 +49,9 @@ cfg_select! {
         mod wasip2;
         pub use self::wasip2::*;
     }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use self::wasi::*;
+    all(target_os = "wasi", target_env = "p1") => {
+        mod wasip1;
+        pub use self::wasip1::*;
     }
     target_family = "wasm" => {
         mod wasm;
