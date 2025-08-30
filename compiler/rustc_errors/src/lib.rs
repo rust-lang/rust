@@ -835,6 +835,7 @@ impl DiagCtxt {
         *fulfilled_expectations = Default::default();
     }
 
+    #[inline]
     pub fn handle<'a>(&'a self) -> DiagCtxtHandle<'a> {
         DiagCtxtHandle { dcx: self, tainted_with_errors: None }
     }
