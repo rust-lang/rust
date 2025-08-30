@@ -35,41 +35,8 @@ impl RvalueScopes {
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
-        let mut id = Scope { local_id: expr_id, data: ScopeData::Node };
-        let mut backwards_incompatible = None;
-
-        while let Some(&p) = region_scope_tree.parent_map.get(&id) {
-            match p.data {
-                ScopeData::Destruction => {
-                    debug!("temporary_scope({expr_id:?}) = {id:?} [enclosing]");
-                    return (Some(id), backwards_incompatible);
-                }
-                ScopeData::IfThenRescope | ScopeData::MatchGuard => {
-                    debug!("temporary_scope({expr_id:?}) = {p:?} [enclosing]");
-                    return (Some(p), backwards_incompatible);
-                }
-                ScopeData::Node
-                | ScopeData::CallSite
-                | ScopeData::Arguments
-                | ScopeData::IfThen
-                | ScopeData::Remainder(_) => {
-                    // If we haven't already passed through a backwards-incompatible node,
-                    // then check if we are passing through one now and record it if so.
-                    // This is for now only working for cases where a temporary lifetime is
-                    // *shortened*.
-                    if backwards_incompatible.is_none() {
-                        backwards_incompatible = region_scope_tree
-                            .backwards_incompatible_scope
-                            .get(&p.local_id)
-                            .copied();
-                    }
-                    id = p
-                }
-            }
-        }
-
-        debug!("temporary_scope({expr_id:?}) = None");
-        (None, backwards_incompatible)
+        region_scope_tree
+            .default_temporary_scope(Scope { local_id: expr_id, data: ScopeData::Node })
     }
 
     /// Make an association between a sub-expression and an extended lifetime
