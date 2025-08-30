@@ -120,7 +120,6 @@ impl<M> ModuleCodegen<M> {
 
         CompiledModule {
             name: self.name.clone(),
-            kind: self.kind,
             object,
             dwarf_object,
             bytecode,
@@ -134,7 +133,6 @@ impl<M> ModuleCodegen<M> {
 #[derive(Debug, Encodable, Decodable)]
 pub struct CompiledModule {
     pub name: String,
-    pub kind: ModuleKind,
     pub object: Option<PathBuf>,
     pub dwarf_object: Option<PathBuf>,
     pub bytecode: Option<PathBuf>,

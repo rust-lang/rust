@@ -11,7 +11,7 @@ use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
+use rustc_codegen_ssa::{ModuleCodegen, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::DiagCtxtHandle;
@@ -43,9 +43,7 @@ fn prepare_lto(
         .map(|symbol| CString::new(symbol.to_owned()).unwrap())
         .collect::<Vec<CString>>();
 
-    if cgcx.regular_module_config.instrument_coverage
-        || cgcx.regular_module_config.pgo_gen.enabled()
-    {
+    if cgcx.module_config.instrument_coverage || cgcx.module_config.pgo_gen.enabled() {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.
@@ -55,15 +53,15 @@ fn prepare_lto(
         symbols_below_threshold.extend(PROFILER_WEAK_SYMBOLS.iter().map(|&sym| sym.to_owned()));
     }
 
-    if cgcx.regular_module_config.sanitizer.contains(SanitizerSet::MEMORY) {
+    if cgcx.module_config.sanitizer.contains(SanitizerSet::MEMORY) {
         let mut msan_weak_symbols = Vec::new();
 
         // Similar to profiling, preserve weak msan symbol during LTO.
-        if cgcx.regular_module_config.sanitizer_recover.contains(SanitizerSet::MEMORY) {
+        if cgcx.module_config.sanitizer_recover.contains(SanitizerSet::MEMORY) {
             msan_weak_symbols.push(c"__msan_keep_going");
         }
 
-        if cgcx.regular_module_config.sanitizer_memory_track_origins != 0 {
+        if cgcx.module_config.sanitizer_memory_track_origins != 0 {
             msan_weak_symbols.push(c"__msan_track_origins");
         }
 
@@ -227,15 +225,9 @@ fn fat_lto(
     // All the other modules will be serialized and reparsed into the new
     // context, so this hopefully avoids serializing and parsing the largest
     // codegen unit.
-    //
-    // Additionally use a regular module as the base here to ensure that various
-    // file copy operations in the backend work correctly. The only other kind
-    // of module here should be an allocator one, and if your crate is smaller
-    // than the allocator module then the size doesn't really matter anyway.
     let costliest_module = in_memory
         .iter()
         .enumerate()
-        .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, module)| {
             let cost = unsafe { llvm::LLVMRustModuleCost(module.module_llvm.llmod()) };
             (cost, i)
@@ -583,7 +575,7 @@ pub(crate) fn run_pass_manager(
     thin: bool,
 ) {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
-    let config = cgcx.config(module.kind);
+    let config = &cgcx.module_config;
 
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
@@ -745,7 +737,7 @@ pub(crate) fn optimize_thin_module(
     let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx);
     let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
     // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
-    if cgcx.config(ModuleKind::Regular).embed_bitcode() {
+    if cgcx.module_config.embed_bitcode() {
         module.thin_lto_buffer = Some(thin_module.data().to_vec());
     }
     {
