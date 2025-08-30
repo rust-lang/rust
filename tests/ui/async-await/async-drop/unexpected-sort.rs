@@ -6,10 +6,12 @@
 #![feature(async_drop)]
 use std::future::AsyncDrop;
 struct a;
-impl Drop for a { //~ ERROR: not all trait items implemented, missing: `drop`
+impl Drop for a {
+    //~ ERROR: not all trait items implemented, missing one of: `drop`, `pin_drop`
     fn b() {} //~ ERROR: method `b` is not a member of trait `Drop`
 }
-impl AsyncDrop for a { //~ ERROR: not all trait items implemented, missing: `drop`
+impl AsyncDrop for a {
+    //~ ERROR: not all trait items implemented, missing: `drop`
     type c = ();
     //~^ ERROR: type `c` is not a member of trait `AsyncDrop`
 }
