@@ -9,13 +9,13 @@ LL |             assert_eq!(WaitForSingleObject(MAIN_THREAD, INFINITE), WAIT_OBJ
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the evaluated program deadlocked
-  --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+  --> RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    |
 LL |         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
    |                                                                                          ^ this thread got stuck here
    |
    = note: BACKTRACE:
-   = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::sys::thread::PLATFORM::Thread::join` at RUSTLIB/std/src/sys/thread/PLATFORM.rs:LL:CC
    = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
    = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
 note: inside `main`
