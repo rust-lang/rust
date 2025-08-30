@@ -46,6 +46,8 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// Flag to ensure that we only suggest wrapping the entire function body in
     /// an unsafe block once.
     suggest_unsafe_block: bool,
+    /// Controls how union field accesses are checked
+    union_field_access_mode: UnionFieldAccessMode,
 }
 
 impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
@@ -224,6 +226,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 inside_adt: false,
                 warnings: self.warnings,
                 suggest_unsafe_block: self.suggest_unsafe_block,
+                union_field_access_mode: UnionFieldAccessMode::Normal,
             };
             // params in THIR may be unsafe, e.g. a union pattern.
             for param in &inner_thir.params {
@@ -546,6 +549,20 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::RawBorrow { arg, .. } => {
+                // Handle the case where we're taking a raw pointer to a union field
+                if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind {
+                    if self.is_union_field_access(arg) {
+                        // Taking a raw pointer to a union field is safe - just check the base expression
+                        // but skip the union field safety check
+                        self.visit_union_field_for_raw_borrow(arg);
+                        return;
+                    }
+                } else if self.is_union_field_access(arg) {
+                    // Direct raw borrow of union field
+                    self.visit_union_field_for_raw_borrow(arg);
+                    return;
+                }
+
                 if let ExprKind::Scope { value: arg, .. } = self.thir[arg].kind
                     && let ExprKind::Deref { arg } = self.thir[arg].kind
                 {
@@ -650,17 +667,27 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
                         self.requires_unsafe(expr.span, UseOfUnsafeField);
                     } else if adt_def.is_union() {
-                        if let Some(assigned_ty) = self.assignment_info {
-                            if assigned_ty.needs_drop(self.tcx, self.typing_env) {
-                                // This would be unsafe, but should be outright impossible since we
-                                // reject such unions.
-                                assert!(
-                                    self.tcx.dcx().has_errors().is_some(),
-                                    "union fields that need dropping should be impossible: {assigned_ty}"
-                                );
+                        // Check if this field access is part of a raw borrow operation
+                        // If so, we've already handled it above and shouldn't reach here
+                        match self.union_field_access_mode {
+                            UnionFieldAccessMode::SuppressUnionFieldAccessError => {
+                                // Suppress AccessToUnionField error for union fields chains
                             }
-                        } else {
-                            self.requires_unsafe(expr.span, AccessToUnionField);
+                            UnionFieldAccessMode::Normal => {
+                                if let Some(assigned_ty) = self.assignment_info {
+                                    if assigned_ty.needs_drop(self.tcx, self.typing_env) {
+                                        // This would be unsafe, but should be outright impossible since we
+                                        // reject such unions.
+                                        assert!(
+                                            self.tcx.dcx().has_errors().is_some(),
+                                            "union fields that need dropping should be impossible: {assigned_ty}"
+                                        );
+                                    }
+                                } else {
+                                    // Only require unsafe if this is not a raw borrow operation
+                                    self.requires_unsafe(expr.span, AccessToUnionField);
+                                }
+                            }
                         }
                     }
                 }
@@ -713,12 +740,59 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> UnsafetyVisitor<'a, 'tcx> {
+    /// Check if an expression is a union field access
+    fn is_union_field_access(&self, expr_id: ExprId) -> bool {
+        match self.thir[expr_id].kind {
+            ExprKind::Field { lhs, .. } => {
+                let lhs = &self.thir[lhs];
+                matches!(lhs.ty.kind(), ty::Adt(adt_def, _) if adt_def.is_union())
+            }
+            _ => false,
+        }
+    }
+
+    /// Visit a union field access in the context of a raw borrow operation
+    /// This ensures we still check safety of nested operations while allowing
+    /// the raw pointer creation itself
+    fn visit_union_field_for_raw_borrow(&mut self, mut expr_id: ExprId) {
+        let prev = self.union_field_access_mode;
+        self.union_field_access_mode = UnionFieldAccessMode::SuppressUnionFieldAccessError;
+        // Walk through the chain of union field accesses using while let
+        while let ExprKind::Field { lhs, variant_index, name } = self.thir[expr_id].kind {
+            let lhs_expr = &self.thir[lhs];
+            if let ty::Adt(adt_def, _) = lhs_expr.ty.kind() {
+                // Check for unsafe fields but skip the union access check
+                if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
+                    self.requires_unsafe(self.thir[expr_id].span, UseOfUnsafeField);
+                }
+                // If the LHS is also a union field access, keep walking
+                expr_id = lhs;
+            } else {
+                // Not a union, use normal visiting
+                visit::walk_expr(self, &self.thir[expr_id]);
+                return;
+            }
+        }
+        // Visit the base expression for any nested safety checks
+        self.visit_expr(&self.thir[expr_id]);
+        self.union_field_access_mode = prev;
+    }
+}
+
 #[derive(Clone)]
 enum SafetyContext {
     Safe,
     BuiltinUnsafeBlock,
     UnsafeFn,
     UnsafeBlock { span: Span, hir_id: HirId, used: bool, nested_used_blocks: Vec<NestedUsedBlock> },
+}
+
+/// Controls how union field accesses are checked
+#[derive(Clone, Copy)]
+enum UnionFieldAccessMode {
+    Normal,
+    SuppressUnionFieldAccessError,
 }
 
 #[derive(Clone, Copy)]
@@ -1200,6 +1274,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
         inside_adt: false,
         warnings: &mut warnings,
         suggest_unsafe_block: true,
+        union_field_access_mode: UnionFieldAccessMode::Normal,
     };
     // params in THIR may be unsafe, e.g. a union pattern.
     for param in &thir.params {
