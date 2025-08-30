@@ -14,7 +14,7 @@
 //@[arm32] needs-llvm-components: arm
 #![crate_type = "lib"]
 #![feature(no_core)]
-#![feature(extended_varargs_abi_support, extern_system_varargs)]
+#![feature(extern_system_varargs)]
 #![no_core]
 
 extern crate minicore;

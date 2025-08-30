@@ -90,7 +90,7 @@ mod outlives;
 mod variance;
 
 pub use errors::NoVariantNamed;
-use rustc_abi::ExternAbi;
+use rustc_abi::{CVariadicStatus, ExternAbi};
 use rustc_hir::def::DefKind;
 use rustc_hir::lints::DelayedLint;
 use rustc_hir::{self as hir};
@@ -99,7 +99,6 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -108,46 +107,34 @@ use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
-fn require_c_abi_if_c_variadic(
-    tcx: TyCtxt<'_>,
-    decl: &hir::FnDecl<'_>,
-    abi: ExternAbi,
-    span: Span,
-) {
-    // ABIs which can stably use varargs
-    if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
+fn check_c_variadic_abi(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: ExternAbi, span: Span) {
+    if !decl.c_variadic {
+        // Not even a variadic function.
         return;
     }
 
-    // ABIs with feature-gated stability
-    let extended_abi_support = tcx.features().extended_varargs_abi_support();
-    let extern_system_varargs = tcx.features().extern_system_varargs();
-
-    // If the feature gate has been enabled, we can stop here
-    if extern_system_varargs && let ExternAbi::System { .. } = abi {
-        return;
-    };
-    if extended_abi_support && abi.supports_varargs() {
-        return;
-    };
-
-    // Looks like we need to pick an error to emit.
-    // Is there any feature which we could have enabled to make this work?
-    let unstable_explain =
-        format!("C-variadic functions with the {abi} calling convention are unstable");
-    match abi {
-        ExternAbi::System { .. } => {
-            feature_err(&tcx.sess, sym::extern_system_varargs, span, unstable_explain)
+    match abi.supports_c_variadic() {
+        CVariadicStatus::Stable => {}
+        CVariadicStatus::NotSupported => {
+            tcx.dcx()
+                .create_err(errors::VariadicFunctionCompatibleConvention {
+                    span,
+                    convention: &format!("{abi}"),
+                })
+                .emit();
         }
-        abi if abi.supports_varargs() => {
-            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, unstable_explain)
+        CVariadicStatus::Unstable { feature } => {
+            if !tcx.features().enabled(feature) {
+                feature_err(
+                    &tcx.sess,
+                    feature,
+                    span,
+                    format!("C-variadic functions with the {abi} calling convention are unstable"),
+                )
+                .emit();
+            }
         }
-        _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
-            span,
-            convention: &format!("{abi}"),
-        }),
     }
-    .emit();
 }
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]

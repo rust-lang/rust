@@ -57,7 +57,7 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .label = {ast_passes_auto_super_lifetime}
     .suggestion = remove the super traits or lifetime bounds
 
-ast_passes_bad_c_variadic = only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+ast_passes_bad_c_variadic = defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
 
 ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .cannot_have = cannot have a body
