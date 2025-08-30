@@ -678,26 +678,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for sp in &origin_sp {
                     err.subdiagnostic(errors::VariableNotInAllPatterns { span: *sp });
                 }
-                let mut target_visitor = BindingVisitor::default();
-                for pat in &target {
-                    target_visitor.visit_pat(pat);
-                }
-                target_visitor.identifiers.sort();
-                target_visitor.identifiers.dedup();
-                let mut origin_visitor = BindingVisitor::default();
-                for (_, pat) in &origin {
-                    origin_visitor.visit_pat(pat);
-                }
-                origin_visitor.identifiers.sort();
-                origin_visitor.identifiers.dedup();
-                // Find if the binding could have been a typo
                 let mut suggested_typo = false;
-                if let Some(typo) =
-                    find_best_match_for_name(&target_visitor.identifiers, name.name, None)
-                    && !origin_visitor.identifiers.contains(&typo)
+                if !target.iter().all(|pat| matches!(pat.kind, ast::PatKind::Ident(..)))
+                    && !origin.iter().all(|(_, pat)| matches!(pat.kind, ast::PatKind::Ident(..)))
                 {
-                    err.subdiagnostic(errors::PatternBindingTypo { spans: origin_sp, typo });
-                    suggested_typo = true;
+                    // The check above is so that when we encounter `match foo { (a | b) => {} }`,
+                    // we don't suggest `(a | a) => {}`, which would never be what the user wants.
+                    let mut target_visitor = BindingVisitor::default();
+                    for pat in &target {
+                        target_visitor.visit_pat(pat);
+                    }
+                    target_visitor.identifiers.sort();
+                    target_visitor.identifiers.dedup();
+                    let mut origin_visitor = BindingVisitor::default();
+                    for (_, pat) in &origin {
+                        origin_visitor.visit_pat(pat);
+                    }
+                    origin_visitor.identifiers.sort();
+                    origin_visitor.identifiers.dedup();
+                    // Find if the binding could have been a typo
+                    if let Some(typo) =
+                        find_best_match_for_name(&target_visitor.identifiers, name.name, None)
+                        && !origin_visitor.identifiers.contains(&typo)
+                    {
+                        err.subdiagnostic(errors::PatternBindingTypo { spans: origin_sp, typo });
+                        suggested_typo = true;
+                    }
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(

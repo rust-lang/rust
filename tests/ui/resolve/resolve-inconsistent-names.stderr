@@ -5,12 +5,6 @@ LL |         a | b => {}
    |         ^   - variable not in all patterns
    |         |
    |         pattern doesn't bind `b`
-   |
-help: you might have meant to use the similarly named previously used binding `a`
-   |
-LL -         a | b => {}
-LL +         a | a => {}
-   |
 
 error[E0408]: variable `a` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:13:13
@@ -19,15 +13,9 @@ LL |         a | b => {}
    |         -   ^ pattern doesn't bind `a`
    |         |
    |         variable not in all patterns
-   |
-help: you might have meant to use the similarly named previously used binding `b`
-   |
-LL -         a | b => {}
-LL +         b | b => {}
-   |
 
 error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:21:9
+  --> $DIR/resolve-inconsistent-names.rs:19:9
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()
    |         ^^^^^^           -     - variable not in all patterns
@@ -36,7 +24,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |         pattern doesn't bind `c`
 
 error[E0408]: variable `A` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:21:18
+  --> $DIR/resolve-inconsistent-names.rs:19:18
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()
    |          -       ^^^^^^^^^^       - variable not in all patterns
@@ -50,7 +38,7 @@ LL |         (E::A, B) | (ref B, c) | (c, A) => ()
    |          +++
 
 error[E0408]: variable `B` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:21:31
+  --> $DIR/resolve-inconsistent-names.rs:19:31
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             -         -       ^^^^^^ pattern doesn't bind `B`
@@ -59,7 +47,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             variable not in all patterns
 
 error[E0409]: variable `B` is bound inconsistently across alternatives separated by `|`
-  --> $DIR/resolve-inconsistent-names.rs:21:23
+  --> $DIR/resolve-inconsistent-names.rs:19:23
    |
 LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             -         ^ bound in different ways
@@ -67,7 +55,7 @@ LL |         (A, B) | (ref B, c) | (c, A) => ()
    |             first binding
 
 error[E0408]: variable `Const2` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:33:9
+  --> $DIR/resolve-inconsistent-names.rs:31:9
    |
 LL |         (CONST1, _) | (_, Const2) => ()
    |         ^^^^^^^^^^^       ------ variable not in all patterns
@@ -80,7 +68,7 @@ LL |         (CONST1, _) | (_, m::Const2) => ()
    |                           +++
 
 error[E0408]: variable `CONST1` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:33:23
+  --> $DIR/resolve-inconsistent-names.rs:31:23
    |
 LL |         (CONST1, _) | (_, Const2) => ()
    |          ------       ^^^^^^^^^^^ pattern doesn't bind `CONST1`
@@ -94,7 +82,7 @@ LL |     const CONST1: usize = 10;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
 
 error[E0308]: mismatched types
-  --> $DIR/resolve-inconsistent-names.rs:21:19
+  --> $DIR/resolve-inconsistent-names.rs:19:19
    |
 LL |     match x {
    |           - this expression has type `(E, E)`

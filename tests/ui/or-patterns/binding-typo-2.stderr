@@ -34,10 +34,11 @@ LL |         Non | None => {}
    |         |
    |         variable not in all patterns
    |
-help: you might have meant to use the similarly named previously used binding `None`
+help: you might have meant to use the similarly named unit variant `None`
    |
-LL |         None | None => {}
-   |            +
+LL -         Non | None => {}
+LL +         core::option::Option::None | None => {}
+   |
 
 error[E0408]: variable `Non` is not bound in all patterns
   --> $DIR/binding-typo-2.rs:54:15

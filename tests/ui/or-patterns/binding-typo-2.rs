@@ -47,7 +47,7 @@ fn foo(x: (Lol, Lol)) {
         //~| ERROR: variable `Non` is not bound in all patterns [E0408]
         //~| NOTE: pattern doesn't bind `Non`
         //~| NOTE: variable not in all patterns
-        //~| HELP: you might have meant to use the similarly named previously used binding `None`
+        //~| HELP: you might have meant to use the similarly named unit variant `None`
         //~| HELP: you might have meant to pattern match on the similarly named
     }
     match Some(42) {
