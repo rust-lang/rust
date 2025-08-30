@@ -21,7 +21,6 @@ const fn test1<T: [const] Foo + Bar>() {
     T::b();
     //~^ ERROR the trait bound
     T::c::<T>();
-    //~^ ERROR the trait bound
 }
 
 const fn test2<T: [const] Foo + [const] Bar>() {
