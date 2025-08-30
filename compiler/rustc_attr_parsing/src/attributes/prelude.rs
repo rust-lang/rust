@@ -1,7 +1,6 @@
-// templates
-#[doc(hidden)]
-pub(super) use rustc_feature::{AttributeTemplate, template};
 // data structures
+#[doc(hidden)]
+pub(super) use rustc_feature::{AttributeTemplate, AttributeType, template};
 #[doc(hidden)]
 pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]

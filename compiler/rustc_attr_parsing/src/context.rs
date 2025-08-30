@@ -24,7 +24,10 @@ use crate::attributes::codegen_attrs::{
     UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
-use crate::attributes::crate_level::CrateNameParser;
+use crate::attributes::crate_level::{
+    CrateNameParser, MoveSizeLimitParser, PatternComplexityLimitParser, RecursionLimitParser,
+    TypeLengthLimitParser,
+};
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -181,10 +184,13 @@ attribute_parsers!(
         Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,
         Single<LinkageParser>,
+        Single<MoveSizeLimitParser>,
         Single<MustUseParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
+        Single<PatternComplexityLimitParser>,
         Single<ProcMacroDeriveParser>,
+        Single<RecursionLimitParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
         Single<RustcLayoutScalarValidRangeEnd>,
@@ -194,6 +200,7 @@ attribute_parsers!(
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
         Single<TransparencyParser>,
+        Single<TypeLengthLimitParser>,
         Single<WithoutArgs<AllowIncoherentImplParser>>,
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,
@@ -346,7 +353,10 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_lint(&mut self, lint: AttributeLintKind, span: Span) {
-        if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
+        if !matches!(
+            self.stage.should_emit(),
+            ShouldEmit::ErrorsAndLints | ShouldEmit::EarlyFatal { also_emit_lints: true }
+        ) {
             return;
         }
         let id = self.target_id;
@@ -670,7 +680,7 @@ pub enum ShouldEmit {
     ///
     /// Only relevant when early parsing, in late parsing equivalent to `ErrorsAndLints`.
     /// Late parsing is never fatal, and instead tries to emit as many diagnostics as possible.
-    EarlyFatal,
+    EarlyFatal { also_emit_lints: bool },
     /// The operation will emit errors and lints.
     /// This is usually what you need.
     ErrorsAndLints,
@@ -682,8 +692,8 @@ pub enum ShouldEmit {
 impl ShouldEmit {
     pub(crate) fn emit_err(&self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
-            ShouldEmit::EarlyFatal if diag.level() == Level::DelayedBug => diag.emit(),
-            ShouldEmit::EarlyFatal => diag.upgrade_to_fatal().emit(),
+            ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
+            ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
             ShouldEmit::ErrorsAndLints => diag.emit(),
             ShouldEmit::Nothing => diag.delay_as_bug(),
         }

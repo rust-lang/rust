@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::limit::Limit;
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 
@@ -233,7 +234,7 @@ impl<'tcx> TyCtxt<'tcx> {
         loop {
             // Look for the longest properly trimmed path that still fits in length_limit.
             short = with_forced_trimmed_paths!({
-                let mut p = FmtPrinter::new_with_limit(self, ns, rustc_session::Limit(type_limit));
+                let mut p = FmtPrinter::new_with_limit(self, ns, Limit(type_limit));
                 self.lift(t)
                     .expect("could not lift for printing")
                     .print(&mut p)

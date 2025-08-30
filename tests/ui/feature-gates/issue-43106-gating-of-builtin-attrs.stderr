@@ -291,28 +291,6 @@ help: add a `!`
 LL | #![no_builtins]
    |  +
 
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:918:1
-   |
-LL | #[recursion_limit="0200"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL | #![recursion_limit="0200"]
-   |  +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:942:1
-   |
-LL | #[type_length_limit="0100"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL | #![type_length_limit="0100"]
-   |  +
-
 warning: attribute should be applied to an `extern` block with non-Rust ABI
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:72:1
    |
@@ -755,106 +733,6 @@ LL |     #[no_builtins] impl S { }
 help: add a `!`
    |
 LL |     #![no_builtins] impl S { }
-   |      +
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:922:17
-   |
-LL |     mod inner { #![recursion_limit="0200"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:925:5
-   |
-LL |     #[recursion_limit="0200"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![recursion_limit="0200"] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:929:5
-   |
-LL |     #[recursion_limit="0200"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![recursion_limit="0200"] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:5
-   |
-LL |     #[recursion_limit="0200"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![recursion_limit="0200"] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:937:5
-   |
-LL |     #[recursion_limit="0200"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![recursion_limit="0200"] impl S { }
-   |      +
-
-warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:946:17
-   |
-LL |     mod inner { #![type_length_limit="0100"] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:949:5
-   |
-LL |     #[type_length_limit="0100"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![type_length_limit="0100"] fn f() { }
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:953:5
-   |
-LL |     #[type_length_limit="0100"] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![type_length_limit="0100"] struct S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:957:5
-   |
-LL |     #[type_length_limit="0100"] type T = S;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![type_length_limit="0100"] type T = S;
-   |      +
-
-warning: crate-level attribute should be an inner attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:961:5
-   |
-LL |     #[type_length_limit="0100"] impl S { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add a `!`
-   |
-LL |     #![type_length_limit="0100"] impl S { }
    |      +
 
 warning: `#[macro_use]` attribute cannot be used on functions
@@ -1475,6 +1353,146 @@ note: This attribute does not have an `!`, which means it is applied to this imp
    |
 LL |     #[crate_name = "0900"] impl S { }
    |                            ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:918:1
+   |
+LL | #[recursion_limit="0200"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:920:1
+   |
+LL | / mod recursion_limit {
+LL | |
+LL | |     mod inner { #![recursion_limit="0200"] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![recursion_limit]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:922:17
+   |
+LL |     mod inner { #![recursion_limit="0200"] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:925:5
+   |
+LL |     #[recursion_limit="0200"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:925:31
+   |
+LL |     #[recursion_limit="0200"] fn f() { }
+   |                               ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:929:5
+   |
+LL |     #[recursion_limit="0200"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:929:31
+   |
+LL |     #[recursion_limit="0200"] struct S;
+   |                               ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:5
+   |
+LL |     #[recursion_limit="0200"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:31
+   |
+LL |     #[recursion_limit="0200"] type T = S;
+   |                               ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![recursion_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:937:5
+   |
+LL |     #[recursion_limit="0200"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:937:31
+   |
+LL |     #[recursion_limit="0200"] impl S { }
+   |                               ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:942:1
+   |
+LL | #[type_length_limit="0100"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this module
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:944:1
+   |
+LL | / mod type_length_limit {
+LL | |
+LL | |     mod inner { #![type_length_limit="0100"] }
+...  |
+LL | | }
+   | |_^
+
+warning: the `#![type_length_limit]` attribute can only be used at the crate root
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:946:17
+   |
+LL |     mod inner { #![type_length_limit="0100"] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:949:5
+   |
+LL |     #[type_length_limit="0100"] fn f() { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this function
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:949:33
+   |
+LL |     #[type_length_limit="0100"] fn f() { }
+   |                                 ^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:953:5
+   |
+LL |     #[type_length_limit="0100"] struct S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this struct
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:953:33
+   |
+LL |     #[type_length_limit="0100"] struct S;
+   |                                 ^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:957:5
+   |
+LL |     #[type_length_limit="0100"] type T = S;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this type alias
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:957:33
+   |
+LL |     #[type_length_limit="0100"] type T = S;
+   |                                 ^^^^^^^^^^^
+
+warning: crate-level attribute should be an inner attribute: add an exclamation mark: `#![type_length_limit]`
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:961:5
+   |
+LL |     #[type_length_limit="0100"] impl S { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: This attribute does not have an `!`, which means it is applied to this implementation block
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:961:33
+   |
+LL |     #[type_length_limit="0100"] impl S { }
+   |                                 ^^^^^^^^^^
 
 warning: `#[should_panic]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:50:1
