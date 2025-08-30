@@ -565,6 +565,11 @@ fn opt_trait_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
 }
 
 fn disabled_sanitizers_for(tcx: TyCtxt<'_>, did: LocalDefId) -> SanitizerSet {
+    // No need to evaluate the sanitizer attribute if no sanitizer is enabled.
+    if tcx.sess.opts.unstable_opts.sanitizer.is_empty() {
+        return SanitizerSet::empty();
+    }
+
     // Backtrack to the crate root.
     let mut disabled = match tcx.opt_local_parent(did) {
         // Check the parent (recursively).
