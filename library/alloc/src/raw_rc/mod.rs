@@ -64,10 +64,10 @@
 
 use core::alloc::{AllocError, Allocator};
 use core::cell::UnsafeCell;
-#[cfg(not(no_global_oom_handling))]
 use core::mem;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr::{self, NonNull};
+use core::sync::atomic::Atomic;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc;
@@ -437,4 +437,81 @@ where
     let allocation_ptr = unsafe { value_ptr.as_ptr().byte_sub(value_offset) };
 
     unsafe { alloc.deallocate(allocation_ptr.cast(), rc_layout.get()) }
+}
+
+/// The return value type for `RefCounter::make_mut`.
+#[cfg(not(no_global_oom_handling))]
+pub(crate) enum MakeMutStrategy {
+    /// The strong reference count is 1, but weak reference count (including the one shared by all
+    /// strong reference count) is more than 1. Before returning, the strong reference count has
+    /// been set to zero to prevent new strong pointers from being created through upgrading from
+    /// weak pointers.
+    Move,
+    /// The strong count is more than 1.
+    Clone,
+}
+
+/// A trait for `rc` and `sync` modules to define their reference-counting behaviors.
+///
+/// # Safety
+///
+/// - Each method must be implemented according to its description.
+/// - `Self` must have transparent representation over `UnsafeCell<usize>` and every valid
+///   `UnsafeCell<usize>` can also be reinterpreted as a valid `Self`.
+/// - `Self` must have alignment no greater than `align_of::<Atomic<usize>>()`.
+pub(crate) unsafe trait RefCounter: Sized {
+    const VERIFY_LAYOUT: () = {
+        assert!(size_of::<Self>() == size_of::<UnsafeCell<usize>>());
+        assert!(align_of::<Self>() <= align_of::<Atomic<usize>>());
+    };
+
+    /// Returns a reference to `Self` from
+    ///
+    /// # Safety
+    ///
+    /// - `count` must only be handled by the same `RefCounter` implementation.
+    /// - The location of `count` must have enough alignment for storing `Atomic<usize>`.
+    unsafe fn from_raw_counter(count: &UnsafeCell<usize>) -> &Self {
+        () = Self::VERIFY_LAYOUT;
+
+        // SAFETY: Caller guarantees `count` be safely reinterpreted as `Self`.
+        unsafe { mem::transmute(count) }
+    }
+
+    /// Increments the reference counter. The process will abort if overflow happens.
+    fn increment(&self);
+
+    /// Decrements the reference counter. Returns whether the reference count becomes zero after
+    /// decrementing.
+    fn decrement(&self) -> bool;
+
+    /// Increments the reference counter if and only if the reference count is non-zero. Returns
+    /// whether incrementing is performed.
+    fn upgrade(&self) -> bool;
+
+    /// Increments the reference counter. If the same reference counter is called concurrently by
+    /// both `downgrade` and by `is_unique` as the `weak` argument. Both operations will be
+    /// performed atomically.
+    fn downgrade(&self);
+
+    /// Decrements the reference counter if and only if the reference count is 1. Returns true if
+    /// decrementing is performed.
+    fn lock_strong_count(&self) -> bool;
+
+    /// Sets the reference count to 1.
+    fn unlock_strong_count(&self);
+
+    /// Returns whether both `strong_count` are 1 and `weak_count` is 1. If the same reference
+    /// counter is called concurrently by both `downgrade` and by `is_unique` as the `weak`
+    /// argument. Both operations will be performed atomically.
+    fn is_unique(strong_count: &Self, weak_count: &Self) -> bool;
+
+    /// Determines how to make a mutable reference safely to a reference counted value.
+    ///
+    /// - If both strong count and weak count are 1, returns `None`.
+    /// - If strong count is 1 and weak count is greater than 1, returns
+    ///   `Some(MakeMutStrategy::Move)`.
+    /// - If strong count is greater than 1, returns `Some(MakeMutStrategy::Clone)`.
+    #[cfg(not(no_global_oom_handling))]
+    fn make_mut(strong_count: &Self, weak_count: &Self) -> Option<MakeMutStrategy>;
 }
