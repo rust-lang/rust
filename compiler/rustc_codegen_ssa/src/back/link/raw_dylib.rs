@@ -7,9 +7,9 @@ use rustc_data_structures::base_n::{CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hashes::Hash128;
+use rustc_hir::attrs::NativeLibKind;
 use rustc_session::Session;
 use rustc_session::cstore::DllImport;
-use rustc_session::utils::NativeLibKind;
 use rustc_span::Symbol;
 
 use crate::back::archive::ImportLibraryItem;

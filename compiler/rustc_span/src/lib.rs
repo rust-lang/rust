@@ -17,6 +17,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(round_char_boundary))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -26,7 +27,6 @@
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
-#![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end

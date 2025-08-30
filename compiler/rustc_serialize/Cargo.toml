@@ -5,14 +5,14 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-indexmap = "2.0.0"
+indexmap.workspace = true
 rustc_hashes = { path = "../rustc_hashes" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-thin-vec = "0.2.12"
+thin-vec.workspace = true
 # tidy-alphabetical-end
 
 [dev-dependencies]
 # tidy-alphabetical-start
 rustc_macros = { path = "../rustc_macros" }
-tempfile = "3.2"
+tempfile.workspace = true
 # tidy-alphabetical-end

@@ -629,7 +629,7 @@ pub(crate) fn method_autoderef_steps<'tcx>(
             .collect();
         (steps, autoderef_via_deref.reached_recursion_limit())
     };
-    let final_ty = autoderef_via_deref.final_ty(true);
+    let final_ty = autoderef_via_deref.final_ty();
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,

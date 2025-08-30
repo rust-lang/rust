@@ -99,6 +99,21 @@ impl IntoDiagArg for ProcMacroKind {
     }
 }
 
+#[derive(Clone, Copy)]
+enum DocFakeItemKind {
+    Attribute,
+    Keyword,
+}
+
+impl DocFakeItemKind {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Attribute => "attribute",
+            Self::Keyword => "keyword",
+        }
+    }
+}
+
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
@@ -200,6 +215,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 &Attribute::Parsed(AttributeKind::Sanitize { on_set, off_set, span: attr_span}) => {
                     self.check_sanitize(attr_span, on_set | off_set, span, target);
                 },
+                Attribute::Parsed(AttributeKind::Link(_, attr_span)) => {
+                    self.check_link(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(
                     AttributeKind::BodyStability { .. }
                     | AttributeKind::ConstStabilityIndirect
@@ -305,7 +323,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
-                        [sym::link, ..] => self.check_link(hir_id, attr, span, target),
                         [sym::macro_export, ..] => self.check_macro_export(hir_id, attr, target),
                         [sym::autodiff_forward, ..] | [sym::autodiff_reverse, ..] => {
                             self.check_autodiff(hir_id, attr, span, target)
@@ -851,7 +868,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_keyword(&self, meta: &MetaItemInner, hir_id: HirId) {
+    fn check_doc_keyword_and_attribute(
+        &self,
+        meta: &MetaItemInner,
+        hir_id: HirId,
+        attr_kind: DocFakeItemKind,
+    ) {
         fn is_doc_keyword(s: Symbol) -> bool {
             // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
             // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
@@ -859,9 +881,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             s.is_reserved(|| edition::LATEST_STABLE_EDITION) || s.is_weak() || s == sym::SelfTy
         }
 
-        let doc_keyword = match meta.value_str() {
+        // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
+        fn is_builtin_attr(s: Symbol) -> bool {
+            rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&s)
+        }
+
+        let value = match meta.value_str() {
             Some(value) if value != sym::empty => value,
-            _ => return self.doc_attr_str_error(meta, "keyword"),
+            _ => return self.doc_attr_str_error(meta, attr_kind.name()),
         };
 
         let item_kind = match self.tcx.hir_node(hir_id) {
@@ -871,20 +898,38 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match item_kind {
             Some(ItemKind::Mod(_, module)) => {
                 if !module.item_ids.is_empty() {
-                    self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
+                    self.dcx().emit_err(errors::DocKeywordAttributeEmptyMod {
+                        span: meta.span(),
+                        attr_name: attr_kind.name(),
+                    });
                     return;
                 }
             }
             _ => {
-                self.dcx().emit_err(errors::DocKeywordNotMod { span: meta.span() });
+                self.dcx().emit_err(errors::DocKeywordAttributeNotMod {
+                    span: meta.span(),
+                    attr_name: attr_kind.name(),
+                });
                 return;
             }
         }
-        if !is_doc_keyword(doc_keyword) {
-            self.dcx().emit_err(errors::DocKeywordNotKeyword {
-                span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                keyword: doc_keyword,
-            });
+        match attr_kind {
+            DocFakeItemKind::Keyword => {
+                if !is_doc_keyword(value) {
+                    self.dcx().emit_err(errors::DocKeywordNotKeyword {
+                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                        keyword: value,
+                    });
+                }
+            }
+            DocFakeItemKind::Attribute => {
+                if !is_builtin_attr(value) {
+                    self.dcx().emit_err(errors::DocAttributeNotAttribute {
+                        span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                        attribute: value,
+                    });
+                }
+            }
         }
     }
 
@@ -1144,7 +1189,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
                         Some(sym::keyword) => {
                             if self.check_attr_not_crate_level(meta, hir_id, "keyword") {
-                                self.check_doc_keyword(meta, hir_id);
+                                self.check_doc_keyword_and_attribute(
+                                    meta,
+                                    hir_id,
+                                    DocFakeItemKind::Keyword,
+                                );
+                            }
+                        }
+
+                        Some(sym::attribute) => {
+                            if self.check_attr_not_crate_level(meta, hir_id, "attribute") {
+                                self.check_doc_keyword_and_attribute(
+                                    meta,
+                                    hir_id,
+                                    DocFakeItemKind::Attribute,
+                                );
                             }
                         }
 
@@ -1324,7 +1383,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[link]` is applied to an item other than a foreign module.
-    fn check_link(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_link(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         if target == Target::ForeignMod
             && let hir::Node::Item(item) = self.tcx.hir_node(hir_id)
             && let Item { kind: ItemKind::ForeignMod { abi, .. }, .. } = item
@@ -1336,7 +1395,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span(),
+            attr_span,
             errors::Link { span: (target != Target::ForeignMod).then_some(span) },
         );
     }

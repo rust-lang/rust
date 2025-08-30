@@ -400,6 +400,10 @@ span.keyword, a.keyword {
 	color: var(--keyword-link-color);
 }
 
+span.attribute, a.attribute {
+	color: var(--attribute-link-color);
+}
+
 a {
 	color: var(--link-color);
 	text-decoration: none;
@@ -3190,6 +3194,7 @@ by default.
 	--function-link-color: #ad7c37;
 	--macro-link-color: #068000;
 	--keyword-link-color: #3873ad;
+	--attribute-link-color: #3873ad;
 	--mod-link-color: #3873ad;
 	--link-color: #3873ad;
 	--sidebar-link-color: #356da4;
@@ -3294,6 +3299,7 @@ by default.
 	--function-link-color: #2bab63;
 	--macro-link-color: #09bd00;
 	--keyword-link-color: #d2991d;
+	--attribute-link-color: #d2991d;
 	--mod-link-color:  #d2991d;
 	--link-color: #d2991d;
 	--sidebar-link-color: #fdbf35;
@@ -3407,6 +3413,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--function-link-color: #fdd687;
 	--macro-link-color: #a37acc;
 	--keyword-link-color: #39afd7;
+	--attribute-link-color: #39afd7;
 	--mod-link-color: #39afd7;
 	--link-color: #39afd7;
 	--sidebar-link-color: #53b1db;

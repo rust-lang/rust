@@ -9,7 +9,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
-itertools = "0.12"
+itertools.workspace = true
 rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
@@ -29,5 +29,5 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing = "0.1"
+tracing.workspace = true
 # tidy-alphabetical-end

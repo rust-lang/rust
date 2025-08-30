@@ -44,6 +44,7 @@ error[E0599]: no method named `try_into` found for type `i32` in the current sco
    |
 LL |     let _i: i16 = 0_i32.try_into().unwrap();
    |                         ^^^^^^^^
+   |
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
    |
    = note: the method is available for `i32` here

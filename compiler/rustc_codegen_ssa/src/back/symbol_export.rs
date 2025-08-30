@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolNam
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{SanitizerSet, TlsModel};
+use rustc_target::spec::TlsModel;
 use tracing::debug;
 
 use crate::base::allocator_kind_for_codegen;
@@ -240,53 +240,6 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
                 },
             ));
         }
-    }
-
-    if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
-        // These are weak symbols that point to the profile version and the
-        // profile name, which need to be treated as exported so LTO doesn't nix
-        // them.
-        const PROFILER_WEAK_SYMBOLS: [&str; 2] =
-            ["__llvm_profile_raw_version", "__llvm_profile_filename"];
-
-        symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                    rustc_std_internal_symbol: false,
-                },
-            )
-        }));
-    }
-
-    if tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
-        let mut msan_weak_symbols = Vec::new();
-
-        // Similar to profiling, preserve weak msan symbol during LTO.
-        if tcx.sess.opts.unstable_opts.sanitizer_recover.contains(SanitizerSet::MEMORY) {
-            msan_weak_symbols.push("__msan_keep_going");
-        }
-
-        if tcx.sess.opts.unstable_opts.sanitizer_memory_track_origins != 0 {
-            msan_weak_symbols.push("__msan_track_origins");
-        }
-
-        symbols.extend(msan_weak_symbols.into_iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (
-                exported_symbol,
-                SymbolExportInfo {
-                    level: SymbolExportLevel::C,
-                    kind: SymbolExportKind::Data,
-                    used: false,
-                    rustc_std_internal_symbol: false,
-                },
-            )
-        }));
     }
 
     // Sort so we get a stable incr. comp. hash.

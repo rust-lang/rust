@@ -207,8 +207,10 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
     doc_only: bool,
 ) -> (Vec<DocFragment>, ThinVec<A>) {
-    let mut doc_fragments = Vec::new();
-    let mut other_attrs = ThinVec::<A>::new();
+    let (min_size, max_size) = attrs.size_hint();
+    let size_hint = max_size.unwrap_or(min_size);
+    let mut doc_fragments = Vec::with_capacity(size_hint);
+    let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
@@ -229,6 +231,9 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
             other_attrs.push(attr.clone());
         }
     }
+
+    doc_fragments.shrink_to_fit();
+    other_attrs.shrink_to_fit();
 
     unindent_doc_fragments(&mut doc_fragments);
 
@@ -368,8 +373,8 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
     true
 }
 
-/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]`.
-pub fn has_primitive_or_keyword_docs(attrs: &[impl AttributeExt]) -> bool {
+/// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
+pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
         if attr.has_name(sym::rustc_doc_primitive) {
             return true;
@@ -377,7 +382,7 @@ pub fn has_primitive_or_keyword_docs(attrs: &[impl AttributeExt]) -> bool {
             && let Some(items) = attr.meta_item_list()
         {
             for item in items {
-                if item.has_name(sym::keyword) {
+                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
                     return true;
                 }
             }

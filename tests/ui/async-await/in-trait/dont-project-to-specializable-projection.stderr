@@ -25,6 +25,7 @@ error[E0599]: no method named `poll` found for struct `Pin<&mut impl Future<Outp
    |
 LL |         match fut.as_mut().poll(ctx) {
    |                            ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
+   |
   --> $SRC_DIR/core/src/future/future.rs:LL:COL
    |
    = note: the method is available for `Pin<&mut impl Future<Output = ()>>` here

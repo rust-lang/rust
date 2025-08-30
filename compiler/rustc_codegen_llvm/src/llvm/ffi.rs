@@ -263,7 +263,7 @@ pub(crate) enum AttributeKind {
     MinSize = 4,
     Naked = 5,
     NoAlias = 6,
-    NoCapture = 7,
+    CapturesAddress = 7,
     NoInline = 8,
     NonNull = 9,
     NoRedZone = 10,
