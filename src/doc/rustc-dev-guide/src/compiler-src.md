@@ -154,7 +154,7 @@ itself is [`src/tools/rustdoc`], which does nothing except call [`rustdoc::main`
 
 There is also `JavaScript` and `CSS` for the docs in [`src/tools/rustdoc-js`]
 and [`src/tools/rustdoc-themes`]. The type definitions for `--output-format=json`
-are in a seperate crate in [`src/rustdoc-json-types`].
+are in a separate crate in [`src/rustdoc-json-types`].
 
 You can read more about [`rustdoc`] in [this chapter][rustdoc-chapter].
 
