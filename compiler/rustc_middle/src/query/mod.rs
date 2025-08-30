@@ -450,6 +450,8 @@ rustc_queries! {
         }
     }
 
+    /// A list of all bodies inside of `key`, nested bodies are always stored
+    /// before their parent.
     query nested_bodies_within(
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {

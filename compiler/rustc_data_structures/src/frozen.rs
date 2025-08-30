@@ -46,7 +46,7 @@
 //!    Frozen::freeze(new_bar)`).
 
 /// An owned immutable value.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frozen<T>(T);
 
 impl<T> Frozen<T> {
