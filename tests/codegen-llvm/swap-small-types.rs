@@ -1,6 +1,5 @@
 //@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 //@ only-x86_64
-//@ min-llvm-version: 20
 //@ ignore-std-debug-assertions (`ptr::swap_nonoverlapping` has one which blocks some optimizations)
 
 #![crate_type = "lib"]

@@ -1,5 +1,4 @@
 //@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes
-//@ min-llvm-version: 19
 //@ only-64bit
 
 #![crate_type = "lib"]
