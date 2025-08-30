@@ -122,7 +122,7 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
         unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
-    let di_node = unsafe {
+    let mut di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
             size.bits(),
@@ -131,6 +131,21 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
             subscripts,
         )
     };
+
+    if cpp_like_debuginfo(cx.tcx) {
+        let array_type_name = compute_debuginfo_type_name(cx.tcx, array_type, false);
+        di_node = unsafe {
+            llvm::LLVMRustDIBuilderCreateTypedef(
+                DIB(cx),
+                di_node,
+                array_type_name.as_c_char_ptr(),
+                array_type_name.len(),
+                unknown_file_metadata(cx),
+                UNKNOWN_LINE_NUMBER,
+                None,
+            )
+        };
+    }
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -185,8 +200,19 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     ptr_type_debuginfo_name.len(),
                 )
             };
+            let typedefed_ptr = unsafe {
+                llvm::LLVMRustDIBuilderCreateTypedef(
+                    DIB(cx),
+                    di_node,
+                    ptr_type_debuginfo_name.as_c_char_ptr(),
+                    ptr_type_debuginfo_name.len(),
+                    unknown_file_metadata(cx),
+                    UNKNOWN_LINE_NUMBER,
+                    None,
+                )
+            };
 
-            DINodeCreationResult { di_node, already_stored_in_typemap: false }
+            DINodeCreationResult { di_node: typedefed_ptr, already_stored_in_typemap: false }
         }
         Some(wide_pointer_kind) => {
             type_map::build_type_with_children(
