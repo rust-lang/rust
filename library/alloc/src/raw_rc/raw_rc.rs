@@ -3,6 +3,8 @@ use core::cell::UnsafeCell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 #[cfg(not(no_global_oom_handling))]
+use core::iter::TrustedLen;
+#[cfg(not(no_global_oom_handling))]
 use core::marker::PhantomData;
 #[cfg(not(no_global_oom_handling))]
 use core::mem;
@@ -541,5 +543,108 @@ impl<T, A> RawRc<MaybeUninit<T>, A> {
 
     pub(crate) unsafe fn assume_init(self) -> RawRc<T, A> {
         unsafe { self.cast() }
+    }
+}
+
+impl<T, A> RawRc<[T], A> {
+    #[cfg(not(no_global_oom_handling))]
+    fn from_trusted_len_iter<I>(iter: I) -> Self
+    where
+        A: Allocator + Default,
+        I: TrustedLen<Item = T>,
+    {
+        /// Used for dropping initialized elements in the slice if the iteration process panics.
+        struct Guard<T> {
+            head: NonNull<T>,
+            tail: NonNull<T>,
+        }
+
+        impl<T> Drop for Guard<T> {
+            fn drop(&mut self) {
+                unsafe {
+                    let length = self.tail.offset_from_unsigned(self.head);
+
+                    NonNull::<[T]>::slice_from_raw_parts(self.head, length).drop_in_place();
+                }
+            }
+        }
+
+        let (length, Some(high)) = iter.size_hint() else {
+            // TrustedLen contract guarantees that `upper_bound == None` implies an iterator
+            // length exceeding `usize::MAX`.
+            // The default implementation would collect into a vec which would panic.
+            // Thus we panic here immediately without invoking `Vec` code.
+            panic!("capacity overflow");
+        };
+
+        debug_assert_eq!(
+            length,
+            high,
+            "TrustedLen iterator's size hint is not exact: {:?}",
+            (length, high)
+        );
+
+        let rc_layout = RcLayout::new_array::<T>(length);
+
+        let (ptr, alloc) = super::allocate_with::<A, _, 1>(rc_layout, |ptr| {
+            let ptr = ptr.as_ptr().cast::<T>();
+            let mut guard = Guard::<T> { head: ptr, tail: ptr };
+
+            // SAFETY: `iter` is `TrustedLen`, we can assume we will write correct number of
+            // elements to the buffer.
+            iter.for_each(|value| unsafe {
+                guard.tail.write(value);
+                guard.tail = guard.tail.add(1);
+            });
+
+            mem::forget(guard);
+        });
+
+        // SAFETY: We have written `length` of `T` values to the buffer, the buffer is now
+        // initialized.
+        unsafe {
+            Self::from_raw_parts(
+                NonNull::slice_from_raw_parts(ptr.as_ptr().cast::<T>(), length),
+                alloc,
+            )
+        }
+    }
+}
+
+impl<T, A> RawRc<[MaybeUninit<T>], A> {
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit_slice::<1>(length)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_uninit_slice_in(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_uninit_slice_in::<1>(length, alloc)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice(length: usize) -> Self
+    where
+        A: Allocator + Default,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed_slice::<1>(length)) }
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    pub(crate) fn new_zeroed_slice_in(length: usize, alloc: A) -> Self
+    where
+        A: Allocator,
+    {
+        unsafe { Self::from_weak(RawWeak::new_zeroed_slice_in::<1>(length, alloc)) }
+    }
+
+    pub(crate) unsafe fn assume_init(self) -> RawRc<[T], A> {
+        unsafe { self.cast_with(|ptr| NonNull::new_unchecked(ptr.as_ptr() as _)) }
     }
 }
