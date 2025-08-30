@@ -9,6 +9,7 @@
 #![feature(sync_nonpoison)]
 #![feature(nonpoison_condvar)]
 #![feature(nonpoison_mutex)]
+#![feature(nonpoison_once)]
 #![feature(nonpoison_rwlock)]
 #![allow(internal_features)]
 #![feature(macro_metavar_expr_concat)] // For concatenating identifiers in macros.
