@@ -33,6 +33,7 @@ type_alias! { "c_ulonglong.md", c_ulonglong = u64; }
 
 type_alias! { "c_float.md", c_float = f32; }
 type_alias! { "c_double.md", c_double = f64; }
+type_alias! { "c_longdouble.md", c_longdouble = c_longdouble_definition::c_longdouble; #[doc(cfg(all()))] }
 
 mod c_char_definition {
     crate::cfg_select! {
@@ -180,6 +181,60 @@ mod c_int_definition {
         _ => {
             pub(super) type c_int = i32;
             pub(super) type c_uint = u32;
+        }
+    }
+}
+
+mod c_longdouble_definition {
+    crate::cfg_match! {
+        any(
+            // Windows and Apple use f64 across the board
+            target_family = "windows",
+            target_vendor = "apple",
+            // FreeBSD-like operating systems use f64 on mips
+            all(
+                target_arch = "mips64",
+                any(target_os = "freebsd", target_os = "dragonfly")
+            ),
+        ) => {
+            pub(super) type c_longdouble = f64;
+        }
+        any(target_arch = "powerpc", target_arch = "powerpc64") => {
+            // double-double or f128 based on config
+            compile_error!("who knows");
+        }
+        any(
+            target_arch = "aarch64",
+            // Not yet implemented
+            // target_arch = "loongarch32",
+            target_arch = "loongarch64",
+            target_arch = "mips64",
+            target_arch = "riscv32",
+            target_arch = "riscv64",
+            target_arch = "s390x",
+            target_arch = "wasm32",
+            target_arch = "wasm64",
+            // Note: mips32 with the N32 ABI is also f128 (?)
+
+            // Android and OpenHarmony use f128 on x86
+            all(
+                any(target_arch = "x86", target_arch = "x86_64"),
+                any(target_os = "android", target_env = "ohos")
+            ),
+            // Default to f128 for other 64-bit targets
+            all(not(target_arch = "x86_64"), target_pointer_width = "64")
+        ) => {
+            pub(super) type c_longdouble = f128;
+        }
+        // Most other operating systems use the x87 80-bit extended precision float
+        any(target_arch = "x86", target_arch = "x86_64") => {
+            // todo: obviously this isn't right
+            pub(super) type c_longdouble = ();
+        }
+        // Most 16- and 32-bit targets use the same size as `c_double`, usually `f64` but
+        // possibly `f32` on e.g. AVR.
+        _ => {
+            pub(super) type c_longdouble = c_double;
         }
     }
 }
