@@ -91,7 +91,6 @@ mod suggest;
 pub mod need_type_info;
 pub mod nice_region_error;
 pub mod region;
-pub mod sub_relations;
 
 /// Makes a valid string literal from a string by escaping special characters (" and \),
 /// unless they are already escaped.

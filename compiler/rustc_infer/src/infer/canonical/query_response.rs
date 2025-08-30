@@ -13,6 +13,7 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
+use rustc_middle::infer::canonical::CanonicalVarKind;
 use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
@@ -413,26 +414,27 @@ impl<'tcx> InferCtxt<'tcx> {
         let mut opt_values: IndexVec<BoundVar, Option<GenericArg<'tcx>>> =
             IndexVec::from_elem_n(None, query_response.variables.len());
 
-        // In terms of our example above, we are iterating over pairs like:
-        // [(?A, Vec<?0>), ('static, '?1), (?B, ?0)]
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
             match result_value.kind() {
                 GenericArgKind::Type(result_value) => {
-                    // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Bound(debruijn, b) = *result_value.kind() {
-                        // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
-
+                    // We disable the instantiation guess for inference variables
+                    // and only use it for placeholders. We need to handle the
+                    // `sub_root` of type inference variables which would make this
+                    // more involved. They are also a lot rarer than region variables.
+                    if let ty::Bound(debruijn, b) = *result_value.kind()
+                        && !matches!(
+                            query_response.variables[b.var.as_usize()],
+                            CanonicalVarKind::Ty { .. }
+                        )
+                    {
                         // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 GenericArgKind::Lifetime(result_value) => {
-                    // e.g., here `result_value` might be `'?1` in the example above...
                     if let ty::ReBound(debruijn, b) = result_value.kind() {
-                        // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
-
                         // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
@@ -440,8 +442,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
                 GenericArgKind::Const(result_value) => {
                     if let ty::ConstKind::Bound(debruijn, b) = result_value.kind() {
-                        // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
-
                         // We only allow a `ty::INNERMOST` index in generic parameters.
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
@@ -453,39 +453,36 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let result_args = CanonicalVarValues {
-            var_values: self.tcx.mk_args_from_iter(
-                query_response.variables.iter().enumerate().map(|(index, var_kind)| {
-                    if var_kind.universe() != ty::UniverseIndex::ROOT {
-                        // A variable from inside a binder of the query. While ideally these shouldn't
-                        // exist at all, we have to deal with them for now.
-                        self.instantiate_canonical_var(cause.span, var_kind, |u| {
-                            universe_map[u.as_usize()]
-                        })
-                    } else if var_kind.is_existential() {
-                        match opt_values[BoundVar::new(index)] {
-                            Some(k) => k,
-                            None => self.instantiate_canonical_var(cause.span, var_kind, |u| {
-                                universe_map[u.as_usize()]
-                            }),
-                        }
-                    } else {
-                        // For placeholders which were already part of the input, we simply map this
-                        // universal bound variable back the placeholder of the input.
-                        opt_values[BoundVar::new(index)].expect(
-                            "expected placeholder to be unified with itself during response",
-                        )
-                    }
-                }),
-            ),
-        };
+        let tcx = self.tcx;
+        let variables = query_response.variables;
+        let var_values = CanonicalVarValues::instantiate(tcx, variables, |var_values, kind| {
+            if kind.universe() != ty::UniverseIndex::ROOT {
+                // A variable from inside a binder of the query. While ideally these shouldn't
+                // exist at all, we have to deal with them for now.
+                self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
+                    universe_map[u.as_usize()]
+                })
+            } else if kind.is_existential() {
+                match opt_values[BoundVar::new(var_values.len())] {
+                    Some(k) => k,
+                    None => self.instantiate_canonical_var(cause.span, kind, &var_values, |u| {
+                        universe_map[u.as_usize()]
+                    }),
+                }
+            } else {
+                // For placeholders which were already part of the input, we simply map this
+                // universal bound variable back the placeholder of the input.
+                opt_values[BoundVar::new(var_values.len())]
+                    .expect("expected placeholder to be unified with itself during response")
+            }
+        });
 
         let mut obligations = PredicateObligations::new();
 
         // Carry all newly resolved opaque types to the caller's scope
         for &(a, b) in &query_response.value.opaque_types {
-            let a = instantiate_value(self.tcx, &result_args, a);
-            let b = instantiate_value(self.tcx, &result_args, b);
+            let a = instantiate_value(self.tcx, &var_values, a);
+            let b = instantiate_value(self.tcx, &var_values, b);
             debug!(?a, ?b, "constrain opaque type");
             // We use equate here instead of, for example, just registering the
             // opaque type's hidden value directly, because the hidden type may have been an inference
@@ -502,7 +499,7 @@ impl<'tcx> InferCtxt<'tcx> {
             );
         }
 
-        Ok(InferOk { value: result_args, obligations })
+        Ok(InferOk { value: var_values, obligations })
     }
 
     /// Given a "guess" at the values for the canonical variables in
