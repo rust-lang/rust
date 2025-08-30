@@ -2,6 +2,7 @@
 
 #![feature(doc_cfg)]
 #![feature(doc_auto_cfg)]
+#![feature(negative_impls)]
 
 pub mod another_folder;
 pub mod another_mod;
@@ -60,6 +61,8 @@ impl Trait for Foo {
 impl implementors::Whatever for Foo {
     type Foo = u32;
 }
+
+impl !implementors::Whatever for StructToImplOnReexport {}
 
 #[doc(inline)]
 pub use implementors::TraitToReexport;
