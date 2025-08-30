@@ -33,8 +33,8 @@ pub fn compile_windows_resource_file(
     resources_dir.push("resources");
     fs::create_dir_all(&resources_dir).unwrap();
 
-    let resource_compiler = find_resource_compiler(&env::var("CARGO_CFG_TARGET_ARCH").unwrap())
-        .expect("rc.exe not found");
+    let resource_compiler =
+        find_resource_compiler(&env::var("CARGO_CFG_TARGET_ARCH").unwrap()).expect("found rc.exe");
 
     let mut resource_script = RESOURCE_TEMPLATE.to_string();
 
@@ -49,7 +49,7 @@ pub fn compile_windows_resource_file(
 
     // remove the suffix, if present and parse into [`ResourceVersion`]
     let version = parse_version(rel_version.split("-").next().unwrap_or("0.0.0"))
-        .expect("could not parse CFG_RELEASE version");
+        .expect("valid CFG_RELEASE version");
 
     resource_script = resource_script
         .replace("@RUSTC_FILEDESCRIPTION_STR@", file_description)
@@ -71,7 +71,7 @@ pub fn compile_windows_resource_file(
         .arg(&res_path)
         .arg(&rc_path)
         .status()
-        .expect("failed to execute rc.exe");
+        .expect("can execute resource compiler");
     assert!(status.success(), "rc.exe failed with status {}", status);
     assert!(
         res_path.try_exists().unwrap_or(false),
