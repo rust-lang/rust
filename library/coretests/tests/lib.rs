@@ -15,6 +15,7 @@
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
+#![feature(const_cmp)]
 #![feature(const_deref)]
 #![feature(const_destruct)]
 #![feature(const_eval_select)]
