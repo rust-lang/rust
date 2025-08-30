@@ -82,7 +82,7 @@ pub enum TargetFeatureKind {
     Forced,
 }
 
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, HashStable)]
 pub struct TargetFeature {
     /// The name of the target feature (e.g. "avx")
     pub name: Symbol,

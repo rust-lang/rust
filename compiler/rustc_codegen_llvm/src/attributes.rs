@@ -29,8 +29,18 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
 }
 
 /// Get LLVM attribute for the provided inline heuristic.
-#[inline]
-fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {
+pub(crate) fn inline_attr<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    instance: ty::Instance<'tcx>,
+) -> Option<&'ll Attribute> {
+    // `optnone` requires `noinline`
+    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
+        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
+        (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
+        (inline, _) => inline,
+    };
+
     if !cx.tcx.sess.opts.unstable_opts.inline_llvm {
         // disable LLVM inlining
         return Some(AttributeKind::NoInline.create_attr(cx.llcx));
@@ -346,14 +356,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    // `optnone` requires `noinline`
-    let inline = match (codegen_fn_attrs.inline, &codegen_fn_attrs.optimize) {
-        (_, OptimizeAttr::DoNotOptimize) => InlineAttr::Never,
-        (InlineAttr::None, _) if instance.def.requires_inline(cx.tcx) => InlineAttr::Hint,
-        (inline, _) => inline,
-    };
-    to_add.extend(inline_attr(cx, inline));
-
     if cx.sess().must_emit_unwind_tables() {
         to_add.push(uwtable_attr(cx.llcx, cx.sess().opts.unstable_opts.use_sync_unwind));
     }
@@ -488,6 +490,14 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features =
         codegen_fn_attrs.target_features.iter().map(|f| f.name.as_str()).collect::<Vec<&str>>();
 
+    // Apply function attributes as per usual if there are no user defined
+    // target features otherwise this will get applied at the callsite.
+    if function_features.is_empty() {
+        if let Some(inline_attr) = inline_attr(cx, instance) {
+            to_add.push(inline_attr);
+        }
+    }
+
     let function_features = function_features
         .iter()
         // Convert to LLVMFeatures and filter out unavailable ones
@@ -517,6 +527,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     let function_features = function_features.iter().map(|s| s.as_str());
     let target_features: String =
         global_features.chain(function_features).intersperse(",").collect();
+
     if !target_features.is_empty() {
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }

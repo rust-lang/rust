@@ -1392,7 +1392,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn call(
         &mut self,
         llty: &'ll Type,
-        fn_attrs: Option<&CodegenFnAttrs>,
+        fn_call_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         llfn: &'ll Value,
         args: &[&'ll Value],
@@ -1409,10 +1409,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
 
         // Emit CFI pointer type membership test
-        self.cfi_type_test(fn_attrs, fn_abi, instance, llfn);
+        self.cfi_type_test(fn_call_attrs, fn_abi, instance, llfn);
 
         // Emit KCFI operand bundle
-        let kcfi_bundle = self.kcfi_operand_bundle(fn_attrs, fn_abi, instance, llfn);
+        let kcfi_bundle = self.kcfi_operand_bundle(fn_call_attrs, fn_abi, instance, llfn);
         if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.as_ref()) {
             bundles.push(kcfi_bundle);
         }
@@ -1429,6 +1429,29 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 c"".as_ptr(),
             )
         };
+
+        if let Some(instance) = instance {
+            // Attributes on the function definition being called
+            let fn_defn_attrs = self.cx.tcx.codegen_fn_attrs(instance.def_id());
+            if let Some(fn_call_attrs) = fn_call_attrs
+                && !fn_call_attrs.target_features.is_empty()
+                // If there is an inline attribute and a target feature that matches
+                // we will add the attribute to the callsite otherwise we'll omit
+                // this and not add the attribute to prevent soundness issues.
+                && let Some(inlining_rule) = attributes::inline_attr(&self.cx, instance)
+                && self.cx.tcx.is_target_feature_call_safe(
+                    &fn_call_attrs.target_features,
+                    &fn_defn_attrs.target_features,
+                )
+            {
+                attributes::apply_to_callsite(
+                    call,
+                    llvm::AttributePlace::Function,
+                    &[inlining_rule],
+                );
+            }
+        }
+
         if let Some(fn_abi) = fn_abi {
             fn_abi.apply_attrs_callsite(self, call);
         }

@@ -428,9 +428,16 @@ fn check_result(
     // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && !tcx.features().target_feature_inline_always()
         && let Some(span) = interesting_spans.inline
     {
-        tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
+        feature_err(
+            tcx.sess,
+            sym::target_feature_inline_always,
+            span,
+            "cannot use `#[inline(always)]` with `#[target_feature]`",
+        )
+        .emit();
     }
 
     // warn that inline has no effect when no_sanitize is present
