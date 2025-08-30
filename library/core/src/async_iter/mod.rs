@@ -123,6 +123,9 @@
 
 mod async_iter;
 mod from_iter;
+mod pending;
 
 pub use async_iter::{AsyncIterator, IntoAsyncIterator};
 pub use from_iter::{FromIter, from_iter};
+#[unstable(feature = "stream_pending", issue = "91683")]
+pub use pending::{Pending, pending};
