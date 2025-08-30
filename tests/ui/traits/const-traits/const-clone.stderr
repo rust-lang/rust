@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `(): const Clone` is not satisfied
+  --> $DIR/const-clone.rs:48:29
+   |
+LL | const UNIT_CLONE: () = UNIT.clone();
+   |                             ^^^^^
+
+error[E0277]: the trait bound `Char: const Clone` is not satisfied
+  --> $DIR/const-clone.rs:52:55
+   |
+LL | const ASCII_CHAR_CLONE: std::ascii::Char = ASCII_CHAR.clone();
+   |                                                       ^^^^^
+
+error[E0277]: the trait bound `(u8, u16, u32, u64, u128, i8): const Clone` is not satisfied
+  --> $DIR/const-clone.rs:69:59
+   |
+LL | const TUPLE_CLONE: (u8, u16, u32, u64, u128, i8)  = TUPLE.clone();
+   |                                                           ^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -462,7 +462,9 @@ marker_impls! {
 // library, and there's no way to safely have this behavior right now.
 #[rustc_unsafe_specialization_marker]
 #[rustc_diagnostic_item = "Copy"]
-pub trait Copy: Clone {
+#[const_trait]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+pub trait Copy: [const] Clone {
     // Empty.
 }
 
