@@ -1887,6 +1887,8 @@ pub const _MM_HINT_ET1: i32 = 6;
 /// * Prefetching may also fail if there are not enough memory-subsystem
 ///   resources (e.g., request buffers).
 ///
+/// Note: this intrinsic is safe to use even though it takes a raw pointer argument. In general, this
+/// cannot change the behavior of the program, including not trapping on invalid pointers.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_prefetch)
 #[inline]
@@ -1897,11 +1899,13 @@ pub const _MM_HINT_ET1: i32 = 6;
 #[cfg_attr(test, assert_instr(prefetchnta, STRATEGY = _MM_HINT_NTA))]
 #[rustc_legacy_const_generics(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
+pub fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     static_assert_uimm_bits!(STRATEGY, 3);
     // We use the `llvm.prefetch` intrinsic with `cache type` = 1 (data cache).
     // `locality` and `rw` are based on our `STRATEGY`.
-    prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
+    unsafe {
+        prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
+    }
 }
 
 /// Returns vector of type __m128 with indeterminate elements.with indetermination elements.
