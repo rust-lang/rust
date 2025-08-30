@@ -1824,8 +1824,6 @@ mod impls {
             impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &Self) -> bool { *self == *other }
-                #[inline]
-                fn ne(&self, other: &Self) -> bool { *self != *other }
             }
         )*)
     }
@@ -1835,10 +1833,6 @@ mod impls {
         #[inline]
         fn eq(&self, _other: &()) -> bool {
             true
-        }
-        #[inline]
-        fn ne(&self, _other: &()) -> bool {
-            false
         }
     }
 
@@ -2025,179 +2019,98 @@ mod impls {
         }
     }
 
-    // & pointers
+    // reference types
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
-    where
-        A: [const] PartialEq<B>,
-    {
-        #[inline]
-        fn eq(&self, other: &&B) -> bool {
-            PartialEq::eq(*self, *other)
-        }
-        #[inline]
-        fn ne(&self, other: &&B) -> bool {
-            PartialEq::ne(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized, B: PointeeSized> PartialOrd<&B> for &A
-    where
-        A: PartialOrd<B>,
-    {
-        #[inline]
-        fn partial_cmp(&self, other: &&B) -> Option<Ordering> {
-            PartialOrd::partial_cmp(*self, *other)
-        }
-        #[inline]
-        fn lt(&self, other: &&B) -> bool {
-            PartialOrd::lt(*self, *other)
-        }
-        #[inline]
-        fn le(&self, other: &&B) -> bool {
-            PartialOrd::le(*self, *other)
-        }
-        #[inline]
-        fn gt(&self, other: &&B) -> bool {
-            PartialOrd::gt(*self, *other)
-        }
-        #[inline]
-        fn ge(&self, other: &&B) -> bool {
-            PartialOrd::ge(*self, *other)
-        }
-        #[inline]
-        fn __chaining_lt(&self, other: &&B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_lt(*self, *other)
-        }
-        #[inline]
-        fn __chaining_le(&self, other: &&B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_le(*self, *other)
-        }
-        #[inline]
-        fn __chaining_gt(&self, other: &&B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_gt(*self, *other)
-        }
-        #[inline]
-        fn __chaining_ge(&self, other: &&B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_ge(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Ord for &A
-    where
-        A: Ord,
-    {
-        #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
-            Ord::cmp(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Eq for &A where A: Eq {}
-
-    // &mut pointers
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &mut A
-    where
-        A: [const] PartialEq<B>,
-    {
-        #[inline]
-        fn eq(&self, other: &&mut B) -> bool {
-            PartialEq::eq(*self, *other)
-        }
-        #[inline]
-        fn ne(&self, other: &&mut B) -> bool {
-            PartialEq::ne(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized, B: PointeeSized> PartialOrd<&mut B> for &mut A
-    where
-        A: PartialOrd<B>,
-    {
-        #[inline]
-        fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
-            PartialOrd::partial_cmp(*self, *other)
-        }
-        #[inline]
-        fn lt(&self, other: &&mut B) -> bool {
-            PartialOrd::lt(*self, *other)
-        }
-        #[inline]
-        fn le(&self, other: &&mut B) -> bool {
-            PartialOrd::le(*self, *other)
-        }
-        #[inline]
-        fn gt(&self, other: &&mut B) -> bool {
-            PartialOrd::gt(*self, *other)
-        }
-        #[inline]
-        fn ge(&self, other: &&mut B) -> bool {
-            PartialOrd::ge(*self, *other)
-        }
-        #[inline]
-        fn __chaining_lt(&self, other: &&mut B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_lt(*self, *other)
-        }
-        #[inline]
-        fn __chaining_le(&self, other: &&mut B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_le(*self, *other)
-        }
-        #[inline]
-        fn __chaining_gt(&self, other: &&mut B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_gt(*self, *other)
-        }
-        #[inline]
-        fn __chaining_ge(&self, other: &&mut B) -> ControlFlow<bool> {
-            PartialOrd::__chaining_ge(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Ord for &mut A
-    where
-        A: Ord,
-    {
-        #[inline]
-        fn cmp(&self, other: &Self) -> Ordering {
-            Ord::cmp(*self, *other)
-        }
-    }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<A: PointeeSized> Eq for &mut A where A: Eq {}
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    impl<A: PointeeSized, B: PointeeSized> const PartialEq<&mut B> for &A
-    where
-        A: [const] PartialEq<B>,
-    {
-        #[inline]
-        fn eq(&self, other: &&mut B) -> bool {
-            PartialEq::eq(*self, *other)
-        }
-        #[inline]
-        fn ne(&self, other: &&mut B) -> bool {
-            PartialEq::ne(*self, *other)
-        }
+    macro_rules! partial_eq_impl {
+        ($(($ref_A:ty => $A:ident, $ref_B:ty => $B:ident))*) => ($(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+            impl<$A, $B> const PartialEq<$ref_B> for $ref_A
+            where
+                $A: [const] PartialEq<$B> + PointeeSized,
+                $B: PointeeSized,
+            {
+                #[inline]
+                fn eq(&self, other: &$ref_B) -> bool {
+                    PartialEq::eq(*self, *other)
+                }
+                // if <A as PartialEq<B>>::ne uses inline assembly or FFI, then
+                // this forwarding impl may be more efficient than the default impl
+                #[inline]
+                fn ne(&self, other: &$ref_B) -> bool {
+                    PartialEq::ne(*self, *other)
+                }
+            }
+        )*)
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &mut A
-    where
-        A: [const] PartialEq<B>,
-    {
-        #[inline]
-        fn eq(&self, other: &&B) -> bool {
-            PartialEq::eq(*self, *other)
-        }
-        #[inline]
-        fn ne(&self, other: &&B) -> bool {
-            PartialEq::ne(*self, *other)
-        }
+    partial_eq_impl!((&A => A, &B => B) (&A => A, &mut B => B) (&mut A => A, &B => B) (&mut A => A, &mut B => B));
+
+    macro_rules! partial_ord_impl {
+        ($(($ref_A:ty => $A:ident, $ref_B:ty => $B:ident))*) => ($(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$A, $B> PartialOrd<$ref_B> for $ref_A
+            where
+                $A: PartialOrd<$B> + PointeeSized,
+                $B: PointeeSized,
+            {
+                #[inline]
+                fn partial_cmp(&self, other: &$ref_B) -> Option<Ordering> {
+                    PartialOrd::partial_cmp(*self, *other)
+                }
+                #[inline]
+                fn lt(&self, other: &$ref_B) -> bool {
+                    PartialOrd::lt(*self, *other)
+                }
+                #[inline]
+                fn le(&self, other: &$ref_B) -> bool {
+                    PartialOrd::le(*self, *other)
+                }
+                #[inline]
+                fn gt(&self, other: &$ref_B) -> bool {
+                    PartialOrd::gt(*self, *other)
+                }
+                #[inline]
+                fn ge(&self, other: &$ref_B) -> bool {
+                    PartialOrd::ge(*self, *other)
+                }
+                #[inline]
+                fn __chaining_lt(&self, other: &$ref_B) -> ControlFlow<bool> {
+                    PartialOrd::__chaining_lt(*self, *other)
+                }
+                #[inline]
+                fn __chaining_le(&self, other: &$ref_B) -> ControlFlow<bool> {
+                    PartialOrd::__chaining_le(*self, *other)
+                }
+                #[inline]
+                fn __chaining_gt(&self, other: &$ref_B) -> ControlFlow<bool> {
+                    PartialOrd::__chaining_gt(*self, *other)
+                }
+                #[inline]
+                fn __chaining_ge(&self, other: &$ref_B) -> ControlFlow<bool> {
+                    PartialOrd::__chaining_ge(*self, *other)
+                }
+            }
+        )*)
     }
+
+    partial_ord_impl!((&A => A, &B => B) /*(&A => A, &mut B => B) (&mut A => A, &B => B)*/ (&mut A => A, &mut B => B));
+
+    macro_rules! ord_eq_impl {
+        ($($ref_A:ty => $A:ident),*) => ($(
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$A: Ord + PointeeSized> Ord for $ref_A
+            {
+                #[inline]
+                fn cmp(&self, other: &Self) -> Ordering {
+                    Ord::cmp(*self, *other)
+                }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl<$A: Eq + PointeeSized> Eq for $ref_A {}
+        )*)
+    }
+
+    ord_eq_impl!(&A => A, &mut A => A);
 }
