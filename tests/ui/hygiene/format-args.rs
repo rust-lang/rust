@@ -3,6 +3,8 @@
 #![allow(non_upper_case_globals)]
 #![feature(format_args_nl)]
 
+use std::format_args_nl;
+
 static arg0: () = ();
 
 fn main() {
