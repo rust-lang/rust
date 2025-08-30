@@ -1445,8 +1445,8 @@ pub fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_sfence() {
-    sfence()
+pub fn _mm_sfence() {
+    unsafe { sfence() }
 }
 
 /// Gets the unsigned 32-bit value of the MXCSR control and status register.

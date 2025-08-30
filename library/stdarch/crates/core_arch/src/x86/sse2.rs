@@ -19,10 +19,10 @@ use crate::{
 #[inline]
 #[cfg_attr(all(test, target_feature = "sse2"), assert_instr(pause))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_pause() {
+pub fn _mm_pause() {
     // note: `pause` is guaranteed to be interpreted as a `nop` by CPUs without
     // the SSE2 target-feature - therefore it does not require any target features
-    pause()
+    unsafe { pause() }
 }
 
 /// Invalidates and flushes the cache line that contains `p` from all levels of
@@ -49,8 +49,8 @@ pub unsafe fn _mm_clflush(p: *const u8) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(lfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_lfence() {
-    lfence()
+pub fn _mm_lfence() {
+    unsafe { lfence() }
 }
 
 /// Performs a serializing operation on all load-from-memory and store-to-memory
@@ -65,8 +65,8 @@ pub unsafe fn _mm_lfence() {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(mfence))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_mfence() {
-    mfence()
+pub fn _mm_mfence() {
+    unsafe { mfence() }
 }
 
 /// Adds packed 8-bit integers in `a` and `b`.
@@ -3149,7 +3149,7 @@ mod tests {
 
     #[test]
     fn test_mm_pause() {
-        unsafe { _mm_pause() }
+        _mm_pause()
     }
 
     #[simd_test(enable = "sse2")]
