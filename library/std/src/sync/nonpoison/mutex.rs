@@ -114,7 +114,6 @@ impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
 unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 
-// FIXME(nonpoison_condvar): Use this link instead: [`Condvar`]: crate::sync::nonpoison::Condvar
 /// An RAII mutex guard returned by `MutexGuard::map`, which can point to a
 /// subfield of the protected data. When this structure is dropped (falls out
 /// of scope), the lock will be unlocked.
@@ -131,7 +130,7 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 ///
 /// [`map`]: MutexGuard::map
 /// [`filter_map`]: MutexGuard::filter_map
-/// [`Condvar`]: crate::sync::Condvar
+/// [`Condvar`]: crate::sync::nonpoison::Condvar
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[must_not_suspend = "holding a MappedMutexGuard across suspend \
                       points can cause deadlocks, delays, \
@@ -456,6 +455,11 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
+}
+
+/// For use in [`nonpoison::condvar`](super::condvar).
+pub(super) fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
+    &guard.lock.inner
 }
 
 impl<'a, T: ?Sized> MutexGuard<'a, T> {
