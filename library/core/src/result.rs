@@ -1347,7 +1347,7 @@ impl<T, E> Result<T, E> {
     #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
     #[inline]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn into_ok(self) -> T
     where
         E: [const] Into<!>,
@@ -1384,7 +1384,7 @@ impl<T, E> Result<T, E> {
     #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
     #[inline]
     #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
-    #[rustc_const_unstable(feature = "const_try", issue = "74935")]
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
     pub const fn into_err(self) -> E
     where
         T: [const] Into<!>,
