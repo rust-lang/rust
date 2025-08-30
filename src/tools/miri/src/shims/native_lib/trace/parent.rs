@@ -132,10 +132,10 @@ impl Iterator for ChildListener {
                                 return Some(ExecEvent::Syscall(pid));
                             },
                         // Child with the given pid was stopped by the given signal.
-                        // It's somewhat dubious when this is returned instead of
-                        // WaitStatus::Stopped, but for our purposes they are the
-                        // same thing.
-                        wait::WaitStatus::PtraceEvent(pid, signal, _) =>
+                        // It's somewhat unclear when which of these two is returned;
+                        // we just treat them the same.
+                        wait::WaitStatus::Stopped(pid, signal)
+                        | wait::WaitStatus::PtraceEvent(pid, signal, _) =>
                             if self.attached {
                                 // This is our end-of-FFI signal!
                                 if signal == signal::SIGUSR1 {
@@ -146,19 +146,6 @@ impl Iterator for ChildListener {
                                 }
                             } else {
                                 // Just pass along the signal.
-                                ptrace::cont(pid, signal).unwrap();
-                            },
-                        // Child was stopped at the given signal. Same logic as for
-                        // WaitStatus::PtraceEvent.
-                        wait::WaitStatus::Stopped(pid, signal) =>
-                            if self.attached {
-                                if signal == signal::SIGUSR1 {
-                                    self.attached = false;
-                                    return Some(ExecEvent::End);
-                                } else {
-                                    return Some(ExecEvent::Status(pid, signal));
-                                }
-                            } else {
                                 ptrace::cont(pid, signal).unwrap();
                             },
                         _ => (),
@@ -250,7 +237,7 @@ pub fn sv_loop(
                 // We can't trust simply calling `Pid::this()` in the child process to give the right
                 // PID for us, so we get it this way.
                 curr_pid = wait_for_signal(None, signal::SIGSTOP, InitialCont::No).unwrap();
-
+                // Continue until next syscall.
                 ptrace::syscall(curr_pid, None).unwrap();
             }
             // Child wants to end tracing.
@@ -289,8 +276,7 @@ pub fn sv_loop(
                         }
                     }
                 },
-            // Child entered a syscall; we wait for exits inside of this, so it
-            // should never trigger on return from a syscall we care about.
+            // Child entered or exited a syscall. For now we ignore this and just continue.
             ExecEvent::Syscall(pid) => {
                 ptrace::syscall(pid, None).unwrap();
             }
@@ -344,8 +330,8 @@ fn wait_for_signal(
                 return Err(ExecEnd(Some(code)));
             }
             wait::WaitStatus::Signaled(_, _, _) => return Err(ExecEnd(None)),
-            wait::WaitStatus::Stopped(pid, signal) => (signal, pid),
-            wait::WaitStatus::PtraceEvent(pid, signal, _) => (signal, pid),
+            wait::WaitStatus::Stopped(pid, signal)
+            | wait::WaitStatus::PtraceEvent(pid, signal, _) => (signal, pid),
             // This covers PtraceSyscall and variants that are impossible with
             // the flags set (e.g. WaitStatus::StillAlive).
             _ => {
