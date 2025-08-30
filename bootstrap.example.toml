@@ -856,7 +856,7 @@
 # as libstd features, this option can also be used to configure features such as optimize_for_size.
 #rust.std-features = ["panic_unwind"]
 
-# Trigger a breakpoint after internal compiler errors during bootstrap on windows
+# Trigger a `DebugBreak` after an internal compiler error during bootstrap on Windows
 #rust.break-on-ice = true
 
 # =============================================================================
