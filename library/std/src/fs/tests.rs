@@ -492,6 +492,85 @@ fn file_test_io_read_write_at() {
 
 #[test]
 #[cfg(unix)]
+fn test_read_buf_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Fill entire buffer with potentially short reads
+        while buf.unfilled().capacity() > 0 {
+            let len = buf.len();
+            check!(file.read_buf_at(buf.unfilled(), 2 + len as u64));
+            assert!(!buf.filled().is_empty());
+            assert!(b"23456".starts_with(buf.filled()));
+            assert_eq!(check!(file.stream_position()), 0);
+        }
+        assert_eq!(buf.filled(), b"23456");
+
+        // Already full
+        check!(file.read_buf_at(buf.unfilled(), 3));
+        check!(file.read_buf_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Read past eof is noop
+        check!(file.read_buf_at(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
+        check!(file.read_buf_at(buf.clear().unfilled(), 11));
+        assert_eq!(buf.filled(), b"");
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
+fn test_read_buf_exact_at() {
+    use crate::os::unix::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_read_buf_exact_at.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 5] = [MaybeUninit::uninit(); 5];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Exact read
+        check!(file.read_buf_exact_at(buf.unfilled(), 2));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Already full
+        check!(file.read_buf_exact_at(buf.unfilled(), 3));
+        check!(file.read_buf_exact_at(buf.unfilled(), 10));
+        assert_eq!(buf.filled(), b"23456");
+        assert_eq!(check!(file.stream_position()), 0);
+
+        // Non-empty exact read past eof fails
+        let err = file.read_buf_exact_at(buf.clear().unfilled(), 6).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UnexpectedEof);
+        assert_eq!(check!(file.stream_position()), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(unix)]
 fn set_get_unix_permissions() {
     use crate::os::unix::fs::PermissionsExt;
 
@@ -562,6 +641,39 @@ fn file_test_io_seek_read_write() {
         assert_eq!(check!(read.stream_position()), 14);
         assert_eq!(check!(read.seek_read(&mut buf, 14)), 0);
         assert_eq!(check!(read.seek_read(&mut buf, 15)), 0);
+    }
+    check!(fs::remove_file(&filename));
+}
+
+#[test]
+#[cfg(windows)]
+fn test_seek_read_buf() {
+    use crate::os::windows::fs::FileExt;
+
+    let tmpdir = tmpdir();
+    let filename = tmpdir.join("file_rt_io_file_test_seek_read_buf.txt");
+    {
+        let oo = OpenOptions::new().create_new(true).write(true).read(true).clone();
+        let mut file = check!(oo.open(&filename));
+        check!(file.write_all(b"0123456789"));
+    }
+    {
+        let mut file = check!(File::open(&filename));
+        let mut buf: [MaybeUninit<u8>; 1] = [MaybeUninit::uninit()];
+        let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+
+        // Seek read
+        check!(file.seek_read_buf(buf.unfilled(), 8));
+        assert_eq!(buf.filled(), b"8");
+        assert_eq!(check!(file.stream_position()), 9);
+
+        // Empty seek read
+        check!(file.seek_read_buf(buf.unfilled(), 0));
+        assert_eq!(buf.filled(), b"8");
+
+        // Seek read past eof
+        check!(file.seek_read_buf(buf.clear().unfilled(), 10));
+        assert_eq!(buf.filled(), b"");
     }
     check!(fs::remove_file(&filename));
 }

@@ -11,6 +11,7 @@ use super::platform::fs::MetadataExt as _;
 // Used for `File::read` on intra-doc links
 use crate::ffi::OsStr;
 use crate::fs::{self, OpenOptions, Permissions};
+use crate::io::BorrowedCursor;
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
@@ -128,6 +129,91 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
+    }
+
+    /// Reads some bytes starting from a given offset into the buffer.
+    ///
+    /// This equivalent to the [`read_at`](FileExt::read_at) method, except that it is passed a
+    /// [`BorrowedCursor`] rather than `&mut [u8]` to allow use with uninitialized buffers. The new
+    /// data will be appended to any existing contents of `buf`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(core_io_borrowed_buf)]
+    /// #![feature(read_buf_at)]
+    ///
+    /// use std::io;
+    /// use std::io::BorrowedBuf;
+    /// use std::fs::File;
+    /// use std::mem::MaybeUninit;
+    /// use std::os::unix::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("pi.txt")?;
+    ///
+    ///     // Read some bytes starting from offset 2
+    ///     let mut buf: [MaybeUninit<u8>; 10] = [MaybeUninit::uninit(); 10];
+    ///     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    ///     file.read_buf_at(buf.unfilled(), 2)?;
+    ///
+    ///     assert!(buf.filled().starts_with(b"1"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "read_buf_at", issue = "140771")]
+    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        io::default_read_buf(|b| self.read_at(b, offset), buf)
+    }
+
+    /// Reads the exact number of bytes required to fill the buffer from a given offset.
+    ///
+    /// This is equivalent to the [`read_exact_at`](FileExt::read_exact_at) method, except that it
+    /// is passed a [`BorrowedCursor`] rather than `&mut [u8]` to allow use with uninitialized
+    /// buffers. The new data will be appended to any existing contents of `buf`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(core_io_borrowed_buf)]
+    /// #![feature(read_buf_at)]
+    ///
+    /// use std::io;
+    /// use std::io::BorrowedBuf;
+    /// use std::fs::File;
+    /// use std::mem::MaybeUninit;
+    /// use std::os::unix::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("pi.txt")?;
+    ///
+    ///     // Read exactly 10 bytes starting from offset 2
+    ///     let mut buf: [MaybeUninit<u8>; 10] = [MaybeUninit::uninit(); 10];
+    ///     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    ///     file.read_buf_exact_at(buf.unfilled(), 2)?;
+    ///
+    ///     assert_eq!(buf.filled(), b"1415926535");
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "read_buf_at", issue = "140771")]
+    fn read_buf_exact_at(&self, mut buf: BorrowedCursor<'_>, mut offset: u64) -> io::Result<()> {
+        while buf.capacity() > 0 {
+            let prev_written = buf.written();
+            match self.read_buf_at(buf.reborrow(), offset) {
+                Ok(()) => {}
+                Err(e) if e.is_interrupted() => {}
+                Err(e) => return Err(e),
+            }
+            let n = buf.written() - prev_written;
+            offset += n as u64;
+            if n == 0 {
+                return Err(io::Error::READ_EXACT_EOF);
+            }
+        }
+        Ok(())
     }
 
     /// Writes a number of bytes starting from a given offset.
@@ -263,6 +349,9 @@ pub trait FileExt {
 impl FileExt for fs::File {
     fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         self.as_inner().read_at(buf, offset)
+    }
+    fn read_buf_at(&self, buf: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        self.as_inner().read_buf_at(buf, offset)
     }
     fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().read_vectored_at(bufs, offset)
