@@ -60,6 +60,9 @@
 //!   while it is locked exclusively (write mode). If a panic occurs in any reader,
 //!   then the lock will not be poisoned.
 
+// If we are not unwinding, `PoisonError` is uninhabited.
+#![cfg_attr(not(panic = "unwind"), expect(unreachable_code))]
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::condvar::Condvar;
 #[unstable(feature = "mapped_lock_guards", issue = "117108")]
