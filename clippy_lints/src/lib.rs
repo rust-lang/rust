@@ -475,7 +475,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(move |_| Box::new(types::Types::new(conf)));
     store.register_late_pass(move |_| Box::new(booleans::NonminimalBool::new(conf)));
     store.register_late_pass(|_| Box::new(enum_clike::UnportableVariant));
-    store.register_late_pass(|_| Box::new(float_literal::FloatLiteral));
+    store.register_late_pass(move |_| Box::new(float_literal::FloatLiteral::new(conf)));
     store.register_late_pass(|_| Box::new(ptr::Ptr));
     store.register_late_pass(|_| Box::new(needless_bool::NeedlessBool));
     store.register_late_pass(|_| Box::new(bool_comparison::BoolComparison));

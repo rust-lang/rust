@@ -485,6 +485,16 @@ The maximum cognitive complexity a function can have
 * [`cognitive_complexity`](https://rust-lang.github.io/rust-clippy/master/index.html#cognitive_complexity)
 
 
+## `const-literal-digits-threshold`
+The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+
+**Default Value:** `30`
+
+---
+**Affected lints:**
+* [`excessive_precision`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_precision)
+
+
 ## `disallowed-macros`
 The list of disallowed macros, written as fully qualified paths.
 
