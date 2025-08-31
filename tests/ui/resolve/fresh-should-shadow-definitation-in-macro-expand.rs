@@ -43,7 +43,7 @@ fn ff0() {
     // let f -> macro m -> fn f
 
     let a0: BindingF = m!();        //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };  //~ NOTE `f` is defined here
     let a1: BindingF = m!();
     macro_rules! m {() => ( f() )}  //~ ERROR cannot find function `f` in this scope
                                     //~| NOTE not found in this scope
@@ -57,7 +57,7 @@ fn ff1() {
     // let f -> fn f -> macro m
 
     let a0: BindingF = m!();        //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };  //~ NOTE `f` is defined here
     let a1: BindingF = m!();
     fn f() -> FnF { 42 }
     let a2: BindingF = m!();
@@ -73,7 +73,8 @@ fn ff2() {
     let a0: BindingF = m!();         //~ NOTE in this expansion of m!
     fn f() -> FnF { 42 }
     let a1: BindingF = m!();         //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };   //~ NOTE `f` is defined here
+                                     //~| NOTE `f` is defined here
     let a2: BindingF = m!();
     macro_rules! m {() => ( f() )}  //~ ERROR cannot find function `f` in this scope
                                     //~| ERROR cannot find function `f` in this scope
@@ -128,7 +129,8 @@ fn tuple_f() {
     let a0: BindingF = m!();                    //~ NOTE in this expansion of m!
     fn f() -> FnF { 42 }
     let a1: BindingF = m!();                    //~ NOTE in this expansion of m!
-    let (f, _) = (|| -> BindingF { 42 }, ());
+    let (f, _) = (|| -> BindingF { 42 }, ());   //~ NOTE `f` is defined here
+                                                //~| NOTE `f` is defined here
     let a2: BindingF = m!();
     macro_rules! m {() => ( f() )}              //~ ERROR cannot find function `f` in this scope
                                                 //~| ERROR cannot find function `f` in this scope
@@ -140,7 +142,8 @@ fn tuple_f() {
 
 fn multiple() {
     fn f() -> FnF { 42 }
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };      //~ NOTE `f` is defined here
+                                        //~| NOTE `f` is defined here
 
     let m0_0: BindingF = m0!();
     let m1_0: BindingF = m1!();

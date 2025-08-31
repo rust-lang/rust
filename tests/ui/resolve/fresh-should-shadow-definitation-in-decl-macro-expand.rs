@@ -22,7 +22,7 @@ fn f0() {
     // let f -> macro m -> fn f
 
     let a0: BindingF = m!();        //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };  //~ NOTE `f` is defined here
     let a1: BindingF = m!();
     macro m() { f() }               //~ ERROR cannot find function `f` in this scope
                                     //~| NOTE not found in this scope
@@ -35,7 +35,7 @@ fn f1() {
     // let f -> fn f -> macro m
 
     let a0: BindingF = m!();        //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };  //~ NOTE `f` is defined here
     let a1: BindingF = m!();
     fn f() -> FnF { 42 }            //~ NOTE you might have meant to refer to this function
     let a2: BindingF = m!();
@@ -51,7 +51,8 @@ fn f2() {
     fn f() -> FnF { 42 }             //~ NOTE you might have meant to refer to this function
                                      //~| NOTE you might have meant to refer to this function
     let a1: BindingF = m!();         //~ NOTE in this expansion of m!
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };   //~ NOTE `f` is defined here
+                                     //~| NOTE `f` is defined here
     let a2: BindingF = m!();
     macro m() { f() }               //~ ERROR cannot find function `f` in this scope
                                     //~| ERROR cannot find function `f` in this scope

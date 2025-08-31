@@ -32,6 +32,7 @@ use tracing::debug;
 
 use super::NoConstantGenericsReason;
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::ident::ResolveIdentInBlockRes;
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
     LifetimeUseSet, QSelf, RibKind,
@@ -438,6 +439,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
+        self.detect_is_defined_later_in_block_for_macro_expansion(&mut err, path, source);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
@@ -1247,6 +1249,37 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
         true
+    }
+
+    fn detect_is_defined_later_in_block_for_macro_expansion(
+        &mut self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        source: PathSource<'_, 'ast, 'ra>,
+    ) {
+        let ns = source.namespace();
+        if ns != Namespace::ValueNS {
+            return;
+        }
+        let [segment] = path else { return };
+        let mut ident = segment.ident;
+        for (rib_index, rib) in self.ribs[ns].iter().enumerate().rev() {
+            if let RibKind::Block { .. } = rib.kind
+                && let ResolveIdentInBlockRes::DefinedLater { def_site } =
+                    self.r.resolve_ident_in_block_lexical_scope(
+                        &mut ident,
+                        ns,
+                        &self.parent_scope,
+                        None,
+                        rib_index,
+                        &self.ribs[ns],
+                        None,
+                    )
+            {
+                err.span_label(def_site, format!("`{}` is defined here", segment.ident.name));
+                break;
+            }
+        }
     }
 
     fn detect_missing_binding_available_from_pattern(

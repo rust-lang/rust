@@ -29,7 +29,7 @@ fn ff0() {
     {
         let a0: BindingF = m!();        //~ NOTE in this expansion of m!
     }
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };      //~ NOTE `f` is defined here
     {
         let a1: BindingF = m!();
     }
@@ -51,7 +51,7 @@ fn ff1() {
     {
         let a0: BindingF = m!();        //~ NOTE in this expansion of m!
     }
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };      //~ NOTE `f` is defined here
     {
         let a1: BindingF = m!();
     }
@@ -77,7 +77,8 @@ fn ff2() {
     {
         let a1: BindingF = m!();         //~ NOTE in this expansion of m!
     }
-    let f = || -> BindingF { 42 };
+    let f = || -> BindingF { 42 };       //~ NOTE `f` is defined here
+                                         //~| NOTE `f` is defined here
     {
         let a2: BindingF = m!();
     }
@@ -170,7 +171,7 @@ fn ff6() {
 
 fn f_with_macro_export0() {
     {
-        let a: BindingF = 42;
+        let a: BindingF = 42;                                   //~ NOTE `a` is defined here
         let c0: BindingF = crate::m1!();
         {
             {
@@ -204,7 +205,7 @@ fn f_with_macro_export0() {
 fn f_with_macro_export2() {
     fn a() {};
     {
-        let a: BindingF = 42;
+        let a: BindingF = 42;                                   //~ NOTE `a` is defined here
         let c0: BindingF = crate::m2!();
         {
             let d0: BindingF = m2!();
@@ -224,7 +225,8 @@ fn f_with_macro_export2() {
 fn f_with_macro_export3() {
     crate::m3!();                               //~ NOTE in this expansion of crate::m3!
     {
-        let a: BindingF = 42;
+        let a: BindingF = 42;                   //~ NOTE `a` is defined here
+                                                //~| NOTE `a` is defined here
         #[macro_export]
         macro_rules! m3 { () => { a } }         //~ ERROR cannot find value `a` in this scope
                                                 //~| ERROR cannot find value `a` in this scope
@@ -239,7 +241,8 @@ fn f_with_macro_export4() {
     crate::m4!();                               //~ NOTE in this expansion of crate::m4!
     {
         {
-            let a: BindingF = 42;
+            let a: BindingF = 42;               //~ NOTE `a` is defined here
+                                                //~| NOTE `a` is defined here
             {
                 #[macro_export]
                 macro_rules! m4 { () => { a } } //~ ERROR cannot find value `a` in this scope
@@ -256,7 +259,8 @@ fn f_with_macro_export4() {
 fn f_with_macro_export5() {
     crate::m5!();                               //~ NOTE in this expansion of crate::m5!
     {
-        let a: BindingF = 42;
+        let a: BindingF = 42;                   //~ NOTE `a` is defined here
+                                                //~| NOTE `a` is defined here
         {
             #[macro_export]
             macro_rules! m5 { () => { a } }     //~ ERROR cannot find value `a` in this scope

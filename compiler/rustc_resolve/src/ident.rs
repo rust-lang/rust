@@ -40,6 +40,13 @@ enum Shadowing {
     Unrestricted,
 }
 
+pub(crate) enum ResolveIdentInBlockRes<'ra> {
+    Res(Res),
+    Item(NameBinding<'ra>),
+    DefinedLater { def_site: Span },
+    NotFound,
+}
+
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// A generic scope visitor.
     /// Visits scopes in order to resolve some identifier in them or perform other actions.
@@ -270,6 +277,158 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         None
     }
 
+    pub(crate) fn resolve_ident_in_block_lexical_scope(
+        &mut self,
+        ident: &mut Ident,
+        ns: Namespace,
+        parent_scope: &ParentScope<'ra>,
+        finalize: Option<Finalize>,
+        rib_index: usize,
+        ribs: &[Rib<'ra>],
+        ignore_binding: Option<NameBinding<'ra>>,
+    ) -> ResolveIdentInBlockRes<'ra> {
+        fn resolve_ident_in_forward_macro_of_block<'ra>(
+            r: &mut Resolver<'ra, '_>,
+            expansion: &mut Option<NodeId>, // macro_def_id
+            module: Module<'ra>,
+            resolving_block: NodeId,
+            ident: &mut Ident,
+            rib_index: usize,
+            finalize: Option<Finalize>,
+            ribs: &[Rib<'ra>],
+        ) -> Option<Res> {
+            let items = r.lookahead_items_in_block.get(&resolving_block)?;
+            for (node_id, item) in items.iter().rev() {
+                match item {
+                    LookaheadItemInBlock::MacroDef { def_id } => {
+                        if *def_id != r.macro_def(ident.span.ctxt()) {
+                            continue;
+                        }
+                        expansion.get_or_insert(*node_id);
+                        ident.span.remove_mark();
+                        if let Some((original_rib_ident_def, (module_of_res, res, _))) =
+                            r.bindings_of_macro_def[def_id].get_key_value(ident)
+                            && module_of_res.is_ancestor_of(module)
+                        {
+                            // The ident resolves to a type parameter or local variable.
+                            return Some(r.validate_res_from_ribs(
+                                rib_index,
+                                *ident,
+                                *res,
+                                finalize.map(|finalize| finalize.path_span),
+                                *original_rib_ident_def,
+                                ribs,
+                            ));
+                        }
+                    }
+                    LookaheadItemInBlock::Block => {
+                        // resolve child block later
+                    }
+                    LookaheadItemInBlock::Binding { .. } => {}
+                }
+            }
+
+            let subs = items
+                .iter()
+                .filter_map(|(node_id, item)| {
+                    if matches!(item, LookaheadItemInBlock::Block) { Some(*node_id) } else { None }
+                })
+                .collect::<Vec<_>>();
+            for node_id in subs {
+                if let Some(res) = resolve_ident_in_forward_macro_of_block(
+                    r, expansion, module, node_id, ident, rib_index, finalize, ribs,
+                ) {
+                    return Some(res);
+                }
+            }
+
+            None
+        }
+
+        fn is_defined_later(
+            r: &Resolver<'_, '_>,
+            macro_def_node: NodeId,
+            resolving_block: NodeId,
+            ident: &Ident,
+        ) -> Option<Span> {
+            let Some(items) = r.lookahead_items_in_block.get(&resolving_block) else {
+                return None;
+            };
+            for (node_id, item) in items {
+                match item {
+                    LookaheadItemInBlock::Binding { name } => {
+                        if name.name == ident.name {
+                            return Some(name.span);
+                        }
+                    }
+                    LookaheadItemInBlock::Block => {
+                        if let Some(def_span) = is_defined_later(r, macro_def_node, *node_id, ident)
+                        {
+                            return Some(def_span);
+                        }
+                    }
+                    LookaheadItemInBlock::MacroDef { .. } => {
+                        if macro_def_node.eq(node_id) {
+                            return None;
+                        }
+                    }
+                }
+            }
+
+            None
+        }
+
+        let RibKind::Block { module: block_module, id: resolving_block } = ribs[rib_index].kind
+        else {
+            bug!("expected a block rib");
+        };
+        let mut expansion = None;
+        if let Some(res) = resolve_ident_in_forward_macro_of_block(
+            self,
+            &mut expansion,
+            parent_scope.module,
+            resolving_block,
+            ident,
+            rib_index,
+            finalize,
+            ribs,
+        ) {
+            return ResolveIdentInBlockRes::Res(res);
+        }
+
+        if let Some(expansion) = expansion
+            && let Some(def_site) = is_defined_later(self, expansion, resolving_block, &ident)
+        {
+            // return `None` for this case:
+            //
+            // ```
+            // let a = m!();
+            // let b = 1;
+            // macro_rules! m { () => { b } }
+            // use b;
+            // ```
+            return ResolveIdentInBlockRes::DefinedLater { def_site };
+        }
+
+        if let Some(module) = block_module
+            && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
+                ModuleOrUniformRoot::Module(module),
+                *ident,
+                ns,
+                parent_scope,
+                Shadowing::Unrestricted,
+                finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
+                ignore_binding,
+                None,
+            )
+        {
+            // The ident resolves to an item in a block.
+            return ResolveIdentInBlockRes::Item(binding);
+        }
+
+        ResolveIdentInBlockRes::NotFound
+    }
+
     /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
     /// More specifically, we proceed up the hierarchy of scopes and return the binding for
     /// `ident` in the first scope that defines it (or None if no scopes define it).
@@ -328,143 +487,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     *original_rib_ident_def,
                     ribs,
                 )));
-            } else if let RibKind::Block { module, id: block_id } = rib.kind {
-                fn resolve_ident_in_forward_macro_of_block<'ra>(
-                    r: &mut Resolver<'ra, '_>,
-                    expansion: &mut Option<NodeId>, // macro_def_id
-                    module: Module<'ra>,
-                    resolving_block: NodeId,
-                    ident: &mut Ident,
-                    i: usize,
-                    finalize: Option<Finalize>,
-                    ribs: &[Rib<'ra>],
-                ) -> Option<Res> {
-                    let items = r.lookahead_items_in_block.get(&resolving_block)?;
-                    for (node_id, item) in items.iter().rev() {
-                        match item {
-                            LookaheadItemInBlock::MacroDef { def_id } => {
-                                if *def_id != r.macro_def(ident.span.ctxt()) {
-                                    continue;
-                                }
-                                expansion.get_or_insert(*node_id);
-                                ident.span.remove_mark();
-                                if let Some((original_rib_ident_def, (module_of_res, res, _))) =
-                                    r.bindings_of_macro_def[def_id].get_key_value(ident)
-                                    && module_of_res.is_ancestor_of(module)
-                                {
-                                    // The ident resolves to a type parameter or local variable.
-                                    return Some(r.validate_res_from_ribs(
-                                        i,
-                                        *ident,
-                                        *res,
-                                        finalize.map(|finalize| finalize.path_span),
-                                        *original_rib_ident_def,
-                                        ribs,
-                                    ));
-                                }
-                            }
-                            LookaheadItemInBlock::Block => {
-                                // resolve child block later
-                            }
-                            LookaheadItemInBlock::Binding { .. } => {}
-                        }
-                    }
-
-                    let subs = items
-                        .iter()
-                        .filter_map(|(node_id, item)| {
-                            if matches!(item, LookaheadItemInBlock::Block) {
-                                Some(*node_id)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>();
-                    for node_id in subs {
-                        if let Some(res) = resolve_ident_in_forward_macro_of_block(
-                            r, expansion, module, node_id, ident, i, finalize, ribs,
-                        ) {
-                            return Some(res);
-                        }
-                    }
-
-                    None
-                }
-
-                fn is_defined_later(
-                    r: &Resolver<'_, '_>,
-                    expansion: NodeId, // macro_def_id
-                    block_id: NodeId,
-                    ident: &Ident,
-                ) -> bool {
-                    let Some(items) = r.lookahead_items_in_block.get(&block_id) else {
-                        return false;
-                    };
-                    for (node_id, item) in items {
-                        match item {
-                            LookaheadItemInBlock::Binding { name } => {
-                                if name.name == ident.name {
-                                    return true;
-                                }
-                            }
-                            LookaheadItemInBlock::Block => {
-                                if is_defined_later(r, expansion, *node_id, ident) {
-                                    return true;
-                                }
-                            }
-                            LookaheadItemInBlock::MacroDef { .. } => {
-                                if expansion.eq(node_id) {
-                                    return false;
-                                }
-                            }
-                        }
-                    }
-
-                    false
-                }
-
-                let mut expansion = None;
-                if let Some(res) = resolve_ident_in_forward_macro_of_block(
-                    self,
-                    &mut expansion,
-                    parent_scope.module,
-                    block_id,
+            } else if let RibKind::Block { .. } = rib.kind {
+                match self.resolve_ident_in_block_lexical_scope(
                     &mut ident,
-                    i,
+                    ns,
+                    parent_scope,
                     finalize,
+                    i,
                     ribs,
+                    ignore_binding,
                 ) {
-                    return Some(LexicalScopeBinding::Res(res));
-                }
-
-                if let Some(expansion) = expansion
-                    && is_defined_later(self, expansion, block_id, &ident)
-                {
-                    // return `None` for this case:
-                    //
-                    // ```
-                    // let a = m!();
-                    // let b = 1;
-                    // macro_rules! m { () => { b } }
-                    // use b;
-                    // ```
-                    return None;
-                }
-
-                if let Some(module) = module
-                    && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
-                        ModuleOrUniformRoot::Module(module),
-                        ident,
-                        ns,
-                        parent_scope,
-                        Shadowing::Unrestricted,
-                        finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
-                        ignore_binding,
-                        None,
-                    )
-                {
-                    // The ident resolves to an item in a block.
-                    return Some(LexicalScopeBinding::Item(binding));
+                    ResolveIdentInBlockRes::Res(res) => return Some(LexicalScopeBinding::Res(res)),
+                    ResolveIdentInBlockRes::Item(item) => {
+                        return Some(LexicalScopeBinding::Item(item));
+                    }
+                    ResolveIdentInBlockRes::DefinedLater { .. } => return None,
+                    ResolveIdentInBlockRes::NotFound => {}
                 }
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
