@@ -2484,12 +2484,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let rib = &self.label_ribs[i];
 
             if let RibKind::Block { id, .. } = rib.kind
-                && let Some(items) = self.r.lookahead_items_in_block.get(&id)
+                && let Some(seen_macro_def_list) = self.r.seen_macro_def_in_block.get(&id)
             {
-                for (_, item) in items.iter().rev() {
-                    if let LookaheadItemInBlock::MacroDef { def_id, .. } = item
-                        && *def_id == self.r.macro_def(label.span.ctxt())
-                    {
+                for def in seen_macro_def_list.iter().rev() {
+                    if *def == self.r.macro_def(label.span.ctxt()) {
                         // If an invocation of this macro created `ident`, give up on `ident`
                         // and switch to `ident`'s source from the macro definition.
                         label.span.remove_mark();
@@ -4778,6 +4776,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         // Descend into the block.
         for stmt in &block.stmts {
+            if let StmtKind::Item(ref item) = stmt.kind
+                && let ItemKind::MacroDef(..) = item.kind
+            {
+                let res = self.r.local_def_id(item.id).to_def_id();
+                let seen = self.r.seen_macro_def_in_block.entry(block.id).or_default();
+                seen.insert(res);
+            }
+
             self.visit_stmt(stmt);
         }
 

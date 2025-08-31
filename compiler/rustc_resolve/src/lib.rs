@@ -1150,6 +1150,7 @@ pub struct Resolver<'ra, 'tcx> {
     block_map: NodeMap<Module<'ra>>,
     lookahead_items_in_block: NodeMap<FxIndexMap<NodeId, LookaheadItemInBlock>>,
     bindings_of_macro_def: DefIdMap<FxHashMap<Ident, (Module<'ra>, Res, Span)>>,
+    seen_macro_def_in_block: NodeMap<FxIndexSet<DefId>>,
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
@@ -1679,6 +1680,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_trait_names: Default::default(),
             lookahead_items_in_block: Default::default(),
             bindings_of_macro_def: Default::default(),
+            seen_macro_def_in_block: Default::default(),
             ..
         };
 

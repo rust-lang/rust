@@ -287,6 +287,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ribs: &[Rib<'ra>],
         ignore_binding: Option<NameBinding<'ra>>,
     ) -> ResolveIdentInBlockRes<'ra> {
+        let mut original_ident = *ident;
+
         fn resolve_ident_in_forward_macro_of_block<'ra>(
             r: &mut Resolver<'ra, '_>,
             expansion: &mut Option<NodeId>, // macro_def_id
@@ -410,20 +412,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return ResolveIdentInBlockRes::DefinedLater { def_site };
         }
 
-        if let Some(module) = block_module
-            && let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
+        if let Some(module) = block_module {
+            if let Some(seen_macro_def_list) = self.seen_macro_def_in_block.get(&resolving_block) {
+                for m in seen_macro_def_list.iter().rev() {
+                    if self.macro_def(original_ident.span.ctxt()) == *m {
+                        original_ident.span.remove_mark();
+                    }
+                }
+            }
+
+            if let Ok(binding) = self.cm().resolve_ident_in_module_unadjusted(
                 ModuleOrUniformRoot::Module(module),
-                *ident,
+                original_ident,
                 ns,
                 parent_scope,
                 Shadowing::Unrestricted,
                 finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                 ignore_binding,
                 None,
-            )
-        {
-            // The ident resolves to an item in a block.
-            return ResolveIdentInBlockRes::Item(binding);
+            ) {
+                // The ident resolves to an item in a block.
+                return ResolveIdentInBlockRes::Item(binding);
+            }
         }
 
         ResolveIdentInBlockRes::NotFound
