@@ -1913,17 +1913,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check with expected type of `()`.
                 self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if expr.can_have_side_effects() {
-                        self.suggest_semicolon_at_end(expr.span, err);
-                        if let hir::ExprKind::Match(..) = expr.kind {
+                        let hir_id = stmt.hir_id;
+                        if let hir::ExprKind::Match(..) = expr.kind
+                            && let hir::Node::Block(b) = self.tcx.parent_hir_node(hir_id)
+                            && let mut stmts = b.stmts.iter().skip_while(|s| s.hir_id != hir_id)
+                            && let Some(_) = stmts.next() // The statement from the `match`
+                            && let Some(next) = match (stmts.next(), b.expr) {
+                                (Some(next), _) => match next.kind {
+                                    hir::StmtKind::Expr(next) | hir::StmtKind::Semi(next) => Some(next),
+                                    _ => None,
+                                },
+                                (None, Some(next)) => Some(next),
+                                _ => None,
+                            }
+                            && let hir::ExprKind::AddrOf(..)
+                                | hir::ExprKind::Unary(..)
+                                | hir::ExprKind::Err(_) = next.kind
+                        {
+                            // We have something like `match () { _ => true } && true`. Suggest
+                            // wrapping in parentheses. We find the statement or expression
+                            // following the `match` (`&& true`) and see if it is something that
+                            // can reasonably be interpreted as a binop following an expression.
                             err.multipart_suggestion(
-                                "alternatively, parentheses are required to parse this as an \
-                                 expression",
+                                "parentheses are required to parse this as an expression",
                                 vec![
                                     (expr.span.shrink_to_lo(), "(".to_string()),
                                     (expr.span.shrink_to_hi(), ")".to_string()),
                                 ],
-                                Applicability::MaybeIncorrect,
+                                Applicability::MachineApplicable,
                             );
+                        } else {
+                            self.suggest_semicolon_at_end(expr.span, err);
                         }
                     }
                 });
