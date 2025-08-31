@@ -963,8 +963,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         err: &mut Diag<'_>,
     ) -> bool {
-        if let ObligationCauseCode::BinOp { lhs_hir_id, .. } = obligation.cause.code()
-            && let hir::Node::Expr(expr) = self.tcx.hir_node(*lhs_hir_id)
+        if let ObligationCauseCode::UnOp { hir_id, .. } = obligation.cause.code()
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
             && let hir::ExprKind::Unary(hir::UnOp::Neg, inner) = expr.kind
             && let hir::ExprKind::Lit(lit) = inner.kind
             && let LitKind::Int(_, LitIntType::Unsuffixed) = lit.node
@@ -2769,9 +2769,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         suggested: bool,
     ) {
         let body_def_id = obligation.cause.body_id;
-        let span = if let ObligationCauseCode::BinOp { rhs_span: Some(rhs_span), .. } =
-            obligation.cause.code()
-        {
+        let span = if let ObligationCauseCode::BinOp { rhs_span, .. } = obligation.cause.code() {
             *rhs_span
         } else {
             span

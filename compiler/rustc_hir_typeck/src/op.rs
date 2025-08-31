@@ -962,13 +962,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
         let cause = self.cause(
             span,
-            ObligationCauseCode::BinOp {
-                lhs_hir_id: lhs_expr.hir_id,
-                rhs_hir_id: opt_rhs_expr.map(|expr| expr.hir_id),
-                rhs_span: opt_rhs_expr.map(|expr| expr.span),
-                rhs_is_lit: opt_rhs_expr
-                    .is_some_and(|expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-                output_ty: expected.only_has_type(self),
+            match opt_rhs_expr {
+                Some(rhs) => ObligationCauseCode::BinOp {
+                    lhs_hir_id: lhs_expr.hir_id,
+                    rhs_hir_id: rhs.hir_id,
+                    rhs_span: rhs.span,
+                    rhs_is_lit: matches!(rhs.kind, hir::ExprKind::Lit(_)),
+                    output_ty: expected.only_has_type(self),
+                },
+                None => ObligationCauseCode::UnOp { hir_id: lhs_expr.hir_id },
             },
         );
 
