@@ -29,7 +29,7 @@ LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
    |
-note: requirement for `'a` introduced here
+note: requirement that the value outlives `'a` introduced here
   --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
    |
 LL | fn outlives<'a>(_: impl Sized + 'a) {}
@@ -80,7 +80,7 @@ LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
    |
-note: requirement for `'a` introduced here
+note: requirement that the value outlives `'a` introduced here
   --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
    |
 LL | fn outlives<'a>(_: impl Sized + 'a) {}
@@ -102,7 +102,7 @@ LL |     outlives::<'a>(c());
 LL |     outlives::<'a>(call_once(c));
    |                              ^ move out of `c` occurs here
    |
-note: requirement for `'a` introduced here
+note: requirement that the value outlives `'a` introduced here
   --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
    |
 LL | fn outlives<'a>(_: impl Sized + 'a) {}
@@ -148,7 +148,7 @@ LL |     outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
    |
-note: requirement for `'a` introduced here
+note: requirement that the value outlives `'a` introduced here
   --> $DIR/without-precise-captures-we-are-powerless.rs:7:33
    |
 LL | fn outlives<'a>(_: impl Sized + 'a) {}
@@ -196,7 +196,7 @@ LL |     T.outlives::<'a>(call_once(c));
 LL | }
    | - `c` dropped here while still borrowed
    |
-note: requirement for `'a` introduced here
+note: requirement that the value outlives `'a` introduced here
   --> $DIR/without-precise-captures-we-are-powerless.rs:49:47
    |
 LL |     fn outlives<'a>(&'a self, _: impl Sized + 'a) {}

@@ -14,7 +14,7 @@ LL |         z = &local_arr;
 LL | }
    | - `local_arr` dropped here while still borrowed
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/propagate-multiple-requirements.rs:4:21
    |
 LL | fn once<S, T, U, F: FnOnce(S, T) -> U>(f: F, s: S, t: T) -> U {

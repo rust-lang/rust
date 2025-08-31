@@ -11,7 +11,7 @@ LL |     f(&x);
 LL | }
    | - `x` dropped here while still borrowed
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/static-lifetime-bound.rs:1:10
    |
 LL | fn f<'a: 'static>(_: &'a i32) {}
