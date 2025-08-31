@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Csymbol-mangling-version=v0
 #![allow(incomplete_features)]
-#![feature(adt_const_params, unsized_const_params)]
+#![feature(unsized_const_params)]
 
 // Regression test for #116303
 
