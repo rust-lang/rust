@@ -566,6 +566,55 @@ fn layout_of_uncached<'tcx>(
 
         // ADTs.
         ty::Adt(def, args) => {
+            // SIMD-like struct detection and optimization with conservative safety constraints
+            // Check if this is a user-defined struct like Vector<T, const N: usize>([T; N])
+            // that should be treated as SIMD-friendly even without #[repr(simd)]
+            if def.is_struct() 
+                && def.variants().len() == 1 
+                && def.variant(FIRST_VARIANT).fields.len() == 1
+                && def.did().is_local()   // Only user crate types
+            {
+                // Safety: exclude system crates by checking crate name
+                let crate_name = tcx.crate_name(def.did().krate);
+                let crate_name_str = crate_name.as_str();
+                
+                // Exclude known system/compiler crates
+                if !matches!(crate_name_str, 
+                    "core" | "std" | "alloc" | "proc_macro" | "test" | 
+                    "rustc_std_workspace_core" | "rustc_std_workspace_alloc" |
+                    "compiler_builtins" | "libc" | "unwind" | "panic_abort" | 
+                    "panic_unwind" | "adler2" | "object" | "memchr"
+                ) {
+                    let field_ty = def.variant(FIRST_VARIANT).fields[FieldIdx::ZERO].ty(tcx, args);
+                    
+                    // Check if the single field is an array of SIMD-friendly types
+                    if let ty::Array(element_ty, array_len) = field_ty.kind() {
+                        if is_simd_friendly_element_type(*element_ty) {
+                            if let Some(len) = extract_const_value(cx, ty, *array_len)?
+                                .try_to_target_usize(tcx) 
+                            {
+                                // Common SIMD sizes: 4, 8, 16 (conservative range)
+                                if matches!(len, 4 | 8 | 16) {
+                                    // REQUIRE explicit alignment hint - this is the key safety measure
+                                    let has_simd_alignment = def.repr().align
+                                        .map_or(false, |align| {
+                                            let align_bytes = align.bytes();
+                                            // Must have 16+ byte alignment to suggest SIMD intent
+                                            align_bytes >= 16 && align_bytes.is_power_of_two()
+                                        });
+                                    
+                                    // Only apply if user explicitly requested SIMD-like alignment
+                                    if has_simd_alignment {
+                                        let e_ly = cx.layout_of(*element_ty)?;
+                                        return Ok(map_layout(cx.calc.simd_type(e_ly, len, false))?);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
             // Cache the field layouts.
             let variants = def
                 .variants()
@@ -704,6 +753,21 @@ fn layout_of_uncached<'tcx>(
             bug!("layout_of: unexpected type `{ty}`")
         }
     })
+}
+
+/// Check if a type is suitable for SIMD operations
+fn is_simd_friendly_element_type<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        // Floating-point types - most common SIMD use case
+        ty::Float(_) => true,
+        // Integer types - common for SIMD  
+        ty::Int(_) | ty::Uint(_) => true,
+        // Bool can be vectorized in some contexts
+        ty::Bool => true,
+        // Pointers removed to avoid affecting system types like TypeId
+        // Other types are not typically vectorizable
+        _ => false,
+    }
 }
 
 fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tcx>) {
