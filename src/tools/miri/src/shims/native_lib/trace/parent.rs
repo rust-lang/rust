@@ -18,6 +18,11 @@ const ARCH_WORD_SIZE: usize = 4;
 #[cfg(target_arch = "x86_64")]
 const ARCH_WORD_SIZE: usize = 8;
 
+// x86 max instruction length is 15 bytes:
+// https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html
+// See vol. 3B section 24.25.
+const ARCH_MAX_INSTR_SIZE: usize = 15;
+
 /// The address of the page set to be edited, initialised to a sentinel null
 /// pointer.
 static PAGE_ADDR: AtomicPtr<u8> = AtomicPtr::new(std::ptr::null_mut());
@@ -472,7 +477,27 @@ fn handle_segfault(
     let stack_ptr = ch_stack.strict_add(CALLBACK_STACK_SIZE / 2);
     let regs_bak = ptrace::getregs(pid).unwrap();
     let mut new_regs = regs_bak;
-    let ip_prestep = regs_bak.ip();
+
+    // Read at least one instruction from the ip. It's possible that the instruction
+    // that triggered the segfault was short and at the end of the mapped text area,
+    // so some of these reads may fail; in that case, just write empty bytes. If all
+    // reads failed, the disassembler will report an error.
+    let instr = (0..(ARCH_MAX_INSTR_SIZE.div_ceil(ARCH_WORD_SIZE)))
+        .flat_map(|ofs| {
+            // This reads one word of memory; we divided by `ARCH_WORD_SIZE` above to compensate for that.
+            ptrace::read(
+                pid,
+                std::ptr::without_provenance_mut(
+                    regs_bak.ip().strict_add(ARCH_WORD_SIZE.strict_mul(ofs)),
+                ),
+            )
+            .unwrap_or_default()
+            .to_ne_bytes()
+        })
+        .collect::<Vec<_>>();
+
+    // Now figure out the size + type of access and log it down.
+    capstone_disassemble(&instr, addr, cs, acc_events).expect("Failed to disassemble instruction");
 
     // Move the instr ptr into the deprotection code.
     #[expect(clippy::as_conversions)]
@@ -512,33 +537,8 @@ fn handle_segfault(
         ptrace::write(pid, std::ptr::with_exposed_provenance_mut(a), 0).unwrap();
     }
 
-    // Save registers and grab the bytes that were executed. This would
-    // be really nasty if it was a jump or similar but those thankfully
-    // won't do memory accesses and so can't trigger this!
     let regs_bak = ptrace::getregs(pid).unwrap();
     new_regs = regs_bak;
-    let ip_poststep = regs_bak.ip();
-
-    // Ensure that we've actually gone forwards.
-    assert!(ip_poststep > ip_prestep);
-    // But not by too much. 64 bytes should be "big enough" on ~any architecture.
-    assert!(ip_prestep.strict_add(64) > ip_poststep);
-
-    // We need to do reads/writes in word-sized chunks.
-    let diff = (ip_poststep.strict_sub(ip_prestep)).div_ceil(ARCH_WORD_SIZE);
-    let instr = (ip_prestep..ip_prestep.strict_add(diff)).fold(vec![], |mut ret, ip| {
-        // This only needs to be a valid pointer in the child process, not ours.
-        ret.append(
-            &mut ptrace::read(pid, std::ptr::without_provenance_mut(ip))
-                .unwrap()
-                .to_ne_bytes()
-                .to_vec(),
-        );
-        ret
-    });
-
-    // Now figure out the size + type of access and log it down.
-    capstone_disassemble(&instr, addr, cs, acc_events).expect("Failed to disassemble instruction");
 
     // Reprotect everything and continue.
     #[expect(clippy::as_conversions)]
