@@ -50,7 +50,7 @@ LL |
 LL | }
    | - `x` dropped here while still borrowed
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/migration-note.rs:34:37
    |
 LL |     fn needs_static(_: impl Sized + 'static) {}
@@ -131,7 +131,7 @@ LL |
 LL | }
    | - `x` dropped here while still borrowed
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/migration-note.rs:82:37
    |
 LL |     fn needs_static(_: impl Sized + 'static) {}

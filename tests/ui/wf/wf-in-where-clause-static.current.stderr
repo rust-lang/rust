@@ -7,7 +7,7 @@ LL |     let s = foo(&String::from("blah blah blah"));
    |             |    creates a temporary value which is freed while still in use
    |             argument requires that borrow lasts for `'static`
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/wf-in-where-clause-static.rs:12:17
    |
 LL |     &'static S: Static,

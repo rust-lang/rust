@@ -423,7 +423,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     {
                         err.span_note(
                             pred,
-                            format!("requirement for `{region_name}` introduced here"),
+                            format!("requirement that the value outlives `{region_name}` introduced here"),
                         );
                         break;
                     }

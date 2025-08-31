@@ -8,7 +8,7 @@ LL |     f(x);
 LL | }
    | - temporary value is freed at the end of this statement
    |
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/static-region-bound.rs:3:8
    |
 LL | fn f<T:'static>(_: T) {}

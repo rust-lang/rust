@@ -17,7 +17,7 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/local-outlives-static-via-hrtb.rs:15:53
    |
 LL | fn assert_static_via_hrtb<G>(_: G) where for<'a> G: Outlives<'a> {}
@@ -42,7 +42,7 @@ note: due to a current limitation of the type system, this implies a `'static` l
    |
 LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: requirement for `'static` introduced here
+note: requirement that the value outlives `'static` introduced here
   --> $DIR/local-outlives-static-via-hrtb.rs:19:30
    |
 LL |     for<'a> &'a T: Reference<AssociatedType = &'a ()>,
