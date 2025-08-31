@@ -76,7 +76,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         link_name: Symbol,
         dest: &MPlaceTy<'tcx>,
-        ptr: CodePtr,
+        fun: CodePtr,
         libffi_args: &mut [OwnedArg],
     ) -> InterpResult<'tcx, (crate::ImmTy<'tcx>, Option<MemEvents>)> {
         let this = self.eval_context_mut();
@@ -95,54 +95,54 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Unsafe because of the call to native code.
                     // Because this is calling a C function it is not necessarily sound,
                     // but there is no way around this and we've checked as much as we can.
-                    let x = unsafe { ffi::call::<i8>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<i8>(fun, libffi_args) };
                     Scalar::from_i8(x)
                 }
                 ty::Int(IntTy::I16) => {
-                    let x = unsafe { ffi::call::<i16>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<i16>(fun, libffi_args) };
                     Scalar::from_i16(x)
                 }
                 ty::Int(IntTy::I32) => {
-                    let x = unsafe { ffi::call::<i32>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<i32>(fun, libffi_args) };
                     Scalar::from_i32(x)
                 }
                 ty::Int(IntTy::I64) => {
-                    let x = unsafe { ffi::call::<i64>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<i64>(fun, libffi_args) };
                     Scalar::from_i64(x)
                 }
                 ty::Int(IntTy::Isize) => {
-                    let x = unsafe { ffi::call::<isize>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<isize>(fun, libffi_args) };
                     Scalar::from_target_isize(x.try_into().unwrap(), this)
                 }
                 // uints
                 ty::Uint(UintTy::U8) => {
-                    let x = unsafe { ffi::call::<u8>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<u8>(fun, libffi_args) };
                     Scalar::from_u8(x)
                 }
                 ty::Uint(UintTy::U16) => {
-                    let x = unsafe { ffi::call::<u16>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<u16>(fun, libffi_args) };
                     Scalar::from_u16(x)
                 }
                 ty::Uint(UintTy::U32) => {
-                    let x = unsafe { ffi::call::<u32>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<u32>(fun, libffi_args) };
                     Scalar::from_u32(x)
                 }
                 ty::Uint(UintTy::U64) => {
-                    let x = unsafe { ffi::call::<u64>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<u64>(fun, libffi_args) };
                     Scalar::from_u64(x)
                 }
                 ty::Uint(UintTy::Usize) => {
-                    let x = unsafe { ffi::call::<usize>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<usize>(fun, libffi_args) };
                     Scalar::from_target_usize(x.try_into().unwrap(), this)
                 }
                 // Functions with no declared return type (i.e., the default return)
                 // have the output_type `Tuple([])`.
                 ty::Tuple(t_list) if (*t_list).deref().is_empty() => {
-                    unsafe { ffi::call::<()>(ptr, libffi_args) };
+                    unsafe { ffi::call::<()>(fun, libffi_args) };
                     return interp_ok(ImmTy::uninit(dest.layout));
                 }
                 ty::RawPtr(..) => {
-                    let x = unsafe { ffi::call::<*const ()>(ptr, libffi_args) };
+                    let x = unsafe { ffi::call::<*const ()>(fun, libffi_args) };
                     let ptr = StrictPointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
                     Scalar::from_pointer(ptr, this)
                 }
@@ -279,63 +279,68 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // of extra work for types that aren't supported yet.
         let ty = this.ty_to_ffitype(v.layout.ty)?;
 
-        // Now grab the bytes of the argument.
+        // Helper to print a warning when a pointer is shared with the native code.
+        let expose = |prov: Provenance| -> InterpResult<'tcx> {
+            // The first time this happens, print a warning.
+            if !this.machine.native_call_mem_warned.replace(true) {
+                // Newly set, so first time we get here.
+                this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
+            }
+
+            this.expose_provenance(prov)?;
+            interp_ok(())
+        };
+
+        // Compute the byte-level representation of the argument. If there's a pointer in there, we
+        // expose it inside the AM. Later in `visit_reachable_allocs`, the "meta"-level provenance
+        // for accessing the pointee gets exposed; this is crucial to justify the C code effectively
+        // casting the integer in `byte` to a pointer and using that.
         let bytes = match v.as_mplace_or_imm() {
             either::Either::Left(mplace) => {
                 // Get the alloc id corresponding to this mplace, alongside
                 // a pointer that's offset to point to this particular
                 // mplace (not one at the base addr of the allocation).
-                let mplace_ptr = mplace.ptr();
                 let sz = mplace.layout.size.bytes_usize();
                 if sz == 0 {
                     throw_unsup_format!("attempting to pass a ZST over FFI");
                 }
-                let (id, ofs, _) = this.ptr_get_alloc_id(mplace_ptr, sz.try_into().unwrap())?;
+                let (id, ofs, _) = this.ptr_get_alloc_id(mplace.ptr(), sz.try_into().unwrap())?;
                 let ofs = ofs.bytes_usize();
-                // Expose all provenances in the allocation within the byte
-                // range of the struct, if any.
+                let range = ofs..ofs.strict_add(sz);
+                // Expose all provenances in the allocation within the byte range of the struct, if
+                // any. These pointers are being directly passed to native code by-value.
                 let alloc = this.get_alloc_raw(id)?;
-                let alloc_ptr = this.get_alloc_bytes_unchecked_raw(id)?;
-                for prov in alloc.provenance().get_range(this, (ofs..ofs.strict_add(sz)).into()) {
-                    this.expose_provenance(prov)?;
+                for prov in alloc.provenance().get_range(this, range.clone().into()) {
+                    expose(prov)?;
                 }
-                // SAFETY: We know for sure that at alloc_ptr + ofs the next layout.size
-                // bytes are part of this allocation and initialised. They might be marked
-                // as uninit in Miri, but all bytes returned by `MiriAllocBytes` are
-                // initialised.
-                unsafe {
-                    Box::from(std::slice::from_raw_parts(
-                        alloc_ptr.add(ofs),
-                        mplace.layout.size.bytes_usize(),
-                    ))
-                }
+                // Read the bytes that make up this argument. We cannot use the normal getter as
+                // those would fail if any part of the argument is uninitialized. Native code
+                // is kind of outside the interpreter, after all...
+                Box::from(alloc.inspect_with_uninit_and_ptr_outside_interpreter(range))
             }
             either::Either::Right(imm) => {
+                let mut bytes: Box<[u8]> = vec![0; imm.layout.size.bytes_usize()].into();
+
                 // A little helper to write scalars to our byte array.
-                let write_scalar = |this: &MiriInterpCx<'tcx>, sc: Scalar, bytes: &mut [u8]| {
+                let mut write_scalar = |this: &MiriInterpCx<'tcx>, sc: Scalar, pos: usize| {
                     // If a scalar is a pointer, then expose its provenance.
                     if let interpret::Scalar::Ptr(p, _) = sc {
-                        // This relies on the `expose_provenance` in the `visit_reachable_allocs` callback
-                        // below to expose the actual interpreter-level allocation.
-                        this.expose_and_warn(Some(p.provenance), tracing)?;
+                        expose(p.provenance)?;
                     }
-                    // `bytes[0]` should be the first byte we want to write to.
                     write_target_uint(
                         this.data_layout().endian,
-                        &mut bytes[..sc.size().bytes_usize()],
+                        &mut bytes[pos..][..sc.size().bytes_usize()],
                         sc.to_scalar_int()?.to_bits_unchecked(),
                     )
                     .unwrap();
                     interp_ok(())
                 };
 
-                let mut bytes: Box<[u8]> =
-                    (0..imm.layout.size.bytes_usize()).map(|_| 0u8).collect();
-
+                // Write the scalar into the `bytes` buffer.
                 match *imm {
-                    Immediate::Scalar(sc) => write_scalar(this, sc, &mut bytes)?,
+                    Immediate::Scalar(sc) => write_scalar(this, sc, 0)?,
                     Immediate::ScalarPair(sc_first, sc_second) => {
-                        // The first scalar has an offset of zero.
+                        // The first scalar has an offset of zero; compute the offset of the 2nd.
                         let ofs_second = {
                             let rustc_abi::BackendRepr::ScalarPair(a, b) = imm.layout.backend_repr
                             else {
@@ -348,11 +353,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             a.size(this).align_to(b.align(this).abi).bytes_usize()
                         };
 
-                        write_scalar(this, sc_first, &mut bytes)?;
-                        write_scalar(this, sc_second, &mut bytes[ofs_second..])?;
+                        write_scalar(this, sc_first, 0)?;
+                        write_scalar(this, sc_second, ofs_second)?;
                     }
-                    Immediate::Uninit =>
-                        span_bug!(this.cur_span(), "op_to_ffi_arg: argument is uninit: {:#?}", imm),
+                    Immediate::Uninit => {
+                        // Nothing to write.
+                    }
                 }
 
                 bytes
@@ -381,7 +387,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let this = self.eval_context_ref();
         let mut fields = vec![];
-        for field in adt_def.all_fields() {
+        for field in &adt_def.non_enum_variant().fields {
             fields.push(this.ty_to_ffitype(field.ty(*this.tcx, args))?);
         }
 
@@ -406,20 +412,6 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ty::Adt(adt_def, args) => self.adt_to_ffitype(ty, *adt_def, args)?,
             _ => throw_unsup_format!("unsupported argument type for native call: {}", ty),
         })
-    }
-
-    fn expose_and_warn(&self, prov: Option<Provenance>, tracing: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        if let Some(prov) = prov {
-            // The first time this happens, print a warning.
-            if !this.machine.native_call_mem_warned.replace(true) {
-                // Newly set, so first time we get here.
-                this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
-            }
-
-            this.expose_provenance(prov)?;
-        };
-        interp_ok(())
     }
 }
 
@@ -472,8 +464,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
             if !tracing {
-                // Expose all provenances in this allocation, since the native code can do $whatever.
-                // Can be skipped when tracing; in that case we'll expose just the actually-read parts later.
+                // Expose all provenances in this allocation, since the native code can do
+                // $whatever. Can be skipped when tracing; in that case we'll expose just the
+                // actually-read parts later.
                 for prov in alloc.provenance().provenances() {
                     this.expose_provenance(prov)?;
                 }
@@ -483,7 +476,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if info.mutbl.is_mut() {
                 let (alloc, cx) = this.get_alloc_raw_mut(alloc_id)?;
                 // These writes could initialize everything and wreck havoc with the pointers.
-                // We can skip that when tracing; in that case we'll later do that only for the memory that got actually written.
+                // We can skip that when tracing; in that case we'll later do that only for the
+                // memory that got actually written.
                 if !tracing {
                     alloc.process_native_write(&cx.tcx, None);
                 }

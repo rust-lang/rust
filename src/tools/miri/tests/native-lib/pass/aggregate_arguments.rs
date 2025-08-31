@@ -5,6 +5,7 @@ fn main() {
 
 /// Test passing a basic struct as an argument.
 fn test_pass_struct() {
+    // Exactly two fields, so that we hit the ScalarPair case.
     #[repr(C)]
     struct PassMe {
         value: i32,

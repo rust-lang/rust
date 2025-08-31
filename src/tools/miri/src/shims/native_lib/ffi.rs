@@ -1,18 +1,16 @@
+//! Support code for dealing with libffi.
+
 use libffi::low::CodePtr;
 use libffi::middle::{Arg as ArgPtr, Cif, Type as FfiType};
 
 /// Perform the actual FFI call.
 ///
-/// SAFETY: The safety invariants of the foreign function being called must be
-/// upheld (if any).
+/// # Safety
+///
+/// The safety invariants of the foreign function being called must be upheld (if any).
 pub unsafe fn call<R: libffi::high::CType>(fun: CodePtr, args: &mut [OwnedArg]) -> R {
-    let mut arg_tys = vec![];
-    let mut arg_ptrs = vec![];
-    for arg in args {
-        arg_tys.push(arg.take_ty());
-        arg_ptrs.push(arg.ptr())
-    }
-    let cif = Cif::new(arg_tys, R::reify().into_middle());
+    let arg_ptrs: Vec<_> = args.iter().map(|arg| arg.ptr()).collect();
+    let cif = Cif::new(args.iter_mut().map(|arg| arg.ty.take().unwrap()), R::reify().into_middle());
     // SAFETY: Caller upholds that the function is safe to call, and since we
     // were passed a slice reference we know the `OwnedArg`s won't have been
     // dropped by this point.
@@ -34,13 +32,7 @@ impl OwnedArg {
         Self { ty: Some(ty), bytes }
     }
 
-    /// Gets the libffi type descriptor for this argument. Should only be
-    /// called once on a given `OwnedArg`.
-    fn take_ty(&mut self) -> FfiType {
-        self.ty.take().unwrap()
-    }
-
-    /// Instantiates a libffi argument pointer pointing to this argument's bytes.
+    /// Creates a libffi argument pointer pointing to this argument's bytes.
     /// NB: Since `libffi::middle::Arg` ignores the lifetime of the reference
     /// it's derived from, it is up to the caller to ensure the `OwnedArg` is
     /// not dropped before unsafely calling `libffi::middle::Cif::call()`!

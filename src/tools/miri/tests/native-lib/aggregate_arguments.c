@@ -3,6 +3,16 @@
 // See comments in build_native_lib()
 #define EXPORT __attribute__((visibility("default")))
 
+/* Test: fail/pass_struct_expose_only_range */
+
+typedef struct HasPointer {
+  uint8_t *ptr;
+} HasPointer;
+
+EXPORT uint8_t access_struct_ptr(const HasPointer s) {
+  return *s.ptr;
+}
+
 /* Test: test_pass_struct */
 
 typedef struct PassMe {
