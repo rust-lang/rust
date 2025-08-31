@@ -1,6 +1,7 @@
 //@ build-pass
 //@ compile-flags: --crate-type staticlib,dylib -Zstaticlib-prefer-dynamic
 //@ no-prefer-dynamic
+//@ needs-crate-type: dylib
 
 // Test that compiling for multiple crate types in a single compilation with
 // mismatching allocator shim requirements doesn't result in the allocator shim
