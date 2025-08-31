@@ -6,7 +6,6 @@ use std::sync::OnceLock;
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
-use serde::de::{Deserialize, Deserializer, Error as _};
 
 use crate::executor::ColorConfig;
 use crate::fatal;
@@ -1072,7 +1071,7 @@ pub struct TargetCfg {
     pub(crate) abi: String,
     #[serde(rename = "target-family", default)]
     pub(crate) families: Vec<String>,
-    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
+    #[serde(rename = "target-pointer-width")]
     pub(crate) pointer_width: u32,
     #[serde(rename = "target-endian", default)]
     endian: Endian,
@@ -1180,11 +1179,6 @@ fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, Stri
         );
     }
     String::from_utf8(output.stdout).unwrap()
-}
-
-fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
-    let string = String::deserialize(deserializer)?;
-    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]
