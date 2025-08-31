@@ -227,9 +227,16 @@ error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:69:5
    |
 LL |     match () { () => 1 } + match () { () => 1 }
-   |     ^^^^^^^^^^^^^^^^^^^^- help: consider using a semicolon here
-   |     |
-   |     expected `()`, found integer
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found integer
+   |
+help: consider using a semicolon here
+   |
+LL |     match () { () => 1 }; + match () { () => 1 }
+   |                         +
+help: alternatively, parentheses are required to parse this as an expression
+   |
+LL |     (match () { () => 1 }) + match () { () => 1 }
+   |     +                    +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:75:14

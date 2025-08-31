@@ -28,9 +28,20 @@ LL | |         4 => 1,
 LL | |         3 => 2,
 LL | |         _ => 2
 LL | |     }
-   | |     ^- help: consider using a semicolon here
-   | |_____|
-   |       expected `()`, found integer
+   | |_____^ expected `()`, found integer
+   |
+help: consider using a semicolon here
+   |
+LL |     };
+   |      +
+help: alternatively, parentheses are required to parse this as an expression
+   |
+LL ~     (match 3 {
+LL |         4 => 1,
+LL |         3 => 2,
+LL |         _ => 2
+LL ~     })
+   |
 
 error: aborting due to 2 previous errors
 

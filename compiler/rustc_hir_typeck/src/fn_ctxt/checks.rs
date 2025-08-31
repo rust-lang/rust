@@ -1914,6 +1914,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_has_type_or_error(expr, self.tcx.types.unit, |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
+                        if let hir::ExprKind::Match(..) = expr.kind {
+                            err.multipart_suggestion(
+                                "alternatively, parentheses are required to parse this as an \
+                                 expression",
+                                vec![
+                                    (expr.span.shrink_to_lo(), "(".to_string()),
+                                    (expr.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 });
             }
