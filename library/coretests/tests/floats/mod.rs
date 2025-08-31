@@ -8,6 +8,8 @@ trait TestableFloat: Sized {
     const APPROX: Self;
     /// Allow looser tolerance for f32 on miri
     const POWI_APPROX: Self = Self::APPROX;
+    /// Allow looser tolerance for f16
+    const _180_TO_RADIANS_APPROX: Self = Self::APPROX;
     /// Allow for looser tolerance for f16
     const PI_TO_DEGREES_APPROX: Self = Self::APPROX;
     const ZERO: Self;
@@ -30,6 +32,7 @@ trait TestableFloat: Sized {
 impl TestableFloat for f16 {
     type Int = u16;
     const APPROX: Self = 1e-3;
+    const _180_TO_RADIANS_APPROX: Self = 1e-2;
     const PI_TO_DEGREES_APPROX: Self = 0.125;
     const ZERO: Self = 0.0;
     const ONE: Self = 1.0;
@@ -1414,5 +1417,26 @@ float_test! {
         assert_biteq!(inf.to_degrees(), inf);
         assert_biteq!(neg_inf.to_degrees(), neg_inf);
         assert_biteq!((1.0 as Float).to_degrees(), 57.2957795130823208767981548141051703);
+    }
+}
+
+float_test! {
+    name: to_radians,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let pi: Float = Float::PI;
+        let nan: Float = Float::NAN;
+        let inf: Float = Float::INFINITY;
+        let neg_inf: Float = Float::NEG_INFINITY;
+        assert_biteq!((0.0 as Float).to_radians(), 0.0);
+        assert_approx_eq!((154.6 as Float).to_radians(), 2.6982790235832334267135442069489767804);
+        assert_approx_eq!((-332.31 as Float).to_radians(), -5.7999036373023566567593094812182763013);
+        assert_approx_eq!((180.0 as Float).to_radians(), pi, Float::_180_TO_RADIANS_APPROX);
+        assert!(nan.to_radians().is_nan());
+        assert_biteq!(inf.to_radians(), inf);
+        assert_biteq!(neg_inf.to_radians(), neg_inf);
     }
 }

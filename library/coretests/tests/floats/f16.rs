@@ -1,8 +1,6 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f16)]
 
-use std::f16::consts;
-
 use super::{assert_approx_eq, assert_biteq};
 
 /// Tolerance for results on the order of 10.0e-2
@@ -52,21 +50,6 @@ fn test_mul_add() {
 #[cfg(any(miri, target_has_reliable_f16_math))]
 fn test_max_recip() {
     assert_approx_eq!(f16::MAX.recip(), 1.526624e-5f16, 1e-4);
-}
-
-#[test]
-fn test_to_radians() {
-    let pi: f16 = consts::PI;
-    let nan: f16 = f16::NAN;
-    let inf: f16 = f16::INFINITY;
-    let neg_inf: f16 = f16::NEG_INFINITY;
-    assert_biteq!(0.0f16.to_radians(), 0.0);
-    assert_approx_eq!(154.6f16.to_radians(), 2.698279, TOL_0);
-    assert_approx_eq!((-332.31f16).to_radians(), -5.799903, TOL_0);
-    assert_approx_eq!(180.0f16.to_radians(), pi, TOL_0);
-    assert!(nan.to_radians().is_nan());
-    assert_biteq!(inf.to_radians(), inf);
-    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
