@@ -186,14 +186,24 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
-pub type SplitPaths<'a> = impl Iterator<Item = PathBuf>;
+// This can't just be `impl Iterator` because that requires `'a` to be live on
+// drop (see #146045).
+pub type SplitPaths<'a> = iter::Map<
+    slice::Split<'a, u8, impl FnMut(&u8) -> bool + 'static>,
+    impl FnMut(&[u8]) -> PathBuf + 'static,
+>;
 
 #[define_opaque(SplitPaths)]
 pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
-    unparsed
-        .as_bytes()
-        .split(|&b| b == PATH_SEPARATOR)
-        .map(|part| PathBuf::from(OsStr::from_bytes(part)))
+    fn is_separator(&b: &u8) -> bool {
+        b == PATH_SEPARATOR
+    }
+
+    fn into_pathbuf(part: &[u8]) -> PathBuf {
+        PathBuf::from(OsStr::from_bytes(part))
+    }
+
+    unparsed.as_bytes().split(is_separator).map(into_pathbuf)
 }
 
 #[derive(Debug)]
