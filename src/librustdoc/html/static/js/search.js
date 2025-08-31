@@ -1696,7 +1696,7 @@ class DocSearch {
         }
         /**
          * function_signature, param_names
-         * @type {[string, number] | [number] | [string] | [] | null}
+         * @type {[string, string, number] | [string, string] | [] | null}
          */
         const raw = JSON.parse(encoded);
 
@@ -1705,32 +1705,46 @@ class DocSearch {
         }
 
         let searchUnbox = false;
-        const invertedFunctionSignatureIndex = [];
+        const invertedFunctionInputsIndex = [];
+        const invertedFunctionOutputIndex = [];
 
         if (typeof raw[0] === "string") {
-            if (raw[1]) {
+            if (raw[2]) {
                 searchUnbox = true;
             }
             // the inverted function signature index is a list of bitmaps,
             // by number of types that appear in the function
             let i = 0;
-            const pb = makeUint8ArrayFromBase64(raw[0]);
-            const l = pb.length;
+            let pb = makeUint8ArrayFromBase64(raw[0]);
+            let l = pb.length;
             while (i < l) {
                 if (pb[i] === 0) {
-                    invertedFunctionSignatureIndex.push(RoaringBitmap.empty());
+                    invertedFunctionInputsIndex.push(RoaringBitmap.empty());
                     i += 1;
                 } else {
                     const bitmap = new RoaringBitmap(pb, i);
                     i += bitmap.consumed_len_bytes;
-                    invertedFunctionSignatureIndex.push(bitmap);
+                    invertedFunctionInputsIndex.push(bitmap);
+                }
+            }
+            i = 0;
+            pb = makeUint8ArrayFromBase64(raw[1]);
+            l = pb.length;
+            while (i < l) {
+                if (pb[i] === 0) {
+                    invertedFunctionOutputIndex.push(RoaringBitmap.empty());
+                    i += 1;
+                } else {
+                    const bitmap = new RoaringBitmap(pb, i);
+                    i += bitmap.consumed_len_bytes;
+                    invertedFunctionOutputIndex.push(bitmap);
                 }
             }
         } else if (raw[0]) {
             searchUnbox = true;
         }
 
-        return { searchUnbox, invertedFunctionSignatureIndex };
+        return { searchUnbox, invertedFunctionInputsIndex, invertedFunctionOutputIndex };
     }
 
     /**
@@ -4009,14 +4023,19 @@ class DocSearch {
                  * or anything else. This function returns all possible permutations.
                  *
                  * @param {rustdoc.ParserQueryElement|null} elem
+                 * @param {rustdoc.TypeInvertedIndexPolarity} polarity
                  * @returns {Promise<PostingsList<rustdoc.QueryElement>[]>}
                  */
-                const unpackPostingsList = async elem => {
+                const unpackPostingsList = async(elem, polarity) => {
                     if (!elem) {
                         return empty_postings_list;
                     }
                     const typeFilter = itemTypeFromName(elem.typeFilter);
-                    const searchResults = await index.search(elem.normalizedPathLast);
+                    const [searchResults, upla, uplb] = await Promise.all([
+                        index.search(elem.normalizedPathLast),
+                        unpackPostingsListAll(elem.generics, polarity),
+                        unpackPostingsListBindings(elem.bindings, polarity),
+                    ]);
                     /**
                      * @type {Promise<[
                      *     number,
@@ -4039,7 +4058,7 @@ class DocSearch {
                     const types = (await Promise.all(typePromises))
                         .filter(([_id, name, ty, path]) =>
                             name !== null && name.toLowerCase() === elem.pathLast &&
-                            ty && !ty.invertedFunctionSignatureIndex.every(bitmap => {
+                            ty && !ty[polarity].every(bitmap => {
                                 return bitmap.isEmpty();
                             }) &&
                             path && path.ty !== TY_ASSOCTYPE &&
@@ -4078,7 +4097,7 @@ class DocSearch {
                                         this.getPathData(id),
                                     ]);
                                     if (name !== null && ty !== null && path !== null &&
-                                        !ty.invertedFunctionSignatureIndex.every(bitmap => {
+                                        !ty[polarity].every(bitmap => {
                                             return bitmap.isEmpty();
                                         }) &&
                                         path.ty !== TY_ASSOCTYPE
@@ -4176,18 +4195,16 @@ class DocSearch {
                     /** @type {PostingsList<rustdoc.QueryElement>[]} */
                     const results = [];
                     for (const [id, _name, typeData] of types) {
-                        if (!typeData || typeData.invertedFunctionSignatureIndex.every(bitmap => {
+                        if (!typeData || typeData[polarity].every(bitmap => {
                             return bitmap.isEmpty();
                         })) {
                             continue;
                         }
-                        const upla = await unpackPostingsListAll(elem.generics);
-                        const uplb = await unpackPostingsListBindings(elem.bindings);
                         for (const {invertedIndex: genericsIdx, queryElem: generics} of upla) {
                             for (const {invertedIndex: bindingsIdx, queryElem: bindings} of uplb) {
                                 results.push({
                                     invertedIndex: intersectInvertedIndexes(
-                                        typeData.invertedFunctionSignatureIndex,
+                                        typeData[polarity],
                                         genericsIdx,
                                         bindingsIdx,
                                     ),
@@ -4219,15 +4236,16 @@ class DocSearch {
                  * take the intersection of this bitmap.
                  *
                  * @param {(rustdoc.ParserQueryElement|null)[]|null} elems
+                 * @param {rustdoc.TypeInvertedIndexPolarity} polarity
                  * @returns {Promise<PostingsList<rustdoc.QueryElement[]>[]>}
                  */
-                const unpackPostingsListAll = async elems => {
+                const unpackPostingsListAll = async(elems, polarity) => {
                     if (!elems || elems.length === 0) {
                         return nested_everything_postings_list;
                     }
                     const [firstPostingsList, remainingAll] = await Promise.all([
-                        unpackPostingsList(elems[0]),
-                        unpackPostingsListAll(elems.slice(1)),
+                        unpackPostingsList(elems[0], polarity),
+                        unpackPostingsListAll(elems.slice(1), polarity),
                     ]);
                     /** @type {PostingsList<rustdoc.QueryElement[]>[]} */
                     const results = [];
@@ -4261,11 +4279,12 @@ class DocSearch {
                  * Before passing an actual parser item to it, make sure to clone the map.
                  *
                  * @param {Map<string, rustdoc.ParserQueryElement[]>} elems
+                 * @param {rustdoc.TypeInvertedIndexPolarity} polarity
                  * @returns {Promise<PostingsList<
                  *     Map<number, rustdoc.QueryElement[]>,
                  * >[]>}
                  */
-                const unpackPostingsListBindings = async elems => {
+                const unpackPostingsListBindings = async(elems, polarity) => {
                     if (!elems) {
                         return [{
                             invertedIndex: everything_inverted_index,
@@ -4286,19 +4305,23 @@ class DocSearch {
                             queryElem: new Map(),
                         }];
                     }
-                    const firstKeyIds = await index.search(firstKey);
+                    // HEADS UP!
+                    // We must put this map back the way we found it before returning,
+                    // otherwise things break.
+                    elems.delete(firstKey);
+                    const [firstKeyIds, firstPostingsList, remainingAll] = await Promise.all([
+                        index.search(firstKey),
+                        unpackPostingsListAll(firstList, polarity),
+                        unpackPostingsListBindings(elems, polarity),
+                    ]);
                     if (!firstKeyIds) {
+                        elems.set(firstKey, firstList);
                         // User specified a non-existent key.
                         return [{
                             invertedIndex: empty_inverted_index,
                             queryElem: new Map(),
                         }];
                     }
-                    elems.delete(firstKey);
-                    const [firstPostingsList, remainingAll] = await Promise.all([
-                        unpackPostingsListAll(firstList),
-                        unpackPostingsListBindings(elems),
-                    ]);
                     /** @type {PostingsList<Map<number, rustdoc.QueryElement[]>>[]} */
                     const results = [];
                     for (const keyId of firstKeyIds.matches().entries()) {
@@ -4335,8 +4358,8 @@ class DocSearch {
 
                 // finally, we can do the actual unification loop
                 const [allInputs, allOutput] = await Promise.all([
-                    unpackPostingsListAll(inputs),
-                    unpackPostingsListAll(output),
+                    unpackPostingsListAll(inputs, "invertedFunctionInputsIndex"),
+                    unpackPostingsListAll(output, "invertedFunctionOutputIndex"),
                 ]);
                 let checkCounter = 0;
                 /**
