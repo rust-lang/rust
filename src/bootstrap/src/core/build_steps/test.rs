@@ -96,7 +96,7 @@ impl Step for CrateBootstrap {
         );
 
         let crate_name = path.rsplit_once('/').unwrap().1;
-        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder, Mode::ToolBootstrap);
+        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -153,15 +153,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "linkchecker self tests",
-            bootstrap_host,
-            builder,
-            Mode::ToolBootstrap,
-        );
+        run_cargo_test(cargo, &[], &[], "linkchecker self tests", bootstrap_host, builder);
 
         if builder.doc_tests == DocTests::No {
             return;
@@ -174,7 +166,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         let linkchecker = builder.tool_cmd(Tool::Linkchecker);
 
         // Run the linkchecker.
-        let _guard = builder.msg(Kind::Test, "Linkcheck", None, compiler, bootstrap_host);
+        let _guard = builder.msg_test("Linkcheck", bootstrap_host, 1);
         let _time = helpers::timeit(builder);
         linkchecker.delay_failure().arg(builder.out.join(host).join("doc")).run(builder);
     }
@@ -482,7 +474,7 @@ impl Step for RustAnalyzer {
         cargo.env("SKIP_SLOW_TESTS", "1");
 
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder, Mode::ToolRustc);
+        run_cargo_test(cargo, &[], &[], "rust-analyzer", host, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -540,7 +532,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder);
 
-        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder, Mode::ToolRustc);
+        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -679,8 +671,7 @@ impl Step for Miri {
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
 
         {
-            let _guard =
-                builder.msg(Kind::Test, "miri", Mode::ToolRustc, miri.build_compiler, target);
+            let _guard = builder.msg_test("miri", target, target_compiler.stage);
             let _time = helpers::timeit(builder);
             cargo.run(builder);
         }
@@ -696,13 +687,8 @@ impl Step for Miri {
             cargo.args(["tests/pass", "tests/panic"]);
 
             {
-                let _guard = builder.msg(
-                    Kind::Test,
-                    "miri (mir-opt-level 4)",
-                    Mode::ToolRustc,
-                    miri.build_compiler,
-                    target,
-                );
+                let _guard =
+                    builder.msg_test("miri (mir-opt-level 4)", target, target_compiler.stage);
                 let _time = helpers::timeit(builder);
                 cargo.run(builder);
             }
@@ -772,8 +758,7 @@ impl Step for CargoMiri {
         // Finally, run everything.
         let mut cargo = BootstrapCommand::from(cargo);
         {
-            let _guard =
-                builder.msg(Kind::Test, "cargo-miri", Mode::ToolRustc, (host, stage), target);
+            let _guard = builder.msg_test("cargo-miri", target, stage);
             let _time = helpers::timeit(builder);
             cargo.run(builder);
         }
@@ -833,7 +818,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cargo.env("TEST_RUSTC", builder.rustc(compiler));
 
         cargo.allow_features(COMPILETEST_ALLOW_FEATURES);
-        run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder, Mode::ToolStd);
+        run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }
 }
 
@@ -916,7 +901,7 @@ impl Step for Clippy {
         cargo.add_rustc_lib_path(builder);
         let cargo = prepare_cargo_test(cargo, &[], &[], target, builder);
 
-        let _guard = builder.msg(Kind::Test, "clippy", Mode::ToolRustc, build_compiler, target);
+        let _guard = builder.msg_test("clippy", target, target_compiler.stage);
 
         // Clippy reports errors if it blessed the outputs
         if cargo.allow_failure().run(builder) {
@@ -1046,8 +1031,7 @@ impl Step for RustdocJSStd {
             self.target,
             DocumentationFormat::Html,
         ));
-        let _guard =
-            builder.msg(Kind::Test, "rustdoc-js-std", None, self.build_compiler, self.target);
+        let _guard = builder.msg_test("rustdoc-js-std", self.target, self.build_compiler.stage);
         command.run(builder);
     }
 
@@ -1200,7 +1184,7 @@ impl Step for RustdocGUI {
         }
 
         let _time = helpers::timeit(builder);
-        let _guard = builder.msg_test("rustdoc-gui", (self.target, self.test_compiler.stage));
+        let _guard = builder.msg_test("rustdoc-gui", self.target, self.test_compiler.stage);
         try_run_tests(builder, &mut cmd, true);
     }
 
@@ -1359,15 +1343,7 @@ impl Step for CrateRunMakeSupport {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "run-make-support self test",
-            host,
-            builder,
-            Mode::ToolBootstrap,
-        );
+        run_cargo_test(cargo, &[], &[], "run-make-support self test", host, builder);
     }
 }
 
@@ -1404,15 +1380,7 @@ impl Step for CrateBuildHelper {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(
-            cargo,
-            &[],
-            &[],
-            "build_helper self test",
-            host,
-            builder,
-            Mode::ToolBootstrap,
-        );
+        run_cargo_test(cargo, &[], &[], "build_helper self test", host, builder);
     }
 }
 
@@ -1724,7 +1692,7 @@ impl Step for MirOpt {
 ///
 /// Compiles all tests with `test_compiler` for `target` with the specified
 /// compiletest `mode` and `suite` arguments. For example `mode` can be
-/// "run-pass" or `suite` can be something like `debuginfo`.
+/// "mir-opt" and `suite` can be something like "debuginfo".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
     /// The compiler that we're testing.
@@ -1920,7 +1888,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--llvm-filecheck").arg(builder.llvm_filecheck(builder.config.host_target));
 
         if let Some(codegen_backend) = builder.config.cmd.test_codegen_backend() {
-            if !builder.config.enabled_codegen_backends(test_compiler.host).contains(codegen_backend) {
+            if !builder
+                .config
+                .enabled_codegen_backends(test_compiler.host)
+                .contains(codegen_backend)
+            {
                 eprintln!(
                     "\
 ERROR: No configured backend named `{name}`
@@ -2326,19 +2298,16 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                 mode: mode.into(),
                 compare_mode: None,
                 target: self.target.triple.to_string(),
-                host: self.compiler.host.triple.to_string(),
-                stage: self.compiler.stage,
+                host: self.test_compiler.host.triple.to_string(),
+                stage: self.test_compiler.stage,
             },
             builder,
         );
 
-        let _group = builder.msg(
-            Kind::Test,
-            format!("compiletest suite={suite} mode={mode}"),
-            // FIXME: compiletest sometimes behaves as ToolStd, we could expose that difference here
-            Mode::ToolBootstrap,
-            test_compiler,
+        let _group = builder.msg_test(
+            format!("with compiletest suite={suite} mode={mode}"),
             target,
+            test_compiler.stage,
         );
         try_run_tests(builder, &mut cmd, false);
 
@@ -2352,8 +2321,8 @@ HELP: You can add it into `bootstrap.toml` in `rust.codegen-backends = [{name:?}
                     mode: mode.into(),
                     compare_mode: Some(compare_mode.into()),
                     target: self.target.triple.to_string(),
-                    host: self.compiler.host.triple.to_string(),
-                    stage: self.compiler.stage,
+                    host: self.test_compiler.host.triple.to_string(),
+                    stage: self.test_compiler.stage,
                 },
                 builder,
             );
@@ -2482,12 +2451,10 @@ impl BookTest {
         }
 
         builder.add_rust_test_threads(&mut rustbook_cmd);
-        let _guard = builder.msg(
-            Kind::Test,
+        let _guard = builder.msg_test(
             format_args!("mdbook {}", self.path.display()),
-            None,
-            test_compiler,
             test_compiler.host,
+            test_compiler.stage,
         );
         let _time = helpers::timeit(builder);
         let toolstate = if rustbook_cmd.delay_failure().run(builder) {
@@ -2505,12 +2472,10 @@ impl BookTest {
 
         builder.std(test_compiler, host);
 
-        let _guard = builder.msg(
-            Kind::Test,
+        let _guard = builder.msg_test(
             format!("book {}", self.name),
-            None,
-            (test_compiler.host, test_compiler.stage - 1),
-            host,
+            test_compiler.host,
+            test_compiler.stage,
         );
 
         // Do a breadth-first traversal of the `src/doc` directory and just run
@@ -2653,13 +2618,7 @@ impl Step for ErrorIndex {
         let mut tool = tool::ErrorIndex::command(builder, self.compilers);
         tool.arg("markdown").arg(&output);
 
-        let guard = builder.msg(
-            Kind::Test,
-            "error-index",
-            None,
-            self.compilers.build_compiler(),
-            target_compiler.host,
-        );
+        let guard = builder.msg_test("error-index", target_compiler.host, target_compiler.stage);
         let _time = helpers::timeit(builder);
         tool.run_capture(builder);
         drop(guard);
@@ -2755,14 +2714,12 @@ fn run_cargo_test<'a>(
     description: impl Into<Option<&'a str>>,
     target: TargetSelection,
     builder: &Builder<'_>,
-    mode: impl Into<Option<Mode>>,
 ) -> bool {
-    let mode = mode.into();
     let compiler = cargo.compiler();
     let mut cargo = prepare_cargo_test(cargo, libtest_args, crates, target, builder);
     let _time = helpers::timeit(builder);
     let _group =
-        description.into().and_then(|what| builder.msg(Kind::Test, what, mode, compiler, target));
+        description.into().and_then(|what| builder.msg_test(what, target, compiler.stage + 1));
 
     #[cfg(feature = "build-metrics")]
     builder.metrics.begin_test_suite(
@@ -2989,15 +2946,7 @@ impl Step for Crate {
             crates.push("alloctests".to_owned());
         }
 
-        run_cargo_test(
-            cargo,
-            &[],
-            &crates,
-            &*crate_description(&self.crates),
-            target,
-            builder,
-            mode,
-        );
+        run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);
     }
 }
 
@@ -3091,15 +3040,7 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        run_cargo_test(
-            cargo,
-            &[],
-            &["rustdoc:0.0.0".to_string()],
-            "rustdoc",
-            target,
-            builder,
-            Mode::ToolRustc,
-        );
+        run_cargo_test(cargo, &[], &["rustdoc:0.0.0".to_string()], "rustdoc", target, builder);
     }
 }
 
@@ -3158,7 +3099,6 @@ impl Step for CrateRustdocJsonTypes {
             "rustdoc-json-types",
             target,
             builder,
-            Mode::ToolTarget,
         );
     }
 }
@@ -3316,8 +3256,6 @@ impl Step for Bootstrap {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.host_target;
         let build_compiler = builder.compiler(0, host);
-        let _guard =
-            builder.msg(Kind::Test, "bootstrap", Mode::ToolBootstrap, build_compiler, host);
 
         // Some tests require cargo submodule to be present.
         builder.build.require_submodule("src/tools/cargo", None);
@@ -3356,7 +3294,7 @@ impl Step for Bootstrap {
 
         // bootstrap tests are racy on directory creation so just run them one at a time.
         // Since there's not many this shouldn't be a problem.
-        run_cargo_test(cargo, &["--test-threads=1"], &[], None, host, builder, Mode::ToolBootstrap);
+        run_cargo_test(cargo, &["--test-threads=1"], &[], None, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3416,7 +3354,11 @@ impl Step for TierCheck {
             cargo.arg("--verbose");
         }
 
-        let _guard = builder.msg_test("platform support check", self.test_compiler);
+        let _guard = builder.msg_test(
+            "platform support check",
+            self.test_compiler.host,
+            self.test_compiler.stage,
+        );
         BootstrapCommand::from(cargo).delay_failure().run(builder);
     }
 
@@ -3495,9 +3437,8 @@ impl Step for RustInstaller {
             &[],
         );
 
-        let _guard =
-            builder.msg(Kind::Test, "rust-installer", None, build_compiler, bootstrap_host);
-        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder, Mode::ToolBootstrap);
+        let _guard = builder.msg_test("rust-installer", bootstrap_host, 1);
+        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
@@ -3668,7 +3609,11 @@ impl Step for CodegenCranelift {
         // Avoid incremental cache issues when changing rustc
         cargo.env("CARGO_BUILD_INCREMENTAL", "false");
 
-        let _guard = builder.msg_test("rustc_codegen_cranelift", target_compiler);
+        let _guard = builder.msg_test(
+            "rustc_codegen_cranelift",
+            target_compiler.host,
+            target_compiler.stage,
+        );
 
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");
@@ -3763,7 +3708,11 @@ impl Step for CodegenGCC {
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
         );
 
-        let _guard = builder.msg_test("rustc_codegen_gcc", compilers.build_compiler());
+        let _guard = builder.msg_test(
+            "rustc_codegen_gcc",
+            compilers.target(),
+            compilers.target_compiler().stage,
+        );
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -3868,7 +3817,7 @@ impl Step for TestFloatParse {
         );
         cargo_test.allow_features(TEST_FLOAT_PARSE_ALLOW_FEATURES);
 
-        run_cargo_test(cargo_test, &[], &[], "test-float-parse", target, builder, Mode::ToolStd);
+        run_cargo_test(cargo_test, &[], &[], "test-float-parse", target, builder);
 
         // Run the actual parse tests.
         let mut cargo_run = tool::prepare_tool_cargo(
