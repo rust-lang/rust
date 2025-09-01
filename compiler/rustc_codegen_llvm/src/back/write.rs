@@ -653,6 +653,87 @@ pub(crate) unsafe fn llvm_optimize(
         None
     };
 
+    fn handle_offload(m: &llvm::Module, llcx: &llvm::Context, old_fn: &llvm::Value) {
+        unsafe { llvm::LLVMRustOffloadWrapper(m, old_fn) };
+        //unsafe {llvm::LLVMDumpModule(m);}
+        //unsafe {
+        //    // Get the old function type
+        //    let old_fn_ty = llvm::LLVMGlobalGetValueType(old_fn);
+        //    dbg!(&old_fn_ty);
+        //    let old_param_count = llvm::LLVMCountParamTypes(old_fn_ty);
+        //    dbg!(&old_param_count);
+
+        //    // Get the old parameter types
+        //    let mut old_param_types = Vec::with_capacity(old_param_count as usize);
+        //    llvm::LLVMGetParamTypes(old_fn_ty, old_param_types.as_mut_ptr());
+        //    old_param_types.set_len(old_param_count as usize);
+
+        //    // Create the new parameter list, with ptr as the first argument
+        //    let ptr_ty = llvm::LLVMPointerTypeInContext(llcx, 0);
+        //    let mut new_param_types = Vec::with_capacity(old_param_count as usize + 1);
+        //    new_param_types.push(ptr_ty);
+        //    for old_param in old_param_types {
+        //        new_param_types.push(old_param);
+        //    }
+        //    dbg!(&new_param_types);
+
+        //    // Create the new function type
+        //    let ret_ty = llvm::LLVMGetReturnType(old_fn_ty);
+        //    let new_fn_ty = llvm::LLVMFunctionType(ret_ty, new_param_types.as_mut_ptr(), new_param_types.len() as u32, 0);
+        //    dbg!(&new_fn_ty);
+
+        //    // Create the new function
+        //    let old_fn_name = String::from_utf8(llvm::get_value_name(old_fn)).unwrap();
+        //    //let old_fn_name = std::ffi::CStr::from_ptr(llvm::LLVMGetValueName2(old_fn)).to_str().unwrap();
+        //    let new_fn_name = format!("{}_with_dyn_ptr", old_fn_name);
+        //    let new_fn_cstr = CString::new(new_fn_name).unwrap();
+        //    let new_fn = llvm::LLVMAddFunction(m, new_fn_cstr.as_ptr(), new_fn_ty);
+        //    dbg!(&new_fn);
+        //    let a0 = llvm::LLVMGetParam(new_fn, 0);
+        //    llvm::LLVMSetValueName2(a0, b"dyn_ptr\0".as_ptr().cast(), "dyn_ptr".len());
+        //    dbg!(&new_fn);
+
+        //    // Move basic blocks
+        //    let mut bb = llvm::LLVMGetFirstBasicBlock(old_fn);
+        //    //dbg!(&bb);
+        //    llvm::LLVMAppendExistingBasicBlock(new_fn, bb);
+        //    //while !bb.is_null() {
+        //    //    let next = llvm::LLVMGetNextBasicBlock(bb);
+        //    //    llvm::LLVMAppendExistingBasicBlock(new_fn, bb);
+        //    //    bb = next;
+        //    //}// Shift argument uses: old %0 -> new %1, old %1 -> new %2, ...
+        //    let old_n = llvm::LLVMCountParams(old_fn);
+        //    for i in 0..old_n {
+        //        let old_arg = llvm::LLVMGetParam(old_fn, i);
+        //        let new_arg = llvm::LLVMGetParam(new_fn, i + 1);
+        //        llvm::LLVMReplaceAllUsesWith(old_arg, new_arg);
+        //    }
+
+        //    // Copy linkage and visibility
+        //    //llvm::LLVMSetLinkage(new_fn, llvm::LLVMGetLinkage(old_fn));
+        //    //llvm::LLVMSetVisibility(new_fn, llvm::LLVMGetVisibility(old_fn));
+
+        //    // Replace all uses of old_fn with new_fn (RAUW)
+        //    llvm::LLVMReplaceAllUsesWith(old_fn, new_fn);
+
+        //    // Optionally, remove the old function
+        //    llvm::LLVMDeleteFunction(old_fn);
+        //}
+    }
+
+    let consider_offload = config.offload.contains(&config::Offload::Enable);
+    if consider_offload && (cgcx.target_arch == "amdgpu" || cgcx.target_arch == "nvptx64") {
+        for num in 0..9 {
+            let name = format!("kernel_{num}");
+            let c_name = CString::new(name).unwrap();
+            if let Some(kernel) =
+                unsafe { llvm::LLVMGetNamedFunction(module.module_llvm.llmod(), c_name.as_ptr()) }
+            {
+                handle_offload(module.module_llvm.llmod(), module.module_llvm.llcx, kernel);
+            }
+        }
+    }
+
     let mut llvm_profiler = cgcx
         .prof
         .llvm_recording_enabled()
