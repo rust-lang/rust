@@ -1873,7 +1873,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
-        let sysroot = if test_compiler.stage == 0 {
+        // Note: DO NOT check if test_compiler.stage is 0, because the test compiler can be stage 0
+        // even if the top stage is 1 (when we run the ui-fulldeps suite).
+        let sysroot = if builder.top_stage == 0 {
             builder.initial_sysroot.clone()
         } else {
             builder.sysroot(test_compiler)
