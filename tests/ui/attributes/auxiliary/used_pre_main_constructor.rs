@@ -20,6 +20,7 @@
         target_os = "nto",
         target_os = "openbsd",
         target_os = "fuchsia",
+        target_os = "managarm",
     ),
     link_section = ".init_array"
 )]

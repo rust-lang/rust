@@ -295,7 +295,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
         return "".into();
     }
 
-    let mut descr = String::from(" {");
+    let mut descr = String::from("{");
     descr.push_str(crates[0].as_ref());
     for krate in &crates[1..] {
         descr.push_str(", ");
