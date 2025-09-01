@@ -92,7 +92,7 @@ member constraints come in.
 ## Choices are always lifetime parameters
 
 At present, the "choice" regions from a member constraint are always lifetime
-parameters from the current function. As of <!-- date-check --> August 2025,
+parameters from the current function. As of <!-- date-check --> October 2021,
 this falls out from the placement of impl Trait, though in the future it may not
 be the case. We take some advantage of this fact, as it simplifies the current
 code. In particular, we don't have to consider a case like `'0 member of ['1,
