@@ -603,15 +603,14 @@ fn resolve_local<'tcx>(
 /// ```text
 ///     E& = & ET
 ///        | StructName { ..., f: E&, ... }
+///        | Constructor(..., E&, ...)
 ///        | [ ..., E&, ... ]
 ///        | ( ..., E&, ... )
 ///        | {...; E&}
 ///        | { super let ... = E&; ... }
 ///        | if _ { ...; E& } else { ...; E& }
 ///        | match _ { ..., _ => E&, ... }
-///        | box E&
 ///        | E& as ...
-///        | ( E& )
 /// ```
 fn record_rvalue_scope_if_borrow_expr<'tcx>(
     visitor: &mut ScopeResolutionVisitor<'tcx>,
