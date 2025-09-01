@@ -1,4 +1,3 @@
-#![feature(extended_varargs_abi_support)]
 //@ run-pass
 //@ only-x86_64
 
