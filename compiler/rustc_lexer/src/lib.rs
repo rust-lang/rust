@@ -550,28 +550,20 @@ impl Cursor<'_> {
         self.eat_while(|ch| ch != '\n' && is_whitespace(ch));
         let invalid_infostring = self.first() != '\n';
 
-        let mut s = self.as_str();
         let mut found = false;
-        let mut size = 0;
-        while let Some(closing) = s.find(&"-".repeat(length_opening as usize)) {
-            let preceding_chars_start = s[..closing].rfind("\n").map_or(0, |i| i + 1);
-            if s[preceding_chars_start..closing].chars().all(is_whitespace) {
-                // candidate found
-                self.bump_bytes(size + closing);
-                // in case like
-                // ---cargo
-                // --- blahblah
-                // or
-                // ---cargo
-                // ----
-                // combine those stuff into this frontmatter token such that it gets detected later.
-                self.eat_until(b'\n');
-                found = true;
-                break;
-            } else {
-                s = &s[closing + length_opening as usize..];
-                size += closing + length_opening as usize;
-            }
+        let nl_fence_pattern = format!("\n{:-<1$}", "", length_opening as usize);
+        if let Some(closing) = self.as_str().find(&nl_fence_pattern) {
+            // candidate found
+            self.bump_bytes(closing + nl_fence_pattern.len());
+            // in case like
+            // ---cargo
+            // --- blahblah
+            // or
+            // ---cargo
+            // ----
+            // combine those stuff into this frontmatter token such that it gets detected later.
+            self.eat_until(b'\n');
+            found = true;
         }
 
         if !found {

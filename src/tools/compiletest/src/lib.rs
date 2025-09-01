@@ -15,6 +15,7 @@ pub mod directives;
 pub mod errors;
 mod executor;
 mod json;
+mod panic_hook;
 mod raise_fd_limit;
 mod read2;
 pub mod runtest;
@@ -492,6 +493,8 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 /// Called by `main` after the config has been parsed.
 pub fn run_tests(config: Arc<Config>) {
     debug!(?config, "run_tests");
+
+    panic_hook::install_panic_hook();
 
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.

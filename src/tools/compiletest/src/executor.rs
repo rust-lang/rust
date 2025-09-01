@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::{env, hint, io, mem, panic, thread};
 
 use crate::common::{Config, TestPaths};
+use crate::panic_hook;
 
 mod deadline;
 mod json;
@@ -120,6 +121,11 @@ fn run_test_inner(
     completion_sender: mpsc::Sender<TestCompletion>,
 ) {
     let is_capture = !runnable_test.config.nocapture;
+
+    // Install a panic-capture buffer for use by the custom panic hook.
+    if is_capture {
+        panic_hook::set_capture_buf(Default::default());
+    }
     let capture_buf = is_capture.then(|| Arc::new(Mutex::new(vec![])));
 
     if let Some(capture_buf) = &capture_buf {
@@ -128,6 +134,13 @@ fn run_test_inner(
 
     let panic_payload = panic::catch_unwind(move || runnable_test.run()).err();
 
+    if let Some(panic_buf) = panic_hook::take_capture_buf() {
+        let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
+        // For now, forward any captured panic message to (captured) stderr.
+        // FIXME(Zalathar): Once we have our own output-capture buffer for
+        // non-panic output, append the panic message to that buffer instead.
+        eprint!("{panic_buf}");
+    }
     if is_capture {
         io::set_output_capture(None);
     }
