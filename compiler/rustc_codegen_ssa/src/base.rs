@@ -17,6 +17,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ItemId, Target};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
@@ -630,14 +631,30 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
     // If the crate doesn't have an `allocator_kind` set then there's definitely
     // no shim to generate. Otherwise we also check our dependency graph for all
     // our output crate types. If anything there looks like its a `Dynamic`
-    // linkage, then it's already got an allocator shim and we'll be using that
-    // one instead. If nothing exists then it's our job to generate the
-    // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
+    // linkage for all crate types we may link as, then it's already got an
+    // allocator shim and we'll be using that one instead. If nothing exists
+    // then it's our job to generate the allocator! If crate types disagree
+    // about whether an allocator shim is necessary or not, we generate one
+    // and let needs_allocator_shim_for_linking decide at link time whether or
+    // not to use it for any particular linker invocation.
+    let all_crate_types_any_dynamic_crate = tcx.dependency_formats(()).iter().all(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
-    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+    if all_crate_types_any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+}
+
+/// Decide if this particular crate type needs an allocator shim linked in.
+/// This may return true even when allocator_kind_for_codegen returns false. In
+/// this case no allocator shim shall be linked.
+pub(crate) fn needs_allocator_shim_for_linking(
+    dependency_formats: &Dependencies,
+    crate_type: CrateType,
+) -> bool {
+    use rustc_middle::middle::dependency_format::Linkage;
+    let any_dynamic_crate =
+        dependency_formats[&crate_type].iter().any(|&linkage| linkage == Linkage::Dynamic);
+    !any_dynamic_crate
 }
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
