@@ -691,41 +691,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         vec![ty_error; len]
     }
 
-    pub(crate) fn resolve_lang_item_path(
-        &self,
-        lang_item: hir::LangItem,
-        span: Span,
-        hir_id: HirId,
-    ) -> (Res, Ty<'tcx>) {
-        let def_id = self.tcx.require_lang_item(lang_item, span);
-        let def_kind = self.tcx.def_kind(def_id);
-
-        let item_ty = if let DefKind::Variant = def_kind {
-            self.tcx.type_of(self.tcx.parent(def_id))
-        } else {
-            self.tcx.type_of(def_id)
-        };
-        let args = self.fresh_args_for_item(span, def_id);
-        let ty = item_ty.instantiate(self.tcx, args);
-
-        self.write_args(hir_id, args);
-        self.write_resolution(hir_id, Ok((def_kind, def_id)));
-
-        let code = match lang_item {
-            hir::LangItem::TryTraitFromOutput
-            | hir::LangItem::TryTraitFromResidual
-            | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
-            _ => None,
-        };
-        if let Some(code) = code {
-            self.add_required_obligations_with_code(span, def_id, args, move |_, _| code.clone());
-        } else {
-            self.add_required_obligations_for_hir(span, def_id, args, hir_id);
-        }
-
-        (Res::Def(def_kind, def_id), ty)
-    }
-
     /// Resolves an associated value path into a base type and associated constant, or method
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     #[instrument(level = "trace", skip(self), ret)]

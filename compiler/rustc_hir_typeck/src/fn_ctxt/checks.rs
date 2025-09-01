@@ -1291,10 +1291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
-            QPath::LangItem(lang_item, span) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
-                (res, LoweredTy::from_raw(self, path_span, ty))
-            }
+            QPath::LangItem(..) => unreachable!(),
         }
     }
 

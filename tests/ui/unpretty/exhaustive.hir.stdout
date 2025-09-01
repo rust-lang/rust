@@ -253,10 +253,7 @@ mod expressions {
     }
 
     /// ExprKind::TryBlock
-    fn expr_try_block() {
-        { #[lang = "from_output"](()) }
-        { return; #[lang = "from_output"](()) }
-    }
+    fn expr_try_block() { { from_output(()) } { return; from_output(()) } }
 
     /// ExprKind::Assign
     fn expr_assign() { let expr; expr = true; }
@@ -373,20 +370,17 @@ mod expressions {
     /// ExprKind::Try
     fn expr_try() {
         let expr;
-        match #[lang = "branch"](expr) {
-            #[lang = "Break"] {  0: residual } => #[allow(unreachable_code)]
-                return #[lang = "from_residual"](residual),
-            #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
+        match branch(expr) {
+            Break {  0: residual } => #[allow(unreachable_code)]
+                return from_residual(residual),
+            Continue {  0: val } => #[allow(unreachable_code)]
                 val,
         };
     }
     /// ExprKind::Yield
     fn expr_yield() { yield (); yield true; }
     /// ExprKind::Yeet
-    fn expr_yeet() {
-        return #[lang = "from_yeet"](());
-        return #[lang = "from_yeet"](0);
-    }
+    fn expr_yeet() { return from_yeet(()); return from_yeet(0); }
     /// ExprKind::Become
     fn expr_become() { become true; }
     /// ExprKind::IncludedBytes

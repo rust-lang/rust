@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
+use rustc_hir::{BindingMode, ByRef, Expr, ExprKind, MatchSource, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
@@ -47,7 +47,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
                 // ? is a Call, makes sure not to rec *x?, but rather (*x)?
                 ExprKind::Call(hir_callee, [_]) => matches!(
                     hir_callee.kind,
-                    ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, ..))
+                    ExprKind::Path(qpath)
+                    if cx.tcx.qpath_is_lang_item(qpath, rustc_hir::LangItem::TryTraitBranch)
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)

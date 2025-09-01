@@ -5,7 +5,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::option_arg_ty;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
-use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
+use rustc_hir::{Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{hygiene, sym};
@@ -23,8 +23,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
     //         val,
     // };
     if let ExprKind::Call(match_fun, [try_arg]) = scrutinee.kind
-        && let ExprKind::Path(ref match_fun_path) = match_fun.kind
-        && matches!(match_fun_path, QPath::LangItem(LangItem::TryTraitBranch, ..))
+        && let ExprKind::Path(match_fun_path) = match_fun.kind
+        && cx.tcx.qpath_is_lang_item(match_fun_path, LangItem::TryTraitBranch)
         && let ExprKind::Call(err_fun, [err_arg]) = try_arg.kind
         && err_fun.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
         && let Some(return_ty) = find_return_type(cx, &expr.kind)

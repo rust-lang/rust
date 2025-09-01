@@ -609,7 +609,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
-        let constructor = self.arena.alloc(self.expr_lang_item_qpath(method_span, lang_item));
+        let constructor = self.arena.alloc(self.expr_lang_item_path(method_span, lang_item));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
@@ -1950,7 +1950,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
-            self.expr_call_lang_item_qpath_fn(
+            self.expr_call_lang_item_fn(
                 unstable_span,
                 hir::LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
