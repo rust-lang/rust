@@ -658,6 +658,23 @@ pub(crate) unsafe fn llvm_optimize(
         None
     };
 
+    fn handle_offload(m: &llvm::Module, llcx: &llvm::Context, old_fn: &llvm::Value) {
+        unsafe { llvm::LLVMRustOffloadWrapper(m, old_fn) };
+    }
+
+    let consider_offload = config.offload.contains(&config::Offload::Enable);
+    if consider_offload && (cgcx.target_arch == "amdgpu" || cgcx.target_arch == "nvptx64") {
+        for num in 0..9 {
+            let name = format!("kernel_{num}");
+            let c_name = CString::new(name).unwrap();
+            if let Some(kernel) =
+                unsafe { llvm::LLVMGetNamedFunction(module.module_llvm.llmod(), c_name.as_ptr()) }
+            {
+                handle_offload(module.module_llvm.llmod(), module.module_llvm.llcx, kernel);
+            }
+        }
+    }
+
     let mut llvm_profiler = cgcx
         .prof
         .llvm_recording_enabled()
