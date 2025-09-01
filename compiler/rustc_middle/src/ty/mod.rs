@@ -2340,5 +2340,41 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
         }
     }
 
+    if let ty::Tuple(tuple_types) = ty.kind() {
+        if tuple_types.is_empty() {
+            return TypeTree::new();
+        }
+
+        let mut types = Vec::new();
+        let mut current_offset = 0;
+
+        for tuple_ty in tuple_types.iter() {
+            let element_tree = typetree_from_ty(tcx, tuple_ty);
+
+            let element_layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
+                .ok()
+                .map(|layout| layout.size.bytes_usize())
+                .unwrap_or(0);
+
+            for elem_type in &element_tree.0 {
+                types.push(Type {
+                    offset: if elem_type.offset == -1 {
+                        current_offset as isize
+                    } else {
+                        current_offset as isize + elem_type.offset
+                    },
+                    size: elem_type.size,
+                    kind: elem_type.kind,
+                    child: elem_type.child.clone(),
+                });
+            }
+
+            current_offset += element_layout;
+        }
+
+        return TypeTree(types);
+    }
+
     TypeTree::new()
 }
