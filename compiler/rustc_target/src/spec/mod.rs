@@ -2032,6 +2032,10 @@ supported_targets! {
     ("i586-unknown-redox", i586_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
+    ("x86_64-unknown-managarm-mlibc", x86_64_unknown_managarm_mlibc),
+    ("aarch64-unknown-managarm-mlibc", aarch64_unknown_managarm_mlibc),
+    ("riscv64gc-unknown-managarm-mlibc", riscv64gc_unknown_managarm_mlibc),
+
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
@@ -2327,7 +2331,7 @@ pub struct Target {
     /// Used for generating target documentation.
     pub metadata: TargetMetadata,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
-    pub pointer_width: u32,
+    pub pointer_width: u16,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: StaticCow<str>,

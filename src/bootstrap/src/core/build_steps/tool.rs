@@ -1539,42 +1539,7 @@ tool_rustc_extended!(Rustfmt {
     add_bins_to_sysroot: ["rustfmt"]
 });
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TestFloatParse {
-    pub host: TargetSelection,
-}
-
-impl TestFloatParse {
-    pub const ALLOW_FEATURES: &'static str = "f16,cfg_target_has_reliable_f16_f128";
-}
-
-impl Step for TestFloatParse {
-    type Output = ToolBuildResult;
-    const IS_HOST: bool = true;
-    const DEFAULT: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/test-float-parse")
-    }
-
-    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        let bootstrap_host = builder.config.host_target;
-        let compiler = builder.compiler(builder.top_stage, bootstrap_host);
-
-        builder.ensure(ToolBuild {
-            build_compiler: compiler,
-            target: bootstrap_host,
-            tool: "test-float-parse",
-            mode: Mode::ToolStd,
-            path: "src/tools/test-float-parse",
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-            allow_features: Self::ALLOW_FEATURES,
-            cargo_args: Vec::new(),
-            artifact_kind: ToolArtifactKind::Binary,
-        })
-    }
-}
+pub const TEST_FLOAT_PARSE_ALLOW_FEATURES: &str = "f16,cfg_target_has_reliable_f16_f128";
 
 impl Builder<'_> {
     /// Gets a `BootstrapCommand` which is ready to run `tool` in `stage` built for

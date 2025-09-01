@@ -258,6 +258,7 @@ target | std | host | notes
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
 [`aarch64-unknown-illumos`](platform-support/illumos.md) | ✓ | ✓ | ARM64 illumos
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
+[`aarch64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | ARM64 Managarm
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
@@ -388,6 +389,7 @@ target | std | host | notes
 `riscv64gc-unknown-freebsd` | ? |   | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` | ? |   | RISC-V Fuchsia
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
+[`riscv64gc-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | RISC-V Managarm
 [`riscv64gc-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | RISC-V NetBSD
 [`riscv64gc-unknown-nuttx-elf`](platform-support/nuttx.md) | ✓ |  | RISC-V 64bit with NuttX
 [`riscv64gc-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/riscv64
@@ -428,6 +430,7 @@ target | std | host | notes
 [`x86_64-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 64-bit GNU/Hurd
 `x86_64-unknown-l4re-uclibc` | ? |  |
 [`x86_64-unknown-linux-none`](platform-support/x86_64-unknown-linux-none.md) | * |  | 64-bit Linux with no libc
+[`x86_64-unknown-managarm-mlibc`](platform-support/managarm.md) | ? |   | x86_64 Managarm
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |

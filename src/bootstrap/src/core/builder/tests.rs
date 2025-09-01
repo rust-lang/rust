@@ -2037,13 +2037,316 @@ mod snapshot {
                 .render_steps(), @"[check] rustc 0 <host> -> RunMakeSupport 1 <host>");
     }
 
+    fn prepare_test_config(ctx: &TestCtx) -> ConfigBuilder {
+        ctx.config("test")
+            // Bootstrap only runs by default on CI, so we have to emulate that also locally.
+            .args(&["--ci", "true"])
+            // These rustdoc tests requires nodejs to be present.
+            // We can't easily opt out of it, so if it is present on the local PC, the test
+            // would have different result on CI, where nodejs might be missing.
+            .args(&["--skip", "rustdoc-js-std"])
+            .args(&["--skip", "rustdoc-js"])
+            .args(&["--skip", "rustdoc-gui"])
+    }
+
+    #[test]
+    fn test_all_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            prepare_test_config(&ctx)
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> Tidy 1 <host>
+        [test] tidy <>
+        [build] rustdoc 0 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 1 <host>
+        [test] compiletest-crashes 1 <host>
+        [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [test] compiletest-coverage 1 <host>
+        [test] compiletest-coverage 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [test] compiletest-mir-opt 1 <host>
+        [test] compiletest-codegen-llvm 1 <host>
+        [test] compiletest-codegen-units 1 <host>
+        [test] compiletest-assembly-llvm 1 <host>
+        [test] compiletest-incremental 1 <host>
+        [test] compiletest-debuginfo 1 <host>
+        [test] compiletest-ui-fulldeps 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-rustdoc 1 <host>
+        [test] compiletest-coverage-run-rustdoc 1 <host>
+        [test] compiletest-pretty 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> std 0 <host>
+        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [test] crate-bootstrap <host> src/tools/coverage-dump
+        [test] crate-bootstrap <host> src/tools/jsondoclint
+        [test] crate-bootstrap <host> src/tools/replace-version-placeholder
+        [test] crate-bootstrap <host> tidyselftest
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [doc] rustc 0 <host> -> standalone 1 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 0 <host> -> error-index 1 <host>
+        [doc] rustc 0 <host> -> error-index 1 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 0 <host> -> releases 1 <host>
+        [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [test] link-check <host>
+        [test] tier-check <host>
+        [test] rustc 0 <host> -> rust-analyzer 1 <host>
+        [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] rustdoc-theme 1 <host>
+        [test] compiletest-rustdoc-ui 1 <host>
+        [build] rustc 0 <host> -> JsonDocCk 1 <host>
+        [build] rustc 0 <host> -> JsonDocLint 1 <host>
+        [test] compiletest-rustdoc-json 1 <host>
+        [doc] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [test] html-check <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [test] compiletest-run-make 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 1 <host>
+        [test] compiletest-ui-fulldeps 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make 1 <host>
+        [test] compiletest-rustdoc 1 <host>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 1 <host>
+        [test] compiletest-incremental 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        [test] compiletest-ui-fulldeps 2 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustdoc 2 <host>
+        [test] compiletest-run-make 2 <host>
+        [test] compiletest-rustdoc 2 <host>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 2 <host>
+        [test] compiletest-incremental 2 <host>
+        [build] rustdoc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage2_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .hosts(&[TEST_TRIPLE_1])
+                .targets(&[TEST_TRIPLE_1])
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [test] compiletest-ui 2 <target1>
+        [build] llvm <target1>
+        [build] rustc 2 <host> -> rustc 3 <target1>
+        [test] compiletest-ui-fulldeps 2 <target1>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustdoc 2 <host>
+        [test] compiletest-run-make 2 <target1>
+        [test] compiletest-rustdoc 2 <target1>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 2 <target1>
+        [test] compiletest-incremental 2 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <host>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] rustdoc 2 <target1>
+        ");
+    }
+
+    #[test]
+    fn test_all_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            prepare_test_config(&ctx)
+                .stage(2)
+                .render_steps(), @r"
+        [build] rustc 0 <host> -> Tidy 1 <host>
+        [test] tidy <>
+        [build] rustdoc 0 <host>
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 2 <host>
+        [test] compiletest-crashes 2 <host>
+        [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [test] compiletest-coverage 2 <host>
+        [test] compiletest-coverage 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [test] compiletest-mir-opt 2 <host>
+        [test] compiletest-codegen-llvm 2 <host>
+        [test] compiletest-codegen-units 2 <host>
+        [test] compiletest-assembly-llvm 2 <host>
+        [test] compiletest-incremental 2 <host>
+        [test] compiletest-debuginfo 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        [test] compiletest-ui-fulldeps 2 <host>
+        [build] rustdoc 2 <host>
+        [test] compiletest-rustdoc 2 <host>
+        [test] compiletest-coverage-run-rustdoc 2 <host>
+        [test] compiletest-pretty 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [test] rustc 1 <host> -> CrateLibrustc 2 <host>
+        [test] crate-bootstrap <host> src/tools/coverage-dump
+        [test] crate-bootstrap <host> src/tools/jsondoclint
+        [test] crate-bootstrap <host> src/tools/replace-version-placeholder
+        [test] crate-bootstrap <host> tidyselftest
+        [build] rustc 0 <host> -> UnstableBookGen 1 <host>
+        [build] rustc 0 <host> -> Rustbook 1 <host>
+        [doc] unstable-book (book) <host>
+        [doc] book (book) <host>
+        [doc] book/first-edition (book) <host>
+        [doc] book/second-edition (book) <host>
+        [doc] book/2018-edition (book) <host>
+        [doc] rustc 1 <host> -> standalone 2 <host>
+        [doc] rustc 1 <host> -> std 1 <host> crates=[alloc,compiler_builtins,core,panic_abort,panic_unwind,proc_macro,rustc-std-workspace-core,std,std_detect,sysroot,test,unwind]
+        [build] rustc 1 <host> -> error-index 2 <host>
+        [doc] rustc 1 <host> -> error-index 2 <host>
+        [doc] nomicon (book) <host>
+        [doc] rustc 1 <host> -> reference (book) 2 <host>
+        [doc] rustdoc (book) <host>
+        [doc] rust-by-example (book) <host>
+        [build] rustc 0 <host> -> LintDocs 1 <host>
+        [doc] rustc (book) <host>
+        [doc] cargo (book) <host>
+        [doc] clippy (book) <host>
+        [doc] embedded-book (book) <host>
+        [doc] edition-guide (book) <host>
+        [doc] style-guide (book) <host>
+        [doc] rustc 1 <host> -> releases 2 <host>
+        [build] rustc 0 <host> -> Linkchecker 1 <host>
+        [test] link-check <host>
+        [test] tier-check <host>
+        [test] rustc 1 <host> -> rust-analyzer 2 <host>
+        [doc] rustc (book) <host>
+        [test] rustc 1 <host> -> lint-docs 2 <host>
+        [build] rustc 0 <host> -> RustdocTheme 1 <host>
+        [test] rustdoc-theme 2 <host>
+        [test] compiletest-rustdoc-ui 2 <host>
+        [build] rustc 0 <host> -> JsonDocCk 1 <host>
+        [build] rustc 0 <host> -> JsonDocLint 1 <host>
+        [test] compiletest-rustdoc-json 2 <host>
+        [doc] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 0 <host> -> HtmlChecker 1 <host>
+        [test] html-check <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [test] compiletest-run-make 2 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiler_stage_1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("compiler")
+                .stage(1)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> std 0 <host>
+        [build] rustdoc 0 <host>
+        [test] rustc 0 <host> -> CrateLibrustc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiler_stage_2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("compiler")
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [test] rustc 1 <host> -> CrateLibrustc 2 <host>
+        ");
+    }
+
     #[test]
     fn test_exclude() {
         let ctx = TestCtx::new();
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
 
         let host = TargetSelection::from_user(&host_target());
-        steps.assert_contains(StepMetadata::test("RustdocUi", host));
+        steps.assert_contains(StepMetadata::test("compiletest-rustdoc-ui", host).stage(1));
         steps.assert_not_contains(test::Tidy);
     }
 
@@ -2054,13 +2357,15 @@ mod snapshot {
 
         let get_steps = |args: &[&str]| ctx.config("test").args(args).get_steps();
 
+        let rustc_metadata =
+            || StepMetadata::test("CrateLibrustc", host).built_by(Compiler::new(0, host));
         // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
-        get_steps(&[]).assert_contains(StepMetadata::test("CrateLibrustc", host));
+        get_steps(&[]).assert_contains(rustc_metadata());
 
         let steps = get_steps(&["--skip", "compiler/rustc_data_structures"]);
 
         // Ensure tests for rustc are not skipped.
-        steps.assert_contains(StepMetadata::test("CrateLibrustc", host));
+        steps.assert_contains(rustc_metadata());
         steps.assert_contains_fuzzy(StepMetadata::build("rustc", host));
     }
 
@@ -2077,6 +2382,7 @@ mod snapshot {
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
         [build] rustdoc 0 <host>
+        [test] rustc 0 <host> -> cargo 1 <host>
         ");
     }
 
@@ -2096,6 +2402,7 @@ mod snapshot {
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustdoc 2 <host>
         [build] rustdoc 1 <host>
+        [test] rustc 1 <host> -> cargo 2 <host>
         ");
     }
 
@@ -2113,6 +2420,19 @@ mod snapshot {
         [build] rustc 0 <host> -> CargoTest 1 <host>
         [build] rustdoc 1 <host>
         [test] cargotest 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_tier_check() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("tier-check")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [test] tier-check <host>
         ");
     }
 

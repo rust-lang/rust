@@ -1002,13 +1002,17 @@ impl Config {
             (0, Subcommand::Install) => {
                 check_stage0("install");
             }
+            (0, Subcommand::Test { .. }) if build_compiletest_allow_stage0 != Some(true) => {
+                eprintln!(
+                    "ERROR: cannot test anything on stage 0. Use at least stage 1. If you want to run compiletest with an external stage0 toolchain, enable `build.compiletest-allow-stage0`."
+                );
+                exit!(1);
+            }
             _ => {}
         }
 
         if flags_compile_time_deps && !matches!(flags_cmd, Subcommand::Check { .. }) {
-            eprintln!(
-                "WARNING: Can't use --compile-time-deps with any subcommand other than check."
-            );
+            eprintln!("ERROR: Can't use --compile-time-deps with any subcommand other than check.");
             exit!(1);
         }
 

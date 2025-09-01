@@ -329,7 +329,7 @@ fn execute_pipeline(
 
                 // FIXME(kobzol): try gather profiles together, at once for LLVM and rustc
                 // Instrument the libraries and gather profiles
-                let llvm_profile = with_bolt_instrumented(&llvm_lib, |llvm_profile_dir| {
+                let llvm_profile = with_bolt_instrumented(env, &llvm_lib, |llvm_profile_dir| {
                     stage.section("Gather profiles", |_| {
                         gather_bolt_profiles(env, "LLVM", llvm_benchmarks(env), llvm_profile_dir)
                     })
@@ -354,7 +354,7 @@ fn execute_pipeline(
             log::info!("Optimizing {rustc_lib} with BOLT");
 
             // Instrument it and gather profiles
-            let rustc_profile = with_bolt_instrumented(&rustc_lib, |rustc_profile_dir| {
+            let rustc_profile = with_bolt_instrumented(env, &rustc_lib, |rustc_profile_dir| {
                 stage.section("Gather profiles", |_| {
                     gather_bolt_profiles(env, "rustc", rustc_benchmarks(env), rustc_profile_dir)
                 })

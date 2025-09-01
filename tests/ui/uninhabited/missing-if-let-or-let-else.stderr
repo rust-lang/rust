@@ -1,0 +1,39 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `{`
+  --> $DIR/missing-if-let-or-let-else.rs:2:25
+   |
+LL |     let Some(x) = foo() {
+   |                         ^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+help: you might have meant to use `if let`
+   |
+LL |     if let Some(x) = foo() {
+   |     ++
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `{`
+  --> $DIR/missing-if-let-or-let-else.rs:8:25
+   |
+LL |     let Some(x) = foo() {
+   |                         ^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+help: you might have meant to use `let else`
+   |
+LL |     let Some(x) = foo() else {
+   |                         ++++
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `{`
+  --> $DIR/missing-if-let-or-let-else.rs:14:25
+   |
+LL |     let Some(x) = foo() {
+   |                         ^ expected one of `.`, `;`, `?`, `else`, or an operator
+   |
+help: you might have meant to use `if let`
+   |
+LL |     if let Some(x) = foo() {
+   |     ++
+help: alternatively, you might have meant to use `let else`
+   |
+LL |     let Some(x) = foo() else {
+   |                         ++++
+
+error: aborting due to 3 previous errors
+

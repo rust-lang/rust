@@ -8,8 +8,8 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
-    COMPILETEST_ALLOW_FEATURES, SourceType, ToolTargetBuildMode, get_tool_target_compiler,
-    prepare_tool_cargo,
+    COMPILETEST_ALLOW_FEATURES, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode,
+    get_tool_target_compiler, prepare_tool_cargo,
 };
 use crate::core::builder::{
     self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -791,7 +791,7 @@ tool_check_step!(MiroptTestTools {
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
     mode: |_builder| Mode::ToolStd,
-    allow_features: tool::TestFloatParse::ALLOW_FEATURES
+    allow_features: TEST_FLOAT_PARSE_ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",

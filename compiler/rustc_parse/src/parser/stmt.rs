@@ -6,6 +6,7 @@ use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
+use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
     LocalKind, MacCall, MacCallStmt, MacStmtStyle, Recovered, Stmt, StmtKind,
@@ -783,6 +784,100 @@ impl<'a> Parser<'a> {
         Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
+    fn recover_missing_let_else(&mut self, err: &mut Diag<'_>, pat: &ast::Pat, stmt_span: Span) {
+        if self.token.kind != token::OpenBrace {
+            return;
+        }
+        match pat.kind {
+            ast::PatKind::Ident(..) | ast::PatKind::Missing | ast::PatKind::Wild => {
+                // Not if let or let else
+                return;
+            }
+            _ => {}
+        }
+        let snapshot = self.create_snapshot_for_diagnostic();
+        let block_span = self.token.span;
+        let (if_let, let_else) = match self.parse_block() {
+            Ok(block) => {
+                let mut idents = vec![];
+                pat.walk(&mut |pat: &ast::Pat| {
+                    if let ast::PatKind::Ident(_, ident, _) = pat.kind {
+                        idents.push(ident);
+                    }
+                    true
+                });
+
+                struct IdentFinder {
+                    idents: Vec<Ident>,
+                    /// If a block references one of the bindings introduced by the let pattern,
+                    /// we likely meant to use `if let`.
+                    /// This is pre-expansion, so if we encounter
+                    /// `let Some(x) = foo() { println!("{x}") }` we won't find it.
+                    references_ident: bool = false,
+                    /// If a block has a `return`, then we know with high certainty that it was
+                    /// meant to be let-else.
+                    has_return: bool = false,
+                }
+
+                impl<'a> Visitor<'a> for IdentFinder {
+                    fn visit_ident(&mut self, ident: &Ident) {
+                        for i in &self.idents {
+                            if ident.name == i.name {
+                                self.references_ident = true;
+                            }
+                        }
+                    }
+                    fn visit_expr(&mut self, node: &'a Expr) {
+                        if let ExprKind::Ret(..) = node.kind {
+                            self.has_return = true;
+                        }
+                        walk_expr(self, node);
+                    }
+                }
+
+                // Collect all bindings in pattern and see if they appear in the block. Likely meant
+                // to write `if let`. See if the block has a return. Likely meant to write
+                // `let else`.
+                let mut visitor = IdentFinder { idents, .. };
+                visitor.visit_block(&block);
+
+                (visitor.references_ident, visitor.has_return)
+            }
+            Err(e) => {
+                e.cancel();
+                self.restore_snapshot(snapshot);
+                (false, false)
+            }
+        };
+
+        let mut alternatively = "";
+        if if_let || !let_else {
+            alternatively = "alternatively, ";
+            err.span_suggestion_verbose(
+                stmt_span.shrink_to_lo(),
+                "you might have meant to use `if let`",
+                "if ".to_string(),
+                if if_let {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                },
+            );
+        }
+        if let_else || !if_let {
+            err.span_suggestion_verbose(
+                block_span.shrink_to_lo(),
+                format!("{alternatively}you might have meant to use `let else`"),
+                "else ".to_string(),
+                if let_else {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                },
+            );
+        }
+    }
+
     fn recover_missing_dot(&mut self, err: &mut Diag<'_>) {
         let Some((ident, _)) = self.token.ident() else {
             return;
@@ -977,6 +1072,7 @@ impl<'a> Parser<'a> {
                         self.check_mistyped_turbofish_with_multiple_type_params(e, expr).map_err(
                             |mut e| {
                                 self.recover_missing_dot(&mut e);
+                                self.recover_missing_let_else(&mut e, &local.pat, stmt.span);
                                 e
                             },
                         )?;

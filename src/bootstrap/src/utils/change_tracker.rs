@@ -531,4 +531,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "It is now possible to `check/build/dist` the standard stage 0 library if you use a stage0 rustc built from in-tree sources. This is useful for quickly cross-compiling the standard library. You have to enable build.local-rebuild for this to work.",
     },
+    ChangeInfo {
+        change_id: 145663,
+        severity: ChangeSeverity::Warning,
+        summary: "It is no longer possible to `x test` with stage 0, except for running compiletest and opting into `build.compiletest-allow-stage0`.",
+    },
 ];
