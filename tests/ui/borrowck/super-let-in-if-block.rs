@@ -1,5 +1,6 @@
 //! Test that `super let` bindings in `if` expressions' blocks have the same scope as the result
 //! of the block.
+//@ check-pass
 #![feature(super_let)]
 
 fn main() {
@@ -16,14 +17,11 @@ fn main() {
 
     // For `super let` in non-extending `if`, the binding `temp` should live in the temporary scope
     // the `if` expression is in.
-    // TODO: make this not an error
     std::convert::identity(if true {
         super let temp = ();
         &temp
-        //~^ ERROR `temp` does not live long enough
     } else {
         super let temp = ();
         &temp
-        //~^ ERROR `temp` does not live long enough
     });
 }
