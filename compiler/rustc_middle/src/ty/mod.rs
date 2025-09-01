@@ -2286,6 +2286,46 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
         }]);
     }
 
-    // FIXME(KMJ-007): Handle arrays, slices, structs, and other complex types
+    if ty.is_array() {
+        if let ty::Array(element_ty, len_const) = ty.kind() {
+            let len = len_const.try_to_target_usize(tcx).unwrap_or(0);
+            if len == 0 {
+                return TypeTree::new();
+            }
+
+            let element_tree = typetree_from_ty(tcx, *element_ty);
+
+            let element_layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*element_ty))
+                .ok()
+                .map(|layout| layout.size.bytes_usize())
+                .unwrap_or(0);
+
+            if element_layout == 0 {
+                return TypeTree::new();
+            }
+
+            let mut types = Vec::new();
+            for i in 0..len {
+                let base_offset = (i as usize * element_layout) as isize;
+
+                for elem_type in &element_tree.0 {
+                    types.push(Type {
+                        offset: if elem_type.offset == -1 {
+                            base_offset
+                        } else {
+                            base_offset + elem_type.offset
+                        },
+                        size: elem_type.size,
+                        kind: elem_type.kind,
+                        child: elem_type.child.clone(),
+                    });
+                }
+            }
+
+            return TypeTree(types);
+        }
+    }
+
     TypeTree::new()
 }
