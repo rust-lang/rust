@@ -2686,6 +2686,8 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustIsECObject(buf_ptr: *const u8, buf_len: usize) -> bool;
 
+    pub(crate) fn LLVMRustIsAnyArm64Coff(buf_ptr: *const u8, buf_len: usize) -> bool;
+
     pub(crate) fn LLVMRustSetNoSanitizeAddress(Global: &Value);
     pub(crate) fn LLVMRustSetNoSanitizeHWAddress(Global: &Value);
 }
