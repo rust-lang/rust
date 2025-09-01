@@ -1,3 +1,4 @@
+//@ build-fail
 //@ known-bug: #92470
 fn main() {
     encode(&mut EncoderImpl);

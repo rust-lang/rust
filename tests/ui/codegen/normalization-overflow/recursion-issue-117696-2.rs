@@ -1,3 +1,4 @@
+//@ build-fail
 //@ known-bug: #117696
 //@ compile-flags: -Copt-level=0
 fn main() {

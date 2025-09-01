@@ -1,3 +1,4 @@
+//@ build-fail
 //@ known-bug: #131342
 
 fn main() {

@@ -1,5 +1,7 @@
-//@ known-bug: #122823
+//@ build-fail
+//@ known-bug: #102310
 //@ compile-flags: -Copt-level=0
+//@ edition:2021
 // ignore-tidy-linelength
 
 use std::vec::Vec;

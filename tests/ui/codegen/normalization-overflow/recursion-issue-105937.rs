@@ -1,3 +1,4 @@
+//@ build-fail
 //@ known-bug: #105937
 //@ compile-flags: -Copt-level=0
 
