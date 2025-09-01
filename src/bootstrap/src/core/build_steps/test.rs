@@ -2886,6 +2886,58 @@ impl Step for Crate {
     }
 }
 
+/// Test compiler-builtins via its testcrate.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CompilerBuiltins {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for CompilerBuiltins {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("library/compiler-builtins")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(CompilerBuiltins { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler = self.compiler;
+        let target = self.target;
+
+        builder.ensure(compile::Std::new(compiler, target));
+
+        let make_cargo = |f: fn(&mut builder::Cargo) -> &mut builder::Cargo| {
+            let mut c = builder::Cargo::new(
+                builder,
+                compiler,
+                Mode::ToolStd,
+                SourceType::InTree,
+                target,
+                Kind::Test,
+            );
+            c.current_dir(&builder.src.join("library").join("compiler-builtins"));
+            f(&mut c);
+            c
+        };
+
+        // Most tests are in the builtins-test crate.
+        let crates = ["compiler_builtins".to_string(), "builtins-test".to_string()];
+        let cargo = make_cargo(|c| c);
+        run_cargo_test(cargo, &[], &crates, "compiler-builtins", target, builder);
+        let cargo = make_cargo(|c| c.arg("--features=c"));
+        run_cargo_test(cargo, &[], &crates, "compiler-builtins --features c", target, builder);
+    }
+}
+
 /// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
