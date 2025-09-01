@@ -151,7 +151,7 @@ mod private_slice_index {
     message = "the type `{T}` cannot be indexed by `{Self}`",
     label = "slice indices are of type `usize` or ranges of `usize`"
 )]
-#[const_trait]
+#[const_trait] // FIXME(const_trait_impl): Migrate to `const unsafe trait` once #146122 is fixed.
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 pub unsafe trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
     /// The output type returned by methods.
