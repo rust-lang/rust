@@ -49,6 +49,65 @@ pub const SIGRTMAX: i32 = 42;
 /// base address for each evaluation would produce unbounded memory usage.
 const ADDRS_PER_ANON_GLOBAL: usize = 32;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum AlignmentCheck {
+    /// Do not check alignment.
+    None,
+    /// Check alignment "symbolically", i.e., using only the requested alignment for an allocation and not its real base address.
+    Symbolic,
+    /// Check alignment on the actual physical integer address.
+    Int,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum RejectOpWith {
+    /// Isolated op is rejected with an abort of the machine.
+    Abort,
+
+    /// If not Abort, miri returns an error for an isolated op.
+    /// Following options determine if user should be warned about such error.
+    /// Do not print warning about rejected isolated op.
+    NoWarning,
+
+    /// Print a warning about rejected isolated op, with backtrace.
+    Warning,
+
+    /// Print a warning about rejected isolated op, without backtrace.
+    WarningWithoutBacktrace,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum IsolatedOp {
+    /// Reject an op requiring communication with the host. By
+    /// default, miri rejects the op with an abort. If not, it returns
+    /// an error code, and prints a warning about it. Warning levels
+    /// are controlled by `RejectOpWith` enum.
+    Reject(RejectOpWith),
+
+    /// Execute op requiring communication with the host, i.e. disable isolation.
+    Allow,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BacktraceStyle {
+    /// Prints a terser backtrace which ideally only contains relevant information.
+    Short,
+    /// Prints a backtrace with all possible information.
+    Full,
+    /// Prints only the frame that the error occurs in.
+    Off,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ValidationMode {
+    /// Do not perform any kind of validation.
+    No,
+    /// Validate the interior of the value, but not things behind references.
+    Shallow,
+    /// Fully recursively validate references.
+    Deep,
+}
+
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
     /// Extra data for the Borrow Tracker.
