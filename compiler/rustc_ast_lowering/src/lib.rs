@@ -2028,7 +2028,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
-                    hir::GenericParamKind::Const { ty, default, synthetic: false },
+                    hir::GenericParamKind::Const { ty, default },
                 )
             }
         }
