@@ -3109,7 +3109,8 @@ impl<'a> From<Cow<'a, str>> for String {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Cow<'a, str> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a> const From<&'a str> for Cow<'a, str> {
     /// Converts a string slice into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
@@ -3130,7 +3131,8 @@ impl<'a> From<&'a str> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<String> for Cow<'a, str> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a> const From<String> for Cow<'a, str> {
     /// Converts a [`String`] into an [`Owned`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.
@@ -3153,7 +3155,8 @@ impl<'a> From<String> for Cow<'a, str> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
-impl<'a> From<&'a String> for Cow<'a, str> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a> const From<&'a String> for Cow<'a, str> {
     /// Converts a [`String`] reference into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
     /// is not copied.

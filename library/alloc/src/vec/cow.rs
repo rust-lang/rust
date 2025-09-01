@@ -2,7 +2,8 @@ use super::Vec;
 use crate::borrow::Cow;
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
-impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T: Clone> const From<&'a [T]> for Cow<'a, [T]> {
     /// Creates a [`Borrowed`] variant of [`Cow`]
     /// from a slice.
     ///
@@ -15,7 +16,8 @@ impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
 }
 
 #[stable(feature = "cow_from_array_ref", since = "1.77.0")]
-impl<'a, T: Clone, const N: usize> From<&'a [T; N]> for Cow<'a, [T]> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T: Clone, const N: usize> const From<&'a [T; N]> for Cow<'a, [T]> {
     /// Creates a [`Borrowed`] variant of [`Cow`]
     /// from a reference to an array.
     ///
@@ -28,7 +30,8 @@ impl<'a, T: Clone, const N: usize> From<&'a [T; N]> for Cow<'a, [T]> {
 }
 
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
-impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T: Clone> const From<Vec<T>> for Cow<'a, [T]> {
     /// Creates an [`Owned`] variant of [`Cow`]
     /// from an owned instance of [`Vec`].
     ///
@@ -41,7 +44,8 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
 }
 
 #[stable(feature = "cow_from_vec_ref", since = "1.28.0")]
-impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a, T: Clone> const From<&'a Vec<T>> for Cow<'a, [T]> {
     /// Creates a [`Borrowed`] variant of [`Cow`]
     /// from a reference to [`Vec`].
     ///

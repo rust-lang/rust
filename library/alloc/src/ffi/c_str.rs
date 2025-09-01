@@ -869,7 +869,8 @@ impl From<CString> for Box<CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<CString> for Cow<'a, CStr> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a> const From<CString> for Cow<'a, CStr> {
     /// Converts a [`CString`] into an owned [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: CString) -> Cow<'a, CStr> {
@@ -878,7 +879,8 @@ impl<'a> From<CString> for Cow<'a, CStr> {
 }
 
 #[stable(feature = "cow_from_cstr", since = "1.28.0")]
-impl<'a> From<&'a CStr> for Cow<'a, CStr> {
+#[rustc_const_unstable(feature = "const_from", issue = "143773")]
+impl<'a> const From<&'a CStr> for Cow<'a, CStr> {
     /// Converts a [`CStr`] into a borrowed [`Cow`] without copying or allocating.
     #[inline]
     fn from(s: &'a CStr) -> Cow<'a, CStr> {
