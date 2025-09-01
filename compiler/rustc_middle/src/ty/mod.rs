@@ -2327,5 +2327,12 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
         }
     }
 
+    if ty.is_slice() {
+        if let ty::Slice(element_ty) = ty.kind() {
+            let element_tree = typetree_from_ty(tcx, *element_ty);
+            return element_tree;
+        }
+    }
+
     TypeTree::new()
 }
