@@ -58,7 +58,7 @@ parse_async_use_order_incorrect = the order of `use` and `async` is incorrect
 parse_at_dot_dot_in_struct_pattern = `@ ..` is not supported in struct patterns
     .suggestion = bind to each field separately or, if you don't need them, just remove `{$ident} @`
 
-parse_at_in_struct_pattern = Unexpected `@` in struct pattern
+parse_at_in_struct_pattern = unexpected `@` in struct pattern
     .note = struct patterns use `field: pattern` syntax to bind to fields
     .help = consider replacing `new_name @ field_name` with `field_name: new_name` if that is what you intended
 

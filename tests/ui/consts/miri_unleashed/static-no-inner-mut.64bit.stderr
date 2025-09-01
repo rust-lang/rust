@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell`
 LL | static REF: &AtomicI32 = &AtomicI32::new(42);
    | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
                ╾ALLOC0╼                         │ ╾──────╼
            }
@@ -15,7 +15,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | static REFMUT: &mut i32 = &mut 0;
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
                ╾ALLOC1╼                         │ ╾──────╼
            }
@@ -26,7 +26,7 @@ error[E0080]: constructing invalid value at .<deref>.v: encountered `UnsafeCell`
 LL | static REF2: &AtomicI32 = {let x = AtomicI32::new(42); &{x}};
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
                ╾ALLOC2╼                         │ ╾──────╼
            }
@@ -37,7 +37,7 @@ error[E0080]: constructing invalid value: encountered mutable reference or box p
 LL | static REFMUT2: &mut i32 = {let mut x = 0; &mut {x}};
    | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 8) {
                ╾ALLOC3╼                         │ ╾──────╼
            }
