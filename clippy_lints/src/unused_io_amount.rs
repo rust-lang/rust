@@ -192,7 +192,7 @@ fn check_expr<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) {
 
 fn should_lint<'a>(cx: &LateContext<'a>, mut inner: &'a hir::Expr<'a>) -> Option<IoOp> {
     inner = unpack_match(inner);
-    inner = unpack_try(inner);
+    inner = unpack_try(cx, inner);
     inner = unpack_call_chain(inner);
     inner = unpack_await(cx, inner);
     // we type-check it to get whether it's a read/write or their vectorized forms
@@ -256,12 +256,10 @@ fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     expr
 }
 
-fn unpack_try<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
+fn unpack_try<'a>(cx: &LateContext<'_>, mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
     while let ExprKind::Call(func, [arg_0]) = expr.kind
-        && matches!(
-            func.kind,
-            ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryTraitBranch, ..))
-        )
+        && let ExprKind::Path(qpath) = func.kind
+        && cx.tcx.qpath_is_lang_item(qpath, hir::LangItem::TryTraitBranch)
     {
         expr = arg_0;
     }
