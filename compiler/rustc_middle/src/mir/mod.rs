@@ -62,9 +62,7 @@ pub use terminator::*;
 
 pub use self::generic_graph::graphviz_safe_def_name;
 pub use self::graphviz::write_mir_graphviz;
-pub use self::pretty::{
-    PassWhere, create_dump_file, display_allocation, dump_enabled, dump_mir, write_mir_pretty,
-};
+pub use self::pretty::{MirDumper, PassWhere, display_allocation, write_mir_pretty};
 
 /// Types for locals
 pub type LocalDecls<'tcx> = IndexSlice<Local, LocalDecl<'tcx>>;
