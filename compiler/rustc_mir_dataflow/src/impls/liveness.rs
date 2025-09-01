@@ -92,7 +92,7 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
         }
 
         match DefUse::for_place(*place, context) {
-            Some(DefUse::Def) => {
+            DefUse::Def => {
                 if let PlaceContext::MutatingUse(
                     MutatingUseContext::Call | MutatingUseContext::AsmOutput,
                 ) = context
@@ -105,8 +105,8 @@ impl<'tcx> Visitor<'tcx> for TransferFunction<'_> {
                     self.0.kill(place.local);
                 }
             }
-            Some(DefUse::Use) => self.0.gen_(place.local),
-            None => {}
+            DefUse::Use => self.0.gen_(place.local),
+            DefUse::PartialWrite | DefUse::NonUse => {}
         }
 
         self.visit_projection(place.as_ref(), context, location);
@@ -131,23 +131,29 @@ impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
 }
 
 #[derive(Eq, PartialEq, Clone)]
-enum DefUse {
+pub enum DefUse {
+    /// Full write to the local.
     Def,
+    /// Read of any part of the local.
     Use,
+    /// Partial write to the local.
+    PartialWrite,
+    /// Non-use, like debuginfo.
+    NonUse,
 }
 
 impl DefUse {
     fn apply(state: &mut DenseBitSet<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
-            Some(DefUse::Def) => state.kill(place.local),
-            Some(DefUse::Use) => state.gen_(place.local),
-            None => {}
+            DefUse::Def => state.kill(place.local),
+            DefUse::Use => state.gen_(place.local),
+            DefUse::PartialWrite | DefUse::NonUse => {}
         }
     }
 
-    fn for_place(place: Place<'_>, context: PlaceContext) -> Option<DefUse> {
+    pub fn for_place(place: Place<'_>, context: PlaceContext) -> DefUse {
         match context {
-            PlaceContext::NonUse(_) => None,
+            PlaceContext::NonUse(_) => DefUse::NonUse,
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Call
@@ -156,21 +162,20 @@ impl DefUse {
                 | MutatingUseContext::Store
                 | MutatingUseContext::Deinit,
             ) => {
+                // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a use.
                 if place.is_indirect() {
-                    // Treat derefs as a use of the base local. `*p = 4` is not a def of `p` but a
-                    // use.
-                    Some(DefUse::Use)
+                    DefUse::Use
                 } else if place.projection.is_empty() {
-                    Some(DefUse::Def)
+                    DefUse::Def
                 } else {
-                    None
+                    DefUse::PartialWrite
                 }
             }
 
             // Setting the discriminant is not a use because it does no reading, but it is also not
             // a def because it does not overwrite the whole place
             PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant) => {
-                place.is_indirect().then_some(DefUse::Use)
+                if place.is_indirect() { DefUse::Use } else { DefUse::PartialWrite }
             }
 
             // All other contexts are uses...
@@ -188,7 +193,7 @@ impl DefUse {
                 | NonMutatingUseContext::PlaceMention
                 | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::SharedBorrow,
-            ) => Some(DefUse::Use),
+            ) => DefUse::Use,
 
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
