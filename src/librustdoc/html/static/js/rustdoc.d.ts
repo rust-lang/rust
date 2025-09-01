@@ -289,7 +289,7 @@ declare namespace rustdoc {
         exactModulePath: string,
         entry: EntryData?,
         path: PathData?,
-        type: FunctionData?,
+        functionData: FunctionData?,
         deprecated: boolean,
         parent: { path: PathData, name: string}?,
     }
