@@ -167,7 +167,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                         QPath::TypeRelative(_, name) => {
                             self.eagerness |= fn_eagerness(self.cx, id, name.ident.name, !args.is_empty());
                         },
-                        QPath::LangItem(..) => self.eagerness = Lazy,
                     },
                     _ => self.eagerness = Lazy,
                 },
