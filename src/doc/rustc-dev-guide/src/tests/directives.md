@@ -42,7 +42,7 @@ not be exhaustive. Directives can generally be found by browsing the
 
 ### Assembly
 
-<!-- date-check: Aug 2025 -->
+<!-- date-check: Oct 2024 -->
 
 | Directive         | Explanation                   | Supported test suites | Possible values                        |
 |-------------------|-------------------------------|-----------------------|----------------------------------------|
@@ -113,7 +113,7 @@ for more details.
 | `known-bug`                       | No error annotation needed due to known bug                                                                              | `ui`, `crashes`, `incremental`               | Issue number `#123456`                                                                  |
 | `compare-output-by-lines`         | Compare the output by lines, rather than as a single string                                                              | All                                          | N/A                                                                                     |
 
-[^check_stdout]: presently <!-- date-check: Aug 2025 --> this has a weird quirk
+[^check_stdout]: presently <!-- date-check: Oct 2024 --> this has a weird quirk
     where the test binary's stdout and stderr gets concatenated and then
     `error-pattern`s are matched on this combined output, which is ??? slightly
     questionable to say the least.

@@ -2,12 +2,12 @@
 
 <div class="warning">
 rustc's current diagnostics translation infrastructure (as of
-<!-- date-check --> August 2025
+<!-- date-check --> October 2024
 ) unfortunately causes some friction for compiler contributors, and the current
 infrastructure is mostly pending a redesign that better addresses needs of both
 compiler contributors and translation teams. Note that there is no current
 active redesign proposals (as of
-<!-- date-check --> August 2025
+<!-- date-check --> October 2024
 )!
 
 Please see the tracking issue <https://github.com/rust-lang/rust/issues/132181>
