@@ -2,7 +2,7 @@
 
 ## `RUSTC_BOOTSTRAP` and stability
 
-<!-- date-check: Aug 2025 -->
+<!-- date-check: Nov 2024 -->
 
 This is a bootstrap/compiler implementation detail, but it can also be useful
 for testing:
