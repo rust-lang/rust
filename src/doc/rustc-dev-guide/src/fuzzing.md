@@ -1,6 +1,6 @@
 # Fuzzing
 
-<!-- date-check: Aug 2025 -->
+<!-- date-check: Mar 2023 -->
 
 For the purposes of this guide, *fuzzing* is any testing methodology that
 involves compiling a wide variety of programs in an attempt to uncover bugs in

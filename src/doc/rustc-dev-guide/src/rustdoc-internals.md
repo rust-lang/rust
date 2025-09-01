@@ -99,7 +99,7 @@ regarding dropping private/hidden items can be bypassed by passing
 `--document-private-items` to `rustdoc`. Note that unlike the previous set of [`AST`][ast]
 transformations, the passes are run on the _cleaned_ crate.
 
-Here is the list of passes as of <!-- date-check --> August 2025:
+Here is the list of passes as of <!-- date-check --> March 2023:
 
 - `calculate-doc-coverage` calculates information used for the `--show-coverage`
   flag.
@@ -122,7 +122,7 @@ Here is the list of passes as of <!-- date-check --> August 2025:
   - `bare_urls` detects links that are not linkified, e.g., in Markdown such as
     `Go to https://example.com/.` It suggests wrapping the link with angle brackets:
     `Go to <https://example.com/>.` to linkify it. This is the code behind the <!--
-    date-check: Aug 2025 --> `rustdoc::bare_urls` `lint`.
+    date-check: may 2022 --> `rustdoc::bare_urls` `lint`.
 
   - `check_code_block_syntax` validates syntax inside Rust code blocks
     (<code>```rust</code>)
@@ -212,7 +212,7 @@ directly, even during `HTML` generation. This [didn't used to be the case], and
 a lot of `rustdoc`'s architecture was designed around not doing that, but a
 `TyCtxt` is now passed to `formats::renderer::run_format`, which is used to
 run generation for both `HTML` and the
-(unstable as of <!-- date-check --> August 2025) JSON format.
+(unstable as of <!-- date-check --> March 2023) JSON format.
 
 This change has allowed other changes to remove data from the "clean" [`AST`][ast]
 that can be easily derived from `TyCtxt` queries, and we'll usually accept
