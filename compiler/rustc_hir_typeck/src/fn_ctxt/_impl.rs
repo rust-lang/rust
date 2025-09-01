@@ -721,9 +721,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None
                 }
             }
-            hir::LangItem::IteratorNext | hir::LangItem::IntoIterIntoIter => {
-                Some(ObligationCauseCode::ForLoopIterator)
-            }
             hir::LangItem::TryTraitFromOutput
             | hir::LangItem::TryTraitFromResidual
             | hir::LangItem::TryTraitBranch => Some(ObligationCauseCode::QuestionMark),
@@ -1374,7 +1371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self, code, span, args))]
-    fn add_required_obligations_with_code(
+    pub(crate) fn add_required_obligations_with_code(
         &self,
         span: Span,
         def_id: DefId,

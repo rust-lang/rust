@@ -1804,7 +1804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForLoopKind::For => {
                     // `Iterator::next(&mut iter)`
                     let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
-                    self.expr_call_lang_item_qpath_fn(
+                    self.expr_call_lang_item_fn(
                         head_span,
                         hir::LangItem::IteratorNext,
                         arena_vec![self; ref_mut_iter],
@@ -1819,7 +1819,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `&mut iter`
                     let iter = self.expr_mut_addr_of(head_span, iter);
                     // `Pin::new_unchecked(...)`
-                    let iter = self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(
+                    let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
                         head_span,
                         hir::LangItem::PinNewUnchecked,
                         arena_vec![self; iter],
@@ -1854,7 +1854,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let match_expr = match loop_kind {
             ForLoopKind::For => {
                 // `::std::iter::IntoIterator::into_iter(<head>)`
-                let into_iter_expr = self.expr_call_lang_item_qpath_fn(
+                let into_iter_expr = self.expr_call_lang_item_fn(
                     head_span,
                     hir::LangItem::IntoIterIntoIter,
                     arena_vec![self; head],
@@ -1874,7 +1874,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.pat_ident_binding_mode(head_span, iter_ident, hir::BindingMode::REF_MUT);
                 let iter = self.expr_ident_mut(head_span, iter_ident, async_iter_pat_id);
                 // `Pin::new_unchecked(...)`
-                let iter = self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(
+                let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
                     head_span,
                     hir::LangItem::PinNewUnchecked,
                     arena_vec![self; iter],
@@ -1889,7 +1889,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
 
                 // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
-                let iter = self.expr_call_lang_item_qpath_fn(
+                let iter = self.expr_call_lang_item_fn(
                     head_span,
                     hir::LangItem::IntoAsyncIterIntoIter,
                     arena_vec![self; head],

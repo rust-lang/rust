@@ -763,6 +763,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr_and_args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
+
+        if let Some((_, [_arg])) = call_expr_and_args
+            && let QPath::Resolved(_, path) = qpath
+            && let Res::Def(_, def_id) = path.res
+            && let Some(lang_item) = tcx.lang_items().from_def_id(def_id)
+        {
+            let code = match lang_item {
+                LangItem::IntoIterIntoIter | LangItem::IteratorNext
+                    if expr.span.is_desugaring(DesugaringKind::ForLoop) =>
+                {
+                    Some(ObligationCauseCode::ForLoopIterator)
+                }
+                _ => None,
+            };
+            if let Some(code) = code {
+                let args = self.fresh_args_for_item(expr.span, def_id);
+                self.add_required_obligations_with_code(expr.span, def_id, args, |_, _| {
+                    code.clone()
+                });
+                return tcx.type_of(def_id).instantiate(tcx, args);
+            }
+        }
+
         let (res, opt_ty, segs) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
         let ty = match res {
