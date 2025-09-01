@@ -596,87 +596,87 @@ fn resolve_local<'tcx>(
             | PatKind::Err(_) => false,
         }
     }
+}
 
-    /// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
-    ///
-    /// ```text
-    ///     E& = & ET
-    ///        | StructName { ..., f: E&, ... }
-    ///        | [ ..., E&, ... ]
-    ///        | ( ..., E&, ... )
-    ///        | {...; E&}
-    ///        | { super let ... = E&; ... }
-    ///        | if _ { ...; E& } else { ...; E& }
-    ///        | match _ { ..., _ => E&, ... }
-    ///        | box E&
-    ///        | E& as ...
-    ///        | ( E& )
-    /// ```
-    fn record_rvalue_scope_if_borrow_expr<'tcx>(
-        visitor: &mut ScopeResolutionVisitor<'tcx>,
-        expr: &hir::Expr<'_>,
-        blk_id: Option<Scope>,
-    ) {
-        match expr.kind {
-            hir::ExprKind::AddrOf(_, _, subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                visitor.scope_tree.record_rvalue_candidate(
-                    subexpr.hir_id,
-                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
-                );
-            }
-            hir::ExprKind::Struct(_, fields, _) => {
-                for field in fields {
-                    record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
-                }
-            }
-            hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
-                for subexpr in subexprs {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                }
-            }
-            hir::ExprKind::Cast(subexpr, _) => {
-                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
-            }
-            hir::ExprKind::Block(block, _) => {
-                if let Some(subexpr) = block.expr {
-                    record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
-                }
-                for stmt in block.stmts {
-                    if let hir::StmtKind::Let(local) = stmt.kind
-                        && let Some(_) = local.super_
-                    {
-                        visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
-                    }
-                }
-            }
-            hir::ExprKind::If(_, then_block, else_block) => {
-                record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
-                if let Some(else_block) = else_block {
-                    record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
-                }
-            }
-            hir::ExprKind::Match(_, arms, _) => {
-                for arm in arms {
-                    record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
-                }
-            }
-            hir::ExprKind::Call(func, args) => {
-                // Recurse into tuple constructors, such as `Some(&temp())`.
-                //
-                // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
-                // even though the former is syntactically a function call.
-                if let hir::ExprKind::Path(path) = &func.kind
-                    && let hir::QPath::Resolved(None, path) = path
-                    && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
-                {
-                    for arg in args {
-                        record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
-                    }
-                }
-            }
-            _ => {}
+/// If `expr` matches the `E&` grammar, then records an extended rvalue scope as appropriate:
+///
+/// ```text
+///     E& = & ET
+///        | StructName { ..., f: E&, ... }
+///        | [ ..., E&, ... ]
+///        | ( ..., E&, ... )
+///        | {...; E&}
+///        | { super let ... = E&; ... }
+///        | if _ { ...; E& } else { ...; E& }
+///        | match _ { ..., _ => E&, ... }
+///        | box E&
+///        | E& as ...
+///        | ( E& )
+/// ```
+fn record_rvalue_scope_if_borrow_expr<'tcx>(
+    visitor: &mut ScopeResolutionVisitor<'tcx>,
+    expr: &hir::Expr<'_>,
+    blk_id: Option<Scope>,
+) {
+    match expr.kind {
+        hir::ExprKind::AddrOf(_, _, subexpr) => {
+            record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            visitor.scope_tree.record_rvalue_candidate(
+                subexpr.hir_id,
+                RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
+            );
         }
+        hir::ExprKind::Struct(_, fields, _) => {
+            for field in fields {
+                record_rvalue_scope_if_borrow_expr(visitor, field.expr, blk_id);
+            }
+        }
+        hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
+            for subexpr in subexprs {
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            }
+        }
+        hir::ExprKind::Cast(subexpr, _) => {
+            record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
+        }
+        hir::ExprKind::Block(block, _) => {
+            if let Some(subexpr) = block.expr {
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+            }
+            for stmt in block.stmts {
+                if let hir::StmtKind::Let(local) = stmt.kind
+                    && let Some(_) = local.super_
+                {
+                    visitor.extended_super_lets.insert(local.pat.hir_id.local_id, blk_id);
+                }
+            }
+        }
+        hir::ExprKind::If(_, then_block, else_block) => {
+            record_rvalue_scope_if_borrow_expr(visitor, then_block, blk_id);
+            if let Some(else_block) = else_block {
+                record_rvalue_scope_if_borrow_expr(visitor, else_block, blk_id);
+            }
+        }
+        hir::ExprKind::Match(_, arms, _) => {
+            for arm in arms {
+                record_rvalue_scope_if_borrow_expr(visitor, arm.body, blk_id);
+            }
+        }
+        hir::ExprKind::Call(func, args) => {
+            // Recurse into tuple constructors, such as `Some(&temp())`.
+            //
+            // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
+            // even though the former is syntactically a function call.
+            if let hir::ExprKind::Path(path) = &func.kind
+                && let hir::QPath::Resolved(None, path) = path
+                && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
+            {
+                for arg in args {
+                    record_rvalue_scope_if_borrow_expr(visitor, arg, blk_id);
+                }
+            }
+        }
+        _ => {}
     }
 }
 
