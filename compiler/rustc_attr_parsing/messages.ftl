@@ -90,7 +90,7 @@ attr_parsing_invalid_style = {$is_used_as_inner ->
         [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
         *[other] the `#![{$name}]` attribute can only be used at the crate root
     }
-    .note = This attribute does not have an `!`, which means it is applied to this {$target}
+    .note = this attribute does not have an `!`, which means it is applied to this {$target}
 
 attr_parsing_link_ordinal_out_of_range = ordinal value in `link_ordinal` is too large: `{$ordinal}`
     .note = the value may not exceed `u16::MAX`

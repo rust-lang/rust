@@ -1290,7 +1290,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[crate_name = "0900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this module
+note: this attribute does not have an `!`, which means it is applied to this module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:799:1
    |
 LL | / mod crate_name {
@@ -1312,7 +1312,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[crate_name = "0900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:804:28
    |
 LL |     #[crate_name = "0900"] fn f() { }
@@ -1324,7 +1324,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[crate_name = "0900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this struct
+note: this attribute does not have an `!`, which means it is applied to this struct
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:808:28
    |
 LL |     #[crate_name = "0900"] struct S;
@@ -1336,7 +1336,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[crate_name = "0900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this type alias
+note: this attribute does not have an `!`, which means it is applied to this type alias
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:812:28
    |
 LL |     #[crate_name = "0900"] type T = S;
@@ -1348,7 +1348,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[crate_name = "0900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this implementation block
+note: this attribute does not have an `!`, which means it is applied to this implementation block
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:816:28
    |
 LL |     #[crate_name = "0900"] impl S { }
@@ -1360,7 +1360,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[recursion_limit="0200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this module
+note: this attribute does not have an `!`, which means it is applied to this module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:920:1
    |
 LL | / mod recursion_limit {
@@ -1382,7 +1382,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[recursion_limit="0200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:925:31
    |
 LL |     #[recursion_limit="0200"] fn f() { }
@@ -1394,7 +1394,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[recursion_limit="0200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this struct
+note: this attribute does not have an `!`, which means it is applied to this struct
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:929:31
    |
 LL |     #[recursion_limit="0200"] struct S;
@@ -1406,7 +1406,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[recursion_limit="0200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this type alias
+note: this attribute does not have an `!`, which means it is applied to this type alias
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:933:31
    |
 LL |     #[recursion_limit="0200"] type T = S;
@@ -1418,7 +1418,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[recursion_limit="0200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this implementation block
+note: this attribute does not have an `!`, which means it is applied to this implementation block
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:937:31
    |
 LL |     #[recursion_limit="0200"] impl S { }
@@ -1430,7 +1430,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this module
+note: this attribute does not have an `!`, which means it is applied to this module
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:944:1
    |
 LL | / mod type_length_limit {
@@ -1452,7 +1452,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[type_length_limit="0100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this function
+note: this attribute does not have an `!`, which means it is applied to this function
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:949:33
    |
 LL |     #[type_length_limit="0100"] fn f() { }
@@ -1464,7 +1464,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[type_length_limit="0100"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this struct
+note: this attribute does not have an `!`, which means it is applied to this struct
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:953:33
    |
 LL |     #[type_length_limit="0100"] struct S;
@@ -1476,7 +1476,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[type_length_limit="0100"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this type alias
+note: this attribute does not have an `!`, which means it is applied to this type alias
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:957:33
    |
 LL |     #[type_length_limit="0100"] type T = S;
@@ -1488,7 +1488,7 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: This attribute does not have an `!`, which means it is applied to this implementation block
+note: this attribute does not have an `!`, which means it is applied to this implementation block
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:961:33
    |
 LL |     #[type_length_limit="0100"] impl S { }

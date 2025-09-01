@@ -797,25 +797,25 @@ mod windows_subsystem {
 #[crate_name = "0900"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod crate_name {
-//~^ NOTE This attribute does not have an `!`, which means it is applied to this module
+//~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_name="0900"] }
 //~^ WARN the `#![crate_name]` attribute can only be used at the crate root
 
     #[crate_name = "0900"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[crate_name = "0900"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[crate_name = "0900"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[crate_name = "0900"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[crate_type = "0800"]
@@ -918,49 +918,49 @@ mod no_builtins {
 #[recursion_limit="0200"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod recursion_limit {
-    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
+    //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![recursion_limit="0200"] }
 //~^ WARN the `#![recursion_limit]` attribute can only be used at the crate root
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[recursion_limit="0200"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[recursion_limit="0200"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[recursion_limit="0200"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[type_length_limit="0100"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod type_length_limit {
-    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
+    //~^ NOTE this attribute does not have an `!`, which means it is applied to this module
     mod inner { #![type_length_limit="0100"] }
 //~^ WARN the `#![type_length_limit]` attribute can only be used at the crate root
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this function
 
     #[type_length_limit="0100"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this struct
 
     #[type_length_limit="0100"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this type alias
 
     #[type_length_limit="0100"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
+    //~| NOTE this attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 fn main() {}
