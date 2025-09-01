@@ -8,7 +8,7 @@
 
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -37,6 +37,14 @@ struct ScopeResolutionVisitor<'tcx> {
     scope_tree: ScopeTree,
 
     cx: Context,
+
+    /// Tracks [extending] block expressions. This is used in performing lifetime extension on block
+    /// tail expressions: if we've already extended the temporary scopes of extending borrows within
+    /// a block's tail when checking a parent `let` statement or block, we don't want to re-extend
+    /// them to be shorter when checking the block itself.
+    ///
+    /// [extending]: https://doc.rust-lang.org/nightly/reference/destructors.html#extending-based-on-expressions
+    extended_blocks: FxHashSet<hir::ItemLocalId>,
 
     extended_super_lets: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 }
@@ -159,6 +167,20 @@ fn resolve_block<'tcx>(
                     .scope_tree
                     .backwards_incompatible_scope
                     .insert(local_id, Scope { local_id, data: ScopeData::Node });
+            }
+            // If we haven't already checked for temporary lifetime extension due to a parent `let`
+            // statement initializer or block, do so. This, e.g., allows `temp()` in `{ &temp() }`
+            // to outlive the block even when the block itself is not in a `let` statement
+            // initializer. The same rules for `let` are used here, so non-extending borrows are
+            // unaffected: `{ f(&temp()) }` drops `temp()` at the end of the block.
+            // NB: This should be checked even if the block is from Rust 2021 or before. Macro
+            // expansion can result in nested blocks from different editions, and we always want to
+            // propagate the outermost extending lifetime to the innermost extending expressions.
+            if !visitor.extended_blocks.contains(&blk.hir_id.local_id) {
+                let blk_result_scope = prev_cx.parent.and_then(|blk_parent| {
+                    visitor.scope_tree.default_temporary_scope(blk_parent).0
+                });
+                record_rvalue_scope_if_borrow_expr(visitor, tail_expr, blk_result_scope);
             }
             resolve_expr(visitor, tail_expr, terminating);
         }
@@ -470,7 +492,7 @@ fn resolve_local<'tcx>(
     let mut extend_initializer = true;
     if let_kind == LetKind::Super {
         if let Some(scope) = visitor.extended_super_lets.remove(&pat.unwrap().hir_id.local_id) {
-            // This expression was lifetime-extended by a parent let binding. E.g.
+            // This expression was lifetime-extended by a parent let binding or block. E.g.
             //
             //     let a = {
             //         super let b = temp();
@@ -483,7 +505,8 @@ fn resolve_local<'tcx>(
             // `super let` to its own var_scope. We use that scope.
             visitor.cx.var_parent = scope;
         } else {
-            // This `super let` is not subject to lifetime extension from a parent let binding. E.g.
+            // This `super let` is not subject to lifetime extension from a parent let binding or
+            // block. E.g.
             //
             //     identity({ super let x = temp(); &x }).method();
             //
@@ -494,10 +517,16 @@ fn resolve_local<'tcx>(
             if let Some(inner_scope) = visitor.cx.var_parent {
                 (visitor.cx.var_parent, _) = visitor.scope_tree.default_temporary_scope(inner_scope)
             }
-            // Don't lifetime-extend child `super let`s or block tail expressions' temporaries in
-            // the initializer when this `super let` is not itself extended by a parent `let`
-            // (#145784). Block tail expressions are temporary drop scopes in Editions 2024 and
-            // later, their temps shouldn't outlive the block in e.g. `f(pin!({ &temp() }))`.
+            // Don't apply lifetime extension to the initializer of non-extended `super let`.
+            // This helps ensure that `{ super let x = &$EXPR; x }` is equivalent to `&$EXPR` in
+            // non-extending contexts: we want to avoid extending temporaries in `$EXPR` past what
+            // their temporary scopes would otherwise be (#145784).
+            // Currently, this shouldn't do anything. The discrepancy in #145784 was due to
+            // `{ super let x = &{ &temp() }; x }` extending `temp()` to outlive its immediately
+            // enclosing temporary scope (the block tail expression in Rust 2024), whereas in a
+            // non-extending context, `&{ &temp() }` would drop `temp()` at the end of the block.
+            // This particular quirk no longer exists: lifetime extension rules are applied to block
+            // tail expressions, so `temp()` is extended past the block in the latter case as well.
             extend_initializer = false;
         }
     }
@@ -639,6 +668,9 @@ fn record_rvalue_scope_if_borrow_expr<'tcx>(
             record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id)
         }
         hir::ExprKind::Block(block, _) => {
+            // Mark the block as extending, so we know its extending borrows and `super let`s
+            // have extended scopes when checking the block itself.
+            visitor.extended_blocks.insert(block.hir_id.local_id);
             if let Some(subexpr) = block.expr {
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
             }
@@ -816,6 +848,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
             tcx,
             scope_tree: ScopeTree::default(),
             cx: Context { parent: None, var_parent: None },
+            extended_blocks: Default::default(),
             extended_super_lets: Default::default(),
         };
 
