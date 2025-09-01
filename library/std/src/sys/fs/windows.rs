@@ -10,6 +10,8 @@ use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
+use crate::sys::api::SetFileInformation;
+use crate::sys::fs::{remove_dir, remove_file};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -23,6 +25,10 @@ mod remove_dir_all;
 use remove_dir_all::remove_dir_all_iterative;
 
 pub struct File {
+    handle: Handle,
+}
+
+pub struct Dir {
     handle: Handle,
 }
 
@@ -185,6 +191,32 @@ impl DirEntry {
     pub fn metadata(&self) -> io::Result<FileAttr> {
         Ok(self.data.into())
     }
+
+    pub fn open_file(&self) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        File::open(&self.path(), &opts)
+    }
+
+    pub fn open_file_with(&self, opts: &OpenOptions) -> io::Result<File> {
+        File::open(&self.path(), opts)
+    }
+
+    pub fn open_dir(&self) -> io::Result<Dir> {
+        Dir::new(&self.path())
+    }
+
+    pub fn open_dir_with(&self, opts: &OpenOptions) -> io::Result<Dir> {
+        Dir::new_with(&self.path(), opts)
+    }
+
+    pub fn remove_file(&self) -> io::Result<()> {
+        remove_file(&self.path())
+    }
+
+    pub fn remove_dir(&self) -> io::Result<()> {
+        remove_dir(&self.path())
+    }
 }
 
 impl OpenOptions {
@@ -304,6 +336,30 @@ impl OpenOptions {
             // `OPEN_ALWAYS` and a manual truncation step. See #115745.
             (true, true, false) => c::OPEN_ALWAYS,
             (_, _, true) => c::CREATE_NEW,
+        })
+    }
+
+    fn get_disposition(&self) -> io::Result<u32> {
+        match (self.write, self.append) {
+            (true, false) => {}
+            (false, false) => {
+                if self.truncate || self.create || self.create_new {
+                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
+                }
+            }
+            (_, true) => {
+                if self.truncate && !self.create_new {
+                    return Err(Error::from_raw_os_error(c::ERROR_INVALID_PARAMETER as i32));
+                }
+            }
+        }
+
+        Ok(match (self.create, self.truncate, self.create_new) {
+            (false, false, false) => c::FILE_OPEN,
+            (true, false, false) => c::FILE_OPEN_IF,
+            (false, true, false) => c::FILE_OVERWRITE,
+            (true, true, false) => c::FILE_OVERWRITE_IF,
+            (_, _, true) => c::FILE_CREATE,
         })
     }
 
@@ -872,6 +928,380 @@ impl File {
     }
 }
 
+unsafe fn nt_create_file(
+    access: u32,
+    disposition: u32,
+    object_attributes: &c::OBJECT_ATTRIBUTES,
+    share: u32,
+    dir: bool,
+) -> Result<Handle, WinError> {
+    let mut handle = ptr::null_mut();
+    let mut io_status = c::IO_STATUS_BLOCK::PENDING;
+    let access = access | c::SYNCHRONIZE;
+    let options = if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE }
+        | c::FILE_SYNCHRONOUS_IO_NONALERT;
+    let status = unsafe {
+        c::NtCreateFile(
+            &mut handle,
+            access,
+            object_attributes,
+            &mut io_status,
+            ptr::null(),
+            c::FILE_ATTRIBUTE_NORMAL,
+            share,
+            disposition,
+            options,
+            ptr::null(),
+            0,
+        )
+    };
+    if c::nt_success(status) {
+        // SAFETY: nt_success guarantees that handle is no longer null
+        unsafe { Ok(Handle::from_raw_handle(handle)) }
+    } else {
+        let win_error = if status == c::STATUS_DELETE_PENDING {
+            // We make a special exception for `STATUS_DELETE_PENDING` because
+            // otherwise this will be mapped to `ERROR_ACCESS_DENIED` which is
+            // very unhelpful because that can also mean a permission error.
+            WinError::DELETE_PENDING
+        } else {
+            WinError::new(unsafe { c::RtlNtStatusToDosError(status) })
+        };
+        Err(win_error)
+    }
+}
+
+fn run_path_with_wcstr<T, P: AsRef<Path>>(
+    path: P,
+    f: &dyn Fn(&WCStr) -> io::Result<T>,
+) -> io::Result<T> {
+    let path = maybe_verbatim(path.as_ref())?;
+    // SAFETY: maybe_verbatim returns null-terminated strings
+    let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
+    f(path)
+}
+
+fn run_path_with_utf16<T, P: AsRef<Path>>(
+    path: P,
+    f: &dyn Fn(&[u16]) -> io::Result<T>,
+) -> io::Result<T> {
+    let utf16: Vec<u16> = path.as_ref().as_os_str().encode_wide().collect();
+    f(&utf16)
+}
+
+impl Dir {
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_with_native(path, &opts))
+    }
+
+    pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_with_native(path, &opts))
+    }
+
+    pub fn new_for_traversal<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        run_path_with_wcstr(path.as_ref(), &|path| Self::new_native(path))
+    }
+
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        let path = path.as_ref();
+        if path.is_absolute() {
+            return File::open(path, &opts);
+        }
+        let path = path.as_os_str().encode_wide().collect::<Vec<_>>();
+        self.open_native(&path, &opts, false).map(|handle| File { handle })
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        self.open_native(&path, &opts, false).map(|handle| File { handle })
+    }
+
+    pub fn open_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        opts.read(true);
+        self.open_native(&path, &opts, true).map(|handle| Self { handle })
+    }
+
+    pub fn open_dir_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<Self> {
+        let path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        self.open_native(&path, &opts, true).map(|handle| Self { handle })
+    }
+
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        opts.create_new(true);
+        run_path_with_utf16(path, &|path| self.create_dir_native(path, &opts).map(|_| ()))
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_utf16(path, &|path| self.remove_native(path, false))
+    }
+
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_utf16(path, &|path| self.remove_native(path, true))
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        run_path_with_utf16(to.as_ref(), &|to| self.rename_native(from.as_ref(), to_dir, to, false))
+    }
+
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q) -> io::Result<()> {
+        run_path_with_utf16(original.as_ref(), &|orig| {
+            self.symlink_native(orig, link.as_ref(), original.as_ref().is_relative())
+        })
+    }
+
+    fn new_native(path: &WCStr) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_TRAVERSE);
+        Self::new_with_native(path, &opts)
+    }
+
+    fn new_with_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
+        let creation = opts.get_creation_mode()?;
+        let sa = c::SECURITY_ATTRIBUTES {
+            nLength: size_of::<c::SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: opts.inherit_handle as c::BOOL,
+        };
+        let handle = unsafe {
+            c::CreateFileW(
+                path.as_ptr(),
+                opts.get_access_mode()?,
+                opts.share_mode,
+                &raw const sa,
+                creation,
+                opts.get_flags_and_attributes() | c::FILE_FLAG_BACKUP_SEMANTICS,
+                ptr::null_mut(),
+            )
+        };
+        match OwnedHandle::try_from(unsafe { HandleOrInvalid::from_raw_handle(handle) }) {
+            Ok(handle) => Ok(Self { handle: Handle::from_inner(handle) }),
+            Err(_) => Err(Error::last_os_error()),
+        }
+    }
+
+    fn open_native(&self, path: &[u16], opts: &OpenOptions, dir: bool) -> io::Result<Handle> {
+        let name = c::UNICODE_STRING {
+            Length: (path.len() * 2) as _,
+            MaximumLength: (path.len() * 2) as _,
+            Buffer: path.as_ptr() as *mut _,
+        };
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: &raw const name,
+            Attributes: 0,
+            SecurityDescriptor: ptr::null(),
+            SecurityQualityOfService: ptr::null(),
+        };
+        let share = c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE;
+        unsafe {
+            nt_create_file(
+                opts.get_access_mode()?,
+                opts.get_disposition()?,
+                &object_attributes,
+                share,
+                dir,
+            )
+        }
+        .io_result()
+    }
+
+    fn create_dir_native(&self, path: &[u16], opts: &OpenOptions) -> io::Result<Handle> {
+        let name = c::UNICODE_STRING {
+            Length: (path.len() * 2) as _,
+            MaximumLength: (path.len() * 2) as _,
+            Buffer: path.as_ptr() as *mut _,
+        };
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: &name,
+            Attributes: 0,
+            SecurityDescriptor: ptr::null(),
+            SecurityQualityOfService: ptr::null(),
+        };
+        let share = c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE;
+        unsafe {
+            nt_create_file(
+                opts.get_access_mode()?,
+                opts.get_disposition()?,
+                &object_attributes,
+                share,
+                true,
+            )
+        }
+        .io_result()
+    }
+
+    fn remove_native(&self, path: &[u16], dir: bool) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::DELETE);
+        let handle = self.open_native(path, &opts, dir)?;
+        let info = c::FILE_DISPOSITION_INFO_EX { Flags: c::FILE_DISPOSITION_FLAG_DELETE };
+        let result = unsafe {
+            c::SetFileInformationByHandle(
+                handle.as_raw_handle(),
+                c::FileDispositionInfoEx,
+                (&info).as_ptr(),
+                size_of::<c::FILE_DISPOSITION_INFO_EX>() as _,
+            )
+        };
+        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+    }
+
+    fn rename_native(&self, from: &Path, to_dir: &Self, to: &[u16], dir: bool) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::DELETE);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+        let handle = run_path_with_utf16(from, &|u| self.open_native(u, &opts, dir))?;
+        // Calculate the layout of the `FILE_RENAME_INFORMATION` we pass to `NtSetInformationFile`
+        // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
+        const too_long_err: io::Error =
+            io::const_error!(io::ErrorKind::InvalidFilename, "Filename too long");
+        let struct_size = to
+            .len()
+            .checked_mul(2)
+            .and_then(|x| x.checked_add(offset_of!(c::FILE_RENAME_INFORMATION, FileName)))
+            .ok_or(too_long_err)?;
+        let layout = Layout::from_size_align(struct_size, align_of::<c::FILE_RENAME_INFORMATION>())
+            .map_err(|_| too_long_err)?;
+        let struct_size = u32::try_from(struct_size).map_err(|_| too_long_err)?;
+        let to_byte_len = u32::try_from(to.len() * 2).map_err(|_| too_long_err)?;
+
+        let file_rename_info;
+        // SAFETY: We allocate enough memory for a full FILE_RENAME_INFORMATION struct and the filename.
+        unsafe {
+            file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFORMATION>();
+            if file_rename_info.is_null() {
+                return Err(io::ErrorKind::OutOfMemory.into());
+            }
+
+            (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFORMATION_0 {
+                Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
+            });
+
+            (&raw mut (*file_rename_info).RootDirectory).write(to_dir.handle.as_raw_handle());
+            // Don't include the NULL in the size
+            (&raw mut (*file_rename_info).FileNameLength).write(to_byte_len);
+
+            to.as_ptr().copy_to_nonoverlapping(
+                (&raw mut (*file_rename_info).FileName).cast::<u16>(),
+                to.len(),
+            );
+        }
+
+        let status = unsafe {
+            c::NtSetInformationFile(
+                handle.as_raw_handle(),
+                &mut c::IO_STATUS_BLOCK::default(),
+                file_rename_info.cast::<c_void>(),
+                struct_size,
+                c::FileRenameInformation,
+            )
+        };
+        unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
+        if c::nt_success(status) {
+            // SAFETY: nt_success guarantees that handle is no longer null
+            Ok(())
+        } else {
+            Err(WinError::new(unsafe { c::RtlNtStatusToDosError(status) }))
+        }
+        .io_result()
+    }
+
+    fn symlink_native(&self, original: &[u16], link: &Path, relative: bool) -> io::Result<()> {
+        const TOO_LONG_ERR: io::Error =
+            io::const_error!(io::ErrorKind::InvalidFilename, "File name is too long");
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        opts.create(true);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+        opts.attributes(c::FILE_ATTRIBUTE_REPARSE_POINT);
+        let linkfile = self.open_with(link, &opts)?;
+        let original_name_byte_len =
+            u16::try_from(size_of::<u16>() * original.len()).or(Err(TOO_LONG_ERR))?;
+        let layout = Layout::from_size_align(
+            size_of::<c::REPARSE_DATA_BUFFER>()
+                + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                + size_of::<u16>() * (original.len() - 1),
+            align_of::<c::REPARSE_DATA_BUFFER>()
+                .max(align_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>())
+                .max(align_of::<u16>()),
+        )
+        .or(Err(TOO_LONG_ERR))?;
+        let buffer = unsafe { alloc(layout) }.cast::<c::REPARSE_DATA_BUFFER>();
+        if buffer.is_null() {
+            return Err(io::ErrorKind::OutOfMemory.into());
+        }
+        unsafe {
+            (&raw mut (*buffer).ReparseTag).write(c::IO_REPARSE_TAG_SYMLINK);
+            (&raw mut (*buffer).ReparseDataLength).write(
+                u16::try_from(
+                    size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                        + size_of::<u16>() * (original.len() - 1),
+                )
+                .or(Err(TOO_LONG_ERR))?,
+            );
+            (&raw mut (*buffer).Reserved).write(0);
+            let rest = (&raw mut (*buffer).rest).cast::<c::SYMBOLIC_LINK_REPARSE_BUFFER>();
+
+            (&raw mut (*rest).SubstituteNameOffset).write(0);
+            (&raw mut (*rest).SubstituteNameLength).write(original_name_byte_len);
+            (&raw mut (*rest).PrintNameOffset).write(0);
+            (&raw mut (*rest).PrintNameLength).write(original_name_byte_len);
+            (&raw mut (*rest).Flags).write(if relative { c::SYMLINK_FLAG_RELATIVE } else { 0 });
+
+            original.as_ptr().copy_to_nonoverlapping(&raw mut (*rest).PathBuffer, original.len());
+        };
+        let result = unsafe {
+            c::DeviceIoControl(
+                linkfile.handle.as_raw_handle(),
+                c::FSCTL_SET_REPARSE_POINT,
+                buffer as *mut c_void as *const c_void,
+                u32::try_from(
+                    size_of::<c::REPARSE_DATA_BUFFER>()
+                        + size_of::<c::SYMBOLIC_LINK_REPARSE_BUFFER>()
+                        + size_of::<u16>() * (original.len() - 1),
+                )
+                .or(Err(TOO_LONG_ERR))?,
+                ptr::null_mut(),
+                0,
+                ptr::null_mut(),
+                ptr::null_mut(),
+            )
+        };
+        unsafe {
+            dealloc(buffer.cast(), layout);
+        }
+
+        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+    }
+}
+
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut b = f.debug_struct("Dir");
+        b.field("handle", &self.handle.as_raw_handle());
+        if let Ok(path) = get_path(self.handle.as_handle()) {
+            b.field("path", &path);
+        }
+        b.finish()
+    }
+}
+
 /// A buffer for holding directory entries.
 struct DirBuff {
     buffer: Box<Align8<[MaybeUninit<u8>; Self::BUFFER_SIZE]>>,
@@ -1021,7 +1451,7 @@ impl fmt::Debug for File {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(self) {
+        if let Ok(path) = get_path(self.handle.as_handle()) {
             b.field("path", &path);
         }
         b.finish()
@@ -1289,8 +1719,8 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                 Layout::from_size_align(struct_size as usize, align_of::<c::FILE_RENAME_INFO>())
                     .unwrap();
 
-            // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
             let file_rename_info;
+            // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
             unsafe {
                 file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFO>();
                 if file_rename_info.is_null() {
@@ -1510,10 +1940,10 @@ pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
-fn get_path(f: &File) -> io::Result<PathBuf> {
+fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
     fill_utf16_buf(
         |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
+            c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
@@ -1526,7 +1956,7 @@ pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = File::open_native(p, &opts)?;
-    get_path(&f)
+    get_path(f.handle)
 }
 
 pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {

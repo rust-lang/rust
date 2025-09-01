@@ -1,5 +1,6 @@
 use rand::RngCore;
 
+use super::Dir;
 #[cfg(any(
     windows,
     target_os = "freebsd",
@@ -17,7 +18,7 @@ use crate::char::MAX_LEN_UTF8;
     target_vendor = "apple",
 ))]
 use crate::fs::TryLockError;
-use crate::fs::{self, File, FileTimes, OpenOptions};
+use crate::fs::{self, File, FileTimes, OpenOptions, create_dir, exists};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
 use crate::mem::MaybeUninit;
@@ -2109,4 +2110,120 @@ fn test_open_options_invalid_combinations() {
     let err = result.unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
+}
+
+#[test]
+fn test_dir_smoke_test() {
+    let tmpdir = tmpdir();
+    let dir = Dir::new(tmpdir.path());
+    println!("{dir:?}");
+    check!(dir);
+}
+
+#[test]
+fn test_dir_read_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    let mut f = check!(dir.open("foo.txt"));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_write_file() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::new(tmpdir.path()));
+    let mut f = check!(dir.open_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let mut f = check!(File::open(tmpdir.join("foo.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_remove_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.remove_file("foo.txt"));
+    assert!(!matches!(exists(tmpdir.join("foo.txt")), Ok(true)));
+}
+
+#[test]
+fn test_dir_remove_dir() {
+    let tmpdir = tmpdir();
+    check!(create_dir(tmpdir.join("foo")));
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.remove_dir("foo"));
+    assert!(!matches!(exists(tmpdir.join("foo")), Ok(true)));
+}
+
+#[test]
+fn test_dir_rename_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.rename("foo.txt", &dir, "baz.txt"));
+    let mut f = check!(File::open(tmpdir.join("baz.txt")));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
+}
+
+#[test]
+fn test_dir_create_dir() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.create_dir("foo"));
+    check!(Dir::new(tmpdir.join("foo")));
+}
+
+#[test]
+fn test_dir_open_dir() {
+    let tmpdir = tmpdir();
+    let dir1 = check!(Dir::new(tmpdir.path()));
+    check!(dir1.create_dir("foo"));
+    let dir2 = check!(Dir::new(tmpdir.path().join("foo")));
+    let mut f = check!(dir2.open_with("bar.txt", &OpenOptions::new().create(true).write(true)));
+    check!(f.write(b"baz"));
+    check!(f.flush());
+    drop(f);
+    let dir3 = check!(dir1.open_dir("foo"));
+    let mut f = check!(dir3.open("bar.txt"));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"baz", &buf);
+}
+
+#[test]
+fn test_dir_symlink() {
+    let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
+    let dir = check!(Dir::new(tmpdir.path()));
+    let mut f = check!(dir.open_with("foo.txt", &OpenOptions::new().write(true).create(true)));
+    check!(f.write(b"quux"));
+    check!(f.flush());
+    drop(f);
+    check!(dir.symlink("foo.txt", "bar.txt"));
+    let mut f = check!(dir.open("bar.txt"));
+    let mut buf = [0u8; 4];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"quux", &buf);
 }
