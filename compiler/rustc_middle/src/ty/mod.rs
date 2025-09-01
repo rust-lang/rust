@@ -2376,5 +2376,37 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
         return TypeTree(types);
     }
 
+    if let ty::Adt(adt_def, args) = ty.kind() {
+        if adt_def.is_struct() {
+            let struct_layout =
+                tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
+            if let Ok(layout) = struct_layout {
+                let mut types = Vec::new();
+
+                for (field_idx, field_def) in adt_def.all_fields().enumerate() {
+                    let field_ty = field_def.ty(tcx, args);
+                    let field_tree = typetree_from_ty(tcx, field_ty);
+
+                    let field_offset = layout.fields.offset(field_idx).bytes_usize();
+
+                    for elem_type in &field_tree.0 {
+                        types.push(Type {
+                            offset: if elem_type.offset == -1 {
+                                field_offset as isize
+                            } else {
+                                field_offset as isize + elem_type.offset
+                            },
+                            size: elem_type.size,
+                            kind: elem_type.kind,
+                            child: elem_type.child.clone(),
+                        });
+                    }
+                }
+
+                return TypeTree(types);
+            }
+        }
+    }
+
     TypeTree::new()
 }

@@ -1,0 +1,4 @@
+; Check that struct TypeTree metadata is correctly generated
+; Should show Float@double at offsets 0, 8, 16 for Point struct fields
+
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@double}"{{.*}}@test_struct{{.*}}"enzyme_type"="{[]:Pointer}"
