@@ -503,8 +503,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 if let hir::Node::Expr(parent_expr) = parent
                     && let hir::ExprKind::Call(call_expr, _) = parent_expr.kind
-                    && let hir::ExprKind::Path(hir::QPath::LangItem(LangItem::IntoIterIntoIter, _)) =
-                        call_expr.kind
+                    && let hir::ExprKind::Path(qpath) = call_expr.kind
+                    && tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
                 {
                     // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
                 } else if let UseSpans::FnSelfUse { kind: CallKind::Normal { .. }, .. } = move_spans

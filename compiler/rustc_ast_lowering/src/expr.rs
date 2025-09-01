@@ -2171,7 +2171,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lang_item: hir::LangItem,
         fields: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path = self.arena.alloc(self.lang_item_qpath(span, lang_item));
+        let path = self.arena.alloc(self.make_lang_item_qpath(lang_item, span, None));
         self.expr_enum_variant(span, path, fields)
     }
 
@@ -2203,41 +2203,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args))
     }
 
-    // TEMPORARY - will be replaced with expr_call_lang_item_fn_mut
-    pub(super) fn expr_call_lang_item_qpath_fn_mut(
+    pub(super) fn expr_lang_item_path(
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-        args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path = self.arena.alloc(self.expr_lang_item_qpath(span, lang_item));
-        self.expr_call_mut(span, path, args)
-    }
-
-    // TEMPORARY - will be replaced with expr_call_lang_item_fn
-    pub(super) fn expr_call_lang_item_qpath_fn(
-        &mut self,
-        span: Span,
-        lang_item: hir::LangItem,
-        args: &'hir [hir::Expr<'hir>],
-    ) -> &'hir hir::Expr<'hir> {
-        self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(span, lang_item, args))
-    }
-
-    fn expr_lang_item_path(&mut self, span: Span, lang_item: hir::LangItem) -> hir::Expr<'hir> {
         let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
         self.expr(span, hir::ExprKind::Path(qpath))
-    }
-
-    // TEMPORARY - will be replaced with expr_lang_item_path
-    fn expr_lang_item_qpath(&mut self, span: Span, lang_item: hir::LangItem) -> hir::Expr<'hir> {
-        let qpath = self.lang_item_qpath(span, lang_item);
-        self.expr(span, hir::ExprKind::Path(qpath))
-    }
-
-    // TEMPORARY - will be replaced with expr_lang_item_path
-    fn lang_item_qpath(&mut self, span: Span, lang_item: hir::LangItem) -> hir::QPath<'hir> {
-        hir::QPath::LangItem(lang_item, self.lower_span(span))
     }
 
     /// `<LangItem>::name`

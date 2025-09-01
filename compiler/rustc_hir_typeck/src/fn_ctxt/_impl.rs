@@ -721,9 +721,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let ty = self.lowerer().lower_ty(qself);
                 (LoweredTy::from_raw(self, span, ty), qself, segment)
             }
-            QPath::LangItem(..) => {
-                bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
-            }
         };
 
         self.register_wf_obligation(

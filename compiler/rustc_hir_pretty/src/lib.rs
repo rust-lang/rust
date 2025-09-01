@@ -1774,11 +1774,6 @@ impl<'a> State<'a> {
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(item_segment.args(), colons_before_params)
             }
-            hir::QPath::LangItem(lang_item, span) => {
-                self.word("#[lang = \"");
-                self.print_ident(Ident::new(lang_item.name(), span));
-                self.word("\"]");
-            }
         }
     }
 

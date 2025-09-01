@@ -31,7 +31,6 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use crate::LangItem;
 use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
 use crate::def_id::{DefId, LocalDefIdMap};
@@ -2420,9 +2419,6 @@ impl Expr<'_> {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
-            // Lang item paths cannot currently be local variables or statics.
-            ExprKind::Path(QPath::LangItem(..)) => false,
-
             // Suppress errors for bad expressions.
             ExprKind::Err(_guar)
             | ExprKind::Let(&LetExpr { recovered: ast::Recovered::Yes(_guar), .. }) => true,
@@ -2592,10 +2588,6 @@ impl Expr<'_> {
     pub fn equivalent_for_indexing(&self, other: &Expr<'_>) -> bool {
         match (self.kind, other.kind) {
             (ExprKind::Lit(lit1), ExprKind::Lit(lit2)) => lit1.node == lit2.node,
-            (
-                ExprKind::Path(QPath::LangItem(item1, _)),
-                ExprKind::Path(QPath::LangItem(item2, _)),
-            ) => item1 == item2,
             (
                 ExprKind::Path(QPath::Resolved(None, path1)),
                 ExprKind::Path(QPath::Resolved(None, path2)),
@@ -2850,9 +2842,6 @@ pub enum QPath<'hir> {
     /// `<Vec>::new`, and `T::X::Y::method` into `<<<T>::X>::Y>::method`,
     /// the `X` and `Y` nodes each being a `TyKind::Path(QPath::TypeRelative(..))`.
     TypeRelative(&'hir Ty<'hir>, &'hir PathSegment<'hir>),
-
-    /// Reference to a `#[lang = "foo"]` item.
-    LangItem(LangItem, Span),
 }
 
 impl<'hir> QPath<'hir> {
@@ -2861,7 +2850,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, ps) => qself.span.to(ps.ident.span),
-            QPath::LangItem(_, span) => span,
         }
     }
 
@@ -2871,7 +2859,6 @@ impl<'hir> QPath<'hir> {
         match *self {
             QPath::Resolved(_, path) => path.span,
             QPath::TypeRelative(qself, _) => qself.span,
-            QPath::LangItem(_, span) => span,
         }
     }
 }

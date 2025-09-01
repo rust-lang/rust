@@ -270,9 +270,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn qpath(&self, qpath: &Binding<&QPath<'_>>, hir_id_binding: &str, hir_id: HirId) {
-        if let QPath::LangItem(lang_item, ..) = *qpath.value {
-            chain!(self, "matches!({qpath}, QPath::LangItem(LangItem::{lang_item:?}, _))");
-        } else if let Some(def_id) = self.cx.qpath_res(qpath.value, hir_id).opt_def_id()
+        if let Some(def_id) = self.cx.qpath_res(qpath.value, hir_id).opt_def_id()
             && !def_id.is_local()
         {
             bind!(self, def_id);
