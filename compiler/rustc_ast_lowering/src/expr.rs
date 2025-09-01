@@ -609,7 +609,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         expr: &'hir hir::Expr<'hir>,
         overall_span: Span,
     ) -> &'hir hir::Expr<'hir> {
-        let constructor = self.arena.alloc(self.expr_lang_item_path(method_span, lang_item));
+        let constructor = self.arena.alloc(self.expr_lang_item_qpath(method_span, lang_item));
         self.expr_call(overall_span, constructor, std::slice::from_ref(expr))
     }
 
@@ -901,23 +901,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let task_context = self.expr_ident_mut(span, task_context_ident, task_context_hid);
 
-            let new_unchecked = self.expr_call_lang_item_fn_mut(
+            let new_unchecked = self.expr_call_lang_item_qpath_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
                 arena_vec![self; ref_mut_awaitee],
             );
-            let get_context = self.expr_call_lang_item_fn_mut(
+            let get_context = self.expr_call_lang_item_qpath_fn_mut(
                 gen_future_span,
                 hir::LangItem::GetContext,
                 arena_vec![self; task_context],
             );
             let call = match await_kind {
-                FutureKind::Future => self.expr_call_lang_item_fn(
+                FutureKind::Future => self.expr_call_lang_item_qpath_fn(
                     span,
                     hir::LangItem::FuturePoll,
                     arena_vec![self; new_unchecked, get_context],
                 ),
-                FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
+                FutureKind::AsyncIterator => self.expr_call_lang_item_qpath_fn(
                     span,
                     hir::LangItem::AsyncIteratorPollNext,
                     arena_vec![self; new_unchecked, get_context],
@@ -965,7 +965,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // async gen - task_context = yield ASYNC_GEN_PENDING;
         let yield_stmt = {
             let yielded = if is_async_gen {
-                self.arena.alloc(self.expr_lang_item_path(span, hir::LangItem::AsyncGenPending))
+                self.arena.alloc(self.expr_lang_item_qpath(span, hir::LangItem::AsyncGenPending))
             } else {
                 self.expr_unit(span)
             };
@@ -1005,7 +1005,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_expr = match await_kind {
-            FutureKind::Future => self.expr_call_lang_item_fn(
+            FutureKind::Future => self.expr_call_lang_item_qpath_fn(
                 span,
                 hir::LangItem::IntoFutureIntoFuture,
                 arena_vec![self; *expr],
@@ -1720,7 +1720,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
             // This ensures that we store our resumed `ResumeContext` correctly, and also that
             // the apparent value of the `yield` expression is `()`.
-            let wrapped_yielded = self.expr_call_lang_item_fn(
+            let wrapped_yielded = self.expr_call_lang_item_qpath_fn(
                 span,
                 hir::LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
@@ -1804,7 +1804,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForLoopKind::For => {
                     // `Iterator::next(&mut iter)`
                     let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
-                    self.expr_call_lang_item_fn(
+                    self.expr_call_lang_item_qpath_fn(
                         head_span,
                         hir::LangItem::IteratorNext,
                         arena_vec![self; ref_mut_iter],
@@ -1819,7 +1819,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // `&mut iter`
                     let iter = self.expr_mut_addr_of(head_span, iter);
                     // `Pin::new_unchecked(...)`
-                    let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
+                    let iter = self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(
                         head_span,
                         hir::LangItem::PinNewUnchecked,
                         arena_vec![self; iter],
@@ -1854,7 +1854,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let match_expr = match loop_kind {
             ForLoopKind::For => {
                 // `::std::iter::IntoIterator::into_iter(<head>)`
-                let into_iter_expr = self.expr_call_lang_item_fn(
+                let into_iter_expr = self.expr_call_lang_item_qpath_fn(
                     head_span,
                     hir::LangItem::IntoIterIntoIter,
                     arena_vec![self; head],
@@ -1874,7 +1874,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.pat_ident_binding_mode(head_span, iter_ident, hir::BindingMode::REF_MUT);
                 let iter = self.expr_ident_mut(head_span, iter_ident, async_iter_pat_id);
                 // `Pin::new_unchecked(...)`
-                let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
+                let iter = self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(
                     head_span,
                     hir::LangItem::PinNewUnchecked,
                     arena_vec![self; iter],
@@ -1889,7 +1889,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
 
                 // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
-                let iter = self.expr_call_lang_item_fn(
+                let iter = self.expr_call_lang_item_qpath_fn(
                     head_span,
                     hir::LangItem::IntoAsyncIterIntoIter,
                     arena_vec![self; head],
@@ -1945,7 +1945,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // expand <expr>
             let sub_expr = self.lower_expr_mut(sub_expr);
 
-            self.expr_call_lang_item_fn(
+            self.expr_call_lang_item_qpath_fn(
                 unstable_span,
                 hir::LangItem::TryTraitBranch,
                 arena_vec![self; sub_expr],
@@ -2166,7 +2166,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lang_item: hir::LangItem,
         fields: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path = self.arena.alloc(self.lang_item_path(span, lang_item));
+        let path = self.arena.alloc(self.lang_item_qpath(span, lang_item));
         self.expr_enum_variant(span, path, fields)
     }
 
@@ -2198,20 +2198,40 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr_call_lang_item_fn_mut(span, lang_item, args))
     }
 
-    pub(super) fn expr_lang_item_path(
+    // TEMPORARY - will be replaced with expr_call_lang_item_fn_mut
+    pub(super) fn expr_call_lang_item_qpath_fn_mut(
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
+        args: &'hir [hir::Expr<'hir>],
     ) -> hir::Expr<'hir> {
-        let path = self.lang_item_path(span, lang_item);
-        self.expr(span, hir::ExprKind::Path(path))
+        let path = self.arena.alloc(self.expr_lang_item_qpath(span, lang_item));
+        self.expr_call_mut(span, path, args)
     }
 
-    pub(super) fn lang_item_path(
+    // TEMPORARY - will be replaced with expr_call_lang_item_fn
+    pub(super) fn expr_call_lang_item_qpath_fn(
         &mut self,
         span: Span,
         lang_item: hir::LangItem,
-    ) -> hir::QPath<'hir> {
+        args: &'hir [hir::Expr<'hir>],
+    ) -> &'hir hir::Expr<'hir> {
+        self.arena.alloc(self.expr_call_lang_item_qpath_fn_mut(span, lang_item, args))
+    }
+
+    fn expr_lang_item_path(&mut self, span: Span, lang_item: hir::LangItem) -> hir::Expr<'hir> {
+        let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span), None);
+        self.expr(span, hir::ExprKind::Path(qpath))
+    }
+
+    // TEMPORARY - will be replaced with expr_lang_item_path
+    fn expr_lang_item_qpath(&mut self, span: Span, lang_item: hir::LangItem) -> hir::Expr<'hir> {
+        let qpath = self.lang_item_qpath(span, lang_item);
+        self.expr(span, hir::ExprKind::Path(qpath))
+    }
+
+    // TEMPORARY - will be replaced with expr_lang_item_path
+    fn lang_item_qpath(&mut self, span: Span, lang_item: hir::LangItem) -> hir::QPath<'hir> {
         hir::QPath::LangItem(lang_item, self.lower_span(span))
     }
 

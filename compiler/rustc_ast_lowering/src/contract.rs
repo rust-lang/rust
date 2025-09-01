@@ -120,7 +120,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             lowered_req.span,
             None,
         );
-        let precond = self.expr_call_lang_item_fn_mut(
+        let precond = self.expr_call_lang_item_qpath_fn_mut(
             req_span,
             rustc_hir::LangItem::ContractCheckRequires,
             &*arena_vec![self; lowered_req],
@@ -136,7 +136,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ens_span =
             self.mark_span_with_reason(rustc_span::DesugaringKind::Contract, ens_span, None);
         let lowered_ens = self.lower_expr_mut(&ens);
-        self.expr_call_lang_item_fn(
+        self.expr_call_lang_item_qpath_fn(
             ens_span,
             rustc_hir::LangItem::ContractBuildCheckEnsures,
             &*arena_vec![self; lowered_ens],
@@ -291,7 +291,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ret = self.expr_ident(span, ret_ident, ret_hir_id);
 
         let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
-        let contract_check = self.expr_call_lang_item_fn_mut(
+        let contract_check = self.expr_call_lang_item_qpath_fn_mut(
             span,
             rustc_hir::LangItem::ContractCheckEnsures,
             arena_vec![self; *cond_fn, *ret],
