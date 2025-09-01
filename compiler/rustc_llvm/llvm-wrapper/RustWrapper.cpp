@@ -172,31 +172,10 @@ extern "C" void LLVMRustPrintStatistics(RustStringRef OutBuf) {
   llvm::PrintStatistics(OS);
 }
 
-extern "C" void LLVMRustOffloadWrapper(LLVMModuleRef M, LLVMValueRef Fn) {
+extern "C" void LLVMRustOffloadMapper(LLVMModuleRef M, LLVMValueRef OldFn, LLVMValueRef NewFn) {
   llvm::Module *module = llvm::unwrap(M);
-  llvm::Function *oldFn = llvm::unwrap<llvm::Function>(Fn);
-
-  if (oldFn->arg_size() > 0 && oldFn->getArg(0)->getName() == "dyn_ptr") {
-    return;
-  }
-
-  // 1. Create new function type with the leading extra %dyn_ptr arg which llvm
-  // offload requries.
-  llvm::LLVMContext &ctx = module->getContext();
-  llvm::Type *dynPtrType = llvm::PointerType::get(ctx, 0);
-  std::vector<llvm::Type *> argTypes;
-  argTypes.push_back(dynPtrType);
-
-  for (auto &arg : oldFn->args()) {
-    argTypes.push_back(arg.getType());
-  }
-
-  llvm::FunctionType *newFnType = llvm::FunctionType::get(
-      oldFn->getReturnType(), argTypes, oldFn->isVarArg());
-
-  // use a temporary .offload appendix to avoid name clashes
-  llvm::Function *newFn = llvm::Function::Create(
-      newFnType, oldFn->getLinkage(), oldFn->getName() + ".offload", module);
+  llvm::Function *oldFn = llvm::unwrap<llvm::Function>(OldFn);
+  llvm::Function *newFn = llvm::unwrap<llvm::Function>(NewFn);
 
   // Map old arguments to new arguments. We skip the first dyn_ptr argument,
   // since it can't be used directly by user code.
@@ -212,14 +191,6 @@ extern "C" void LLVMRustOffloadWrapper(LLVMModuleRef M, LLVMValueRef Fn) {
   llvm::CloneFunctionInto(newFn, oldFn, vmap,
                           llvm::CloneFunctionChangeType::LocalChangesOnly,
                           returns);
-  newFn->setLinkage(oldFn->getLinkage());
-  newFn->setVisibility(oldFn->getVisibility());
-
-  // Replace uses, delete old function, and reset name to the original one.
-  oldFn->replaceAllUsesWith(newFn);
-  auto name = oldFn->getName();
-  oldFn->eraseFromParent();
-  newFn->setName(name);
 }
 
 extern "C" LLVMValueRef LLVMRustGetNamedValue(LLVMModuleRef M, const char *Name,
