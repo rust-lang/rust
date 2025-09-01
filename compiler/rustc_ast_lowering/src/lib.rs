@@ -138,6 +138,7 @@ struct LoweringContext<'a, 'hir> {
     #[cfg(debug_assertions)]
     node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
+    allow_contracts: Arc<[Symbol]>,
     allow_try_trait: Arc<[Symbol]>,
     allow_gen_future: Arc<[Symbol]>,
     allow_pattern_type: Arc<[Symbol]>,
@@ -183,6 +184,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             current_item: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
+            allow_contracts: [sym::contracts_internals].into(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
             allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller() {
