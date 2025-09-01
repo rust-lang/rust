@@ -88,7 +88,8 @@ use crate::{fmt, ops, slice, str};
 /// ```
 ///
 /// [str]: prim@str "str"
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Hash)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_diagnostic_item = "cstr_type"]
 #[rustc_has_incoherent_inherent_impls]
@@ -669,7 +670,8 @@ impl PartialEq<&Self> for CStr {
 // because `c_char` is `i8` (not `u8`) on some platforms.
 // That is why this is implemented manually and not derived.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for CStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for CStr {
     #[inline]
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
         self.to_bytes().partial_cmp(&other.to_bytes())
@@ -677,7 +679,8 @@ impl PartialOrd for CStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for CStr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for CStr {
     #[inline]
     fn cmp(&self, other: &CStr) -> Ordering {
         self.to_bytes().cmp(&other.to_bytes())
