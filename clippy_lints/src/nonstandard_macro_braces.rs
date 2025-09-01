@@ -115,35 +115,41 @@ impl EarlyLintPass for MacroBraces {
 }
 
 fn is_offending_macro(cx: &EarlyContext<'_>, span: Span, mac_braces: &MacroBraces) -> Option<MacroInfo> {
-    let unnested_or_local = || {
-        !span.ctxt().outer_expn_data().call_site.from_expansion()
+    let unnested_or_local = |span: Span| {
+        !span.from_expansion()
             || span
                 .macro_backtrace()
                 .last()
                 .is_some_and(|e| e.macro_def_id.is_some_and(DefId::is_local))
     };
-    let callsite_span = span.ctxt().outer_expn_data().call_site;
-    if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind
+
+    let mut ctxt = span.ctxt();
+    while !ctxt.is_root() {
+        let expn_data = ctxt.outer_expn_data();
+        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = expn_data.kind
         && let name = mac_name.as_str()
         && let Some(&braces) = mac_braces.macro_braces.get(name)
-        && let Some(snip) = callsite_span.get_source_text(cx)
+        && let Some(snip) = expn_data.call_site.get_source_text(cx)
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
         && let Some(macro_args_str) = snip.strip_prefix(name).and_then(|snip| snip.strip_prefix('!'))
         && let Some(old_open_brace @ ('{' | '(' | '[')) = macro_args_str.trim_start().chars().next()
         && old_open_brace != braces.0
-        && unnested_or_local()
-        && !mac_braces.done.contains(&callsite_span)
-    {
-        Some(MacroInfo {
-            callsite_span,
-            callsite_snippet: snip,
-            old_open_brace,
-            braces,
-        })
-    } else {
-        None
+        && unnested_or_local(expn_data.call_site)
+        && !mac_braces.done.contains(&expn_data.call_site)
+        {
+            return Some(MacroInfo {
+                callsite_span: expn_data.call_site,
+                callsite_snippet: snip,
+                old_open_brace,
+                braces,
+            });
+        }
+
+        ctxt = expn_data.call_site.ctxt();
     }
+
+    None
 }
 
 fn emit_help(cx: &EarlyContext<'_>, snip: &str, (open, close): (char, char), span: Span, add_semi: bool) {
