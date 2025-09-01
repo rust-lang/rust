@@ -75,6 +75,38 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
     universal_regions
 }
 
+/// Computes the closure requirements given the current inference state.
+///
+/// This is intended to be used by before [BorrowCheckRootCtxt::handle_opaque_type_uses]
+/// because applying member constraints may rely on closure requirements.
+/// This is frequently the case of async functions where pretty much everything
+/// happens inside of the inner async block but the opaque only gets constrained
+/// in the parent function.
+pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    body: &Body<'tcx>,
+    location_map: Rc<DenseLocationMap>,
+    universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
+    constraints: &MirTypeckRegionConstraints<'tcx>,
+) -> Option<ClosureRegionRequirements<'tcx>> {
+    // FIXME(#146079): we shouldn't have to clone all this stuff here.
+    // Computing the region graph should take at least some of it by reference/`Rc`.
+    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+        constraints.clone(),
+        &universal_region_relations,
+        infcx,
+    );
+    let mut regioncx = RegionInferenceContext::new(
+        &infcx,
+        lowered_constraints,
+        universal_region_relations.clone(),
+        location_map,
+    );
+
+    let (closure_region_requirements, _nll_errors) = regioncx.solve(infcx, body, None);
+    closure_region_requirements
+}
+
 /// Computes the (non-lexical) regions from the input MIR.
 ///
 /// This may result in errors being reported.
