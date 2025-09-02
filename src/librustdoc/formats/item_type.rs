@@ -78,7 +78,7 @@ impl<'de> Deserialize<'de> for ItemType {
         impl<'de> de::Visitor<'de> for ItemTypeVisitor {
             type Value = ItemType;
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(formatter, "an integer between 0 and 25")
+                write!(formatter, "an integer between 0 and 27")
             }
             fn visit_u64<E: de::Error>(self, v: u64) -> Result<ItemType, E> {
                 Ok(match v {
@@ -107,7 +107,8 @@ impl<'de> Deserialize<'de> for ItemType {
                     23 => ItemType::ProcAttribute,
                     24 => ItemType::ProcDerive,
                     25 => ItemType::TraitAlias,
-                    _ => return Err(E::missing_field("unknown number")),
+                    27 => ItemType::Attribute,
+                    _ => return Err(E::missing_field("unknown number for `ItemType` enum")),
                 })
             }
         }
