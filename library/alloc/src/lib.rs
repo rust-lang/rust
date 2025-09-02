@@ -87,6 +87,8 @@
 // Library features:
 // tidy-alphabetical-start
 #![feature(allocator_api)]
+#![feature(arbitrary_self_types)]
+#![feature(arbitrary_self_types_pointers)]
 #![feature(array_into_iter_constructors)]
 #![feature(ascii_char)]
 #![feature(async_fn_traits)]

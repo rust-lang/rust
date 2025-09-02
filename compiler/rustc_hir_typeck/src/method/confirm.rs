@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use rustc_hir as hir;
@@ -356,18 +357,37 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let mut autoderef = self.fcx.autoderef(self.span, self_ty);
+        let fcx = self.fcx;
+        let span = self.span;
+        let autoderef = fcx.autoderef(span, self_ty);
 
         // We don't need to gate this behind arbitrary self types
         // per se, but it does make things a bit more gated.
-        if self.tcx.features().arbitrary_self_types()
-            || self.tcx.features().arbitrary_self_types_pointers()
-        {
-            autoderef = autoderef.use_receiver_trait();
-        }
+        let follow_receiver_chain = self.tcx.features().arbitrary_self_types()
+            || self.tcx.features().arbitrary_self_types_pointers();
 
         autoderef
             .include_raw_pointers()
+            .flat_map(|(ty, derefs)| {
+                enum EitherIter<A, B, C> {
+                    A(A, PhantomData<fn() -> C>),
+                    B(B),
+                }
+                impl<A: Iterator<Item = C>, B: Iterator<Item = C>, C> Iterator for EitherIter<A, B, C> {
+                    type Item = C;
+                    fn next(&mut self) -> Option<Self::Item> {
+                        match self {
+                            EitherIter::A(a, _) => a.next(),
+                            EitherIter::B(b) => b.next(),
+                        }
+                    }
+                }
+                if follow_receiver_chain {
+                    EitherIter::A(fcx.autoderef(span, ty).follow_receiver_chain(), PhantomData)
+                } else {
+                    EitherIter::B([(ty, derefs)].into_iter())
+                }
+            })
             .find_map(|(ty, _)| match ty.kind() {
                 ty::Dynamic(data, ..) => Some(closure(
                     self,

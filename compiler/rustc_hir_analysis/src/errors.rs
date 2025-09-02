@@ -1727,7 +1727,8 @@ pub(crate) enum InvalidReceiverTyHint {
 #[diag("invalid `self` parameter type: `{$receiver_ty}`", code = E0307)]
 #[note("type of `self` must be `Self` or a type that dereferences to it")]
 #[help(
-    "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)"
+    "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` where P is one of the previous types except `Self`; \
+alternatively, consider implement `Receiver` trait on the type of `self`, where applicable"
 )]
 pub(crate) struct InvalidReceiverTyNoArbitrarySelfTypes<'tcx> {
     #[primary_span]
