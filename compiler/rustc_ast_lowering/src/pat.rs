@@ -106,10 +106,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         break hir::PatKind::Struct(
                             qpath,
                             fs,
-                            matches!(
-                                etc,
-                                ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_)
-                            ),
+                            match etc {
+                                ast::PatFieldsRest::Rest(sp) => Some(self.lower_span(*sp)),
+                                ast::PatFieldsRest::Recovered(_) => Some(Span::default()),
+                                _ => None,
+                            },
                         );
                     }
                     PatKind::Tuple(pats) => {
