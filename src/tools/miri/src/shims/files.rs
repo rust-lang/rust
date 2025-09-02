@@ -4,6 +4,8 @@ use std::fs::{File, Metadata};
 use std::io::{ErrorKind, IsTerminal, Seek, SeekFrom, Write};
 use std::marker::CoercePointee;
 use std::ops::Deref;
+#[cfg(not(bootstrap))]
+use std::ops::Receiver;
 use std::rc::{Rc, Weak};
 use std::{fs, io};
 
@@ -42,6 +44,10 @@ impl<T: ?Sized> Deref for FileDescriptionRef<T> {
     fn deref(&self) -> &T {
         &self.0.inner
     }
+}
+#[cfg(not(bootstrap))]
+impl<T: ?Sized> Receiver for FileDescriptionRef<T> {
+    type Target = T;
 }
 
 impl<T: ?Sized> FileDescriptionRef<T> {

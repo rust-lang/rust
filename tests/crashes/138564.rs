@@ -3,7 +3,7 @@
 #![feature(unsize, dispatch_from_dyn, arbitrary_self_types)]
 
 use std::marker::Unsize;
-use std::ops::{Deref, DispatchFromDyn};
+use std::ops::{Deref, DispatchFromDyn, Receiver};
 
 #[repr(align(16))]
 pub struct MyPointer<T: ?Sized>(*const T);
@@ -15,7 +15,9 @@ impl<T: ?Sized> Deref for MyPointer<T> {
         unimplemented!()
     }
 }
-
+impl<T: ?Sized> Receiver for MyPointer<T> {
+    type Target = T;
+}
 pub trait Trait {
     fn foo(self: MyPointer<Self>) {}
 }

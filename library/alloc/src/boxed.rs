@@ -196,7 +196,7 @@ use core::mem::MaybeUninit;
 use core::mem::{self, SizedTypeProperties};
 use core::ops::{
     AsyncFn, AsyncFnMut, AsyncFnOnce, CoerceUnsized, Coroutine, CoroutineState, Deref, DerefMut,
-    DerefPure, DispatchFromDyn, LegacyReceiver,
+    DerefPure, DispatchFromDyn, LegacyReceiver, Receiver,
 };
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
@@ -2197,6 +2197,10 @@ unsafe impl<T: ?Sized, A: Allocator> DerefPure for Box<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<T: ?Sized, A: Allocator> Receiver for Box<T, A> {
+    type Target = T;
+}
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args: Tuple, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
