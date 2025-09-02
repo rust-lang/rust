@@ -35,7 +35,6 @@ fn main() {
     assert!(path("bla.d").exists());
 
     // The last emit-type wins. The same behavior as rustc.
-    // TODO: this shows the wrong behavior as a MRE, which will be fixed in the next commit
     rustdoc()
         .input("lib.rs")
         .arg("-Zunstable-options")
@@ -43,7 +42,7 @@ fn main() {
         .emit("dep-info=precedence2.d")
         .emit("dep-info=precedence3.d")
         .run();
-    assert!(path("precedence1.d").exists());
+    assert!(!path("precedence1.d").exists());
     assert!(!path("precedence2.d").exists());
-    assert!(!path("precedence3.d").exists());
+    assert!(path("precedence3.d").exists());
 }
