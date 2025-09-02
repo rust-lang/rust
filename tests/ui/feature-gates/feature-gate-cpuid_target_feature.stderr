@@ -1,0 +1,34 @@
+error[E0658]: use of unstable library feature `cpuid_target_feature`
+  --> $DIR/feature-gate-cpuid_target_feature.rs:10:5
+   |
+LL |     is_x86_feature_detected!("cpuid")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #146558 <https://github.com/rust-lang/rust/issues/146558> for more information
+   = help: add `#![feature(cpuid_target_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: this error originates in the macro `$crate::detect_feature` which comes from the expansion of the macro `is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0658]: the target feature `cpuid` is currently unstable
+  --> $DIR/feature-gate-cpuid_target_feature.rs:5:18
+   |
+LL | #[target_feature(enable = "cpuid")]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #146558 <https://github.com/rust-lang/rust/issues/146558> for more information
+   = help: add `#![feature(cpuid_target_feature)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0133]: call to function `std::arch::x86_64::__cpuid` with `#[target_feature]` is unsafe and requires unsafe function or block
+  --> $DIR/feature-gate-cpuid_target_feature.rs:15:5
+   |
+LL |     __cpuid(0)
+   |     ^^^^^^^^^^ call to function with `#[target_feature]`
+   |
+   = help: in order for the call to be safe, the context requires the following additional target feature: cpuid
+   = note: the cpuid target feature being enabled in the build configuration does not remove the requirement to list it in `#[target_feature]`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0133, E0658.
+For more information about an error, try `rustc --explain E0133`.
