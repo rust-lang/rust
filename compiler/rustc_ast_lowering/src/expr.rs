@@ -1721,12 +1721,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
             // This ensures that we store our resumed `ResumeContext` correctly, and also that
             // the apparent value of the `yield` expression is `()`.
+            let desugar_span = self.mark_span_with_reason(
+                DesugaringKind::Async,
+                span,
+                Some(Arc::clone(&self.allow_async_gen)),
+            );
             let wrapped_yielded = self.expr_call_lang_item_fn(
-                self.mark_span_with_reason(
-                    DesugaringKind::Async,
-                    span,
-                    Some(Arc::clone(&self.allow_async_gen)),
-                ),
+                desugar_span,
                 hir::LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
             );
@@ -1738,7 +1739,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 unreachable!("use of `await` outside of an async context.");
             };
             let task_context_ident = Ident::with_dummy_span(sym::_task_context);
-            let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
+            let lhs = self.expr_ident(desugar_span, task_context_ident, task_context_hid);
 
             hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span))
         } else {
