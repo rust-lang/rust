@@ -83,6 +83,7 @@ pub trait DefIdVisitor<'tcx> {
         DefIdVisitorSkeleton {
             def_id_visitor: self,
             visited_opaque_tys: Default::default(),
+            visited_trait_ref_in_projection: Default::default(),
             dummy: Default::default(),
         }
     }
@@ -103,6 +104,7 @@ pub trait DefIdVisitor<'tcx> {
 pub struct DefIdVisitorSkeleton<'v, 'tcx, V: ?Sized> {
     def_id_visitor: &'v mut V,
     visited_opaque_tys: FxHashSet<DefId>,
+    visited_trait_ref_in_projection: FxHashSet<ty::TraitRef<'tcx>>,
     dummy: PhantomData<TyCtxt<'tcx>>,
 }
 
@@ -123,7 +125,9 @@ where
     fn visit_projection_term(&mut self, projection: ty::AliasTerm<'tcx>) -> V::Result {
         let tcx = self.def_id_visitor.tcx();
         let (trait_ref, assoc_args) = projection.trait_ref_and_own_args(tcx);
-        try_visit!(self.visit_trait(trait_ref));
+        if self.visited_trait_ref_in_projection.insert(trait_ref) {
+            try_visit!(self.visit_trait(trait_ref));
+        }
         if V::SHALLOW {
             V::Result::output()
         } else {
