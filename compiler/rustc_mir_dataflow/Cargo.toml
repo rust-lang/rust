@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-polonius-engine.workspace = true
+polonius-engine = "0.13.0"
 regex = "1"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
@@ -18,5 +18,5 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing.workspace = true
+tracing = "0.1"
 # tidy-alphabetical-end
