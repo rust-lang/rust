@@ -23,6 +23,7 @@ use crate::common::{
 };
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
+use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
@@ -108,7 +109,13 @@ fn dylib_name(name: &str) -> String {
     format!("{}{name}.{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_EXTENSION)
 }
 
-pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
+pub fn run(
+    config: Arc<Config>,
+    stdout: &dyn ConsoleOut,
+    stderr: &dyn ConsoleOut,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) {
     match &*config.target {
         "arm-linux-androideabi"
         | "armv7-linux-androideabi"
@@ -143,7 +150,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         props.incremental_dir = Some(incremental_dir(&config, testpaths, revision));
     }
 
-    let cx = TestCx { config: &config, props: &props, testpaths, revision };
+    let cx = TestCx { config: &config, stdout, stderr, props: &props, testpaths, revision };
 
     if let Err(e) = create_dir_all(&cx.output_base_dir()) {
         panic!("failed to create output base directory {}: {e}", cx.output_base_dir());
@@ -162,6 +169,8 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
             revision_props.incremental_dir = props.incremental_dir.clone();
             let rev_cx = TestCx {
                 config: &config,
+                stdout,
+                stderr,
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
@@ -212,6 +221,8 @@ pub fn compute_stamp_hash(config: &Config) -> String {
 #[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
+    stdout: &'test dyn ConsoleOut,
+    stderr: &'test dyn ConsoleOut,
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
@@ -978,6 +989,8 @@ impl<'test> TestCx<'test> {
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
+                    stdout: self.stdout,
+                    stderr: self.stderr,
                     props: &props_for_aux,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
@@ -1343,6 +1356,8 @@ impl<'test> TestCx<'test> {
         let aux_output = TargetLocation::ThisDirectory(aux_dir.clone());
         let aux_cx = TestCx {
             config: self.config,
+            stdout: self.stdout,
+            stderr: self.stderr,
             props: &aux_props,
             testpaths: &aux_testpaths,
             revision: self.revision,

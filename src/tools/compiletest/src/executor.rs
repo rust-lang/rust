@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::{env, hint, io, mem, panic, thread};
 
 use crate::common::{Config, TestPaths};
+use crate::output_capture::{self, ConsoleOut};
 use crate::panic_hook;
 
 mod deadline;
@@ -131,14 +132,15 @@ fn run_test_inner(
         io::set_output_capture(Some(Arc::clone(buf)));
     }
 
-    let panic_payload = panic::catch_unwind(move || runnable_test.run()).err();
+    let stdout = capture.stdout();
+    let stderr = capture.stderr();
+
+    let panic_payload = panic::catch_unwind(move || runnable_test.run(stdout, stderr)).err();
 
     if let Some(panic_buf) = panic_hook::take_capture_buf() {
         let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
-        // For now, forward any captured panic message to (captured) stderr.
-        // FIXME(Zalathar): Once we have our own output-capture buffer for
-        // non-panic output, append the panic message to that buffer instead.
-        eprint!("{panic_buf}");
+        // Forward any captured panic message to (captured) stderr.
+        write!(stderr, "{panic_buf}");
     }
     if matches!(capture, CaptureKind::Old { .. }) {
         io::set_output_capture(None);
@@ -185,6 +187,14 @@ impl CaptureKind {
         }
     }
 
+    fn stdout(&self) -> &dyn ConsoleOut {
+        &output_capture::Stdout
+    }
+
+    fn stderr(&self) -> &dyn ConsoleOut {
+        &output_capture::Stderr
+    }
+
     fn into_inner(self) -> Option<Vec<u8>> {
         match self {
             Self::None => None,
@@ -210,10 +220,12 @@ impl RunnableTest {
         Self { config, testpaths, revision }
     }
 
-    fn run(&self) {
+    fn run(&self, stdout: &dyn ConsoleOut, stderr: &dyn ConsoleOut) {
         __rust_begin_short_backtrace(|| {
             crate::runtest::run(
                 Arc::clone(&self.config),
+                stdout,
+                stderr,
                 &self.testpaths,
                 self.revision.as_deref(),
             );

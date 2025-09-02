@@ -15,6 +15,7 @@ pub mod directives;
 pub mod errors;
 mod executor;
 mod json;
+mod output_capture;
 mod panic_hook;
 mod raise_fd_limit;
 mod read2;
