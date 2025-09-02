@@ -1,6 +1,5 @@
 use core::arch::asm;
 
-use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZero;
 use crate::os::xous::ffi::{
@@ -8,7 +7,7 @@ use crate::os::xous::ffi::{
     map_memory, update_memory_flags,
 };
 use crate::os::xous::services::{TicktimerScalar, ticktimer_server};
-use crate::time::{Duration, Instant};
+use crate::time::Duration;
 
 pub struct Thread {
     tid: ThreadId,
@@ -110,46 +109,29 @@ impl Thread {
         Ok(Thread { tid })
     }
 
-    pub fn yield_now() {
-        do_yield();
-    }
-
-    pub fn set_name(_name: &CStr) {
-        // nope
-    }
-
-    pub fn sleep(dur: Duration) {
-        // Because the sleep server works on units of `usized milliseconds`, split
-        // the messages up into these chunks. This means we may run into issues
-        // if you try to sleep a thread for more than 49 days on a 32-bit system.
-        let mut millis = dur.as_millis();
-        while millis > 0 {
-            let sleep_duration =
-                if millis > (usize::MAX as _) { usize::MAX } else { millis as usize };
-            blocking_scalar(ticktimer_server(), TicktimerScalar::SleepMs(sleep_duration).into())
-                .expect("failed to send message to ticktimer server");
-            millis -= sleep_duration as u128;
-        }
-    }
-
-    pub fn sleep_until(deadline: Instant) {
-        let now = Instant::now();
-
-        if let Some(delay) = deadline.checked_duration_since(now) {
-            Self::sleep(delay);
-        }
-    }
-
     pub fn join(self) {
         join_thread(self.tid).unwrap();
     }
 }
 
-pub(crate) fn current_os_id() -> Option<u64> {
-    None
-}
-
 pub fn available_parallelism() -> io::Result<NonZero<usize>> {
     // We're unicore right now.
     Ok(unsafe { NonZero::new_unchecked(1) })
+}
+
+pub fn yield_now() {
+    do_yield();
+}
+
+pub fn sleep(dur: Duration) {
+    // Because the sleep server works on units of `usized milliseconds`, split
+    // the messages up into these chunks. This means we may run into issues
+    // if you try to sleep a thread for more than 49 days on a 32-bit system.
+    let mut millis = dur.as_millis();
+    while millis > 0 {
+        let sleep_duration = if millis > (usize::MAX as _) { usize::MAX } else { millis as usize };
+        blocking_scalar(ticktimer_server(), TicktimerScalar::SleepMs(sleep_duration).into())
+            .expect("failed to send message to ticktimer server");
+        millis -= sleep_duration as u128;
+    }
 }
