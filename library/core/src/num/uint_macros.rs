@@ -1620,7 +1620,7 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
-        ///
+        /// ```
         #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
