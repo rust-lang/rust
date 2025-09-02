@@ -77,7 +77,7 @@ use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
 pub(crate) use ParseResult::*;
-use rustc_ast::token::{self, DocComment, NonterminalKind, Token};
+use rustc_ast::token::{self, DocComment, NonterminalKind, Token, TokenKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
@@ -397,7 +397,23 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     {
         ident1.name == ident2.name && is_raw1 == is_raw2
     } else {
-        t1.kind == t2.kind
+        // Note: we SHOULD NOT use `t1.kind == t2.kind` here, and we should instead compare the
+        // tokens using the special comparison logic below.
+        // It makes sure that variants containing `InvisibleOrigin` will
+        // never compare equal to one another.
+        //
+        // When we had AST-based nonterminals we couldn't compare them, and the
+        // old `Nonterminal` type had an `eq` that always returned false,
+        // resulting in this restriction:
+        // <https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment>
+        // This comparison logic emulates that behaviour. We could consider lifting this
+        // restriction now but there are still cases involving invisible
+        // delimiters that make it harder than it first appears.
+        match (t1.kind, t2.kind) {
+            (TokenKind::OpenInvisible(_) | TokenKind::CloseInvisible(_), _)
+            | (_, TokenKind::OpenInvisible(_) | TokenKind::CloseInvisible(_)) => false,
+            (a, b) => a == b,
+        }
     }
 }
 
