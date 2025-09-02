@@ -8,6 +8,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
 use crate::clean;
 
+macro_rules! item_type {
+    ($($variant:ident = $number:literal,)+) => {
+
 /// Item type. Corresponds to `clean::ItemEnum` variants.
 ///
 /// The search index uses item types encoded as smaller numbers which equal to
@@ -29,6 +32,44 @@ use crate::clean;
 #[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 #[repr(u8)]
 pub(crate) enum ItemType {
+    $($variant = $number,)+
+}
+
+impl Serialize for ItemType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        (*self as u8).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for ItemType {
+    fn deserialize<D>(deserializer: D) -> Result<ItemType, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct ItemTypeVisitor;
+        impl<'de> de::Visitor<'de> for ItemTypeVisitor {
+            type Value = ItemType;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(formatter, "an integer between 0 and 27")
+            }
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<ItemType, E> {
+                Ok(match v {
+                    $($number => ItemType::$variant,)+
+                    _ => return Err(E::missing_field("unknown number for `ItemType` enum")),
+                })
+            }
+        }
+        deserializer.deserialize_any(ItemTypeVisitor)
+    }
+}
+
+    }
+}
+
+item_type! {
     Keyword = 0,
     Primitive = 1,
     Module = 2,
@@ -58,61 +99,6 @@ pub(crate) enum ItemType {
     // This number is reserved for use in JavaScript
     // Generic = 26,
     Attribute = 27,
-}
-
-impl Serialize for ItemType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        (*self as u8).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for ItemType {
-    fn deserialize<D>(deserializer: D) -> Result<ItemType, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ItemTypeVisitor;
-        impl<'de> de::Visitor<'de> for ItemTypeVisitor {
-            type Value = ItemType;
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(formatter, "an integer between 0 and 25")
-            }
-            fn visit_u64<E: de::Error>(self, v: u64) -> Result<ItemType, E> {
-                Ok(match v {
-                    0 => ItemType::Keyword,
-                    1 => ItemType::Primitive,
-                    2 => ItemType::Module,
-                    3 => ItemType::ExternCrate,
-                    4 => ItemType::Import,
-                    5 => ItemType::Struct,
-                    6 => ItemType::Enum,
-                    7 => ItemType::Function,
-                    8 => ItemType::TypeAlias,
-                    9 => ItemType::Static,
-                    10 => ItemType::Trait,
-                    11 => ItemType::Impl,
-                    12 => ItemType::TyMethod,
-                    13 => ItemType::Method,
-                    14 => ItemType::StructField,
-                    15 => ItemType::Variant,
-                    16 => ItemType::Macro,
-                    17 => ItemType::AssocType,
-                    18 => ItemType::Constant,
-                    19 => ItemType::AssocConst,
-                    20 => ItemType::Union,
-                    21 => ItemType::ForeignType,
-                    23 => ItemType::ProcAttribute,
-                    24 => ItemType::ProcDerive,
-                    25 => ItemType::TraitAlias,
-                    _ => return Err(E::missing_field("unknown number")),
-                })
-            }
-        }
-        deserializer.deserialize_any(ItemTypeVisitor)
-    }
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
