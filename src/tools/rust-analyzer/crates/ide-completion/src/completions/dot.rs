@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir::{Complete, HasContainer, ItemContainer, MethodCandidateCallback, Name};
+use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback};
 use ide_db::FxHashSet;
 use syntax::SmolStr;
 
@@ -237,7 +237,10 @@ fn complete_methods(
     struct Callback<'a, F> {
         ctx: &'a CompletionContext<'a>,
         f: F,
-        seen_methods: FxHashSet<Name>,
+        // We deliberately deduplicate by function ID and not name, because while inherent methods cannot be
+        // duplicated, trait methods can. And it is still useful to show all of them (even when there
+        // is also an inherent method, especially considering that it may be private, and filtered later).
+        seen_methods: FxHashSet<Function>,
     }
 
     impl<F> MethodCandidateCallback for Callback<'_, F>
@@ -247,9 +250,7 @@ fn complete_methods(
         // We don't want to exclude inherent trait methods - that is, methods of traits available from
         // `where` clauses or `dyn Trait`.
         fn on_inherent_method(&mut self, func: hir::Function) -> ControlFlow<()> {
-            if func.self_param(self.ctx.db).is_some()
-                && self.seen_methods.insert(func.name(self.ctx.db))
-            {
+            if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
                 (self.f)(func);
             }
             ControlFlow::Continue(())
@@ -265,9 +266,7 @@ fn complete_methods(
                 return ControlFlow::Continue(());
             }
 
-            if func.self_param(self.ctx.db).is_some()
-                && self.seen_methods.insert(func.name(self.ctx.db))
-            {
+            if func.self_param(self.ctx.db).is_some() && self.seen_methods.insert(func) {
                 (self.f)(func);
             }
 
