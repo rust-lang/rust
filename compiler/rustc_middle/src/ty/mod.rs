@@ -2223,3 +2223,9 @@ pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
 }
+
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct UnresolvedAliasCandidates<'tcx> {
+    pub name: Symbol,
+    pub candidates: &'tcx [(DefId, DefId)],
+}

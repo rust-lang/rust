@@ -236,6 +236,10 @@ impl<T0> EraseType for (&'_ T0, Result<(), ErrorGuaranteed>) {
     type Result = [u8; size_of::<(&'static (), Result<(), ErrorGuaranteed>)>()];
 }
 
+impl EraseType for crate::ty::UnresolvedAliasCandidates<'_> {
+    type Result = [u8; size_of::<crate::ty::UnresolvedAliasCandidates<'static>>()];
+}
+
 macro_rules! trivial {
     ($($ty:ty),+ $(,)?) => {
         $(
