@@ -109,6 +109,7 @@
 #![feature(coerce_unsized)]
 #![feature(const_default)]
 #![feature(const_eval_select)]
+#![feature(const_from)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
