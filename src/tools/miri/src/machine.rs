@@ -108,6 +108,16 @@ pub enum ValidationMode {
     Deep,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum FloatRoundingErrorMode {
+    /// Apply a random error (the default).
+    Random,
+    /// Don't apply any error.
+    None,
+    /// Always apply the maximum error (with a random sign).
+    Max,
+}
+
 /// Extra data stored with each stack frame
 pub struct FrameExtra<'tcx> {
     /// Extra data for the Borrow Tracker.
@@ -658,7 +668,7 @@ pub struct MiriMachine<'tcx> {
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
-    pub float_rounding_error: bool,
+    pub float_rounding_error: FloatRoundingErrorMode,
 }
 
 impl<'tcx> MiriMachine<'tcx> {

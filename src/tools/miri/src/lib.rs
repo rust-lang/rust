@@ -142,9 +142,10 @@ pub use crate::eval::{MiriConfig, MiriEntryFnType, create_ecx, eval_entry};
 pub use crate::helpers::{AccessKind, EvalContextExt as _, ToU64 as _, ToUsize as _};
 pub use crate::intrinsics::EvalContextExt as _;
 pub use crate::machine::{
-    AlignmentCheck, AllocExtra, BacktraceStyle, DynMachineCallback, FrameExtra, IsolatedOp,
-    MachineCallback, MemoryKind, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
-    PrimitiveLayouts, Provenance, ProvenanceExtra, RejectOpWith, ValidationMode,
+    AlignmentCheck, AllocExtra, BacktraceStyle, DynMachineCallback, FloatRoundingErrorMode,
+    FrameExtra, IsolatedOp, MachineCallback, MemoryKind, MiriInterpCx, MiriInterpCxExt,
+    MiriMachine, MiriMemoryKind, PrimitiveLayouts, Provenance, ProvenanceExtra, RejectOpWith,
+    ValidationMode,
 };
 pub use crate::operator::EvalContextExt as _;
 pub use crate::provenance_gc::{EvalContextExt as _, LiveAllocs, VisitProvenance, VisitWith};

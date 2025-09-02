@@ -112,7 +112,7 @@ pub struct MiriConfig {
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
-    pub float_rounding_error: bool,
+    pub float_rounding_error: FloatRoundingErrorMode,
 }
 
 impl Default for MiriConfig {
@@ -154,7 +154,7 @@ impl Default for MiriConfig {
             fixed_scheduling: false,
             force_intrinsic_fallback: false,
             float_nondet: true,
-            float_rounding_error: true,
+            float_rounding_error: FloatRoundingErrorMode::Random,
         }
     }
 }
