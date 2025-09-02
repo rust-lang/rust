@@ -21,10 +21,10 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
 serde = { version = "1.0.125", features = ["derive"] }
-serde_json.workspace = true
+serde_json = "1.0.59"
 termcolor = "1.2.0"
 termize = "0.2"
-tracing.workspace = true
+tracing = "0.1"
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
