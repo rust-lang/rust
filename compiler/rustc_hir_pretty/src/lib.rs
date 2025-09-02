@@ -2379,7 +2379,7 @@ impl<'a> State<'a> {
                     self.print_type(default);
                 }
             }
-            GenericParamKind::Const { ty, ref default, synthetic: _ } => {
+            GenericParamKind::Const { ty, ref default } => {
                 self.word_space(":");
                 self.print_type(ty);
                 if let Some(default) = default {

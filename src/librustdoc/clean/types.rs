@@ -1396,7 +1396,7 @@ pub(crate) enum GenericParamDefKind {
     Lifetime { outlives: ThinVec<Lifetime> },
     Type { bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     // Option<Box<String>> makes this type smaller than `Option<String>` would.
-    Const { ty: Box<Type>, default: Option<Box<String>>, synthetic: bool },
+    Const { ty: Box<Type>, default: Option<Box<String>> },
 }
 
 impl GenericParamDefKind {
