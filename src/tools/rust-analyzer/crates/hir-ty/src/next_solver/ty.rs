@@ -1,5 +1,6 @@
 //! Things related to tys in the next-trait-solver.
 
+use hir_def::{GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
@@ -64,8 +65,8 @@ impl<'db> Ty<'db> {
         .unwrap()
     }
 
-    pub fn new_param(interner: DbInterner<'db>, index: u32, name: Symbol) -> Self {
-        Ty::new(interner, TyKind::Param(ParamTy { index }))
+    pub fn new_param(interner: DbInterner<'db>, id: TypeParamId, index: u32, name: Symbol) -> Self {
+        Ty::new(interner, TyKind::Param(ParamTy { id, index }))
     }
 
     pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderTy) -> Self {
@@ -847,12 +848,16 @@ pub type PlaceholderTy = Placeholder<BoundTy>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ParamTy {
+    // FIXME: I'm not pleased with this. Ideally a `Param` should only know its index - the defining item
+    // is known from the `EarlyBinder`. This should also be beneficial for memory usage. But code currently
+    // assumes it can get the definition from `Param` alone - so that's what we got.
+    pub id: TypeParamId,
     pub index: u32,
 }
 
 impl ParamTy {
     pub fn to_ty<'db>(self, interner: DbInterner<'db>) -> Ty<'db> {
-        Ty::new_param(interner, self.index, sym::MISSING_NAME.clone())
+        Ty::new_param(interner, self.id, self.index, sym::MISSING_NAME.clone())
     }
 }
 
@@ -865,6 +870,7 @@ impl std::fmt::Debug for ParamTy {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct BoundTy {
     pub var: BoundVar,
+    // FIXME: This is for diagnostics in rustc, do we really need it?
     pub kind: BoundTyKind,
 }
 

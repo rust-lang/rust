@@ -24,35 +24,40 @@ use super::{Const, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, Solver
 use super::{DbInterner, GenericArg};
 
 pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
-    let mk_lt = |index, lt: &LifetimeParamData| {
+    let mk_lt = |parent, index, local_id, lt: &LifetimeParamData| {
         let name = lt.name.symbol().clone();
-        let kind = GenericParamDefKind::Lifetime;
-        GenericParamDef { name, index, kind }
+        let id = GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id });
+        GenericParamDef { name, index, id }
     };
-    let mk_ty = |index, p: &TypeOrConstParamData| {
+    let mk_ty = |parent, index, local_id, p: &TypeOrConstParamData| {
         let name = p.name().map(|n| n.symbol().clone()).unwrap_or_else(|| sym::MISSING_NAME);
-        let kind = match p {
-            TypeOrConstParamData::TypeParamData(_) => GenericParamDefKind::Type,
-            TypeOrConstParamData::ConstParamData(_) => GenericParamDefKind::Const,
+        let id = TypeOrConstParamId { parent, local_id };
+        let id = match p {
+            TypeOrConstParamData::TypeParamData(_) => {
+                GenericParamId::TypeParamId(TypeParamId::from_unchecked(id))
+            }
+            TypeOrConstParamData::ConstParamData(_) => {
+                GenericParamId::ConstParamId(ConstParamId::from_unchecked(id))
+            }
         };
-        GenericParamDef { name, index, kind }
+        GenericParamDef { name, index, id }
     };
-    let own_params_for_generic_params = |params: &GenericParams| {
+    let own_params_for_generic_params = |parent, params: &GenericParams| {
         let mut result = Vec::with_capacity(params.len());
         let mut type_and_consts = params.iter_type_or_consts();
         let mut index = 0;
         if let Some(self_param) = params.trait_self_param() {
-            result.push(mk_ty(0, &params[self_param]));
+            result.push(mk_ty(parent, 0, self_param, &params[self_param]));
             type_and_consts.next();
             index += 1;
         }
-        result.extend(params.iter_lt().map(|(_, data)| {
-            let lt = mk_lt(index, data);
+        result.extend(params.iter_lt().map(|(local_id, data)| {
+            let lt = mk_lt(parent, index, local_id, data);
             index += 1;
             lt
         }));
-        result.extend(type_and_consts.map(|(_, data)| {
-            let ty = mk_ty(index, data);
+        result.extend(type_and_consts.map(|(local_id, data)| {
+            let ty = mk_ty(parent, index, local_id, data);
             index += 1;
             ty
         }));
@@ -60,9 +65,10 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
     };
 
     let (parent, own_params) = match (def.try_into(), def) {
-        (Ok(def), _) => {
-            (parent_generic_def(db, def), own_params_for_generic_params(&db.generic_params(def)))
-        }
+        (Ok(def), _) => (
+            parent_generic_def(db, def),
+            own_params_for_generic_params(def, &db.generic_params(def)),
+        ),
         (_, SolverDefId::InternedOpaqueTyId(id)) => {
             match db.lookup_intern_impl_trait_id(id) {
                 crate::ImplTraitId::ReturnTypeImplTrait(function_id, _) => {
@@ -79,7 +85,19 @@ pub(crate) fn generics(db: &dyn HirDatabase, def: SolverDefId) -> Generics {
                         provenance: TypeParamProvenance::TypeParamList,
                     });
                     // Yes, there is a parent but we don't include it in the generics
-                    (None, vec![mk_ty(0, &param)])
+                    // FIXME: It seems utterly sensitive to fake a generic param here.
+                    // Also, what a horrible mess!
+                    (
+                        None,
+                        vec![mk_ty(
+                            GenericDefId::FunctionId(salsa::plumbing::FromId::from_id(unsafe {
+                                salsa::Id::from_index(salsa::Id::MAX_U32 - 1)
+                            })),
+                            0,
+                            LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
+                            &param,
+                        )],
+                    )
                 }
             }
         }
@@ -106,7 +124,7 @@ pub struct GenericParamDef {
     pub(crate) name: Symbol,
     //def_id: GenericDefId,
     index: u32,
-    pub(crate) kind: GenericParamDefKind,
+    pub(crate) id: GenericParamId,
 }
 
 impl GenericParamDef {
@@ -115,13 +133,6 @@ impl GenericParamDef {
     pub fn index(&self) -> u32 {
         self.index
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum GenericParamDefKind {
-    Lifetime,
-    Type,
-    Const,
 }
 
 impl<'db> rustc_type_ir::inherent::GenericsOf<DbInterner<'db>> for Generics {

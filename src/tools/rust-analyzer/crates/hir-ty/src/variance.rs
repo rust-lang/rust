@@ -344,7 +344,7 @@ impl Context<'_> {
 
             // Chalk has no params, so use placeholders for now?
             TyKind::Placeholder(index) => {
-                let idx = crate::from_placeholder_idx(self.db, *index);
+                let idx = crate::from_placeholder_idx(self.db, *index).0;
                 let index = self.generics.type_or_const_param_idx(idx).unwrap();
                 self.constrain(index, variance);
             }
@@ -445,7 +445,7 @@ impl Context<'_> {
         );
         match region.data(Interner) {
             LifetimeData::Placeholder(index) => {
-                let idx = crate::lt_from_placeholder_idx(self.db, *index);
+                let idx = crate::lt_from_placeholder_idx(self.db, *index).0;
                 let inferred = self.generics.lifetime_idx(idx).unwrap();
                 self.constrain(inferred, variance);
             }

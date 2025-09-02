@@ -19,14 +19,15 @@ use rustc_type_ir::{
 };
 use triomphe::Arc;
 
+use crate::utils::ClosureSubst;
 use crate::{
-    TraitEnvironment,
+    Interner, TraitEnvironment,
     consteval_nextsolver::try_const_usize,
     db::HirDatabase,
     next_solver::{
         DbInterner, GenericArgs, ParamEnv, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
-        mapping::{ChalkToNextSolver, convert_binder_to_early_binder},
+        mapping::{ChalkToNextSolver, convert_args_for_result},
         project::solve_normalize::deeply_normalize,
     },
 };
@@ -333,9 +334,15 @@ pub fn layout_of_ty_query<'db>(
             let fields = captures
                 .iter()
                 .map(|it| {
-                    let ty =
-                        convert_binder_to_early_binder(interner, it.ty.to_nextsolver(interner))
-                            .instantiate(interner, args);
+                    let ty = it
+                        .ty
+                        .clone()
+                        .substitute(
+                            Interner,
+                            ClosureSubst(&convert_args_for_result(interner, args.inner()))
+                                .parent_subst(),
+                        )
+                        .to_nextsolver(interner);
                     db.layout_of_ty(ty, trait_env.clone())
                 })
                 .collect::<Result<Vec<_>, _>>()?;

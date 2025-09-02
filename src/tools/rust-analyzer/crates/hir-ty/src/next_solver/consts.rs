@@ -2,6 +2,7 @@
 
 use std::hash::Hash;
 
+use hir_def::{ConstParamId, TypeOrConstParamId};
 use intern::{Interned, Symbol};
 use rustc_ast_ir::try_visit;
 use rustc_ast_ir::visit::VisitorResult;
@@ -84,6 +85,8 @@ pub type PlaceholderConst = Placeholder<rustc_type_ir::BoundVar>;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct ParamConst {
+    // FIXME: See `ParamTy`.
+    pub id: ConstParamId,
     pub index: u32,
 }
 

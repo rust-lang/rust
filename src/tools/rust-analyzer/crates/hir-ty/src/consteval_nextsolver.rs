@@ -49,7 +49,7 @@ pub(crate) fn path_to_const<'a, 'g>(
                 .and_then(|(idx, p)| p.const_param().map(|p| (idx, p.clone())))
             {
                 Some((idx, _param)) => {
-                    Some(Const::new_param(interner, ParamConst { index: idx as u32 }))
+                    Some(Const::new_param(interner, ParamConst { index: idx as u32, id: p }))
                 }
                 None => {
                     never!(

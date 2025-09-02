@@ -61,9 +61,8 @@ use crate::{
     next_solver::{
         BoundExistentialPredicate, Ctor, DbInterner, GenericArgs, SolverDefId,
         mapping::{
-            ChalkToNextSolver, bound_var_to_lifetime_idx, bound_var_to_type_or_const_param_idx,
-            convert_args_for_result, convert_const_for_result, convert_region_for_result,
-            convert_ty_for_result,
+            ChalkToNextSolver, convert_args_for_result, convert_const_for_result,
+            convert_region_for_result, convert_ty_for_result,
         },
     },
     primitive, to_assoc_type_id,
@@ -641,7 +640,7 @@ impl HirDisplay for ProjectionTy {
             && !f.bounds_formatting_ctx.contains(self)
         {
             let db = f.db;
-            let id = from_placeholder_idx(db, *idx);
+            let id = from_placeholder_idx(db, *idx).0;
             let generics = generics(db, id.parent);
 
             let substs = generics.placeholder_subst(db);
@@ -736,14 +735,14 @@ impl HirDisplay for Const {
 impl<'db> HirDisplay for crate::next_solver::Const<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self.kind() {
+            rustc_type_ir::ConstKind::Placeholder(_) => write!(f, "<placeholder>"),
             rustc_type_ir::ConstKind::Bound(db, bound_const) => {
                 write!(f, "?{}.{}", db.as_u32(), bound_const.as_u32())
             }
             rustc_type_ir::ConstKind::Infer(..) => write!(f, "#c#"),
-            rustc_type_ir::ConstKind::Placeholder(idx) => {
-                let id = bound_var_to_type_or_const_param_idx(f.db, idx.bound);
-                let generics = generics(f.db, id.parent);
-                let param_data = &generics[id.local_id];
+            rustc_type_ir::ConstKind::Param(param) => {
+                let generics = generics(f.db, param.id.parent());
+                let param_data = &generics[param.id.local_id()];
                 write!(f, "{}", param_data.name().unwrap().display(f.db, f.edition()))?;
                 Ok(())
             }
@@ -765,7 +764,6 @@ impl<'db> HirDisplay for crate::next_solver::Const<'db> {
             }
             rustc_type_ir::ConstKind::Error(..) => f.write_char('_'),
             rustc_type_ir::ConstKind::Expr(..) => write!(f, "<const-expr>"),
-            rustc_type_ir::ConstKind::Param(_) => write!(f, "<param>"),
         }
     }
 }
@@ -1178,7 +1176,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 if let TyKind::Ref(l, _, _) = kind {
                     f.write_char('&')?;
                     if f.render_region(l) {
-                        convert_region_for_result(l).hir_fmt(f)?;
+                        convert_region_for_result(interner, l).hir_fmt(f)?;
                         f.write_char(' ')?;
                     }
                     match m {
@@ -1611,14 +1609,10 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                     write!(f, "{{closure}}")?;
                 }
             }
-            TyKind::Placeholder(idx) => {
-                let placeholder_index = chalk_ir::PlaceholderIndex {
-                    idx: idx.bound.var.as_usize(),
-                    ui: chalk_ir::UniverseIndex { counter: idx.universe.as_usize() },
-                };
-                let id = from_placeholder_idx(db, placeholder_index);
-                let generics = generics(db, id.parent);
-                let param_data = &generics[id.local_id];
+            TyKind::Placeholder(_) => write!(f, "{{placeholder}}")?,
+            TyKind::Param(param) => {
+                let generics = generics(db, param.id.parent());
+                let param_data = &generics[param.id.local_id()];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
@@ -1634,7 +1628,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                         TypeParamProvenance::ArgumentImplTrait => {
                             let substs = generics.placeholder_subst(db);
                             let bounds = db
-                                .generic_predicates(id.parent)
+                                .generic_predicates(param.id.parent())
                                 .iter()
                                 .map(|pred| pred.clone().substitute(Interner, &substs))
                                 .filter(|wc| match wc.skip_binders() {
@@ -1656,7 +1650,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                                     WhereClause::LifetimeOutlives(_) => false,
                                 })
                                 .collect::<Vec<_>>();
-                            let krate = id.parent.module(db).krate();
+                            let krate = param.id.parent().module(db).krate();
                             write_bounds_like_dyn_trait_with_prefix(
                                 f,
                                 "impl",
@@ -1671,7 +1665,6 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                     }
                 }
             }
-            TyKind::Param(_) => write!(f, "{{param}}")?,
             TyKind::Bound(debruijn_index, ty) => {
                 let idx = chalk_ir::BoundVar {
                     debruijn: chalk_ir::DebruijnIndex::new(debruijn_index.as_u32()),
@@ -2294,7 +2287,7 @@ impl HirDisplay for LifetimeData {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self {
             LifetimeData::Placeholder(idx) => {
-                let id = lt_from_placeholder_idx(f.db, *idx);
+                let id = lt_from_placeholder_idx(f.db, *idx).0;
                 let generics = generics(f.db, id.parent);
                 let param_data = &generics[id.local_id];
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
@@ -2319,10 +2312,9 @@ impl HirDisplay for LifetimeData {
 impl<'db> HirDisplay for crate::next_solver::Region<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         match self.kind() {
-            rustc_type_ir::RegionKind::RePlaceholder(idx) => {
-                let id = bound_var_to_lifetime_idx(f.db, idx.bound.var);
-                let generics = generics(f.db, id.parent);
-                let param_data = &generics[id.local_id];
+            rustc_type_ir::RegionKind::ReEarlyParam(param) => {
+                let generics = generics(f.db, param.id.parent);
+                let param_data = &generics[param.id.local_id];
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
                 Ok(())
             }
@@ -2339,7 +2331,7 @@ impl<'db> HirDisplay for crate::next_solver::Region<'db> {
                 }
             }
             rustc_type_ir::RegionKind::ReErased => write!(f, "'<erased>"),
-            rustc_type_ir::RegionKind::ReEarlyParam(_) => write!(f, "<param>"),
+            rustc_type_ir::RegionKind::RePlaceholder(_) => write!(f, "<placeholder>"),
             rustc_type_ir::RegionKind::ReLateParam(_) => write!(f, "<late-param>"),
         }
     }

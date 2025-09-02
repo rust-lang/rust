@@ -256,15 +256,15 @@ impl Generics {
     pub fn placeholder_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.iter_id().map(|id| match id {
+            self.iter_id().enumerate().map(|(index, id)| match id {
                 GenericParamId::TypeParamId(id) => {
-                    to_placeholder_idx(db, id.into()).to_ty(Interner).cast(Interner)
+                    to_placeholder_idx(db, id.into(), index as u32).to_ty(Interner).cast(Interner)
                 }
-                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into())
+                GenericParamId::ConstParamId(id) => to_placeholder_idx(db, id.into(), index as u32)
                     .to_const(Interner, db.const_param_ty(id))
                     .cast(Interner),
                 GenericParamId::LifetimeParamId(id) => {
-                    lt_to_placeholder_idx(db, id).to_lifetime(Interner).cast(Interner)
+                    lt_to_placeholder_idx(db, id, index as u32).to_lifetime(Interner).cast(Interner)
                 }
             }),
         )

@@ -306,7 +306,7 @@ impl TyExt for Ty {
                 predicates.map(|it| it.into_value_and_skipped_binders().0)
             }
             TyKind::Placeholder(idx) => {
-                let id = from_placeholder_idx(db, *idx);
+                let id = from_placeholder_idx(db, *idx).0;
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params[id.local_id];
                 match param_data {

@@ -9,6 +9,7 @@ use hir_def::{
     CallableDefId, ConstParamId, FunctionId, GeneralConstId, LifetimeParamId, TypeAliasId,
     TypeOrConstParamId, TypeParamId, signatures::TraitFlags,
 };
+use hir_def::{GenericDefId, GenericParamId};
 use intern::sym;
 use rustc_type_ir::{
     AliasTerm, BoundVar, DebruijnIndex, ExistentialProjection, ExistentialTraitRef, Interner as _,
@@ -35,6 +36,9 @@ use crate::{
     },
     to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
 };
+use crate::{
+    from_placeholder_idx, lt_from_placeholder_idx, lt_to_placeholder_idx, to_placeholder_idx,
+};
 
 use super::{
     BoundExistentialPredicate, BoundExistentialPredicates, BoundRegion, BoundRegionKind, BoundTy,
@@ -44,47 +48,24 @@ use super::{
     Region, SolverDefId, SubtypePredicate, Term, TraitRef, Ty, Tys, ValueConst, VariancesOf,
 };
 
-pub fn to_placeholder_idx<T: Clone + std::fmt::Debug>(
-    db: &dyn HirDatabase,
-    id: TypeOrConstParamId,
-    map: impl Fn(BoundVar) -> T,
-) -> Placeholder<T> {
-    let interned_id = InternedTypeOrConstParamId::new(db, id);
-    Placeholder {
-        universe: UniverseIndex::ZERO,
-        bound: map(BoundVar::from_usize(interned_id.as_id().index() as usize)),
-    }
-}
-
-pub fn bound_var_to_type_or_const_param_idx(
-    db: &dyn HirDatabase,
-    var: rustc_type_ir::BoundVar,
-) -> TypeOrConstParamId {
-    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = InternedTypeOrConstParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
-    interned_id.loc(db)
-}
-
-pub fn bound_var_to_lifetime_idx(
-    db: &dyn HirDatabase,
-    var: rustc_type_ir::BoundVar,
-) -> LifetimeParamId {
-    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
-    let interned_id = InternedLifetimeParamId::from_id(unsafe { Id::from_index(var.as_u32()) });
-    interned_id.loc(db)
-}
-
+// FIXME: This should urgently go (as soon as we finish the migration off Chalk, that is).
 pub fn convert_binder_to_early_binder<'db, T: rustc_type_ir::TypeFoldable<DbInterner<'db>>>(
     interner: DbInterner<'db>,
+    def: GenericDefId,
     binder: rustc_type_ir::Binder<DbInterner<'db>, T>,
 ) -> rustc_type_ir::EarlyBinder<DbInterner<'db>, T> {
-    let mut folder = BinderToEarlyBinder { interner, debruijn: rustc_type_ir::DebruijnIndex::ZERO };
+    let mut folder = BinderToEarlyBinder {
+        interner,
+        debruijn: rustc_type_ir::DebruijnIndex::ZERO,
+        params: crate::generics::generics(interner.db, def).iter_id().collect(),
+    };
     rustc_type_ir::EarlyBinder::bind(binder.skip_binder().fold_with(&mut folder))
 }
 
 struct BinderToEarlyBinder<'db> {
     interner: DbInterner<'db>,
     debruijn: rustc_type_ir::DebruijnIndex,
+    params: Vec<GenericParamId>,
 }
 
 impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for BinderToEarlyBinder<'db> {
@@ -109,7 +90,13 @@ impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for BinderToEarlyBinder<'db
         match t.kind() {
             rustc_type_ir::TyKind::Bound(debruijn, bound_ty) if self.debruijn == debruijn => {
                 let var: rustc_type_ir::BoundVar = bound_ty.var();
-                Ty::new(self.cx(), rustc_type_ir::TyKind::Param(ParamTy { index: var.as_u32() }))
+                let GenericParamId::TypeParamId(id) = self.params[bound_ty.var.as_usize()] else {
+                    unreachable!()
+                };
+                Ty::new(
+                    self.cx(),
+                    rustc_type_ir::TyKind::Param(ParamTy { index: var.as_u32(), id }),
+                )
             }
             _ => t.super_fold_with(self),
         }
@@ -119,10 +106,15 @@ impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for BinderToEarlyBinder<'db
         match r.kind() {
             rustc_type_ir::ReBound(debruijn, bound_region) if self.debruijn == debruijn => {
                 let var: rustc_type_ir::BoundVar = bound_region.var();
+                let GenericParamId::LifetimeParamId(id) = self.params[bound_region.var.as_usize()]
+                else {
+                    unreachable!()
+                };
                 Region::new(
                     self.cx(),
                     rustc_type_ir::RegionKind::ReEarlyParam(EarlyParamRegion {
                         index: var.as_u32(),
+                        id,
                     }),
                 )
             }
@@ -133,9 +125,12 @@ impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for BinderToEarlyBinder<'db
     fn fold_const(&mut self, c: Const<'db>) -> Const<'db> {
         match c.kind() {
             rustc_type_ir::ConstKind::Bound(debruijn, var) if self.debruijn == debruijn => {
+                let GenericParamId::ConstParamId(id) = self.params[var.as_usize()] else {
+                    unreachable!()
+                };
                 Const::new(
                     self.cx(),
-                    rustc_type_ir::ConstKind::Param(ParamConst { index: var.as_u32() }),
+                    rustc_type_ir::ConstKind::Param(ParamConst { index: var.as_u32(), id }),
                 )
             }
             _ => c.super_fold_with(self),
@@ -274,12 +269,6 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                     SolverDefId::TypeAliasId(crate::from_foreign_def_id(*foreign_def_id)),
                 ),
                 chalk_ir::TyKind::Error => rustc_type_ir::TyKind::Error(ErrorGuaranteed),
-                chalk_ir::TyKind::Placeholder(placeholder_index) => {
-                    rustc_type_ir::TyKind::Placeholder(PlaceholderTy::new_anon(
-                        placeholder_index.ui.to_nextsolver(interner),
-                        rustc_type_ir::BoundVar::from_usize(placeholder_index.idx),
-                    ))
-                }
                 chalk_ir::TyKind::Dyn(dyn_ty) => {
                     // exists<type> { for<...> ^1.0: ... }
                     let bounds = BoundExistentialPredicates::new_from_iter(
@@ -405,6 +394,26 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
 
                     rustc_type_ir::TyKind::FnPtr(sig_tys, header)
                 }
+                // The schema here is quite confusing.
+                // The new solver, like rustc, uses `Param` and `EarlyBinder` for generic params. It uses `BoundVar`
+                // and `Placeholder` together with `Binder` for HRTB, which we mostly don't handle.
+                // Chalk uses `Placeholder` for generic params and `BoundVar` quite liberally, and this is quite a
+                // problem. `chalk_ir::TyKind::BoundVar` can represent either HRTB or generic params, depending on the
+                // context. When returned from signature queries, the outer `Binders` represent the generic params.
+                // But there are also inner `Binders` for HRTB.
+                // AFAIK there is no way to tell which of the meanings is relevant, so we just use `rustc_type_ir::Bound`
+                // here, and hope for the best. If you are working with new solver types, therefore, use the new solver
+                // lower queries.
+                // Hopefully sooner than later Chalk will be ripped from the codebase and we can avoid that problem.
+                // For details about the rustc setup, read: https://rustc-dev-guide.rust-lang.org/generic_parameters_summary.html
+                // and the following chapters.
+                chalk_ir::TyKind::Placeholder(placeholder_index) => {
+                    let (id, index) = from_placeholder_idx(interner.db, *placeholder_index);
+                    rustc_type_ir::TyKind::Param(ParamTy {
+                        id: TypeParamId::from_unchecked(id),
+                        index,
+                    })
+                }
                 chalk_ir::TyKind::BoundVar(bound_var) => rustc_type_ir::TyKind::Bound(
                     bound_var.debruijn.to_nextsolver(interner),
                     BoundTy {
@@ -440,10 +449,8 @@ impl<'db> ChalkToNextSolver<'db, Region<'db>> for chalk_ir::Lifetime<Interner> {
                     ))
                 }
                 chalk_ir::LifetimeData::Placeholder(placeholder_index) => {
-                    rustc_type_ir::RegionKind::RePlaceholder(PlaceholderRegion::new_anon(
-                        rustc_type_ir::UniverseIndex::from_u32(placeholder_index.ui.counter as u32),
-                        rustc_type_ir::BoundVar::from_u32(placeholder_index.idx as u32),
-                    ))
+                    let (id, index) = lt_from_placeholder_idx(interner.db, *placeholder_index);
+                    rustc_type_ir::RegionKind::ReEarlyParam(EarlyParamRegion { id, index })
                 }
                 chalk_ir::LifetimeData::Static => rustc_type_ir::RegionKind::ReStatic,
                 chalk_ir::LifetimeData::Erased => rustc_type_ir::RegionKind::ReErased,
@@ -474,10 +481,11 @@ impl<'db> ChalkToNextSolver<'db, Const<'db>> for chalk_ir::Const<Interner> {
                     ))
                 }
                 chalk_ir::ConstValue::Placeholder(placeholder_index) => {
-                    rustc_type_ir::ConstKind::Placeholder(PlaceholderConst::new(
-                        placeholder_index.ui.to_nextsolver(interner),
-                        rustc_type_ir::BoundVar::from_usize(placeholder_index.idx),
-                    ))
+                    let (id, index) = from_placeholder_idx(interner.db, *placeholder_index);
+                    rustc_type_ir::ConstKind::Param(ParamConst {
+                        id: ConstParamId::from_unchecked(id),
+                        index,
+                    })
                 }
                 chalk_ir::ConstValue::Concrete(concrete_const) => match &concrete_const.interned {
                     ConstScalar::Bytes(bytes, memory) => {
@@ -971,7 +979,7 @@ pub fn convert_args_for_result<'db>(
                 substs.push(chalk_ir::GenericArgData::Ty(ty).intern(Interner));
             }
             rustc_type_ir::GenericArgKind::Lifetime(region) => {
-                let lifetime = convert_region_for_result(region);
+                let lifetime = convert_region_for_result(interner, region);
                 substs.push(chalk_ir::GenericArgData::Lifetime(lifetime).intern(Interner));
             }
             rustc_type_ir::GenericArgKind::Const(const_) => {
@@ -1074,7 +1082,7 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                 rustc_ast_ir::Mutability::Mut => chalk_ir::Mutability::Mut,
                 rustc_ast_ir::Mutability::Not => chalk_ir::Mutability::Not,
             };
-            let r = convert_region_for_result(r);
+            let r = convert_region_for_result(interner, r);
             let ty = convert_ty_for_result(interner, ty);
             TyKind::Ref(mutability, r, ty)
         }
@@ -1122,17 +1130,23 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
             rustc_type_ir::AliasTyKind::Free => unimplemented!(),
         },
 
+        // For `Placeholder`, `Bound` and `Param`, see the comment on the reverse conversion.
         rustc_type_ir::TyKind::Placeholder(placeholder) => {
-            let ui = chalk_ir::UniverseIndex { counter: placeholder.universe.as_usize() };
-            let placeholder_index =
-                chalk_ir::PlaceholderIndex { idx: placeholder.bound.var.as_usize(), ui };
-            TyKind::Placeholder(placeholder_index)
+            unimplemented!(
+                "A `rustc_type_ir::TyKind::Placeholder` doesn't have a direct \
+                correspondence in Chalk, as it represents a universally instantiated `Bound`.\n\
+                It therefore feels safer to leave it panicking, but if you hit this panic \
+                feel free to do the same as in `rustc_type_ir::TyKind::Bound` here."
+            )
         }
-
         rustc_type_ir::TyKind::Bound(debruijn_index, ty) => TyKind::BoundVar(chalk_ir::BoundVar {
             debruijn: chalk_ir::DebruijnIndex::new(debruijn_index.as_u32()),
             index: ty.var.as_usize(),
         }),
+        rustc_type_ir::TyKind::Param(param) => {
+            let placeholder = to_placeholder_idx(interner.db, param.id.into(), param.index);
+            TyKind::Placeholder(placeholder)
+        }
 
         rustc_type_ir::TyKind::FnPtr(bound_sig, fn_header) => {
             let num_binders = bound_sig.bound_vars().len();
@@ -1254,7 +1268,8 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
             );
             let bounds = chalk_ir::Binders::new(binders, bounds);
-            let dyn_ty = chalk_ir::DynTy { bounds, lifetime: convert_region_for_result(region) };
+            let dyn_ty =
+                chalk_ir::DynTy { bounds, lifetime: convert_region_for_result(interner, region) };
             TyKind::Dyn(dyn_ty)
         }
 
@@ -1316,7 +1331,6 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
             TyKind::CoroutineWitness(id.into(), subst)
         }
 
-        rustc_type_ir::TyKind::Param(_) => unimplemented!(),
         rustc_type_ir::TyKind::UnsafeBinder(_) => unimplemented!(),
     }
     .intern(Interner)
@@ -1327,12 +1341,15 @@ pub fn convert_const_for_result<'db>(
     const_: Const<'db>,
 ) -> crate::Const {
     let value: chalk_ir::ConstValue<Interner> = match const_.kind() {
-        rustc_type_ir::ConstKind::Param(_) => unimplemented!(),
         rustc_type_ir::ConstKind::Infer(rustc_type_ir::InferConst::Var(var)) => {
             chalk_ir::ConstValue::InferenceVar(chalk_ir::InferenceVar::from(var.as_u32()))
         }
         rustc_type_ir::ConstKind::Infer(rustc_type_ir::InferConst::Fresh(fresh)) => {
             panic!("Vars should not be freshened.")
+        }
+        rustc_type_ir::ConstKind::Param(param) => {
+            let placeholder = to_placeholder_idx(interner.db, param.id.into(), param.index);
+            chalk_ir::ConstValue::Placeholder(placeholder)
         }
         rustc_type_ir::ConstKind::Bound(debruijn_index, var) => {
             chalk_ir::ConstValue::BoundVar(chalk_ir::BoundVar::new(
@@ -1341,10 +1358,12 @@ pub fn convert_const_for_result<'db>(
             ))
         }
         rustc_type_ir::ConstKind::Placeholder(placeholder_const) => {
-            chalk_ir::ConstValue::Placeholder(chalk_ir::PlaceholderIndex {
-                ui: chalk_ir::UniverseIndex { counter: placeholder_const.universe.as_usize() },
-                idx: placeholder_const.bound.as_usize(),
-            })
+            unimplemented!(
+                "A `rustc_type_ir::ConstKind::Placeholder` doesn't have a direct \
+                correspondence in Chalk, as it represents a universally instantiated `Bound`.\n\
+                It therefore feels safer to leave it panicking, but if you hit this panic \
+                feel free to do the same as in `rustc_type_ir::ConstKind::Bound` here."
+            )
         }
         rustc_type_ir::ConstKind::Unevaluated(unevaluated_const) => {
             let id = match unevaluated_const.def {
@@ -1381,36 +1400,34 @@ pub fn convert_const_for_result<'db>(
     chalk_ir::ConstData { ty: crate::TyKind::Error.intern(Interner), value }.intern(Interner)
 }
 
-pub fn convert_region_for_result<'db>(region: Region<'db>) -> crate::Lifetime {
-    match region.kind() {
-        rustc_type_ir::RegionKind::ReEarlyParam(early) => unimplemented!(),
-        rustc_type_ir::RegionKind::ReBound(db, bound) => chalk_ir::Lifetime::new(
-            Interner,
+pub fn convert_region_for_result<'db>(
+    interner: DbInterner<'db>,
+    region: Region<'db>,
+) -> crate::Lifetime {
+    let lifetime = match region.kind() {
+        rustc_type_ir::RegionKind::ReEarlyParam(early) => {
+            let placeholder = lt_to_placeholder_idx(interner.db, early.id, early.index);
+            chalk_ir::LifetimeData::Placeholder(placeholder)
+        }
+        rustc_type_ir::RegionKind::ReBound(db, bound) => {
             chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
                 chalk_ir::DebruijnIndex::new(db.as_u32()),
                 bound.var.as_usize(),
-            )),
+            ))
+        }
+        rustc_type_ir::RegionKind::RePlaceholder(placeholder) => unimplemented!(
+            "A `rustc_type_ir::RegionKind::RePlaceholder` doesn't have a direct \
+            correspondence in Chalk, as it represents a universally instantiated `Bound`.\n\
+            It therefore feels safer to leave it panicking, but if you hit this panic \
+            feel free to do the same as in `rustc_type_ir::RegionKind::ReBound` here."
         ),
         rustc_type_ir::RegionKind::ReLateParam(_) => unimplemented!(),
-        rustc_type_ir::RegionKind::ReStatic => {
-            chalk_ir::Lifetime::new(Interner, chalk_ir::LifetimeData::Static)
+        rustc_type_ir::RegionKind::ReStatic => chalk_ir::LifetimeData::Static,
+        rustc_type_ir::RegionKind::ReVar(vid) => {
+            chalk_ir::LifetimeData::InferenceVar(chalk_ir::InferenceVar::from(vid.as_u32()))
         }
-        rustc_type_ir::RegionKind::ReVar(vid) => chalk_ir::Lifetime::new(
-            Interner,
-            chalk_ir::LifetimeData::InferenceVar(chalk_ir::InferenceVar::from(vid.as_u32())),
-        ),
-        rustc_type_ir::RegionKind::RePlaceholder(placeholder) => chalk_ir::Lifetime::new(
-            Interner,
-            chalk_ir::LifetimeData::Placeholder(chalk_ir::PlaceholderIndex {
-                idx: placeholder.bound.var.as_usize(),
-                ui: chalk_ir::UniverseIndex { counter: placeholder.universe.as_usize() },
-            }),
-        ),
-        rustc_type_ir::RegionKind::ReErased => {
-            chalk_ir::Lifetime::new(Interner, chalk_ir::LifetimeData::Erased)
-        }
-        rustc_type_ir::RegionKind::ReError(_) => {
-            chalk_ir::Lifetime::new(Interner, chalk_ir::LifetimeData::Error)
-        }
-    }
+        rustc_type_ir::RegionKind::ReErased => chalk_ir::LifetimeData::Erased,
+        rustc_type_ir::RegionKind::ReError(_) => chalk_ir::LifetimeData::Error,
+    };
+    chalk_ir::Lifetime::new(Interner, lifetime)
 }

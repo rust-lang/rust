@@ -866,7 +866,7 @@ impl CapturedItemWithoutTy {
                     idx: chalk_ir::PlaceholderIndex,
                     outer_binder: DebruijnIndex,
                 ) -> Result<chalk_ir::Const<Interner>, Self::Error> {
-                    let x = from_placeholder_idx(self.db, idx);
+                    let x = from_placeholder_idx(self.db, idx).0;
                     let Some(idx) = self.generics.type_or_const_param_idx(x) else {
                         return Err(());
                     };
@@ -878,7 +878,7 @@ impl CapturedItemWithoutTy {
                     idx: chalk_ir::PlaceholderIndex,
                     outer_binder: DebruijnIndex,
                 ) -> std::result::Result<Ty, Self::Error> {
-                    let x = from_placeholder_idx(self.db, idx);
+                    let x = from_placeholder_idx(self.db, idx).0;
                     let Some(idx) = self.generics.type_or_const_param_idx(x) else {
                         return Err(());
                     };

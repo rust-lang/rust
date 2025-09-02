@@ -64,8 +64,7 @@ use crate::{
         AdtDef, AliasTy, Binder, BoundExistentialPredicates, BoundRegionKind, BoundTyKind,
         BoundVarKind, BoundVarKinds, Clause, Clauses, Const, DbInterner, EarlyBinder,
         EarlyParamRegion, ErrorGuaranteed, GenericArgs, PolyFnSig, Predicate, Region, SolverDefId,
-        TraitPredicate, TraitRef, Ty, Tys, abi::Safety, generics::GenericParamDefKind,
-        mapping::ChalkToNextSolver,
+        TraitPredicate, TraitRef, Ty, Tys, abi::Safety, mapping::ChalkToNextSolver,
     },
 };
 
@@ -322,6 +321,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 };
                 Ty::new_param(
                     self.interner,
+                    type_param_id,
                     idx as u32,
                     type_data
                         .name
@@ -866,7 +866,10 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         None => return Region::error(self.interner),
                         Some(idx) => idx,
                     };
-                    Region::new_early_param(self.interner, EarlyParamRegion { index: idx as u32 })
+                    Region::new_early_param(
+                        self.interner,
+                        EarlyParamRegion { index: idx as u32, id },
+                    )
                 }
             },
             None => Region::error(self.interner),
@@ -1344,11 +1347,11 @@ where
                     {
                         continue;
                     }
-                    let GenericParamDefKind::Type = p.kind else {
+                    let GenericParamId::TypeParamId(param_id) = p.id else {
                         continue;
                     };
                     let idx = idx as u32 + generics.parent_count as u32;
-                    let param_ty = Ty::new_param(interner, idx, p.name.clone());
+                    let param_ty = Ty::new_param(interner, param_id, idx, p.name.clone());
                     if explicitly_unsized_tys.contains(&param_ty) {
                         continue;
                     }

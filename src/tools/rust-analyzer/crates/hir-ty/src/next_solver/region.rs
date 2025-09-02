@@ -1,5 +1,6 @@
 //! Things related to regions.
 
+use hir_def::LifetimeParamId;
 use intern::{Interned, Symbol};
 use rustc_type_ir::{
     BoundVar, Flags, INNERMOST, RegionVid, TypeFlags, TypeFoldable, TypeVisitable, VisitorResult,
@@ -110,6 +111,8 @@ pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct EarlyParamRegion {
+    // FIXME: See `ParamTy`.
+    pub id: LifetimeParamId,
     pub index: u32,
 }
 

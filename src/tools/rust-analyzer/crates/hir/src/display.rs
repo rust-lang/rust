@@ -474,8 +474,8 @@ impl HirDisplay for TypeParam {
         let param_data = &params[self.id.local_id()];
         let substs = TyBuilder::placeholder_subst(f.db, self.id.parent());
         let krate = self.id.parent().krate(f.db).id;
-        let ty =
-            TyKind::Placeholder(hir_ty::to_placeholder_idx(f.db, self.id.into())).intern(Interner);
+        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx_no_index(f.db, self.id.into()))
+            .intern(Interner);
         let predicates = f.db.generic_predicates(self.id.parent());
         let predicates = predicates
             .iter()
@@ -528,8 +528,11 @@ impl HirDisplay for TypeParam {
                 f,
                 ":",
                 Either::Left(
-                    &hir_ty::TyKind::Placeholder(hir_ty::to_placeholder_idx(f.db, self.id.into()))
-                        .intern(Interner),
+                    &hir_ty::TyKind::Placeholder(hir_ty::to_placeholder_idx_no_index(
+                        f.db,
+                        self.id.into(),
+                    ))
+                    .intern(Interner),
                 ),
                 &predicates,
                 default_sized,

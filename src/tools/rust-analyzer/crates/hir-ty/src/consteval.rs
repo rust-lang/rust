@@ -107,25 +107,24 @@ pub(crate) fn path_to_const<'g>(
     match resolver.resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
+            let args = args();
             let value = match mode {
                 ParamLoweringMode::Placeholder => {
-                    ConstValue::Placeholder(to_placeholder_idx(db, p.into()))
+                    let idx = args.type_or_const_param_idx(p.into()).unwrap();
+                    ConstValue::Placeholder(to_placeholder_idx(db, p.into(), idx as u32))
                 }
-                ParamLoweringMode::Variable => {
-                    let args = args();
-                    match args.type_or_const_param_idx(p.into()) {
-                        Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
-                        None => {
-                            never!(
-                                "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
-                                args,
-                                path,
-                                p
-                            );
-                            return None;
-                        }
+                ParamLoweringMode::Variable => match args.type_or_const_param_idx(p.into()) {
+                    Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
+                    None => {
+                        never!(
+                            "Generic list doesn't contain this param: {:?}, {:?}, {:?}",
+                            args,
+                            path,
+                            p
+                        );
+                        return None;
                     }
-                }
+                },
             };
             Some(ConstData { ty, value }.intern(Interner))
         }
