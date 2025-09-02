@@ -426,22 +426,22 @@ forward! {
     download_rustc() -> bool,
 }
 
-/// A mostly temporary helper struct before we can migrate everything in bootstrap to use
-/// the concept of a build compiler.
-struct HostAndStage {
-    host: TargetSelection,
+/// An alternative way of specifying what target and stage is involved in some bootstrap activity.
+/// Ideally using a `Compiler` directly should be preferred.
+struct TargetAndStage {
+    target: TargetSelection,
     stage: u32,
 }
 
-impl From<(TargetSelection, u32)> for HostAndStage {
-    fn from((host, stage): (TargetSelection, u32)) -> Self {
-        Self { host, stage }
+impl From<(TargetSelection, u32)> for TargetAndStage {
+    fn from((target, stage): (TargetSelection, u32)) -> Self {
+        Self { target, stage }
     }
 }
 
-impl From<Compiler> for HostAndStage {
+impl From<Compiler> for TargetAndStage {
     fn from(compiler: Compiler) -> Self {
-        Self { host: compiler.host, stage: compiler.stage }
+        Self { target: compiler.host, stage: compiler.stage }
     }
 }
 
@@ -1109,11 +1109,12 @@ impl Build {
 
     /// Return a `Group` guard for a [`Step`] that:
     /// - Performs `action`
+    ///   - If the action is `Kind::Test`, use [`Build::msg_test`] instead.
     /// - On `what`
     ///   - Where `what` possibly corresponds to a `mode`
-    /// - `action` is performed using the given build compiler (`host_and_stage`).
-    ///   - Since some steps do not use the concept of a build compiler yet, it is also possible
-    ///     to pass the host and stage explicitly.
+    /// - `action` is performed with/on the given compiler (`target_and_stage`).
+    ///   - Since for some steps it is not possible to pass a single compiler here, it is also
+    ///     possible to pass the host and stage explicitly.
     /// - With a given `target`.
     ///
     /// [`Step`]: crate::core::builder::Step
@@ -1124,13 +1125,19 @@ impl Build {
         action: impl Into<Kind>,
         what: impl Display,
         mode: impl Into<Option<Mode>>,
-        host_and_stage: impl Into<HostAndStage>,
+        target_and_stage: impl Into<TargetAndStage>,
         target: impl Into<Option<TargetSelection>>,
     ) -> Option<gha::Group> {
-        let host_and_stage = host_and_stage.into();
+        let target_and_stage = target_and_stage.into();
+        let action = action.into();
+        assert!(
+            action != Kind::Test,
+            "Please use `Build::msg_test` instead of `Build::msg(Kind::Test)`"
+        );
+
         let actual_stage = match mode.into() {
             // Std has the same stage as the compiler that builds it
-            Some(Mode::Std) => host_and_stage.stage,
+            Some(Mode::Std) => target_and_stage.stage,
             // Other things have stage corresponding to their build compiler + 1
             Some(
                 Mode::Rustc
@@ -1140,18 +1147,18 @@ impl Build {
                 | Mode::ToolStd
                 | Mode::ToolRustc,
             )
-            | None => host_and_stage.stage + 1,
+            | None => target_and_stage.stage + 1,
         };
 
-        let action = action.into().description();
+        let action = action.description();
         let what = what.to_string();
         let msg = |fmt| {
             let space = if !what.is_empty() { " " } else { "" };
             format!("{action} stage{actual_stage} {what}{space}{fmt}")
         };
         let msg = if let Some(target) = target.into() {
-            let build_stage = host_and_stage.stage;
-            let host = host_and_stage.host;
+            let build_stage = target_and_stage.stage;
+            let host = target_and_stage.target;
             if host == target {
                 msg(format_args!("(stage{build_stage} -> stage{actual_stage}, {target})"))
             } else {
@@ -1163,10 +1170,9 @@ impl Build {
         self.group(&msg)
     }
 
-    /// Return a `Group` guard for a [`Step`] that tests `what` with the given `stage` and `target`
-    /// (determined by `host_and_stage`).
-    /// Use this instead of [`Build::msg`] when there is no clear `build_compiler` to be
-    /// determined.
+    /// Return a `Group` guard for a [`Step`] that tests `what` with the given `stage` and `target`.
+    /// Use this instead of [`Build::msg`] for test steps, because for them it is not always clear
+    /// what exactly is a build compiler.
     ///
     /// [`Step`]: crate::core::builder::Step
     #[must_use = "Groups should not be dropped until the Step finishes running"]
@@ -1174,11 +1180,11 @@ impl Build {
     fn msg_test(
         &self,
         what: impl Display,
-        host_and_stage: impl Into<HostAndStage>,
+        target: TargetSelection,
+        stage: u32,
     ) -> Option<gha::Group> {
-        let HostAndStage { host, stage } = host_and_stage.into();
         let action = Kind::Test.description();
-        let msg = format!("{action} stage{stage} {what} ({host})");
+        let msg = format!("{action} stage{stage} {what} ({target})");
         self.group(&msg)
     }
 
@@ -2107,11 +2113,6 @@ impl Compiler {
 
     pub fn forced_compiler(&mut self, forced_compiler: bool) {
         self.forced_compiler = forced_compiler;
-    }
-
-    pub fn with_stage(mut self, stage: u32) -> Compiler {
-        self.stage = stage;
-        self
     }
 
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration

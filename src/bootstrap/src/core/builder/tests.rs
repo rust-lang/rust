@@ -2062,20 +2062,23 @@ mod snapshot {
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
-        [test] Ui <host>
-        [test] Crashes <host>
+        [test] compiletest-ui 1 <host>
+        [test] compiletest-crashes 1 <host>
         [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [test] compiletest-coverage 1 <host>
+        [test] compiletest-coverage 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
-        [test] CodegenLlvm <host>
-        [test] CodegenUnits <host>
-        [test] AssemblyLlvm <host>
-        [test] Incremental <host>
-        [test] Debuginfo <host>
-        [test] UiFullDeps <host>
+        [test] compiletest-mir-opt 1 <host>
+        [test] compiletest-codegen-llvm 1 <host>
+        [test] compiletest-codegen-units 1 <host>
+        [test] compiletest-assembly-llvm 1 <host>
+        [test] compiletest-incremental 1 <host>
+        [test] compiletest-debuginfo 1 <host>
+        [test] compiletest-ui-fulldeps 1 <host>
         [build] rustdoc 1 <host>
-        [test] Rustdoc <host>
-        [test] CoverageRunRustdoc <host>
-        [test] Pretty <host>
+        [test] compiletest-rustdoc 1 <host>
+        [test] compiletest-coverage-run-rustdoc 1 <host>
+        [test] compiletest-pretty 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustc 0 <host> -> std 0 <host>
         [test] rustc 0 <host> -> CrateLibrustc 1 <host>
@@ -2113,16 +2116,107 @@ mod snapshot {
         [test] rustc 0 <host> -> rust-analyzer 1 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 1 <host>
-        [test] RustdocUi <host>
+        [test] compiletest-rustdoc-ui 1 <host>
         [build] rustc 0 <host> -> JsonDocCk 1 <host>
         [build] rustc 0 <host> -> JsonDocLint 1 <host>
-        [test] RustdocJson <host>
+        [test] compiletest-rustdoc-json 1 <host>
         [doc] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [test] compiletest-run-make 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage1() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 1 <host>
+        [test] compiletest-ui-fulldeps 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make 1 <host>
+        [test] compiletest-rustdoc 1 <host>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 1 <host>
+        [test] compiletest-incremental 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage2() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [test] compiletest-ui 2 <host>
+        [build] rustc 2 <host> -> rustc 3 <host>
+        [test] compiletest-ui-fulldeps 2 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
-        [test] RunMake <host>
+        [build] rustdoc 2 <host>
+        [test] compiletest-run-make 2 <host>
+        [test] compiletest-rustdoc 2 <host>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 2 <host>
+        [test] compiletest-incremental 2 <host>
+        [build] rustdoc 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_compiletest_suites_stage2_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .hosts(&[TEST_TRIPLE_1])
+                .targets(&[TEST_TRIPLE_1])
+                .args(&["ui", "ui-fulldeps", "run-make", "rustdoc", "rustdoc-gui", "incremental"])
+                .stage(2)
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 1 <host> -> rustc 2 <host>
+        [build] rustc 2 <host> -> std 2 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 2 <host> -> std 2 <target1>
+        [test] compiletest-ui 2 <target1>
+        [build] llvm <target1>
+        [build] rustc 2 <host> -> rustc 3 <target1>
+        [test] compiletest-ui-fulldeps 2 <target1>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [build] rustdoc 2 <host>
+        [test] compiletest-run-make 2 <target1>
+        [test] compiletest-rustdoc 2 <target1>
+        [build] rustc 0 <host> -> RustdocGUITest 1 <host>
+        [test] rustdoc-gui 2 <target1>
+        [test] compiletest-incremental 2 <target1>
+        [build] rustc 1 <host> -> rustc 2 <target1>
+        [build] rustdoc 1 <host>
+        [build] rustc 2 <target1> -> std 2 <target1>
+        [build] rustdoc 2 <target1>
         ");
     }
 
@@ -2142,21 +2236,24 @@ mod snapshot {
         [build] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> Compiletest 1 <host>
-        [test] Ui <host>
-        [test] Crashes <host>
+        [test] compiletest-ui 2 <host>
+        [test] compiletest-crashes 2 <host>
         [build] rustc 0 <host> -> CoverageDump 1 <host>
+        [test] compiletest-coverage 2 <host>
+        [test] compiletest-coverage 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
-        [test] CodegenLlvm <host>
-        [test] CodegenUnits <host>
-        [test] AssemblyLlvm <host>
-        [test] Incremental <host>
-        [test] Debuginfo <host>
+        [test] compiletest-mir-opt 2 <host>
+        [test] compiletest-codegen-llvm 2 <host>
+        [test] compiletest-codegen-units 2 <host>
+        [test] compiletest-assembly-llvm 2 <host>
+        [test] compiletest-incremental 2 <host>
+        [test] compiletest-debuginfo 2 <host>
         [build] rustc 2 <host> -> rustc 3 <host>
-        [test] UiFullDeps <host>
+        [test] compiletest-ui-fulldeps 2 <host>
         [build] rustdoc 2 <host>
-        [test] Rustdoc <host>
-        [test] CoverageRunRustdoc <host>
-        [test] Pretty <host>
+        [test] compiletest-rustdoc 2 <host>
+        [test] compiletest-coverage-run-rustdoc 2 <host>
+        [test] compiletest-pretty 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [build] rustdoc 1 <host>
@@ -2196,16 +2293,16 @@ mod snapshot {
         [test] rustc 1 <host> -> lint-docs 2 <host>
         [build] rustc 0 <host> -> RustdocTheme 1 <host>
         [test] rustdoc-theme 2 <host>
-        [test] RustdocUi <host>
+        [test] compiletest-rustdoc-ui 2 <host>
         [build] rustc 0 <host> -> JsonDocCk 1 <host>
         [build] rustc 0 <host> -> JsonDocLint 1 <host>
-        [test] RustdocJson <host>
+        [test] compiletest-rustdoc-json 2 <host>
         [doc] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 2 <host> -> cargo 3 <host>
-        [test] RunMake <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [test] compiletest-run-make 2 <host>
         ");
     }
 
@@ -2249,7 +2346,7 @@ mod snapshot {
         let steps = ctx.config("test").args(&["--skip", "src/tools/tidy"]).get_steps();
 
         let host = TargetSelection::from_user(&host_target());
-        steps.assert_contains(StepMetadata::test("RustdocUi", host));
+        steps.assert_contains(StepMetadata::test("compiletest-rustdoc-ui", host).stage(1));
         steps.assert_not_contains(test::Tidy);
     }
 
