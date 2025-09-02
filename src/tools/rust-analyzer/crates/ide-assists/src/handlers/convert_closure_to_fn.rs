@@ -220,7 +220,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
 
             let body = if wrap_body_in_block {
-                make::block_expr([], Some(body))
+                make::block_expr([], Some(body.reset_indent().indent(1.into())))
             } else {
                 ast::BlockExpr::cast(body.syntax().clone()).unwrap()
             };
@@ -968,6 +968,32 @@ fn foo() {
         unsafe { }
     }
     closure();
+}
+"#,
+        );
+        check_assist(
+            convert_closure_to_fn,
+            r#"
+//- minicore: copy
+fn foo() {
+    {
+        let closure = |$0| match () {
+            () => {},
+        };
+        closure();
+    }
+}
+"#,
+            r#"
+fn foo() {
+    {
+        fn closure() {
+            match () {
+                () => {},
+            }
+        }
+        closure();
+    }
 }
 "#,
         );
