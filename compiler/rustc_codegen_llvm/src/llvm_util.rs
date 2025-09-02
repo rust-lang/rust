@@ -280,6 +280,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
                 TargetFeatureFoldStrength::Both("zu"),
             ],
         )),
+        // This is supposed to be detection-only, has no effect on codegen
+        ("x86", "cpuid") => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }

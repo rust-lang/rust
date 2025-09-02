@@ -63,6 +63,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `cache`
 `cmpxchg16b`
 `concurrent-functions`
+`cpuid`
 `crc`
 `crt-static`
 `cssc`

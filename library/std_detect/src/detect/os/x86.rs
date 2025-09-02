@@ -32,6 +32,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         return value;
     }
 
+    value.set(Feature::cpuid as u32);
+
     // Calling `__cpuid`/`__cpuid_count` from here on is safe because the CPU
     // has `cpuid` support.
 
