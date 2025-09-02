@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::{iter::once, ops::RangeInclusive};
 
 use hir::{HasSource, ModuleSource};
 use ide_db::{
@@ -63,19 +63,6 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
 
-    //If the selection is inside impl block, we need to place new module outside impl block,
-    //as impl blocks cannot contain modules
-
-    let mut impl_parent: Option<ast::Impl> = None;
-    let mut impl_child_count: usize = 0;
-    if let Some(parent_assoc_list) = node.parent()
-        && let Some(parent_impl) = parent_assoc_list.parent()
-        && let Some(impl_) = ast::Impl::cast(parent_impl)
-    {
-        impl_child_count = parent_assoc_list.children().count();
-        impl_parent = Some(impl_);
-    }
-
     let mut curr_parent_module: Option<ast::Module> = None;
     if let Some(mod_syn_opt) = node.ancestors().find(|it| ast::Module::can_cast(it.kind())) {
         curr_parent_module = ast::Module::cast(mod_syn_opt);
@@ -94,7 +81,22 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         return None;
     }
 
-    let old_item_indent = module.body_items[0].indent_level();
+    let mut old_item_indent = module.body_items[0].indent_level();
+    let old_items: Vec<_> = module.use_items.iter().chain(&module.body_items).cloned().collect();
+
+    // If the selection is inside impl block, we need to place new module outside impl block,
+    // as impl blocks cannot contain modules
+
+    let mut impl_parent: Option<ast::Impl> = None;
+    let mut impl_child_count: usize = 0;
+    if let Some(parent_assoc_list) = module.body_items[0].syntax().parent()
+        && let Some(parent_impl) = parent_assoc_list.parent()
+        && let Some(impl_) = ast::Impl::cast(parent_impl)
+    {
+        impl_child_count = parent_assoc_list.children().count();
+        old_item_indent = impl_.indent_level();
+        impl_parent = Some(impl_);
+    }
 
     acc.add(
         AssistId::refactor_extract("extract_module"),
@@ -127,7 +129,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             let import_items = module.resolve_imports(curr_parent_module, ctx);
             module.change_visibility(record_fields);
 
-            let module_def = generate_module_def(&impl_parent, module, old_item_indent).to_string();
+            let module_def = generate_module_def(&impl_parent, &module).indent(old_item_indent);
 
             let mut usages_to_be_processed_for_cur_file = vec![];
             for (file_id, usages) in usages_to_be_processed {
@@ -149,27 +151,32 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             if let Some(impl_) = impl_parent {
                 // Remove complete impl block if it has only one child (as such it will be empty
                 // after deleting that child)
-                let node_to_be_removed = if impl_child_count == 1 {
-                    impl_.syntax()
+                let nodes_to_be_removed = if impl_child_count == old_items.len() {
+                    vec![impl_.syntax()]
                 } else {
                     //Remove selected node
-                    &node
+                    old_items.iter().map(|it| it.syntax()).collect()
                 };
 
-                builder.delete(node_to_be_removed.text_range());
-                // Remove preceding indentation from node
-                if let Some(range) = indent_range_before_given_node(node_to_be_removed) {
-                    builder.delete(range);
+                for node_to_be_removed in nodes_to_be_removed {
+                    builder.delete(node_to_be_removed.text_range());
+                    // Remove preceding indentation from node
+                    if let Some(range) = indent_range_before_given_node(node_to_be_removed) {
+                        builder.delete(range);
+                    }
                 }
 
-                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{module_def}"));
+                builder.insert(
+                    impl_.syntax().text_range().end(),
+                    format!("\n\n{old_item_indent}{module_def}"),
+                );
             } else {
                 for import_item in import_items {
                     if !module_text_range.contains_range(import_item) {
                         builder.delete(import_item);
                     }
                 }
-                builder.replace(module_text_range, module_def)
+                builder.replace(module_text_range, module_def.to_string())
             }
         },
     )
@@ -177,34 +184,35 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
 fn generate_module_def(
     parent_impl: &Option<ast::Impl>,
-    module: Module,
-    old_indent: IndentLevel,
+    Module { name, body_items, use_items }: &Module,
 ) -> ast::Module {
-    let Module { name, body_items, use_items } = module;
-    let items = if let Some(self_ty) = parent_impl.as_ref().and_then(|imp| imp.self_ty()) {
+    let items: Vec<_> = if let Some(impl_) = parent_impl.as_ref()
+        && let Some(self_ty) = impl_.self_ty()
+    {
         let assoc_items = body_items
-            .into_iter()
+            .iter()
             .map(|item| item.syntax().clone())
             .filter_map(ast::AssocItem::cast)
             .map(|it| it.indent(IndentLevel(1)))
             .collect_vec();
-        let assoc_item_list = make::assoc_item_list(Some(assoc_items));
-        let impl_ = make::impl_(None, None, None, self_ty.clone(), None, Some(assoc_item_list));
+        let assoc_item_list = make::assoc_item_list(Some(assoc_items)).clone_for_update();
+        let impl_ = impl_.reset_indent();
+        ted::replace(impl_.get_or_create_assoc_item_list().syntax(), assoc_item_list.syntax());
         // Add the import for enum/struct corresponding to given impl block
         let use_impl = make_use_stmt_of_node_with_super(self_ty.syntax());
-        let mut module_body_items = use_items;
-        module_body_items.insert(0, use_impl);
-        module_body_items.push(ast::Item::Impl(impl_));
-        module_body_items
+        once(use_impl)
+            .chain(use_items.iter().cloned())
+            .chain(once(ast::Item::Impl(impl_)))
+            .collect()
     } else {
-        [use_items, body_items].concat()
+        use_items.iter().chain(body_items).cloned().collect()
     };
 
     let items = items.into_iter().map(|it| it.reset_indent().indent(IndentLevel(1))).collect_vec();
     let module_body = make::item_list(Some(items));
 
     let module_name = make::name(name);
-    make::mod_(module_name, Some(module_body)).indent(old_indent)
+    make::mod_(module_name, Some(module_body))
 }
 
 fn make_use_stmt_of_node_with_super(node_syntax: &SyntaxNode) -> ast::Item {
@@ -1400,28 +1408,54 @@ mod modname {
     fn test_if_inside_impl_block_generate_module_outside() {
         check_assist(
             extract_module,
-            r"
-            struct A {}
+            r"struct A {}
 
             impl A {
-$0fn foo() {}$0
+                $0fn foo() {}$0
                 fn bar() {}
             }
         ",
-            r"
-            struct A {}
+            r"struct A {}
 
             impl A {
                 fn bar() {}
             }
 
-mod modname {
-    use super::A;
+            mod modname {
+                use super::A;
 
-    impl A {
-        pub(crate) fn foo() {}
-    }
-}
+                impl A {
+                    pub(crate) fn foo() {}
+                }
+            }
+        ",
+        );
+
+        check_assist(
+            extract_module,
+            r"struct A {}
+
+            impl A {
+                $0fn foo() {}
+                fn bar() {}$0
+                fn baz() {}
+            }
+        ",
+            r"struct A {}
+
+            impl A {
+                fn baz() {}
+            }
+
+            mod modname {
+                use super::A;
+
+                impl A {
+                    pub(crate) fn foo() {}
+
+                    pub(crate) fn bar() {}
+                }
+            }
         ",
         )
     }
@@ -1430,27 +1464,25 @@ mod modname {
     fn test_if_inside_impl_block_generate_module_outside_but_impl_block_having_one_child() {
         check_assist(
             extract_module,
-            r"
-            struct A {}
+            r"struct A {}
             struct B {}
 
             impl A {
 $0fn foo(x: B) {}$0
             }
         ",
-            r"
-            struct A {}
+            r"struct A {}
             struct B {}
 
-mod modname {
-    use super::A;
+            mod modname {
+                use super::A;
 
-    use super::B;
+                use super::B;
 
-    impl A {
-        pub(crate) fn foo(x: B) {}
-    }
-}
+                impl A {
+                    pub(crate) fn foo(x: B) {}
+                }
+            }
         ",
         )
     }
