@@ -819,7 +819,7 @@ fn panic_with_hook(
                 rtprintpanic!("aborting due to panic at {location}:\n{payload}\n");
             }
         }
-        crate::sys::abort_internal();
+        crate::process::abort();
     }
 
     match *HOOK.read().unwrap_or_else(PoisonError::into_inner) {
@@ -853,7 +853,7 @@ fn panic_with_hook(
         // through a nounwind function (e.g. extern "C") then we cannot continue
         // unwinding and have to abort immediately.
         rtprintpanic!("thread caused non-unwinding panic. aborting.\n");
-        crate::sys::abort_internal();
+        crate::process::abort();
     }
 
     rust_panic(payload)
