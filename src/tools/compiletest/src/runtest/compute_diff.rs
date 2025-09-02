@@ -3,6 +3,8 @@ use std::fs::{File, FileType};
 
 use camino::Utf8Path;
 
+use crate::runtest::TestCx;
+
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
     Context(String),
@@ -112,6 +114,7 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
 ///
 /// Returns whether any data was actually written.
 pub(crate) fn write_filtered_diff<Filter>(
+    cx: &TestCx<'_>,
     diff_filename: &str,
     out_dir: &Utf8Path,
     compare_dir: &Utf8Path,
@@ -147,11 +150,11 @@ where
     }
 
     if !wrote_data {
-        println!("note: diff is identical to nightly rustdoc");
+        writeln!(cx.stdout, "note: diff is identical to nightly rustdoc");
         assert!(diff_output.metadata().unwrap().len() == 0);
         return false;
     } else if verbose {
-        eprintln!("printing diff:");
+        writeln!(cx.stderr, "printing diff:");
         let mut buf = Vec::new();
         diff_output.read_to_end(&mut buf).unwrap();
         std::io::stderr().lock().write_all(&mut buf).unwrap();
