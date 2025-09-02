@@ -1676,8 +1676,60 @@ impl<Ptr: Deref> Deref for Pin<Ptr> {
     }
 }
 
+mod hidden {
+    use super::*;
+
+    /// Helper that prevents downstream crates from implementing `DerefMut` for `Pin`.
+    ///
+    /// This type is not `#[fundamental]`, so it's possible to relax its `DerefMut` impl bounds in
+    /// the future, so the orphan rules reject downstream impls of `DerefMut` of `Pin`.
+    #[repr(transparent)]
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    #[allow(missing_debug_implementations)]
+    pub struct PinHelper<Ptr> {
+        pointer: Ptr,
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    impl<Ptr: Deref> Deref for PinHelper<Ptr> {
+        type Target = Ptr::Target;
+        fn deref(&self) -> &Ptr::Target {
+            &self.pointer
+        }
+    }
+
+    #[unstable(feature = "pin_derefmut_internals", issue = "none")]
+    impl<Ptr: DerefMut<Target: Unpin>> DerefMut for PinHelper<Ptr> {
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Ptr::Target {
+            &mut self.pointer
+        }
+    }
+}
+
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
+#[cfg(not(doc))]
+impl<Ptr> DerefMut for Pin<Ptr>
+where
+    Ptr: Deref,
+    hidden::PinHelper<Ptr>: DerefMut<Target = Self::Target>,
+{
+    fn deref_mut(&mut self) -> &mut Ptr::Target {
+        // SAFETY: Pin and PinHelper have the same layout, so this is equivalent to
+        // `&mut self.pointer` which is safe because `Target: Unpin`.
+        unsafe { &mut **(self as *mut Pin<Ptr> as *mut hidden::PinHelper<Ptr>) }
+    }
+}
+
+// This impl is only used during documentation, but it is fully equivalent to the above impl with
+// the exception of how the orphan rule treats it.
+#[stable(feature = "pin", since = "1.33.0")]
+#[cfg(doc)]
+impl<Ptr> DerefMut for Pin<Ptr>
+where
+    Ptr: DerefMut,
+    Ptr::Target: Unpin,
+{
     fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
     }
@@ -1759,7 +1811,7 @@ unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
 unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
+unsafe impl<T: PinCoerceUnsized + Deref> PinCoerceUnsized for Pin<T> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
