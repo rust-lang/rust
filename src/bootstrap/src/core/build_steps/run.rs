@@ -161,7 +161,7 @@ impl Step for Miri {
         let mut miri = tool::prepare_tool_cargo(
             builder,
             compilers.build_compiler(),
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             host,
             Kind::Run,
             "src/tools/miri",
@@ -487,7 +487,7 @@ impl Step for Rustfmt {
         let mut rustfmt = tool::prepare_tool_cargo(
             builder,
             rustfmt_build.build_compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             host,
             Kind::Run,
             "src/tools/rustfmt",

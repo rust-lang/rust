@@ -995,7 +995,7 @@ macro_rules! tool_doc {
                     // Build rustc docs so that we generate relative links.
                     run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
 
-                    (compilers.build_compiler(), Mode::ToolRustc)
+                    (compilers.build_compiler(), Mode::ToolRustcPrivate)
                 } else {
                     // bootstrap/host tools have to be documented with the stage 0 compiler
                     (prepare_doc_compiler(run.builder, run.builder.host_target, 1), Mode::ToolBootstrap)
