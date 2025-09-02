@@ -2812,24 +2812,46 @@ fn render_call_locations<W: fmt::Write>(
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
         let locations_encoded = serde_json::to_string(&line_ranges).unwrap();
 
-        // Look for the example file in the source map if it exists, otherwise return a dummy span
-        let file_span = (|| {
-            let source_map = tcx.sess.source_map();
-            let crate_src = tcx.sess.local_crate_source_file()?.into_local_path()?;
+        let source_map = tcx.sess.source_map();
+        let files = source_map.files();
+        let local = tcx.sess.local_crate_source_file().unwrap();
+
+        let get_file_start_pos = || {
+            let crate_src = local.clone().into_local_path()?;
             let abs_crate_src = crate_src.canonicalize().ok()?;
             let crate_root = abs_crate_src.parent()?.parent()?;
             let rel_path = path.strip_prefix(crate_root).ok()?;
-            let files = source_map.files();
-            let file = files.iter().find(|file| match &file.name {
-                FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
-                _ => false,
-            })?;
-            Some(rustc_span::Span::with_root_ctxt(
-                file.start_pos + BytePos(byte_min),
-                file.start_pos + BytePos(byte_max),
-            ))
-        })()
-        .unwrap_or(DUMMY_SP);
+            files
+                .iter()
+                .find(|file| match &file.name {
+                    FileName::Real(RealFileName::LocalPath(other_path)) => rel_path == other_path,
+                    _ => false,
+                })
+                .map(|file| file.start_pos)
+        };
+
+        // Look for the example file in the source map if it exists, otherwise
+        // return a span to the local crate's source file
+        let Some(file_span) = get_file_start_pos()
+            .or_else(|| {
+                files
+                    .iter()
+                    .find(|file| match &file.name {
+                        FileName::Real(file_name) => file_name == &local,
+                        _ => false,
+                    })
+                    .map(|file| file.start_pos)
+            })
+            .map(|start_pos| {
+                rustc_span::Span::with_root_ctxt(
+                    start_pos + BytePos(byte_min),
+                    start_pos + BytePos(byte_max),
+                )
+            })
+        else {
+            // if the fallback span can't be built, don't render the code for this example
+            return false;
+        };
 
         let mut decoration_info = FxIndexMap::default();
         decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
