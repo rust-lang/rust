@@ -2632,3 +2632,43 @@ fn let_in_condition() {
 fn let_in_let_chain() {
     check_edit("let", r#"fn f() { if true && $0 {} }"#, r#"fn f() { if true && let $1 = $0 {} }"#);
 }
+
+#[test]
+fn private_inherent_and_public_trait() {
+    check(
+        r#"
+struct Foo;
+
+mod private {
+    impl super::Foo {
+        fn method(&self) {}
+    }
+}
+
+trait Trait {
+    fn method(&self) {}
+}
+impl Trait for Foo {}
+
+fn main() {
+    Foo.$0
+}
+    "#,
+        expect![[r#"
+            me method() (as Trait) fn(&self)
+            sn box            Box::new(expr)
+            sn call           function(expr)
+            sn const                const {}
+            sn dbg                dbg!(expr)
+            sn dbgr              dbg!(&expr)
+            sn deref                   *expr
+            sn let                       let
+            sn letm                  let mut
+            sn match           match expr {}
+            sn ref                     &expr
+            sn refm                &mut expr
+            sn return            return expr
+            sn unsafe              unsafe {}
+        "#]],
+    );
+}
