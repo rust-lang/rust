@@ -1031,7 +1031,7 @@ struct ExternPreludeEntry<'ra> {
     /// `flag_binding` is `None`, or when `extern crate` introducing `item_binding` used renaming.
     item_binding: Option<(NameBinding<'ra>, /* introduced by item */ bool)>,
     /// Binding from an `--extern` flag, lazily populated on first use.
-    flag_binding: Option<Cell<PendingBinding<'ra>>>,
+    flag_binding: Option<Cell<(PendingBinding<'ra>, /* finalized */ bool)>>,
 }
 
 impl ExternPreludeEntry<'_> {
@@ -1042,7 +1042,7 @@ impl ExternPreludeEntry<'_> {
     fn flag() -> Self {
         ExternPreludeEntry {
             item_binding: None,
-            flag_binding: Some(Cell::new(PendingBinding::Pending)),
+            flag_binding: Some(Cell::new((PendingBinding::Pending, false))),
         }
     }
 }
@@ -2245,14 +2245,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn extern_prelude_get_flag(&self, ident: Ident, finalize: bool) -> Option<NameBinding<'ra>> {
         let entry = self.extern_prelude.get(&Macros20NormalizedIdent::new(ident));
         entry.and_then(|entry| entry.flag_binding.as_ref()).and_then(|flag_binding| {
-            let binding = match flag_binding.get() {
+            let (pending_binding, finalized) = flag_binding.get();
+            let binding = match pending_binding {
                 PendingBinding::Ready(binding) => {
-                    if finalize {
+                    if finalize && !finalized {
                         self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span);
                     }
                     binding
                 }
                 PendingBinding::Pending => {
+                    debug_assert!(!finalized);
                     let crate_id = if finalize {
                         self.cstore_mut().process_path_extern(self.tcx, ident.name, ident.span)
                     } else {
@@ -2264,7 +2266,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     })
                 }
             };
-            flag_binding.set(PendingBinding::Ready(binding));
+            flag_binding.set((PendingBinding::Ready(binding), finalize || finalized));
             binding.or_else(|| finalize.then_some(self.dummy_binding))
         })
     }
