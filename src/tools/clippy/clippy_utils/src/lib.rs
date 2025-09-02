@@ -2011,7 +2011,7 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
                 false
             }
         },
-        (PatKind::Struct(pat_ident, field_pats, false), ExprKind::Struct(ident, fields, hir::StructTailExpr::None))
+        (PatKind::Struct(pat_ident, field_pats, None), ExprKind::Struct(ident, fields, hir::StructTailExpr::None))
             if field_pats.len() == fields.len() =>
         {
             // check ident

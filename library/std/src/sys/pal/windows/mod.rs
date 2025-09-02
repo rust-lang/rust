@@ -356,6 +356,7 @@ pub fn abort_internal() -> ! {
 }
 
 #[cfg(miri)]
+#[track_caller] // even without panics, this helps for Miri backtraces
 pub fn abort_internal() -> ! {
     crate::intrinsics::abort();
 }
