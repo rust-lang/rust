@@ -1,10 +1,10 @@
-// ignore-order
+// make sure type-based searches with traits get unboxed too
 
 const EXPECTED = [
     {
-        'query': 'bufread -> result<[u8]>',
+        'query': 'any -> result<box>',
         'others': [
-            { 'path': 'std::boxed::Box', 'name': 'fill_buf' },
+            { 'path': 'std::boxed::Box', 'name': 'downcast' },
         ],
     },
     {
