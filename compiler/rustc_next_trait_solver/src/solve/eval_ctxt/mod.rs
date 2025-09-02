@@ -1122,7 +1122,7 @@ where
         &self,
         goal_trait_ref: ty::TraitRef<I>,
         trait_assoc_def_id: I::DefId,
-        impl_def_id: I::DefId,
+        impl_def_id: I::ImplId,
     ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
