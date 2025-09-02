@@ -556,7 +556,12 @@ fn metavar_expr_concat<'tx>(
                         };
                         match &named_matches[*curr_idx] {
                             // FIXME(c410-f3r) Nested repetitions are unimplemented
-                            MatchedSeq(_) => unimplemented!(),
+                            MatchedSeq(_) => {
+                                return Err(dcx.struct_span_err(
+                                    ident.span,
+                                    "nested repetitions with `${concat(...)}` metavariable expressions are not yet supported",
+                                ));
+                            }
                             MatchedSingle(pnr) => extract_symbol_from_pnr(dcx, pnr, ident.span)?,
                         }
                     }
