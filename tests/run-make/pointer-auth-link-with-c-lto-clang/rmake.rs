@@ -1,7 +1,7 @@
 // `-Z branch protection` is an unstable compiler feature which adds pointer-authentication
 // code (PAC), a useful hashing measure for verifying that pointers have not been modified.
 // This test checks that compilation and execution is successful when this feature is activated,
-// with some of its possible extra arguments (bti, pac-ret, leaf) when doing LTO.
+// with some of its possible extra arguments (bti, gcs, pac-ret, leaf) when doing LTO.
 // See https://github.com/rust-lang/rust/pull/88354
 
 //@ needs-force-clang-based-tests
@@ -19,7 +19,7 @@ fn main() {
     clang()
         .arg("-v")
         .lto("thin")
-        .arg("-mbranch-protection=bti+pac-ret+b-key+leaf")
+        .arg("-mbranch-protection=bti+gcs+pac-ret+b-key+leaf")
         .arg("-c")
         .out_exe("test.o")
         .input("test.c")
@@ -30,7 +30,7 @@ fn main() {
         .opt_level("2")
         .linker(&env_var("CLANG"))
         .link_arg("-fuse-ld=lld")
-        .arg("-Zbranch-protection=bti,pac-ret,leaf")
+        .arg("-Zbranch-protection=bti,gcs,pac-ret,leaf")
         .input("test.rs")
         .output("test.bin")
         .run();
