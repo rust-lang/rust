@@ -9,7 +9,7 @@ use std::hint::black_box;
 
 fn main() {
     let expected = cfg_select! {
-        random => 13, // FIXME: why is it 13?
+        random => 9, // -4 ..= +4 ULP error
         max => 2,
         none => 1,
     };
@@ -20,4 +20,12 @@ fn main() {
         values.insert(val.to_bits());
     }
     assert_eq!(values.len(), expected);
+
+    if !cfg!(none) {
+        // Ensure the smallest and biggest value are 8 ULP apart.
+        // We can just subtract the raw bit representations for this.
+        let min = *values.iter().min().unwrap();
+        let max = *values.iter().max().unwrap();
+        assert_eq!(min.abs_diff(max), 8);
+    }
 }
