@@ -12,7 +12,6 @@
 
 #![feature(proc_macro_quote)]
 #![crate_type = "proc-macro"]
-#[macro_use]
 extern crate std;
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
