@@ -247,7 +247,7 @@ class CachedFiles(object):
             paths = list(Path(self.root).glob(path))
             if len(paths) != 1:
                 raise FailedCheck("glob path does not resolve to one file")
-            path = str(paths[0])
+            return str(paths[0])
         return os.path.join(self.root, path)
 
     def get_file(self, path):
