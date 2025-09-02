@@ -120,16 +120,15 @@ fn run_test_inner(
     runnable_test: RunnableTest,
     completion_sender: mpsc::Sender<TestCompletion>,
 ) {
-    let is_capture = !runnable_test.config.nocapture;
+    let capture = CaptureKind::for_config(&runnable_test.config);
 
     // Install a panic-capture buffer for use by the custom panic hook.
-    if is_capture {
+    if capture.should_set_panic_hook() {
         panic_hook::set_capture_buf(Default::default());
     }
-    let capture_buf = is_capture.then(|| Arc::new(Mutex::new(vec![])));
 
-    if let Some(capture_buf) = &capture_buf {
-        io::set_output_capture(Some(Arc::clone(capture_buf)));
+    if let CaptureKind::Old { ref buf } = capture {
+        io::set_output_capture(Some(Arc::clone(buf)));
     }
 
     let panic_payload = panic::catch_unwind(move || runnable_test.run()).err();
@@ -141,7 +140,7 @@ fn run_test_inner(
         // non-panic output, append the panic message to that buffer instead.
         eprint!("{panic_buf}");
     }
-    if is_capture {
+    if matches!(capture, CaptureKind::Old { .. }) {
         io::set_output_capture(None);
     }
 
@@ -152,9 +151,46 @@ fn run_test_inner(
             TestOutcome::Failed { message: Some("test did not panic as expected") }
         }
     };
-    let stdout = capture_buf.map(|mutex| mutex.lock().unwrap_or_else(|e| e.into_inner()).to_vec());
 
+    let stdout = capture.into_inner();
     completion_sender.send(TestCompletion { id, outcome, stdout }).unwrap();
+}
+
+enum CaptureKind {
+    /// Do not capture test-runner output, for `--no-capture`.
+    ///
+    /// (This does not affect `rustc` and other subprocesses spawned by test
+    /// runners, whose output is always captured.)
+    None,
+
+    /// Use the old output-capture implementation, which relies on the unstable
+    /// library feature `#![feature(internal_output_capture)]`.
+    Old { buf: Arc<Mutex<Vec<u8>>> },
+}
+
+impl CaptureKind {
+    fn for_config(config: &Config) -> Self {
+        if config.nocapture {
+            Self::None
+        } else {
+            // Create a capure buffer for `io::set_output_capture`.
+            Self::Old { buf: Default::default() }
+        }
+    }
+
+    fn should_set_panic_hook(&self) -> bool {
+        match self {
+            Self::None => false,
+            Self::Old { .. } => true,
+        }
+    }
+
+    fn into_inner(self) -> Option<Vec<u8>> {
+        match self {
+            Self::None => None,
+            Self::Old { buf } => Some(buf.lock().unwrap_or_else(|e| e.into_inner()).to_vec()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
