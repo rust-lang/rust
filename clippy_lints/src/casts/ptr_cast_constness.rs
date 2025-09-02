@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -51,7 +51,16 @@ pub(super) fn check<'tcx>(
 
         if msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS) {
             let mut app = Applicability::MachineApplicable;
-            let sugg = Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "_", &mut app);
+            let sugg = if let ExprKind::Cast(nested_from, nested_hir_ty) = cast_from_expr.kind
+                && let hir::TyKind::Ptr(ptr_ty) = nested_hir_ty.kind
+                && let hir::TyKind::Infer(()) = ptr_ty.ty.kind
+            {
+                // `(foo as *const _).cast_mut()` fails method name resolution
+                // avoid this by `as`-ing the full type
+                Sugg::hir_with_context(cx, nested_from, expr.span.ctxt(), "_", &mut app).as_ty(cast_from)
+            } else {
+                Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "_", &mut app)
+            };
             let constness = to_mutbl.ptr_str();
 
             span_lint_and_sugg(
