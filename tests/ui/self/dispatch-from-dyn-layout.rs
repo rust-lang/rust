@@ -6,9 +6,9 @@
 
 #![feature(arbitrary_self_types, dispatch_from_dyn)]
 
-use std::ops::{Deref, DispatchFromDyn};
+use std::ops::{Deref, DispatchFromDyn, Receiver};
 
-trait Trait<T: Deref<Target = Self> + DispatchFromDyn<T>> {
+trait Trait<T: Deref<Target = Self> + Receiver<Target = Self> + DispatchFromDyn<T>> {
     fn foo(self: T) -> dyn Trait<T>;
 }
 
