@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
+arrayvec = { version = "0.7", default-features = false }
 bitflags.workspace = true
 derive-where.workspace = true
 ena = "0.14.3"
