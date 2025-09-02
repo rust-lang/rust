@@ -1,41 +1,70 @@
 //@ revisions: default feature
+#![feature(where_clause_attrs)]
 #![cfg_attr(feature, feature(arbitrary_self_types))]
 
-use std::ops::Deref;
 use std::marker::PhantomData;
+use std::ops::Deref;
+#[cfg(feature)]
+use std::ops::Receiver;
 
 struct Foo(u32);
 impl Foo {
-    fn get<R: Deref<Target = Self>>(self: R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get<R: Deref<Target = Self>>(self: R) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
     }
-    fn get1<R: Deref<Target = Self>>(self: &R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get1<R: Deref<Target = Self>>(self: &R) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
     }
-    fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
     }
-    fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
     }
-    fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
     }
-    fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+    fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32
+    //~^ ERROR: invalid generic `self` parameter type
+    where
+        #[cfg(feature)]
+        R: Receiver<Target = Self>,
+    {
         self.0
-    }
-    fn get6<FR: FindReceiver>(self: FR::Receiver, other: FR) -> u32 {
-        //[default]~^ ERROR: `<FR as FindReceiver>::Receiver` cannot be used as the type of `self`
-        42
     }
 }
 
+impl Foo {
+    fn get6<FR: FindReceiver>(self: FR::Receiver, other: FR) -> u32 {
+        //[default]~^ ERROR: invalid `self` parameter type: `<FR as FindReceiver>::Receiver`
+        42
+    }
+}
 
 struct SmartPtr<'a, T: ?Sized>(&'a T);
 
@@ -44,6 +73,10 @@ impl<'a, T: ?Sized> Deref for SmartPtr<'a, T> {
     fn deref(&self) -> &Self::Target {
         unimplemented!()
     }
+}
+#[cfg(feature)]
+impl<'a, T: ?Sized> Receiver for SmartPtr<'a, T> {
+    type Target = T;
 }
 
 struct SmartPtr2<'a, T: ?Sized>(&'a T);
@@ -54,16 +87,27 @@ impl<'a, T: ?Sized> Deref for SmartPtr2<'a, T> {
         unimplemented!()
     }
 }
+#[cfg(feature)]
+impl<'a, T: ?Sized> Receiver for SmartPtr2<'a, T> {
+    type Target = T;
+}
 
 struct Bar<R>(std::marker::PhantomData<R>);
 
-impl<R: std::ops::Deref<Target = Self>> Bar<R> {
+impl<R: Deref<Target = Self>> Bar<R>
+where
+    #[cfg(feature)]
+    R: Receiver<Target = Self>,
+{
     fn get(self: R) {}
-    //[default]~^ ERROR: `R` cannot be used as the type of `self`
+    //[default]~^ ERROR: invalid `self` parameter type: `R`
 }
 
 trait FindReceiver {
+    #[cfg(not(feature))]
     type Receiver: Deref<Target = Foo>;
+    #[cfg(feature)]
+    type Receiver: Deref<Target = Foo> + Receiver<Target = Foo>;
 }
 
 struct Silly;
