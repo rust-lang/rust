@@ -15,7 +15,9 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     val: F,
     err_scale: i32,
 ) -> F {
-    if !ecx.machine.float_nondet || !ecx.machine.float_rounding_error {
+    if !ecx.machine.float_nondet
+        || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
+    {
         return val;
     }
 
@@ -24,7 +26,12 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     // (When read as binary, the position of the first `1` determines the exponent,
     // and the remaining bits fill the mantissa. `PREC` is one plus the size of the mantissa,
     // so this all works out.)
-    let r = F::from_u128(rng.random_range(0..(1 << F::PRECISION))).value;
+    let r = F::from_u128(match ecx.machine.float_rounding_error {
+        FloatRoundingErrorMode::Random => rng.random_range(0..(1 << F::PRECISION)),
+        FloatRoundingErrorMode::Max => (1 << F::PRECISION) - 1, // force max error
+        FloatRoundingErrorMode::None => unreachable!(),
+    })
+    .value;
     // Multiply this with 2^(scale - PREC). The result is between 0 and
     // 2^PREC * 2^(scale - PREC) = 2^scale.
     let err = r.scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
