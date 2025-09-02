@@ -35,11 +35,6 @@ LL |     println!("list: {}, {}", 1, 2, 3);
    |              --------------        ^ argument never used
    |              |
    |              formatting specifier missing
-   |
-help: consider adding format specifier
-   |
-LL |     println!("list: {}, {}{}", 1, 2, 3);
-   |                           ++
 
 error: multiple unused formatting arguments
   --> $DIR/missing-format-specifiers-issue-68293.rs:27:29
@@ -50,10 +45,7 @@ LL |     println!("list: {}", 1, 2, 3);
    |              |              argument never used
    |              multiple missing formatting specifiers
    |
-help: consider adding 2 format specifiers
-   |
-LL |     println!("list: {}{}{}", 1, 2, 3);
-   |                       ++++
+   = note: consider adding 2 format specifiers
 
 error: aborting due to 4 previous errors
 

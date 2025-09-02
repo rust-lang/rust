@@ -29,6 +29,7 @@ fn missing_format_specifiers_multiple_unused_args() {
     //~| NOTE multiple missing formatting specifiers
     //~| NOTE argument never used
     //~| NOTE argument never used
+    //~| NOTE consider adding 2 format specifiers
 }
 
 fn main() { }
