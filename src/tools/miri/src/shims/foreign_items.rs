@@ -490,13 +490,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "exit" => {
                 let [code] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there is no error, execution should continue (on a different thread).
+                    genmc_ctx.handle_exit(
+                        this.machine.threads.active_thread(),
+                        code,
+                        crate::concurrency::ExitType::ExitCalled,
+                    )?;
+                    todo!(); // FIXME(genmc): Add a way to return here that is allowed to not do progress (can't use existing EmulateItemResult variants).
+                }
                 throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
                 let [] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
                 throw_machine_stop!(TerminationInfo::Abort(
                     "the program aborted execution".to_owned()
-                ))
+                ));
             }
 
             // Standard C allocation

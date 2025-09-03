@@ -142,7 +142,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Synchronize with the previous completion of an InitOnce.
     /// Must only be called after checking that it is complete.
     #[inline]
-    fn init_once_observe_completed(&mut self, init_once_ref: &InitOnceRef) {
+    fn init_once_observe_completed(&mut self, init_once_ref: &InitOnceRef) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let init_once = init_once_ref.0.borrow();
 
@@ -152,6 +152,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "observing the completion of incomplete init once"
         );
 
-        this.acquire_clock(&init_once.clock);
+        this.acquire_clock(&init_once.clock)
     }
 }

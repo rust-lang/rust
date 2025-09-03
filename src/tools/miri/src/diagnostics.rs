@@ -31,8 +31,9 @@ pub enum TerminationInfo {
     },
     Int2PtrWithStrictProvenance,
     Deadlock,
-    /// In GenMC mode, an execution can get stuck in certain cases. This is not an error.
-    GenmcStuckExecution,
+    /// In GenMC mode, executions can get blocked, which stops the current execution without running any cleanup.
+    /// No leak checks should be performed if this happens, since they would give false positives.
+    GenmcBlockedExecution,
     MultipleSymbolDefinitions {
         link_name: Symbol,
         first: SpanData,
@@ -77,7 +78,8 @@ impl fmt::Display for TerminationInfo {
             StackedBorrowsUb { msg, .. } => write!(f, "{msg}"),
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             Deadlock => write!(f, "the evaluated program deadlocked"),
-            GenmcStuckExecution => write!(f, "GenMC determined that the execution got stuck"),
+            GenmcBlockedExecution =>
+                write!(f, "GenMC determined that the execution got blocked (this is not an error)"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -243,11 +245,12 @@ pub fn report_error<'tcx>(
                 labels.push(format!("this thread got stuck here"));
                 None
             }
-            GenmcStuckExecution => {
-                // This case should only happen in GenMC mode. We treat it like a normal program exit.
+            GenmcBlockedExecution => {
+                // This case should only happen in GenMC mode.
                 assert!(ecx.machine.data_race.as_genmc_ref().is_some());
-                tracing::info!("GenMC: found stuck execution");
-                return Some((0, true));
+                // The program got blocked by GenMC without finishing the execution.
+                // No cleanup code was executed, so we don't do any leak checks.
+                return Some((0, false));
             }
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
