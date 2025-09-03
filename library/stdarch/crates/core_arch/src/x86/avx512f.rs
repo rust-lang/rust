@@ -49621,9 +49621,7 @@ mod tests {
         assert_eq_m512i(r, e);
     }
 
-    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/154492
-    //#[simd_test(enable = "avx512f")]
-    #[simd_test(enable = "avx512f,avx512vl")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_cvttps_epu32() {
         let a = _mm512_setr_ps(
             0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
@@ -49636,9 +49634,7 @@ mod tests {
         assert_eq_m512i(r, e);
     }
 
-    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/154492
-    //#[simd_test(enable = "avx512f")]
-    #[simd_test(enable = "avx512f,avx512vl")]
+    #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_maskz_cvttps_epu32() {
         let a = _mm512_setr_ps(
             0., -1.5, 2., -3.5, 4., -5.5, 6., -7.5, 8., 9.5, 10., 11.5, 12., 13.5, 14., 15.5,
