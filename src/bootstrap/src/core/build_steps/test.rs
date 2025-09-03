@@ -3294,8 +3294,7 @@ impl Step for Bootstrap {
             .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
 
-        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
-        run_cargo_test(cargo, &["--test-threads", &threads.to_string()], &[], None, host, builder);
+        run_cargo_test(cargo, &[], &[], None, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
