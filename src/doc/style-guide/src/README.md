@@ -115,7 +115,10 @@ fn baz() {}
 ### Trailing whitespace
 
 Do not include trailing whitespace on the end of any line. This includes blank
-lines, comment lines, and code lines.
+lines, comment lines, code lines, and string literals.
+
+Note that avoiding trailing whitespace in string literals requires care to
+preserve the value of the literal.
 
 ### Sorting
 
