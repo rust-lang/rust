@@ -121,6 +121,7 @@ fn main() {
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose, &ci_info);
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
+        check!(fluent_lowercase, &compiler_path);
         check!(target_policy, &root_path);
         check!(gcc_submodule, &root_path, &compiler_path);
 

@@ -75,7 +75,7 @@ passes_const_stable_not_stable =
     .label = attribute specified here
 
 passes_custom_mir_incompatible_dialect_and_phase =
-    The {$dialect} dialect is not compatible with the {$phase} phase
+    the {$dialect} dialect is not compatible with the {$phase} phase
     .dialect_span = this dialect...
     .phase_span = ... is not compatible with this phase
 
