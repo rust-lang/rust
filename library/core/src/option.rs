@@ -1379,11 +1379,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
-    pub fn as_deref(&self) -> Option<&T::Target>
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_deref(&self) -> Option<&T::Target>
     where
-        T: Deref,
+        T: [const] Deref,
     {
-        self.as_ref().map(|t| t.deref())
+        self.as_ref().map(Deref::deref)
     }
 
     /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
@@ -1402,11 +1403,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
-    pub fn as_deref_mut(&mut self) -> Option<&mut T::Target>
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
     where
-        T: DerefMut,
+        T: [const] DerefMut,
     {
-        self.as_mut().map(|t| t.deref_mut())
+        self.as_mut().map(DerefMut::deref_mut)
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -2180,7 +2182,7 @@ const fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 impl<T> const Clone for Option<T>
 where
     // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct in clone_from.
@@ -2269,7 +2271,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 }
 
 #[stable(since = "1.12.0", feature = "option_from")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for Option<T> {
     /// Moves `val` into a new [`Some`].
     ///
@@ -2286,7 +2288,7 @@ impl<T> const From<T> for Option<T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
     /// Converts from `&Option<T>` to `Option<&T>`.
     ///
@@ -2314,7 +2316,7 @@ impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
     /// Converts from `&mut Option<T>` to `Option<&mut T>`
     ///

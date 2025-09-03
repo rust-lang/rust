@@ -2264,11 +2264,13 @@ impl Path {
     /// assert_eq!(from_string, from_path);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn new<S: [const] AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
         unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
     }
 
-    fn from_inner_mut(inner: &mut OsStr) -> &mut Path {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    const fn from_inner_mut(inner: &mut OsStr) -> &mut Path {
         // SAFETY: Path is just a wrapper around OsStr,
         // therefore converting &mut OsStr to &mut Path is safe.
         unsafe { &mut *(inner as *mut OsStr as *mut Path) }
@@ -3337,7 +3339,8 @@ unsafe impl CloneToUninit for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for Path {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<OsStr> for Path {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         &self.inner
@@ -3507,7 +3510,8 @@ impl Ord for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<Path> for Path {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<Path> for Path {
     #[inline]
     fn as_ref(&self) -> &Path {
         self
@@ -3515,7 +3519,8 @@ impl AsRef<Path> for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<Path> for OsStr {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<Path> for OsStr {
     #[inline]
     fn as_ref(&self) -> &Path {
         Path::new(self)
