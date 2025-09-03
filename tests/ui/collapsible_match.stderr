@@ -251,7 +251,7 @@ LL |         if let Some(u) = a {
    |                ^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:322:9
+  --> tests/ui/collapsible_match.rs:310:9
    |
 LL | /         match *last {
 LL | |
@@ -263,7 +263,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:321:17
+  --> tests/ui/collapsible_match.rs:309:17
    |
 LL |     if let Some(last) = arr.last() {
    |                 ^^^^    ---------- use: `arr.last().copied()`
@@ -274,7 +274,7 @@ LL |             "a" | "b" => {
    |             ^^^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:332:9
+  --> tests/ui/collapsible_match.rs:320:9
    |
 LL | /         match &last {
 LL | |
@@ -286,7 +286,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:331:17
+  --> tests/ui/collapsible_match.rs:319:17
    |
 LL |     if let Some(last) = arr.last() {
    |                 ^^^^    ---------- use: `arr.last().as_ref()`
@@ -297,7 +297,7 @@ LL |             &&"a" | &&"b" => {
    |             ^^^^^^^^^^^^^ with this pattern
 
 error: this `match` can be collapsed into the outer `if let`
-  --> tests/ui/collapsible_match.rs:342:9
+  --> tests/ui/collapsible_match.rs:330:9
    |
 LL | /         match &mut last {
 LL | |
@@ -309,7 +309,7 @@ LL | |         }
    | |_________^
    |
 help: the outer pattern can be modified to include the inner pattern
-  --> tests/ui/collapsible_match.rs:341:17
+  --> tests/ui/collapsible_match.rs:329:17
    |
 LL |     if let Some(mut last) = arr.last_mut() {
    |                 ^^^^^^^^    -------------- use: `arr.last_mut().as_mut()`
