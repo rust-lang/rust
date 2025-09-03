@@ -665,46 +665,42 @@ impl<'a> AstValidator<'a> {
     /// - Non-const
     /// - Either foreign, or free and `unsafe extern "C"` semantically
     fn check_c_variadic_type(&self, fk: FnKind<'a>) {
-        let variadic_spans: Vec<_> = fk
-            .decl()
-            .inputs
-            .iter()
-            .filter(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
-            .map(|arg| arg.span)
-            .collect();
+        // `...` is already rejected when it is not the final parameter.
+        let variadic_param = match fk.decl().inputs.last() {
+            Some(param) if matches!(param.ty.kind, TyKind::CVarArgs) => param,
+            _ => return,
+        };
 
-        if variadic_spans.is_empty() {
-            return;
-        }
+        let FnKind::Fn(fn_ctxt, _, Fn { sig, .. }) = fk else {
+            // Unreachable because the parser already rejects `...` in closures.
+            unreachable!("C variable argument list cannot be used in closures")
+        };
 
-        if let Some(header) = fk.header()
-            && let Const::Yes(const_span) = header.constness
-        {
-            let mut spans = variadic_spans.clone();
-            spans.push(const_span);
+        // C-variadics are not yet implemented in const evaluation.
+        if let Const::Yes(const_span) = sig.header.constness {
             self.dcx().emit_err(errors::ConstAndCVariadic {
-                spans,
+                spans: vec![const_span, variadic_param.span],
                 const_span,
-                variadic_spans: variadic_spans.clone(),
+                variadic_span: variadic_param.span,
             });
         }
 
-        match (fk.ctxt(), fk.header()) {
-            (Some(FnCtxt::Foreign), _) => return,
-            (Some(FnCtxt::Free), Some(header)) => match header.ext {
+        match fn_ctxt {
+            FnCtxt::Foreign => return,
+            FnCtxt::Free => match sig.header.ext {
                 Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
                 | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
                 | Extern::Implicit(_)
-                    if matches!(header.safety, Safety::Unsafe(_)) =>
+                    if matches!(sig.header.safety, Safety::Unsafe(_)) =>
                 {
                     return;
                 }
                 _ => {}
             },
-            _ => {}
+            FnCtxt::Assoc(_) => {}
         };
 
-        self.dcx().emit_err(errors::BadCVariadic { span: variadic_spans });
+        self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
