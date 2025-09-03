@@ -83,6 +83,7 @@
 #![feature(numfmt)]
 #![feature(option_reduce)]
 #![feature(pattern)]
+#![feature(peekable_next_if_map)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
