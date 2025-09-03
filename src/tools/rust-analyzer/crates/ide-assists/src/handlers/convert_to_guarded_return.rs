@@ -43,6 +43,21 @@ use crate::{
 //     bar();
 // }
 // ```
+// ---
+// ```
+// //- minicore: option
+// fn foo() -> Option<i32> { None }
+// fn main() {
+//     $0let x = foo();
+// }
+// ```
+// ->
+// ```
+// fn foo() -> Option<i32> { None }
+// fn main() {
+//     let Some(x) = foo() else { return };
+// }
+// ```
 pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     if let Some(let_stmt) = ctx.find_node_at_offset() {
         let_stmt_to_guarded_return(let_stmt, acc, ctx)

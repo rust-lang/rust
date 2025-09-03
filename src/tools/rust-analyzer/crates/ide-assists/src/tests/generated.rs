@@ -737,6 +737,26 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_to_guarded_return_1() {
+    check_doc_test(
+        "convert_to_guarded_return",
+        r#####"
+//- minicore: option
+fn foo() -> Option<i32> { None }
+fn main() {
+    $0let x = foo();
+}
+"#####,
+        r#####"
+fn foo() -> Option<i32> { None }
+fn main() {
+    let Some(x) = foo() else { return };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_tuple_return_type_to_struct() {
     check_doc_test(
         "convert_tuple_return_type_to_struct",
