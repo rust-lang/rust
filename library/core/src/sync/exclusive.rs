@@ -224,7 +224,10 @@ where
     }
 }
 
-// FIXME: implement `DerefMut` when this becomes possible
+// FIXME: implement `DerefMut` when this becomes possible.
+// Currently, this can't be done because `DerefMut` has `Deref`
+// as a supertrait. But RFC 3437 would allow changing that:
+// https://github.com/rust-lang/rust/issues/98407#issuecomment-3238181337
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
 impl<T> Receiver for Exclusive<T>
 where
