@@ -304,6 +304,27 @@ pub fn test_2(x: Issue9647) {
     }
 }
 
+mod issue_13287 {
+    enum Token {
+        Name,
+        Other,
+    }
+
+    struct Error {
+        location: u32,
+        token: Option<Token>,
+    }
+
+    fn struct_field_pat_with_binding_mode(err: Option<Error>) {
+        if let Some(Error { ref token, .. }) = err {
+            if let Some(Token::Name) = token {
+                //~^ collapsible_match
+                println!("token used as a ref");
+            }
+        }
+    }
+}
+
 pub fn issue_14155() {
     let mut arr = ["a", "b", "c"];
     if let Some(last) = arr.last() {
