@@ -113,6 +113,8 @@ pub struct MiriConfig {
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
+    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    pub short_fd_operations: bool,
 }
 
 impl Default for MiriConfig {
@@ -155,6 +157,7 @@ impl Default for MiriConfig {
             force_intrinsic_fallback: false,
             float_nondet: true,
             float_rounding_error: FloatRoundingErrorMode::Random,
+            short_fd_operations: true,
         }
     }
 }

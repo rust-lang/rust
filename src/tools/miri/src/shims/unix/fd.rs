@@ -274,12 +274,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         // Non-deterministically decide to further reduce the count, simulating a partial read (but
         // never to 0, that would indicate EOF).
-        let count =
-            if fd.nondet_short_accesses() && count >= 2 && this.machine.rng.get_mut().random() {
-                count / 2 // since `count` is at least 2, the result is still at least 1
-            } else {
-                count
-            };
+        let count = if this.machine.short_fd_operations
+            && fd.short_fd_operations()
+            && count >= 2
+            && this.machine.rng.get_mut().random()
+        {
+            count / 2 // since `count` is at least 2, the result is still at least 1
+        } else {
+            count
+        };
 
         trace!("read: FD mapped to {fd:?}");
         // We want to read at most `count` bytes. We are sure that `count` is not negative
@@ -360,12 +363,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Non-deterministically decide to further reduce the count, simulating a partial write.
         // We avoid reducing the write size to 0: the docs seem to be entirely fine with that,
         // but the standard library is not (https://github.com/rust-lang/rust/issues/145959).
-        let count =
-            if fd.nondet_short_accesses() && count >= 2 && this.machine.rng.get_mut().random() {
-                count / 2
-            } else {
-                count
-            };
+        let count = if this.machine.short_fd_operations
+            && fd.short_fd_operations()
+            && count >= 2
+            && this.machine.rng.get_mut().random()
+        {
+            count / 2
+        } else {
+            count
+        };
 
         let finish = {
             let dest = dest.clone();
