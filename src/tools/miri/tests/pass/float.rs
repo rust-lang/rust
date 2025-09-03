@@ -39,9 +39,8 @@ macro_rules! assert_approx_eq {
     }};
 
     ($a:expr, $b: expr) => {
-        // accept up to 12ULP (4ULP for host floats and 4ULP for miri artificial error and 4 for any additional effects
-        // due to having multiple error sources.
-        assert_approx_eq!($a, $b, 12);
+        // accept up to 8ULP (4ULP for host floats and 4ULP for miri artificial error).
+        assert_approx_eq!($a, $b, 8);
     };
 }
 
@@ -176,6 +175,7 @@ fn assert_eq_msg<T: PartialEq + Debug>(x: T, y: T, msg: impl Display) {
 }
 
 /// Check that floats have bitwise equality
+#[track_caller]
 fn assert_biteq<F: Float>(a: F, b: F, msg: impl Display) {
     let ab = a.to_bits();
     let bb = b.to_bits();
@@ -189,6 +189,7 @@ fn assert_biteq<F: Float>(a: F, b: F, msg: impl Display) {
 }
 
 /// Check that two floats have equality
+#[track_caller]
 fn assert_feq<F: Float>(a: F, b: F, msg: impl Display) {
     let ab = a.to_bits();
     let bb = b.to_bits();

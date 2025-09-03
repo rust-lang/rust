@@ -34,10 +34,7 @@ pub unsafe fn write_all(
         if res < 0 {
             return res;
         }
-        if res == 0 {
-            // EOF?
-            break;
-        }
+        // Apparently a return value of 0 is just a short write, nothing special (unlike reads).
         written_so_far += res as libc::size_t;
     }
     return written_so_far as libc::ssize_t;
