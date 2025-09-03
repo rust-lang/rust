@@ -281,6 +281,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         };
                         Ty::new_param(
                             self.ctx.interner,
+                            param_id,
                             idx as u32,
                             p.name
                                 .as_ref()
@@ -758,6 +759,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                     self.ctx.ctx.db.generic_defaults(def).get(preceding_args.len()).map(|default| {
                         convert_binder_to_early_binder(
                             self.ctx.ctx.interner,
+                            def,
                             default.to_nextsolver(self.ctx.ctx.interner),
                         )
                         .instantiate(self.ctx.ctx.interner, preceding_args)

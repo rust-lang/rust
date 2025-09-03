@@ -4239,8 +4239,8 @@ impl TypeParam {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type<'_> {
         let resolver = self.id.parent().resolver(db);
-        let ty =
-            TyKind::Placeholder(hir_ty::to_placeholder_idx(db, self.id.into())).intern(Interner);
+        let ty = TyKind::Placeholder(hir_ty::to_placeholder_idx_no_index(db, self.id.into()))
+            .intern(Interner);
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
@@ -5933,7 +5933,7 @@ impl<'db> Type<'db> {
     pub fn as_type_param(&self, db: &'db dyn HirDatabase) -> Option<TypeParam> {
         match self.ty.kind(Interner) {
             TyKind::Placeholder(p) => Some(TypeParam {
-                id: TypeParamId::from_unchecked(hir_ty::from_placeholder_idx(db, *p)),
+                id: TypeParamId::from_unchecked(hir_ty::from_placeholder_idx(db, *p).0),
             }),
             _ => None,
         }

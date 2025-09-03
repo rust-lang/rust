@@ -124,7 +124,7 @@ pub use lower_nextsolver::associated_type_shorthand_candidates;
 pub use mapping::{
     ToChalk, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, lt_to_placeholder_idx, to_assoc_type_id, to_chalk_trait_id,
-    to_foreign_def_id, to_placeholder_idx,
+    to_foreign_def_id, to_placeholder_idx, to_placeholder_idx_no_index,
 };
 pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
@@ -1007,7 +1007,7 @@ struct PlaceholderCollector<'db> {
 
 impl PlaceholderCollector<'_> {
     fn collect(&mut self, idx: PlaceholderIndex) {
-        let id = from_placeholder_idx(self.db, idx);
+        let id = from_placeholder_idx(self.db, idx).0;
         self.placeholders.insert(id);
     }
 }

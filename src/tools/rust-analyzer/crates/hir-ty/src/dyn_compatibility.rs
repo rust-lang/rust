@@ -2,10 +2,12 @@
 
 use std::ops::ControlFlow;
 
+use hir_def::hir::generics::LocalTypeOrConstParamId;
 use hir_def::{
     AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
     TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
 };
+use hir_def::{TypeOrConstParamId, TypeParamId};
 use intern::Symbol;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -384,7 +386,6 @@ where
         }
 
         // Allow `impl AutoTrait` predicates
-        let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
         if let ClauseKind::Trait(TraitPredicate {
             trait_ref: pred_trait_ref,
             polarity: PredicatePolarity::Positive,
@@ -392,11 +393,8 @@ where
             && let SolverDefId::TraitId(trait_id) = pred_trait_ref.def_id
             && let trait_data = db.trait_signature(trait_id)
             && trait_data.flags.contains(TraitFlags::AUTO)
-            && pred_trait_ref.self_ty()
-                == crate::next_solver::Ty::new(
-                    interner,
-                    rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0 }),
-                )
+            && let rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, .. }) =
+                pred_trait_ref.self_ty().kind()
         {
             continue;
         }
@@ -422,9 +420,13 @@ fn receiver_is_dispatchable<'db>(
     let sig = sig.instantiate_identity();
 
     let interner: DbInterner<'_> = DbInterner::new_with(db, Some(trait_.krate(db)), None);
+    let self_param_id = TypeParamId::from_unchecked(TypeOrConstParamId {
+        parent: trait_.into(),
+        local_id: LocalTypeOrConstParamId::from_raw(la_arena::RawIdx::from_u32(0)),
+    });
     let self_param_ty = crate::next_solver::Ty::new(
         interner,
-        rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0 }),
+        rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, id: self_param_id }),
     );
 
     // `self: Self` can't be dispatched on, but this is already considered dyn-compatible
@@ -452,7 +454,9 @@ fn receiver_is_dispatchable<'db>(
     };
 
     // Type `U`
-    let unsized_self_ty = crate::next_solver::Ty::new_param(interner, u32::MAX, Symbol::empty());
+    // FIXME: That seems problematic to fake a generic param like that?
+    let unsized_self_ty =
+        crate::next_solver::Ty::new_param(interner, self_param_id, u32::MAX, Symbol::empty());
     // `Receiver[Self => U]`
     let unsized_receiver_ty = receiver_for_self_ty(interner, func, receiver_ty, unsized_self_ty);
 

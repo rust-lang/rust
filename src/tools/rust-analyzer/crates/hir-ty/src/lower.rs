@@ -340,7 +340,13 @@ impl<'a> TyLoweringContext<'a> {
                 res = Some(TypeNs::GenericParam(type_param_id));
                 match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
-                        TyKind::Placeholder(to_placeholder_idx(self.db, type_param_id.into()))
+                        let generics = self.generics();
+                        let idx = generics.type_or_const_param_idx(type_param_id.into()).unwrap();
+                        TyKind::Placeholder(to_placeholder_idx(
+                            self.db,
+                            type_param_id.into(),
+                            idx as u32,
+                        ))
                     }
                     ParamLoweringMode::Variable => {
                         let idx =
@@ -777,7 +783,9 @@ impl<'a> TyLoweringContext<'a> {
                 LifetimeNs::Static => static_lifetime(),
                 LifetimeNs::LifetimeParam(id) => match self.type_param_mode {
                     ParamLoweringMode::Placeholder => {
-                        LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id))
+                        let generics = self.generics();
+                        let idx = generics.lifetime_idx(id).unwrap();
+                        LifetimeData::Placeholder(lt_to_placeholder_idx(self.db, id, idx as u32))
                     }
                     ParamLoweringMode::Variable => {
                         let idx = match self.generics().lifetime_idx(id) {

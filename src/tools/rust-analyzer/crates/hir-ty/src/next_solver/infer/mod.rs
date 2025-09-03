@@ -8,6 +8,7 @@ pub use BoundRegionConversionTime::*;
 pub use at::DefineOpaqueTypes;
 use ena::undo_log::UndoLogs;
 use ena::unify as ut;
+use hir_def::GenericParamId;
 use intern::Symbol;
 use opaque_types::{OpaqueHiddenType, OpaqueTypeStorage};
 use region_constraints::{
@@ -38,7 +39,7 @@ use crate::next_solver::fold::BoundVarReplacerDelegate;
 use crate::next_solver::infer::opaque_types::table::OpaqueTypeStorageEntries;
 use crate::next_solver::{BoundRegion, BoundTy, BoundVarKind};
 
-use super::generics::{GenericParamDef, GenericParamDefKind};
+use super::generics::GenericParamDef;
 use super::{
     AliasTerm, Binder, BoundRegionKind, CanonicalQueryInput, CanonicalVarValues, Const, ConstKind,
     DbInterner, ErrorGuaranteed, FxIndexMap, GenericArg, GenericArgs, OpaqueTypeKey, ParamEnv,
@@ -600,14 +601,14 @@ impl<'db> InferCtxt<'db> {
         self.next_region_var_in_universe(universe)
     }
 
-    fn var_for_def(&self, kind: GenericParamDefKind, name: &Symbol) -> GenericArg<'db> {
-        match kind {
-            GenericParamDefKind::Lifetime => {
+    fn var_for_def(&self, id: GenericParamId, name: &Symbol) -> GenericArg<'db> {
+        match id {
+            GenericParamId::LifetimeParamId(_) => {
                 // Create a region inference variable for the given
                 // region parameter definition.
                 self.next_region_var().into()
             }
-            GenericParamDefKind::Type => {
+            GenericParamId::TypeParamId(_) => {
                 // Create a type inference variable for the given
                 // type parameter definition. The generic parameters are
                 // for actual parameters that may be referred to by
@@ -624,7 +625,7 @@ impl<'db> InferCtxt<'db> {
 
                 Ty::new_var(self.interner, ty_var_id).into()
             }
-            GenericParamDefKind::Const => {
+            GenericParamId::ConstParamId(_) => {
                 let origin = ConstVariableOrigin { param_def_id: None };
                 let const_var_id = self
                     .inner

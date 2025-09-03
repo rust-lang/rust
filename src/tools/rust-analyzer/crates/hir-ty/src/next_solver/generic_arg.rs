@@ -1,5 +1,6 @@
 //! Things related to generic args in the next-trait-solver.
 
+use hir_def::GenericParamId;
 use intern::{Interned, Symbol};
 use rustc_type_ir::{
     ClosureArgs, CollectAndApply, ConstVid, CoroutineArgs, CoroutineClosureArgs, FnSig, FnSigTys,
@@ -14,7 +15,7 @@ use crate::db::HirDatabase;
 
 use super::{
     Const, DbInterner, EarlyParamRegion, ErrorGuaranteed, ParamConst, Region, SolverDefId, Ty, Tys,
-    generics::{GenericParamDef, GenericParamDefKind, Generics},
+    generics::{GenericParamDef, Generics},
     interned_vec_db,
 };
 
@@ -203,7 +204,7 @@ impl<'db> GenericArgs<'db> {
         mut mk_kind: F,
     ) -> GenericArgs<'db>
     where
-        F: FnMut(&Symbol, u32, GenericParamDefKind, &[GenericArg<'db>]) -> GenericArg<'db>,
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
         let defs = interner.generics_of(def_id);
         let count = defs.count();
@@ -218,7 +219,7 @@ impl<'db> GenericArgs<'db> {
         defs: Generics,
         mk_kind: &mut F,
     ) where
-        F: FnMut(&Symbol, u32, GenericParamDefKind, &[GenericArg<'db>]) -> GenericArg<'db>,
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
         let self_len = defs.own_params.len() as u32;
         if let Some(def_id) = defs.parent {
@@ -230,12 +231,12 @@ impl<'db> GenericArgs<'db> {
 
     fn fill_single<F>(args: &mut SmallVec<[GenericArg<'db>; 8]>, defs: &Generics, mk_kind: &mut F)
     where
-        F: FnMut(&Symbol, u32, GenericParamDefKind, &[GenericArg<'db>]) -> GenericArg<'db>,
+        F: FnMut(&Symbol, u32, GenericParamId, &[GenericArg<'db>]) -> GenericArg<'db>,
     {
         let start_len = args.len();
         args.reserve(defs.own_params.len());
         for param in &defs.own_params {
-            let kind = mk_kind(&param.name, args.len() as u32, param.kind, args);
+            let kind = mk_kind(&param.name, args.len() as u32, param.id, args);
             args.push(kind);
         }
     }
@@ -412,26 +413,25 @@ pub fn mk_param<'db>(
     interner: DbInterner<'db>,
     index: u32,
     name: &Symbol,
-    kind: GenericParamDefKind,
+    id: GenericParamId,
 ) -> GenericArg<'db> {
     let name = name.clone();
-    match kind {
-        GenericParamDefKind::Lifetime => {
-            Region::new_early_param(interner, EarlyParamRegion { index }).into()
+    match id {
+        GenericParamId::LifetimeParamId(id) => {
+            Region::new_early_param(interner, EarlyParamRegion { index, id }).into()
         }
-        GenericParamDefKind::Type => Ty::new_param(interner, index, name).into(),
-        GenericParamDefKind::Const => Const::new_param(interner, ParamConst { index }).into(),
+        GenericParamId::TypeParamId(id) => Ty::new_param(interner, id, index, name).into(),
+        GenericParamId::ConstParamId(id) => {
+            Const::new_param(interner, ParamConst { index, id }).into()
+        }
     }
 }
 
-pub fn error_for_param_kind<'db>(
-    kind: GenericParamDefKind,
-    interner: DbInterner<'db>,
-) -> GenericArg<'db> {
-    match kind {
-        GenericParamDefKind::Lifetime => Region::error(interner).into(),
-        GenericParamDefKind::Type => Ty::new_error(interner, ErrorGuaranteed).into(),
-        GenericParamDefKind::Const => Const::error(interner).into(),
+pub fn error_for_param_kind<'db>(id: GenericParamId, interner: DbInterner<'db>) -> GenericArg<'db> {
+    match id {
+        GenericParamId::LifetimeParamId(_) => Region::error(interner).into(),
+        GenericParamId::TypeParamId(_) => Ty::new_error(interner, ErrorGuaranteed).into(),
+        GenericParamId::ConstParamId(_) => Const::error(interner).into(),
     }
 }
 
