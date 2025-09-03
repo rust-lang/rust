@@ -45,7 +45,7 @@ impl Utf8PathBufExt for Utf8PathBuf {
 
 /// The name of the environment variable that holds dynamic library locations.
 pub fn dylib_env_var() -> &'static str {
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
