@@ -6,15 +6,15 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-bitflags.workspace = true
-either.workspace = true
+bitflags = "2.4.1"
+either = "1.0"
 elsa = "1.11.0"
 ena = "0.14.3"
-indexmap.workspace = true
+indexmap = "2.4.0"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
-measureme.workspace = true
+measureme = "12.0.1"
 parking_lot = "0.12"
-rustc-hash.workspace = true
+rustc-hash = "2.0.0"
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
@@ -25,9 +25,9 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stacker = "0.1.17"
-tempfile.workspace = true
-thin-vec.workspace = true
-tracing.workspace = true
+tempfile = "3.2"
+thin-vec = "0.2.12"
+tracing = "0.1"
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]
@@ -47,7 +47,7 @@ features = [
 
 [target.'cfg(unix)'.dependencies]
 # tidy-alphabetical-start
-libc.workspace = true
+libc = "0.2"
 # tidy-alphabetical-end
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

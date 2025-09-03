@@ -72,9 +72,9 @@ use crate::query::plumbing::QuerySystem;
 use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
-use crate::traits::solve;
 use crate::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
+    self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, PredefinedOpaques,
+    PredefinedOpaquesData, QueryResult, inspect,
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
@@ -736,6 +736,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_local_def_ids_from_iter(
             self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
         )
+    }
+
+    type ProbeRef = &'tcx inspect::Probe<TyCtxt<'tcx>>;
+    fn mk_probe_ref(self, probe: inspect::Probe<Self>) -> &'tcx inspect::Probe<TyCtxt<'tcx>> {
+        self.arena.alloc(probe)
+    }
+    fn evaluate_root_goal_for_proof_tree_raw(
+        self,
+        canonical_goal: CanonicalInput<'tcx>,
+    ) -> (QueryResult<'tcx>, &'tcx inspect::Probe<TyCtxt<'tcx>>) {
+        self.evaluate_root_goal_for_proof_tree_raw(canonical_goal)
     }
 }
 

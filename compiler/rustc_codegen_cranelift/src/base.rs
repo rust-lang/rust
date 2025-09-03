@@ -44,9 +44,8 @@ pub(crate) fn codegen_fn<'tcx>(
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({
-            use rustc_middle::mir::pretty;
-            let options = pretty::PrettyPrintMirOptions::from_cli(tcx);
-            pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf, options).unwrap();
+            let writer = pretty::MirWriter::new(tcx);
+            writer.write_mir_fn(mir, &mut buf).unwrap();
         });
         String::from_utf8_lossy(&buf).into_owned()
     });

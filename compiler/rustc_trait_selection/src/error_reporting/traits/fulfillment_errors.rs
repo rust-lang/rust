@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::TraitObjectSyntax;
+use rustc_ast::ast::LitKind;
+use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
@@ -279,6 +280,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if is_try_conversion || is_question_mark {
                             (suggested, noted_missing_impl) = self.try_conversion_context(&obligation, main_trait_predicate, &mut err);
                         }
+
+                        suggested |= self.detect_negative_literal(
+                            &obligation,
+                            main_trait_predicate,
+                            &mut err,
+                        );
 
                         if let Some(ret_span) = self.return_type_span(&obligation) {
                             if is_try_conversion {
@@ -948,6 +955,38 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return Err(*guar);
         }
         Ok(())
+    }
+
+    fn detect_negative_literal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        err: &mut Diag<'_>,
+    ) -> bool {
+        if let ObligationCauseCode::UnOp { hir_id, .. } = obligation.cause.code()
+            && let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
+            && let hir::ExprKind::Unary(hir::UnOp::Neg, inner) = expr.kind
+            && let hir::ExprKind::Lit(lit) = inner.kind
+            && let LitKind::Int(_, LitIntType::Unsuffixed) = lit.node
+        {
+            err.span_suggestion_verbose(
+                lit.span.shrink_to_hi(),
+                "consider specifying an integer type that can be negative",
+                match trait_pred.skip_binder().self_ty().kind() {
+                    ty::Uint(ty::UintTy::Usize) => "isize",
+                    ty::Uint(ty::UintTy::U8) => "i8",
+                    ty::Uint(ty::UintTy::U16) => "i16",
+                    ty::Uint(ty::UintTy::U32) => "i32",
+                    ty::Uint(ty::UintTy::U64) => "i64",
+                    ty::Uint(ty::UintTy::U128) => "i128",
+                    _ => "i64",
+                }
+                .to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     /// When the `E` of the resulting `Result<T, E>` in an expression `foo().bar().baz()?`,
@@ -2730,9 +2769,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         suggested: bool,
     ) {
         let body_def_id = obligation.cause.body_id;
-        let span = if let ObligationCauseCode::BinOp { rhs_span: Some(rhs_span), .. } =
-            obligation.cause.code()
-        {
+        let span = if let ObligationCauseCode::BinOp { rhs_span, .. } = obligation.cause.code() {
             *rhs_span
         } else {
             span

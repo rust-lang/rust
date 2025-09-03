@@ -4,14 +4,12 @@ thread 'main' ($TID) panicked at tests/fail/panic/panic_abort2.rs:LL:CC:
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 error: abnormal termination: the program aborted execution
-  --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+  --> RUSTLIB/std/src/rt.rs:LL:CC
    |
-LL | ABORT()
-   | ^ abnormal termination occurred here
+LL |     crate::process::abort();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
-   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
-   = note: inside `std::process::abort` at RUSTLIB/std/src/process.rs:LL:CC
    = note: inside `std::rt::__rust_abort` at RUSTLIB/std/src/rt.rs:LL:CC
    = note: inside `panic_abort::__rust_start_panic` at RUSTLIB/panic_abort/src/lib.rs:LL:CC
    = note: inside `std::panicking::rust_panic` at RUSTLIB/std/src/panicking.rs:LL:CC
@@ -23,7 +21,7 @@ note: inside `main`
   --> tests/fail/panic/panic_abort2.rs:LL:CC
    |
 LL |     std::panic!("{}-panicking from libstd", 42);
-   | ^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

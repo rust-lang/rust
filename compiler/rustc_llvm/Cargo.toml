@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-libc.workspace = true
+libc = "0.2.73"
 # tidy-alphabetical-end
 
 [build-dependencies]

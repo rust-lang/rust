@@ -466,7 +466,7 @@ impl FromClean<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.into_json(renderer),
                 is_synthetic: *synthetic,
             },
-            Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
+            Const { ty, default } => GenericParamDefKind::Const {
                 type_: ty.into_json(renderer),
                 default: default.as_ref().map(|x| x.as_ref().clone()),
             },

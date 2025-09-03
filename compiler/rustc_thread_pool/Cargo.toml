@@ -20,10 +20,10 @@ smallvec = "1.8.1"
 [dev-dependencies]
 rand = "0.9"
 rand_xorshift = "0.4"
-scoped-tls.workspace = true
+scoped-tls = "1.0"
 
 [target.'cfg(unix)'.dev-dependencies]
-libc.workspace = true
+libc = "0.2"
 
 [[test]]
 name = "stack_overflow_crash"
