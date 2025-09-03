@@ -720,21 +720,21 @@ impl ExtraCheckArg {
         if !self.auto {
             return true;
         }
-        let ext = match self.lang {
-            ExtraCheckLang::Py => ".py",
-            ExtraCheckLang::Cpp => ".cpp",
-            ExtraCheckLang::Shell => ".sh",
-            ExtraCheckLang::Js => ".js",
+        match self.lang {
             ExtraCheckLang::Spellcheck => {
-                for dir in SPELLCHECK_DIRS {
-                    if Path::new(filepath).starts_with(dir) {
-                        return true;
-                    }
-                }
-                return false;
+                SPELLCHECK_DIRS.iter().any(|dir| Path::new(filepath).starts_with(dir))
             }
-        };
-        filepath.ends_with(ext)
+            lang => {
+                let exts: &[&str] = match lang {
+                    ExtraCheckLang::Py => &[".py"],
+                    ExtraCheckLang::Cpp => &[".cpp"],
+                    ExtraCheckLang::Shell => &[".sh"],
+                    ExtraCheckLang::Js => &[".js", ".ts"],
+                    ExtraCheckLang::Spellcheck => unreachable!(),
+                };
+                exts.iter().any(|ext| filepath.ends_with(ext))
+            }
+        }
     }
 
     fn has_supported_kind(&self) -> bool {
