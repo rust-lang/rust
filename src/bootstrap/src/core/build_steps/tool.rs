@@ -82,7 +82,7 @@ impl Step for ToolBuild {
         let path = self.path;
 
         match self.mode {
-            Mode::ToolRustc => {
+            Mode::ToolRustcPrivate => {
                 // FIXME: remove this, it's only needed for download-rustc...
                 if !self.build_compiler.is_forced_compiler() && builder.download_rustc() {
                     builder.std(self.build_compiler, self.build_compiler.host);
@@ -123,7 +123,7 @@ impl Step for ToolBuild {
 
         // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
         // could use the additional optimizations.
-        if self.mode == Mode::ToolRustc && is_lto_stage(&self.build_compiler) {
+        if self.mode == Mode::ToolRustcPrivate && is_lto_stage(&self.build_compiler) {
             let lto = match builder.config.rust_lto {
                 RustcLto::Off => Some("off"),
                 RustcLto::Thin => Some("thin"),
@@ -607,7 +607,7 @@ impl Step for ErrorIndex {
             build_compiler: self.compilers.build_compiler,
             target: self.compilers.target(),
             tool: "error_index_generator",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolRustcPrivate,
             path: "src/tools/error_index_generator",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
@@ -671,7 +671,7 @@ impl Step for RemoteTestServer {
 /// Represents `Rustdoc` that either comes from the external stage0 sysroot or that is built
 /// locally.
 /// Rustdoc is special, because it both essentially corresponds to a `Compiler` (that can be
-/// externally provided), but also to a `ToolRustc` tool.
+/// externally provided), but also to a `ToolRustcPrivate` tool.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
     /// If the stage of `target_compiler` is `0`, then rustdoc is externally provided.
@@ -759,7 +759,7 @@ impl Step for Rustdoc {
                 // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
                 // rustdoc a different name.
                 tool: "rustdoc_tool_binary",
-                mode: Mode::ToolRustc,
+                mode: Mode::ToolRustcPrivate,
                 path: "src/tools/rustdoc",
                 source_type: SourceType::InTree,
                 extra_features,
@@ -1048,7 +1048,7 @@ impl Step for RustAnalyzer {
             build_compiler,
             target,
             tool: "rust-analyzer",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolRustcPrivate,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
@@ -1105,7 +1105,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             build_compiler: self.compilers.build_compiler,
             target: self.compilers.target(),
             tool: "rust-analyzer-proc-macro-srv",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolRustcPrivate,
             path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
             extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
@@ -1352,7 +1352,7 @@ impl RustcPrivateCompilers {
     }
 }
 
-/// Creates a step that builds an extended `Mode::ToolRustc` tool
+/// Creates a step that builds an extended `Mode::ToolRustcPrivate` tool
 /// and installs it into the sysroot of a corresponding compiler.
 macro_rules! tool_rustc_extended {
     (
@@ -1466,7 +1466,7 @@ fn build_extended_rustc_tool(
         build_compiler,
         target,
         tool: tool_name,
-        mode: Mode::ToolRustc,
+        mode: Mode::ToolRustcPrivate,
         path,
         extra_features,
         source_type: SourceType::InTree,
