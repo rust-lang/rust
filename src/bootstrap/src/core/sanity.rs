@@ -397,6 +397,16 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
                 );
             }
         }
+
+        // For testing `wasm32-wasip2`-and-beyond it's required to have
+        // `wasm-component-ld`. This is enabled by default via `tool_enabled`
+        // but if it's disabled then double-check it's present on the system.
+        if target.contains("wasip")
+            && !target.contains("wasip1")
+            && !build.tool_enabled("wasm-component-ld")
+        {
+            cmd_finder.must_have("wasm-component-ld");
+        }
     }
 
     if let Some(ref s) = build.config.ccache {
