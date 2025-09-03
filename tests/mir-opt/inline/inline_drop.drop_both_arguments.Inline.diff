@@ -1,0 +1,30 @@
+- // MIR for `drop_both_arguments` before Inline
++ // MIR for `drop_both_arguments` after Inline
+  
+  fn drop_both_arguments(_1: CallThingOnDrop, _2: CallThingOnDrop) -> () {
+      debug _a => _1;
+      debug _b => _2;
+      let mut _0: ();
+  
+      bb0: {
+          _0 = const ();
+          drop(_2) -> [return: bb1, unwind: bb3];
+      }
+  
+      bb1: {
+          drop(_1) -> [return: bb2, unwind: bb4];
+      }
+  
+      bb2: {
+          return;
+      }
+  
+      bb3 (cleanup): {
+          drop(_1) -> [return: bb4, unwind terminate(cleanup)];
+      }
+  
+      bb4 (cleanup): {
+          resume;
+      }
+  }
+  
