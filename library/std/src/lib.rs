@@ -332,6 +332,7 @@
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_cmp)]
+#![feature(const_convert)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_try)]

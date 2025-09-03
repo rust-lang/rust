@@ -1359,7 +1359,11 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// ruled out by the contract of `Pin::new_unchecked`.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_ref(&self) -> Pin<&Ptr::Target> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_ref(&self) -> Pin<&Ptr::Target>
+    where
+        Ptr: [const] Deref,
+    {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&*self.pointer) }
     }
@@ -1403,7 +1407,11 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     /// ```
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
-    pub fn as_mut(&mut self) -> Pin<&mut Ptr::Target> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_mut(&mut self) -> Pin<&mut Ptr::Target>
+    where
+        Ptr: [const] DerefMut,
+    {
         // SAFETY: see documentation on this function
         unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
@@ -1418,7 +1426,11 @@ impl<Ptr: DerefMut> Pin<Ptr> {
     #[stable(feature = "pin_deref_mut", since = "1.84.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline(always)]
-    pub fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target> {
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_deref_mut(self: Pin<&mut Self>) -> Pin<&mut Ptr::Target>
+    where
+        Ptr: [const] DerefMut,
+    {
         // SAFETY: What we're asserting here is that going from
         //
         //     Pin<&mut Pin<Ptr>>
@@ -1669,7 +1681,8 @@ impl<T: ?Sized> Pin<&'static mut T> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr: Deref> Deref for Pin<Ptr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<Ptr: [const] Deref> const Deref for Pin<Ptr> {
     type Target = Ptr::Target;
     fn deref(&self) -> &Ptr::Target {
         Pin::get_ref(Pin::as_ref(self))
@@ -1677,7 +1690,8 @@ impl<Ptr: Deref> Deref for Pin<Ptr> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<Ptr: DerefMut<Target: Unpin>> DerefMut for Pin<Ptr> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<Ptr: [const] DerefMut<Target: Unpin>> const DerefMut for Pin<Ptr> {
     fn deref_mut(&mut self) -> &mut Ptr::Target {
         Pin::get_mut(Pin::as_mut(self))
     }
