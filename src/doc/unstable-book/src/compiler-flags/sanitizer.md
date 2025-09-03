@@ -244,7 +244,7 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example 1: Redirecting control flow using an indirect branch/call to an invalid destination
 
-```rust,ignore (making doc tests pass cross-platform is hard)
+```rust
 use std::arch::naked_asm;
 use std::mem;
 
@@ -253,6 +253,7 @@ fn add_one(x: i32) -> i32 {
 }
 
 #[unsafe(naked)]
+# #[cfg(target_arch = "x86_64")]
 pub extern "C" fn add_two(x: i32) {
     // x + 2 preceded by a landing pad/nop block
     naked_asm!(
@@ -276,6 +277,7 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
     f(arg) + f(arg)
 }
 
+# #[cfg(target_arch = "x86_64")]
 fn main() {
     let answer = do_twice(add_one, 5);
 
@@ -292,6 +294,7 @@ fn main() {
 
     println!("The next answer is: {}", next_answer);
 }
+# #[cfg(not(target_arch = "x86_64"))] fn main() {}
 ```
 Fig. 1. Redirecting control flow using an indirect branch/call to an invalid
 destination (i.e., within the body of the function).
