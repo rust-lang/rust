@@ -31,7 +31,7 @@ codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_dlltool_fail_import_library =
-    Dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
+    dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
     {$stdout}
     {$stderr}
 
