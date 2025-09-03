@@ -1,0 +1,51 @@
+// MIR for `infinite_a` after built
+
+fn infinite_a(_1: u8) -> () {
+    debug state => _1;
+    let mut _0: ();
+    let mut _2: !;
+    let _3: u8;
+    scope 1 {
+        debug a => _3;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        goto -> bb1;
+    }
+
+    bb1: {
+        falseUnwind -> [real: bb2, unwind: bb7];
+    }
+
+    bb2: {
+        PlaceMention(_1);
+        StorageLive(_3);
+        _3 = copy _1;
+        _1 = copy _3;
+        StorageDead(_3);
+        goto -> bb4;
+    }
+
+    bb3: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb4: {
+        goto -> bb1;
+    }
+
+    bb5: {
+        unreachable;
+    }
+
+    bb6: {
+        StorageDead(_2);
+        return;
+    }
+
+    bb7 (cleanup): {
+        resume;
+    }
+}

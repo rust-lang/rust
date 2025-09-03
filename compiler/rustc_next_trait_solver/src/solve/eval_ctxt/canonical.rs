@@ -56,22 +56,23 @@ where
     ///
     /// This expects `goal` and `opaque_types` to be eager resolved.
     pub(super) fn canonicalize_goal(
-        &self,
+        delegate: &D,
         goal: Goal<I, I::Predicate>,
         opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, I::Predicate>) {
         let mut orig_values = Default::default();
         let canonical = Canonicalizer::canonicalize_input(
-            self.delegate,
+            delegate,
             &mut orig_values,
             QueryInput {
                 goal,
-                predefined_opaques_in_body: self
+                predefined_opaques_in_body: delegate
                     .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
+        let query_input =
+            ty::CanonicalQueryInput { canonical, typing_mode: delegate.typing_mode() };
         (orig_values, query_input)
     }
 
@@ -271,28 +272,23 @@ where
     /// - we apply the `external_constraints` returned by the query, returning
     ///   the `normalization_nested_goals`
     pub(super) fn instantiate_and_apply_query_response(
-        &mut self,
+        delegate: &D,
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         response: CanonicalResponse<I>,
+        span: I::Span,
     ) -> (NestedNormalizationGoals<I>, Certainty) {
         let instantiation = Self::compute_query_response_instantiation_values(
-            self.delegate,
+            delegate,
             &original_values,
             &response,
-            self.origin_span,
+            span,
         );
 
         let Response { var_values, external_constraints, certainty } =
-            self.delegate.instantiate_canonical(response, instantiation);
+            delegate.instantiate_canonical(response, instantiation);
 
-        Self::unify_query_var_values(
-            self.delegate,
-            param_env,
-            &original_values,
-            var_values,
-            self.origin_span,
-        );
+        Self::unify_query_var_values(delegate, param_env, &original_values, var_values, span);
 
         let ExternalConstraintsData {
             region_constraints,
@@ -300,8 +296,8 @@ where
             normalization_nested_goals,
         } = &*external_constraints;
 
-        self.register_region_constraints(region_constraints);
-        self.register_new_opaque_types(opaque_types);
+        Self::register_region_constraints(delegate, region_constraints, span);
+        Self::register_new_opaque_types(delegate, opaque_types, span);
 
         (normalization_nested_goals.clone(), certainty)
     }
@@ -424,21 +420,26 @@ where
     }
 
     fn register_region_constraints(
-        &mut self,
+        delegate: &D,
         outlives: &[ty::OutlivesPredicate<I, I::GenericArg>],
+        span: I::Span,
     ) {
         for &ty::OutlivesPredicate(lhs, rhs) in outlives {
             match lhs.kind() {
-                ty::GenericArgKind::Lifetime(lhs) => self.register_region_outlives(lhs, rhs),
-                ty::GenericArgKind::Type(lhs) => self.register_ty_outlives(lhs, rhs),
+                ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
+                ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
                 ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
             }
         }
     }
 
-    fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
+    fn register_new_opaque_types(
+        delegate: &D,
+        opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
+        span: I::Span,
+    ) {
         for &(key, ty) in opaque_types {
-            let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
+            let prev = delegate.register_hidden_type_in_storage(key, ty, span);
             // We eagerly resolve inference variables when computing the query response.
             // This can cause previously distinct opaque type keys to now be structurally equal.
             //
@@ -447,7 +448,7 @@ where
             // types here. However, doing so is difficult as it may result in nested goals and
             // any errors may make it harder to track the control flow for diagnostics.
             if let Some(prev) = prev {
-                self.delegate.add_duplicate_opaque_type(key, prev, self.origin_span);
+                delegate.add_duplicate_opaque_type(key, prev, span);
             }
         }
     }

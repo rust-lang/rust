@@ -79,8 +79,8 @@ fn test_log() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_approx_eq!(10.0f32.log(10.0), 1.0);
-    assert_approx_eq!(2.3f32.log(3.5), 0.664858);
+    assert_approx_eq!(10.0f32.log(10.0), 1.0, APPROX_DELTA);
+    assert_approx_eq!(2.3f32.log(3.5), 0.664858, APPROX_DELTA);
     assert_approx_eq!(1.0f32.exp().log(1.0f32.exp()), 1.0, APPROX_DELTA);
     assert!(1.0f32.log(1.0).is_nan());
     assert!(1.0f32.log(-13.9).is_nan());

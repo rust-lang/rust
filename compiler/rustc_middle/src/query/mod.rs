@@ -131,7 +131,7 @@ use crate::traits::query::{
 };
 use crate::traits::{
     CodegenObligationError, DynCompatibilityViolation, EvaluationResult, ImplSource,
-    ObligationCause, OverflowError, WellFormedLoc, specialization_graph,
+    ObligationCause, OverflowError, WellFormedLoc, solve, specialization_graph,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
@@ -2561,6 +2561,14 @@ rustc_queries! {
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
         desc { "computing autoderef types for `{}`", goal.canonical.value.value }
+    }
+
+    /// Used by `-Znext-solver` to compute proof trees.
+    query evaluate_root_goal_for_proof_tree_raw(
+        goal: solve::CanonicalInput<'tcx>,
+    ) -> (solve::QueryResult<'tcx>, &'tcx solve::inspect::Probe<TyCtxt<'tcx>>) {
+        no_hash
+        desc { "computing proof tree for `{}`", goal.canonical.value.goal.predicate }
     }
 
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!

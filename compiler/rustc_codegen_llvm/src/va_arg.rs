@@ -28,9 +28,12 @@ fn round_pointer_up_to_alignment<'ll>(
     align: Align,
     ptr_ty: &'ll Type,
 ) -> &'ll Value {
-    let mut ptr_as_int = bx.ptrtoint(addr, bx.cx().type_isize());
-    ptr_as_int = round_up_to_alignment(bx, ptr_as_int, align);
-    bx.inttoptr(ptr_as_int, ptr_ty)
+    let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
+    bx.call_intrinsic(
+        "llvm.ptrmask",
+        &[ptr_ty, bx.type_i32()],
+        &[ptr, bx.const_int(bx.isize_ty, -(align.bytes() as isize) as i64)],
+    )
 }
 
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(

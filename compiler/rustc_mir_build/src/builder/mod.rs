@@ -806,10 +806,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         body.coverage_info_hi = self.coverage_info.as_ref().map(|b| b.as_done());
 
-        use rustc_middle::mir::pretty;
-        let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
-        pretty::write_mir_fn(self.tcx, &body, &mut |_, _| Ok(()), &mut std::io::stdout(), options)
-            .unwrap();
+        let writer = pretty::MirWriter::new(self.tcx);
+        writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
     }
 
     fn finish(self) -> Body<'tcx> {
@@ -827,18 +825,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
 
+        let writer = pretty::MirWriter::new(self.tcx);
         for (index, block) in body.basic_blocks.iter().enumerate() {
             if block.terminator.is_none() {
-                use rustc_middle::mir::pretty;
-                let options = pretty::PrettyPrintMirOptions::from_cli(self.tcx);
-                pretty::write_mir_fn(
-                    self.tcx,
-                    &body,
-                    &mut |_, _| Ok(()),
-                    &mut std::io::stdout(),
-                    options,
-                )
-                .unwrap();
+                writer.write_mir_fn(&body, &mut std::io::stdout()).unwrap();
                 span_bug!(self.fn_span, "no terminator on block {:?}", index);
             }
         }

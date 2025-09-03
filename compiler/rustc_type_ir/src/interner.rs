@@ -10,7 +10,9 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
+use crate::solve::{
+    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, inspect,
+};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -380,6 +382,13 @@ pub trait Interner:
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds;
+
+    type ProbeRef: Copy + Debug + Hash + Eq + Deref<Target = inspect::Probe<Self>>;
+    fn mk_probe_ref(self, probe: inspect::Probe<Self>) -> Self::ProbeRef;
+    fn evaluate_root_goal_for_proof_tree_raw(
+        self,
+        canonical_goal: CanonicalInput<Self>,
+    ) -> (QueryResult<Self>, Self::ProbeRef);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

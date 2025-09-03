@@ -139,9 +139,9 @@
    LL|       |
    LL|      1|    let short_used_covered_closure_macro = | used_arg: u8 | println!("called");
    LL|      1|    let short_used_not_covered_closure_macro = | used_arg: u8 | println!("not called");
-                                                                                       ^0
+                                                                              ^0       ^0
    LL|      1|    let _short_unused_closure_macro = | _unused_arg: u8 | println!("not called");
-                                                                                 ^0
+                                                                        ^0       ^0
    LL|       |
    LL|       |
    LL|       |
@@ -173,7 +173,7 @@
    LL|       |
    LL|      1|    let _short_unused_closure_line_break_no_block2 =
    LL|       |        | _unused_arg: u8 |
-   LL|       |            println!(
+   LL|      0|            println!(
    LL|      0|                "not called"
    LL|       |            )
    LL|       |    ;

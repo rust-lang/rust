@@ -492,9 +492,6 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
-    /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
-    /// for functions with varargs.
-    (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows using `system` as a calling convention with varargs.
     (unstable, extern_system_varargs, "1.86.0", Some(136946)),
     /// Allows defining `extern type`s.

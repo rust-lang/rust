@@ -557,7 +557,7 @@ fn clean_generic_param_def(
                 },
             )
         }
-        ty::GenericParamDefKind::Const { has_default, synthetic } => (
+        ty::GenericParamDefKind::Const { has_default } => (
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
@@ -580,7 +580,6 @@ fn clean_generic_param_def(
                 } else {
                     None
                 },
-                synthetic,
             },
         ),
     };
@@ -636,14 +635,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default, synthetic } => (
+        hir::GenericParamKind::Const { ty, default } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default.map(|ct| {
                     Box::new(lower_const_arg_for_rustdoc(cx.tcx, ct, FeedConstTy::No).to_string())
                 }),
-                synthetic,
             },
         ),
     };

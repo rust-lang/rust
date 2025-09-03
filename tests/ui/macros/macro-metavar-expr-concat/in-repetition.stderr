@@ -1,0 +1,8 @@
+error: nested repetitions with `${concat(...)}` metavariable expressions are not yet supported
+  --> $DIR/in-repetition.rs:14:30
+   |
+LL |                 ${concat(_, $arg)}
+   |                              ^^^
+
+error: aborting due to 1 previous error
+

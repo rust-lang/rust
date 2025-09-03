@@ -784,7 +784,6 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<&'hir ConstArg<'hir>>,
-        synthetic: bool,
     },
 }
 
@@ -1884,8 +1883,8 @@ pub enum PatKind<'hir> {
     Binding(BindingMode, HirId, Ident, Option<&'hir Pat<'hir>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
-    /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath<'hir>, &'hir [PatField<'hir>], bool),
+    /// The `Option` contains the span of a possible `..`.
+    Struct(QPath<'hir>, &'hir [PatField<'hir>], Option<Span>),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `DotDotPos` denotes its position.
@@ -4979,8 +4978,8 @@ mod size_asserts {
     static_assert_size!(ItemKind<'_>, 64);
     static_assert_size!(LetStmt<'_>, 72);
     static_assert_size!(Param<'_>, 32);
-    static_assert_size!(Pat<'_>, 72);
-    static_assert_size!(PatKind<'_>, 48);
+    static_assert_size!(Pat<'_>, 80);
+    static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Path<'_>, 40);
     static_assert_size!(PathSegment<'_>, 48);
     static_assert_size!(QPath<'_>, 24);

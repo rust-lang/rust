@@ -1434,10 +1434,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.dcx().emit_err(FunctionalRecordUpdateDestructuringAssignment {
                             span: e.span,
                         });
-                        true
+                        Some(self.lower_span(e.span))
                     }
-                    StructRest::Rest(_) => true,
-                    StructRest::None => false,
+                    StructRest::Rest(span) => Some(self.lower_span(*span)),
+                    StructRest::None => None,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat_without_dbm(lhs.span, struct_pat);

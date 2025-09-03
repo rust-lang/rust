@@ -8,15 +8,15 @@ test = false
 
 [dependencies]
 # tidy-alphabetical-start
-bitflags.workspace = true
+bitflags = "2.4.1"
 # To avoid duplicate dependencies, this should match the version of gimli used
 # by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
 gimli = "0.31"
-itertools.workspace = true
-libc.workspace = true
-measureme.workspace = true
+itertools = "0.12"
+libc = "0.2"
+measureme = "12.0.1"
 object = { version = "0.37.0", default-features = false, features = ["std", "read"] }
-rustc-demangle.workspace = true
+rustc-demangle = "0.1.21"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
@@ -38,9 +38,9 @@ rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 serde = { version = "1", features = ["derive"] }
-serde_json.workspace = true
+serde_json = "1"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing.workspace = true
+tracing = "0.1"
 # tidy-alphabetical-end
 
 [features]

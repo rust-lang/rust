@@ -1802,14 +1802,15 @@ class DocSearch {
 
     /**
      * @param {number} id
+     * @param {boolean} loadFunctionData
      * @returns {Promise<rustdoc.Row?>}
      */
-    async getRow(id) {
-        const [name_, entry, path, type] = await Promise.all([
+    async getRow(id, loadFunctionData) {
+        const [name_, entry, path, functionData] = await Promise.all([
             this.getName(id),
             this.getEntryData(id),
             this.getPathData(id),
-            this.getFunctionData(id),
+            loadFunctionData ? this.getFunctionData(id) : null,
         ]);
         if (!entry && !path) {
             return null;
@@ -1853,7 +1854,7 @@ class DocSearch {
                     `${exactModulePathData.exactModulePath}::${exactModuleName}`),
             entry,
             path,
-            type,
+            functionData,
             deprecated: entry ? entry.deprecated : false,
             parent: parentName !== null && parentPath !== null ?
                 { name: parentName, path: parentPath } :
@@ -2563,11 +2564,11 @@ class DocSearch {
                             name: item.parent.name,
                             ty: item.parent.path.ty,
                         } : undefined,
-                        type: item.type && item.type.functionSignature ?
-                            item.type.functionSignature :
+                        type: item.functionData && item.functionData.functionSignature ?
+                            item.functionData.functionSignature :
                             undefined,
-                        paramNames: item.type && item.type.paramNames ?
-                            item.type.paramNames :
+                        paramNames: item.functionData && item.functionData.paramNames ?
+                            item.functionData.paramNames :
                             undefined,
                         dist: result.dist,
                         path_dist: result.path_dist,
@@ -2642,7 +2643,7 @@ class DocSearch {
                     /**
                      * @type {rustdoc.Row?}
                      */
-                    const item = await this.getRow(result.id);
+                    const item = await this.getRow(result.id, typeInfo !== null);
                     if (!item) {
                         continue;
                     }
@@ -3749,7 +3750,7 @@ class DocSearch {
                         is_alias: true,
                         elems: [], // only used in type-based queries
                         returned: [], // only used in type-based queries
-                        original: await this.getRow(alias),
+                        original: await this.getRow(alias, false),
                     };
                 };
                 /**
@@ -3804,7 +3805,7 @@ class DocSearch {
                  * @returns {Promise<rustdoc.PlainResultObject?>}
                  */
                 const handleNameSearch = async id => {
-                    const row = await this.getRow(id);
+                    const row = await this.getRow(id, false);
                     if (!row || !row.entry) {
                         return null;
                     }

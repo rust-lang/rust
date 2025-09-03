@@ -1,4 +1,3 @@
-#![feature(extended_varargs_abi_support)]
 //@ run-pass
 //@ only-arm
 //@ ignore-thumb (this test uses arm assembly)
