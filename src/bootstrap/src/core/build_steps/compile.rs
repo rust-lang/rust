@@ -668,6 +668,14 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, cargo: &mut Car
         cargo.rustflag("-Cforce-unwind-tables=yes");
     }
 
+    // amdgcn must have a cpu specified, otherwise it refuses to compile.
+    // We want to be able to run tests for amdgcn that depend on core, therefore
+    // we need to be able to compiler core.
+    // The cpu used here must match in tests that use the standard library.
+    if target.contains("amdgcn") && target.file.is_none() {
+        cargo.rustflag("-Ctarget-cpu=gfx900");
+    }
+
     // Enable frame pointers by default for the library. Note that they are still controlled by a
     // separate setting for the compiler.
     cargo.rustflag("-Zunstable-options");

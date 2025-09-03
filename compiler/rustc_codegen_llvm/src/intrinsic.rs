@@ -1,7 +1,9 @@
 use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
 
-use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
+use rustc_abi::{
+    AddressSpace, Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size,
+};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::codegen_attrs::autodiff_attrs;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -530,6 +532,22 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::dynamic_shared_memory => {
+                let global = self.declare_global_in_addrspace(
+                    "dynamic_shared_memory",
+                    self.type_array(self.type_i8(), 0),
+                    AddressSpace::SHARED,
+                );
+                let ty::RawPtr(inner_ty, _) = result.layout.ty.kind() else { unreachable!() };
+                let alignment = self.align_of(*inner_ty).bytes() as u32;
+                unsafe {
+                    if alignment > llvm::LLVMGetAlignment(global) {
+                        llvm::LLVMSetAlignment(global, alignment);
+                    }
+                }
+                self.cx().const_pointercast(global, self.type_ptr())
             }
 
             _ if name.as_str().starts_with("simd_") => {
