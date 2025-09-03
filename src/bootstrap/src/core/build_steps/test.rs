@@ -3294,9 +3294,8 @@ impl Step for Bootstrap {
             .env("INSTA_WORKSPACE_ROOT", &builder.src)
             .env("RUSTC_BOOTSTRAP", "1");
 
-        // bootstrap tests are racy on directory creation so just run them one at a time.
-        // Since there's not many this shouldn't be a problem.
-        run_cargo_test(cargo, &["--test-threads=1"], &[], None, host, builder);
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1);
+        run_cargo_test(cargo, &["--test-threads", &threads.to_string()], &[], None, host, builder);
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
