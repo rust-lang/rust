@@ -123,6 +123,14 @@ impl FileDescription for AnonSocket {
         anonsocket_write(self, ptr, len, ecx, finish)
     }
 
+    fn short_fd_operations(&self) -> bool {
+        // Pipes guarantee that sufficiently small accesses are not broken apart:
+        // <https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html#tag_17_699_08>.
+        // For now, we don't bother checking for the size, and just entirely disable
+        // short accesses on pipes.
+        matches!(self.fd_type, AnonSocketType::Socketpair)
+    }
+
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         self
     }

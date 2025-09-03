@@ -669,6 +669,9 @@ pub struct MiriMachine<'tcx> {
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
     pub float_rounding_error: FloatRoundingErrorMode,
+
+    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    pub short_fd_operations: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -830,6 +833,7 @@ impl<'tcx> MiriMachine<'tcx> {
             force_intrinsic_fallback: config.force_intrinsic_fallback,
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
+            short_fd_operations: config.short_fd_operations,
         }
     }
 
@@ -1006,6 +1010,7 @@ impl VisitProvenance for MiriMachine<'_> {
             force_intrinsic_fallback: _,
             float_nondet: _,
             float_rounding_error: _,
+            short_fd_operations: _,
         } = self;
 
         threads.visit_provenance(visit);

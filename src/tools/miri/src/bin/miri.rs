@@ -559,6 +559,8 @@ fn main() {
             miri_config.float_rounding_error = miri::FloatRoundingErrorMode::None;
         } else if arg == "-Zmiri-max-extra-rounding-error" {
             miri_config.float_rounding_error = miri::FloatRoundingErrorMode::Max;
+        } else if arg == "-Zmiri-no-short-fd-operations" {
+            miri_config.short_fd_operations = false;
         } else if arg == "-Zmiri-strict-provenance" {
             miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-permissive-provenance" {
