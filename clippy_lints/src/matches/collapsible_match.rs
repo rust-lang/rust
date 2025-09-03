@@ -103,7 +103,7 @@ fn check_arm<'tcx>(
         // collapsing patterns need an explicit field name in struct pattern matching
         // ex: Struct {x: Some(1)}
         let replace_msg = if is_innermost_parent_pat_struct {
-            format!(", prefixed by `{}`:", snippet(cx, binding_span, "their field name"))
+            format!(", prefixed by `{}: `", snippet(cx, binding_span, "their field name"))
         } else {
             String::new()
         };
