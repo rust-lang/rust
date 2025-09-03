@@ -13,7 +13,7 @@ use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_middle::ty::CurrentGcx;
 use rustc_middle::util::Providers;
-use rustc_parse::new_parser_from_source_str;
+use rustc_parse::new_parser_from_simple_source_str;
 use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
@@ -68,7 +68,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
                 };
             }
 
-            match new_parser_from_source_str(&psess, filename, s.to_string()) {
+            match new_parser_from_simple_source_str(&psess, filename, s.to_string()) {
                 Ok(mut parser) => match parser.parse_meta_item(AllowLeadingUnsafe::No) {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if meta_item.path.segments.len() != 1 {
@@ -166,7 +166,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let mut parser = match new_parser_from_source_str(&psess, filename, s.to_string()) {
+        let mut parser = match new_parser_from_simple_source_str(&psess, filename, s.to_string()) {
             Ok(parser) => parser,
             Err(errs) => {
                 errs.into_iter().for_each(|err| err.cancel());
