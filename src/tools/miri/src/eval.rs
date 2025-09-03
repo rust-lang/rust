@@ -32,65 +32,6 @@ pub enum MiriEntryFnType {
 /// will hang the program.
 const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 256;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AlignmentCheck {
-    /// Do not check alignment.
-    None,
-    /// Check alignment "symbolically", i.e., using only the requested alignment for an allocation and not its real base address.
-    Symbolic,
-    /// Check alignment on the actual physical integer address.
-    Int,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum RejectOpWith {
-    /// Isolated op is rejected with an abort of the machine.
-    Abort,
-
-    /// If not Abort, miri returns an error for an isolated op.
-    /// Following options determine if user should be warned about such error.
-    /// Do not print warning about rejected isolated op.
-    NoWarning,
-
-    /// Print a warning about rejected isolated op, with backtrace.
-    Warning,
-
-    /// Print a warning about rejected isolated op, without backtrace.
-    WarningWithoutBacktrace,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum IsolatedOp {
-    /// Reject an op requiring communication with the host. By
-    /// default, miri rejects the op with an abort. If not, it returns
-    /// an error code, and prints a warning about it. Warning levels
-    /// are controlled by `RejectOpWith` enum.
-    Reject(RejectOpWith),
-
-    /// Execute op requiring communication with the host, i.e. disable isolation.
-    Allow,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum BacktraceStyle {
-    /// Prints a terser backtrace which ideally only contains relevant information.
-    Short,
-    /// Prints a backtrace with all possible information.
-    Full,
-    /// Prints only the frame that the error occurs in.
-    Off,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ValidationMode {
-    /// Do not perform any kind of validation.
-    No,
-    /// Validate the interior of the value, but not things behind references.
-    Shallow,
-    /// Fully recursively validate references.
-    Deep,
-}
-
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -171,7 +112,9 @@ pub struct MiriConfig {
     /// Whether floating-point operations can behave non-deterministically.
     pub float_nondet: bool,
     /// Whether floating-point operations can have a non-deterministic rounding error.
-    pub float_rounding_error: bool,
+    pub float_rounding_error: FloatRoundingErrorMode,
+    /// Whether Miri artifically introduces short reads/writes on file descriptors.
+    pub short_fd_operations: bool,
 }
 
 impl Default for MiriConfig {
@@ -213,7 +156,8 @@ impl Default for MiriConfig {
             fixed_scheduling: false,
             force_intrinsic_fallback: false,
             float_nondet: true,
-            float_rounding_error: true,
+            float_rounding_error: FloatRoundingErrorMode::Random,
+            short_fd_operations: true,
         }
     }
 }

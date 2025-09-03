@@ -23,7 +23,8 @@ fn main() {
     not_unpin_not_protected();
     write_does_not_invalidate_all_aliases();
     box_into_raw_allows_interior_mutable_alias();
-    cell_inside_struct()
+    cell_inside_struct();
+    zst();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -286,4 +287,23 @@ fn cell_inside_struct() {
 
     // Writing to `field1`, which is reserved, should also be allowed.
     (*a).field1 = 88;
+}
+
+/// ZST reborrows on various kinds of dangling pointers are valid.
+fn zst() {
+    unsafe {
+        // Integer pointer.
+        let ptr = ptr::without_provenance_mut::<()>(15);
+        let _ref = &mut *ptr;
+
+        // Out-of-bounds pointer.
+        let mut b = Box::new(0u8);
+        let ptr = (&raw mut *b).wrapping_add(15) as *mut ();
+        let _ref = &mut *ptr;
+
+        // Deallocated pointer.
+        let ptr = &raw mut *b as *mut ();
+        drop(b);
+        let _ref = &mut *ptr;
+    }
 }
