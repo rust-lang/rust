@@ -6,7 +6,7 @@ use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_contr
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::{
-    Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_whitespace,
+    Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_horizontal_whitespace,
 };
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use rustc_session::lint::BuiltinLintDiag;
@@ -597,7 +597,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let last_line_start = within.rfind('\n').map_or(0, |i| i + 1);
         let last_line = &within[last_line_start..];
-        let last_line_trimmed = last_line.trim_start_matches(is_whitespace);
+        let last_line_trimmed = last_line.trim_start_matches(is_horizontal_whitespace);
         let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
 
         let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
@@ -640,7 +640,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             });
         }
 
-        if !rest.trim_matches(is_whitespace).is_empty() {
+        if !rest.trim_matches(is_horizontal_whitespace).is_empty() {
             let span = self.mk_sp(last_line_start_pos, self.pos);
             self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span });
         }
