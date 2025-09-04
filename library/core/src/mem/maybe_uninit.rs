@@ -1,4 +1,5 @@
 use crate::any::type_name;
+use crate::marker::Destruct;
 use crate::mem::ManuallyDrop;
 use crate::{fmt, intrinsics, ptr, slice};
 
@@ -714,7 +715,11 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init`]: MaybeUninit::assume_init
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
-    pub unsafe fn assume_init_drop(&mut self) {
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn assume_init_drop(&mut self)
+    where
+        T: [const] Destruct,
+    {
         // SAFETY: the caller must guarantee that `self` is initialized and
         // satisfies all invariants of `T`.
         // Dropping the value in place is safe if that is the case.
@@ -1390,7 +1395,11 @@ impl<T> [MaybeUninit<T>] {
     /// behaviour.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
-    pub unsafe fn assume_init_drop(&mut self) {
+    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
+    pub const unsafe fn assume_init_drop(&mut self)
+    where
+        T: [const] Destruct,
+    {
         if !self.is_empty() {
             // SAFETY: the caller must guarantee that every element of `self`
             // is initialized and satisfies all invariants of `T`.

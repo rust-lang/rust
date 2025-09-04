@@ -17,6 +17,7 @@
 #![feature(clone_to_uninit)]
 #![feature(const_convert)]
 #![feature(const_destruct)]
+#![feature(const_drop_in_place)]
 #![feature(const_eval_select)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
