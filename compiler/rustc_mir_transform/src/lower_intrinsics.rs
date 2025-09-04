@@ -34,17 +34,6 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::contract_checks => {
-                        let target = target.unwrap();
-                        block.statements.push(Statement::new(
-                            terminator.source_info,
-                            StatementKind::Assign(Box::new((
-                                *destination,
-                                Rvalue::NullaryOp(NullOp::ContractChecks, tcx.types.bool),
-                            ))),
-                        ));
-                        terminator.kind = TerminatorKind::Goto { target };
-                    }
                     sym::forget => {
                         let target = target.unwrap();
                         block.statements.push(Statement::new(
