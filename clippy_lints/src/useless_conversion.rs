@@ -386,12 +386,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
             ExprKind::Call(path, [arg]) => {
                 if let ExprKind::Path(ref qpath) = path.kind
-                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
                     && !is_ty_alias(qpath)
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(arg);
-                    if cx.tcx.is_diagnostic_item(sym::try_from_fn, def_id)
+                    if name == sym::try_from_fn
                         && is_type_diagnostic_item(cx, a, sym::Result)
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
@@ -406,9 +407,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             None,
                             hint,
                         );
-                    }
-
-                    if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
+                    } else if name == sym::from_fn && same_type_and_consts(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));

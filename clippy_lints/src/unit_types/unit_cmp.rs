@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
-use clippy_utils::sym;
+use clippy_utils::{is_unit_expr, sym};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 
@@ -16,10 +16,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 sym::assert_ne_macro | sym::debug_assert_ne_macro => "fail",
                 _ => return,
             };
-            let Some((left, _, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
+            let Some((lhs, rhs, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
                 return;
             };
-            if !cx.typeck_results().expr_ty(left).is_unit() {
+            if is_unit_expr(lhs) || is_unit_expr(rhs) {
+                return;
+            }
+            if !cx.typeck_results().expr_ty(lhs).is_unit() {
                 return;
             }
             span_lint(

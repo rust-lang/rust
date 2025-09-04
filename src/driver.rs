@@ -330,7 +330,8 @@ pub fn main() {
 
         // Do not run Clippy for Cargo's info queries so that invalid CLIPPY_ARGS are not cached
         // https://github.com/rust-lang/cargo/issues/14385
-        let info_query = has_arg(&orig_args, "-vV") || has_arg(&orig_args, "--print");
+        let info_query = has_arg(&orig_args, "-vV")
+            || arg_value(&orig_args, "--print", |val| val != "crate-root-lint-levels").is_some();
 
         let clippy_enabled = !cap_lints_allow && relevant_package && !info_query;
         if clippy_enabled {

@@ -97,3 +97,10 @@ pub mod issue15301 {
         println!("Just called a Rust function from Rust!");
     }
 }
+
+pub mod issue15491 {
+    pub trait Foo {
+        #[allow(clippy::missing_inline_in_public_items)]
+        fn foo(&self) {}
+    }
+}

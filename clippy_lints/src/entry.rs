@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_expr;
@@ -194,7 +194,17 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
         if let Some(sugg) = sugg {
             span_lint_and_sugg(cx, MAP_ENTRY, expr.span, lint_msg, "try", sugg, app);
         } else {
-            span_lint(cx, MAP_ENTRY, expr.span, lint_msg);
+            span_lint_and_help(
+                cx,
+                MAP_ENTRY,
+                expr.span,
+                lint_msg,
+                None,
+                format!(
+                    "consider using the `Entry` API: https://doc.rust-lang.org/std/collections/struct.{}.html#entry-api",
+                    map_ty.name()
+                ),
+            );
         }
     }
 }
@@ -254,35 +264,28 @@ fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Optio
         _ => None,
     });
 
-    match expr.kind {
-        ExprKind::MethodCall(
-            _,
+    if let ExprKind::MethodCall(_, map, [arg], _) = expr.kind
+        && let Expr {
+            kind: ExprKind::AddrOf(_, _, key),
+            span: key_span,
+            ..
+        } = arg
+        && key_span.eq_ctxt(expr.span)
+    {
+        let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
+        let expr = ContainsExpr {
+            negated,
             map,
-            [
-                Expr {
-                    kind: ExprKind::AddrOf(_, _, key),
-                    span: key_span,
-                    ..
-                },
-            ],
-            _,
-        ) if key_span.eq_ctxt(expr.span) => {
-            let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
-            let expr = ContainsExpr {
-                negated,
-                map,
-                key,
-                call_ctxt: expr.span.ctxt(),
-            };
-            if cx.tcx.is_diagnostic_item(sym::btreemap_contains_key, id) {
-                Some((MapType::BTree, expr))
-            } else if cx.tcx.is_diagnostic_item(sym::hashmap_contains_key, id) {
-                Some((MapType::Hash, expr))
-            } else {
-                None
-            }
-        },
-        _ => None,
+            key,
+            call_ctxt: expr.span.ctxt(),
+        };
+        match cx.tcx.get_diagnostic_name(id) {
+            Some(sym::btreemap_contains_key) => Some((MapType::BTree, expr)),
+            Some(sym::hashmap_contains_key) => Some((MapType::Hash, expr)),
+            _ => None,
+        }
+    } else {
+        None
     }
 }
 
@@ -311,7 +314,9 @@ struct InsertExpr<'tcx> {
 fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
     if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
-        if cx.tcx.is_diagnostic_item(sym::btreemap_insert, id) || cx.tcx.is_diagnostic_item(sym::hashmap_insert, id) {
+        if let Some(insert) = cx.tcx.get_diagnostic_name(id)
+            && matches!(insert, sym::btreemap_insert | sym::hashmap_insert)
+        {
             Some(InsertExpr { map, key, value })
         } else {
             None
