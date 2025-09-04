@@ -11,10 +11,11 @@ use termcolor::{ColorChoice, StandardStream, WriteColor};
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
+use crate::core::build_steps::compile::add_to_sysroot;
 use crate::core::build_steps::format::InternalRustfmt;
 use crate::core::build_steps::test::TestTarget;
 use crate::core::build_steps::vendor::VENDOR_DIR;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::{Builder, Cargo, Kind};
 use crate::core::compiler::Compiler;
 use crate::core::config::flags::{self, Subcommand};
 use crate::core::config::{BootstrapOverrideLld, Config, DryRun, LlvmLibunwind, TargetSelection};
@@ -1876,3 +1877,41 @@ fn chmod(path: &Path, perms: u32) {
 }
 #[cfg(windows)]
 fn chmod(_path: &Path, _perms: u32) {}
+
+/// This directory contains built artifacts of something (rustc or std) that are stored separately
+/// so that they do not have to be copied into the sysroot of some build compiler.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct BuiltArtifactsDir {
+    /// Subdirectory with host artifacts.
+    host_dir: PathBuf,
+    /// Subdirectory with target artifacts.
+    target_dir: PathBuf,
+}
+
+impl BuiltArtifactsDir {
+    /// Copy artifacts from the given `stamp` into the given `directory`.
+    pub(crate) fn from_stamp(
+        builder: &Builder<'_>,
+        stamp: BuildStamp,
+        target: TargetSelection,
+        directory: &Path,
+    ) -> Self {
+        let host_dir = directory.join("host");
+        let target_dir = directory.join(target);
+        let _ = fs::remove_dir_all(directory);
+        t!(fs::create_dir_all(directory));
+        add_to_sysroot(builder, &target_dir, &host_dir, &stamp);
+
+        Self { host_dir, target_dir }
+    }
+
+    /// Configure the given cargo invocation so that the compiled crate will be able to use
+    /// the built artifacts that were previously generated.
+    pub(crate) fn configure_cargo(&self, cargo: &mut Cargo) {
+        cargo.append_to_env(
+            "RUSTC_ADDITIONAL_SYSROOT_PATHS",
+            format!("{},{}", self.host_dir.to_str().unwrap(), self.target_dir.to_str().unwrap()),
+            ",",
+        );
+    }
+}
