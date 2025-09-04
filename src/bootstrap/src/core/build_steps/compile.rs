@@ -2442,8 +2442,10 @@ impl CommandLineStep for Assemble {
 
                         // First, the easy part: build cg_gcc
                         let compilers = prepare_compilers();
-                        let cg_gcc = builder
-                            .ensure(GccCodegenBackend::for_target(compilers, target_compiler.host));
+                        let cg_gcc = builder.ensure(GccCodegenBackend::for_target(
+                            compilers.clone(),
+                            target_compiler.host,
+                        ));
                         copy_codegen_backends_to_sysroot(builder, cg_gcc.stamp, target_compiler);
 
                         // Then, the hard part: prepare all required libgccjit dylibs.
