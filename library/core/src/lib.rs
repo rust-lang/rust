@@ -156,6 +156,7 @@
 #![feature(f128)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
+#![feature(funnel_shifts)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
