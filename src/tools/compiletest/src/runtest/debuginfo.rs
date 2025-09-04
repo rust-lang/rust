@@ -245,7 +245,7 @@ impl TestCx<'_> {
                 cmdline,
             };
             if adb.kill().is_err() {
-                println!("Adb process is already finished.");
+                writeln!(self.stdout, "Adb process is already finished.");
             }
         } else {
             let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
@@ -256,7 +256,11 @@ impl TestCx<'_> {
 
             match self.config.gdb_version {
                 Some(version) => {
-                    println!("NOTE: compiletest thinks it is using GDB version {}", version);
+                    writeln!(
+                        self.stdout,
+                        "NOTE: compiletest thinks it is using GDB version {}",
+                        version
+                    );
 
                     if !self.props.disable_gdb_pretty_printers
                         && version > extract_gdb_version("7.4").unwrap()
@@ -278,7 +282,8 @@ impl TestCx<'_> {
                     }
                 }
                 _ => {
-                    println!(
+                    writeln!(
+                        self.stdout,
                         "NOTE: compiletest does not know which version of \
                          GDB it is using"
                     );
@@ -376,10 +381,15 @@ impl TestCx<'_> {
 
         match self.config.lldb_version {
             Some(ref version) => {
-                println!("NOTE: compiletest thinks it is using LLDB version {}", version);
+                writeln!(
+                    self.stdout,
+                    "NOTE: compiletest thinks it is using LLDB version {}",
+                    version
+                );
             }
             _ => {
-                println!(
+                writeln!(
+                    self.stdout,
                     "NOTE: compiletest does not know which version of \
                      LLDB it is using"
                 );

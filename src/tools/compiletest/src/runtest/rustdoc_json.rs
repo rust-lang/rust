@@ -30,8 +30,8 @@ impl TestCx<'_> {
 
         if !res.status.success() {
             self.fatal_proc_rec_general("jsondocck failed!", None, &res, || {
-                println!("Rustdoc Output:");
-                println!("{}", proc_res.format_info());
+                writeln!(self.stdout, "Rustdoc Output:");
+                writeln!(self.stdout, "{}", proc_res.format_info());
             })
         }
 
