@@ -1,0 +1,5 @@
+; Check that recursive types compile successfully without infinite loops
+; The recursion depth limit should prevent stack overflow during TypeTree generation
+
+; Function should compile and have enzyme_type attributes
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@float}"{{.*}}@test_recursion_depth{{.*}}"enzyme_type"="{[]:Pointer}"

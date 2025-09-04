@@ -2257,8 +2257,33 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
 
 /// Generate TypeTree for a specific type.
 /// This function analyzes a Rust type and creates appropriate TypeTree metadata.
+
+/// Maximum recursion depth for TypeTree generation to prevent stack overflow
+/// from pathological deeply nested types. Combined with cycle detection.
+const MAX_TYPETREE_DEPTH: usize = 32;
+
 pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
-    if ty.is_scalar() {
+    let mut visited = Vec::new();
+    typetree_from_ty_impl(tcx, ty, 0, &mut visited)
+}
+
+fn typetree_from_ty_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+    depth: usize,
+    visited: &mut Vec<Ty<'tcx>>,
+) -> TypeTree {
+    if depth > MAX_TYPETREE_DEPTH {
+        return TypeTree::new();
+    }
+
+    if visited.contains(&ty) {
+        return TypeTree::new();
+    }
+
+    visited.push(ty);
+
+    let result = if ty.is_scalar() {
         let (kind, size) = if ty.is_integral() || ty.is_char() || ty.is_bool() {
             (Kind::Integer, ty.primitive_size(tcx).bytes_usize())
         } else if ty.is_floating_point() {
@@ -2267,116 +2292,118 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
                 x if x == tcx.types.f32 => (Kind::Float, 4),
                 x if x == tcx.types.f64 => (Kind::Double, 8),
                 x if x == tcx.types.f128 => (Kind::F128, 16),
-                _ => return TypeTree::new(),
+                _ => (Kind::Integer, 0),
             }
         } else {
-            return TypeTree::new();
+            (Kind::Integer, 0)
         };
 
-        return TypeTree(vec![Type { offset: -1, size, kind, child: TypeTree::new() }]);
-    }
-
-    if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
-        let inner_ty = if let Some(inner) = ty.builtin_deref(true) {
-            inner
+        if size > 0 {
+            TypeTree(vec![Type { offset: -1, size, kind, child: TypeTree::new() }])
         } else {
-            return TypeTree::new();
-        };
-
-        let child = typetree_from_ty(tcx, inner_ty);
-        return TypeTree(vec![Type {
-            offset: -1,
-            size: tcx.data_layout.pointer_size().bytes_usize(),
-            kind: Kind::Pointer,
-            child,
-        }]);
-    }
-
-    if ty.is_array() {
+            TypeTree::new()
+        }
+    } else if ty.is_ref() || ty.is_raw_ptr() || ty.is_box() {
+        if let Some(inner_ty) = ty.builtin_deref(true) {
+            let child = typetree_from_ty_impl(tcx, inner_ty, depth + 1, visited);
+            TypeTree(vec![Type {
+                offset: -1,
+                size: tcx.data_layout.pointer_size().bytes_usize(),
+                kind: Kind::Pointer,
+                child,
+            }])
+        } else {
+            TypeTree::new()
+        }
+    } else if ty.is_array() {
         if let ty::Array(element_ty, len_const) = ty.kind() {
             let len = len_const.try_to_target_usize(tcx).unwrap_or(0);
             if len == 0 {
-                return TypeTree::new();
+                TypeTree::new()
+            } else {
+                let element_tree = typetree_from_ty_impl(tcx, *element_ty, depth + 1, visited);
+                let element_layout = tcx
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*element_ty))
+                    .ok()
+                    .map(|layout| layout.size.bytes_usize())
+                    .unwrap_or(0);
+
+                if element_layout == 0 {
+                    TypeTree::new()
+                } else {
+                    // For homogeneous arrays, use offset -1 instead of individual entries
+                    if element_tree.0.len() == 1 && element_tree.0[0].offset == -1 {
+                        TypeTree(vec![Type {
+                            offset: -1,
+                            size: element_tree.0[0].size,
+                            kind: element_tree.0[0].kind,
+                            child: element_tree.0[0].child.clone(),
+                        }])
+                    } else {
+                        let mut types = Vec::new();
+                        for i in 0..len {
+                            let base_offset = (i as usize * element_layout) as isize;
+
+                            for elem_type in &element_tree.0 {
+                                types.push(Type {
+                                    offset: if elem_type.offset == -1 {
+                                        base_offset
+                                    } else {
+                                        base_offset + elem_type.offset
+                                    },
+                                    size: elem_type.size,
+                                    kind: elem_type.kind,
+                                    child: elem_type.child.clone(),
+                                });
+                            }
+                        }
+                        TypeTree(types)
+                    }
+                }
             }
-
-            let element_tree = typetree_from_ty(tcx, *element_ty);
-
-            let element_layout = tcx
-                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*element_ty))
-                .ok()
-                .map(|layout| layout.size.bytes_usize())
-                .unwrap_or(0);
-
-            if element_layout == 0 {
-                return TypeTree::new();
-            }
-
+        } else {
+            TypeTree::new()
+        }
+    } else if ty.is_slice() {
+        if let ty::Slice(element_ty) = ty.kind() {
+            typetree_from_ty_impl(tcx, *element_ty, depth + 1, visited)
+        } else {
+            TypeTree::new()
+        }
+    } else if let ty::Tuple(tuple_types) = ty.kind() {
+        if tuple_types.is_empty() {
+            TypeTree::new()
+        } else {
             let mut types = Vec::new();
-            for i in 0..len {
-                let base_offset = (i as usize * element_layout) as isize;
+            let mut current_offset = 0;
+
+            for tuple_ty in tuple_types.iter() {
+                let element_tree = typetree_from_ty_impl(tcx, tuple_ty, depth + 1, visited);
+                let element_layout = tcx
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
+                    .ok()
+                    .map(|layout| layout.size.bytes_usize())
+                    .unwrap_or(0);
 
                 for elem_type in &element_tree.0 {
                     types.push(Type {
                         offset: if elem_type.offset == -1 {
-                            base_offset
+                            current_offset as isize
                         } else {
-                            base_offset + elem_type.offset
+                            current_offset as isize + elem_type.offset
                         },
                         size: elem_type.size,
                         kind: elem_type.kind,
                         child: elem_type.child.clone(),
                     });
                 }
+
+                current_offset += element_layout;
             }
 
-            return TypeTree(types);
+            TypeTree(types)
         }
-    }
-
-    if ty.is_slice() {
-        if let ty::Slice(element_ty) = ty.kind() {
-            let element_tree = typetree_from_ty(tcx, *element_ty);
-            return element_tree;
-        }
-    }
-
-    if let ty::Tuple(tuple_types) = ty.kind() {
-        if tuple_types.is_empty() {
-            return TypeTree::new();
-        }
-
-        let mut types = Vec::new();
-        let mut current_offset = 0;
-
-        for tuple_ty in tuple_types.iter() {
-            let element_tree = typetree_from_ty(tcx, tuple_ty);
-
-            let element_layout = tcx
-                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
-                .ok()
-                .map(|layout| layout.size.bytes_usize())
-                .unwrap_or(0);
-
-            for elem_type in &element_tree.0 {
-                types.push(Type {
-                    offset: if elem_type.offset == -1 {
-                        current_offset as isize
-                    } else {
-                        current_offset as isize + elem_type.offset
-                    },
-                    size: elem_type.size,
-                    kind: elem_type.kind,
-                    child: elem_type.child.clone(),
-                });
-            }
-
-            current_offset += element_layout;
-        }
-
-        return TypeTree(types);
-    }
-
-    if let ty::Adt(adt_def, args) = ty.kind() {
+    } else if let ty::Adt(adt_def, args) = ty.kind() {
         if adt_def.is_struct() {
             let struct_layout =
                 tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
@@ -2385,7 +2412,7 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
 
                 for (field_idx, field_def) in adt_def.all_fields().enumerate() {
                     let field_ty = field_def.ty(tcx, args);
-                    let field_tree = typetree_from_ty(tcx, field_ty);
+                    let field_tree = typetree_from_ty_impl(tcx, field_ty, depth + 1, visited);
 
                     let field_offset = layout.fields.offset(field_idx).bytes_usize();
 
@@ -2403,10 +2430,17 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
                     }
                 }
 
-                return TypeTree(types);
+                TypeTree(types)
+            } else {
+                TypeTree::new()
             }
+        } else {
+            TypeTree::new()
         }
-    }
+    } else {
+        TypeTree::new()
+    };
 
-    TypeTree::new()
+    visited.pop();
+    result
 }
