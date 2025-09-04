@@ -533,7 +533,7 @@ impl Builder<'_> {
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap => {
+                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
                     self.compiler_doc_out(target)
                 }
                 Mode::Std => {

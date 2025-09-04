@@ -2463,6 +2463,21 @@ mod snapshot {
     }
 
     #[test]
+    fn doc_cargo() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("doc")
+                .path("cargo")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [doc] rustc 1 <host> -> Cargo 2 <host>
+        ");
+    }
+
+    #[test]
     fn doc_core() {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(
