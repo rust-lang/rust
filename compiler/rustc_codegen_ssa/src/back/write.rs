@@ -992,7 +992,7 @@ fn do_fat_lto<B: ExtraBackendMethods>(
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> CompiledModule {
-    let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", "everything");
+    let _timer = cgcx.prof.verbose_generic_activity("LLVM_fatlto");
 
     check_lto_allowed(&cgcx);
 
@@ -1011,7 +1011,6 @@ fn do_fat_lto<B: ExtraBackendMethods>(
 
 fn do_thin_lto<'a, B: ExtraBackendMethods>(
     cgcx: &'a CodegenContext<B>,
-    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     exported_symbols_for_lto: Arc<Vec<String>>,
     each_linked_rlib_for_lto: Vec<PathBuf>,
     needs_thin_lto: Vec<(String, <B as WriteBackendMethods>::ThinBuffer)>,
@@ -1020,6 +1019,8 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
         WorkProduct,
     )>,
 ) -> Vec<CompiledModule> {
+    let _timer = cgcx.prof.verbose_generic_activity("LLVM_thinlto");
+
     check_lto_allowed(&cgcx);
 
     let (coordinator_send, coordinator_receive) = channel();
@@ -1086,7 +1087,7 @@ fn do_thin_lto<'a, B: ExtraBackendMethods>(
             while used_token_count < tokens.len() + 1
                 && let Some((item, _)) = work_items.pop()
             {
-                spawn_thin_lto_work(&cgcx, coordinator_send.clone(), llvm_start_time, item);
+                spawn_thin_lto_work(&cgcx, coordinator_send.clone(), item);
                 used_token_count += 1;
             }
         } else {
@@ -1726,6 +1727,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
         }
 
+        // Drop to print timings
+        drop(llvm_start_time);
+
         if codegen_state == Aborted {
             return Err(());
         }
@@ -1754,16 +1758,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
             compiled_modules.extend(do_thin_lto(
                 &cgcx,
-                &mut llvm_start_time,
                 exported_symbols_for_lto,
                 each_linked_rlib_file_for_lto,
                 needs_thin_lto,
                 lto_import_only_modules,
             ));
         }
-
-        // Drop to print timings
-        drop(llvm_start_time);
 
         // Regardless of what order these modules completed in, report them to
         // the backend in the same order every time to ensure that we're handing
@@ -1879,13 +1879,8 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 fn spawn_thin_lto_work<'a, B: ExtraBackendMethods>(
     cgcx: &'a CodegenContext<B>,
     coordinator_send: Sender<ThinLtoMessage>,
-    llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     work: ThinLtoWorkItem<B>,
 ) {
-    if llvm_start_time.is_none() {
-        *llvm_start_time = Some(cgcx.prof.verbose_generic_activity("LLVM_passes"));
-    }
-
     let cgcx = cgcx.clone();
 
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
