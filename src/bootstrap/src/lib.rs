@@ -2160,7 +2160,7 @@ pub fn prepare_behaviour_dump_dir(build: &Build) {
 /// This directory contains built artifacts of something (rustc or std) that are stored separately
 /// so that they do not have to be copied into the sysroot of some build compiler.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct BuiltArtifactsDir {
+pub struct BuiltArtifactsDir {
     /// Subdirectory with host artifacts.
     host_dir: PathBuf,
     /// Subdirectory with target artifacts.
@@ -2169,7 +2169,7 @@ struct BuiltArtifactsDir {
 
 impl BuiltArtifactsDir {
     /// Copy artifacts from the given `stamp` into the given `directory`.
-    fn from_stamp(
+    pub fn from_stamp(
         builder: &Builder<'_>,
         stamp: BuildStamp,
         target: TargetSelection,
@@ -2186,7 +2186,7 @@ impl BuiltArtifactsDir {
 
     /// Configure the given cargo invocation so that the compiled crate will be able to use
     /// the built artifacts that were previously generated.
-    fn configure_cargo(&self, cargo: &mut Cargo) {
+    pub fn configure_cargo(&self, cargo: &mut Cargo) {
         cargo.append_to_env(
             "RUSTC_ADDITIONAL_SYSROOT_PATHS",
             format!("{},{}", self.host_dir.to_str().unwrap(), self.target_dir.to_str().unwrap()),

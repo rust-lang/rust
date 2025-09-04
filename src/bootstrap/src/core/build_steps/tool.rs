@@ -13,7 +13,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::core::build_steps::compile::is_lto_stage;
+use crate::core::build_steps::compile::{PrepareRlibSysroot, is_lto_stage};
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
@@ -23,7 +23,7 @@ use crate::core::builder::{
 use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, FileType, Kind, Mode};
+use crate::{BuiltArtifactsDir, Compiler, FileType, Kind, Mode};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -136,6 +136,12 @@ impl Step for ToolBuild {
             self.source_type,
             &self.extra_features,
         );
+        match &self.build_compiler {
+            ToolCompiler::RustcPrivate(compiler) => {
+                compiler.configure_cargo(&mut cargo);
+            }
+            ToolCompiler::Other(_, _) => {}
+        }
 
         // The stage0 compiler changes infrequently and does not directly depend on code
         // in the current working directory. Therefore, caching it with sccache should be
@@ -1306,7 +1312,14 @@ pub struct RustcPrivateCompilers {
     build_compiler: Compiler,
     /// Compiler to which .rlib artifacts the tool links to.
     /// The host target of this compiler corresponds to the target of the tool.
+    ///
+    /// Ideally, we wouldn't use target_compiler at all, and just prepare the rlibs here.
+    /// But there are many places in bootstrap that require a `Compiler` to e.g. resolve
+    /// sysroot/lib paths, so we need to actually materialize `target_compiler`.
     target_compiler: Compiler,
+    /// Sysroot directory that contains rustc rlib artifacts of `target_compiler`, built with
+    /// `build_compiler`.
+    rlib_sysroot: Option<BuiltArtifactsDir>,
 }
 
 impl RustcPrivateCompilers {
@@ -1319,14 +1332,18 @@ impl RustcPrivateCompilers {
         // FIXME: make 100% sure that `target_compiler` was indeed built with `build_compiler`...
         let target_compiler = builder.compiler(build_compiler.stage + 1, target);
 
-        Self { build_compiler, target_compiler }
+        Self::from_build_and_target_compiler(builder, build_compiler, target_compiler)
     }
 
     pub fn from_build_and_target_compiler(
+        builder: &Builder<'_>,
         build_compiler: Compiler,
         target_compiler: Compiler,
     ) -> Self {
-        Self { build_compiler, target_compiler }
+        let target = target_compiler.host;
+
+        let rlib_sysroot = builder.ensure(PrepareRlibSysroot::new(build_compiler, target));
+        Self { build_compiler, target_compiler, rlib_sysroot }
     }
 
     /// Create rustc tool compilers from the build compiler.
@@ -1336,15 +1353,13 @@ impl RustcPrivateCompilers {
         target: TargetSelection,
     ) -> Self {
         let target_compiler = builder.compiler(build_compiler.stage + 1, target);
-        Self { build_compiler, target_compiler }
+        Self::from_build_and_target_compiler(builder, build_compiler, target_compiler)
     }
 
     /// Create rustc tool compilers from the target compiler.
     pub fn from_target_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
-        Self {
-            build_compiler: Self::build_compiler_from_stage(builder, target_compiler.stage),
-            target_compiler,
-        }
+        let build_compiler = Self::build_compiler_from_stage(builder, target_compiler.stage);
+        Self::from_build_and_target_compiler(builder, build_compiler, target_compiler)
     }
 
     fn build_compiler_from_stage(builder: &Builder<'_>, stage: u32) -> Compiler {
@@ -1369,6 +1384,12 @@ impl RustcPrivateCompilers {
     /// Target of the tool being compiled
     pub fn target(&self) -> TargetSelection {
         self.target_compiler.host
+    }
+
+    pub fn configure_cargo(&self, cargo: &mut builder::Cargo) {
+        if let Some(rlib_sysroot) = &self.rlib_sysroot {
+            rlib_sysroot.configure_cargo(cargo);
+        }
     }
 }
 
