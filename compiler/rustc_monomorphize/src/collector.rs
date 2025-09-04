@@ -473,22 +473,12 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
-            // Check whether the MIR body is malformed. Usually it's due to normalization overflow.
-            // FIXME: I assume that there are few type errors at post-analysis stage, but not
-            // entirely sure.
             // Plenty of code paths later assume that everything can be normalized.
             // Check normalization here to provide better diagnostics.
-            let body = tcx.instance_mir(instance.def);
-            let normalization_failed = body.local_decls.iter().any(|local| {
-                instance
-                    .try_instantiate_mir_and_normalize_erasing_regions(
-                        tcx,
-                        ty::TypingEnv::fully_monomorphized(),
-                        ty::EarlyBinder::bind(local.ty),
-                    )
-                    .is_err()
-            });
-            if normalization_failed {
+            // Normalization errors here are usually due to trait solving overflow.
+            // FIXME: I assume that there are few type errors at post-analysis stage, but not
+            // entirely sure.
+            if tcx.has_normalization_error_in_mono(instance) {
                 let def_id = instance.def_id();
                 let def_span = tcx.def_span(def_id);
                 let def_path_str = tcx.def_path_str(def_id);
@@ -628,6 +618,21 @@ fn collect_items_rec<'tcx>(
     if let Some((def_id, depth)) = recursion_depth_reset {
         recursion_depths.insert(def_id, depth);
     }
+}
+
+// Check whether we can normalize the MIR body. Make it a query since decoding MIR from disk cache
+// may be expensive.
+fn has_normalization_error_in_mono<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    let body = tcx.instance_mir(instance.def);
+    body.local_decls.iter().any(|local| {
+        instance
+            .try_instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                ty::TypingEnv::fully_monomorphized(),
+                ty::EarlyBinder::bind(local.ty),
+            )
+            .is_err()
+    })
 }
 
 fn check_recursion_limit<'tcx>(
@@ -1784,4 +1789,5 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
     providers.items_of_instance = items_of_instance;
+    providers.has_normalization_error_in_mono = has_normalization_error_in_mono;
 }

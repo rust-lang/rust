@@ -2698,6 +2698,11 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    query has_normalization_error_in_mono(key: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether {}'s body has post-analysis normalization error", key }
+        cache_on_disk_if { true }
+    }
+
     query size_estimate(key: ty::Instance<'tcx>) -> usize {
         desc { "estimating codegen size of `{}`", key }
         cache_on_disk_if { true }
