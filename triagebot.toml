@@ -1313,7 +1313,7 @@ message = """
 and explores the possible non-determinism of the intrinsic.
 """
 cc = ["@rust-lang/miri"]
-[mentions."#[rustc_allow_const_fn_unstable]"]
+[mentions."#[rustc_allow_const_fn_unstable"]
 type = "content"
 message = """
 `#[rustc_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
