@@ -88,7 +88,11 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) ->
         |builder| {
             let method_name = kind.method_name(op);
 
-            builder.replace(range, format!("{lhs}.{method_name}({rhs})"))
+            if lhs.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix) {
+                builder.replace(range, format!("({lhs}).{method_name}({rhs})"))
+            } else {
+                builder.replace(range, format!("{lhs}.{method_name}({rhs})"))
+            }
         },
     )
 }
@@ -222,6 +226,23 @@ fn main() {
             r#"
 fn main() {
     let x = 1.wrapping_add(2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn replace_arith_with_wrapping_add_add_parenthesis() {
+        check_assist(
+            replace_arith_with_wrapping,
+            r#"
+fn main() {
+    let x = 1*x $0+ 2;
+}
+"#,
+            r#"
+fn main() {
+    let x = (1*x).wrapping_add(2);
 }
 "#,
         )
