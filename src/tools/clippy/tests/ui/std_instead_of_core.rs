@@ -89,3 +89,10 @@ fn msrv_1_76(_: std::net::IpAddr) {}
 #[clippy::msrv = "1.77"]
 fn msrv_1_77(_: std::net::IpAddr) {}
 //~^ std_instead_of_core
+
+#[warn(clippy::alloc_instead_of_core)]
+fn issue15579() {
+    use std::alloc;
+
+    let layout = alloc::Layout::new::<u8>();
+}

@@ -387,10 +387,7 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
 /// Checks if the type is a reference equals to a diagnostic item
 pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
     match ty.kind() {
-        ty::Ref(_, ref_ty, _) => match ref_ty.kind() {
-            ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did()),
-            _ => false,
-        },
+        ty::Ref(_, ref_ty, _) => is_type_diagnostic_item(cx, *ref_ty, diag_item),
         _ => false,
     }
 }
@@ -1378,9 +1375,7 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
 
 /// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.
 pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_slice()
-        || ty.is_array()
-        || matches!(ty.kind(), ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::Vec, adt_def.did()))
+    ty.is_slice() || ty.is_array() || is_type_diagnostic_item(cx, ty, sym::Vec)
 }
 
 pub fn get_field_idx_by_name(ty: Ty<'_>, name: Symbol) -> Option<usize> {

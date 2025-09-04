@@ -215,7 +215,8 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
         && let ExprKind::Path(ref repl_func_qpath) = repl_func.kind
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
     {
-        if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
+        let repl_name = cx.tcx.get_diagnostic_name(repl_def_id);
+        if repl_name == Some(sym::mem_uninitialized) {
             let Some(top_crate) = std_or_core(cx) else { return };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
@@ -230,9 +231,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 ),
                 applicability,
             );
-        } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id)
-            && !cx.typeck_results().expr_ty(src).is_primitive()
-        {
+        } else if repl_name == Some(sym::mem_zeroed) && !cx.typeck_results().expr_ty(src).is_primitive() {
             span_lint_and_help(
                 cx,
                 MEM_REPLACE_WITH_UNINIT,

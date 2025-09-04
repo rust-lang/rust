@@ -355,12 +355,15 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
             return Some(LenOutput::Integral);
         }
 
-        if let Res::Def(_, def_id) = res {
-            if cx.tcx.is_diagnostic_item(sym::Option, def_id) && is_first_generic_integral(segment) {
-                return Some(LenOutput::Option(def_id));
-            } else if cx.tcx.is_diagnostic_item(sym::Result, def_id) && is_first_generic_integral(segment) {
-                return Some(LenOutput::Result(def_id));
+        if let Res::Def(_, def_id) = res
+            && let Some(res) = match cx.tcx.get_diagnostic_name(def_id) {
+                Some(sym::Option) => Some(LenOutput::Option(def_id)),
+                Some(sym::Result) => Some(LenOutput::Result(def_id)),
+                _ => None,
             }
+            && is_first_generic_integral(segment)
+        {
+            return Some(res);
         }
 
         return None;
@@ -368,11 +371,10 @@ fn parse_len_output<'tcx>(cx: &LateContext<'tcx>, sig: FnSig<'tcx>) -> Option<Le
 
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
-        },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Result(adt.did()))
+        ty::Adt(adt, subs) if subs.type_at(0).is_integral() => match cx.tcx.get_diagnostic_name(adt.did()) {
+            Some(sym::Option) => Some(LenOutput::Option(adt.did())),
+            Some(sym::Result) => Some(LenOutput::Result(adt.did())),
+            _ => None,
         },
         _ => None,
     }

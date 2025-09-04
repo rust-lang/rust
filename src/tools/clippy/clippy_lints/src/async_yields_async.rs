@@ -1,8 +1,12 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::is_expr_async_block;
+use clippy_utils::source::walk_span_to_context;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, QPath};
+use rustc_hir::{
+    Block, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, QPath,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -87,31 +91,37 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
         let expr_ty = typeck_results.expr_ty(body_expr);
 
         if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {
-            let return_expr_span = match &body_expr.kind {
-                // XXXkhuey there has to be a better way.
-                ExprKind::Block(block, _) => block.expr.map(|e| e.span),
-                ExprKind::Path(QPath::Resolved(_, path)) => Some(path.span),
-                _ => None,
+            let (return_expr, return_expr_span) = match &body_expr.kind {
+                ExprKind::Block(Block { expr: Some(e), .. }, _) => (*e, e.span),
+                ExprKind::Path(QPath::Resolved(_, path)) => (body_expr, path.span),
+                _ => return,
             };
-            if let Some(return_expr_span) = return_expr_span {
-                span_lint_hir_and_then(
-                    cx,
-                    ASYNC_YIELDS_ASYNC,
-                    body_expr.hir_id,
-                    return_expr_span,
-                    "an async construct yields a type which is itself awaitable",
-                    |db| {
-                        db.span_label(body_expr.span, "outer async construct");
-                        db.span_label(return_expr_span, "awaitable value not awaited");
-                        db.span_suggestion(
-                            return_expr_span,
-                            "consider awaiting this value",
-                            format!("{}.await", snippet(cx, return_expr_span, "..")),
-                            Applicability::MaybeIncorrect,
-                        );
-                    },
-                );
+
+            let return_expr_span = walk_span_to_context(return_expr_span, expr.span.ctxt()).unwrap_or(return_expr_span);
+            let mut applicability = Applicability::MaybeIncorrect;
+            let mut return_expr_snip =
+                Sugg::hir_with_context(cx, return_expr, expr.span.ctxt(), "..", &mut applicability);
+            if !is_expr_async_block(return_expr) {
+                return_expr_snip = return_expr_snip.maybe_paren();
             }
+
+            span_lint_hir_and_then(
+                cx,
+                ASYNC_YIELDS_ASYNC,
+                body_expr.hir_id,
+                return_expr_span,
+                "an async construct yields a type which is itself awaitable",
+                |db| {
+                    db.span_label(body_expr.span, "outer async construct");
+                    db.span_label(return_expr_span, "awaitable value not awaited");
+                    db.span_suggestion(
+                        return_expr_span,
+                        "consider awaiting this value",
+                        format!("{return_expr_snip}.await"),
+                        applicability,
+                    );
+                },
+            );
         }
     }
 }

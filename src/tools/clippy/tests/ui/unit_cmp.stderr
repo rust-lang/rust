@@ -71,5 +71,23 @@ LL | |             true;
 LL | |     );
    | |_____^
 
-error: aborting due to 6 previous errors
+error: `assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:74:5
+   |
+LL | /     assert_eq!(
+LL | |
+LL | |         {
+LL | |             1;
+LL | |         },
+LL | |         foo()
+LL | |     );
+   | |_____^
+
+error: `assert_eq` of unit values detected. This will always succeed
+  --> tests/ui/unit_cmp.rs:81:5
+   |
+LL |     assert_eq!(foo(), foo());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
 

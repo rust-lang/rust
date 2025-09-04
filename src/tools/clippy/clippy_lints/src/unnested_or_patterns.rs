@@ -326,7 +326,11 @@ fn extend_with_struct_pat(
                     if idx_1 == idx {
                         // In the case of `k`, we merely require identical field names
                         // so that we will transform into `ident_k: p1_k | p2_k`.
-                        let pos = fps2.iter().position(|fp2| eq_id(fp1.ident, fp2.ident));
+                        let pos = fps2.iter().position(|fp2| {
+                            // Avoid `Foo { bar } | Foo { bar }` => `Foo { bar | bar }`
+                            !(fp1.is_shorthand && fp2.is_shorthand)
+                                && eq_id(fp1.ident, fp2.ident)
+                        });
                         pos_in_2.set(pos);
                         pos.is_some()
                     } else {
