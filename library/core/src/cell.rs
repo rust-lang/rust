@@ -252,7 +252,7 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::marker::{PhantomData, Unsize};
+use crate::marker::{Move, PhantomData, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
@@ -309,7 +309,7 @@ pub use once::OnceCell;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct Cell<T: ?Sized> {
+pub struct Cell<T: ?Sized + ?Move> {
     value: UnsafeCell<T>,
 }
 
@@ -322,7 +322,7 @@ unsafe impl<T: ?Sized> Send for Cell<T> where T: Send {}
 // having an explicit negative impl is nice for documentation purposes
 // and results in nicer error messages.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for Cell<T> {}
+impl<T: ?Sized + ?Move> !Sync for Cell<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Copy> Clone for Cell<T> {
@@ -669,7 +669,7 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 // `self: Cell<&Self>` won't work
 // `self: CellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
+impl<T: DispatchFromDyn<U> + ?Move, U: ?Move> DispatchFromDyn<Cell<U>> for Cell<T> {}
 
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
@@ -2185,12 +2185,12 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct UnsafeCell<T: ?Sized> {
+pub struct UnsafeCell<T: ?Sized + ?Move> {
     value: T,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for UnsafeCell<T> {}
+impl<T: ?Sized + ?Move> !Sync for UnsafeCell<T> {}
 
 impl<T> UnsafeCell<T> {
     /// Constructs a new instance of `UnsafeCell` which will wrap the specified
@@ -2455,7 +2455,7 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 // `self: UnsafeCell<&Self>` won't work
 // `self: UnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
-impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
+impl<T: DispatchFromDyn<U> + ?Move, U: ?Move> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
 
 /// [`UnsafeCell`], but [`Sync`].
 ///
@@ -2473,7 +2473,7 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> 
 #[repr(transparent)]
 #[rustc_diagnostic_item = "SyncUnsafeCell"]
 #[rustc_pub_transparent]
-pub struct SyncUnsafeCell<T: ?Sized> {
+pub struct SyncUnsafeCell<T: ?Sized + ?Move> {
     value: UnsafeCell<T>,
 }
 
@@ -2563,7 +2563,10 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell
 // `self: SyncUnsafeCellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 //#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
-impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
+impl<T: DispatchFromDyn<U> + ?Move, U: ?Move> DispatchFromDyn<SyncUnsafeCell<U>>
+    for SyncUnsafeCell<T>
+{
+}
 
 #[allow(unused)]
 fn assert_coerce_unsized(
