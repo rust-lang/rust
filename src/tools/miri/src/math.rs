@@ -15,6 +15,8 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
         || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
         // relative errors don't do anything to zeros... avoid messing up the sign
         || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
     {
         return val;
     }
@@ -54,6 +56,8 @@ pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
         // FIXME: also disturb zeros? That requires a lot more cases in `fixed_float_value`
         // and might make the std test suite quite unhappy.
         || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
     {
         return val;
     }

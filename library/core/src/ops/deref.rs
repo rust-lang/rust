@@ -136,7 +136,7 @@ use crate::marker::PointeeSized;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait Deref: PointeeSized {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -152,7 +152,7 @@ pub trait Deref: PointeeSized {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
@@ -166,7 +166,7 @@ impl<T: ?Sized> const Deref for &T {
 impl<T: ?Sized> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
@@ -268,7 +268,7 @@ impl<T: ?Sized> const Deref for &mut T {
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 pub trait DerefMut: [const] Deref + PointeeSized {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -277,7 +277,7 @@ pub trait DerefMut: [const] Deref + PointeeSized {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T: ?Sized> const DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T {
         self
