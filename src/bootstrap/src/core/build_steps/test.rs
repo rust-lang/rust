@@ -511,7 +511,7 @@ impl Step for Rustfmt {
 
     /// Runs `cargo test` for rustfmt.
     fn run(self, builder: &Builder<'_>) {
-        let tool_result = builder.ensure(tool::Rustfmt::from_compilers(self.compilers));
+        let tool_result = builder.ensure(tool::Rustfmt::from_compilers(self.compilers.clone()));
         let build_compiler = tool_result.build_compiler;
         let target = self.compilers.target();
 
@@ -615,12 +615,12 @@ impl Step for Miri {
         // This compiler runs on the host, we'll just use it for the target.
         let compilers = RustcPrivateCompilers::new(builder, stage, host);
 
+        let target_compiler = compilers.target_compiler();
+
         // Build our tools.
-        let miri = builder.ensure(tool::Miri::from_compilers(compilers));
+        let miri = builder.ensure(tool::Miri::from_compilers(compilers.clone()));
         // the ui tests also assume cargo-miri has been built
         builder.ensure(tool::CargoMiri::from_compilers(compilers));
-
-        let target_compiler = compilers.target_compiler();
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.

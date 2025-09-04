@@ -1613,7 +1613,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         assert_eq!(run_compiler, compilers.target_compiler());
 
         // Prepare the tools
-        let miri = self.ensure(tool::Miri::from_compilers(compilers));
+        let miri = self.ensure(tool::Miri::from_compilers(compilers.clone()));
         let cargo_miri = self.ensure(tool::CargoMiri::from_compilers(compilers));
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri.tool_path);
@@ -1651,7 +1651,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         // for RustcPrivateCompilers. We will use build compiler stage N-1 to build Clippy stage N.
         let compilers = RustcPrivateCompilers::from_target_compiler(self, build_compiler);
 
-        let _ = self.ensure(tool::Clippy::from_compilers(compilers));
+        let _ = self.ensure(tool::Clippy::from_compilers(compilers.clone()));
         let cargo_clippy = self.ensure(tool::CargoClippy::from_compilers(compilers));
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(build_compiler).join("lib"));

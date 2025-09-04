@@ -568,11 +568,12 @@ pub struct ErrorIndex {
 
 impl ErrorIndex {
     pub fn command(builder: &Builder<'_>, compilers: RustcPrivateCompilers) -> BootstrapCommand {
+        let target_compiler = compilers.target_compiler();
+
         // Error-index-generator links with the rustdoc library, so we need to add `rustc_lib_paths`
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let mut cmd = command(builder.ensure(ErrorIndex { compilers }).tool_path);
 
-        let target_compiler = compilers.target_compiler();
         let mut dylib_paths = builder.rustc_lib_paths(target_compiler);
         dylib_paths.push(builder.sysroot_target_libdir(target_compiler, target_compiler.host));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -1280,7 +1281,7 @@ impl Step for LibcxxVersionTool {
 ///
 /// Eventually, this could also be used for .rmetas and check builds, but so far we only deal with
 /// normal builds here.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RustcPrivateCompilers {
     /// Compiler that builds the tool and that builds `target_compiler`.
     build_compiler: Compiler,
