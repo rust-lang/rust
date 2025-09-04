@@ -389,7 +389,7 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<(NodeId, Path)>,
             ThinVec<PathSegment>,
             ThinVec<PreciseCapturingArg>,
-            ThinVec<Box<Pat>>,
+            ThinVec<Pat>,
             ThinVec<Box<Ty>>,
             ThinVec<Box<TyPat>>,
         );

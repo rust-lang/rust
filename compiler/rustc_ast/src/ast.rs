@@ -869,11 +869,11 @@ pub enum PatKind {
     Struct(Option<Box<QSelf>>, Path, ThinVec<PatField>, PatFieldsRest),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
-    TupleStruct(Option<Box<QSelf>>, Path, ThinVec<Box<Pat>>),
+    TupleStruct(Option<Box<QSelf>>, Path, ThinVec<Pat>),
 
     /// An or-pattern `A | B | C`.
     /// Invariant: `pats.len() >= 2`.
-    Or(ThinVec<Box<Pat>>),
+    Or(ThinVec<Pat>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
@@ -882,7 +882,7 @@ pub enum PatKind {
     Path(Option<Box<QSelf>>, Path),
 
     /// A tuple pattern (`(a, b)`).
-    Tuple(ThinVec<Box<Pat>>),
+    Tuple(ThinVec<Pat>),
 
     /// A `box` pattern.
     Box(Box<Pat>),
@@ -900,7 +900,7 @@ pub enum PatKind {
     Range(Option<Box<Expr>>, Option<Box<Expr>>, Spanned<RangeEnd>),
 
     /// A slice pattern `[a, b, c]`.
-    Slice(ThinVec<Box<Pat>>),
+    Slice(ThinVec<Pat>),
 
     /// A rest pattern `..`.
     ///
