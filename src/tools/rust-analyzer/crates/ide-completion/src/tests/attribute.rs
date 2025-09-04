@@ -836,6 +836,58 @@ mod cfg {
     }
 
     #[test]
+    fn inside_cfg_attr() {
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg_attr($0)]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+                ba true
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg_attr(b$0)]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+                ba true
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg_attr($0, allow(deprecated))]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+                ba true
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs cfg:test,dbg=false,opt_level=2
+#[cfg_attr(b$0, allow(deprecated))]
+"#,
+            expect![[r#"
+                ba dbg
+                ba opt_level
+                ba test
+                ba true
+            "#]],
+        );
+    }
+
+    #[test]
     fn cfg_target_endian() {
         check(
             r#"#[cfg(target_endian = $0"#,
