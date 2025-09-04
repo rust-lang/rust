@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value: encountered an unaligned reference (re
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -15,7 +15,7 @@ error[E0080]: constructing invalid value: encountered an unaligned box (required
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -26,7 +26,7 @@ error[E0080]: constructing invalid value: encountered a null reference
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -37,7 +37,7 @@ error[E0080]: constructing invalid value: encountered a null box
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -87,7 +87,7 @@ error[E0080]: constructing invalid value: encountered a dangling reference (0x53
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -98,7 +98,7 @@ error[E0080]: constructing invalid value: encountered a dangling box (0x539[noal
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -119,7 +119,7 @@ error[E0080]: constructing invalid value: encountered null pointer, but expected
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -140,7 +140,7 @@ error[E0080]: constructing invalid value: encountered 0xd[noalloc], but expected
 LL | const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -151,7 +151,7 @@ error[E0080]: constructing invalid value: encountered ALLOC2<imm>, but expected 
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
    | ^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
