@@ -62,7 +62,20 @@ pub fn new_parser_from_source_str(
     source: String,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let source_file = psess.source_map().new_source_file(name, source);
-    new_parser_from_source_file(psess, source_file)
+    new_parser_from_source_file(psess, source_file, FrontmatterAllowed::Yes)
+}
+
+/// Creates a new parser from a simple (no frontmatter) source string.
+///
+/// On failure, the errors must be consumed via `unwrap_or_emit_fatal`, `emit`, `cancel`,
+/// etc., otherwise a panic will occur when they are dropped.
+pub fn new_parser_from_simple_source_str(
+    psess: &ParseSess,
+    name: FileName,
+    source: String,
+) -> Result<Parser<'_>, Vec<Diag<'_>>> {
+    let source_file = psess.source_map().new_source_file(name, source);
+    new_parser_from_source_file(psess, source_file, FrontmatterAllowed::No)
 }
 
 /// Creates a new parser from a filename. On failure, the errors must be consumed via
@@ -96,7 +109,7 @@ pub fn new_parser_from_file<'a>(
         }
         err.emit();
     });
-    new_parser_from_source_file(psess, source_file)
+    new_parser_from_source_file(psess, source_file, FrontmatterAllowed::Yes)
 }
 
 pub fn utf8_error<E: EmissionGuarantee>(
@@ -147,9 +160,10 @@ pub fn utf8_error<E: EmissionGuarantee>(
 fn new_parser_from_source_file(
     psess: &ParseSess,
     source_file: Arc<SourceFile>,
+    frontmatter_allowed: FrontmatterAllowed,
 ) -> Result<Parser<'_>, Vec<Diag<'_>>> {
     let end_pos = source_file.end_position();
-    let stream = source_file_to_stream(psess, source_file, None, FrontmatterAllowed::Yes)?;
+    let stream = source_file_to_stream(psess, source_file, None, frontmatter_allowed)?;
     let mut parser = Parser::new(psess, stream, None);
     if parser.token == token::Eof {
         parser.token.span = Span::new(end_pos, end_pos, parser.token.span.ctxt(), None);
