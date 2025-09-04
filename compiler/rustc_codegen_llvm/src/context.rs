@@ -217,6 +217,10 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
             target_data_layout = target_data_layout.replace("n8:16", "n8")
         }
+        if sess.target.arch == "nvptx64" {
+            // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
+            target_data_layout = target_data_layout.replace("-i256:256", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.

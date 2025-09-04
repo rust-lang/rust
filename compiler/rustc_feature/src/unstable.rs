@@ -642,6 +642,8 @@ declare_features! (
     (unstable, super_let, "1.88.0", Some(139076)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
+    /// Allows the use of target_feature when a function is marked inline(always).
+    (unstable, target_feature_inline_always, "CURRENT_RUSTC_VERSION", Some(145574)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.

@@ -366,8 +366,13 @@ impl Step for CodegenGcc {
         );
         self.build_compiler.configure_cargo(&mut cargo);
 
-        let _guard =
-            builder.msg(Kind::Clippy, "rustc_codegen_gcc", Mode::ToolRustc, build_compiler, target);
+        let _guard = builder.msg(
+            Kind::Clippy,
+            "rustc_codegen_gcc",
+            Mode::ToolRustcPrivate,
+            build_compiler,
+            target,
+        );
 
         let stamp = BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Codegen, target))
             .with_prefix("rustc_codegen_gcc-check");
@@ -478,8 +483,8 @@ lint_any!(
     Bootstrap, "src/bootstrap", "bootstrap", Mode::ToolTarget;
     BuildHelper, "src/build_helper", "build_helper", Mode::ToolTarget;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolTarget;
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", Mode::ToolRustc;
-    Clippy, "src/tools/clippy", "clippy", Mode::ToolRustc;
+    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", Mode::ToolRustcPrivate;
+    Clippy, "src/tools/clippy", "clippy", Mode::ToolRustcPrivate;
     CollectLicenseMetadata, "src/tools/collect-license-metadata", "collect-license-metadata", Mode::ToolTarget;
     Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolTarget;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump", Mode::ToolTarget;
@@ -487,14 +492,14 @@ lint_any!(
     Jsondoclint, "src/tools/jsondoclint", "jsondoclint", Mode::ToolTarget;
     LintDocs, "src/tools/lint-docs", "lint-docs", Mode::ToolTarget;
     LlvmBitcodeLinker, "src/tools/llvm-bitcode-linker", "llvm-bitcode-linker", Mode::ToolTarget;
-    Miri, "src/tools/miri", "miri", Mode::ToolRustc;
+    Miri, "src/tools/miri", "miri", Mode::ToolRustcPrivate;
     MiroptTestTools, "src/tools/miropt-test-tools", "miropt-test-tools", Mode::ToolTarget;
     OptDist, "src/tools/opt-dist", "opt-dist", Mode::ToolTarget;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolTarget;
     RemoteTestServer, "src/tools/remote-test-server", "remote-test-server", Mode::ToolTarget;
-    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustc;
-    Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustc;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustc;
+    RustAnalyzer, "src/tools/rust-analyzer", "rust-analyzer", Mode::ToolRustcPrivate;
+    Rustdoc, "src/librustdoc", "clippy", Mode::ToolRustcPrivate;
+    Rustfmt, "src/tools/rustfmt", "rustfmt", Mode::ToolRustcPrivate;
     RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::ToolTarget;
     Tidy, "src/tools/tidy", "tidy", Mode::ToolTarget;
     TestFloatParse, "src/tools/test-float-parse", "test-float-parse", Mode::ToolStd;

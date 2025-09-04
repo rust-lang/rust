@@ -10,8 +10,8 @@ use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
 use crate::utils::cache::ExecutedStep;
 use crate::utils::helpers::get_host_target;
-use crate::utils::tests::ConfigBuilder;
 use crate::utils::tests::git::{GitCtx, git_test};
+use crate::utils::tests::{ConfigBuilder, TestCtx};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
 static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
@@ -22,38 +22,13 @@ fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
 }
 
 fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
-    let cmd = cmd.iter().copied().map(String::from).collect::<Vec<_>>();
-    let mut config = Config::parse(Flags::parse(&cmd));
-    // don't save toolstates
-    config.save_toolstates = None;
-    config.set_dry_run(DryRun::SelfCheck);
-
-    // Ignore most submodules, since we don't need them for a dry run, and the
-    // tests run much faster without them.
-    //
-    // The src/doc/book submodule is needed because TheBook step tries to
-    // access files even during a dry-run (may want to consider just skipping
-    // that in a dry run).
-    let submodule_build = Build::new(Config {
-        // don't include LLVM, so CI doesn't require ninja/cmake to be installed
-        rust_codegen_backends: vec![],
-        ..Config::parse(Flags::parse(&["check".to_owned()]))
-    });
-    submodule_build.require_submodule("src/doc/book", None);
-    config.submodules = Some(false);
-
-    config.ninja_in_file = false;
-    // try to avoid spurious failures in dist where we create/delete each others file
-    // HACK: rather than pull in `tempdir`, use the one that cargo has conveniently created for us
-    let dir = Path::new(env!("OUT_DIR"))
-        .join("tmp-rustbuild-tests")
-        .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
-    t!(fs::create_dir_all(&dir));
-    config.out = dir;
-    config.host_target = TargetSelection::from_user(TEST_TRIPLE_1);
-    config.hosts = host.iter().map(|s| TargetSelection::from_user(s)).collect();
-    config.targets = target.iter().map(|s| TargetSelection::from_user(s)).collect();
-    config
+    TestCtx::new()
+        .config(cmd[0])
+        .args(&cmd[1..])
+        .hosts(host)
+        .targets(target)
+        .args(&["--build", TEST_TRIPLE_1])
+        .create_config()
 }
 
 fn first<A, B>(v: Vec<(A, B)>) -> Vec<A> {
@@ -547,8 +522,8 @@ mod snapshot {
 
     use crate::core::build_steps::{compile, dist, doc, test, tool};
     use crate::core::builder::tests::{
-        RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, configure_with_args,
-        first, host_target, render_steps, run_build,
+        RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, configure, first, host_target,
+        render_steps, run_build,
     };
     use crate::core::builder::{Builder, Kind, StepDescription, StepMetadata};
     use crate::core::config::TargetSelection;
