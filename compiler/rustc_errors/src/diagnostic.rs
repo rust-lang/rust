@@ -303,6 +303,11 @@ impl DiagInner {
         }
     }
 
+    /// Returns the name of the lint that generated this diagnostic, if applicable.
+    pub fn lint_name(&self) -> Option<&str> {
+        self.is_lint.as_ref().map(|IsLint { name, .. }| name.as_str())
+    }
+
     /// Indicates whether this diagnostic should show up in cargo's future breakage report.
     pub(crate) fn has_future_breakage(&self) -> bool {
         matches!(self.is_lint, Some(IsLint { has_future_breakage: true, .. }))

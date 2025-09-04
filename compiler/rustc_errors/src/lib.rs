@@ -310,6 +310,9 @@ struct DiagCtxtInner {
     /// The warning count shown to the user at the end.
     deduplicated_warn_count: usize,
 
+    /// Filter that runs after lint expectations have been checked
+    post_expect_filter: Option<Box<dyn Fn(&DiagInner) -> bool + DynSend>>,
+
     emitter: Box<DynEmitter>,
 
     /// Must we produce a diagnostic to justify the use of the expensive
@@ -481,6 +484,13 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
+    pub fn set_post_expect_filter(
+        &self,
+        post_expect_filter: Box<dyn Fn(&DiagInner) -> bool + DynSend>,
+    ) {
+        self.inner.borrow_mut().post_expect_filter = Some(post_expect_filter);
+    }
+
     pub fn make_silent(&self) {
         let mut inner = self.inner.borrow_mut();
         inner.emitter = Box::new(emitter::SilentEmitter {});
@@ -513,6 +523,7 @@ impl DiagCtxt {
             delayed_bugs,
             deduplicated_err_count,
             deduplicated_warn_count,
+            post_expect_filter: _,
             emitter: _,
             must_produce_diag,
             has_printed,
@@ -1159,6 +1170,7 @@ impl DiagCtxtInner {
             delayed_bugs: Vec::new(),
             deduplicated_err_count: 0,
             deduplicated_warn_count: 0,
+            post_expect_filter: None,
             emitter,
             must_produce_diag: None,
             has_printed: false,
@@ -1282,6 +1294,10 @@ impl DiagCtxtInner {
                     return None;
                 }
             }
+        }
+
+        if self.post_expect_filter.as_ref().is_some_and(|f| f(&diagnostic)) {
+            return None;
         }
 
         TRACK_DIAGNOSTIC(diagnostic, &mut |mut diagnostic| {
