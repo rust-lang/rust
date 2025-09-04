@@ -747,7 +747,6 @@ symbols! {
         contract_build_check_ensures,
         contract_check_ensures,
         contract_check_requires,
-        contract_checks,
         contracts,
         contracts_ensures,
         contracts_internals,
