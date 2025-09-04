@@ -22,8 +22,7 @@ pub enum CommentKind {
     Block,
 }
 
-// This type must not implement `Hash` due to the unusual `PartialEq` impl below.
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
 pub enum InvisibleOrigin {
     // From the expansion of a metavariable in a declarative macro.
     MetaVar(MetaVarKind),
@@ -42,20 +41,6 @@ impl InvisibleOrigin {
             InvisibleOrigin::MetaVar(_) => false,
             InvisibleOrigin::ProcMacro => true,
         }
-    }
-}
-
-impl PartialEq for InvisibleOrigin {
-    #[inline]
-    fn eq(&self, _other: &InvisibleOrigin) -> bool {
-        // When we had AST-based nonterminals we couldn't compare them, and the
-        // old `Nonterminal` type had an `eq` that always returned false,
-        // resulting in this restriction:
-        // https://doc.rust-lang.org/nightly/reference/macros-by-example.html#forwarding-a-matched-fragment
-        // This `eq` emulates that behaviour. We could consider lifting this
-        // restriction now but there are still cases involving invisible
-        // delimiters that make it harder than it first appears.
-        false
     }
 }
 
@@ -142,7 +127,8 @@ impl Delimiter {
         }
     }
 
-    // This exists because `InvisibleOrigin`s should be compared. It is only used for assertions.
+    // This exists because `InvisibleOrigin`s should not be compared. It is only used for
+    // assertions.
     pub fn eq_ignoring_invisible_origin(&self, other: &Delimiter) -> bool {
         match (self, other) {
             (Delimiter::Parenthesis, Delimiter::Parenthesis) => true,
