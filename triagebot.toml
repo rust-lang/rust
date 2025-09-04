@@ -235,7 +235,6 @@ trigger_files = [
     "src/etc/htmldocck.py",
     "src/tools/jsondocck",
     "src/tools/jsondoclint",
-    "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
 
