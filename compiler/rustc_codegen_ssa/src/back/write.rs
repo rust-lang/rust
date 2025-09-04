@@ -714,48 +714,48 @@ pub(crate) enum WorkItem<B: WriteBackendMethods> {
     ThinLto(lto::ThinModule<B>),
 }
 
+// `pthread_setname()` on *nix ignores anything beyond the first 15
+// bytes. Use short descriptions to maximize the space available for
+// the module name.
+#[cfg(not(windows))]
+fn desc(short: &str, _long: &str, name: &str) -> String {
+    // The short label is three bytes, and is followed by a space. That
+    // leaves 11 bytes for the CGU name. How we obtain those 11 bytes
+    // depends on the CGU name form.
+    //
+    // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part
+    //   before the `-cgu.0` is the same for every CGU, so use the
+    //   `cgu.0` part. The number suffix will be different for each
+    //   CGU.
+    //
+    // - Incremental (normal), e.g. `2i52vvl2hco29us0`: use the whole
+    //   name because each CGU will have a unique ASCII hash, and the
+    //   first 11 bytes will be enough to identify it.
+    //
+    // - Incremental (with `-Zhuman-readable-cgu-names`), e.g.
+    //   `regex.f10ba03eb5ec7975-re_builder.volatile`: use the whole
+    //   name. The first 11 bytes won't be enough to uniquely identify
+    //   it, but no obvious substring will, and this is a rarely used
+    //   option so it doesn't matter much.
+    //
+    assert_eq!(short.len(), 3);
+    let name = if let Some(index) = name.find("-cgu.") {
+        &name[index + 1..] // +1 skips the leading '-'.
+    } else {
+        name
+    };
+    format!("{short} {name}")
+}
+
+// Windows has no thread name length limit, so use more descriptive names.
+#[cfg(windows)]
+fn desc(_short: &str, long: &str, name: &str) -> String {
+    format!("{long} {name}")
+}
+
 impl<B: WriteBackendMethods> WorkItem<B> {
     /// Generate a short description of this work item suitable for use as a thread name.
     fn short_description(&self) -> String {
-        // `pthread_setname()` on *nix ignores anything beyond the first 15
-        // bytes. Use short descriptions to maximize the space available for
-        // the module name.
-        #[cfg(not(windows))]
-        fn desc(short: &str, _long: &str, name: &str) -> String {
-            // The short label is three bytes, and is followed by a space. That
-            // leaves 11 bytes for the CGU name. How we obtain those 11 bytes
-            // depends on the CGU name form.
-            //
-            // - Non-incremental, e.g. `regex.f10ba03eb5ec7975-cgu.0`: the part
-            //   before the `-cgu.0` is the same for every CGU, so use the
-            //   `cgu.0` part. The number suffix will be different for each
-            //   CGU.
-            //
-            // - Incremental (normal), e.g. `2i52vvl2hco29us0`: use the whole
-            //   name because each CGU will have a unique ASCII hash, and the
-            //   first 11 bytes will be enough to identify it.
-            //
-            // - Incremental (with `-Zhuman-readable-cgu-names`), e.g.
-            //   `regex.f10ba03eb5ec7975-re_builder.volatile`: use the whole
-            //   name. The first 11 bytes won't be enough to uniquely identify
-            //   it, but no obvious substring will, and this is a rarely used
-            //   option so it doesn't matter much.
-            //
-            assert_eq!(short.len(), 3);
-            let name = if let Some(index) = name.find("-cgu.") {
-                &name[index + 1..] // +1 skips the leading '-'.
-            } else {
-                name
-            };
-            format!("{short} {name}")
-        }
-
-        // Windows has no thread name length limit, so use more descriptive names.
-        #[cfg(windows)]
-        fn desc(_short: &str, long: &str, name: &str) -> String {
-            format!("{long} {name}")
-        }
-
         match self {
             WorkItem::Optimize(m) => desc("opt", "optimize module", &m.name),
             WorkItem::CopyPostLtoArtifacts(m) => desc("cpy", "copy LTO artifacts for", &m.name),
