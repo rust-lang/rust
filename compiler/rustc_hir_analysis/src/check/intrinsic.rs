@@ -123,7 +123,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::aggregate_raw_ptr
         | sym::ptr_metadata
         | sym::ub_checks
-        | sym::contract_checks
         | sym::contract_check_requires
         | sym::contract_check_ensures
         | sym::fadd_algebraic
@@ -568,8 +567,6 @@ pub(crate) fn check_intrinsic_type(
 
         sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
-        // contract_checks() -> bool
-        sym::contract_checks => (0, 0, Vec::new(), tcx.types.bool),
         // contract_check_requires::<C>(C) -> bool, where C: impl Fn() -> bool
         sym::contract_check_requires => (1, 0, vec![param(0)], tcx.types.unit),
         sym::contract_check_ensures => {
