@@ -1052,6 +1052,10 @@ pub fn libm() {
     assert_eq!(42f64.powf(0.0), 1.0);
     assert_eq!(f32::INFINITY.powf(0.0), 1.0);
     assert_eq!(f64::INFINITY.powf(0.0), 1.0);
+    assert_eq!(f32::NEG_INFINITY.powi(3), f32::NEG_INFINITY);
+    assert_eq!(f32::NEG_INFINITY.powi(2), f32::INFINITY);
+    assert_eq!(f64::INFINITY.powi(3), f64::INFINITY);
+    assert_eq!(f64::INFINITY.powi(2), f64::INFINITY);
 
     // f*::NAN is a quiet NAN and should return 1 as well.
     assert_eq!(f32::NAN.powi(0), 1.0);
