@@ -1,0 +1,67 @@
+error[E0538]: malformed `link` attribute input
+  --> $DIR/modifiers-override-4.rs:2:1
+   |
+LL | / #[link(
+LL | |
+LL | |     name = "bar",
+LL | |     kind = "static",
+...  |
+LL | |     modifiers = "+bundle"
+   | |     --------------------- found `modifiers` used as a key more than once
+LL | | )]
+   | |__^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link(
+LL -
+LL -     name = "bar",
+LL -     kind = "static",
+LL -     modifiers = "+whole-archive,-whole-archive",
+LL -
+LL -     modifiers = "+bundle"
+LL - )]
+LL + #[link(name = "...")]
+   |
+LL - #[link(
+LL -
+LL -     name = "bar",
+LL -     kind = "static",
+LL -     modifiers = "+whole-archive,-whole-archive",
+LL -
+LL -     modifiers = "+bundle"
+LL - )]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link(
+LL -
+LL -     name = "bar",
+LL -     kind = "static",
+LL -     modifiers = "+whole-archive,-whole-archive",
+LL -
+LL -     modifiers = "+bundle"
+LL - )]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link(
+LL -
+LL -     name = "bar",
+LL -     kind = "static",
+LL -     modifiers = "+whole-archive,-whole-archive",
+LL -
+LL -     modifiers = "+bundle"
+LL - )]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
+
+error: multiple `whole-archive` modifiers in a single `modifiers` argument
+  --> $DIR/modifiers-override-4.rs:6:17
+   |
+LL |     modifiers = "+whole-archive,-whole-archive",
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0538`.

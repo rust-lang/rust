@@ -272,26 +272,13 @@ impl Permission {
 
     /// Default initial permission of a reborrowed mutable reference that is either
     /// protected or not interior mutable.
-    fn new_reserved_frz() -> Self {
+    pub fn new_reserved_frz() -> Self {
         Self { inner: ReservedFrz { conflicted: false } }
     }
 
     /// Default initial permission of an unprotected interior mutable reference.
-    fn new_reserved_im() -> Self {
+    pub fn new_reserved_im() -> Self {
         Self { inner: ReservedIM }
-    }
-
-    /// Wrapper around `new_reserved_frz` and `new_reserved_im` that decides
-    /// which to call based on the interior mutability and the retag kind (whether there
-    /// is a protector is relevant because being protected takes priority over being
-    /// interior mutable)
-    pub fn new_reserved(ty_is_freeze: bool, protected: bool) -> Self {
-        // As demonstrated by `tests/fail/tree_borrows/reservedim_spurious_write.rs`,
-        // interior mutability and protectors interact poorly.
-        // To eliminate the case of Protected Reserved IM we override interior mutability
-        // in the case of a protected reference: protected references are always considered
-        // "freeze" in their reservation phase.
-        if ty_is_freeze || protected { Self::new_reserved_frz() } else { Self::new_reserved_im() }
     }
 
     /// Default initial permission of a reborrowed shared reference.

@@ -12,13 +12,12 @@ thread 'main' ($TID) panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
 panic in a destructor during cleanup
 thread caused non-unwinding panic. aborting.
 error: abnormal termination: the program aborted execution
-  --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
+  --> RUSTLIB/std/src/panicking.rs:LL:CC
    |
-LL | ABORT()
-   | ^ abnormal termination occurred here
+LL |         crate::process::abort();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
    = note: BACKTRACE:
-   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    = note: inside `std::panicking::panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys/backtrace.rs:LL:CC

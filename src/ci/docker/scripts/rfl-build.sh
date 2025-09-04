@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-LINUX_VERSION=v6.16-rc1
+# https://github.com/rust-lang/rust/pull/144443
+# https://github.com/rust-lang/rust/pull/145928
+LINUX_VERSION=8851e27d2cb947ea8bbbe8e812068f7bf5cbd00b
 
 # Build rustc, rustdoc, cargo, clippy-driver and rustfmt
 ../x.py build --stage 2 library rustdoc clippy rustfmt

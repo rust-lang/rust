@@ -6,13 +6,14 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-bitflags.workspace = true
+bitflags = "2.4.1"
 either = "1.0"
 elsa = "1.11.0"
 ena = "0.14.3"
 indexmap = "2.4.0"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
+parking_lot = "0.12"
 rustc-hash = "2.0.0"
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
@@ -25,17 +26,14 @@ rustc_thread_pool = { path = "../rustc_thread_pool" }
 smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stacker = "0.1.17"
 tempfile = "3.2"
-thin-vec.workspace = true
-tracing.workspace = true
+thin-vec = "0.2.12"
+tracing = "0.1"
 # tidy-alphabetical-end
 
 [dependencies.hashbrown]
 version = "0.15.2"
 default-features = false
 features = ["nightly"] # for may_dangle
-
-[dependencies.parking_lot]
-version = "0.12"
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.61.0"

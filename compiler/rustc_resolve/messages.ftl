@@ -470,6 +470,8 @@ resolve_variable_bound_with_different_mode =
     .label = bound in different ways
     .first_binding_span = first binding
 
+resolve_variable_is_a_typo = you might have meant to use the similarly named previously used binding `{$typo}`
+
 resolve_variable_is_not_bound_in_all_patterns =
     variable `{$name}` is not bound in all patterns
 

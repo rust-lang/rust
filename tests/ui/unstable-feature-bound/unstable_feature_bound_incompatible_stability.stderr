@@ -1,4 +1,4 @@
-error: Item annotated with `#[unstable_feature_bound]` should not be stable
+error: item annotated with `#[unstable_feature_bound]` should not be stable
   --> $DIR/unstable_feature_bound_incompatible_stability.rs:11:1
    |
 LL | fn bar() {}

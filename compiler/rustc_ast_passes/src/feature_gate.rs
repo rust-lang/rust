@@ -188,6 +188,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         notable_trait => doc_notable_trait
                     }
                     "meant for internal use only" {
+                        attribute => rustdoc_internals
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
                         search_unbox => rustdoc_internals

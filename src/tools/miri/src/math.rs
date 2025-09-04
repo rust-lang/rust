@@ -6,67 +6,99 @@ use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use crate::*;
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
-///
-/// For a 2^N ULP error, you can use an `err_scale` of `-(F::PRECISION - 1 - N)`.
-/// In other words, a 1 ULP (absolute) error is the same as a `2^-(F::PRECISION-1)` relative error.
-/// (Subtracting 1 compensates for the integer bit.)
 pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
     err_scale: i32,
 ) -> F {
-    if !ecx.machine.float_nondet || !ecx.machine.float_rounding_error {
+    if !ecx.machine.float_nondet
+        || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
+        // relative errors don't do anything to zeros... avoid messing up the sign
+        || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
+    {
         return val;
     }
-
     let rng = ecx.machine.rng.get_mut();
+
     // Generate a random integer in the range [0, 2^PREC).
     // (When read as binary, the position of the first `1` determines the exponent,
     // and the remaining bits fill the mantissa. `PREC` is one plus the size of the mantissa,
     // so this all works out.)
-    let r = F::from_u128(rng.random_range(0..(1 << F::PRECISION))).value;
+    let r = F::from_u128(match ecx.machine.float_rounding_error {
+        FloatRoundingErrorMode::Random => rng.random_range(0..(1 << F::PRECISION)),
+        FloatRoundingErrorMode::Max => (1 << F::PRECISION) - 1, // force max error
+        FloatRoundingErrorMode::None => unreachable!(),
+    })
+    .value;
     // Multiply this with 2^(scale - PREC). The result is between 0 and
     // 2^PREC * 2^(scale - PREC) = 2^scale.
     let err = r.scalbn(err_scale.strict_sub(F::PRECISION.try_into().unwrap()));
     // give it a random sign
     let err = if rng.random() { -err } else { err };
-    // multiple the value with (1+err)
-    (val * (F::from_u128(1).value + err).value).value
+    // Compute `val*(1+err)`, distributed out as `val + val*err` to avoid the imprecise addition
+    // error being amplified by multiplication.
+    (val + (val * err).value).value
 }
 
-/// [`apply_random_float_error`] gives instructions to apply a 2^N ULP error.
-/// This function implements these instructions such that applying a 2^N ULP error is less error prone.
-/// So for a 2^N ULP error, you would pass N as the `ulp_exponent` argument.
+/// Applies an error of `[-N, +N]` ULP to the given value.
 pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
     ecx: &mut crate::MiriInterpCx<'_>,
     val: F,
-    ulp_exponent: u32,
+    max_error: u32,
 ) -> F {
-    let n = i32::try_from(ulp_exponent)
-        .expect("`err_scale_for_ulp`: exponent is too large to create an error scale");
-    // we know this fits
-    let prec = i32::try_from(F::PRECISION).unwrap();
-    let err_scale = -(prec - n - 1);
-    apply_random_float_error(ecx, val, err_scale)
+    // We could try to be clever and reuse `apply_random_float_error`, but that is hard to get right
+    // (see <https://github.com/rust-lang/miri/pull/4558#discussion_r2316838085> for why) so we
+    // implement the logic directly instead.
+    if !ecx.machine.float_nondet
+        || matches!(ecx.machine.float_rounding_error, FloatRoundingErrorMode::None)
+        // FIXME: also disturb zeros? That requires a lot more cases in `fixed_float_value`
+        // and might make the std test suite quite unhappy.
+        || val.is_zero()
+        // The logic below makes no sense if the input is already non-finite.
+        || !val.is_finite()
+    {
+        return val;
+    }
+    let rng = ecx.machine.rng.get_mut();
+
+    let max_error = i64::from(max_error);
+    let error = match ecx.machine.float_rounding_error {
+        FloatRoundingErrorMode::Random => rng.random_range(-max_error..=max_error),
+        FloatRoundingErrorMode::Max =>
+            if rng.random() {
+                max_error
+            } else {
+                -max_error
+            },
+        FloatRoundingErrorMode::None => unreachable!(),
+    };
+    // If upwards ULP and downwards ULP differ, we take the average.
+    let ulp = (((val.next_up().value - val).value + (val - val.next_down().value).value).value
+        / F::from_u128(2).value)
+        .value;
+    // Shift the value by N times the ULP
+    (val + (ulp * F::from_i128(error.into()).value).value).value
 }
 
-/// Applies a random 16ULP floating point error to `val` and returns the new value.
+/// Applies an error of `[-N, +N]` ULP to the given value.
 /// Will fail if `val` is not a floating point number.
 pub(crate) fn apply_random_float_error_to_imm<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     val: ImmTy<'tcx>,
-    ulp_exponent: u32,
+    max_error: u32,
 ) -> InterpResult<'tcx, ImmTy<'tcx>> {
     let scalar = val.to_scalar_int()?;
     let res: ScalarInt = match val.layout.ty.kind() {
         ty::Float(FloatTy::F16) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), max_error).into(),
         ty::Float(FloatTy::F32) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), max_error).into(),
         ty::Float(FloatTy::F64) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), max_error).into(),
         ty::Float(FloatTy::F128) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), max_error).into(),
         _ => bug!("intrinsic called with non-float input type"),
     };
 

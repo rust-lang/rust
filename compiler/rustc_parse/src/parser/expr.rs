@@ -2077,7 +2077,7 @@ impl<'a> Parser<'a> {
         (token::Lit { symbol: name, suffix: None, kind: token::Char }, span)
     }
 
-    pub fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
+    fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
         ast::MetaItemLit {
             symbol: name,
             suffix: None,
@@ -2086,7 +2086,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn handle_missing_lit<L>(
+    fn handle_missing_lit<L>(
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
@@ -2910,7 +2910,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
+    // Public to use it for custom `for` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+    pub fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
         let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`

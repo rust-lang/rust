@@ -616,7 +616,7 @@ impl Step for Std {
             return;
         }
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
             target: run.target,
             format: if run.builder.config.cmd.json() {
                 DocumentationFormat::Json
@@ -791,7 +791,11 @@ fn doc_std(
 }
 
 /// Prepare a compiler that will be able to document something for `target` at `stage`.
-fn prepare_doc_compiler(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Compiler {
+pub fn prepare_doc_compiler(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    stage: u32,
+) -> Compiler {
     assert!(stage > 0, "Cannot document anything in stage 0");
     let build_compiler = builder.compiler(stage - 1, builder.host_target);
     builder.std(build_compiler, target);
@@ -991,7 +995,7 @@ macro_rules! tool_doc {
                     // Build rustc docs so that we generate relative links.
                     run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
 
-                    (compilers.build_compiler(), Mode::ToolRustc)
+                    (compilers.build_compiler(), Mode::ToolRustcPrivate)
                 } else {
                     // bootstrap/host tools have to be documented with the stage 0 compiler
                     (prepare_doc_compiler(run.builder, run.builder.host_target, 1), Mode::ToolBootstrap)
@@ -1289,6 +1293,8 @@ impl Step for RustcBook {
         // functional sysroot.
         builder.std(self.build_compiler, self.target);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
+        cmd.arg("--build-rustc-stage");
+        cmd.arg(self.build_compiler.stage.to_string());
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
         cmd.arg("--out");

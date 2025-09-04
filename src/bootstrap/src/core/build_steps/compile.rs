@@ -99,28 +99,12 @@ impl Std {
         deps
     }
 
-    /// Returns true if the standard library will be uplifted from stage 1 for the given
-    /// `build_compiler` (which determines the stdlib stage) and `target`.
+    /// Returns true if the standard library should be uplifted from stage 1.
     ///
-    /// Uplifting is enabled if we're building a stage2+ libstd, full bootstrap is
-    /// disabled and we have a stage1 libstd already compiled for the given target.
-    pub fn should_be_uplifted_from_stage_1(
-        builder: &Builder<'_>,
-        stage: u32,
-        target: TargetSelection,
-    ) -> bool {
-        stage > 1
-            && !builder.config.full_bootstrap
-            // This estimates if a stage1 libstd exists for the given target. If we're not
-            // cross-compiling, it should definitely exist by the time we're building a stage2
-            // libstd.
-            // Or if we are cross-compiling, and we are building a cross-compiled rustc, then that
-            // rustc needs to link to a cross-compiled libstd, so again we should have a stage1
-            // libstd for the given target prepared.
-            // Even if we guess wrong in the cross-compiled case, the worst that should happen is
-            // that we build a fresh stage1 libstd below, and then we immediately uplift it, so we
-            // don't pay the libstd build cost twice.
-            && (target == builder.host_target || builder.config.hosts.contains(&target))
+    /// Uplifting is enabled if we're building a stage2+ libstd and full bootstrap is
+    /// disabled.
+    pub fn should_be_uplifted_from_stage_1(builder: &Builder<'_>, stage: u32) -> bool {
+        stage > 1 && !builder.config.full_bootstrap
     }
 }
 
@@ -150,7 +134,9 @@ impl Step for Std {
         trace!(force_recompile);
 
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            // Note: we don't use compiler_for_std here, so that `x build library --stage 2`
+            // builds a stage2 rustc.
+            build_compiler: run.builder.compiler(run.builder.top_stage, builder.host_target),
             target: run.target,
             crates,
             force_recompile,
@@ -226,7 +212,7 @@ impl Step for Std {
         // Stage of the stdlib that we're building
         let stage = build_compiler.stage;
 
-        if Self::should_be_uplifted_from_stage_1(builder, build_compiler.stage, target) {
+        if Self::should_be_uplifted_from_stage_1(builder, build_compiler.stage) {
             let build_compiler_for_std_to_uplift = builder.compiler(1, builder.host_target);
             let stage_1_stamp = builder.std(build_compiler_for_std_to_uplift, target);
 

@@ -6,9 +6,8 @@ use std::sync::OnceLock;
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
-use serde::de::{Deserialize, Deserializer, Error as _};
 
-use crate::executor::{ColorConfig, OutputFormat};
+use crate::executor::ColorConfig;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -565,13 +564,6 @@ pub struct Config {
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
     pub verbose: bool,
 
-    /// (Useless) Adjust libtest output format.
-    ///
-    /// FIXME: the hand-rolled executor does not support non-JSON output, because `compiletest` need
-    /// to package test outcome as `libtest`-esque JSON that `bootstrap` can intercept *anyway*.
-    /// However, now that we don't use the `libtest` executor, this is useless.
-    pub format: OutputFormat,
-
     /// Whether to use colors in test output.
     ///
     /// Note: the exact control mechanism is delegated to [`colored`].
@@ -675,6 +667,10 @@ pub struct Config {
     /// to avoid `!nocapture` double-negatives.
     pub nocapture: bool,
 
+    /// True if the experimental new output-capture implementation should be
+    /// used, avoiding the need for `#![feature(internal_output_capture)]`.
+    pub new_output_capture: bool,
+
     /// Needed both to construct [`build_helper::git::GitConfig`].
     pub nightly_branch: String,
     pub git_merge_commit_email: String,
@@ -768,7 +764,6 @@ impl Config {
             adb_device_status: Default::default(),
             lldb_python_dir: Default::default(),
             verbose: Default::default(),
-            format: Default::default(),
             color: Default::default(),
             remote_test_client: Default::default(),
             compare_mode: Default::default(),
@@ -793,6 +788,7 @@ impl Config {
             builtin_cfg_names: Default::default(),
             supported_crate_types: Default::default(),
             nocapture: Default::default(),
+            new_output_capture: Default::default(),
             nightly_branch: Default::default(),
             git_merge_commit_email: Default::default(),
             profiler_runtime: Default::default(),
@@ -1080,7 +1076,7 @@ pub struct TargetCfg {
     pub(crate) abi: String,
     #[serde(rename = "target-family", default)]
     pub(crate) families: Vec<String>,
-    #[serde(rename = "target-pointer-width", deserialize_with = "serde_parse_u32")]
+    #[serde(rename = "target-pointer-width")]
     pub(crate) pointer_width: u32,
     #[serde(rename = "target-endian", default)]
     endian: Endian,
@@ -1188,11 +1184,6 @@ fn query_rustc_output(config: &Config, args: &[&str], envs: HashMap<String, Stri
         );
     }
     String::from_utf8(output.stdout).unwrap()
-}
-
-fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D::Error> {
-    let string = String::deserialize(deserializer)?;
-    string.parse().map_err(D::Error::custom)
 }
 
 #[derive(Debug, Clone)]

@@ -1160,7 +1160,7 @@ impl<'a> DiagCtxtHandle<'a> {
         // - It's only produce with JSON output.
         // - It's not emitted the usual way, via `emit_diagnostic`.
         // - The `$message_type` field is "unused_externs" rather than the usual
-        //   "diagnosic".
+        //   "diagnostic".
         //
         // We count it as a lint error because it has a lint level. The value
         // of `loud` (which comes from "unused-externs" or

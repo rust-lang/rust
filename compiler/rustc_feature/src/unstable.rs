@@ -492,9 +492,6 @@ declare_features! (
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
     /// Allows using `#[export_stable]` which indicates that an item is exportable.
     (incomplete, export_stable, "1.88.0", Some(139939)),
-    /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
-    /// for functions with varargs.
-    (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows using `system` as a calling convention with varargs.
     (unstable, extern_system_varargs, "1.86.0", Some(136946)),
     /// Allows defining `extern type`s.
@@ -645,6 +642,8 @@ declare_features! (
     (unstable, super_let, "1.88.0", Some(139076)),
     /// Allows subtrait items to shadow supertrait items.
     (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
+    /// Allows the use of target_feature when a function is marked inline(always).
+    (unstable, target_feature_inline_always, "CURRENT_RUSTC_VERSION", Some(145574)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.

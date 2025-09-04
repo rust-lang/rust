@@ -173,6 +173,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ConstantItem(..) => "Constant ",
             clean::ForeignTypeItem => "Foreign Type ",
             clean::KeywordItem => "Keyword ",
+            clean::AttributeItem => "Attribute ",
             clean::TraitAliasItem(..) => "Trait Alias ",
             _ => {
                 // We don't generate pages for any other type.
@@ -193,7 +194,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let src_href =
             if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
-        let path_components = if item.is_primitive() || item.is_keyword() {
+        let path_components = if item.is_fake_item() {
             vec![]
         } else {
             let cur = &cx.current;
@@ -252,7 +253,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::ForeignTypeItem => {
                 write!(buf, "{}", item_foreign_type(cx, item))
             }
-            clean::KeywordItem => write!(buf, "{}", item_keyword(cx, item)),
+            clean::KeywordItem | clean::AttributeItem => {
+                write!(buf, "{}", item_keyword_or_attribute(cx, item))
+            }
             clean::TraitAliasItem(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
@@ -2151,7 +2154,7 @@ fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     })
 }
 
-fn item_keyword(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
+fn item_keyword_or_attribute(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     document(cx, it, None, HeadingOffset::H2)
 }
 

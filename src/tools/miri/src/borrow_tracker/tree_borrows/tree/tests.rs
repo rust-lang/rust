@@ -610,7 +610,7 @@ mod spurious_read {
             },
             y: LocStateProt {
                 state: LocationState::new_non_accessed(
-                    Permission::new_reserved(/* freeze */ true, /* protected */ true),
+                    Permission::new_reserved_frz(),
                     IdempotentForeignAccess::default(),
                 ),
                 prot: true,

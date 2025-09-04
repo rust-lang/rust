@@ -8,8 +8,8 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
-    COMPILETEST_ALLOW_FEATURES, SourceType, ToolTargetBuildMode, get_tool_target_compiler,
-    prepare_tool_cargo,
+    COMPILETEST_ALLOW_FEATURES, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode,
+    get_tool_target_compiler, prepare_tool_cargo,
 };
 use crate::core::builder::{
     self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -389,7 +389,7 @@ impl Step for Rustc {
 
 /// Represents a compiler that can check something.
 ///
-/// If the compiler was created for `Mode::ToolRustc` or `Mode::Codegen`, it will also contain
+/// If the compiler was created for `Mode::ToolRustcPrivate` or `Mode::Codegen`, it will also contain
 /// .rmeta artifacts from rustc that was already checked using `build_compiler`.
 ///
 /// All steps that use this struct in a "general way" (i.e. they don't know exactly what kind of
@@ -469,7 +469,7 @@ pub fn prepare_compiler_for_check(
                 build_compiler
             }
         }
-        Mode::ToolRustc | Mode::Codegen => {
+        Mode::ToolRustcPrivate | Mode::Codegen => {
             // Check Rustc to produce the required rmeta artifacts for rustc_private, and then
             // return the build compiler that was used to check rustc.
             // We do not need to check examples/tests/etc. of Rustc for rustc_private, so we pass
@@ -767,19 +767,22 @@ fn run_tool_check_step(
 tool_check_step!(Rustdoc {
     path: "src/tools/rustdoc",
     alt_path: "src/librustdoc",
-    mode: |_builder| Mode::ToolRustc
+    mode: |_builder| Mode::ToolRustcPrivate
 });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: |_builder| Mode::ToolRustc });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustc });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustcPrivate });
+tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustcPrivate });
+tool_check_step!(CargoMiri {
+    path: "src/tools/miri/cargo-miri",
+    mode: |_builder| Mode::ToolRustcPrivate
+});
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustcPrivate });
 tool_check_step!(RustAnalyzer {
     path: "src/tools/rust-analyzer",
-    mode: |_builder| Mode::ToolRustc,
+    mode: |_builder| Mode::ToolRustcPrivate,
     allow_features: tool::RustAnalyzer::ALLOW_FEATURES,
     enable_features: ["in-rust-tree"],
 });
@@ -791,7 +794,7 @@ tool_check_step!(MiroptTestTools {
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
     mode: |_builder| Mode::ToolStd,
-    allow_features: tool::TestFloatParse::ALLOW_FEATURES
+    allow_features: TEST_FLOAT_PARSE_ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",

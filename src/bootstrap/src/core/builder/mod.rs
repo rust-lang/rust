@@ -295,7 +295,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
         return "".into();
     }
 
-    let mut descr = String::from(" {");
+    let mut descr = String::from("{");
     descr.push_str(crates[0].as_ref());
     for krate in &crates[1..] {
         descr.push_str(", ");
@@ -1358,6 +1358,30 @@ impl<'a> Builder<'a> {
     )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
+    }
+
+    /// This function can be used to provide a build compiler for building
+    /// the standard library, in order to avoid unnecessary rustc builds in case where std uplifting
+    /// would happen anyway.
+    ///
+    /// This is an important optimization mainly for CI.
+    ///
+    /// Normally, to build stage N libstd, we need stage N rustc.
+    /// However, if we know that we will uplift libstd from stage 1 anyway, building the stage N
+    /// rustc can be wasteful.
+    /// In particular, if we do a cross-compiling dist stage 2 build from target1 to target2,
+    /// we need:
+    /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 rustc)
+    /// - stage 2 rustc for target2
+    ///
+    /// However, without this optimization, we would also build stage 2 rustc for **target1**,
+    /// which is completely wasteful.
+    pub fn compiler_for_std(&self, stage: u32) -> Compiler {
+        if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
+            self.compiler(1, self.host_target)
+        } else {
+            self.compiler(stage, self.host_target)
+        }
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to

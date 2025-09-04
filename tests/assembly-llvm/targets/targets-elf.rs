@@ -52,6 +52,9 @@
 //@ revisions: aarch64_unknown_linux_ohos
 //@ [aarch64_unknown_linux_ohos] compile-flags: --target aarch64-unknown-linux-ohos
 //@ [aarch64_unknown_linux_ohos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_managarm_mlibc
+//@ [aarch64_unknown_managarm_mlibc] compile-flags: --target aarch64-unknown-managarm-mlibc
+//@ [aarch64_unknown_managarm_mlibc] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_netbsd
 //@ [aarch64_unknown_netbsd] compile-flags: --target aarch64-unknown-netbsd
 //@ [aarch64_unknown_netbsd] needs-llvm-components: aarch64
@@ -490,6 +493,9 @@
 //@ revisions: riscv64gc_unknown_linux_musl
 //@ [riscv64gc_unknown_linux_musl] compile-flags: --target riscv64gc-unknown-linux-musl
 //@ [riscv64gc_unknown_linux_musl] needs-llvm-components: riscv
+//@ revisions: riscv64gc_unknown_managarm_mlibc
+//@ [riscv64gc_unknown_managarm_mlibc] compile-flags: --target riscv64gc-unknown-managarm-mlibc
+//@ [riscv64gc_unknown_managarm_mlibc] needs-llvm-components: riscv
 //@ revisions: riscv64gc_unknown_netbsd
 //@ [riscv64gc_unknown_netbsd] compile-flags: --target riscv64gc-unknown-netbsd
 //@ [riscv64gc_unknown_netbsd] needs-llvm-components: riscv
@@ -649,6 +655,9 @@
 //@ revisions: x86_64_unknown_linux_none
 //@ [x86_64_unknown_linux_none] compile-flags: --target x86_64-unknown-linux-none
 //@ [x86_64_unknown_linux_none] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_managarm_mlibc
+//@ [x86_64_unknown_managarm_mlibc] compile-flags: --target x86_64-unknown-managarm-mlibc
+//@ [x86_64_unknown_managarm_mlibc] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_netbsd
 //@ [x86_64_unknown_netbsd] compile-flags: --target x86_64-unknown-netbsd
 //@ [x86_64_unknown_netbsd] needs-llvm-components: x86

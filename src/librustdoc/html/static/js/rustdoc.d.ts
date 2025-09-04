@@ -270,8 +270,11 @@ declare namespace rustdoc {
      */
     interface TypeData {
         searchUnbox: boolean,
-        invertedFunctionSignatureIndex: RoaringBitmap[],
+        invertedFunctionInputsIndex: RoaringBitmap[],
+        invertedFunctionOutputIndex: RoaringBitmap[],
     }
+
+    type TypeInvertedIndexPolarity = "invertedFunctionInputsIndex" | "invertedFunctionOutputIndex";
 
     /**
      * A search entry of some sort.
@@ -286,7 +289,7 @@ declare namespace rustdoc {
         exactModulePath: string,
         entry: EntryData?,
         path: PathData?,
-        type: FunctionData?,
+        functionData: FunctionData?,
         deprecated: boolean,
         parent: { path: PathData, name: string}?,
     }

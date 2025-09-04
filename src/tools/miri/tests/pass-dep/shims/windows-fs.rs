@@ -2,20 +2,20 @@
 //@compile-flags: -Zmiri-disable-isolation
 #![allow(nonstandard_style)]
 
-use std::io::{ErrorKind, Read, Write};
+use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::os::windows::ffi::OsStrExt;
-use std::os::windows::io::AsRawHandle;
+use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::path::Path;
-use std::{fs, ptr};
+use std::{fs, mem, ptr};
 
 #[path = "../../utils/mod.rs"]
 mod utils;
 
 use windows_sys::Wdk::Storage::FileSystem::{NtReadFile, NtWriteFile};
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, ERROR_IO_DEVICE, GENERIC_READ,
-    GENERIC_WRITE, GetLastError, RtlNtStatusToDosError, STATUS_ACCESS_DENIED,
-    STATUS_IO_DEVICE_ERROR, STATUS_SUCCESS, SetLastError,
+    CloseHandle, DUPLICATE_SAME_ACCESS, DuplicateHandle, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS,
+    ERROR_IO_DEVICE, FALSE, GENERIC_READ, GENERIC_WRITE, GetLastError, RtlNtStatusToDosError,
+    STATUS_ACCESS_DENIED, STATUS_IO_DEVICE_ERROR, STATUS_SUCCESS, SetLastError,
 };
 use windows_sys::Win32::Storage::FileSystem::{
     BY_HANDLE_FILE_INFORMATION, CREATE_ALWAYS, CREATE_NEW, CreateFileW, DeleteFileW,
@@ -24,6 +24,7 @@ use windows_sys::Win32::Storage::FileSystem::{
     FILE_SHARE_WRITE, GetFileInformationByHandle, OPEN_ALWAYS, OPEN_EXISTING, SetFilePointerEx,
 };
 use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
+use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
 fn main() {
     unsafe {
@@ -36,6 +37,7 @@ fn main() {
         test_ntstatus_to_dos();
         test_file_read_write();
         test_file_seek();
+        test_dup_handle();
     }
 }
 
@@ -271,6 +273,39 @@ unsafe fn test_file_read_write() {
     assert_eq!(out, STATUS_SUCCESS);
     assert_eq!(buffer, text);
     assert_eq!(GetLastError(), 1234);
+}
+
+unsafe fn test_dup_handle() {
+    let temp = utils::tmp().join("test_dup.txt");
+
+    let mut file1 = fs::File::options().read(true).write(true).create(true).open(&temp).unwrap();
+
+    file1.write_all(b"Hello, World!\n").unwrap();
+    file1.seek(SeekFrom::Start(0)).unwrap();
+
+    let first_handle = file1.as_raw_handle();
+
+    let cur_proc = GetCurrentProcess();
+    let mut second_handle = mem::zeroed();
+    let res = DuplicateHandle(
+        cur_proc,
+        first_handle,
+        cur_proc,
+        &mut second_handle,
+        0,
+        FALSE,
+        DUPLICATE_SAME_ACCESS,
+    );
+    assert!(res != 0);
+
+    let mut buf1 = [0; 5];
+    file1.read(&mut buf1).unwrap();
+    assert_eq!(&buf1, b"Hello");
+
+    let mut file2 = fs::File::from_raw_handle(second_handle);
+    let mut buf2 = [0; 5];
+    file2.read(&mut buf2).unwrap();
+    assert_eq!(&buf2, b", Wor");
 }
 
 unsafe fn test_file_seek() {

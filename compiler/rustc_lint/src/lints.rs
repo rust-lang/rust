@@ -1554,7 +1554,7 @@ impl<'a> LintDiagnostic<'a, ()> for DropGlue<'_> {
 #[help(lint_help_exposed_provenance)]
 pub(crate) struct IntegerToPtrTransmutes<'tcx> {
     #[subdiagnostic]
-    pub suggestion: IntegerToPtrTransmutesSuggestion<'tcx>,
+    pub suggestion: Option<IntegerToPtrTransmutesSuggestion<'tcx>>,
 }
 
 #[derive(Subdiagnostic)]

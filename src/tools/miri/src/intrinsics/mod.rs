@@ -10,7 +10,7 @@ use rustc_abi::Size;
 use rustc_apfloat::ieee::{IeeeFloat, Semantics};
 use rustc_apfloat::{self, Float, Round};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, FloatTy, ScalarInt};
+use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
@@ -230,7 +230,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let res = apply_random_float_error_ulp(
                         this,
                         res,
-                        2, // log2(4)
+                        4,
                     );
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
@@ -274,7 +274,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let res = apply_random_float_error_ulp(
                         this,
                         res,
-                        2, // log2(4)
+                        4,
                     );
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
@@ -336,9 +336,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
+                    apply_random_float_error_ulp(this, res, 4)
                 });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -354,9 +352,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
+                    apply_random_float_error_ulp(this, res, 4)
                 });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -373,9 +369,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
+                    apply_random_float_error_ulp(this, res, 4)
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -391,9 +385,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Apply a relative error of 4ULP to introduce some non-determinism
                     // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
+                    apply_random_float_error_ulp(this, res, 4)
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -448,7 +440,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res, 2 /* log2(4) */)?;
+                let res = crate::math::apply_random_float_error_to_imm(this, res, 4)?;
                 this.write_immediate(*res, dest)?;
             }
 
@@ -484,31 +476,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(EmulateItemResult::NeedsReturn)
     }
-}
-
-/// Applies a random ULP floating point error to `val` and returns the new value.
-/// So if you want an X ULP error, `ulp_exponent` should be log2(X).
-///
-/// Will fail if `val` is not a floating point number.
-fn apply_random_float_error_to_imm<'tcx>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    val: ImmTy<'tcx>,
-    ulp_exponent: u32,
-) -> InterpResult<'tcx, ImmTy<'tcx>> {
-    let scalar = val.to_scalar_int()?;
-    let res: ScalarInt = match val.layout.ty.kind() {
-        ty::Float(FloatTy::F16) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
-        ty::Float(FloatTy::F32) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
-        ty::Float(FloatTy::F64) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
-        ty::Float(FloatTy::F128) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
-        _ => bug!("intrinsic called with non-float input type"),
-    };
-
-    interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
 /// For the intrinsics:

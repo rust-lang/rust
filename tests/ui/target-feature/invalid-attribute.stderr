@@ -106,7 +106,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on statics
-  --> $DIR/invalid-attribute.rs:67:1
+  --> $DIR/invalid-attribute.rs:69:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,7 +114,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on trait impl blocks
-  --> $DIR/invalid-attribute.rs:71:1
+  --> $DIR/invalid-attribute.rs:73:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on inherent impl blocks
-  --> $DIR/invalid-attribute.rs:77:1
+  --> $DIR/invalid-attribute.rs:79:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -130,7 +130,7 @@ LL | #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on expressions
-  --> $DIR/invalid-attribute.rs:98:5
+  --> $DIR/invalid-attribute.rs:100:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,18 +138,22 @@ LL |     #[target_feature(enable = "sse2")]
    = help: `#[target_feature]` can only be applied to functions
 
 error: `#[target_feature]` attribute cannot be used on closures
-  --> $DIR/invalid-attribute.rs:104:5
+  --> $DIR/invalid-attribute.rs:106:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[target_feature]` can be applied to methods and functions
 
-error: cannot use `#[inline(always)]` with `#[target_feature]`
+error[E0658]: cannot use `#[inline(always)]` with `#[target_feature]`
   --> $DIR/invalid-attribute.rs:62:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145574 <https://github.com/rust-lang/rust/issues/145574> for more information
+   = help: add `#![feature(target_feature_inline_always)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: the feature named `foo` is not valid for this target
   --> $DIR/invalid-attribute.rs:20:18
@@ -158,7 +162,7 @@ LL | #[target_feature(enable = "foo")]
    |                  ^^^^^^^^^^^^^^ `foo` is not valid for this target
 
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/invalid-attribute.rs:73:1
+  --> $DIR/invalid-attribute.rs:75:1
    |
 LL | impl Quux for u8 {}
    | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
@@ -167,7 +171,7 @@ LL |     fn foo();
    |     --------- `foo` from trait
 
 error: `#[target_feature(..)]` cannot be applied to safe trait method
-  --> $DIR/invalid-attribute.rs:87:5
+  --> $DIR/invalid-attribute.rs:89:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
@@ -176,13 +180,13 @@ LL |     fn foo() {}
    |     -------- not an `unsafe` function
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/invalid-attribute.rs:90:5
+  --> $DIR/invalid-attribute.rs:92:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
-  --> $DIR/invalid-attribute.rs:82:5
+  --> $DIR/invalid-attribute.rs:84:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^
@@ -190,7 +194,7 @@ LL |     fn foo();
               found signature `#[target_features] fn()`
 
 error: the feature named `+sse2` is not valid for this target
-  --> $DIR/invalid-attribute.rs:109:18
+  --> $DIR/invalid-attribute.rs:111:18
    |
 LL | #[target_feature(enable = "+sse2")]
    |                  ^^^^^^^^^^^^^^^^ `+sse2` is not valid for this target
@@ -199,5 +203,5 @@ LL | #[target_feature(enable = "+sse2")]
 
 error: aborting due to 24 previous errors
 
-Some errors have detailed explanations: E0046, E0053, E0539.
+Some errors have detailed explanations: E0046, E0053, E0539, E0658.
 For more information about an error, try `rustc --explain E0046`.

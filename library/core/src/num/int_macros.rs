@@ -1285,7 +1285,7 @@ macro_rules! int_impl {
         ///
         /// ```should_panic
         #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_neg();")]
-        ///
+        /// ```
         #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
