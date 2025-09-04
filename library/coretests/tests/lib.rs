@@ -77,6 +77,7 @@
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
+#![feature(move_trait)]
 #![feature(never_type)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
