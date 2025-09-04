@@ -302,7 +302,6 @@ mod permissions_set_readonly_false;
 mod pointers_in_nomem_asm_block;
 mod precedence;
 mod ptr;
-mod ptr_offset_with_cast;
 mod pub_underscore_fields;
 mod pub_use;
 mod question_mark;
@@ -592,7 +591,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(unwrap::Unwrap));
     store.register_late_pass(move |_| Box::new(indexing_slicing::IndexingSlicing::new(conf)));
     store.register_late_pass(move |tcx| Box::new(non_copy_const::NonCopyConst::new(tcx, conf)));
-    store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
     store.register_late_pass(move |_| Box::new(unnecessary_wraps::UnnecessaryWraps::new(conf)));
