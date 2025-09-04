@@ -2526,3 +2526,9 @@ fn normalize_lexically() {
         check_err(r"\\?\UNC\server\share\a\..\..");
     }
 }
+
+#[test]
+/// See issue#146183
+fn compare_path_to_str() {
+    assert!(&PathBuf::from("x") == "x");
+}
