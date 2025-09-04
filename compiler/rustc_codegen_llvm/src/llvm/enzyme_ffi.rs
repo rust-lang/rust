@@ -118,6 +118,13 @@ pub(crate) mod Enzyme_AD {
             max_size: i64,
             add_offset: u64,
         );
+        pub(crate) fn EnzymeTypeTreeInsertEq(
+            CTT: CTypeTreeRef,
+            indices: *const i64,
+            len: usize,
+            ct: CConcreteType,
+            ctx: &Context,
+        );
         pub(crate) fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
         pub(crate) fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
     }
@@ -234,6 +241,16 @@ pub(crate) mod Fallback_AD {
         unimplemented!()
     }
 
+    pub(crate) unsafe fn EnzymeTypeTreeInsertEq(
+        CTT: CTypeTreeRef,
+        indices: *const i64,
+        len: usize,
+        ct: CConcreteType,
+        ctx: &Context,
+    ) {
+        unimplemented!()
+    }
+
     pub(crate) unsafe fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char {
         unimplemented!()
     }
@@ -311,6 +328,12 @@ impl TypeTree {
         }
 
         self
+    }
+
+    pub(crate) fn insert(&mut self, indices: &[i64], ct: CConcreteType, ctx: &Context) {
+        unsafe {
+            EnzymeTypeTreeInsertEq(self.inner, indices.as_ptr(), indices.len(), ct, ctx);
+        }
     }
 }
 

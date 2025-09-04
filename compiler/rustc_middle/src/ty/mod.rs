@@ -2261,10 +2261,10 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
                 x if x == tcx.types.f32 => (Kind::Float, 4),
                 x if x == tcx.types.f64 => (Kind::Double, 8),
                 x if x == tcx.types.f128 => (Kind::F128, 16),
-                _ => return TypeTree::new(),
+                _ => (Kind::Integer, 0),
             }
         } else {
-            return TypeTree::new();
+            (Kind::Integer, 0)
         };
 
         return TypeTree(vec![Type { offset: -1, size, kind, child: TypeTree::new() }]);
@@ -2295,32 +2295,14 @@ pub fn typetree_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> TypeTree {
 
             let element_tree = typetree_from_ty(tcx, *element_ty);
 
-            let element_layout = tcx
-                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(*element_ty))
-                .ok()
-                .map(|layout| layout.size.bytes_usize())
-                .unwrap_or(0);
-
-            if element_layout == 0 {
-                return TypeTree::new();
-            }
-
             let mut types = Vec::new();
-            for i in 0..len {
-                let base_offset = (i as usize * element_layout) as isize;
-
-                for elem_type in &element_tree.0 {
-                    types.push(Type {
-                        offset: if elem_type.offset == -1 {
-                            base_offset
-                        } else {
-                            base_offset + elem_type.offset
-                        },
-                        size: elem_type.size,
-                        kind: elem_type.kind,
-                        child: elem_type.child.clone(),
-                    });
-                }
+            for elem_type in &element_tree.0 {
+                types.push(Type {
+                    offset: -1,
+                    size: elem_type.size,
+                    kind: elem_type.kind,
+                    child: elem_type.child.clone(),
+                });
             }
 
             return TypeTree(types);

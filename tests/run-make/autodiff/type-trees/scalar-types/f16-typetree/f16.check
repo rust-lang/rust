@@ -1,4 +1,4 @@
 ; Check that f16 TypeTree metadata is correctly generated
-; Should show Half for f16 values and Pointer for references
+; Should show Float@half for f16 values and Pointer for references
 
-CHECK: define{{.*}}"enzyme_type"={{.*}}@test_f16{{.*}}"enzyme_type"="{[]:Pointer}"
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@half}"{{.*}}@test_f16{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@half}"
