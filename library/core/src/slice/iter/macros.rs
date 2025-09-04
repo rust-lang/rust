@@ -471,23 +471,15 @@ macro_rules! iterator {
         #[unstable(feature = "peekable_iterator", issue = "132973")]
         impl<'a, T> PeekableIterator for $name<'a, T> {
             fn peek_with<U>(&mut self, func: impl for<'b> FnOnce(Option<&'b Self::Item>) -> U) -> U {
-                let end_or_len = self.end_or_len;
 
-                // SAFETY: See inner comments.
-                unsafe {
-                    if T::IS_ZST {
-                        let len = end_or_len.addr();
-                        if len == 0 {
-                            return func(None);
-                        }
-                    } else {
-                        if self.ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
-                            return func(None);
-                        }
-                    }
-                    // SAFETY: Now that we know it wasn't empty
-                    // we can give out a reference to it.
-                    func(Some(self.ptr.$into_ref()).as_ref())
+                if len!(self) == 0 {
+                    func(None)
+                } else {
+                    // SAFETY: element within bounds as len > 0
+                    // Reference is dropped after the closure completes
+                    // and can not outlive the mutable borrow of self
+                    let tmp = unsafe { & $( $mut_ )? *self.ptr.as_ptr() };
+                    func(Some(tmp).as_ref())
                 }
             }
         }
