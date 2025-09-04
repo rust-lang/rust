@@ -384,7 +384,6 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                 signature_parts_ty: signature_parts_ty.expect_ty(),
                 tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 coroutine_captures_by_ref_ty: coroutine_captures_by_ref_ty.expect_ty(),
-                coroutine_witness_ty: coroutine_witness_ty.expect_ty(),
             },
             _ => panic!("GenericArgs were likely not for a CoroutineClosure."),
         }
@@ -400,7 +399,6 @@ impl<'db> rustc_type_ir::inherent::GenericArgs<DbInterner<'db>> for GenericArgs<
                     resume_ty: resume_ty.expect_ty(),
                     yield_ty: yield_ty.expect_ty(),
                     return_ty: return_ty.expect_ty(),
-                    witness: Ty::new_unit(interner),
                     tupled_upvars_ty: Ty::new_unit(interner),
                 }
             }

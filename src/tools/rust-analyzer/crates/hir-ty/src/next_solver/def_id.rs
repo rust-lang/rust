@@ -88,3 +88,60 @@ impl<'db> inherent::DefId<DbInterner<'db>> for SolverDefId {
         true
     }
 }
+
+macro_rules! declare_id_wrapper {
+    ($name:ident, $wraps:ident) => {
+        #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+        pub struct $name(pub $wraps);
+
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Debug::fmt(&self.0, f)
+            }
+        }
+
+        impl From<$name> for $wraps {
+            #[inline]
+            fn from(value: $name) -> $wraps {
+                value.0
+            }
+        }
+
+        impl From<$wraps> for $name {
+            #[inline]
+            fn from(value: $wraps) -> $name {
+                Self(value)
+            }
+        }
+
+        impl From<$name> for SolverDefId {
+            #[inline]
+            fn from(value: $name) -> SolverDefId {
+                value.0.into()
+            }
+        }
+
+        impl TryFrom<SolverDefId> for $name {
+            type Error = ();
+
+            #[inline]
+            fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+                match value {
+                    SolverDefId::$wraps(it) => Ok(Self(it)),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl<'db> inherent::DefId<DbInterner<'db>> for $name {
+            fn as_local(self) -> Option<SolverDefId> {
+                Some(self.into())
+            }
+            fn is_local(self) -> bool {
+                true
+            }
+        }
+    };
+}
+
+declare_id_wrapper!(TraitIdWrapper, TraitId);

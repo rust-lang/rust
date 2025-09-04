@@ -590,11 +590,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
                     let pointee_sized = LangItem::PointeeSized
                         .resolve_trait(ctx.ty_ctx().db, ctx.ty_ctx().resolver.krate());
-                    if meta_sized.is_some_and(|it| SolverDefId::TraitId(it) == trait_ref.def_id) {
+                    if meta_sized.is_some_and(|it| it == trait_ref.def_id.0) {
                         // Ignore this bound
-                    } else if pointee_sized
-                        .is_some_and(|it| SolverDefId::TraitId(it) == trait_ref.def_id)
-                    {
+                    } else if pointee_sized.is_some_and(|it| it == trait_ref.def_id.0) {
                         // Regard this as `?Sized` bound
                         ctx.ty_ctx().unsized_types.insert(self_ty);
                     } else {
@@ -618,13 +616,9 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                 // Don't lower associated type bindings as the only possible relaxed trait bound
                 // `?Sized` has no of them.
                 // If we got another trait here ignore the bound completely.
-                let trait_id =
-                    self.lower_trait_ref_from_path(path, self_ty).map(|(trait_ref, _)| {
-                        match trait_ref.def_id {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        }
-                    });
+                let trait_id = self
+                    .lower_trait_ref_from_path(path, self_ty)
+                    .map(|(trait_ref, _)| trait_ref.def_id.0);
                 if trait_id == sized_trait {
                     self.unsized_types.insert(self_ty);
                 }
@@ -668,12 +662,8 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         .map_bound(|c| match c {
                             rustc_type_ir::ClauseKind::Trait(t) => {
                                 let id = t.def_id();
-                                let id = match id {
-                                    SolverDefId::TraitId(id) => id,
-                                    _ => unreachable!(),
-                                };
                                 let is_auto =
-                                    db.trait_signature(id).flags.contains(TraitFlags::AUTO);
+                                    db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
                                 if is_auto {
                                     Some(ExistentialPredicate::AutoTrait(t.def_id()))
                                 } else {
@@ -733,17 +723,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                     (
                         ExistentialPredicate::AutoTrait(lhs_id),
                         ExistentialPredicate::AutoTrait(rhs_id),
-                    ) => {
-                        let lhs_id = match lhs_id {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        let rhs_id = match rhs_id {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        lhs_id.cmp(&rhs_id)
-                    }
+                    ) => lhs_id.0.cmp(&rhs_id.0),
                     (ExistentialPredicate::Trait(_), _) => Ordering::Less,
                     (_, ExistentialPredicate::Trait(_)) => Ordering::Greater,
                     (ExistentialPredicate::AutoTrait(_), _) => Ordering::Less,
@@ -1195,11 +1175,7 @@ pub(crate) fn generic_predicates_for_param_query<'db>(
                     };
 
                     rustc_type_ir::elaborate::supertrait_def_ids(interner, tr.into()).any(|tr| {
-                        let tr = match tr {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        tr.trait_items(db).items.iter().any(|(name, item)| {
+                        tr.0.trait_items(db).items.iter().any(|(name, item)| {
                             matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
                         })
                     })
@@ -1629,11 +1605,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
                 .map_bound(|c| match c {
                     rustc_type_ir::ClauseKind::Trait(t) => {
                         let id = t.def_id();
-                        let id = match id {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
-                        let is_auto = db.trait_signature(id).flags.contains(TraitFlags::AUTO);
+                        let is_auto = db.trait_signature(id.0).flags.contains(TraitFlags::AUTO);
                         if is_auto {
                             Some(ExistentialPredicate::AutoTrait(t.def_id()))
                         } else {
@@ -1677,7 +1649,7 @@ pub(crate) fn associated_ty_item_bounds<'db>(
         let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate());
         let sized_clause = Binder::dummy(ExistentialPredicate::Trait(ExistentialTraitRef::new(
             interner,
-            SolverDefId::TraitId(trait_),
+            trait_.into(),
             [] as [crate::next_solver::GenericArg<'_>; 0],
         )));
         bounds.push(sized_clause);
@@ -1694,10 +1666,7 @@ pub(crate) fn associated_type_by_name_including_super_traits<'db>(
 ) -> Option<(TraitRef<'db>, TypeAliasId)> {
     let interner = DbInterner::new_with(db, None, None);
     rustc_type_ir::elaborate::supertraits(interner, Binder::dummy(trait_ref)).find_map(|t| {
-        let trait_id = match t.as_ref().skip_binder().def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
+        let trait_id = t.as_ref().skip_binder().def_id.0;
         let assoc_type = trait_id.trait_items(db).associated_type_by_name(name)?;
         Some((t.skip_binder(), assoc_type))
     })
@@ -1727,10 +1696,7 @@ fn named_associated_type_shorthand_candidates<'db, R>(
 ) -> Option<R> {
     let db = interner.db;
     let mut search = |t: TraitRef<'db>| -> Option<R> {
-        let trait_id = match t.def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
+        let trait_id = t.def_id.0;
         let mut checked_traits = FxHashSet::default();
         let mut check_trait = |trait_id: TraitId| {
             let name = &db.trait_signature(trait_id).name;
@@ -1773,11 +1739,7 @@ fn named_associated_type_shorthand_candidates<'db, R>(
                     rustc_type_ir::ClauseKind::Trait(pred) => pred.def_id(),
                     _ => continue,
                 };
-                let trait_id = match trait_id {
-                    SolverDefId::TraitId(trait_id) => trait_id,
-                    _ => continue,
-                };
-                stack.push(trait_id);
+                stack.push(trait_id.0);
             }
             tracing::debug!(?stack);
         }

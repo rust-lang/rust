@@ -4,6 +4,7 @@ use hir_def::{GenericDefId, TypeOrConstParamId, TypeParamId};
 use intern::{Interned, Symbol, sym};
 use rustc_abi::{Float, Integer, Size};
 use rustc_ast_ir::{Mutability, try_visit, visit::VisitorResult};
+use rustc_type_ir::Interner;
 use rustc_type_ir::{
     BoundVar, ClosureKind, FlagComputation, Flags, FloatTy, FloatVid, InferTy, IntTy, IntVid,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, UintTy,
@@ -19,6 +20,7 @@ use rustc_type_ir::{
 use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
+use crate::next_solver::GenericArg;
 use crate::{
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
@@ -643,6 +645,31 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineWitness(def_id, args))
+    }
+
+    fn new_coroutine_witness_for_coroutine(
+        interner: DbInterner<'db>,
+        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        coroutine_args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
+    ) -> Self {
+        // HACK: Coroutine witness types are lifetime erased, so they
+        // never reference any lifetime args from the coroutine. We erase
+        // the regions here since we may get into situations where a
+        // coroutine is recursively contained within itself, leading to
+        // witness types that differ by region args. This means that
+        // cycle detection in fulfillment will not kick in, which leads
+        // to unnecessary overflows in async code. See the issue:
+        // <https://github.com/rust-lang/rust/issues/145151>.
+        let coroutine_args = interner.mk_args_from_iter(coroutine_args.iter().map(|arg| {
+            match arg {
+                GenericArg::Ty(_) | GenericArg::Const(_) => arg,
+                GenericArg::Lifetime(_) => {
+                    crate::next_solver::Region::new(interner, rustc_type_ir::RegionKind::ReErased)
+                        .into()
+                }
+            }
+        }));
+        Ty::new_coroutine_witness(interner, def_id, coroutine_args)
     }
 
     fn new_ptr(interner: DbInterner<'db>, ty: Self, mutbl: rustc_ast_ir::Mutability) -> Self {

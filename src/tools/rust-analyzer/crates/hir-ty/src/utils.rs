@@ -212,10 +212,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef, cb: impl 
                 rustc_type_ir::ClauseKind::Trait(t) => {
                     let t =
                         rustc_type_ir::EarlyBinder::bind(t).instantiate(interner, trait_ref_args);
-                    let trait_id = match t.def_id() {
-                        crate::next_solver::SolverDefId::TraitId(id) => to_chalk_trait_id(id),
-                        _ => unreachable!(),
-                    };
+                    let trait_id = to_chalk_trait_id(t.def_id().0);
 
                     let substitution =
                         convert_args_for_result(interner, t.trait_ref.args.as_slice());

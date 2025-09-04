@@ -81,7 +81,7 @@ impl<'db> std::fmt::Debug for InternedWrapperNoDebug<WithCachedTypeInfo<ConstKin
     }
 }
 
-pub type PlaceholderConst = Placeholder<rustc_type_ir::BoundVar>;
+pub type PlaceholderConst = Placeholder<BoundConst>;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct ParamConst {
@@ -304,7 +304,7 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
     fn new_bound(
         interner: DbInterner<'db>,
         debruijn: rustc_type_ir::DebruijnIndex,
-        var: BoundVar,
+        var: BoundConst,
     ) -> Self {
         Const::new(interner, ConstKind::Bound(debruijn, var))
     }
@@ -314,7 +314,7 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
         debruijn: rustc_type_ir::DebruijnIndex,
         var: rustc_type_ir::BoundVar,
     ) -> Self {
-        Const::new(interner, ConstKind::Bound(debruijn, var))
+        Const::new(interner, ConstKind::Bound(debruijn, BoundConst { var }))
     }
 
     fn new_unevaluated(
@@ -340,26 +340,41 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct BoundConst {
+    pub var: BoundVar,
+}
+
+impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundConst {
+    fn var(self) -> BoundVar {
+        self.var
+    }
+
+    fn assert_eq(self, var: BoundVarKind) {
+        var.expect_const()
+    }
+}
+
 impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderConst {
-    type Bound = rustc_type_ir::BoundVar;
+    type Bound = BoundConst;
 
     fn universe(self) -> rustc_type_ir::UniverseIndex {
         self.universe
     }
 
     fn var(self) -> rustc_type_ir::BoundVar {
-        self.bound
+        self.bound.var
     }
 
     fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
         Placeholder { universe: ui, bound: self.bound }
     }
 
-    fn new(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
+    fn new(ui: rustc_type_ir::UniverseIndex, var: BoundConst) -> Self {
         Placeholder { universe: ui, bound: var }
     }
     fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
-        Placeholder { universe: ui, bound: var }
+        Placeholder { universe: ui, bound: BoundConst { var } }
     }
 }
 

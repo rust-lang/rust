@@ -22,6 +22,7 @@ use rustc_type_ir::{
 use salsa::plumbing::FromId;
 use salsa::{Id, plumbing::AsId};
 
+use crate::next_solver::BoundConst;
 use crate::{
     ConcreteConst, ConstScalar, ImplTraitId, Interner, MemoryMap,
     db::{
@@ -125,12 +126,12 @@ impl<'db> rustc_type_ir::TypeFolder<DbInterner<'db>> for BinderToEarlyBinder<'db
     fn fold_const(&mut self, c: Const<'db>) -> Const<'db> {
         match c.kind() {
             rustc_type_ir::ConstKind::Bound(debruijn, var) if self.debruijn == debruijn => {
-                let GenericParamId::ConstParamId(id) = self.params[var.as_usize()] else {
+                let GenericParamId::ConstParamId(id) = self.params[var.var.as_usize()] else {
                     unreachable!()
                 };
                 Const::new(
                     self.cx(),
-                    rustc_type_ir::ConstKind::Param(ParamConst { index: var.as_u32(), id }),
+                    rustc_type_ir::ConstKind::Param(ParamConst { index: var.var.as_u32(), id }),
                 )
             }
             _ => c.super_fold_with(self),
@@ -286,11 +287,8 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                                         .flags
                                         .contains(TraitFlags::AUTO)
                                     {
-                                        ExistentialPredicate::AutoTrait(SolverDefId::TraitId(
-                                            trait_id,
-                                        ))
+                                        ExistentialPredicate::AutoTrait(trait_id.into())
                                     } else {
-                                        let def_id = SolverDefId::TraitId(trait_id);
                                         let args = GenericArgs::new_from_iter(
                                             interner,
                                             trait_ref
@@ -301,7 +299,7 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                                                 .map(|a| a.to_nextsolver(interner)),
                                         );
                                         let trait_ref = ExistentialTraitRef::new_from_args(
-                                            interner, def_id, args,
+                                            interner, trait_id.into(), args,
                                         );
                                         ExistentialPredicate::Trait(trait_ref)
                                     }
@@ -473,7 +471,7 @@ impl<'db> ChalkToNextSolver<'db, Const<'db>> for chalk_ir::Const<Interner> {
             match &data.value {
                 chalk_ir::ConstValue::BoundVar(bound_var) => rustc_type_ir::ConstKind::Bound(
                     bound_var.debruijn.to_nextsolver(interner),
-                    rustc_type_ir::BoundVar::from_usize(bound_var.index),
+                    BoundConst { var: rustc_type_ir::BoundVar::from_usize(bound_var.index) },
                 ),
                 chalk_ir::ConstValue::InferenceVar(inference_var) => {
                     rustc_type_ir::ConstKind::Infer(rustc_type_ir::InferConst::Var(
@@ -871,11 +869,7 @@ impl<'db> ChalkToNextSolver<'db, PredicateKind<'db>> for chalk_ir::DomainGoal<In
 impl<'db> ChalkToNextSolver<'db, TraitRef<'db>> for chalk_ir::TraitRef<Interner> {
     fn to_nextsolver(&self, interner: DbInterner<'db>) -> TraitRef<'db> {
         let args = self.substitution.to_nextsolver(interner);
-        TraitRef::new_from_args(
-            interner,
-            SolverDefId::TraitId(from_chalk_trait_id(self.trait_id)),
-            args,
-        )
+        TraitRef::new_from_args(interner, from_chalk_trait_id(self.trait_id).into(), args)
     }
 }
 
@@ -1207,20 +1201,14 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
                                 trait_ref.def_id,
                                 [self_ty.into()].into_iter().chain(trait_ref.args.iter()),
                             );
-                            let trait_id = match trait_ref.def_id {
-                                SolverDefId::TraitId(id) => to_chalk_trait_id(id),
-                                _ => unreachable!(),
-                            };
+                            let trait_id = to_chalk_trait_id(trait_ref.def_id.0);
                             let substitution =
                                 convert_args_for_result(interner, trait_ref.args.as_slice());
                             let trait_ref = chalk_ir::TraitRef { trait_id, substitution };
                             chalk_ir::WhereClause::Implemented(trait_ref)
                         }
                         rustc_type_ir::ExistentialPredicate::AutoTrait(trait_) => {
-                            let trait_id = match trait_ {
-                                SolverDefId::TraitId(id) => to_chalk_trait_id(id),
-                                _ => unreachable!(),
-                            };
+                            let trait_id = to_chalk_trait_id(trait_.0);
                             let substitution = chalk_ir::Substitution::from1(
                                 Interner,
                                 convert_ty_for_result(interner, self_ty),
@@ -1354,7 +1342,7 @@ pub fn convert_const_for_result<'db>(
         rustc_type_ir::ConstKind::Bound(debruijn_index, var) => {
             chalk_ir::ConstValue::BoundVar(chalk_ir::BoundVar::new(
                 chalk_ir::DebruijnIndex::new(debruijn_index.as_u32()),
-                var.index(),
+                var.var.index(),
             ))
         }
         rustc_type_ir::ConstKind::Placeholder(placeholder_const) => {

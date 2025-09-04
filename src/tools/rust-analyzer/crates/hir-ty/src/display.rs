@@ -737,7 +737,7 @@ impl<'db> HirDisplay for crate::next_solver::Const<'db> {
         match self.kind() {
             rustc_type_ir::ConstKind::Placeholder(_) => write!(f, "<placeholder>"),
             rustc_type_ir::ConstKind::Bound(db, bound_const) => {
-                write!(f, "?{}.{}", db.as_u32(), bound_const.as_u32())
+                write!(f, "?{}.{}", db.as_u32(), bound_const.var.as_u32())
             }
             rustc_type_ir::ConstKind::Infer(..) => write!(f, "#c#"),
             rustc_type_ir::ConstKind::Param(param) => {
@@ -1208,10 +1208,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 let contains_impl_fn_ns = |bounds: &[BoundExistentialPredicate<'_>]| {
                     bounds.iter().any(|bound| match bound.skip_binder() {
                         rustc_type_ir::ExistentialPredicate::Trait(trait_ref) => {
-                            let trait_ = match trait_ref.def_id {
-                                SolverDefId::TraitId(id) => id,
-                                _ => unreachable!(),
-                            };
+                            let trait_ = trait_ref.def_id.0;
                             fn_traits(db, trait_).any(|it| it == trait_)
                         }
                         _ => false,
@@ -2217,10 +2214,7 @@ impl HirDisplay for TraitRef {
 
 impl<'db> HirDisplay for crate::next_solver::TraitRef<'db> {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        let trait_ = match self.def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
+        let trait_ = self.def_id.0;
         f.start_location_link(trait_.into());
         write!(f, "{}", f.db.trait_signature(trait_).name.display(f.db, f.edition()))?;
         f.end_location_link();

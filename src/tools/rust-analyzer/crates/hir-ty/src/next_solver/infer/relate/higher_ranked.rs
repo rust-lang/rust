@@ -10,8 +10,8 @@ use crate::next_solver::fold::FnMutDelegate;
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::infer::snapshot::CombinedSnapshot;
 use crate::next_solver::{
-    Binder, BoundRegion, BoundTy, Const, DbInterner, PlaceholderConst, PlaceholderRegion,
-    PlaceholderTy, Region, Ty,
+    Binder, BoundConst, BoundRegion, BoundTy, Const, DbInterner, PlaceholderConst,
+    PlaceholderRegion, PlaceholderTy, Region, Ty,
 };
 
 impl<'db> InferCtxt<'db> {
@@ -50,10 +50,10 @@ impl<'db> InferCtxt<'db> {
                     PlaceholderTy { universe: next_universe, bound: bound_ty },
                 )
             },
-            consts: &mut |bound_var: BoundVar| {
+            consts: &mut |bound: BoundConst| {
                 Const::new_placeholder(
                     self.interner,
-                    PlaceholderConst { universe: next_universe, bound: bound_var },
+                    PlaceholderConst { universe: next_universe, bound },
                 )
             },
         };

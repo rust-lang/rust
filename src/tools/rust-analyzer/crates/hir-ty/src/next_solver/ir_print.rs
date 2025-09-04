@@ -58,10 +58,7 @@ impl<'db> IrPrint<ty::TraitRef<Self>> for DbInterner<'db> {
 
     fn print_debug(t: &ty::TraitRef<Self>, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         salsa::with_attached_database(|db| {
-            let trait_ = match t.def_id {
-                SolverDefId::TraitId(id) => id,
-                _ => panic!("Expected trait."),
-            };
+            let trait_ = t.def_id.0;
             let self_ty = &t.args.as_slice()[0];
             let trait_args = &t.args.as_slice()[1..];
             if trait_args.is_empty() {
@@ -122,10 +119,7 @@ impl<'db> IrPrint<ty::ExistentialTraitRef<Self>> for DbInterner<'db> {
         fmt: &mut std::fmt::Formatter<'_>,
     ) -> std::fmt::Result {
         salsa::with_attached_database(|db| {
-            let trait_ = match t.def_id {
-                SolverDefId::TraitId(id) => id,
-                _ => panic!("Expected trait."),
-            };
+            let trait_ = t.def_id.0;
             fmt.write_str(&format!(
                 "ExistentialTraitRef({:?}[{:?}])",
                 db.as_view::<dyn HirDatabase>().trait_signature(trait_).name.as_str(),

@@ -19,7 +19,7 @@ use rustc_type_ir::error::TypeError;
 use rustc_type_ir::inherent::{
     AdtDef as _, GenericArgs as _, GenericsOf, IntoKind, SliceLike as _, Span as _,
 };
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::{SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     AliasTerm, AliasTermKind, AliasTy, AliasTyKind, EarlyBinder, FlagComputation, Flags,
@@ -44,9 +44,11 @@ use rustc_type_ir::{
 
 use crate::lower_nextsolver::{self, TyLoweringContext};
 use crate::method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TyFingerprint};
+use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::util::{ContainsTypeErrors, explicit_item_bounds, for_trait_impls};
 use crate::next_solver::{
-    CanonicalVarKind, FxIndexMap, InternedWrapperNoDebug, RegionAssumptions, SolverDefIds,
+    BoundConst, CanonicalVarKind, FxIndexMap, InternedWrapperNoDebug, RegionAssumptions,
+    SolverContext, SolverDefIds, TraitIdWrapper,
 };
 use crate::{ConstScalar, FnAbi, Interner, db::HirDatabase};
 
@@ -858,10 +860,35 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for Pattern<'db> {
 
 interned_vec_db!(PatList, Pattern);
 
+macro_rules! as_lang_item {
+    (
+        $solver_enum:ident, $var:ident;
+
+        ignore = {
+            $( $ignore:ident ),* $(,)?
+        }
+
+        $( $variant:ident ),* $(,)?
+    ) => {{
+        // Ensure exhaustiveness.
+        if let Some(it) = None::<$solver_enum> {
+            match it {
+                $( $solver_enum::$variant => {} )*
+                $( $solver_enum::$ignore => {} )*
+            }
+        }
+        match $var {
+            $( LangItem::$variant => Some($solver_enum::$variant), )*
+            _ => None
+        }
+    }};
+}
+
 impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     type DefId = SolverDefId;
     type LocalDefId = SolverDefId;
     type LocalDefIds = SolverDefIds;
+    type TraitId = TraitIdWrapper;
     type Span = Span;
 
     type GenericArgs = GenericArgs<'db>;
@@ -923,7 +950,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     type Const = Const<'db>;
     type PlaceholderConst = PlaceholderConst;
     type ParamConst = ParamConst;
-    type BoundConst = rustc_type_ir::BoundVar;
+    type BoundConst = BoundConst;
     type ValueConst = ValueConst<'db>;
     type ValTree = Valtree<'db>;
     type ExprConst = ExprConst;
@@ -1117,7 +1144,7 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         );
         let alias_args =
             GenericArgs::new_from_iter(self, args.iter().skip(trait_generics.own_params.len()));
-        (TraitRef::new_from_args(self, trait_def_id, trait_args), alias_args)
+        (TraitRef::new_from_args(self, trait_def_id.try_into().unwrap(), trait_args), alias_args)
     }
 
     fn check_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs) -> bool {
@@ -1305,11 +1332,11 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     #[tracing::instrument(skip(self), ret)]
     fn explicit_super_predicates_of(
         self,
-        def_id: Self::DefId,
+        def_id: Self::TraitId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
         let predicates: Vec<(Clause<'db>, Span)> = self
             .db()
-            .generic_predicates_ns(def_id.try_into().unwrap())
+            .generic_predicates_ns(def_id.0.into())
             .iter()
             .cloned()
             .map(|p| (p, Span::dummy()))
@@ -1369,65 +1396,19 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         false
     }
 
-    fn require_lang_item(
-        self,
-        lang_item: rustc_type_ir::lang_items::TraitSolverLangItem,
-    ) -> Self::DefId {
+    fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId {
         let lang_item = match lang_item {
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFn => LangItem::AsyncFn,
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFnKindHelper => unimplemented!(),
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFnKindUpvars => unimplemented!(),
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFnMut => LangItem::AsyncFnMut,
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFnOnce => LangItem::AsyncFnOnce,
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncFnOnceOutput => {
-                LangItem::AsyncFnOnceOutput
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::AsyncIterator => unimplemented!(),
-            rustc_type_ir::lang_items::TraitSolverLangItem::CallOnceFuture => {
-                LangItem::CallOnceFuture
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::CallRefFuture => {
-                LangItem::CallRefFuture
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::Clone => LangItem::Clone,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Copy => LangItem::Copy,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Coroutine => LangItem::Coroutine,
-            rustc_type_ir::lang_items::TraitSolverLangItem::CoroutineReturn => {
-                LangItem::CoroutineReturn
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::CoroutineYield => {
-                LangItem::CoroutineYield
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::Destruct => LangItem::Destruct,
-            rustc_type_ir::lang_items::TraitSolverLangItem::DiscriminantKind => {
-                LangItem::DiscriminantKind
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::Drop => LangItem::Drop,
-            rustc_type_ir::lang_items::TraitSolverLangItem::DynMetadata => LangItem::DynMetadata,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Fn => LangItem::Fn,
-            rustc_type_ir::lang_items::TraitSolverLangItem::FnMut => LangItem::FnMut,
-            rustc_type_ir::lang_items::TraitSolverLangItem::FnOnce => LangItem::FnOnce,
-            rustc_type_ir::lang_items::TraitSolverLangItem::FnPtrTrait => LangItem::FnPtrTrait,
-            rustc_type_ir::lang_items::TraitSolverLangItem::FusedIterator => unimplemented!(),
-            rustc_type_ir::lang_items::TraitSolverLangItem::Future => LangItem::Future,
-            rustc_type_ir::lang_items::TraitSolverLangItem::FutureOutput => LangItem::FutureOutput,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Iterator => LangItem::Iterator,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Metadata => LangItem::Metadata,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Option => LangItem::Option,
-            rustc_type_ir::lang_items::TraitSolverLangItem::PointeeTrait => LangItem::PointeeTrait,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Poll => LangItem::Poll,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Sized => LangItem::Sized,
-            rustc_type_ir::lang_items::TraitSolverLangItem::MetaSized => LangItem::MetaSized,
-            rustc_type_ir::lang_items::TraitSolverLangItem::PointeeSized => LangItem::PointeeSized,
-            rustc_type_ir::lang_items::TraitSolverLangItem::TransmuteTrait => {
-                LangItem::TransmuteTrait
-            }
-            rustc_type_ir::lang_items::TraitSolverLangItem::Tuple => LangItem::Tuple,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Unpin => LangItem::Unpin,
-            rustc_type_ir::lang_items::TraitSolverLangItem::Unsize => LangItem::Unsize,
-            rustc_type_ir::lang_items::TraitSolverLangItem::BikeshedGuaranteedNoDrop => {
-                unimplemented!()
-            }
+            SolverLangItem::AsyncFnKindUpvars => unimplemented!(),
+            SolverLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+            SolverLangItem::CallOnceFuture => LangItem::CallOnceFuture,
+            SolverLangItem::CallRefFuture => LangItem::CallRefFuture,
+            SolverLangItem::CoroutineReturn => LangItem::CoroutineReturn,
+            SolverLangItem::CoroutineYield => LangItem::CoroutineYield,
+            SolverLangItem::DynMetadata => LangItem::DynMetadata,
+            SolverLangItem::FutureOutput => LangItem::FutureOutput,
+            SolverLangItem::Metadata => LangItem::Metadata,
+            SolverLangItem::Option => LangItem::Option,
+            SolverLangItem::Poll => LangItem::Poll,
         };
         let target = hir_def::lang_item::lang_item(
             self.db(),
@@ -1448,216 +1429,131 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         }
     }
 
-    #[allow(clippy::match_like_matches_macro)]
-    fn is_lang_item(
-        self,
-        def_id: Self::DefId,
-        lang_item: rustc_type_ir::lang_items::TraitSolverLangItem,
-    ) -> bool {
-        use rustc_type_ir::lang_items::TraitSolverLangItem::*;
-
-        // FIXME: derive PartialEq on TraitSolverLangItem
-        self.as_lang_item(def_id).map_or(false, |l| match (l, lang_item) {
-            (AsyncFn, AsyncFn) => true,
-            (AsyncFnKindHelper, AsyncFnKindHelper) => true,
-            (AsyncFnKindUpvars, AsyncFnKindUpvars) => true,
-            (AsyncFnMut, AsyncFnMut) => true,
-            (AsyncFnOnce, AsyncFnOnce) => true,
-            (AsyncFnOnceOutput, AsyncFnOnceOutput) => true,
-            (AsyncIterator, AsyncIterator) => true,
-            (CallOnceFuture, CallOnceFuture) => true,
-            (CallRefFuture, CallRefFuture) => true,
-            (Clone, Clone) => true,
-            (Copy, Copy) => true,
-            (Coroutine, Coroutine) => true,
-            (CoroutineReturn, CoroutineReturn) => true,
-            (CoroutineYield, CoroutineYield) => true,
-            (Destruct, Destruct) => true,
-            (DiscriminantKind, DiscriminantKind) => true,
-            (Drop, Drop) => true,
-            (DynMetadata, DynMetadata) => true,
-            (Fn, Fn) => true,
-            (FnMut, FnMut) => true,
-            (FnOnce, FnOnce) => true,
-            (FnPtrTrait, FnPtrTrait) => true,
-            (FusedIterator, FusedIterator) => true,
-            (Future, Future) => true,
-            (FutureOutput, FutureOutput) => true,
-            (Iterator, Iterator) => true,
-            (Metadata, Metadata) => true,
-            (Option, Option) => true,
-            (PointeeTrait, PointeeTrait) => true,
-            (Poll, Poll) => true,
-            (Sized, Sized) => true,
-            (TransmuteTrait, TransmuteTrait) => true,
-            (Tuple, Tuple) => true,
-            (Unpin, Unpin) => true,
-            (Unsize, Unsize) => true,
-            _ => false,
-        })
+    fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> TraitIdWrapper {
+        let lang_item = match lang_item {
+            SolverTraitLangItem::AsyncFn => LangItem::AsyncFn,
+            SolverTraitLangItem::AsyncFnKindHelper => unimplemented!(),
+            SolverTraitLangItem::AsyncFnMut => LangItem::AsyncFnMut,
+            SolverTraitLangItem::AsyncFnOnce => LangItem::AsyncFnOnce,
+            SolverTraitLangItem::AsyncFnOnceOutput => LangItem::AsyncFnOnceOutput,
+            SolverTraitLangItem::AsyncIterator => unimplemented!(),
+            SolverTraitLangItem::Clone => LangItem::Clone,
+            SolverTraitLangItem::Copy => LangItem::Copy,
+            SolverTraitLangItem::Coroutine => LangItem::Coroutine,
+            SolverTraitLangItem::Destruct => LangItem::Destruct,
+            SolverTraitLangItem::DiscriminantKind => LangItem::DiscriminantKind,
+            SolverTraitLangItem::Drop => LangItem::Drop,
+            SolverTraitLangItem::Fn => LangItem::Fn,
+            SolverTraitLangItem::FnMut => LangItem::FnMut,
+            SolverTraitLangItem::FnOnce => LangItem::FnOnce,
+            SolverTraitLangItem::FnPtrTrait => LangItem::FnPtrTrait,
+            SolverTraitLangItem::FusedIterator => unimplemented!(),
+            SolverTraitLangItem::Future => LangItem::Future,
+            SolverTraitLangItem::Iterator => LangItem::Iterator,
+            SolverTraitLangItem::PointeeTrait => LangItem::PointeeTrait,
+            SolverTraitLangItem::Sized => LangItem::Sized,
+            SolverTraitLangItem::MetaSized => LangItem::MetaSized,
+            SolverTraitLangItem::PointeeSized => LangItem::PointeeSized,
+            SolverTraitLangItem::TransmuteTrait => LangItem::TransmuteTrait,
+            SolverTraitLangItem::Tuple => LangItem::Tuple,
+            SolverTraitLangItem::Unpin => LangItem::Unpin,
+            SolverTraitLangItem::Unsize => LangItem::Unsize,
+            SolverTraitLangItem::BikeshedGuaranteedNoDrop => {
+                unimplemented!()
+            }
+        };
+        lang_item
+            .resolve_trait(self.db(), self.krate.expect("Must have self.krate"))
+            .unwrap_or_else(|| panic!("Lang item {lang_item:?} required but not found."))
+            .into()
     }
 
-    fn as_lang_item(
-        self,
-        def_id: Self::DefId,
-    ) -> Option<rustc_type_ir::lang_items::TraitSolverLangItem> {
-        use rustc_type_ir::lang_items::TraitSolverLangItem;
+    #[allow(clippy::match_like_matches_macro)]
+    fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool {
+        use SolverLangItem::*;
 
+        // FIXME: derive PartialEq on SolverLangItem
+        self.as_lang_item(def_id)
+            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+    }
+
+    #[allow(clippy::match_like_matches_macro)]
+    fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool {
+        use SolverTraitLangItem::*;
+
+        // FIXME: derive PartialEq on SolverTraitLangItem
+        self.as_trait_lang_item(def_id)
+            .map_or(false, |l| std::mem::discriminant(&l) == std::mem::discriminant(&lang_item))
+    }
+
+    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem> {
         let def_id: AttrDefId = match def_id {
             SolverDefId::TraitId(id) => id.into(),
             SolverDefId::TypeAliasId(id) => id.into(),
+            SolverDefId::AdtId(id) => id.into(),
             _ => panic!("Unexpected SolverDefId in as_lang_item"),
         };
         let lang_item = self.db().lang_attr(def_id)?;
-        Some(match lang_item {
-            LangItem::Sized => TraitSolverLangItem::Sized,
-            LangItem::MetaSized => TraitSolverLangItem::MetaSized,
-            LangItem::PointeeSized => TraitSolverLangItem::PointeeSized,
-            LangItem::Unsize => TraitSolverLangItem::Unsize,
-            LangItem::StructuralPeq => return None,
-            LangItem::StructuralTeq => return None,
-            LangItem::Copy => TraitSolverLangItem::Copy,
-            LangItem::Clone => TraitSolverLangItem::Clone,
-            LangItem::Sync => return None,
-            LangItem::DiscriminantKind => TraitSolverLangItem::DiscriminantKind,
-            LangItem::Discriminant => return None,
-            LangItem::PointeeTrait => TraitSolverLangItem::PointeeTrait,
-            LangItem::Metadata => TraitSolverLangItem::Metadata,
-            LangItem::DynMetadata => TraitSolverLangItem::DynMetadata,
-            LangItem::Freeze => return None,
-            LangItem::FnPtrTrait => TraitSolverLangItem::FnPtrTrait,
-            LangItem::FnPtrAddr => return None,
-            LangItem::Drop => TraitSolverLangItem::Drop,
-            LangItem::Destruct => TraitSolverLangItem::Destruct,
-            LangItem::CoerceUnsized => return None,
-            LangItem::DispatchFromDyn => return None,
-            LangItem::TransmuteOpts => return None,
-            LangItem::TransmuteTrait => TraitSolverLangItem::TransmuteTrait,
-            LangItem::Add => return None,
-            LangItem::Sub => return None,
-            LangItem::Mul => return None,
-            LangItem::Div => return None,
-            LangItem::Rem => return None,
-            LangItem::Neg => return None,
-            LangItem::Not => return None,
-            LangItem::BitXor => return None,
-            LangItem::BitAnd => return None,
-            LangItem::BitOr => return None,
-            LangItem::Shl => return None,
-            LangItem::Shr => return None,
-            LangItem::AddAssign => return None,
-            LangItem::SubAssign => return None,
-            LangItem::MulAssign => return None,
-            LangItem::DivAssign => return None,
-            LangItem::RemAssign => return None,
-            LangItem::BitXorAssign => return None,
-            LangItem::BitAndAssign => return None,
-            LangItem::BitOrAssign => return None,
-            LangItem::ShlAssign => return None,
-            LangItem::ShrAssign => return None,
-            LangItem::Index => return None,
-            LangItem::IndexMut => return None,
-            LangItem::UnsafeCell => return None,
-            LangItem::VaList => return None,
-            LangItem::Deref => return None,
-            LangItem::DerefMut => return None,
-            LangItem::DerefTarget => return None,
-            LangItem::Receiver => return None,
-            LangItem::Fn => TraitSolverLangItem::Fn,
-            LangItem::FnMut => TraitSolverLangItem::FnMut,
-            LangItem::FnOnce => TraitSolverLangItem::FnOnce,
-            LangItem::FnOnceOutput => return None,
-            LangItem::Future => TraitSolverLangItem::Future,
-            LangItem::CoroutineState => return None,
-            LangItem::Coroutine => TraitSolverLangItem::Coroutine,
-            LangItem::CoroutineReturn => TraitSolverLangItem::CoroutineReturn,
-            LangItem::CoroutineYield => TraitSolverLangItem::CoroutineYield,
-            LangItem::Unpin => TraitSolverLangItem::Unpin,
-            LangItem::Pin => return None,
-            LangItem::PartialEq => return None,
-            LangItem::PartialOrd => return None,
-            LangItem::CVoid => return None,
-            LangItem::Panic => return None,
-            LangItem::PanicNounwind => return None,
-            LangItem::PanicFmt => return None,
-            LangItem::PanicDisplay => return None,
-            LangItem::ConstPanicFmt => return None,
-            LangItem::PanicBoundsCheck => return None,
-            LangItem::PanicMisalignedPointerDereference => return None,
-            LangItem::PanicInfo => return None,
-            LangItem::PanicLocation => return None,
-            LangItem::PanicImpl => return None,
-            LangItem::PanicCannotUnwind => return None,
-            LangItem::BeginPanic => return None,
-            LangItem::FormatAlignment => return None,
-            LangItem::FormatArgument => return None,
-            LangItem::FormatArguments => return None,
-            LangItem::FormatCount => return None,
-            LangItem::FormatPlaceholder => return None,
-            LangItem::FormatUnsafeArg => return None,
-            LangItem::ExchangeMalloc => return None,
-            LangItem::BoxFree => return None,
-            LangItem::DropInPlace => return None,
-            LangItem::AllocLayout => return None,
-            LangItem::Start => return None,
-            LangItem::EhPersonality => return None,
-            LangItem::EhCatchTypeinfo => return None,
-            LangItem::OwnedBox => return None,
-            LangItem::PhantomData => return None,
-            LangItem::ManuallyDrop => return None,
-            LangItem::MaybeUninit => return None,
-            LangItem::AlignOffset => return None,
-            LangItem::Termination => return None,
-            LangItem::Try => return None,
-            LangItem::Tuple => TraitSolverLangItem::Tuple,
-            LangItem::SliceLen => return None,
-            LangItem::TryTraitFromResidual => return None,
-            LangItem::TryTraitFromOutput => return None,
-            LangItem::TryTraitBranch => return None,
-            LangItem::TryTraitFromYeet => return None,
-            LangItem::PointerLike => return None,
-            LangItem::ConstParamTy => return None,
-            LangItem::Poll => TraitSolverLangItem::Poll,
-            LangItem::PollReady => return None,
-            LangItem::PollPending => return None,
-            LangItem::ResumeTy => return None,
-            LangItem::GetContext => return None,
-            LangItem::Context => return None,
-            LangItem::FuturePoll => return None,
-            LangItem::FutureOutput => TraitSolverLangItem::FutureOutput,
-            LangItem::Option => TraitSolverLangItem::Option,
-            LangItem::OptionSome => return None,
-            LangItem::OptionNone => return None,
-            LangItem::ResultOk => return None,
-            LangItem::ResultErr => return None,
-            LangItem::ControlFlowContinue => return None,
-            LangItem::ControlFlowBreak => return None,
-            LangItem::IntoFutureIntoFuture => return None,
-            LangItem::IntoIterIntoIter => return None,
-            LangItem::IteratorNext => return None,
-            LangItem::Iterator => TraitSolverLangItem::Iterator,
-            LangItem::PinNewUnchecked => return None,
-            LangItem::RangeFrom => return None,
-            LangItem::RangeFull => return None,
-            LangItem::RangeInclusiveStruct => return None,
-            LangItem::RangeInclusiveNew => return None,
-            LangItem::Range => return None,
-            LangItem::RangeToInclusive => return None,
-            LangItem::RangeTo => return None,
-            LangItem::String => return None,
-            LangItem::CStr => return None,
-            LangItem::AsyncFn => TraitSolverLangItem::AsyncFn,
-            LangItem::AsyncFnMut => TraitSolverLangItem::AsyncFnMut,
-            LangItem::AsyncFnOnce => TraitSolverLangItem::AsyncFnOnce,
-            LangItem::AsyncFnOnceOutput => TraitSolverLangItem::AsyncFnOnceOutput,
-            LangItem::CallRefFuture => TraitSolverLangItem::CallRefFuture,
-            LangItem::CallOnceFuture => TraitSolverLangItem::CallOnceFuture,
-            LangItem::Ordering => return None,
-            LangItem::PanicNullPointerDereference => return None,
-            LangItem::ReceiverTarget => return None,
-            LangItem::UnsafePinned => return None,
-            LangItem::AsyncFnOnceOutput => TraitSolverLangItem::AsyncFnOnceOutput,
-        })
+        as_lang_item!(
+            SolverLangItem, lang_item;
+
+            ignore = {
+                AsyncFnKindUpvars,
+            }
+
+            Metadata,
+            DynMetadata,
+            CoroutineReturn,
+            CoroutineYield,
+            Poll,
+            FutureOutput,
+            Option,
+            AsyncFnOnceOutput,
+            CallRefFuture,
+            CallOnceFuture,
+            AsyncFnOnceOutput,
+        )
+    }
+
+    fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem> {
+        let def_id: AttrDefId = def_id.0.into();
+        let lang_item = self.db().lang_attr(def_id)?;
+        as_lang_item!(
+            SolverTraitLangItem, lang_item;
+
+            ignore = {
+                AsyncFnKindHelper,
+                AsyncIterator,
+                BikeshedGuaranteedNoDrop,
+                FusedIterator,
+            }
+
+            Sized,
+            MetaSized,
+            PointeeSized,
+            Unsize,
+            Copy,
+            Clone,
+            DiscriminantKind,
+            PointeeTrait,
+            FnPtrTrait,
+            Drop,
+            Destruct,
+            TransmuteTrait,
+            Fn,
+            FnMut,
+            FnOnce,
+            Future,
+            Coroutine,
+            Unpin,
+            Tuple,
+            Iterator,
+            AsyncFn,
+            AsyncFnMut,
+            AsyncFnOnce,
+            AsyncFnOnceOutput,
+            AsyncFnOnceOutput,
+        )
     }
 
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId> {
@@ -1670,15 +1566,11 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
 
     fn for_each_relevant_impl(
         self,
-        trait_def_id: Self::DefId,
+        trait_: Self::TraitId,
         self_ty: Self::Ty,
         mut f: impl FnMut(Self::DefId),
     ) {
-        let trait_ = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => panic!("for_each_relevant_impl called for non-trait"),
-        };
-
+        let trait_ = trait_.0;
         let self_ty_fp = TyFingerprint::for_trait_impl_ns(&self_ty);
         let fps: &[TyFingerprint] = match self_ty.kind() {
             TyKind::Infer(InferTy::IntVar(..)) => &ALL_INT_FPS,
@@ -1775,42 +1667,26 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         }
     }
 
-    fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool {
-        let trait_ = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => panic!("Unexpected SolverDefId in trait_is_auto"),
-        };
-        let trait_data = self.db().trait_signature(trait_);
+    fn trait_is_auto(self, trait_: Self::TraitId) -> bool {
+        let trait_data = self.db().trait_signature(trait_.0);
         trait_data.flags.contains(TraitFlags::AUTO)
     }
 
-    fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool {
-        let trait_ = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => panic!("Unexpected SolverDefId in trait_is_alias"),
-        };
-        let trait_data = self.db().trait_signature(trait_);
+    fn trait_is_alias(self, trait_: Self::TraitId) -> bool {
+        let trait_data = self.db().trait_signature(trait_.0);
         trait_data.flags.contains(TraitFlags::ALIAS)
     }
 
-    fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool {
-        let trait_ = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        crate::dyn_compatibility::dyn_compatibility(self.db(), trait_).is_none()
+    fn trait_is_dyn_compatible(self, trait_: Self::TraitId) -> bool {
+        crate::dyn_compatibility::dyn_compatibility(self.db(), trait_.0).is_none()
     }
 
-    fn trait_is_fundamental(self, def_id: Self::DefId) -> bool {
-        let trait_ = match def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => panic!("Unexpected SolverDefId in trait_is_fundamental"),
-        };
-        let trait_data = self.db().trait_signature(trait_);
+    fn trait_is_fundamental(self, trait_: Self::TraitId) -> bool {
+        let trait_data = self.db().trait_signature(trait_.0);
         trait_data.flags.contains(TraitFlags::FUNDAMENTAL)
     }
 
-    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool {
+    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::TraitId) -> bool {
         // FIXME(next-solver): should check the `TraitFlags` for
         // the `#[rustc_do_not_implement_via_object]` flag
         true
@@ -1920,12 +1796,12 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
                     (*entry.or_insert_with(|| BoundVarKind::Ty(BoundTyKind::Anon))).expect_ty();
                 Ty::new_bound(self.interner, DebruijnIndex::ZERO, BoundTy { var, kind })
             }
-            fn replace_const(&mut self, bv: BoundVar) -> Const<'db> {
-                let entry = self.map.entry(bv);
+            fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+                let entry = self.map.entry(bv.var);
                 let index = entry.index();
                 let var = BoundVar::from_usize(index);
                 let () = (*entry.or_insert_with(|| BoundVarKind::Const)).expect_const();
-                Const::new_bound(self.interner, DebruijnIndex::ZERO, var)
+                Const::new_bound(self.interner, DebruijnIndex::ZERO, BoundConst { var })
             }
         }
 
@@ -2008,24 +1884,16 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
         unimplemented!()
     }
 
-    fn is_default_trait(self, def_id: Self::DefId) -> bool {
-        self.as_lang_item(def_id).map_or(false, |l| matches!(l, TraitSolverLangItem::Sized))
+    fn is_default_trait(self, def_id: Self::TraitId) -> bool {
+        self.as_trait_lang_item(def_id).map_or(false, |l| matches!(l, SolverTraitLangItem::Sized))
     }
 
-    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool {
-        let id = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        self.db().trait_signature(id).flags.contains(TraitFlags::COINDUCTIVE)
+    fn trait_is_coinductive(self, trait_: Self::TraitId) -> bool {
+        self.db().trait_signature(trait_.0).flags.contains(TraitFlags::COINDUCTIVE)
     }
 
-    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
-        let id = match trait_def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        self.db().trait_signature(id).flags.contains(TraitFlags::UNSAFE)
+    fn trait_is_unsafe(self, trait_: Self::TraitId) -> bool {
+        self.db().trait_signature(trait_.0).flags.contains(TraitFlags::UNSAFE)
     }
 
     fn impl_self_is_guaranteed_unsized(self, def_id: Self::DefId) -> bool {
@@ -2046,6 +1914,20 @@ impl<'db> rustc_type_ir::Interner for DbInterner<'db> {
     ) -> Self::LocalDefIds {
         // FIXME(next-solver)
         unimplemented!()
+    }
+
+    type Probe = rustc_type_ir::solve::inspect::Probe<DbInterner<'db>>;
+    fn mk_probe(self, probe: rustc_type_ir::solve::inspect::Probe<Self>) -> Self::Probe {
+        probe
+    }
+    fn evaluate_root_goal_for_proof_tree_raw(
+        self,
+        canonical_goal: rustc_type_ir::solve::CanonicalInput<Self>,
+    ) -> (rustc_type_ir::solve::QueryResult<Self>, Self::Probe) {
+        rustc_next_trait_solver::solve::evaluate_root_goal_for_proof_tree_raw_provider::<
+            SolverContext<'db>,
+            Self,
+        >(self, canonical_goal)
     }
 }
 
@@ -2072,7 +1954,9 @@ impl<'db> DbInterner<'db> {
                         BoundTy { var: shift_bv(t.var), kind: t.kind },
                     )
                 },
-                consts: &mut |c| Const::new_bound(self, DebruijnIndex::ZERO, shift_bv(c)),
+                consts: &mut |c| {
+                    Const::new_bound(self, DebruijnIndex::ZERO, BoundConst { var: shift_bv(c.var) })
+                },
             },
         )
     }
@@ -2135,6 +2019,7 @@ macro_rules! TrivialTypeTraversalImpls {
 
 TrivialTypeTraversalImpls! {
     SolverDefId,
+    TraitIdWrapper,
     Pattern<'db>,
     Safety,
     FnAbi,

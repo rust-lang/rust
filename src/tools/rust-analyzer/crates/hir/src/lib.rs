@@ -86,8 +86,7 @@ use hir_ty::{
     method_resolution,
     mir::{MutBorrowKind, interpret_mir},
     next_solver::{
-        ClauseKind, DbInterner, GenericArgs, SolverDefId, infer::InferCtxt,
-        mapping::ChalkToNextSolver,
+        ClauseKind, DbInterner, GenericArgs, infer::InferCtxt, mapping::ChalkToNextSolver,
     },
     primitive::UintTy,
     traits::FnTrait,
@@ -4251,13 +4250,7 @@ impl TypeParam {
         db.generic_predicates_for_param_ns(self.id.parent(), self.id.into(), None)
             .iter()
             .filter_map(|pred| match &pred.kind().skip_binder() {
-                ClauseKind::Trait(trait_ref) => {
-                    let trait_ = match trait_ref.def_id() {
-                        SolverDefId::TraitId(t) => t,
-                        _ => unreachable!(),
-                    };
-                    Some(Trait::from(trait_))
-                }
+                ClauseKind::Trait(trait_ref) => Some(Trait::from(trait_ref.def_id().0)),
                 _ => None,
             })
             .collect()
@@ -4515,11 +4508,7 @@ impl Impl {
     pub fn trait_(self, db: &dyn HirDatabase) -> Option<Trait> {
         let trait_ref = db.impl_trait_ns(self.id)?;
         let id = trait_ref.skip_binder().def_id;
-        let id = match id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        Some(Trait { id })
+        Some(Trait { id: id.0 })
     }
 
     pub fn trait_ref(self, db: &dyn HirDatabase) -> Option<TraitRef<'_>> {
@@ -4609,11 +4598,7 @@ impl<'db> TraitRef<'db> {
     }
 
     pub fn trait_(&self) -> Trait {
-        let id = match self.trait_ref.def_id {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        Trait { id }
+        Trait { id: self.trait_ref.def_id.0 }
     }
 
     pub fn self_ty(&self) -> TypeNs<'_> {
@@ -5984,11 +5969,7 @@ impl<'db> TypeNs<'db> {
             infcx.interner,
             [self.ty].into_iter().chain(args.iter().map(|t| t.ty)).map(|t| t.into()),
         );
-        let trait_ref = hir_ty::next_solver::TraitRef::new(
-            infcx.interner,
-            SolverDefId::TraitId(trait_.id),
-            args,
-        );
+        let trait_ref = hir_ty::next_solver::TraitRef::new(infcx.interner, trait_.id.into(), args);
 
         let pred_kind = rustc_type_ir::Binder::dummy(rustc_type_ir::PredicateKind::Clause(
             rustc_type_ir::ClauseKind::Trait(rustc_type_ir::TraitPredicate {

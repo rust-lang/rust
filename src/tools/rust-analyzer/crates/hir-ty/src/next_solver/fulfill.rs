@@ -167,7 +167,7 @@ impl<'db> FulfillmentCtxt<'db> {
                 }
 
                 let result = delegate.evaluate_root_goal(goal, Span::dummy(), stalled_on);
-                let GoalEvaluation { certainty, has_changed, stalled_on } = match result {
+                let GoalEvaluation { goal: _, certainty, has_changed, stalled_on } = match result {
                     Ok(result) => result,
                     Err(NoSolution) => {
                         errors.push(NextSolverError::TrueError(obligation));

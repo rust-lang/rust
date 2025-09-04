@@ -15,6 +15,8 @@ use rustc_type_ir::{
 };
 use smallvec::{SmallVec, smallvec};
 
+use crate::next_solver::TraitIdWrapper;
+
 use super::{Binder, BoundVarKinds, DbInterner, Region, Ty, interned_vec_db};
 
 pub type BoundExistentialPredicate<'db> = Binder<'db, ExistentialPredicate<'db>>;
@@ -72,7 +74,7 @@ interned_vec_db!(BoundExistentialPredicates, BoundExistentialPredicate);
 impl<'db> rustc_type_ir::inherent::BoundExistentialPredicates<DbInterner<'db>>
     for BoundExistentialPredicates<'db>
 {
-    fn principal_def_id(self) -> Option<<DbInterner<'db> as rustc_type_ir::Interner>::DefId> {
+    fn principal_def_id(self) -> Option<TraitIdWrapper> {
         self.principal().map(|trait_ref| trait_ref.skip_binder().def_id)
     }
 
@@ -89,9 +91,7 @@ impl<'db> rustc_type_ir::inherent::BoundExistentialPredicates<DbInterner<'db>>
             .transpose()
     }
 
-    fn auto_traits(
-        self,
-    ) -> impl IntoIterator<Item = <DbInterner<'db> as rustc_type_ir::Interner>::DefId> {
+    fn auto_traits(self) -> impl IntoIterator<Item = TraitIdWrapper> {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,

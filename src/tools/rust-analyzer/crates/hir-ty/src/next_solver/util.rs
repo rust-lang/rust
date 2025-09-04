@@ -14,7 +14,7 @@ use rustc_type_ir::inherent::{
     AdtDef, Const as _, GenericArg as _, GenericArgs as _, ParamEnv as _, Region as _, SliceLike,
     Ty as _,
 };
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     BoundVar, Canonical, DebruijnIndex, GenericArgKind, INNERMOST, Interner, PredicatePolarity,
@@ -29,8 +29,8 @@ use rustc_type_ir::{InferCtxtLike, TypeFoldable};
 use crate::lower_nextsolver::{LifetimeElisionKind, TyLoweringContext};
 use crate::next_solver::infer::InferCtxt;
 use crate::next_solver::{
-    CanonicalVarKind, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst, PlaceholderRegion,
-    TypingMode,
+    BoundConst, CanonicalVarKind, FxIndexMap, ParamEnv, Placeholder, PlaceholderConst,
+    PlaceholderRegion, TypingMode,
 };
 use crate::{
     db::HirDatabase,
@@ -511,7 +511,7 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
 ) -> T {
     let types = &mut |ty: BoundTy| args.as_slice()[ty.var.index()].expect_ty();
     let regions = &mut |region: BoundRegion| args.as_slice()[region.var.index()].expect_region();
-    let consts = &mut |const_: BoundVar| args.as_slice()[const_.index()].expect_const();
+    let consts = &mut |const_: BoundConst| args.as_slice()[const_.var.index()].expect_const();
     let mut instantiate = BoundVarReplacer::new(interner, FnMutDelegate { types, regions, consts });
     b.skip_binder().fold_with(&mut instantiate)
 }
@@ -654,7 +654,10 @@ impl<'db> TypeFolder<DbInterner<'db>> for MiniCanonicalizer<'_, 'db> {
             ConstKind::Infer(infer) => {
                 let len = self.vars.len();
                 let var = *self.vars.entry(c.into()).or_insert(len);
-                Const::new(self.cx(), ConstKind::Bound(self.db, BoundVar::from_usize(var)))
+                Const::new(
+                    self.cx(),
+                    ConstKind::Bound(self.db, BoundConst { var: BoundVar::from_usize(var) }),
+                )
             }
             _ => c.super_fold_with(self),
         }
@@ -852,7 +855,7 @@ pub struct PlaceholderReplacer<'a, 'db> {
     infcx: &'a InferCtxt<'db>,
     mapped_regions: FxIndexMap<PlaceholderRegion, BoundRegion>,
     mapped_types: FxIndexMap<Placeholder<BoundTy>, BoundTy>,
-    mapped_consts: FxIndexMap<PlaceholderConst, BoundVar>,
+    mapped_consts: FxIndexMap<PlaceholderConst, BoundConst>,
     universe_indices: &'a [Option<UniverseIndex>],
     current_index: DebruijnIndex,
 }
@@ -862,7 +865,7 @@ impl<'a, 'db> PlaceholderReplacer<'a, 'db> {
         infcx: &'a InferCtxt<'db>,
         mapped_regions: FxIndexMap<PlaceholderRegion, BoundRegion>,
         mapped_types: FxIndexMap<Placeholder<BoundTy>, BoundTy>,
-        mapped_consts: FxIndexMap<PlaceholderConst, BoundVar>,
+        mapped_consts: FxIndexMap<PlaceholderConst, BoundConst>,
         universe_indices: &'a [Option<UniverseIndex>],
         value: T,
     ) -> T {
@@ -1026,9 +1029,9 @@ pub fn sizedness_fast_path<'db>(
     if let PredicateKind::Clause(ClauseKind::Trait(trait_pred)) = predicate.kind().skip_binder()
         && trait_pred.polarity == PredicatePolarity::Positive
     {
-        let sizedness = match tcx.as_lang_item(trait_pred.def_id()) {
-            Some(TraitSolverLangItem::Sized) => SizedTraitKind::Sized,
-            Some(TraitSolverLangItem::MetaSized) => SizedTraitKind::MetaSized,
+        let sizedness = match tcx.as_trait_lang_item(trait_pred.def_id()) {
+            Some(SolverTraitLangItem::Sized) => SizedTraitKind::Sized,
+            Some(SolverTraitLangItem::MetaSized) => SizedTraitKind::MetaSized,
             _ => return false,
         };
 
@@ -1051,7 +1054,10 @@ pub fn sizedness_fast_path<'db>(
                     && clause_pred.self_ty() == trait_pred.self_ty()
                     && (clause_pred.def_id() == trait_pred.def_id()
                         || (sizedness == SizedTraitKind::MetaSized
-                            && tcx.is_lang_item(clause_pred.def_id(), TraitSolverLangItem::Sized)))
+                            && tcx.is_trait_lang_item(
+                                clause_pred.def_id(),
+                                SolverTraitLangItem::Sized,
+                            )))
                 {
                     return true;
                 }
