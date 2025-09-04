@@ -1,5 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::marker::Unpin;
+use crate::marker::{Move, Unpin};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::pin::Pin;
 use crate::{fmt, ptr};
@@ -24,7 +24,7 @@ use crate::{fmt, ptr};
 #[lang = "unsafe_pinned"]
 #[repr(transparent)]
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
-pub struct UnsafePinned<T: ?Sized> {
+pub struct UnsafePinned<T: ?Sized + ?Move> {
     value: UnsafeCell<T>,
 }
 
@@ -36,7 +36,7 @@ unsafe impl<T: ?Sized + Sync> Sync for UnsafePinned<T> {}
 /// aliases from becoming invalidated. Therefore let's mark this as `!Unpin`. You can always opt
 /// back in to `Unpin` with an `impl` block, provided your API is still sound while unpinned.
 #[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T: ?Sized> !Unpin for UnsafePinned<T> {}
+impl<T: ?Sized + ?Move> !Unpin for UnsafePinned<T> {}
 
 // `Send` and `Sync` are inherited from `T`. This is similar to `SyncUnsafeCell`, since
 // we eventually concluded that `UnsafeCell` implicitly making things `!Sync` is sometimes
@@ -177,6 +177,6 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafePinned<U>> for UnsafePinned<T> 
 // FIXME(unsafe_pinned) this logic is copied from UnsafeCell, is it still sound?
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 // #[unstable(feature = "unsafe_pinned", issue = "125735")]
-impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafePinned<U>> for UnsafePinned<T> {}
+impl<T: DispatchFromDyn<U>, U: ?Move> DispatchFromDyn<UnsafePinned<U>> for UnsafePinned<T> {}
 
 // FIXME(unsafe_pinned): impl PinCoerceUnsized for UnsafePinned<T>?
