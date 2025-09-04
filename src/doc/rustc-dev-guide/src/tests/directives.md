@@ -36,9 +36,9 @@ directive.
 The following is a list of compiletest directives. Directives are linked to
 sections that describe the command in more detail if available. This list may
 not be exhaustive. Directives can generally be found by browsing the
-`TestProps` structure found in [`header.rs`] from the compiletest source.
+`TestProps` structure found in [`directives.rs`] from the compiletest source.
 
-[`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
+[`directives.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/directives.rs
 
 ### Assembly
 
