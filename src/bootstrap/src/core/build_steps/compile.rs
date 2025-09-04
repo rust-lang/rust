@@ -33,7 +33,7 @@ use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
     Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
-use crate::core::session::{CLang, DependencyType, FileType, GitRepo, Mode};
+use crate::core::session::{BuiltArtifactsDir, CLang, DependencyType, FileType, GitRepo, Mode};
 use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
@@ -984,6 +984,11 @@ pub struct BuiltRustc {
     /// This can be different from the *build_compiler* passed to the `Rustc` step because of
     /// uplifting.
     pub build_compiler: Compiler,
+    /// Build stamp that stores the rustc rlibs that were built by `build_compiler`.
+    ///
+    /// FIXME: this shouldn't be an option, ideally get rid of the Option once download-ci-rustc
+    /// is refactored.
+    pub stamp: Option<BuildStamp>,
 }
 
 /// Build rustc using the passed `build_compiler`.
@@ -1054,6 +1059,8 @@ impl CommandLineStep for Rustc {
         let build_compiler = self.build_compiler;
         let target = self.target;
 
+        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target);
+
         // NOTE: the ABI of the stage0 compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && build_compiler.stage != 0 {
@@ -1066,7 +1073,7 @@ impl CommandLineStep for Rustc {
                 &sysroot,
                 builder.config.ci_rustc_dev_contents(),
             );
-            return BuiltRustc { build_compiler };
+            return BuiltRustc { build_compiler, stamp: None };
         }
 
         // Build a standard library for `target` using the `build_compiler`.
@@ -1078,9 +1085,11 @@ impl CommandLineStep for Rustc {
 
             builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
             builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
-            builder.ensure(RustcLink::from_rustc(self));
 
-            return BuiltRustc { build_compiler };
+            return BuiltRustc {
+                build_compiler,
+                stamp: Some(stamp.load_from_disk().expect("Rustc stamp was not found on disk")),
+            };
         }
 
         // The stage of the compiler that we're building
@@ -1098,25 +1107,16 @@ impl CommandLineStep for Rustc {
             // be uplifting. We cannot uplift stage 1, as it has a different ABI than stage 2+,
             // so we always uplift the stage2 compiler (compiled with stage 1).
             let uplift_build_compiler = builder.compiler(1, build_compiler.host);
+            let stamp = build_stamp::librustc_stamp(builder, uplift_build_compiler, target)
+                .load_from_disk()
+                .expect("Rustc stamp was not found on disk");
 
             let msg = format!("Uplifting rustc from stage2 to stage{stage})");
             builder.info(&msg);
 
-            // Here the compiler that built the rlibs (`uplift_build_compiler`) can be different
-            // from the compiler whose sysroot should be modified in this step. So we need to copy
-            // the (previously built) rlibs into the correct sysroot.
-            builder.ensure(RustcLink::from_build_compiler_and_sysroot(
-                // This is the compiler that actually built the rustc rlibs
-                uplift_build_compiler,
-                // We copy the rlibs into the sysroot of `build_compiler`
-                build_compiler,
-                target,
-                self.crates,
-            ));
-
             // Here we have performed an uplift, so we return the actual build compiler that "built"
             // this rustc.
-            return BuiltRustc { build_compiler: uplift_build_compiler };
+            return BuiltRustc { build_compiler: uplift_build_compiler, stamp: Some(stamp) };
         }
 
         // Build a standard library for the current host target using the `build_compiler`.
@@ -1205,8 +1205,7 @@ impl CommandLineStep for Rustc {
             strip_debug(builder, target, &target_root_dir.join("rustc-main"));
         }
 
-        builder.ensure(RustcLink::from_rustc(self));
-        BuiltRustc { build_compiler }
+        BuiltRustc { build_compiler, stamp: Some(stamp) }
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -1503,70 +1502,6 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     }
 }
 
-/// `RustcLink` copies compiler rlibs from a rustc build into a compiler sysroot.
-/// It works with (potentially up to) three compilers:
-/// - `build_compiler` is a compiler that built rustc rlibs
-/// - `sysroot_compiler` is a compiler into whose sysroot we will copy the rlibs
-///   - In most situations, `build_compiler` == `sysroot_compiler`
-/// - `target_compiler` is the compiler whose rlibs were built. It is not represented explicitly
-///   in this step, rather we just read the rlibs from a rustc build stamp of `build_compiler`.
-///
-/// This is necessary for tools using `rustc_private`, where the previous compiler will build
-/// a tool against the next compiler.
-/// To build a tool against a compiler, the rlibs of that compiler that it links against
-/// must be in the sysroot of the compiler that's doing the compiling.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct RustcLink {
-    /// This compiler **built** some rustc, whose rlibs we will copy into a sysroot.
-    build_compiler: Compiler,
-    /// This is the compiler into whose sysroot we want to copy the built rlibs.
-    /// In most cases, it will correspond to `build_compiler`.
-    sysroot_compiler: Compiler,
-    target: TargetSelection,
-    /// Not actually used; only present to make sure the cache invalidation is correct.
-    crates: Vec<String>,
-}
-
-impl RustcLink {
-    /// Copy rlibs from the build compiler that build this `rustc` into the sysroot of that
-    /// build compiler.
-    fn from_rustc(rustc: Rustc) -> Self {
-        Self {
-            build_compiler: rustc.build_compiler,
-            sysroot_compiler: rustc.build_compiler,
-            target: rustc.target,
-            crates: rustc.crates,
-        }
-    }
-
-    /// Copy rlibs **built** by `build_compiler` into the sysroot of `sysroot_compiler`.
-    fn from_build_compiler_and_sysroot(
-        build_compiler: Compiler,
-        sysroot_compiler: Compiler,
-        target: TargetSelection,
-        crates: Vec<String>,
-    ) -> Self {
-        Self { build_compiler, sysroot_compiler, target, crates }
-    }
-}
-
-impl Step for RustcLink {
-    type Output = ();
-
-    /// Same as `StdLink`, only for librustc
-    fn run(self, builder: &Builder<'_>) {
-        let build_compiler = self.build_compiler;
-        let sysroot_compiler = self.sysroot_compiler;
-        let target = self.target;
-        add_to_sysroot(
-            builder,
-            &builder.sysroot_target_libdir(sysroot_compiler, target),
-            &builder.sysroot_target_libdir(sysroot_compiler, sysroot_compiler.host),
-            &build_stamp::librustc_stamp(builder, build_compiler, target),
-        );
-    }
-}
-
 /// Set of `libgccjit` dylibs that can be used by `cg_gcc` to compile code for a set of targets.
 /// `libgccjit` requires a separate build for each `(host, target)` pair.
 /// So if you are on linux-x64 and build for linux-aarch64, you will need at least:
@@ -1719,6 +1654,7 @@ impl CommandLineStep for GccCodegenBackend {
         );
         cargo.arg("--manifest-path").arg(builder.src.join("compiler/rustc_codegen_gcc/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, host);
+        self.compilers.configure_cargo(&mut cargo);
 
         let _guard =
             builder.msg(Kind::Build, "codegen backend gcc", Mode::Codegen, build_compiler, host);
@@ -1790,6 +1726,7 @@ impl CommandLineStep for CraneliftCodegenBackend {
             .arg("--manifest-path")
             .arg(builder.src.join("compiler/rustc_codegen_cranelift/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo, target);
+        self.compilers.configure_cargo(&mut cargo);
 
         let _guard = builder.msg(
             Kind::Build,
@@ -2317,7 +2254,7 @@ impl CommandLineStep for Assemble {
         );
 
         // It is possible that an uplift has happened, so we override build_compiler here.
-        let BuiltRustc { build_compiler } =
+        let BuiltRustc { build_compiler, stamp: _ } =
             builder.ensure(Rustc::new(build_compiler, target_compiler.host));
 
         let stage = target_compiler.stage;
@@ -2397,6 +2334,7 @@ impl CommandLineStep for Assemble {
 
                 let prepare_compilers = || {
                     RustcPrivateCompilers::from_build_and_target_compiler(
+                        builder,
                         build_compiler,
                         target_compiler,
                     )
@@ -2552,6 +2490,36 @@ impl CommandLineStep for Assemble {
         builder.copy_link(&rustc, &compiler, FileType::Executable);
 
         target_compiler
+    }
+}
+
+/// Compiles rustc using `build_compiler` for the given `target`, and
+/// outputs a directory with the generated compiler rlibs.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PrepareRlibSysroot {
+    build_compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl PrepareRlibSysroot {
+    pub fn new(build_compiler: Compiler, target: TargetSelection) -> Self {
+        Self { build_compiler, target }
+    }
+}
+
+impl Step for PrepareRlibSysroot {
+    type Output = Option<BuiltArtifactsDir>;
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // Build rustc
+        let rustc = builder.ensure(Rustc::new(self.build_compiler, self.target));
+
+        // Copy the generated rlib artifacts to a separate directory
+        let dir = builder
+            .out
+            .join(self.build_compiler.host)
+            .join(format!("stage{}-rustc-rlib-artifacts", self.build_compiler.stage + 1));
+        rustc.stamp.map(|stamp| BuiltArtifactsDir::from_stamp(builder, stamp, self.target, &dir))
     }
 }
 
