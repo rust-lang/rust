@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::check_infer;
+use crate::tests::{check_infer, check_no_mismatches};
 
 #[test]
 fn opaque_generics() {
@@ -48,5 +48,26 @@ fn main() {
             55..65 'Some(1i32)': Option<i32>
             60..64 '1i32': i32
         "#]],
+    );
+}
+
+#[test]
+fn regression_20487() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, dispatch_from_dyn
+trait Foo {
+    fn bar(&self) -> u32 {
+        0xCAFE
+    }
+}
+
+fn debug(_: &dyn Foo) {}
+
+impl Foo for i32 {}
+
+fn main() {
+    debug(&1);
+}"#,
     );
 }
