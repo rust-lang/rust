@@ -532,7 +532,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
+            Stable,
             Multi,
             "",
             "emit",
