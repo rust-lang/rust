@@ -1,4 +1,4 @@
 ; Check that f128 TypeTree metadata is correctly generated
-; f128 maps to Unknown in our current implementation since CConcreteType doesn't have DT_F128
+; Should show Float@fp128 for f128 values and Pointer for references
 
-CHECK: define{{.*}}"enzyme_type"={{.*}}@test_f128{{.*}}"enzyme_type"="{[]:Pointer}"
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Float@fp128}"{{.*}}@test_f128{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,-1]:Float@fp128}"
