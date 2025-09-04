@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![deny(unused_assignments, unused_variables)]
+#![deny(unused_assignments)]
 #![allow(unused_mut)]
 struct Object;
 
@@ -8,15 +8,15 @@ fn change_object(object: &mut Object) { //~ HELP you might have meant to mutate
    *object = object2; //~ ERROR mismatched types
 }
 
-fn change_object2(object: &mut Object) { //~ ERROR variable `object` is assigned to, but never used
-   //~^ HELP you might have meant to mutate
+fn change_object2(object: &mut Object) {
+    //~^ HELP you might have meant to mutate
    let object2 = Object;
    *object = object2;
    //~^ ERROR `object2` does not live long enough
    //~| ERROR value assigned to `object` is never read
 }
 
-fn change_object3(object: &mut Object) { //~ ERROR variable `object` is assigned to, but never used
+fn change_object3(object: &mut Object) {
     //~^ HELP you might have meant to mutate
     let mut object2 = Object; //~ HELP consider changing this to be mutable
     *object = object2;
