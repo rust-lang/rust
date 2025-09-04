@@ -209,7 +209,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
             // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`), in
             // which case we must still trigger the lint.
-            && (!has_lifetime(ty) || same_lifetimes(ty, impl_ty))
+            && same_lifetimes(ty, impl_ty)
             && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             span_lint(cx, hir_ty.span);
@@ -316,19 +316,5 @@ fn same_lifetimes<'tcx>(a: MiddleTy<'tcx>, b: MiddleTy<'tcx>) -> bool {
             })
         },
         _ => a == b,
-    }
-}
-
-/// Checks whether `ty` has lifetime parameters.
-fn has_lifetime(ty: MiddleTy<'_>) -> bool {
-    use rustc_middle::ty::{Adt, GenericArgKind};
-    match ty.kind() {
-        Adt(_, args) => args.iter().any(|arg| match arg.kind() {
-            // TODO: Handle inferred lifetimes
-            GenericArgKind::Lifetime(..) => true,
-            GenericArgKind::Type(ty) => has_lifetime(ty),
-            _ => false,
-        }),
-        _ => false,
     }
 }
