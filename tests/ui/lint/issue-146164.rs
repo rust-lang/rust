@@ -1,3 +1,4 @@
+//@ check-pass
 // Test that hidden_glob_reexports lint doesn't warn when importing the same item
 // that's already available through a glob re-export
 
