@@ -4,8 +4,6 @@
 //! to set the product and file version information in the Windows resource file.
 use std::{env, ffi, fs, path, process};
 
-use cc::windows_registry;
-
 /// The template for the Windows resource file.
 const RESOURCE_TEMPLATE: &str = include_str!("../rustc.rc.in");
 
@@ -141,11 +139,11 @@ fn find_resource_compiler(arch_or_target: &str) -> Option<path::PathBuf> {
 /// Find a Windows SDK tool for the given architecture or target triple.
 /// Returns `None` if the tool could not be found.
 fn find_windows_sdk_tool(arch_or_target: &str, tool_name: &str) -> Option<path::PathBuf> {
-    // windows_registry::find_tool can only find MSVC tools, not Windows SDK tools, but
+    // find_msvc_tools can only find MSVC tools, not Windows SDK tools, but
     // cc does include the Windows SDK tools in the PATH environment of MSVC tools.
 
-    let msvc_linker = windows_registry::find_tool(arch_or_target, "link.exe")?;
-    let path = &msvc_linker.env().iter().find(|(k, _)| k == "PATH")?.1;
+    let msvc_linker = find_msvc_tools::find_tool(arch_or_target, "link.exe")?;
+    let path = &msvc_linker.env().into_iter().find(|(k, _)| k == "PATH")?.1;
     find_tool_in_path(tool_name, path)
 }
 
