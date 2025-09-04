@@ -2107,7 +2107,7 @@ impl PartialEq for PathBuf {
 impl cmp::PartialEq<str> for PathBuf {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        &*self == other
+        Path::eq(self, other)
     }
 }
 
