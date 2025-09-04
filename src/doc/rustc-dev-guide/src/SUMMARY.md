@@ -107,6 +107,7 @@
     - [Installation](./autodiff/installation.md)
     - [How to debug](./autodiff/debugging.md)
     - [Autodiff flags](./autodiff/flags.md)
+    - [TypeTrees](./autodiff/typetrees.md)
 
 # Source Code Representation
 
