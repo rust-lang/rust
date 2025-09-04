@@ -455,7 +455,7 @@ impl Step for RustAnalyzer {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             self.compilers.build_compiler(),
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             host,
             Kind::Test,
             crate_path,
@@ -518,7 +518,7 @@ impl Step for Rustfmt {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             target,
             Kind::Test,
             "src/tools/rustfmt",
@@ -571,7 +571,8 @@ impl Miri {
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
 
         let mut cargo = BootstrapCommand::from(cargo);
-        let _guard = builder.msg(Kind::Build, "miri sysroot", Mode::ToolRustc, compiler, target);
+        let _guard =
+            builder.msg(Kind::Build, "miri sysroot", Mode::ToolRustcPrivate, compiler, target);
         cargo.run(builder);
 
         // # Determine where Miri put its sysroot.
@@ -648,7 +649,7 @@ impl Step for Miri {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             miri.build_compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             host,
             Kind::Test,
             "src/tools/miri",
@@ -861,7 +862,7 @@ impl Step for Clippy {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             target,
             Kind::Test,
             "src/tools/clippy",
@@ -872,7 +873,7 @@ impl Step for Clippy {
         cargo.env("RUSTC_TEST_SUITE", builder.rustc(build_compiler));
         cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(build_compiler));
         let host_libs =
-            builder.stage_out(build_compiler, Mode::ToolRustc).join(builder.cargo_dir());
+            builder.stage_out(build_compiler, Mode::ToolRustcPrivate).join(builder.cargo_dir());
         cargo.env("HOST_LIBS", host_libs);
 
         // Build the standard library that the tests can use.
@@ -2411,7 +2412,7 @@ impl BookTest {
         let libs = if !self.dependencies.is_empty() {
             let mut lib_paths = vec![];
             for dep in self.dependencies {
-                let mode = Mode::ToolRustc;
+                let mode = Mode::ToolRustcPrivate;
                 let target = builder.config.host_target;
                 let cargo = tool::prepare_tool_cargo(
                     builder,
@@ -2996,7 +2997,7 @@ impl Step for CrateRustdoc {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustcPrivate,
             target,
             builder.kind,
             "src/tools/rustdoc",

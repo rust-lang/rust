@@ -85,12 +85,12 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Rustc), "bootstrap", None),
     (Some(Mode::Codegen), "bootstrap", None),
-    (Some(Mode::ToolRustc), "bootstrap", None),
+    (Some(Mode::ToolRustcPrivate), "bootstrap", None),
     (Some(Mode::ToolStd), "bootstrap", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
-    (Some(Mode::ToolRustc), "llvm_enzyme", None),
-    (Some(Mode::ToolRustc), "rust_analyzer", None),
+    (Some(Mode::ToolRustcPrivate), "llvm_enzyme", None),
+    (Some(Mode::ToolRustcPrivate), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
@@ -334,17 +334,18 @@ pub enum Mode {
     /// compiletest which needs libtest.
     ToolStd,
 
-    /// Build a tool which uses the locally built rustc and the target std,
+    /// Build a tool which uses the `rustc_private` mechanism, and thus
+    /// the locally built rustc rlib artifacts,
     /// placing the output in the "stageN-tools" directory. This is used for
-    /// anything that needs a fully functional rustc, such as rustdoc, clippy,
-    /// cargo, rustfmt, miri, etc.
-    ToolRustc,
+    /// everything that links to rustc as a library, such as rustdoc, clippy,
+    /// rustfmt, miri, etc.
+    ToolRustcPrivate,
 }
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
         match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd | Mode::ToolTarget => true,
+            Mode::ToolBootstrap | Mode::ToolRustcPrivate | Mode::ToolStd | Mode::ToolTarget => true,
             Mode::Std | Mode::Codegen | Mode::Rustc => false,
         }
     }
@@ -353,7 +354,7 @@ impl Mode {
         match self {
             Mode::Std | Mode::Codegen => true,
             Mode::ToolBootstrap
-            | Mode::ToolRustc
+            | Mode::ToolRustcPrivate
             | Mode::ToolStd
             | Mode::ToolTarget
             | Mode::Rustc => false,
@@ -924,7 +925,7 @@ impl Build {
             Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
             Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
             Mode::ToolBootstrap => bootstrap_tool(),
-            Mode::ToolStd | Mode::ToolRustc => (Some(build_compiler.stage + 1), "tools"),
+            Mode::ToolStd | Mode::ToolRustcPrivate => (Some(build_compiler.stage + 1), "tools"),
             Mode::ToolTarget => {
                 // If we're not cross-compiling (the common case), share the target directory with
                 // bootstrap tools to reuse the build cache.
@@ -1145,7 +1146,7 @@ impl Build {
                 | Mode::ToolBootstrap
                 | Mode::ToolTarget
                 | Mode::ToolStd
-                | Mode::ToolRustc,
+                | Mode::ToolRustcPrivate,
             )
             | None => target_and_stage.stage + 1,
         };
