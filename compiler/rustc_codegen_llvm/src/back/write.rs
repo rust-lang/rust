@@ -837,7 +837,7 @@ pub(crate) fn codegen(
                         "LLVM_module_codegen_make_bitcode",
                         &*module.name,
                     );
-                    ThinBuffer::new(llmod, config.emit_thin_lto, false)
+                    ThinBuffer::new(llmod, config.emit_thin_lto)
                 };
                 let data = thin.data();
                 let _timer = cgcx
