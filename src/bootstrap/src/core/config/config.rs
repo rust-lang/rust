@@ -221,6 +221,7 @@ pub struct Config {
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
+    pub rust_break_on_ice: bool,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -550,6 +551,7 @@ impl Config {
             strip: rust_strip,
             lld_mode: rust_lld_mode,
             std_features: rust_std_features,
+            break_on_ice: rust_break_on_ice,
         } = toml.rust.unwrap_or_default();
 
         let Llvm {
@@ -1269,6 +1271,7 @@ impl Config {
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,
+            rust_break_on_ice: rust_break_on_ice.unwrap_or(true),
             rust_codegen_backends: rust_codegen_backends
                 .map(|backends| parse_codegen_backends(backends, "rust"))
                 .unwrap_or(vec![CodegenBackendKind::Llvm]),
