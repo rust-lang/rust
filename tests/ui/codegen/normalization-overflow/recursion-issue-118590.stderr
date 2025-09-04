@@ -1,5 +1,5 @@
 error: reached the recursion limit while instantiating `<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<Peekable<Skip<std::iter::Empty<()>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Iterator>::peekable`
-  --> $DIR/recursion-issue-118590.rs:11:13
+  --> $DIR/recursion-issue-118590.rs:10:13
    |
 LL |     recurse(nums.skip(42).peekable())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error: reached the recursion limit while instantiating `<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut Peekable<&mut std::vec::IntoIter<u8>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> as Iterator>::peekable`
-  --> $DIR/recursion-issue-131342.rs:10:22
+  --> $DIR/recursion-issue-131342.rs:9:22
    |
 LL |     let mut peeker = items.peekable();
    |                      ^^^^^^^^^^^^^^^^

@@ -1,6 +1,6 @@
 //@ build-fail
-//@ known-bug: #139659
 //@compile-flags: -Cdebuginfo=2 -Copt-level=0 --crate-type lib
+//~^^ ERROR: reached the recursion limit while instantiating
 trait Trait {
     type Output;
 }

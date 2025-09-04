@@ -1,9 +1,9 @@
 warning: function cannot return without recursing
-  --> $DIR/recursion-issue-92470.rs:13:1
+  --> $DIR/recursion-issue-92470.rs:12:1
    |
 LL | fn encode<E: Encoder>(mut encoder: E) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
-LL |     encoder.writer();
+...
 LL |     encode(&mut encoder);
    |     -------------------- recursive call site
    |
@@ -17,7 +17,7 @@ LL |     encode(&mut encoder);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
 note: `encode` defined here
-  --> $DIR/recursion-issue-92470.rs:13:1
+  --> $DIR/recursion-issue-92470.rs:12:1
    |
 LL | fn encode<E: Encoder>(mut encoder: E) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
