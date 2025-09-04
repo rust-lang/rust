@@ -199,5 +199,11 @@ error: `as` casting between raw pointers without changing their constness
 LL |         let _: fn() = std::mem::transmute(std::ptr::null::<()>() as *const u8);
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try call directly: `std::ptr::null::<u8>()`
 
-error: aborting due to 33 previous errors
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/ptr_as_ptr.rs:235:16
+   |
+LL |     let _ptr = std::ptr::addr_of_mut!(*b) as *mut ();
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `std::ptr::addr_of_mut!(*b).cast::<()>()`
+
+error: aborting due to 34 previous errors
 

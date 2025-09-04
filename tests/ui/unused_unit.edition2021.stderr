@@ -119,10 +119,10 @@ LL | fn test3()-> (){}
    |           ^^^^^ help: remove the `-> ()`
 
 error: unneeded unit return type
-  --> tests/ui/unused_unit.rs:136:15
+  --> tests/ui/unused_unit.rs:131:13
    |
-LL |         run(|| -> () { todo!() }); 
-   |               ^^^^^^ help: remove the `-> ()`
+LL |     fn bar() -> () {
+   |             ^^^^^^ help: remove the `-> ()`
 
 error: aborting due to 20 previous errors
 
