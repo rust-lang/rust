@@ -1,5 +1,7 @@
 // Checks multiple things on the sidebar display (width of its elements, colors, etc).
 include: "utils.goml"
+// Disable animations so they don't mess up color assertions later.
+emulate-media-features: { "prefers-reduced-motion": "reduce" }
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "199"})
 show-text: true
