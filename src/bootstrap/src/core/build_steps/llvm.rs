@@ -205,6 +205,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
         ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
         ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
@@ -213,7 +214,6 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        ("aarch64-pc-windows-msvc", false),
         ("aarch64-unknown-linux-musl", false),
         ("arm-unknown-linux-gnueabi", false),
         ("arm-unknown-linux-gnueabihf", false),
