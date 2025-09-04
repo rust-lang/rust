@@ -294,6 +294,7 @@
 #![feature(f128)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
+#![feature(funnel_shifts)]
 #![feature(hash_map_internals)]
 #![feature(hash_map_macro)]
 #![feature(if_let_guard)]
