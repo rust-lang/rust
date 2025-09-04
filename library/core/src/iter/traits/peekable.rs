@@ -17,7 +17,7 @@ pub trait PeekableIterator: Iterator {
     /// assert_eq!(vals.next(), Some(0));
     ///
     /// // examine the pending element
-    /// assert_eq!(vals.peek_with(|x| x), Some(&1));
+    /// assert_eq!(vals.peek_with(|x| x.copied()), Some(1));
     /// assert_eq!(vals.next(), Some(1));
     ///
     /// // determine if the iterator has an element without advancing
@@ -26,7 +26,7 @@ pub trait PeekableIterator: Iterator {
     ///
     /// // exhausted iterator
     /// assert_eq!(vals.next(), None);
-    /// assert_eq!(vals.peek_with(|x| x), None);
+    /// assert_eq!(vals.peek_with(|x| x.copied()), None);
     /// ```
     fn peek_with<T>(&mut self, func: impl for<'a> FnOnce(Option<&'a Self::Item>) -> T) -> T;
 
@@ -50,7 +50,7 @@ pub trait PeekableIterator: Iterator {
     ///     } else {
     ///       10
     ///     }
-    ///     
+    ///
     ///     u32::from_str_radix(c.as_str(), base).unwrap()
     /// }
     ///

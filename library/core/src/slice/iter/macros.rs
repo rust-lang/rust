@@ -475,9 +475,9 @@ macro_rules! iterator {
                 if len!(self) == 0 {
                     func(None)
                 } else {
-                    // SAFETY: element within bounds as len > 0
-                    // Reference is dropped after the closure completes
-                    // and can not outlive the mutable borrow of self
+                    // SAFETY: Element within bounds as len > 0.
+                    // The reference is dropped after the closure completes
+                    // and can not outlive the mutable borrow of self.
                     let tmp = unsafe { & $( $mut_ )? *self.ptr.as_ptr() };
                     func(Some(tmp).as_ref())
                 }
