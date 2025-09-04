@@ -32,7 +32,7 @@ fn parse_pat_ty<'a>(
 
     let pat = pat_to_ty_pat(
         cx,
-        *parser.parse_pat_no_top_guard(
+        parser.parse_pat_no_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::No,
@@ -59,7 +59,7 @@ fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> Box<TyPat> {
             include_end,
         ),
         ast::PatKind::Or(variants) => {
-            TyPatKind::Or(variants.into_iter().map(|pat| pat_to_ty_pat(cx, *pat)).collect())
+            TyPatKind::Or(variants.into_iter().map(|pat| pat_to_ty_pat(cx, pat)).collect())
         }
         ast::PatKind::Err(guar) => TyPatKind::Err(guar),
         _ => TyPatKind::Err(cx.dcx().span_err(pat.span, "pattern not supported in pattern types")),

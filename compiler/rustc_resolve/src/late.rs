@@ -3664,7 +3664,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
-        pats: &[Box<Pat>],
+        pats: &[Pat],
     ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
@@ -3679,11 +3679,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             .collect::<Vec<_>>();
 
         // 2) Record any missing bindings or binding mode inconsistencies.
-        for (map_outer, pat_outer) in not_never_pats.iter() {
+        for &(ref map_outer, pat_outer) in not_never_pats.iter() {
             // Check against all arms except for the same pattern which is always self-consistent.
             let inners = not_never_pats.iter().filter(|(_, pat)| pat.id != pat_outer.id);
 
-            for (map, pat) in inners {
+            for &(ref map, pat) in inners {
                 for (&name, binding_inner) in map {
                     match map_outer.get(&name) {
                         None => {
@@ -3695,8 +3695,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     target: Default::default(),
                                     could_be_path: name.as_str().starts_with(char::is_uppercase),
                                 });
-                            binding_error.origin.push((binding_inner.span, (***pat).clone()));
-                            binding_error.target.push((***pat_outer).clone());
+                            binding_error.origin.push((binding_inner.span, pat.clone()));
+                            binding_error.target.push(pat_outer.clone());
                         }
                         Some(binding_outer) => {
                             if binding_outer.annotation != binding_inner.annotation {
