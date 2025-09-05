@@ -188,6 +188,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     | ty::CoroutineWitness(..)
                     | ty::UnsafeBinder(_)
                     | ty::Never
+                    | ty::Field(..)
                     | ty::Tuple(_)
                     | ty::Error(_) => ConstValue::from_target_usize(0u64, &tcx),
                 };

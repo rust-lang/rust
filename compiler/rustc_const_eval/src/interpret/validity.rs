@@ -771,6 +771,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 interp_ok(true)
             }
             ty::Never => throw_validation_failure!(self.path, NeverVal),
+            ty::Field(..) => throw_validation_failure!(self.path, NeverVal),
             ty::Foreign(..) | ty::FnDef(..) => {
                 // Nothing to check.
                 interp_ok(true)
