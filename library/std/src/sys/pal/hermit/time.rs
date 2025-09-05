@@ -28,7 +28,7 @@ impl Timespec {
     #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
     const fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         // FIXME: const PartialOrd
-        let mut cmp = self.t.tv_sec - other.t.tv_sec;
+        let mut cmp = self.t.tv_sec.saturating_sub(other.t.tv_sec);
         if cmp == 0 {
             cmp = self.t.tv_nsec as i64 - other.t.tv_nsec as i64;
         }
@@ -36,12 +36,12 @@ impl Timespec {
         if cmp >= 0 {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
                 Duration::new(
-                    (self.t.tv_sec - other.t.tv_sec) as u64,
+                    self.t.tv_sec.wrapping_sub(other.t.tv_sec) as u64,
                     (self.t.tv_nsec - other.t.tv_nsec) as u32,
                 )
             } else {
                 Duration::new(
-                    (self.t.tv_sec - 1 - other.t.tv_sec) as u64,
+                    self.t.tv_sec.wrapping_sub(other.t.tv_sec) as u64 - 1_u64,
                     (self.t.tv_nsec + NSEC_PER_SEC - other.t.tv_nsec) as u32,
                 )
             })

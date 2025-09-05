@@ -139,7 +139,7 @@ impl Timespec {
     #[rustc_const_unstable(feature = "const_system_time", issue = "144517")]
     pub const fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         // FIXME: const PartialOrd
-        let mut cmp = self.tv_sec - other.tv_sec;
+        let mut cmp = self.tv_sec.saturating_sub(other.tv_sec);
         if cmp == 0 {
             cmp = self.tv_nsec.as_inner() as i64 - other.tv_nsec.as_inner() as i64;
         }
@@ -160,12 +160,12 @@ impl Timespec {
             // directly expresses the lower-cost behavior we want from it.
             let (secs, nsec) = if self.tv_nsec.as_inner() >= other.tv_nsec.as_inner() {
                 (
-                    (self.tv_sec - other.tv_sec) as u64,
+                    self.tv_sec.wrapping_sub(other.tv_sec) as u64,
                     self.tv_nsec.as_inner() - other.tv_nsec.as_inner(),
                 )
             } else {
                 (
-                    (self.tv_sec - other.tv_sec - 1) as u64,
+                    self.tv_sec.wrapping_sub(other.tv_sec) as u64 - 1_u64,
                     self.tv_nsec.as_inner() + (NSEC_PER_SEC as u32) - other.tv_nsec.as_inner(),
                 )
             };
