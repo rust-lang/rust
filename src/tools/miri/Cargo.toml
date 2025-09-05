@@ -52,7 +52,7 @@ nix = { version = "0.31.0", features = ["mman", "ptrace", "signal"], optional = 
 ipc-channel = { version = "0.22.0", optional = true }
 capstone = { version = "0.14", features = ["arch_x86", "full"], default-features = false, optional = true}
 
-[target.'cfg(all(target_os = "linux", target_pointer_width = "64", target_endian = "little"))'.dependencies]
+[target.'cfg(all(any(target_os = "linux", target_os = "macos"), target_pointer_width = "64", target_endian = "little"))'.dependencies]
 genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
 [target.'cfg(windows)'.dependencies]

@@ -16,7 +16,7 @@ Any loops that may run infinitely must be replaced or bounded (see [below](#elim
 GenMC makes use of Dynamic Partial Order Reduction (DPOR) to reduce the number of executions that must be explored, but the runtime can still be super-exponential in the size of the input program (number of threads and amount of interaction between threads).
 Large programs may not be verifiable in a reasonable amount of time.
 
-GenMC currently only supports Linux hosts.
+GenMC currently only supports Linux and macOS hosts.
 Both the host and the target must be 64-bit little-endian.
 
 ## Usage
