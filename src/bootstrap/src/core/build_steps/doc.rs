@@ -965,9 +965,11 @@ macro_rules! tool_doc {
     (
         $tool: ident,
         $path: literal,
-        mode = $mode:expr,
-        $(is_library = $is_library:expr,)?
-        $(crates = $crates:expr)?
+        mode = $mode:expr
+        $(, is_library = $is_library:expr )?
+        $(, crates = $crates:expr )?
+        // Subset of nightly features that are allowed to be used when documenting
+        $(, allow_features: $allow_features:expr )?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
@@ -1041,6 +1043,15 @@ macro_rules! tool_doc {
                     source_type,
                     &[],
                 );
+                let allow_features = {
+                    let mut _value = "";
+                    $( _value = $allow_features; )?
+                    _value
+                };
+
+                if allow_features.is_empty() {
+                    cargo.allow_features(allow_features);
+                }
 
                 cargo.arg("-Zskip-rustdoc-fingerprint");
                 // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -1134,7 +1145,8 @@ tool_doc!(
         "crates-io",
         "mdman",
         "rustfix",
-    ]
+    ],
+    allow_features: "specialization"
 );
 tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolBootstrap, crates = ["tidy"]);
 tool_doc!(
