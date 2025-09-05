@@ -1262,6 +1262,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::RawPtr(..)
             | ty::FnDef(..)
             | ty::Error(_)
+            | ty::Field(..)
             | ty::FnPtr(..) => true,
             // FIXME(unsafe_binders):
             ty::UnsafeBinder(_) => todo!(),
@@ -1507,6 +1508,7 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Char
+        | ty::Field(..)
         | ty::RawPtr(_, _)
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),

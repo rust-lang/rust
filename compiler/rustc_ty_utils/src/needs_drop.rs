@@ -293,6 +293,7 @@ where
                     | ty::Tuple(_)
                     | ty::Bound(..)
                     | ty::Never
+                    | ty::Field(..)
                     | ty::Infer(_)
                     | ty::Error(_) => {
                         bug!("unexpected type returned by `needs_drop_components`: {component}")

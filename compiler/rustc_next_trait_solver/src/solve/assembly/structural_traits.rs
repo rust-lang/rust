@@ -789,6 +789,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::FnDef(..)
         | ty::FnPtr(..)
         | ty::Never
+        | ty::Field(_, _)
         | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
         | ty::Error(_) => Ok(vec![]),
 
