@@ -227,3 +227,29 @@ fn big_math() {
     check(instant.checked_add(Duration::from_secs(100)), Instant::checked_sub);
     check(instant.checked_add(Duration::from_secs(i64::MAX as _)), Instant::checked_sub);
 }
+
+#[test]
+#[cfg(unix)]
+fn system_time_extreme_values_regression() {
+    // Test for regression in SystemTime comparison with extreme values
+    // This test covers the bug introduced in PR #144519 where integer overflow
+    // in the comparison logic caused incorrect results when dealing with times
+    // near i64::MIN and i64::MAX.
+    //
+    // This is the exact test case from GitHub issue #146228
+    let t = SystemTime::UNIX_EPOCH;
+    let early = t - (Duration::from_secs(i64::MAX as u64 + 1));
+    let later = t + (Duration::from_secs(i64::MAX as u64) + Duration::from_nanos(999_999_999));
+
+    // This should succeed and not return a SystemTimeError due to incorrect comparison overflow
+    let delta =
+        later.duration_since(early).expect("duration_since should work with extreme values");
+
+    // Verify that the delta calculation is reasonable
+    // early is at approximately -i64::MAX-1 seconds from epoch
+    // later is at approximately i64::MAX seconds + 999_999_999 nanoseconds from epoch
+    // So delta should be approximately (i64::MAX + i64::MAX + 1) seconds + 999_999_999 nanoseconds
+    let expected_secs = (i64::MAX as u64) * 2 + 1;
+    let expected = Duration::new(expected_secs, 999_999_999);
+    assert_eq!(delta, expected, "Duration calculation should be correct for extreme values");
+}
