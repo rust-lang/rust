@@ -50,10 +50,10 @@ fn try_get_caller_ty_name_and_method_name(
         }
     } else {
         if let ty::Adt(adt, _) = cx.typeck_results().expr_ty(caller_expr).kind() {
-            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) {
-                return Some(("Option", "and_then"));
-            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
-                return Some(("Result", "and_then"));
+            match cx.tcx.get_diagnostic_name(adt.did()) {
+                Some(sym::Option) => return Some(("Option", "and_then")),
+                Some(sym::Result) => return Some(("Result", "and_then")),
+                _ => {},
             }
         }
         None

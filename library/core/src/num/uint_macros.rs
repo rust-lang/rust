@@ -14,6 +14,9 @@ macro_rules! uint_impl {
         rot = $rot:literal,
         rot_op = $rot_op:literal,
         rot_result = $rot_result:literal,
+        fsh_op = $fsh_op:literal,
+        fshl_result = $fshl_result:literal,
+        fshr_result = $fshr_result:literal,
         swap_op = $swap_op:literal,
         swapped = $swapped:literal,
         reversed = $reversed:literal,
@@ -373,6 +376,76 @@ macro_rules! uint_impl {
         #[inline(always)]
         pub const fn rotate_right(self, n: u32) -> Self {
             return intrinsics::rotate_right(self, n);
+        }
+
+        /// Performs a left funnel shift (concatenates `self` with `rhs`, with `self`
+        /// making up the most significant half, then shifts the combined value left
+        /// by `n`, and most significant half is extracted to produce the result).
+        ///
+        /// Please note this isn't the same operation as the `<<` shifting operator or
+        /// [`rotate_left`](Self::rotate_left), although `a.funnel_shl(a, n)` is *equivalent*
+        /// to `a.rotate_left(n)`.
+        ///
+        /// # Panics
+        ///
+        /// If `n` is greater than or equal to the number of bits in `self`
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(funnel_shifts)]
+        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let m = ", $fshl_result, ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shl(b, ", $rot, "), m);")]
+        /// ```
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn funnel_shl(self, rhs: Self, n: u32) -> Self {
+            assert!(n < Self::BITS, "attempt to funnel shift left with overflow");
+            // SAFETY: just checked that `shift` is in-range
+            unsafe { intrinsics::unchecked_funnel_shl(self, rhs, n) }
+        }
+
+        /// Performs a right funnel shift (concatenates `self` and `rhs`, with `self`
+        /// making up the most significant half, then shifts the combined value right
+        /// by `n`, and least significant half is extracted to produce the result).
+        ///
+        /// Please note this isn't the same operation as the `>>` shifting operator or
+        /// [`rotate_right`](Self::rotate_right), although `a.funnel_shr(a, n)` is *equivalent*
+        /// to `a.rotate_right(n)`.
+        ///
+        /// # Panics
+        ///
+        /// If `n` is greater than or equal to the number of bits in `self`
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(funnel_shifts)]
+        #[doc = concat!("let a = ", $rot_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let b = ", $fsh_op, stringify!($SelfT), ";")]
+        #[doc = concat!("let m = ", $fshr_result, ";")]
+        ///
+        #[doc = concat!("assert_eq!(a.funnel_shr(b, ", $rot, "), m);")]
+        /// ```
+        #[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+        #[unstable(feature = "funnel_shifts", issue = "145686")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn funnel_shr(self, rhs: Self, n: u32) -> Self {
+            assert!(n < Self::BITS, "attempt to funnel shift right with overflow");
+            // SAFETY: just checked that `shift` is in-range
+            unsafe { intrinsics::unchecked_funnel_shr(self, rhs, n) }
         }
 
         /// Reverses the byte order of the integer.
@@ -1620,7 +1693,7 @@ macro_rules! uint_impl {
         ///
         /// ```should_panic
         #[doc = concat!("let _ = 1", stringify!($SelfT), ".strict_neg();")]
-        ///
+        /// ```
         #[stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "strict_overflow_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \

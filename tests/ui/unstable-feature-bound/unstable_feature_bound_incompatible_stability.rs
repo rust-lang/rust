@@ -9,6 +9,6 @@
 #[stable(feature = "a", since = "1.1.1")]
 #[unstable_feature_bound(feat_bar)]
 fn bar() {}
-//~^ ERROR Item annotated with `#[unstable_feature_bound]` should not be stable
+//~^ ERROR item annotated with `#[unstable_feature_bound]` should not be stable
 
 fn main() {}

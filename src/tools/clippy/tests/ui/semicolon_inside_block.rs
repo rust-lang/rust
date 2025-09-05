@@ -86,3 +86,8 @@ fn main() {
 
     unit_fn_block()
 }
+
+pub fn issue15388() {
+    #[rustfmt::skip]
+    {0; 0};
+}

@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -383,12 +384,12 @@ pub trait Interner:
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds;
 
-    type ProbeRef: Copy + Debug + Hash + Eq + Deref<Target = inspect::Probe<Self>>;
-    fn mk_probe_ref(self, probe: inspect::Probe<Self>) -> Self::ProbeRef;
+    type Probe: Debug + Hash + Eq + Borrow<inspect::Probe<Self>>;
+    fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
         canonical_goal: CanonicalInput<Self>,
-    ) -> (QueryResult<Self>, Self::ProbeRef);
+    ) -> (QueryResult<Self>, Self::Probe);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

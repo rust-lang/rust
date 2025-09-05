@@ -738,8 +738,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
-    type ProbeRef = &'tcx inspect::Probe<TyCtxt<'tcx>>;
-    fn mk_probe_ref(self, probe: inspect::Probe<Self>) -> &'tcx inspect::Probe<TyCtxt<'tcx>> {
+    type Probe = &'tcx inspect::Probe<TyCtxt<'tcx>>;
+    fn mk_probe(self, probe: inspect::Probe<Self>) -> &'tcx inspect::Probe<TyCtxt<'tcx>> {
         self.arena.alloc(probe)
     }
     fn evaluate_root_goal_for_proof_tree_raw(

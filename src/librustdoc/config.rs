@@ -454,15 +454,22 @@ impl Options {
             return None;
         }
 
-        let mut emit = Vec::new();
+        let mut emit = FxIndexMap::<_, EmitType>::default();
         for list in matches.opt_strs("emit") {
             for kind in list.split(',') {
                 match kind.parse() {
-                    Ok(kind) => emit.push(kind),
+                    Ok(kind) => {
+                        // De-duplicate emit types and the last wins.
+                        // Only one instance for each type is allowed
+                        // regardless the actual data it carries.
+                        // This matches rustc's `--emit` behavior.
+                        emit.insert(std::mem::discriminant(&kind), kind);
+                    }
                     Err(()) => dcx.fatal(format!("unrecognized emission type: {kind}")),
                 }
             }
         }
+        let emit = emit.into_values().collect::<Vec<_>>();
 
         let show_coverage = matches.opt_present("show-coverage");
         let output_format_s = matches.opt_str("output-format");
@@ -814,7 +821,8 @@ impl Options {
 
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
+        let call_locations =
+            crate::scrape_examples::load_call_locations(with_examples, dcx, &mut loaded_paths);
         let doctest_build_args = matches.opt_strs("doctest-build-arg");
 
         let unstable_features =

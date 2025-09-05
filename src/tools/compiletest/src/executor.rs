@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::{env, hint, io, mem, panic, thread};
 
 use crate::common::{Config, TestPaths};
+use crate::output_capture::{self, ConsoleOut};
 use crate::panic_hook;
 
 mod deadline;
@@ -120,28 +121,28 @@ fn run_test_inner(
     runnable_test: RunnableTest,
     completion_sender: mpsc::Sender<TestCompletion>,
 ) {
-    let is_capture = !runnable_test.config.nocapture;
+    let capture = CaptureKind::for_config(&runnable_test.config);
 
     // Install a panic-capture buffer for use by the custom panic hook.
-    if is_capture {
+    if capture.should_set_panic_hook() {
         panic_hook::set_capture_buf(Default::default());
     }
-    let capture_buf = is_capture.then(|| Arc::new(Mutex::new(vec![])));
 
-    if let Some(capture_buf) = &capture_buf {
-        io::set_output_capture(Some(Arc::clone(capture_buf)));
+    if let CaptureKind::Old { ref buf } = capture {
+        io::set_output_capture(Some(Arc::clone(buf)));
     }
 
-    let panic_payload = panic::catch_unwind(move || runnable_test.run()).err();
+    let stdout = capture.stdout();
+    let stderr = capture.stderr();
+
+    let panic_payload = panic::catch_unwind(move || runnable_test.run(stdout, stderr)).err();
 
     if let Some(panic_buf) = panic_hook::take_capture_buf() {
         let panic_buf = panic_buf.lock().unwrap_or_else(|e| e.into_inner());
-        // For now, forward any captured panic message to (captured) stderr.
-        // FIXME(Zalathar): Once we have our own output-capture buffer for
-        // non-panic output, append the panic message to that buffer instead.
-        eprint!("{panic_buf}");
+        // Forward any captured panic message to (captured) stderr.
+        write!(stderr, "{panic_buf}");
     }
-    if is_capture {
+    if matches!(capture, CaptureKind::Old { .. }) {
         io::set_output_capture(None);
     }
 
@@ -152,9 +153,68 @@ fn run_test_inner(
             TestOutcome::Failed { message: Some("test did not panic as expected") }
         }
     };
-    let stdout = capture_buf.map(|mutex| mutex.lock().unwrap_or_else(|e| e.into_inner()).to_vec());
 
+    let stdout = capture.into_inner();
     completion_sender.send(TestCompletion { id, outcome, stdout }).unwrap();
+}
+
+enum CaptureKind {
+    /// Do not capture test-runner output, for `--no-capture`.
+    ///
+    /// (This does not affect `rustc` and other subprocesses spawned by test
+    /// runners, whose output is always captured.)
+    None,
+
+    /// Use the old output-capture implementation, which relies on the unstable
+    /// library feature `#![feature(internal_output_capture)]`.
+    Old { buf: Arc<Mutex<Vec<u8>>> },
+
+    /// Use the new output-capture implementation, which only uses stable Rust.
+    New { buf: output_capture::CaptureBuf },
+}
+
+impl CaptureKind {
+    fn for_config(config: &Config) -> Self {
+        if config.nocapture {
+            Self::None
+        } else if config.new_output_capture {
+            Self::New { buf: output_capture::CaptureBuf::new() }
+        } else {
+            // Create a capure buffer for `io::set_output_capture`.
+            Self::Old { buf: Default::default() }
+        }
+    }
+
+    fn should_set_panic_hook(&self) -> bool {
+        match self {
+            Self::None => false,
+            Self::Old { .. } => true,
+            Self::New { .. } => true,
+        }
+    }
+
+    fn stdout(&self) -> &dyn ConsoleOut {
+        self.capture_buf_or(&output_capture::Stdout)
+    }
+
+    fn stderr(&self) -> &dyn ConsoleOut {
+        self.capture_buf_or(&output_capture::Stderr)
+    }
+
+    fn capture_buf_or<'a>(&'a self, fallback: &'a dyn ConsoleOut) -> &'a dyn ConsoleOut {
+        match self {
+            Self::None | Self::Old { .. } => fallback,
+            Self::New { buf } => buf,
+        }
+    }
+
+    fn into_inner(self) -> Option<Vec<u8>> {
+        match self {
+            Self::None => None,
+            Self::Old { buf } => Some(buf.lock().unwrap_or_else(|e| e.into_inner()).to_vec()),
+            Self::New { buf } => Some(buf.into_inner().into()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -174,10 +234,12 @@ impl RunnableTest {
         Self { config, testpaths, revision }
     }
 
-    fn run(&self) {
+    fn run(&self, stdout: &dyn ConsoleOut, stderr: &dyn ConsoleOut) {
         __rust_begin_short_backtrace(|| {
             crate::runtest::run(
                 Arc::clone(&self.config),
+                stdout,
+                stderr,
                 &self.testpaths,
                 self.revision.as_deref(),
             );

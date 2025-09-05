@@ -1367,6 +1367,22 @@ pub(crate) struct UnusedVarRemoveFieldSugg {
 #[note]
 pub(crate) struct UnusedVarAssignedOnly {
     pub name: String,
+    #[subdiagnostic]
+    pub typo: Option<PatternTypo>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    passes_unused_var_typo,
+    style = "verbose",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct PatternTypo {
+    #[suggestion_part(code = "{code}")]
+    pub span: Span,
+    pub code: String,
+    pub item_name: String,
+    pub kind: String,
 }
 
 #[derive(LintDiagnostic)]
@@ -1434,6 +1450,8 @@ pub(crate) struct UnusedVariableTryPrefix {
     #[subdiagnostic]
     pub sugg: UnusedVariableSugg,
     pub name: String,
+    #[subdiagnostic]
+    pub typo: Option<PatternTypo>,
 }
 
 #[derive(Subdiagnostic)]

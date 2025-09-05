@@ -1,18 +1,18 @@
 error[E0408]: variable `b` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:13:8
+  --> $DIR/resolve-inconsistent-names.rs:13:9
    |
-LL |        a | b => {}
-   |        ^   - variable not in all patterns
-   |        |
-   |        pattern doesn't bind `b`
+LL |         a | b => {}
+   |         ^   - variable not in all patterns
+   |         |
+   |         pattern doesn't bind `b`
 
 error[E0408]: variable `a` is not bound in all patterns
-  --> $DIR/resolve-inconsistent-names.rs:13:12
+  --> $DIR/resolve-inconsistent-names.rs:13:13
    |
-LL |        a | b => {}
-   |        -   ^ pattern doesn't bind `a`
-   |        |
-   |        variable not in all patterns
+LL |         a | b => {}
+   |         -   ^ pattern doesn't bind `a`
+   |         |
+   |         variable not in all patterns
 
 error[E0408]: variable `c` is not bound in all patterns
   --> $DIR/resolve-inconsistent-names.rs:19:9
