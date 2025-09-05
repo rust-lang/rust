@@ -19,6 +19,7 @@
 #![feature(default_field_values)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
+#![feature(ptr_as_ref_unchecked)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![recursion_limit = "256"]
@@ -26,7 +27,7 @@
 
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::BTreeSet;
-use std::fmt;
+use std::fmt::{self, Formatter};
 use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
@@ -592,9 +593,9 @@ struct ModuleData<'ra> {
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: Cell<bool>,
+    populate_on_access: CmCell<bool>, // FIXME(batched): Use an atomic in batched import resolution?
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
-    underscore_disambiguator: Cell<u32>,
+    underscore_disambiguator: CmCell<u32>, // FIXME(batched): Use an atomic in batched import resolution?
 
     /// Macro invocations that can expand into items in this module.
     unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
@@ -655,8 +656,8 @@ impl<'ra> ModuleData<'ra> {
             parent,
             kind,
             lazy_resolutions: Default::default(),
-            populate_on_access: Cell::new(is_foreign),
-            underscore_disambiguator: Cell::new(0),
+            populate_on_access: CmCell::new(is_foreign),
+            underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
             glob_importers: RefCell::new(Vec::new()),
@@ -1974,7 +1975,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
-            module.populate_on_access.set(false);
+            // FIXME(batched): Will be fixed in batched import resolution.
+            module.populate_on_access.set_unchecked(false);
             self.build_reduced_graph_external(module);
         }
         &module.0.0.lazy_resolutions
@@ -2561,3 +2563,58 @@ mod ref_mut {
 ///
 /// Prefer constructing it through [`Resolver::cm`] to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
+
+#[derive(Default)]
+struct CmCell<T> {
+    value: Cell<T>,
+}
+
+impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CmCell").field("value", &self.get()).finish()
+    }
+}
+
+impl<T: Copy> Clone for CmCell<T> {
+    #[inline]
+    fn clone(&self) -> CmCell<T> {
+        CmCell::new(self.get())
+    }
+}
+
+impl<T: Copy> CmCell<T> {
+    const fn get(&self) -> T {
+        self.value.get()
+    }
+
+    pub fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+    where
+        T: Copy,
+    {
+        let old = self.get();
+        self.set_unchecked(f(old));
+    }
+}
+
+impl<T> CmCell<T> {
+    const fn new(value: T) -> CmCell<T> {
+        CmCell { value: Cell::new(value) }
+    }
+
+    #[track_caller]
+    #[allow(dead_code)]
+    fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
+        if r.assert_speculative {
+            panic!("Not allowed to mutate CmCell during speculative resolution");
+        }
+        self.value.set(val);
+    }
+
+    fn set_unchecked(&self, val: T) {
+        self.value.set(val);
+    }
+
+    fn into_inner(self) -> T {
+        self.value.into_inner()
+    }
+}
