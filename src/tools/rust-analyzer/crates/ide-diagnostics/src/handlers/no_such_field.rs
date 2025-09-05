@@ -97,24 +97,36 @@ fn missing_record_expr_field_fixes(
         make::ty(&new_field_type.display_source_code(sema.db, module.into(), true).ok()?),
     );
 
-    let last_field = record_fields.fields().last()?;
-    let last_field_syntax = last_field.syntax();
-    let indent = IndentLevel::from_node(last_field_syntax);
+    let (indent, offset, postfix, needs_comma) =
+        if let Some(last_field) = record_fields.fields().last() {
+            let indent = IndentLevel::from_node(last_field.syntax());
+            let offset = last_field.syntax().text_range().end();
+            let needs_comma = !last_field.to_string().ends_with(',');
+            (indent, offset, String::new(), needs_comma)
+        } else {
+            let indent = IndentLevel::from_node(record_fields.syntax());
+            let offset = record_fields.l_curly_token()?.text_range().end();
+            let postfix = if record_fields.syntax().text().contains_char('\n') {
+                ",".into()
+            } else {
+                format!(",\n{indent}")
+            };
+            (indent + 1, offset, postfix, false)
+        };
 
     let mut new_field = new_field.to_string();
     if usage_file_id != def_file_id {
         new_field = format!("pub(crate) {new_field}");
     }
-    new_field = format!("\n{indent}{new_field}");
+    new_field = format!("\n{indent}{new_field}{postfix}");
 
-    let needs_comma = !last_field_syntax.to_string().ends_with(',');
     if needs_comma {
         new_field = format!(",{new_field}");
     }
 
     let source_change = SourceChange::from_text_edit(
         def_file_id.file_id(sema.db),
-        TextEdit::insert(last_field_syntax.text_range().end(), new_field),
+        TextEdit::insert(offset, new_field),
     );
 
     return Some(vec![fix(
@@ -331,6 +343,44 @@ struct Foo {
 }
 ",
         )
+    }
+
+    #[test]
+    fn test_add_field_from_usage_with_empty_struct() {
+        check_fix(
+            r"
+fn main() {
+    Foo { bar$0: false };
+}
+struct Foo {}
+",
+            r"
+fn main() {
+    Foo { bar: false };
+}
+struct Foo {
+    bar: bool,
+}
+",
+        );
+
+        check_fix(
+            r"
+fn main() {
+    Foo { bar$0: false };
+}
+struct Foo {
+}
+",
+            r"
+fn main() {
+    Foo { bar: false };
+}
+struct Foo {
+    bar: bool,
+}
+",
+        );
     }
 
     #[test]
