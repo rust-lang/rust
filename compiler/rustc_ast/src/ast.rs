@@ -344,7 +344,7 @@ pub struct ParenthesizedArgs {
     pub span: Span,
 
     /// `(A, B)`
-    pub inputs: ThinVec<Box<Ty>>,
+    pub inputs: ThinVec<Ty>,
 
     /// ```text
     /// Foo(A, B) -> C
@@ -361,8 +361,7 @@ impl ParenthesizedArgs {
         let args = self
             .inputs
             .iter()
-            .cloned()
-            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
+            .map(|input| AngleBracketedArg::Arg(GenericArg::Type(Box::new(input.clone()))))
             .collect();
         AngleBracketedArgs { span: self.inputs_span, args }
     }
@@ -632,37 +631,37 @@ pub struct Pat {
 impl Pat {
     /// Attempt reparsing the pattern as a type.
     /// This is intended for use by diagnostics.
-    pub fn to_ty(&self) -> Option<Box<Ty>> {
-        let kind = match &self.kind {
+    pub fn to_ty(&self) -> Option<Ty> {
+        let kind = match self.kind {
             PatKind::Missing => unreachable!(),
             // In a type expression `_` is an inference variable.
             PatKind::Wild => TyKind::Infer,
             // An IDENT pattern with no binding mode would be valid as path to a type. E.g. `u32`.
             PatKind::Ident(BindingMode::NONE, ident, None) => {
-                TyKind::Path(None, Path::from_ident(*ident))
+                TyKind::Path(None, Path::from_ident(ident))
             }
-            PatKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
-            PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
+            PatKind::Path(ref qself, ref path) => TyKind::Path(qself.clone(), path.clone()),
+            PatKind::MacCall(ref mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
-            PatKind::Ref(pat, pinned, mutbl) => pat.to_ty().map(|ty| match pinned {
-                Pinnedness::Not => TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }),
-                Pinnedness::Pinned => TyKind::PinnedRef(None, MutTy { ty, mutbl: *mutbl }),
+            PatKind::Ref(ref pat, pinned, mutbl) => pat.to_ty().map(|ty| match pinned {
+                Pinnedness::Not => TyKind::Ref(None, MutTy { ty: Box::new(ty), mutbl }),
+                Pinnedness::Pinned => TyKind::PinnedRef(None, MutTy { ty: Box::new(ty), mutbl }),
             })?,
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
-            PatKind::Slice(pats) if let [pat] = pats.as_slice() => {
-                pat.to_ty().map(TyKind::Slice)?
+            PatKind::Slice(ref pats) if let [pat] = pats.as_slice() => {
+                TyKind::Slice(Box::new(pat.to_ty()?))
             }
             // A tuple pattern `(P0, .., Pn)` can be reparsed as `(T0, .., Tn)`
             // assuming `T0` to `Tn` are all syntactically valid as types.
-            PatKind::Tuple(pats) => {
+            PatKind::Tuple(ref pats) => {
                 let tys = pats.iter().map(|pat| pat.to_ty()).collect::<Option<ThinVec<_>>>()?;
                 TyKind::Tup(tys)
             }
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Ty { kind, id: self.id, span: self.span, tokens: None })
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -1501,24 +1500,24 @@ impl Expr {
     }
 
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
-    pub fn to_ty(&self) -> Option<Box<Ty>> {
+    pub fn to_ty(&self) -> Option<Ty> {
         let kind = match &self.kind {
             // Trivial conversions.
             ExprKind::Path(qself, path) => TyKind::Path(qself.clone(), path.clone()),
             ExprKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
 
-            ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
+            ExprKind::Paren(expr) => TyKind::Paren(Box::new(expr.to_ty()?)),
 
-            ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => {
-                expr.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
-            }
+            ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => expr
+                .to_ty()
+                .map(|ty| TyKind::Ref(None, MutTy { ty: Box::new(ty), mutbl: *mutbl }))?,
 
             ExprKind::Repeat(expr, expr_len) => {
-                expr.to_ty().map(|ty| TyKind::Array(ty, expr_len.clone()))?
+                expr.to_ty().map(|ty| TyKind::Array(Box::new(ty), expr_len.clone()))?
             }
 
             ExprKind::Array(exprs) if let [expr] = exprs.as_slice() => {
-                expr.to_ty().map(TyKind::Slice)?
+                TyKind::Slice(Box::new(expr.to_ty()?))
             }
 
             ExprKind::Tup(exprs) => {
@@ -1542,7 +1541,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Ty { kind, id: self.id, span: self.span, tokens: None })
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -2409,6 +2408,12 @@ pub enum Term {
     Const(AnonConst),
 }
 
+impl From<Ty> for Term {
+    fn from(v: Ty) -> Self {
+        Term::Ty(Box::new(v))
+    }
+}
+
 impl From<Box<Ty>> for Term {
     fn from(v: Box<Ty>) -> Self {
         Term::Ty(v)
@@ -2523,7 +2528,7 @@ pub enum TyKind {
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D,...)`).
-    Tup(ThinVec<Box<Ty>>),
+    Tup(ThinVec<Ty>),
     /// A path (`module::module::...::Type`), optionally
     /// "qualified", e.g., `<Vec<T> as SomeTrait>::SomeType`.
     ///

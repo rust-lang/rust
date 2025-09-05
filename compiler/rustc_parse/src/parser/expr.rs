@@ -665,10 +665,10 @@ impl<'a> Parser<'a> {
         lhs_span: Span,
         op_span: Span,
     ) -> PResult<'a, Box<Expr>> {
-        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Box<Ty>| {
+        let mk_expr = |this: &mut Self, lhs: Box<Expr>, rhs: Ty| {
             this.mk_expr(
                 this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span),
-                ExprKind::Cast(lhs, rhs),
+                ExprKind::Cast(lhs, Box::new(rhs)),
             )
         };
 
@@ -725,7 +725,7 @@ impl<'a> Parser<'a> {
                         let expr = mk_expr(
                             self,
                             lhs,
-                            self.mk_ty(path.span, TyKind::Path(None, path.clone())),
+                            self.mk_ty_mut(path.span, TyKind::Path(None, path.clone())),
                         );
 
                         let args_span = self.look_ahead(1, |t| t.span).to(span_after_type);
