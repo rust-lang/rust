@@ -2099,8 +2099,9 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [test] compiletest-run-make-cargo 1 <host>
         ");
     }
 
@@ -2118,7 +2119,6 @@ mod snapshot {
         [test] compiletest-ui 1 <host>
         [test] compiletest-ui-fulldeps 1 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 0 <host> -> cargo 1 <host>
         [build] rustdoc 1 <host>
         [test] compiletest-run-make 1 <host>
         [test] compiletest-rustdoc 1 <host>
@@ -2147,7 +2147,6 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <host>
         [test] compiletest-ui-fulldeps 2 <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <host>
         [test] compiletest-rustdoc 2 <host>
@@ -2181,7 +2180,6 @@ mod snapshot {
         [build] rustc 2 <host> -> rustc 3 <target1>
         [test] compiletest-ui-fulldeps 2 <target1>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [build] rustdoc 2 <host>
         [test] compiletest-run-make 2 <target1>
         [test] compiletest-rustdoc 2 <target1>
@@ -2276,8 +2274,9 @@ mod snapshot {
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
-        [build] rustc 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make 2 <host>
+        [build] rustc 1 <host> -> cargo 2 <host>
+        [test] compiletest-run-make-cargo 2 <host>
         ");
     }
 
@@ -2408,6 +2407,43 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [test] tier-check <host>
+        ");
+    }
+
+    // Differential snapshots for `./x test run-make` run `./x test run-make-cargo`: only
+    // `run-make-cargo` should build an in-tree cargo, running `./x test run-make` should not.
+    #[test]
+    fn test_run_make_no_cargo() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("run-make")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_run_make_cargo_builds_cargo() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("run-make-cargo")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 0 <host> -> RunMakeSupport 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustc 0 <host> -> Compiletest 1 <host>
+        [build] rustc 0 <host> -> cargo 1 <host>
+        [build] rustdoc 1 <host>
+        [test] compiletest-run-make-cargo 1 <host>
         ");
     }
 

@@ -444,6 +444,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/mir-opt",
             "tests/pretty",
             "tests/run-make",
+            "tests/run-make-cargo",
             "tests/rustdoc",
             "tests/rustdoc-gui",
             "tests/rustdoc-js",
@@ -1127,8 +1128,8 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
+                test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
