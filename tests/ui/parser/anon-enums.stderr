@@ -1,0 +1,28 @@
+error: function parameters require top-level or-patterns in parentheses
+  --> $DIR/anon-enums.rs:4:16
+   |
+LL | fn foo(x: bool | i32) -> i32 | f64 {
+   |                ^^^^^
+
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/anon-enums.rs:4:21
+   |
+LL | fn foo(x: bool | i32) -> i32 | f64 {
+   |                     ^ expected one of `:`, `@`, or `|`
+
+error: expected one of `!`, `(`, `)`, `+`, `,`, `::`, or `<`, found `|`
+  --> $DIR/anon-enums.rs:4:16
+   |
+LL | fn foo(x: bool | i32) -> i32 | f64 {
+   |               -^ expected one of 7 possible tokens
+   |               |
+   |               help: missing `,`
+
+error: expected one of `!`, `(`, `+`, `::`, `<`, `where`, or `{`, found `|`
+  --> $DIR/anon-enums.rs:4:30
+   |
+LL | fn foo(x: bool | i32) -> i32 | f64 {
+   |                              ^ expected one of 7 possible tokens
+
+error: aborting due to 4 previous errors
+
