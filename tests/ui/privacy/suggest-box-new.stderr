@@ -118,13 +118,41 @@ LL +     let _ = Box::new_zeroed();
 LL -     let _ = Box {};
 LL +     let _ = Box::new_in(_, _);
    |
-   = and 12 other candidates
+   = and 13 other candidates
 help: consider using the `Default` trait
    |
 LL -     let _ = Box {};
 LL +     let _ = <Box as std::default::Default>::default();
    |
 
-error: aborting due to 4 previous errors
+error: cannot construct `Box<i32>` with struct literal syntax due to private fields
+  --> $DIR/suggest-box-new.rs:21:13
+   |
+LL |     let _ = Box::<i32> {};
+   |             ^^^^^^^^^^
+   |
+   = note: private fields `0` and `1` that were not provided
+help: you might have meant to use an associated function to build this type
+   |
+LL -     let _ = Box::<i32> {};
+LL +     let _ = Box::<i32>::new(_);
+   |
+LL -     let _ = Box::<i32> {};
+LL +     let _ = Box::<i32>::new_in(_, _);
+   |
+LL -     let _ = Box::<i32> {};
+LL +     let _ = Box::<i32>::into_inner(_);
+   |
+LL -     let _ = Box::<i32> {};
+LL +     let _ = Box::<i32>::write(_, _);
+   |
+   = and 4 other candidates
+help: consider using the `Default` trait
+   |
+LL -     let _ = Box::<i32> {};
+LL +     let _ = <Box::<i32> as std::default::Default>::default();
+   |
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0423`.

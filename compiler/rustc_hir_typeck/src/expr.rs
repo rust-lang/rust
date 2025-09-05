@@ -2585,12 +2585,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .filter(|item| item.is_fn() && !item.is_method())
                 .filter_map(|item| {
                     // Only assoc fns that return `Self`
-                    let fn_sig = self.tcx.fn_sig(item.def_id).skip_binder();
-                    let ret_ty = fn_sig.output();
-                    let ret_ty = self.tcx.normalize_erasing_late_bound_regions(
-                        self.typing_env(self.param_env),
-                        ret_ty,
-                    );
+                    let fn_sig = self
+                        .tcx
+                        .fn_sig(item.def_id)
+                        .instantiate(self.tcx, self.fresh_args_for_item(span, item.def_id));
+                    let ret_ty = self.tcx.instantiate_bound_regions_with_erased(fn_sig.output());
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
                     }
