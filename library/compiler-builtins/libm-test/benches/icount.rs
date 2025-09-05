@@ -112,6 +112,17 @@ fn icount_bench_u128_widen_mul(cases: Vec<(u128, u128)>) {
 }
 
 #[library_benchmark]
+#[bench::linspace(setup_u128_mul())]
+fn icount_bench_u256_narrowing_div(cases: Vec<(u128, u128)>) {
+    use libm::support::NarrowingDiv;
+    for (x, y) in cases.iter().copied() {
+        let x = black_box(x.widen_hi());
+        let y = black_box(y);
+        black_box(x.checked_narrowing_div_rem(y));
+    }
+}
+
+#[library_benchmark]
 #[bench::linspace(setup_u256_add())]
 fn icount_bench_u256_add(cases: Vec<(u256, u256)>) {
     for (x, y) in cases.iter().copied() {
@@ -145,7 +156,7 @@ fn icount_bench_u256_shr(cases: Vec<(u256, u32)>) {
 
 library_benchmark_group!(
     name = icount_bench_u128_group;
-    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_add, icount_bench_u256_sub, icount_bench_u256_shl, icount_bench_u256_shr
+    benchmarks = icount_bench_u128_widen_mul, icount_bench_u256_narrowing_div, icount_bench_u256_add, icount_bench_u256_sub, icount_bench_u256_shl, icount_bench_u256_shr
 );
 
 #[library_benchmark]

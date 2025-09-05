@@ -28,7 +28,8 @@ pub use hex_float::hf16;
 pub use hex_float::hf128;
 #[allow(unused_imports)]
 pub use hex_float::{hf32, hf64};
-pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt};
+#[allow(unused_imports)]
+pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt, NarrowingDiv};
 
 /// Hint to the compiler that the current path is cold.
 pub fn cold_path() {
