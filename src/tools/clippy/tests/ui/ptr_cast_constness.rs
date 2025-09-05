@@ -106,3 +106,9 @@ fn issue14621() {
     let _ = std::ptr::addr_of_mut!(local) as *const _;
     //~^ ptr_cast_constness
 }
+
+fn issue11317() {
+    let r = &0_u32;
+    let _ptr: *mut u32 = r as *const _ as *mut _;
+    //~^ ptr_cast_constness
+}

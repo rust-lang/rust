@@ -23,6 +23,7 @@ use crate::common::{
 };
 use crate::directives::TestProps;
 use crate::errors::{Error, ErrorKind, load_errors};
+use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
 use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff, write_filtered_diff};
 use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
@@ -108,7 +109,13 @@ fn dylib_name(name: &str) -> String {
     format!("{}{name}.{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_EXTENSION)
 }
 
-pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
+pub fn run(
+    config: Arc<Config>,
+    stdout: &dyn ConsoleOut,
+    stderr: &dyn ConsoleOut,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) {
     match &*config.target {
         "arm-linux-androideabi"
         | "armv7-linux-androideabi"
@@ -131,7 +138,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
 
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        print!("\n\n");
+        write!(stdout, "\n\n");
     }
     debug!("running {}", testpaths.file);
     let mut props = TestProps::from_file(&testpaths.file, revision, &config);
@@ -143,7 +150,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
         props.incremental_dir = Some(incremental_dir(&config, testpaths, revision));
     }
 
-    let cx = TestCx { config: &config, props: &props, testpaths, revision };
+    let cx = TestCx { config: &config, stdout, stderr, props: &props, testpaths, revision };
 
     if let Err(e) = create_dir_all(&cx.output_base_dir()) {
         panic!("failed to create output base directory {}: {e}", cx.output_base_dir());
@@ -162,6 +169,8 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
             revision_props.incremental_dir = props.incremental_dir.clone();
             let rev_cx = TestCx {
                 config: &config,
+                stdout,
+                stderr,
                 props: &revision_props,
                 testpaths,
                 revision: Some(revision),
@@ -212,6 +221,8 @@ pub fn compute_stamp_hash(config: &Config) -> String {
 #[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
+    stdout: &'test dyn ConsoleOut,
+    stderr: &'test dyn ConsoleOut,
     props: &'test TestProps,
     testpaths: &'test TestPaths,
     revision: Option<&'test str>,
@@ -603,7 +614,8 @@ impl<'test> TestCx<'test> {
             );
         } else {
             for pattern in missing_patterns {
-                println!(
+                writeln!(
+                    self.stdout,
                     "\n{prefix}: error pattern '{pattern}' not found!",
                     prefix = self.error_prefix()
                 );
@@ -783,7 +795,8 @@ impl<'test> TestCx<'test> {
                 };
                 format!("{file_name}:{line_num}{opt_col_num}")
             };
-            let print_error = |e| println!("{}: {}: {}", line_str(e), e.kind, e.msg.cyan());
+            let print_error =
+                |e| writeln!(self.stdout, "{}: {}: {}", line_str(e), e.kind, e.msg.cyan());
             let push_suggestion =
                 |suggestions: &mut Vec<_>, e: &Error, kind, line, msg, color, rank| {
                     let mut ret = String::new();
@@ -811,7 +824,7 @@ impl<'test> TestCx<'test> {
                 if let Some(&(_, top_rank)) = suggestions.first() {
                     for (suggestion, rank) in suggestions {
                         if rank == top_rank {
-                            println!("  {} {suggestion}", prefix.color(color));
+                            writeln!(self.stdout, "  {} {suggestion}", prefix.color(color));
                         }
                     }
                 }
@@ -824,7 +837,8 @@ impl<'test> TestCx<'test> {
             // - only known line - meh, but suggested
             // - others are not worth suggesting
             if !unexpected.is_empty() {
-                println!(
+                writeln!(
+                    self.stdout,
                     "\n{prefix}: {n} diagnostics reported in JSON output but not expected in test file",
                     prefix = self.error_prefix(),
                     n = unexpected.len(),
@@ -858,7 +872,8 @@ impl<'test> TestCx<'test> {
                 }
             }
             if !not_found.is_empty() {
-                println!(
+                writeln!(
+                    self.stdout,
                     "\n{prefix}: {n} diagnostics expected in test file but not reported in JSON output",
                     prefix = self.error_prefix(),
                     n = not_found.len(),
@@ -978,6 +993,8 @@ impl<'test> TestCx<'test> {
                     self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
                 let aux_cx = TestCx {
                     config: self.config,
+                    stdout: self.stdout,
+                    stderr: self.stderr,
                     props: &props_for_aux,
                     testpaths: &aux_testpaths,
                     revision: self.revision,
@@ -1343,6 +1360,8 @@ impl<'test> TestCx<'test> {
         let aux_output = TargetLocation::ThisDirectory(aux_dir.clone());
         let aux_cx = TestCx {
             config: self.config,
+            stdout: self.stdout,
+            stderr: self.stderr,
             props: &aux_props,
             testpaths: &aux_testpaths,
             revision: self.revision,
@@ -1948,11 +1967,11 @@ impl<'test> TestCx<'test> {
         } else {
             path.file_name().unwrap().into()
         };
-        println!("------{proc_name} stdout------------------------------");
-        println!("{}", out);
-        println!("------{proc_name} stderr------------------------------");
-        println!("{}", err);
-        println!("------------------------------------------");
+        writeln!(self.stdout, "------{proc_name} stdout------------------------------");
+        writeln!(self.stdout, "{}", out);
+        writeln!(self.stdout, "------{proc_name} stderr------------------------------");
+        writeln!(self.stdout, "{}", err);
+        writeln!(self.stdout, "------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -2014,7 +2033,7 @@ impl<'test> TestCx<'test> {
         debug!("{message}");
         if self.config.verbose {
             // Note: `./x test ... --verbose --no-capture` is needed to see this print.
-            println!("{message}");
+            writeln!(self.stdout, "{message}");
         }
     }
 
@@ -2030,7 +2049,7 @@ impl<'test> TestCx<'test> {
 
     #[track_caller]
     fn fatal(&self, err: &str) -> ! {
-        println!("\n{prefix}: {err}", prefix = self.error_prefix());
+        writeln!(self.stdout, "\n{prefix}: {err}", prefix = self.error_prefix());
         error!("fatal error, panic: {:?}", err);
         panic!("fatal error");
     }
@@ -2048,15 +2067,15 @@ impl<'test> TestCx<'test> {
         proc_res: &ProcRes,
         callback_before_unwind: impl FnOnce(),
     ) -> ! {
-        println!("\n{prefix}: {err}", prefix = self.error_prefix());
+        writeln!(self.stdout, "\n{prefix}: {err}", prefix = self.error_prefix());
 
         // Some callers want to print additional notes after the main error message.
         if let Some(note) = extra_note {
-            println!("{note}");
+            writeln!(self.stdout, "{note}");
         }
 
         // Print the details and output of the subprocess that caused this test to fail.
-        println!("{}", proc_res.format_info());
+        writeln!(self.stdout, "{}", proc_res.format_info());
 
         // Some callers want print more context or show a custom diff before the unwind occurs.
         callback_before_unwind();
@@ -2126,7 +2145,7 @@ impl<'test> TestCx<'test> {
         if !self.config.has_html_tidy {
             return;
         }
-        println!("info: generating a diff against nightly rustdoc");
+        writeln!(self.stdout, "info: generating a diff against nightly rustdoc");
 
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
@@ -2162,7 +2181,7 @@ impl<'test> TestCx<'test> {
 
         let proc_res = new_rustdoc.document(&compare_dir, &new_rustdoc.testpaths);
         if !proc_res.status.success() {
-            eprintln!("failed to run nightly rustdoc");
+            writeln!(self.stderr, "failed to run nightly rustdoc");
             return;
         }
 
@@ -2207,6 +2226,7 @@ impl<'test> TestCx<'test> {
         let diff_filename = format!("build/tmp/rustdoc-compare-{}.diff", std::process::id());
 
         if !write_filtered_diff(
+            self,
             &diff_filename,
             out_dir,
             &compare_dir,
@@ -2227,7 +2247,7 @@ impl<'test> TestCx<'test> {
         if let Some(pager) = pager {
             let pager = pager.trim();
             if self.config.verbose {
-                eprintln!("using pager {}", pager);
+                writeln!(self.stderr, "using pager {}", pager);
             }
             let output = Command::new(pager)
                 // disable paging; we want this to be non-interactive
@@ -2238,8 +2258,8 @@ impl<'test> TestCx<'test> {
                 .output()
                 .unwrap();
             assert!(output.status.success());
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+            writeln!(self.stdout, "{}", String::from_utf8_lossy(&output.stdout));
+            writeln!(self.stderr, "{}", String::from_utf8_lossy(&output.stderr));
         } else {
             warning!("no pager configured, falling back to unified diff");
             help!(
@@ -2254,7 +2274,7 @@ impl<'test> TestCx<'test> {
                 match diff.read_until(b'\n', &mut line) {
                     Ok(0) => break,
                     Ok(_) => {}
-                    Err(e) => eprintln!("ERROR: {:?}", e),
+                    Err(e) => writeln!(self.stderr, "ERROR: {:?}", e),
                 }
                 match String::from_utf8(line.clone()) {
                     Ok(line) => {
@@ -2802,11 +2822,11 @@ impl<'test> TestCx<'test> {
         if let Err(err) = fs::write(&actual_path, &actual) {
             self.fatal(&format!("failed to write {stream} to `{actual_path}`: {err}",));
         }
-        println!("Saved the actual {stream} to `{actual_path}`");
+        writeln!(self.stdout, "Saved the actual {stream} to `{actual_path}`");
 
         if !self.config.bless {
             if expected.is_empty() {
-                println!("normalized {}:\n{}\n", stream, actual);
+                writeln!(self.stdout, "normalized {}:\n{}\n", stream, actual);
             } else {
                 self.show_diff(
                     stream,
@@ -2830,14 +2850,15 @@ impl<'test> TestCx<'test> {
                 if let Err(err) = fs::write(&expected_path, &actual) {
                     self.fatal(&format!("failed to write {stream} to `{expected_path}`: {err}"));
                 }
-                println!(
+                writeln!(
+                    self.stdout,
                     "Blessing the {stream} of `{test_name}` as `{expected_path}`",
                     test_name = self.testpaths.file
                 );
             }
         }
 
-        println!("\nThe actual {stream} differed from the expected {stream}");
+        writeln!(self.stdout, "\nThe actual {stream} differed from the expected {stream}");
 
         if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
     }
@@ -2852,7 +2873,7 @@ impl<'test> TestCx<'test> {
         actual: &str,
         actual_unnormalized: &str,
     ) {
-        eprintln!("diff of {stream}:\n");
+        writeln!(self.stderr, "diff of {stream}:\n");
         if let Some(diff_command) = self.config.diff_command.as_deref() {
             let mut args = diff_command.split_whitespace();
             let name = args.next().unwrap();
@@ -2864,11 +2885,11 @@ impl<'test> TestCx<'test> {
                 }
                 Ok(output) => {
                     let output = String::from_utf8_lossy(&output.stdout);
-                    eprint!("{output}");
+                    write!(self.stderr, "{output}");
                 }
             }
         } else {
-            eprint!("{}", write_diff(expected, actual, 3));
+            write!(self.stderr, "{}", write_diff(expected, actual, 3));
         }
 
         // NOTE: argument order is important, we need `actual` to be on the left so the line number match up when we compare it to `actual_unnormalized` below.
@@ -2906,9 +2927,16 @@ impl<'test> TestCx<'test> {
             && !mismatches_unnormalized.is_empty()
             && !mismatches_normalized.is_empty()
         {
-            eprintln!("Note: some mismatched output was normalized before being compared");
+            writeln!(
+                self.stderr,
+                "Note: some mismatched output was normalized before being compared"
+            );
             // FIXME: respect diff_command
-            eprint!("{}", write_diff(&mismatches_unnormalized, &mismatches_normalized, 0));
+            write!(
+                self.stderr,
+                "{}",
+                write_diff(&mismatches_unnormalized, &mismatches_normalized, 0)
+            );
         }
     }
 
@@ -2986,7 +3014,7 @@ impl<'test> TestCx<'test> {
         fs::create_dir_all(&incremental_dir).unwrap();
 
         if self.config.verbose {
-            println!("init_incremental_test: incremental_dir={incremental_dir}");
+            writeln!(self.stdout, "init_incremental_test: incremental_dir={incremental_dir}");
         }
     }
 }

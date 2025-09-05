@@ -823,6 +823,18 @@ pub struct RustcDev {
     target: TargetSelection,
 }
 
+impl RustcDev {
+    pub fn new(builder: &Builder<'_>, target: TargetSelection) -> Self {
+        Self {
+            // We currently always ship a stage 2 rustc-dev component, so we build it with the
+            // stage 1 compiler. This might change in the future.
+            // The precise stage used here is important, so we hard-code it.
+            build_compiler: builder.compiler(1, builder.config.host_target),
+            target,
+        }
+    }
+}
+
 impl Step for RustcDev {
     type Output = Option<GeneratedTarball>;
     const DEFAULT: bool = true;
@@ -833,13 +845,7 @@ impl Step for RustcDev {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustcDev {
-            // We currently always ship a stage 2 rustc-dev component, so we build it with the
-            // stage 1 compiler. This might change in the future.
-            // The precise stage used here is important, so we hard-code it.
-            build_compiler: run.builder.compiler(1, run.builder.config.host_target),
-            target: run.target,
-        });
+        run.builder.ensure(RustcDev::new(run.builder, run.target));
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {

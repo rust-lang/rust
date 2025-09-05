@@ -1575,8 +1575,6 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_add_extension)]
-    ///
     /// use std::path::{Path, PathBuf};
     ///
     /// let mut p = PathBuf::from("/feel/the");
@@ -1596,7 +1594,7 @@ impl PathBuf {
     /// p.add_extension("");
     /// assert_eq!(Path::new("/feel/the.formatted.dark"), p.as_path());
     /// ```
-    #[unstable(feature = "path_add_extension", issue = "127292")]
+    #[stable(feature = "path_add_extension", since = "CURRENT_RUSTC_VERSION")]
     pub fn add_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
         self._add_extension(extension.as_ref())
     }
@@ -2109,7 +2107,7 @@ impl PartialEq for PathBuf {
 impl cmp::PartialEq<str> for PathBuf {
     #[inline]
     fn eq(&self, other: &str) -> bool {
-        &*self == other
+        Path::eq(self, other)
     }
 }
 
@@ -2880,8 +2878,6 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// #![feature(path_add_extension)]
-    ///
     /// use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("foo.rs");
@@ -2892,7 +2888,7 @@ impl Path {
     /// assert_eq!(path.with_added_extension("xz"), PathBuf::from("foo.tar.gz.xz"));
     /// assert_eq!(path.with_added_extension("").with_added_extension("txt"), PathBuf::from("foo.tar.gz.txt"));
     /// ```
-    #[unstable(feature = "path_add_extension", issue = "127292")]
+    #[stable(feature = "path_add_extension", since = "CURRENT_RUSTC_VERSION")]
     pub fn with_added_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
         let mut new_path = self.to_path_buf();
         new_path.add_extension(extension);

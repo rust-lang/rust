@@ -333,5 +333,15 @@ LL | |             }
    |
    = help: if this is not intended, try adding a `break` or `return` condition in the loop
 
-error: aborting due to 23 previous errors
+error: infinite loop detected
+  --> tests/ui/infinite_loops.rs:533:9
+   |
+LL | /         loop {
+LL | |             std::future::pending().await
+LL | |         }
+   | |_________^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: aborting due to 24 previous errors
 

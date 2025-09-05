@@ -11,4 +11,4 @@ pub fn lib_main() {
     unsafe { f(42); }
 }
 
-//~? ERROR Error calling dlltool 'does_not_exist.exe': program not found
+//~? ERROR error calling dlltool 'does_not_exist.exe': program not found

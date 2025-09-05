@@ -1463,6 +1463,10 @@ impl File {
         self.0.read_buf(cursor)
     }
 
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        self.0.read_buf_at(cursor, offset)
+    }
+
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.0.read_vectored_at(bufs, offset)
     }

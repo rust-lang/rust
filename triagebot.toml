@@ -1306,6 +1306,21 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."#[miri::intrinsic_fallback_is_spec]"]
+type = "content"
+message = """
+`#[miri::intrinsic_fallback_is_spec]` must only be used if the function actively checks for all UB cases,
+and explores the possible non-determinism of the intrinsic.
+"""
+cc = ["@rust-lang/miri"]
+[mentions."#[rustc_allow_const_fn_unstable"]
+type = "content"
+message = """
+`#[rustc_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
+implementation details on stable.
+"""
+cc = ["@rust-lang/wg-const-eval"]
+
 
 # ------------------------------------------------------------------------------
 # PR assignments

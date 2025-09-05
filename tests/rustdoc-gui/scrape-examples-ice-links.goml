@@ -4,3 +4,5 @@ wait-for: ".scraped-example-title"
 assert-attribute: (".scraped-example-title a", {"href": "../src/bar/bar.rs.html#2"})
 click: ".scraped-example-title a"
 wait-for-property: ("h1", {"innerText": "bar/\nbar.rs"})
+// Ensure that the `--html-after-content` option was correctly handled.
+assert: "#outer-html"

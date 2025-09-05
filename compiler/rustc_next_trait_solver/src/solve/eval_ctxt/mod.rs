@@ -1275,7 +1275,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
 >(
     cx: I,
     canonical_goal: CanonicalInput<I>,
-) -> (QueryResult<I>, I::ProbeRef) {
+) -> (QueryResult<I>, I::Probe) {
     let mut inspect = inspect::ProofTreeBuilder::new();
     let canonical_result = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
         cx,
@@ -1284,7 +1284,7 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
         &mut inspect,
     );
     let final_revision = inspect.unwrap();
-    (canonical_result, cx.mk_probe_ref(final_revision))
+    (canonical_result, cx.mk_probe(final_revision))
 }
 
 /// Evaluate a goal to build a proof tree.

@@ -144,11 +144,9 @@ impl<'tcx> Visitor<'tcx> for BindingUsageFinder<'_, 'tcx> {
 
 /// Checks if the given expression is a macro call to `todo!()` or `unimplemented!()`.
 pub fn is_todo_unimplemented_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    root_macro_call_first_node(cx, expr).is_some_and(|macro_call| {
-        [sym::todo_macro, sym::unimplemented_macro]
-            .iter()
-            .any(|&sym| cx.tcx.is_diagnostic_item(sym, macro_call.def_id))
-    })
+    root_macro_call_first_node(cx, expr)
+        .and_then(|macro_call| cx.tcx.get_diagnostic_name(macro_call.def_id))
+        .is_some_and(|macro_name| matches!(macro_name, sym::todo_macro | sym::unimplemented_macro))
 }
 
 /// Checks if the given expression is a stub, i.e., a `todo!()` or `unimplemented!()` expression,

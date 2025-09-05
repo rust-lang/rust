@@ -321,6 +321,7 @@ impl<A: Default, B: Default> Default for Chain<A, B> {
     ///
     /// // take requires `Default`
     /// let _: Chain<_, _> = mem::take(&mut foo.0);
+    /// ```
     fn default() -> Self {
         Chain::new(Default::default(), Default::default())
     }

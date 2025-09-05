@@ -661,8 +661,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::VariableNotBoundInPattern(binding_error, parent_scope) => {
                 let BindingError { name, target, origin, could_be_path } = binding_error;
 
-                let target_sp = target.iter().copied().collect::<Vec<_>>();
-                let origin_sp = origin.iter().copied().collect::<Vec<_>>();
+                let mut target_sp = target.iter().map(|pat| pat.span).collect::<Vec<_>>();
+                target_sp.sort();
+                target_sp.dedup();
+                let mut origin_sp = origin.iter().map(|(span, _)| *span).collect::<Vec<_>>();
+                origin_sp.sort();
+                origin_sp.dedup();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
                 let mut err = self
@@ -671,8 +675,35 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 for sp in target_sp {
                     err.subdiagnostic(errors::PatternDoesntBindName { span: sp, name });
                 }
-                for sp in origin_sp {
-                    err.subdiagnostic(errors::VariableNotInAllPatterns { span: sp });
+                for sp in &origin_sp {
+                    err.subdiagnostic(errors::VariableNotInAllPatterns { span: *sp });
+                }
+                let mut suggested_typo = false;
+                if !target.iter().all(|pat| matches!(pat.kind, ast::PatKind::Ident(..)))
+                    && !origin.iter().all(|(_, pat)| matches!(pat.kind, ast::PatKind::Ident(..)))
+                {
+                    // The check above is so that when we encounter `match foo { (a | b) => {} }`,
+                    // we don't suggest `(a | a) => {}`, which would never be what the user wants.
+                    let mut target_visitor = BindingVisitor::default();
+                    for pat in &target {
+                        target_visitor.visit_pat(pat);
+                    }
+                    target_visitor.identifiers.sort();
+                    target_visitor.identifiers.dedup();
+                    let mut origin_visitor = BindingVisitor::default();
+                    for (_, pat) in &origin {
+                        origin_visitor.visit_pat(pat);
+                    }
+                    origin_visitor.identifiers.sort();
+                    origin_visitor.identifiers.dedup();
+                    // Find if the binding could have been a typo
+                    if let Some(typo) =
+                        find_best_match_for_name(&target_visitor.identifiers, name.name, None)
+                        && !origin_visitor.identifiers.contains(&typo)
+                    {
+                        err.subdiagnostic(errors::PatternBindingTypo { spans: origin_sp, typo });
+                        suggested_typo = true;
+                    }
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
@@ -693,10 +724,86 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         },
                     );
 
-                    if import_suggestions.is_empty() {
+                    if import_suggestions.is_empty() && !suggested_typo {
+                        let kinds = [
+                            DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
+                            DefKind::Ctor(CtorOf::Struct, CtorKind::Const),
+                            DefKind::Const,
+                            DefKind::AssocConst,
+                        ];
+                        let mut local_names = vec![];
+                        self.add_module_candidates(
+                            parent_scope.module,
+                            &mut local_names,
+                            &|res| matches!(res, Res::Def(_, _)),
+                            None,
+                        );
+                        let local_names: FxHashSet<_> = local_names
+                            .into_iter()
+                            .filter_map(|s| match s.res {
+                                Res::Def(_, def_id) => Some(def_id),
+                                _ => None,
+                            })
+                            .collect();
+
+                        let mut local_suggestions = vec![];
+                        let mut suggestions = vec![];
+                        for kind in kinds {
+                            if let Some(suggestion) = self.early_lookup_typo_candidate(
+                                ScopeSet::All(Namespace::ValueNS),
+                                &parent_scope,
+                                name,
+                                &|res: Res| match res {
+                                    Res::Def(k, _) => k == kind,
+                                    _ => false,
+                                },
+                            ) && let Res::Def(kind, mut def_id) = suggestion.res
+                            {
+                                if let DefKind::Ctor(_, _) = kind {
+                                    def_id = self.tcx.parent(def_id);
+                                }
+                                let kind = kind.descr(def_id);
+                                if local_names.contains(&def_id) {
+                                    // The item is available in the current scope. Very likely to
+                                    // be a typo. Don't use the full path.
+                                    local_suggestions.push((
+                                        suggestion.candidate,
+                                        suggestion.candidate.to_string(),
+                                        kind,
+                                    ));
+                                } else {
+                                    suggestions.push((
+                                        suggestion.candidate,
+                                        self.def_path_str(def_id),
+                                        kind,
+                                    ));
+                                }
+                            }
+                        }
+                        let suggestions = if !local_suggestions.is_empty() {
+                            // There is at least one item available in the current scope that is a
+                            // likely typo. We only show those.
+                            local_suggestions
+                        } else {
+                            suggestions
+                        };
+                        for (name, sugg, kind) in suggestions {
+                            err.span_suggestion_verbose(
+                                span,
+                                format!(
+                                    "you might have meant to use the similarly named {kind} `{name}`",
+                                ),
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                            suggested_typo = true;
+                        }
+                    }
+                    if import_suggestions.is_empty() && !suggested_typo {
                         let help_msg = format!(
-                            "if you meant to match on a variant or a `const` item, consider \
-                             making the path in the pattern qualified: `path::to::ModOrType::{name}`",
+                            "if you meant to match on a unit struct, unit variant or a `const` \
+                             item, consider making the path in the pattern qualified: \
+                             `path::to::ModOrType::{name}`",
                         );
                         err.span_help(span, help_msg);
                     }
@@ -1014,6 +1121,39 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::ModuleOnly(span) => self.dcx().create_err(errs::ModuleOnly(span)),
         }
         .emit()
+    }
+
+    fn def_path_str(&self, mut def_id: DefId) -> String {
+        // We can't use `def_path_str` in resolve.
+        let mut path = vec![def_id];
+        while let Some(parent) = self.tcx.opt_parent(def_id) {
+            def_id = parent;
+            path.push(def_id);
+            if def_id.is_top_level_module() {
+                break;
+            }
+        }
+        // We will only suggest importing directly if it is accessible through that path.
+        path.into_iter()
+            .rev()
+            .map(|def_id| {
+                self.tcx
+                    .opt_item_name(def_id)
+                    .map(|name| {
+                        match (
+                            def_id.is_top_level_module(),
+                            def_id.is_local(),
+                            self.tcx.sess.edition(),
+                        ) {
+                            (true, true, Edition::Edition2015) => String::new(),
+                            (true, true, _) => kw::Crate.to_string(),
+                            (true, false, _) | (false, _, _) => name.to_string(),
+                        }
+                    })
+                    .unwrap_or_else(|| "_".to_string())
+            })
+            .collect::<Vec<String>>()
+            .join("::")
     }
 
     pub(crate) fn add_scope_set_candidates(
@@ -3396,7 +3536,7 @@ impl UsePlacementFinder {
     }
 }
 
-impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     fn visit_crate(&mut self, c: &Crate) {
         if self.target_module == CRATE_NODE_ID {
             let inject = c.spans.inject_use_span;
@@ -3421,6 +3561,22 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
         } else {
             visit::walk_item(self, item);
         }
+    }
+}
+
+#[derive(Default)]
+struct BindingVisitor {
+    identifiers: Vec<Symbol>,
+    spans: FxHashMap<Symbol, Vec<Span>>,
+}
+
+impl<'tcx> Visitor<'tcx> for BindingVisitor {
+    fn visit_pat(&mut self, pat: &ast::Pat) {
+        if let ast::PatKind::Ident(_, ident, _) = pat.kind {
+            self.identifiers.push(ident.name);
+            self.spans.entry(ident.name).or_default().push(ident.span);
+        }
+        visit::walk_pat(self, pat);
     }
 }
 

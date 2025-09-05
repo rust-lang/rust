@@ -105,3 +105,16 @@ fn issue_14930() {
     println!("Hello x is {0:2$.1$}", 0.01, 2, 3);
     //~^ print_literal
 }
+
+fn issue_15576() {
+    println!("Hello x is {1:.*}", 5, 0.01);
+    //~^ print_literal
+
+    println!("Hello x is {:.p$}", 0.01, p = 5);
+    //~^ print_literal
+
+    println!(
+        "Hello name: x is {1:.*} (which {1} with {0} places)", 5, 0.01
+    );
+    //~^^ print_literal
+}

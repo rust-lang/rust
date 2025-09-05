@@ -1,23 +1,77 @@
-error: the function `takes_an_immutable_reference` doesn't need a mutable reference
-  --> tests/ui/mut_reference.rs:30:34
+error: the function `takes_ref` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:56:15
    |
-LL |     takes_an_immutable_reference(&mut 42);
-   |                                  ^^^^^^^
+LL |     takes_ref(&mut 42);
+   |               ^^^^^^^ help: remove this `mut`: `&42`
    |
    = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_mut_passed)]`
 
+error: the function `takes_ref_ref` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:58:19
+   |
+LL |     takes_ref_ref(&mut &42);
+   |                   ^^^^^^^^ help: remove this `mut`: `&&42`
+
+error: the function `takes_ref_refmut` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:60:22
+   |
+LL |     takes_ref_refmut(&mut &mut 42);
+   |                      ^^^^^^^^^^^^ help: remove this `mut`: `&&mut 42`
+
+error: the function `takes_raw_const` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:62:21
+   |
+LL |     takes_raw_const(&mut 42);
+   |                     ^^^^^^^ help: remove this `mut`: `&42`
+
 error: the function `as_ptr` doesn't need a mutable reference
-  --> tests/ui/mut_reference.rs:34:12
+  --> tests/ui/mut_reference.rs:66:12
    |
 LL |     as_ptr(&mut 42);
-   |            ^^^^^^^
+   |            ^^^^^^^ help: remove this `mut`: `&42`
 
-error: the method `takes_an_immutable_reference` doesn't need a mutable reference
-  --> tests/ui/mut_reference.rs:39:44
+error: the function `as_ptr` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:69:12
    |
-LL |     my_struct.takes_an_immutable_reference(&mut 42);
-   |                                            ^^^^^^^
+LL |     as_ptr(&mut &42);
+   |            ^^^^^^^^ help: remove this `mut`: `&&42`
 
-error: aborting due to 3 previous errors
+error: the function `as_ptr` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:72:12
+   |
+LL |     as_ptr(&mut &mut 42);
+   |            ^^^^^^^^^^^^ help: remove this `mut`: `&&mut 42`
+
+error: the function `as_ptr` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:75:12
+   |
+LL |     as_ptr(&mut 42);
+   |            ^^^^^^^ help: remove this `mut`: `&42`
+
+error: the method `takes_ref` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:80:25
+   |
+LL |     my_struct.takes_ref(&mut 42);
+   |                         ^^^^^^^ help: remove this `mut`: `&42`
+
+error: the method `takes_ref_ref` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:82:29
+   |
+LL |     my_struct.takes_ref_ref(&mut &42);
+   |                             ^^^^^^^^ help: remove this `mut`: `&&42`
+
+error: the method `takes_ref_refmut` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:84:32
+   |
+LL |     my_struct.takes_ref_refmut(&mut &mut 42);
+   |                                ^^^^^^^^^^^^ help: remove this `mut`: `&&mut 42`
+
+error: the method `takes_raw_const` doesn't need a mutable reference
+  --> tests/ui/mut_reference.rs:86:31
+   |
+LL |     my_struct.takes_raw_const(&mut 42);
+   |                               ^^^^^^^ help: remove this `mut`: `&42`
+
+error: aborting due to 12 previous errors
 

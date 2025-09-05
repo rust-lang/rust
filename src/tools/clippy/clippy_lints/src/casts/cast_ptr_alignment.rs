@@ -8,17 +8,12 @@ use rustc_middle::ty::{self, Ty};
 
 use super::CAST_PTR_ALIGNMENT;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let ExprKind::Cast(cast_expr, cast_to) = expr.kind {
-        if is_hir_ty_cfg_dependant(cx, cast_to) {
-            return;
-        }
-        let (cast_from, cast_to) = (
-            cx.typeck_results().expr_ty(cast_expr),
-            cx.typeck_results().expr_ty(expr),
-        );
-        lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-    } else if let ExprKind::MethodCall(method_path, self_arg, [], _) = &expr.kind
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
+    lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
+}
+
+pub(super) fn check_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if let ExprKind::MethodCall(method_path, self_arg, [], _) = &expr.kind
         && method_path.ident.name == sym::cast
         && let Some(generic_args) = method_path.args
         && let [GenericArg::Type(cast_to)] = generic_args.args
@@ -74,14 +69,13 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ExprKind::Call(func, [arg, ..]) if arg.hir_id == e.hir_id => {
             if let ExprKind::Path(path) = &func.kind
                 && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+                && let Some(name) = cx.tcx.get_diagnostic_name(def_id)
                 && matches!(
-                    cx.tcx.get_diagnostic_name(def_id),
-                    Some(
-                        sym::ptr_write_unaligned
-                            | sym::ptr_read_unaligned
-                            | sym::intrinsics_unaligned_volatile_load
-                            | sym::intrinsics_unaligned_volatile_store
-                    )
+                    name,
+                    sym::ptr_write_unaligned
+                        | sym::ptr_read_unaligned
+                        | sym::intrinsics_unaligned_volatile_load
+                        | sym::intrinsics_unaligned_volatile_store
                 )
             {
                 true

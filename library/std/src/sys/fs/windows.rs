@@ -605,6 +605,10 @@ impl File {
         self.handle.read_buf(cursor)
     }
 
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        self.handle.read_buf_at(cursor, offset)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.handle.write(buf)
     }
