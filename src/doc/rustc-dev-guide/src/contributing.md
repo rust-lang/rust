@@ -26,8 +26,7 @@ conditions that trigger the bug, or part of the error message if there is any.
 An example could be: **"impossible case reached" on lifetime inference for impl
 Trait in return position**.
 
-Opening an issue is as easy as following [this
-link](https://github.com/rust-lang/rust/issues/new/choose) and filling out the fields
+Opening an issue is as easy as following [thi link][create an issue] and filling out the fields
 in the appropriate provided template.
 
 ## Bug fixes or "normal" code changes
@@ -441,7 +440,7 @@ Just a few things to keep in mind:
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
 For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
-see [the rustc-dev-guide working group documentation](https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes).
+see [the rustc-dev-guide working group documentation].
 
 ## Issue triage
 
@@ -458,6 +457,7 @@ Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 [regression-]: https://github.com/rust-lang/rust/labels?q=regression
 [relnotes]: https://github.com/rust-lang/rust/labels/relnotes
 [S-tracking-]: https://github.com/rust-lang/rust/labels?q=s-tracking
+[the rustc-dev-guide working group documentation]: https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes
 
 ### Rfcbot labels
 
@@ -505,3 +505,4 @@ This section has moved to the ["About this guide"] chapter.
 [RFC 1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/
 [rdgrepo]: https://github.com/rust-lang/rustc-dev-guide
+[create an issue]: https://github.com/rust-lang/rust/issues/new/choose
