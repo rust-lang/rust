@@ -926,7 +926,7 @@ where
         let mask = unsafe {
             let tfvec: Simd<<T as SimdElement>::Mask, N> =
                 core::intrinsics::simd::simd_eq(*self, *other);
-            Mask::from_int_unchecked(tfvec)
+            Mask::from_simd_unchecked(tfvec)
         };
 
         // Two vectors are equal if all elements are equal when compared elementwise
@@ -940,7 +940,7 @@ where
         let mask = unsafe {
             let tfvec: Simd<<T as SimdElement>::Mask, N> =
                 core::intrinsics::simd::simd_ne(*self, *other);
-            Mask::from_int_unchecked(tfvec)
+            Mask::from_simd_unchecked(tfvec)
         };
 
         // Two vectors are non-equal if any elements are non-equal when compared elementwise

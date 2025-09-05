@@ -157,7 +157,7 @@ where
             let bytes: [u8; N] = mem::transmute_copy(&array);
             let bools: Simd<i8, N> =
                 core::intrinsics::simd::simd_ne(Simd::from_array(bytes), Simd::splat(0u8));
-            Mask::from_int_unchecked(core::intrinsics::simd::simd_cast(bools))
+            Mask::from_simd_unchecked(core::intrinsics::simd::simd_cast(bools))
         }
     }
 
@@ -188,11 +188,11 @@ where
     /// All elements must be either 0 or -1.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         // Safety: the caller must confirm this invariant
         unsafe {
             core::intrinsics::assume(<T as Sealed>::valid(value));
-            Self(mask_impl::Mask::from_int_unchecked(value))
+            Self(mask_impl::Mask::from_simd_unchecked(value))
         }
     }
 
@@ -207,7 +207,7 @@ where
     pub fn from_simd(value: Simd<T, N>) -> Self {
         assert!(T::valid(value), "all values must be either 0 or -1",);
         // Safety: the validity has been checked
-        unsafe { Self::from_int_unchecked(value) }
+        unsafe { Self::from_simd_unchecked(value) }
     }
 
     /// Converts the mask to a vector of integers, where 0 represents `false` and -1

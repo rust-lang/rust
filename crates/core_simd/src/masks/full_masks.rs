@@ -126,7 +126,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub(crate) unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub(crate) unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         Self(value)
     }
 
@@ -180,7 +180,7 @@ where
         };
 
         // SAFETY: `mask` only contains `T::TRUE` or `T::FALSE`
-        unsafe { Self::from_int_unchecked(mask.resize::<N>(T::FALSE)) }
+        unsafe { Self::from_simd_unchecked(mask.resize::<N>(T::FALSE)) }
     }
 
     #[inline]

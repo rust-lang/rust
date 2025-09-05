@@ -117,7 +117,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub(crate) unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub(crate) unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         unsafe { Self(core::intrinsics::simd::simd_bitmask(value), PhantomData) }
     }
 
