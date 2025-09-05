@@ -105,7 +105,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub(crate) fn to_int(self) -> Simd<T, N> {
+    pub(crate) fn to_simd(self) -> Simd<T, N> {
         unsafe {
             core::intrinsics::simd::simd_select_bitmask(
                 self.0,
@@ -117,7 +117,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub(crate) unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub(crate) unsafe fn from_simd_unchecked(value: Simd<T, N>) -> Self {
         unsafe { Self(core::intrinsics::simd::simd_bitmask(value), PhantomData) }
     }
 
