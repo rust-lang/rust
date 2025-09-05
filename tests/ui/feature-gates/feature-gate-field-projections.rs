@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use std::field::Field; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::field::{Field, field_of}; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+//~^ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ptr;
 
 fn project_ref<F: Field>(
@@ -14,4 +15,7 @@ where
     unsafe { &*ptr::from_ref(r).byte_add(F::OFFSET).cast() } //~ ERROR: use of unstable library feature `field_projections` [E0658]
 }
 
-fn main() {}
+fn main() {
+    struct Foo(());
+    let _ = project_ref::<field_of!(Foo, 0)>(&Foo(())); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+}

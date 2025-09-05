@@ -1043,6 +1043,7 @@ symbols! {
         ffi_returns_twice,
         field,
         field_init_shorthand,
+        field_of,
         field_projections,
         file,
         file_options,
