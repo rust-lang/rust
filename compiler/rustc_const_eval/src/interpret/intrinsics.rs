@@ -7,10 +7,10 @@ use std::assert_matches::assert_matches;
 use rustc_abi::{FieldIdx, HasDataLayout, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
-use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
+use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic, NullOp};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_middle::{bug, ty};
+use rustc_middle::{bug, err_inval, ty};
 use rustc_span::{Symbol, sym};
 use tracing::trace;
 
@@ -637,6 +637,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 rustc_apfloat::Round::NearestTiesToEven,
             )?,
 
+            sym::unaligned_field_offset => self.unaligned_field_offset(instance, dest)?,
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -644,6 +646,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("{:?}", self.dump_place(&dest.clone().into()));
         self.return_to_block(ret)?;
         interp_ok(true)
+    }
+
+    fn unaligned_field_offset(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        dest: &PlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()> {
+        assert_eq!(instance.args.len(), 1);
+        match instance.args.type_at(0).kind() {
+            &ty::Field(container, field_path) => {
+                let offset = self.nullary_op(NullOp::OffsetOf(field_path), container)?;
+                self.write_immediate(*offset, dest)
+            }
+            _ => Err(err_inval!(TooGeneric)).into(),
+        }
     }
 
     pub(super) fn eval_nondiverging_intrinsic(

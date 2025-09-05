@@ -2282,6 +2282,7 @@ symbols! {
         u128_legacy_fn_min_value,
         u128_legacy_mod,
         ub_checks,
+        unaligned_field_offset,
         unaligned_volatile_load,
         unaligned_volatile_store,
         unboxed_closures,
