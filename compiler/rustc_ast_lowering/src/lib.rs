@@ -1354,6 +1354,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 self.lower_ty(ty, itctx),
                 self.lower_array_length_to_const_arg(length),
             ),
+            TyKind::FieldOf(container, fields) => hir::TyKind::FieldOf(
+                self.lower_ty(container, itctx),
+                self.arena.alloc_from_iter(fields.iter().map(|field| self.lower_ident(*field))),
+            ),
             TyKind::Typeof(expr) => hir::TyKind::Typeof(self.lower_anon_const_to_anon_const(expr)),
             TyKind::TraitObject(bounds, kind) => {
                 let mut lifetime_bound = None;

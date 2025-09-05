@@ -31,3 +31,15 @@ pub unsafe trait UnalignedField: Sized {
 #[lang = "Field"]
 #[unstable(feature = "field_projections", issue = "145383")]
 pub unsafe trait Field: UnalignedField {}
+
+/// Expands to the field representing type of the given field.
+///
+/// The container type may be a `struct` or a tuple.
+///
+/// The field may be a nested field (`field1.field2`), but not an array index.
+/// The field must be visible to the call site.
+#[unstable(feature = "field_projections", issue = "145383")]
+#[allow_internal_unstable(builtin_syntax)]
+pub macro field_of($Container:ty, $($fields:expr)+ $(,)?) {
+    builtin # field_of($Container, $($fields)+)
+}
