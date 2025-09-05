@@ -28,10 +28,9 @@ pub(super) fn check<'tcx>(
                 format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
-                    let (deref, cast) = if *mutbl == Mutability::Mut {
-                        ("&mut *", "*mut")
-                    } else {
-                        ("&*", "*const")
+                    let (deref, cast) = match mutbl {
+                        Mutability::Mut => ("&mut *", "*mut"),
+                        Mutability::Not => ("&*", "*const"),
                     };
                     let mut app = Applicability::MachineApplicable;
 
@@ -45,15 +44,12 @@ pub(super) fn check<'tcx>(
                             sugg::make_unop(deref, arg.as_ty(format!("{cast} {ty_snip}"))).to_string()
                         }
                     } else if *from_ptr_ty == *to_ref_ty {
-                        if from_ptr_ty.has_erased_regions() {
-                            if msrv.meets(cx, msrvs::POINTER_CAST) {
-                                format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_paren())
-                            } else {
-                                sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {to_ref_ty}")))
-                                    .to_string()
-                            }
-                        } else {
+                        if !from_ptr_ty.has_erased_regions() {
                             sugg::make_unop(deref, arg).to_string()
+                        } else if msrv.meets(cx, msrvs::POINTER_CAST) {
+                            format!("{deref}{}.cast::<{to_ref_ty}>()", arg.maybe_paren())
+                        } else {
+                            sugg::make_unop(deref, arg.as_ty(format!("{cast} () as {cast} {to_ref_ty}"))).to_string()
                         }
                     } else {
                         sugg::make_unop(deref, arg.as_ty(format!("{cast} {to_ref_ty}"))).to_string()
