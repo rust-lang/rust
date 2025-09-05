@@ -154,9 +154,14 @@ The CI in rust-lang/rust applies your patches directly against the current maste
 not against the commit your branch is based on. This can lead to unexpected failures
 if your branch is outdated, even when there are no explicit merge conflicts.
 
-Update your branch only when needed: when you have merge conflicts, upstream CI is broken and blocking your green PR, or a maintainer requests it. Avoid updating an already-green PR under review unless necessary. During review, make incremental commits to address feedback. Prefer to squash or rebase only at the end, or when a reviewer requests it.
+Update your branch only when needed: when you have merge conflicts, upstream CI is broken and blocking your green PR, or a maintainer requests it.
+Avoid updating an already-green PR under review unless necessary.
+During review, make incremental commits to address feedback.
+Prefer to squash or rebase only at the end, or when a reviewer requests it.
 
-When updating, use `git push --force-with-lease` and leave a brief comment explaining what changed. Some repos prefer merging from `upstream/master` instead of rebasing; follow the project's conventions. See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
+When updating, use `git push --force-with-lease` and leave a brief comment explaining what changed.
+Some repos prefer merging from `upstream/master` instead of rebasing; follow the project's conventions.
+See [keeping things up to date](git.md#keeping-things-up-to-date) for detailed instructions.
 
 After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
 
@@ -435,7 +440,8 @@ Just a few things to keep in mind:
 
 #### ⚠️ Note: Where to contribute `rustc-dev-guide` changes
 
-For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so, see [the rustc-dev-guide working group documentation](https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes).
+For detailed information about where to contribute rustc-dev-guide changes and the benefits of doing so,
+see [the rustc-dev-guide working group documentation](https://forge.rust-lang.org/wg-rustc-dev-guide/index.html#where-to-contribute-rustc-dev-guide-changes).
 
 ## Issue triage
 
