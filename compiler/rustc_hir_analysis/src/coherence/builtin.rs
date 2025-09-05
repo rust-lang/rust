@@ -52,6 +52,8 @@ pub(super) fn check_trait<'tcx>(
         lang_items.coerce_pointee_validated_trait(),
         visit_implementation_of_coerce_pointee_validity,
     )?;
+    checker.check(lang_items.unaligned_field_trait(), visit_implementation_of_field_trait)?;
+    checker.check(lang_items.field_trait(), visit_implementation_of_field_trait)?;
     Ok(())
 }
 
@@ -372,6 +374,18 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
         }
         _ => Err(tcx.dcx().emit_err(errors::CoerceUnsizedNonStruct { span, trait_name })),
     }
+}
+
+fn visit_implementation_of_field_trait(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
+    let tcx = checker.tcx;
+    let impl_did = checker.impl_def_id;
+
+    let span = tcx.span_of_impl(impl_did.into()).expect("impl_did is local");
+
+    Err(tcx.dcx().emit_err(errors::FieldTraitImpl {
+        span,
+        trait_: tcx.item_name(checker.impl_header.trait_ref.skip_binder().def_id),
+    }))
 }
 
 pub(crate) fn coerce_unsized_info<'tcx>(

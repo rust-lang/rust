@@ -209,6 +209,14 @@ pub(crate) struct DropImplOnWrongItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_field_trait_impl, code = E0806)]
+pub(crate) struct FieldTraitImpl {
+    #[primary_span]
+    pub span: Span,
+    pub trait_: Symbol,
+}
+
+#[derive(Diagnostic)]
 pub(crate) enum FieldAlreadyDeclared {
     #[diag(hir_analysis_field_already_declared, code = E0124)]
     NotNested {
