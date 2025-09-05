@@ -204,7 +204,7 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     #[track_caller]
-    pub fn from_int(value: Simd<T, N>) -> Self {
+    pub fn from_simd(value: Simd<T, N>) -> Self {
         assert!(T::valid(value), "all values must be either 0 or -1",);
         // Safety: the validity has been checked
         unsafe { Self::from_int_unchecked(value) }
