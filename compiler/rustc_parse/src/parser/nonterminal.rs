@@ -155,9 +155,9 @@ impl<'a> Parser<'a> {
                     self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
                 ))
             }
-            NonterminalKind::Ty => Ok(ParseNtResult::Ty(
+            NonterminalKind::Ty => Ok(ParseNtResult::Ty(Box::new(
                 self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
-            )),
+            ))),
             // This could be handled like a token, since it is one.
             NonterminalKind::Ident => {
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) {

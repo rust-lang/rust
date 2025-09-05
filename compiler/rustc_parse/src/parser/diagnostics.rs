@@ -101,7 +101,7 @@ impl RecoverQPath for Ty {
 impl RecoverQPath for Pat {
     const PATH_STYLE: PathStyle = PathStyle::Pat;
     fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty()
+        self.to_ty().map(Box::new)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -115,7 +115,7 @@ impl RecoverQPath for Pat {
 
 impl RecoverQPath for Expr {
     fn to_ty(&self) -> Option<Box<Ty>> {
-        self.to_ty()
+        self.to_ty().map(Box::new)
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
         Self {
@@ -1605,7 +1605,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Swift lets users write `Ty?` to mean `Option<Ty>`. Parse the construct and recover from it.
-    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Box<Ty>) -> Box<Ty> {
+    pub(super) fn maybe_recover_from_question_mark(&mut self, ty: Ty) -> Ty {
         if self.token == token::Question {
             self.bump();
             let guar = self.dcx().emit_err(QuestionMarkInType {
@@ -1615,7 +1615,7 @@ impl<'a> Parser<'a> {
                     right: self.prev_token.span,
                 },
             });
-            self.mk_ty(ty.span.to(self.prev_token.span), TyKind::Err(guar))
+            self.mk_ty_mut(ty.span.to(self.prev_token.span), TyKind::Err(guar))
         } else {
             ty
         }
