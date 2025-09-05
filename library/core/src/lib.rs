@@ -154,6 +154,7 @@
 #![feature(extern_types)]
 #![feature(f16)]
 #![feature(f128)]
+#![feature(field_projections)]
 #![feature(freeze_impls)]
 #![feature(fundamental)]
 #![feature(funnel_shifts)]

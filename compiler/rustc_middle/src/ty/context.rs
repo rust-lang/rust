@@ -3430,6 +3430,9 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
         match self.def_kind(def_id) {
             DefKind::Fn | DefKind::AssocFn => {}
+            DefKind::AssocConst
+                if self.is_lang_item(def_id.into_query_param(), LangItem::UnalignedFieldOFFSET) => {
+            }
             _ => return None,
         }
         self.intrinsic_raw(def_id)

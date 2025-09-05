@@ -19,7 +19,7 @@ pub unsafe trait UnalignedField: Sized {
 
     /// The offset of the field in bytes.
     #[lang = "UnalignedFieldOFFSET"]
-    const OFFSET: usize;
+    const OFFSET: usize = crate::intrinsics::unaligned_field_offset::<Self>();
 }
 
 /// Type representing an aligned field of a `struct`.
