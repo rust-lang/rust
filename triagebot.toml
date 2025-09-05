@@ -336,6 +336,7 @@ trigger_files = [
     "tests/mir-opt",
     "tests/pretty",
     "tests/run-make",
+    "tests/run-make-cargo",
     "tests/ui",
     "tests/ui-fulldeps",
 ]
@@ -592,6 +593,7 @@ trigger_files = [
 [autolabel."A-run-make"]
 trigger_files = [
     "tests/run-make",
+    "tests/run-make-cargo",
     "src/tools/run-make-support"
 ]
 
@@ -1542,6 +1544,7 @@ dep-bumps = [
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["@jieyouxu"]
+"/tests/run-make-cargo" =                                ["@jieyouxu"]
 "/tests/rustdoc" =                                       ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
