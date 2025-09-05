@@ -1,3 +1,4 @@
+//@ edition:2015
 #![deny(ambiguous_glob_reexports)]
 
 pub mod foo {

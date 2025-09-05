@@ -1,3 +1,4 @@
+//@ edition:2015
 fn main() {
     for<'a> |x: &'a u8| *x + 1;
     //~^ ERROR `for<...>` binders for closures are experimental

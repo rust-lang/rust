@@ -1,3 +1,4 @@
+//@ edition:2015
 #[issue_100199::struct_with_bound] //~ ERROR cannot find trait `MyTrait` in the crate root
 struct Foo {}
 // The above must be on the first line so that it's span points to pos 0.

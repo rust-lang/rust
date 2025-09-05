@@ -1,3 +1,4 @@
+//@ edition:2015
 // these two HELPs are actually in a new line between this line and the `enum Fruit` line
 enum Fruit {
     Apple(i64),

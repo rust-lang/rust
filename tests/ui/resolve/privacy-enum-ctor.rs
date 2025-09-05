@@ -1,3 +1,4 @@
+//@ edition:2015
 mod m {
     pub enum E {
         Fn(u8),
