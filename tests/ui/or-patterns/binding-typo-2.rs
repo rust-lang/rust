@@ -1,3 +1,4 @@
+//@ edition: 2015
 // Issue #51976
 #![deny(unused_variables)] //~ NOTE: the lint level is defined here
 enum Lol {

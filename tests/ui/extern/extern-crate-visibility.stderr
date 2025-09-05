@@ -1,11 +1,11 @@
 error[E0603]: crate import `core` is private
-  --> $DIR/extern-crate-visibility.rs:6:10
+  --> $DIR/extern-crate-visibility.rs:7:10
    |
 LL | use foo::core::cell;
    |          ^^^^ private crate import
    |
 note: the crate import `core` is defined here
-  --> $DIR/extern-crate-visibility.rs:2:5
+  --> $DIR/extern-crate-visibility.rs:3:5
    |
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^
@@ -16,13 +16,13 @@ LL + use std::cell;
    |
 
 error[E0603]: crate import `core` is private
-  --> $DIR/extern-crate-visibility.rs:9:10
+  --> $DIR/extern-crate-visibility.rs:10:10
    |
 LL |     foo::core::cell::Cell::new(0);
    |          ^^^^ private crate import
    |
 note: the crate import `core` is defined here
-  --> $DIR/extern-crate-visibility.rs:2:5
+  --> $DIR/extern-crate-visibility.rs:3:5
    |
 LL |     extern crate core;
    |     ^^^^^^^^^^^^^^^^^^

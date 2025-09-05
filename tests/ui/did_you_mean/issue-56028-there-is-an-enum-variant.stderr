@@ -1,5 +1,5 @@
 error[E0412]: cannot find type `Set` in this scope
-  --> $DIR/issue-56028-there-is-an-enum-variant.rs:9:15
+  --> $DIR/issue-56028-there-is-an-enum-variant.rs:10:15
    |
 LL | fn setup() -> Set { Set }
    |               ^^^ not found in this scope
@@ -21,7 +21,7 @@ LL + fn setup() -> PutDown { Set }
    = and 3 other candidates
 
 error[E0425]: cannot find value `Set` in this scope
-  --> $DIR/issue-56028-there-is-an-enum-variant.rs:9:21
+  --> $DIR/issue-56028-there-is-an-enum-variant.rs:10:21
    |
 LL | fn setup() -> Set { Set }
    |                     ^^^ not found in this scope

@@ -1,5 +1,6 @@
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
+//@ edition: 2015
 
 trait MyDebug {
     fn my_debug(&self);

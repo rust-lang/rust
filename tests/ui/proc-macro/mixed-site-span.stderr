@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:48:5
+  --> $DIR/mixed-site-span.rs:49:5
    |
 LL |     invoke_with_crate!{input proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -7,7 +7,7 @@ LL |     invoke_with_crate!{input proc_macro_item}
    = note: this error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:49:5
+  --> $DIR/mixed-site-span.rs:50:5
    |
 LL |     invoke_with_ident!{input proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -15,7 +15,7 @@ LL |     invoke_with_ident!{input proc_macro_item}
    = note: this error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:50:5
+  --> $DIR/mixed-site-span.rs:51:5
    |
 LL |     invoke_with_crate!{call proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -23,7 +23,7 @@ LL |     invoke_with_crate!{call proc_macro_item}
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:51:5
+  --> $DIR/mixed-site-span.rs:52:5
    |
 LL |     invoke_with_ident!{call proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -31,7 +31,7 @@ LL |     invoke_with_ident!{call proc_macro_item}
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:52:5
+  --> $DIR/mixed-site-span.rs:53:5
    |
 LL |     invoke_with_ident!{hello call proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -39,7 +39,7 @@ LL |     invoke_with_ident!{hello call proc_macro_item}
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::proc_macro_item`
-  --> $DIR/mixed-site-span.rs:55:5
+  --> $DIR/mixed-site-span.rs:56:5
    |
 LL |     invoke_with_ident!{krate input proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^
@@ -50,7 +50,7 @@ LL |     invoke_with_ident!{krate input proc_macro_item}
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::proc_macro_item`
-  --> $DIR/mixed-site-span.rs:56:5
+  --> $DIR/mixed-site-span.rs:57:5
    |
 LL |     with_crate!{krate input proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^---------------^
@@ -61,7 +61,7 @@ LL |     with_crate!{krate input proc_macro_item}
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:57:5
+  --> $DIR/mixed-site-span.rs:58:5
    |
 LL |     with_crate!{krate call proc_macro_item}
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^
@@ -72,7 +72,7 @@ LL |     with_crate!{krate call proc_macro_item}
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:61:28
+  --> $DIR/mixed-site-span.rs:62:28
    |
 LL |         invoke_with_ident!{$crate input proc_macro_item}
    |                            ^^^^^^       --------------- help: a similar name exists in the module: `proc_macro_rules`
@@ -85,7 +85,7 @@ LL |     test!();
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:62:21
+  --> $DIR/mixed-site-span.rs:63:21
    |
 LL |         with_crate!{$crate input proc_macro_item}
    |                     ^^^^^^       --------------- help: a similar name exists in the module: `proc_macro_rules`
@@ -98,7 +98,7 @@ LL |     test!();
    = note: this error originates in the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:63:9
+  --> $DIR/mixed-site-span.rs:64:9
    |
 LL |         with_crate!{$crate call proc_macro_item}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^---------------^
@@ -112,7 +112,7 @@ LL |     test!();
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:68:5
+  --> $DIR/mixed-site-span.rs:69:5
    |
 LL |     test!();
    |     ^^^^^^^ no `proc_macro_item` in the root
@@ -120,33 +120,33 @@ LL |     test!();
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate::TokenItem`
-  --> $DIR/mixed-site-span.rs:88:5
+  --> $DIR/mixed-site-span.rs:89:5
    |
 LL |     invoke_with_ident!{krate input TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/mixed-site-span.rs:59:34
+  --> $DIR/auxiliary/mixed-site-span.rs:60:34
    |
 LL |     quote!(use $krate::$ident as token_site_span::TokenItem as _;)
    |                                  +++++++++++++++++++++++++++++
 
 error[E0432]: unresolved import `$crate::TokenItem`
-  --> $DIR/mixed-site-span.rs:89:5
+  --> $DIR/mixed-site-span.rs:90:5
    |
 LL |     with_crate!{krate input TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/mixed-site-span.rs:59:34
+  --> $DIR/auxiliary/mixed-site-span.rs:60:34
    |
 LL |     quote!(use $krate::$ident as token_site_span::TokenItem as _;)
    |                                  +++++++++++++++++++++++++++++
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:90:5
+  --> $DIR/mixed-site-span.rs:91:5
    |
 LL |     with_crate!{krate call TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
@@ -159,49 +159,49 @@ LL +     token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:93:5
+  --> $DIR/mixed-site-span.rs:94:5
    |
 LL |     invoke_with_crate!{mixed TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:13:30
+  --> $DIR/auxiliary/token-site-span.rs:14:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{$crate $s $i} };
 LL +     ($s:ident $i:ident) => { token_site_span::TokenItem as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:94:5
+  --> $DIR/mixed-site-span.rs:95:5
    |
 LL |     invoke_with_ident!{mixed TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:18:30
+  --> $DIR/auxiliary/token-site-span.rs:19:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{krate $s $i} };
 LL +     ($s:ident $i:ident) => { token_site_span::TokenItem as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:95:5
+  --> $DIR/mixed-site-span.rs:96:5
    |
 LL |     invoke_with_ident!{krate mixed TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { token_site_span::TokenItem as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:96:5
+  --> $DIR/mixed-site-span.rs:97:5
    |
 LL |     with_crate!{krate mixed TokenItem}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
@@ -214,7 +214,7 @@ LL +     token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:100:28
+  --> $DIR/mixed-site-span.rs:101:28
    |
 LL |         invoke_with_ident!{$crate input TokenItem}
    |                            ^^^^^^ no `TokenItem` in the root
@@ -230,7 +230,7 @@ LL +         invoke_with_ident!{token_site_span::TokenItem as _ input TokenItem}
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:101:21
+  --> $DIR/mixed-site-span.rs:102:21
    |
 LL |         with_crate!{$crate input TokenItem}
    |                     ^^^^^^ no `TokenItem` in the root
@@ -246,7 +246,7 @@ LL +         with_crate!{token_site_span::TokenItem as _ input TokenItem}
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:102:9
+  --> $DIR/mixed-site-span.rs:103:9
    |
 LL |         with_crate!{$crate call TokenItem}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
@@ -262,21 +262,21 @@ LL +         token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:109:5
+  --> $DIR/mixed-site-span.rs:110:5
    |
 LL |     test!();
    |     ^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { token_site_span::TokenItem as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:106:9
+  --> $DIR/mixed-site-span.rs:107:9
    |
 LL |         with_crate!{$crate mixed TokenItem}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
@@ -292,77 +292,77 @@ LL +         token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:130:5
+  --> $DIR/mixed-site-span.rs:131:5
    |
 LL |     invoke_with_crate!{input ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:13:42
+  --> $DIR/auxiliary/token-site-span.rs:14:42
    |
 LL -     ($s:ident $i:ident) => { with_crate!{$crate $s $i} };
 LL +     ($s:ident $i:ident) => { with_crate!{ItemUse as _ $s $i} };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:131:5
+  --> $DIR/mixed-site-span.rs:132:5
    |
 LL |     invoke_with_ident!{input ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:18:42
+  --> $DIR/auxiliary/token-site-span.rs:19:42
    |
 LL -     ($s:ident $i:ident) => { with_crate!{krate $s $i} };
 LL +     ($s:ident $i:ident) => { with_crate!{ItemUse as _ $s $i} };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:134:5
+  --> $DIR/mixed-site-span.rs:135:5
    |
 LL |     invoke_with_crate!{mixed ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:13:30
+  --> $DIR/auxiliary/token-site-span.rs:14:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{$crate $s $i} };
 LL +     ($s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:135:5
+  --> $DIR/mixed-site-span.rs:136:5
    |
 LL |     invoke_with_ident!{mixed ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:18:30
+  --> $DIR/auxiliary/token-site-span.rs:19:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{krate $s $i} };
 LL +     ($s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:136:5
+  --> $DIR/mixed-site-span.rs:137:5
    |
 LL |     invoke_with_ident!{krate mixed ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:137:5
+  --> $DIR/mixed-site-span.rs:138:5
    |
 LL |     with_crate!{krate mixed ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -375,63 +375,63 @@ LL +     ItemUse as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:139:5
+  --> $DIR/mixed-site-span.rs:140:5
    |
 LL |     invoke_with_crate!{call ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:13:30
+  --> $DIR/auxiliary/token-site-span.rs:14:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{$crate $s $i} };
 LL +     ($s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:140:5
+  --> $DIR/mixed-site-span.rs:141:5
    |
 LL |     invoke_with_ident!{call ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:18:30
+  --> $DIR/auxiliary/token-site-span.rs:19:30
    |
 LL -     ($s:ident $i:ident) => { with_crate!{krate $s $i} };
 LL +     ($s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:141:5
+  --> $DIR/mixed-site-span.rs:142:5
    |
 LL |     invoke_with_ident!{hello call ItemUse}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:149:5
+  --> $DIR/mixed-site-span.rs:150:5
    |
 LL |     test!();
    |     ^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:145:9
+  --> $DIR/mixed-site-span.rs:146:9
    |
 LL |         with_crate!{$crate mixed ItemUse}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -447,21 +447,21 @@ LL +         ItemUse as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:149:5
+  --> $DIR/mixed-site-span.rs:150:5
    |
 LL |     test!();
    |     ^^^^^^^ no `ItemUse` in the root
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:19:39
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
 LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
 LL +     ($m:ident $s:ident $i:ident) => { ItemUse as _ };
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:154:1
+  --> $DIR/mixed-site-span.rs:155:1
    |
 LL | use_input_crate!{proc_macro_item}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -469,7 +469,7 @@ LL | use_input_crate!{proc_macro_item}
    = note: this error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:155:1
+  --> $DIR/mixed-site-span.rs:156:1
    |
 LL | use_input_krate!{proc_macro_item}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -477,7 +477,7 @@ LL | use_input_krate!{proc_macro_item}
    = note: this error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:158:1
+  --> $DIR/mixed-site-span.rs:159:1
    |
 LL | use_call_crate!{proc_macro_item}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -485,7 +485,7 @@ LL | use_call_crate!{proc_macro_item}
    = note: this error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:159:1
+  --> $DIR/mixed-site-span.rs:160:1
    |
 LL | use_call_krate!{proc_macro_item}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `proc_macro_item` in the root
@@ -493,35 +493,35 @@ LL | use_call_krate!{proc_macro_item}
    = note: this error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:164:1
+  --> $DIR/mixed-site-span.rs:165:1
    |
 LL | use_mixed_crate!{TokenItem}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:24:5
+  --> $DIR/auxiliary/token-site-span.rs:25:5
    |
 LL -     declare_macro!{$crate mixed use_mixed_crate}
 LL +     token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:165:1
+  --> $DIR/mixed-site-span.rs:166:1
    |
 LL | use_mixed_krate!{TokenItem}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `TokenItem` in the root
    |
    = note: this error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/token-site-span.rs:29:1
+  --> $DIR/auxiliary/token-site-span.rs:30:1
    |
 LL - declare_macro!{krate mixed use_mixed_krate}
 LL + token_site_span::TokenItem as _
    |
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:170:1
+  --> $DIR/mixed-site-span.rs:171:1
    |
 LL | use_input_crate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -529,7 +529,7 @@ LL | use_input_crate!{ItemUse}
    = note: this error originates in the macro `use_input_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:171:1
+  --> $DIR/mixed-site-span.rs:172:1
    |
 LL | use_input_krate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -537,7 +537,7 @@ LL | use_input_krate!{ItemUse}
    = note: this error originates in the macro `use_input_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:172:1
+  --> $DIR/mixed-site-span.rs:173:1
    |
 LL | use_mixed_crate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -545,7 +545,7 @@ LL | use_mixed_crate!{ItemUse}
    = note: this error originates in the macro `use_mixed_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:173:1
+  --> $DIR/mixed-site-span.rs:174:1
    |
 LL | use_mixed_krate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -553,7 +553,7 @@ LL | use_mixed_krate!{ItemUse}
    = note: this error originates in the macro `use_mixed_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:174:1
+  --> $DIR/mixed-site-span.rs:175:1
    |
 LL | use_call_crate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -561,7 +561,7 @@ LL | use_call_crate!{ItemUse}
    = note: this error originates in the macro `use_call_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0432]: unresolved import `$crate`
-  --> $DIR/mixed-site-span.rs:175:1
+  --> $DIR/mixed-site-span.rs:176:1
    |
 LL | use_call_krate!{ItemUse}
    | ^^^^^^^^^^^^^^^^^^^^^^^^ no `ItemUse` in the root
@@ -569,7 +569,7 @@ LL | use_call_krate!{ItemUse}
    = note: this error originates in the macro `use_call_krate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0426]: use of undeclared label `'label_use`
-  --> $DIR/mixed-site-span.rs:22:9
+  --> $DIR/mixed-site-span.rs:23:9
    |
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^ undeclared label `'label_use`
@@ -577,7 +577,7 @@ LL |         proc_macro_rules!();
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0412]: cannot find type `ItemUse` in crate `$crate`
-  --> $DIR/mixed-site-span.rs:22:9
+  --> $DIR/mixed-site-span.rs:23:9
    |
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^ not found in `$crate`
@@ -589,20 +589,20 @@ LL + use ItemUse;
    |
 
 error[E0425]: cannot find value `local_use` in this scope
-  --> $DIR/mixed-site-span.rs:22:9
+  --> $DIR/mixed-site-span.rs:23:9
    |
 LL |         proc_macro_rules!();
    |         ^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
    |
 help: an identifier with the same name exists, but is not accessible due to macro hygiene
-  --> $DIR/mixed-site-span.rs:21:13
+  --> $DIR/mixed-site-span.rs:22:13
    |
 LL |         let local_use = 1;
    |             ^^^^^^^^^
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `local_def` in this scope
-  --> $DIR/mixed-site-span.rs:27:9
+  --> $DIR/mixed-site-span.rs:28:9
    |
 LL |         local_def;
    |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`

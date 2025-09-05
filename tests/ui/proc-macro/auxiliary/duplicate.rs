@@ -1,3 +1,5 @@
+//@ edition:2015
+
 #![deny(unused)]
 
 extern crate proc_macro;
