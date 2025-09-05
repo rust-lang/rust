@@ -1,5 +1,5 @@
 note: external requirements
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:27:23
    |
 LL |     with_signature(x, |y| y)
    |                       ^^^
@@ -13,7 +13,7 @@ LL |     with_signature(x, |y| y)
    = note: where T: '?2
 
 note: no external requirements
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:15:1
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:16:1
    |
 LL | / fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
 LL | | where
@@ -23,7 +23,7 @@ LL | |     T: Debug,
    = note: defining type: no_region::<'?1, T>
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:27
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:27:27
    |
 LL | fn no_region<'a, T>(x: Box<T>) -> Box<dyn Debug + 'a>
    |              -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
@@ -37,7 +37,7 @@ LL |     T: Debug + 'a,
    |              ++++
 
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-closure-outlives-from-return-type.rs:41:5
+  --> $DIR/ty-param-closure-outlives-from-return-type.rs:42:5
    |
 LL | fn wrong_region<'a, 'b, T>(x: Box<T>) -> Box<Debug + 'a>
    |                 -- the parameter type `T` must be valid for the lifetime `'a` as defined here...

@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `r` as mutable, as it is immutable for the pattern guard
-  --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:14:25
+  --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:15:25
    |
 LL |         ref mut r if { (|| { let bar = &mut *r; **bar = false; })();
    |                         ^^                  -- mutable borrow occurs due to use of `r` in closure
@@ -9,7 +9,7 @@ LL |         ref mut r if { (|| { let bar = &mut *r; **bar = false; })();
    = note: variables bound in patterns are immutable until the end of the pattern guard
 
 error[E0596]: cannot borrow `r` as mutable, as it is immutable for the pattern guard
-  --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:24:40
+  --> $DIR/issue-27282-reborrow-ref-mut-in-guard.rs:25:40
    |
 LL |         ref mut r if let Some(()) = { (|| { let bar = &mut *r; **bar = false; })();
    |                                        ^^                  -- mutable borrow occurs due to use of `r` in closure
