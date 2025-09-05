@@ -1,5 +1,5 @@
 error[E0658]: gen blocks are experimental
-  --> $DIR/async_gen_fn.rs:4:1
+  --> $DIR/async_gen_fn.rs:6:1
    |
 LL | async gen fn foo() {}
    | ^^^^^^^^^

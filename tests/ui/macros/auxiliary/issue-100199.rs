@@ -1,3 +1,4 @@
+//@ edition:2015
 #![feature(proc_macro_quote)]
 
 extern crate proc_macro;

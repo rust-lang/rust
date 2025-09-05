@@ -1,11 +1,11 @@
 error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/issue-4366.rs:18:29
+  --> $DIR/issue-4366.rs:19:29
    |
 LL |         fn sub() -> isize { foo(); 1 }
    |                             ^^^ not found in this scope
    |
 note: function `m1::foo` exists but is inaccessible
-  --> $DIR/issue-4366.rs:23:5
+  --> $DIR/issue-4366.rs:24:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^ not accessible

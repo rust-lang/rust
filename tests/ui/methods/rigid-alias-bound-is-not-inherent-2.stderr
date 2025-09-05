@@ -1,5 +1,5 @@
 error[E0599]: no method named `method` found for type parameter `impl Deref<Target : module::Trait>` in the current scope
-  --> $DIR/rigid-alias-bound-is-not-inherent-2.rs:13:7
+  --> $DIR/rigid-alias-bound-is-not-inherent-2.rs:14:7
    |
 LL | fn foo(x: impl Deref<Target: module::Trait>) {
    |           --------------------------------- method `method` not found for this type parameter

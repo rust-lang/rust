@@ -1,3 +1,4 @@
+//@ edition:2015
 enum Foo {
     //~^ HELP consider importing this tuple variant
     A(u32),
