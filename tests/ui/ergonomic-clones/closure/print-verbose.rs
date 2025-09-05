@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 //@ compile-flags: -Zverbose-internals
 
 #![feature(ergonomic_clones)]
