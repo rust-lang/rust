@@ -1,8 +1,8 @@
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
-use rustc_middle::mir;
 
 pub use self::run::run_genmc_mode;
+use crate::intrinsics::AtomicRmwOp;
 use crate::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriMachine, Scalar,
     ThreadId, ThreadManager, VisitProvenance, VisitWith,
@@ -94,22 +94,9 @@ impl GenmcCtx {
         _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         _address: Size,
         _size: Size,
-        _ordering: AtomicRwOrd,
-        (_rmw_op, _not): (mir::BinOp, bool),
-        _rhs_scalar: Scalar,
-        _old_value: Scalar,
-    ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        unreachable!()
-    }
-
-    pub(crate) fn atomic_min_max_op<'tcx>(
-        &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        _address: Size,
-        _size: Size,
-        _ordering: AtomicRwOrd,
-        _min: bool,
         _is_signed: bool,
+        _ordering: AtomicRwOrd,
+        _atomic_op: AtomicRmwOp,
         _rhs_scalar: Scalar,
         _old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {

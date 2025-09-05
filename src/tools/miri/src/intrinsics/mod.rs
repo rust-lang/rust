@@ -3,6 +3,9 @@
 mod atomic;
 mod simd;
 
+pub use self::atomic::AtomicRmwOp;
+
+#[rustfmt::skip] // prevent `use` reordering
 use std::ops::Neg;
 
 use rand::Rng;
