@@ -339,6 +339,8 @@ pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod field;
 #[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 pub mod io;
 pub mod iter;
