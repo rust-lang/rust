@@ -3,6 +3,7 @@ use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::x86::constraint::map_constraints;
 
+use regex::Regex;
 use serde::{Deserialize, Deserializer};
 use std::path::Path;
 
@@ -96,11 +97,24 @@ fn xml_to_intrinsic(
     if args.iter().any(|elem| elem.is_none()) {
         return Err(Box::from("intrinsic isn't fully supported in this test!"));
     }
-    let args = args
+    let mut args = args
         .into_iter()
         .map(|e| e.unwrap())
         .filter(|arg| arg.ty.ptr || arg.ty.kind != TypeKind::Void)
         .collect::<Vec<_>>();
+
+    let mut args_test = args.iter();
+
+    // if one of the args has etype="MASK" and type="__m<int>d",
+    // then set the bit_len and vec_len accordingly
+    let re = Regex::new(r"__m\d+").unwrap();
+    let is_mask = |arg: &Argument<X86IntrinsicType>| arg.ty.param.etype.as_str() == "MASK";
+    let is_vector = |arg: &Argument<X86IntrinsicType>| re.is_match(arg.ty.param.type_data.as_str());
+    let pos = args_test.position(|arg| is_mask(arg) && is_vector(arg));
+    if let Some(index) = pos {
+        args[index].ty.bit_len = args[0].ty.bit_len;
+    }
+
     let arguments = ArgumentList::<X86IntrinsicType> { args };
 
     if let Err(message) = result {

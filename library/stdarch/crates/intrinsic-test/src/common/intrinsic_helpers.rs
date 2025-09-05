@@ -131,7 +131,7 @@ impl IntrinsicType {
         if let Some(bl) = self.bit_len {
             bl
         } else {
-            unreachable!("")
+            unreachable!("{:#?}", self)
         }
     }
 
@@ -222,7 +222,8 @@ impl IntrinsicType {
         match self {
             IntrinsicType {
                 bit_len: Some(bit_len @ (8 | 16 | 32 | 64)),
-                kind: kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_)),
+                kind:
+                    kind @ (TypeKind::Int(_) | TypeKind::Poly | TypeKind::Char(_) | TypeKind::Mask),
                 simd_len,
                 vec_len,
                 ..

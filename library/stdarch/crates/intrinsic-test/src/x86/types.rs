@@ -5,6 +5,7 @@ use itertools::Itertools;
 use regex::Regex;
 
 use super::intrinsic::X86IntrinsicType;
+use crate::common::argument::Argument;
 use crate::common::cli::Language;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 use crate::x86::xml_parser::Parameter;
@@ -18,7 +19,7 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 
     fn c_single_vector_type(&self) -> String {
         // matches __m128, __m256 and similar types
-        let re = Regex::new(r"\__m\d+\").unwrap();
+        let re = Regex::new(r"__m\d+").unwrap();
         if re.is_match(self.param.type_data.as_str()) {
             self.param.type_data.clone()
         } else {
@@ -129,8 +130,6 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 impl X86IntrinsicType {
     fn from_c(s: &str) -> Result<IntrinsicType, String> {
         let mut s_copy = s.to_string();
-        let mut metadata: HashMap<String, String> = HashMap::new();
-        metadata.insert("type".to_string(), s.to_string());
         s_copy = s_copy
             .replace("*", "")
             .replace("_", "")
@@ -196,6 +195,9 @@ impl X86IntrinsicType {
                 let mut etype_processed = param.etype.clone();
                 etype_processed.retain(|c| c.is_numeric());
 
+                let mut type_processed = param.type_data.clone();
+                type_processed.retain(|c| c.is_numeric());
+
                 match str::parse::<u32>(etype_processed.as_str()) {
                     Ok(value) => data.bit_len = Some(value),
                     Err(_) => {
@@ -209,14 +211,16 @@ impl X86IntrinsicType {
                     }
                 }
 
+                if param.type_data.matches("__mmask").next().is_some() {
+                    data.bit_len = str::parse::<u32>(type_processed.as_str()).ok();
+                }
+
                 // then check the param.type and extract numeric part if there are double
                 // underscores. divide this number with bit-len and set this as simd-len.
                 // Only __m<int> types can have a simd-len.
                 if param.type_data.matches("__m").next().is_some()
                     && param.type_data.matches("__mmask").next().is_none()
                 {
-                    let mut type_processed = param.type_data.clone();
-                    type_processed.retain(|c| c.is_numeric());
                     data.vec_len = match str::parse::<u32>(type_processed.as_str()) {
                         // If bit_len is None, vec_len will be None.
                         // Else vec_len will be (num_bits / bit_len).
@@ -235,7 +239,6 @@ impl X86IntrinsicType {
                 // if param.etype == IMM, then it is a constant.
                 // else it stays unchanged.
                 data.constant |= param.etype == "IMM";
-
                 Ok(X86IntrinsicType {
                     data,
                     param: param.clone(),
