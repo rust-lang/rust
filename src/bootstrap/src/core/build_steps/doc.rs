@@ -1049,7 +1049,7 @@ macro_rules! tool_doc {
                     _value
                 };
 
-                if allow_features.is_empty() {
+                if !allow_features.is_empty() {
                     cargo.allow_features(allow_features);
                 }
 
