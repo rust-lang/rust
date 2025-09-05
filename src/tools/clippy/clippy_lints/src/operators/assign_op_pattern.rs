@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
+use clippy_utils::qualify_min_const_fn::is_stable_const_fn;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr_without_closures;
@@ -20,7 +21,7 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     assignee: &'tcx hir::Expr<'_>,
     e: &'tcx hir::Expr<'_>,
-    _msrv: Msrv,
+    msrv: Msrv,
 ) {
     if let hir::ExprKind::Binary(op, l, r) = &e.kind {
         let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
@@ -43,10 +44,28 @@ pub(super) fn check<'tcx>(
                     }
                 }
 
-                // Skip if the trait is not stable in const contexts
-                // FIXME: reintroduce a better check after this is merged back into Clippy
+                // Skip if the trait or the implementation is not stable in const contexts
                 if is_in_const_context(cx) {
-                    return;
+                    if cx
+                        .tcx
+                        .associated_item_def_ids(trait_id)
+                        .first()
+                        .is_none_or(|binop_id| !is_stable_const_fn(cx, *binop_id, msrv))
+                    {
+                        return;
+                    }
+
+                    let impls = cx.tcx.non_blanket_impls_for_ty(trait_id, rty).collect::<Vec<_>>();
+                    if impls.is_empty()
+                        || impls.into_iter().any(|impl_id| {
+                            cx.tcx
+                                .associated_item_def_ids(impl_id)
+                                .first()
+                                .is_none_or(|fn_id| !is_stable_const_fn(cx, *fn_id, msrv))
+                        })
+                    {
+                        return;
+                    }
                 }
 
                 span_lint_and_then(

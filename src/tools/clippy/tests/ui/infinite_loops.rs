@@ -521,4 +521,19 @@ mod tokio_spawn_test {
     }
 }
 
+mod issue15541 {
+    async fn good() -> ! {
+        loop {
+            std::future::pending().await
+        }
+    }
+
+    async fn bad() {
+        //~v infinite_loop
+        loop {
+            std::future::pending().await
+        }
+    }
+}
+
 fn main() {}

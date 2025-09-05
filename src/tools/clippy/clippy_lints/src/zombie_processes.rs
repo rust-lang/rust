@@ -1,5 +1,6 @@
 use ControlFlow::{Break, Continue};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{fn_def_id, get_enclosing_block, path_to_local_id};
 use rustc_ast::Mutability;
 use rustc_ast::visit::visit_opt;
@@ -58,8 +59,8 @@ declare_lint_pass!(ZombieProcesses => [ZOMBIE_PROCESSES]);
 impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Call(..) | ExprKind::MethodCall(..) = expr.kind
-            && let Some(child_adt) = cx.typeck_results().expr_ty(expr).ty_adt_def()
-            && cx.tcx.is_diagnostic_item(sym::Child, child_adt.did())
+            && let child_ty = cx.typeck_results().expr_ty(expr)
+            && is_type_diagnostic_item(cx, child_ty, sym::Child)
         {
             match cx.tcx.parent_hir_node(expr.hir_id) {
                 Node::LetStmt(local)
@@ -177,8 +178,8 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
                 Node::Expr(expr) if let ExprKind::AddrOf(_, Mutability::Not, _) = expr.kind => {},
                 Node::Expr(expr)
                     if let Some(fn_did) = fn_def_id(self.cx, expr)
-                        && (self.cx.tcx.is_diagnostic_item(sym::child_id, fn_did)
-                            || self.cx.tcx.is_diagnostic_item(sym::child_kill, fn_did)) => {},
+                        && let Some(fn_name) = self.cx.tcx.get_diagnostic_name(fn_did)
+                        && matches!(fn_name, sym::child_id | sym::child_kill) => {},
 
                 // Conservatively assume that all other kinds of nodes call `.wait()` somehow.
                 _ => return Break(MaybeWait(ex.span)),
@@ -351,9 +352,14 @@ fn check<'tcx>(cx: &LateContext<'tcx>, spawn_expr: &'tcx Expr<'tcx>, cause: Caus
 
 /// Checks if the given expression exits the process.
 fn is_exit_expression(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    fn_def_id(cx, expr).is_some_and(|fn_did| {
-        cx.tcx.is_diagnostic_item(sym::process_exit, fn_did) || cx.tcx.is_diagnostic_item(sym::process_abort, fn_did)
-    })
+    if let Some(fn_did) = fn_def_id(cx, expr)
+        && let Some(fn_name) = cx.tcx.get_diagnostic_name(fn_did)
+        && matches!(fn_name, sym::process_exit | sym::process_abort)
+    {
+        true
+    } else {
+        false
+    }
 }
 
 #[derive(Debug)]

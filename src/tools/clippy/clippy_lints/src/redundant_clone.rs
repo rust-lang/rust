@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::fn_has_unsatisfiable_preds;
 use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::{has_drop, is_copy, is_type_diagnostic_item, is_type_lang_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{has_drop, is_copy, is_type_lang_item, walk_ptrs_ty_depth};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -96,14 +96,13 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let (fn_def_id, arg, arg_ty, clone_ret) =
                 unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
-            let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
-                || cx.tcx.is_diagnostic_item(sym::to_owned_method, fn_def_id)
-                || (cx.tcx.is_diagnostic_item(sym::to_string_method, fn_def_id)
-                    && is_type_lang_item(cx, arg_ty, LangItem::String));
+            let fn_name = cx.tcx.get_diagnostic_name(fn_def_id);
 
-            let from_deref = !from_borrow
-                && (cx.tcx.is_diagnostic_item(sym::path_to_pathbuf, fn_def_id)
-                    || cx.tcx.is_diagnostic_item(sym::os_str_to_os_string, fn_def_id));
+            let from_borrow = cx.tcx.lang_items().get(LangItem::CloneFn) == Some(fn_def_id)
+                || fn_name == Some(sym::to_owned_method)
+                || (fn_name == Some(sym::to_string_method) && is_type_lang_item(cx, arg_ty, LangItem::String));
+
+            let from_deref = !from_borrow && matches!(fn_name, Some(sym::path_to_pathbuf | sym::os_str_to_os_string));
 
             if !from_borrow && !from_deref {
                 continue;
@@ -148,8 +147,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     is_call_with_ref_arg(cx, mir, &pred_terminator.kind)
                     && res == cloned
                     && cx.tcx.is_diagnostic_item(sym::deref_method, pred_fn_def_id)
-                    && (is_type_diagnostic_item(cx, pred_arg_ty, sym::PathBuf)
-                        || is_type_diagnostic_item(cx, pred_arg_ty, sym::OsString))
+                    && let ty::Adt(pred_arg_def, _) = pred_arg_ty.kind()
+                    && let Some(pred_arg_name) = cx.tcx.get_diagnostic_name(pred_arg_def.did())
+                    && matches!(pred_arg_name, sym::PathBuf | sym::OsString)
                 {
                     (pred_arg, res)
                 } else {
