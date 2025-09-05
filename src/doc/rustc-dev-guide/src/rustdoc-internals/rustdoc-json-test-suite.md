@@ -30,16 +30,16 @@ It uses [JSONPath] as a query language, which takes a path, and returns a *list*
 
 ### Directives
 
-- `//@ has <path>`:: Checks `<path>` exists, i.e. matches at least 1 value.
-- `//@ !has <path>`:: Checks `<path>` doesn't exist, i.e. matches 0 values.
+- `//@ has <path>`: Checks `<path>` exists, i.e. matches at least 1 value.
+- `//@ !has <path>`: Checks `<path>` doesn't exist, i.e. matches 0 values.
 - `//@ has <path> <value>`: Check `<path>` exists, and at least 1 of the matches is equal to the given `<value>` 
 - `//@ !has <path> <value>`: Checks `<path>` exists, but none of the matches equal the given `<value>`.
 - `//@ is <path> <value>`: Check `<path>` matches exactly one value, and it's equal to the given `<value>`.
 - `//@ is <path> <value> <value>...`: Check that `<path>` matches to exactly every given `<value>`. 
    Ordering doesn't matter here.
 - `//@ !is <path> <value>`: Check `<path>` matches exactly one value, and that value is not equal to the given `<value>`.
-- `//@ count <path> <number>` Check that `<path>` matches to `<number>` of values.
-- `//@ set <name> = <path>`, Check that `<path>` matches exactly one value, and store that value to the variable called `<name>`
+- `//@ count <path> <number>`: Check that `<path>` matches to `<number>` of values.
+- `//@ set <name> = <path>`: Check that `<path>` matches exactly one value, and store that value to the variable called `<name>`.
 
 These are defined in [`directive.rs`].
 
