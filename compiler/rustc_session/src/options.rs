@@ -2654,7 +2654,7 @@ written to standard error output)"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: usize = (std::thread::available_parallelism().map_or(1, NonZero::get), parse_threads, [UNTRACKED],
+    threads: usize = (8, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
