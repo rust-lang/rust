@@ -832,7 +832,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     pub const fn midpoint(self, other: f128) -> f128 {
-        const LO: f128 = f128::MIN_POSITIVE * 2.;
         const HI: f128 = f128::MAX / 2.;
 
         let (a, b) = (self, other);
@@ -842,14 +841,7 @@ impl f128 {
         if abs_a <= HI && abs_b <= HI {
             // Overflow is impossible
             (a + b) / 2.
-        } else if abs_a < LO {
-            // Not safe to halve `a` (would underflow)
-            a + (b / 2.)
-        } else if abs_b < LO {
-            // Not safe to halve `b` (would underflow)
-            (a / 2.) + b
         } else {
-            // Safe to halve `a` and `b`
             (a / 2.) + (b / 2.)
         }
     }
