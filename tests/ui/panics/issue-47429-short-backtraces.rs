@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // Regression test for #47429: short backtraces were not terminating correctly
 
 //@ compile-flags: -O

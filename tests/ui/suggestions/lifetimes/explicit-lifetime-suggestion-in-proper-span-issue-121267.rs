@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 fn main() {}
 
 fn foo(_src: &crate::Foo) -> Option<i32> {

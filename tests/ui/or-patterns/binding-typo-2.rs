@@ -64,8 +64,8 @@ fn foo(x: (Lol, Lol)) {
 }
 fn bar(x: (Lol, Lol)) {
     use Lol::*;
-    use ::Bat;
-    use ::Bay;
+    use crate::Bat;
+    use crate::Bay;
     match &x {
         (Foo, _) | (Ban, Foo) => {}
         //~^ ERROR: variable `Ban` is not bound in all patterns
