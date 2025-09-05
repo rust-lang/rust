@@ -1,0 +1,15 @@
+error[E0806]: the `UnalignedField` trait may not be implemented manually
+  --> $DIR/deny-manual-impl.rs:9:1
+   |
+LL | unsafe impl UnalignedField for MyStruct {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0806]: the `Field` trait may not be implemented manually
+  --> $DIR/deny-manual-impl.rs:16:1
+   |
+LL | unsafe impl Field for field_of!(MyStruct, 0) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0806`.
