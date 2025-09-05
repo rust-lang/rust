@@ -3099,7 +3099,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 |err, _, span, message, suggestion, span_suggs| {
                     err.multipart_suggestion_verbose(
                         message,
-                        std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
+                        std::iter::once((span, suggestion)).chain(span_suggs).collect(),
                         Applicability::MaybeIncorrect,
                     );
                     true
