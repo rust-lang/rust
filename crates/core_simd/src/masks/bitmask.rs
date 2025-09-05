@@ -105,7 +105,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub(crate) fn to_int(self) -> Simd<T, N> {
+    pub(crate) fn to_simd(self) -> Simd<T, N> {
         unsafe {
             core::intrinsics::simd::simd_select_bitmask(
                 self.0,

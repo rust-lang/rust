@@ -163,28 +163,28 @@ macro_rules! impl_mask {
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_lt(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_lt(self.to_simd(), other.to_simd())) }
             }
 
             #[inline]
             fn simd_le(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_le(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_le(self.to_simd(), other.to_simd())) }
             }
 
             #[inline]
             fn simd_gt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_gt(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_gt(self.to_simd(), other.to_simd())) }
             }
 
             #[inline]
             fn simd_ge(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ge(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ge(self.to_simd(), other.to_simd())) }
             }
         }
 

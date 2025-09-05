@@ -175,7 +175,7 @@ where
         // This would be hypothetically valid as an "in-place" transmute,
         // but these are "dependently-sized" types, so copy elision it is!
         unsafe {
-            let mut bytes: Simd<i8, N> = core::intrinsics::simd::simd_cast(self.to_int());
+            let mut bytes: Simd<i8, N> = core::intrinsics::simd::simd_cast(self.to_simd());
             bytes &= Simd::splat(1i8);
             mem::transmute_copy(&bytes)
         }
@@ -214,8 +214,8 @@ where
     /// represents `true`.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_int(self) -> Simd<T, N> {
-        self.0.to_int()
+    pub fn to_simd(self) -> Simd<T, N> {
+        self.0.to_simd()
     }
 
     /// Converts the mask to a mask of any other element size.
@@ -352,7 +352,7 @@ where
         // Safety: the input and output are integer vectors
         let index: Simd<T, N> = unsafe { core::intrinsics::simd::simd_cast(index) };
 
-        let masked_index = self.select(index, Self::splat(true).to_int());
+        let masked_index = self.select(index, Self::splat(true).to_simd());
 
         // Safety: the input and output are integer vectors
         let masked_index: Simd<T::Unsigned, N> =

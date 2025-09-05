@@ -474,7 +474,7 @@ where
         or: Self,
     ) -> Self {
         // SAFETY: The safety of reading elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_load(enable.to_int(), ptr, or) }
+        unsafe { core::intrinsics::simd::simd_masked_load(enable.to_simd(), ptr, or) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
@@ -652,7 +652,7 @@ where
         or: Self,
     ) -> Self {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { core::intrinsics::simd::simd_gather(or, source, enable.to_int()) }
+        unsafe { core::intrinsics::simd::simd_gather(or, source, enable.to_simd()) }
     }
 
     /// Conditionally write contiguous elements to `slice`. The `enable` mask controls
@@ -723,7 +723,7 @@ where
     #[inline]
     pub unsafe fn store_select_ptr(self, ptr: *mut T, enable: Mask<<T as SimdElement>::Mask, N>) {
         // SAFETY: The safety of writing elements through `ptr` is ensured by the caller.
-        unsafe { core::intrinsics::simd::simd_masked_store(enable.to_int(), ptr, self) }
+        unsafe { core::intrinsics::simd::simd_masked_store(enable.to_simd(), ptr, self) }
     }
 
     /// Writes the values in a SIMD vector to potentially discontiguous indices in `slice`.
@@ -882,7 +882,7 @@ where
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn scatter_select_ptr(self, dest: Simd<*mut T, N>, enable: Mask<isize, N>) {
         // Safety: The caller is responsible for upholding all invariants
-        unsafe { core::intrinsics::simd::simd_scatter(self, dest, enable.to_int()) }
+        unsafe { core::intrinsics::simd::simd_scatter(self, dest, enable.to_simd()) }
     }
 }
 

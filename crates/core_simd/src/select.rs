@@ -28,7 +28,7 @@ where
     {
         // Safety: The mask has been cast to a vector of integers,
         // and the operands to select between are vectors of the same type and length.
-        unsafe { core::intrinsics::simd::simd_select(self.to_int(), true_values, false_values) }
+        unsafe { core::intrinsics::simd::simd_select(self.to_simd(), true_values, false_values) }
     }
 
     /// Choose elements from two masks.

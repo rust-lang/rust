@@ -120,7 +120,7 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub(crate) fn to_int(self) -> Simd<T, N> {
+    pub(crate) fn to_simd(self) -> Simd<T, N> {
         self.0
     }
 
@@ -145,7 +145,7 @@ where
     where
         LaneCount<M>: SupportedLaneCount,
     {
-        let resized = self.to_int().resize::<M>(T::FALSE);
+        let resized = self.to_simd().resize::<M>(T::FALSE);
 
         // Safety: `resized` is an integer vector with length M, which must match T
         let bitmask: U = unsafe { core::intrinsics::simd::simd_bitmask(resized) };
@@ -223,14 +223,14 @@ where
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub(crate) fn any(self) -> bool {
         // Safety: use `self` as an integer vector
-        unsafe { core::intrinsics::simd::simd_reduce_any(self.to_int()) }
+        unsafe { core::intrinsics::simd::simd_reduce_any(self.to_simd()) }
     }
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub(crate) fn all(self) -> bool {
         // Safety: use `self` as an integer vector
-        unsafe { core::intrinsics::simd::simd_reduce_all(self.to_int()) }
+        unsafe { core::intrinsics::simd::simd_reduce_all(self.to_simd()) }
     }
 }
 

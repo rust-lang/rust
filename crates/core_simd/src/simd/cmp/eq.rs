@@ -59,14 +59,14 @@ macro_rules! impl_mask {
             fn simd_eq(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_eq(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_eq(self.to_simd(), other.to_simd())) }
             }
 
             #[inline]
             fn simd_ne(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
                 // is always a valid mask.
-                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ne(self.to_int(), other.to_int())) }
+                unsafe { Self::from_int_unchecked(core::intrinsics::simd::simd_ne(self.to_simd(), other.to_simd())) }
             }
         }
         )*
