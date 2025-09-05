@@ -63,13 +63,13 @@ Arguments to directives are split using the [shlex] crate, which implements POSI
 This is because both `<path>` and `<value>` arguments to [directives](#directives) frequently have both
 whitespace and quote marks.
 
-To use the `@ is` with a `<path>` of `$.index[?(@.docs == "foo")].some.field` and a value of `"bar"` [^why quote], you'd write:
+To use the `@ is` with a `<path>` of `$.index[?(@.docs == "foo")].some.field` and a value of `"bar"` [^why_quote], you'd write:
 
 ```rust
 //@ is '$.is[?(@.docs == "foo")].some.field' '"bar"'
 ```
 
-[^why quote]: The value needs to be `"bar"` *after* shlex splitting, because we
+[^why_quote]: The value needs to be `"bar"` *after* shlex splitting, because we
     it needs to be a JSON string value.
 
 [json output]: https://doc.rust-lang.org/nightly/rustdoc/unstable-features.html#json-output
