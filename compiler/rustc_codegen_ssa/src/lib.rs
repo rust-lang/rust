@@ -119,7 +119,7 @@ impl<M> ModuleCodegen<M> {
         });
 
         CompiledModule {
-            name: self.name.clone(),
+            name: self.name,
             object,
             dwarf_object,
             bytecode,
