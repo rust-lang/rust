@@ -7,7 +7,7 @@ use genmc_sys::{
 };
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
-use rustc_middle::{mir, throw_machine_stop, throw_ub_format, throw_unsup_format};
+use rustc_middle::{throw_machine_stop, throw_ub_format, throw_unsup_format};
 // FIXME(genmc,tracing): Implement some work-around for enabling debug/trace level logging (currently disabled statically in rustc).
 use tracing::{debug, info};
 
@@ -15,6 +15,7 @@ use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{MAX_ACCESS_SIZE, genmc_scalar_to_scalar, scalar_to_genmc_scalar};
 use self::thread_id_map::ThreadIdMap;
 use crate::concurrency::genmc::helper::split_access;
+use crate::intrinsics::AtomicRmwOp;
 use crate::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MemoryKind, MiriConfig,
     MiriMachine, MiriMemoryKind, Scalar, TerminationInfo, ThreadId, ThreadManager, VisitProvenance,
@@ -298,8 +299,9 @@ impl GenmcCtx {
         _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         _address: Size,
         _size: Size,
+        _is_signed: bool,
         _ordering: AtomicRwOrd,
-        (_rmw_op, _not): (mir::BinOp, bool),
+        _atomic_op: AtomicRmwOp,
         _rhs_scalar: Scalar,
         _old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
@@ -308,29 +310,6 @@ impl GenmcCtx {
             "atomic read-modify-write operation with data race checking disabled."
         );
         throw_unsup_format!("FIXME(genmc): Add support for atomic RMW.")
-    }
-
-    /// Inform GenMC about an atomic `min` or `max` operation.
-    ///
-    /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
-    ///
-    /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
-    pub(crate) fn atomic_min_max_op<'tcx>(
-        &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        _address: Size,
-        _size: Size,
-        _ordering: AtomicRwOrd,
-        _min: bool,
-        _is_signed: bool,
-        _rhs_scalar: Scalar,
-        _old_value: Scalar,
-    ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        assert!(
-            !self.get_alloc_data_races(),
-            "atomic min/max operation with data race checking disabled."
-        );
-        throw_unsup_format!("FIXME(genmc): Add support for atomic min/max.")
     }
 
     /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.

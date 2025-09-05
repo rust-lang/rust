@@ -56,6 +56,7 @@ use super::vector_clock::{VClock, VTimestamp, VectorIdx};
 use super::weak_memory::EvalContextExt as _;
 use crate::concurrency::GlobalDataRaceHandler;
 use crate::diagnostics::RacingOp;
+use crate::intrinsics::AtomicRmwOp;
 use crate::*;
 
 pub type AllocState = VClockAlloc;
@@ -778,9 +779,8 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         &mut self,
         place: &MPlaceTy<'tcx>,
         rhs: &ImmTy<'tcx>,
-        op: mir::BinOp,
-        not: bool,
-        atomic: AtomicRwOrd,
+        atomic_op: AtomicRmwOp,
+        ord: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place, AtomicAccessType::Rmw)?;
@@ -793,8 +793,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 this,
                 place.ptr().addr(),
                 place.layout.size,
-                atomic,
-                (op, not),
+                place.layout.backend_repr.is_signed(),
+                ord,
+                atomic_op,
                 rhs.to_scalar(),
                 old.to_scalar(),
             )?;
@@ -804,13 +805,26 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
             return interp_ok(ImmTy::from_scalar(old_val, old.layout));
         }
 
-        let val = this.binary_op(op, &old, rhs)?;
-        let val = if not { this.unary_op(mir::UnOp::Not, &val)? } else { val };
+        let val = match atomic_op {
+            AtomicRmwOp::MirOp { op, neg } => {
+                let val = this.binary_op(op, &old, rhs)?;
+                if neg { this.unary_op(mir::UnOp::Not, &val)? } else { val }
+            }
+            AtomicRmwOp::Max => {
+                let lt = this.binary_op(mir::BinOp::Lt, &old, rhs)?.to_scalar().to_bool()?;
+                if lt { rhs } else { &old }.clone()
+            }
+            AtomicRmwOp::Min => {
+                let lt = this.binary_op(mir::BinOp::Lt, &old, rhs)?.to_scalar().to_bool()?;
+                if lt { &old } else { rhs }.clone()
+            }
+        };
+
         this.allow_data_races_mut(|this| this.write_immediate(*val, place))?;
 
-        this.validate_atomic_rmw(place, atomic)?;
+        this.validate_atomic_rmw(place, ord)?;
 
-        this.buffered_atomic_rmw(val.to_scalar(), place, atomic, old.to_scalar())?;
+        this.buffered_atomic_rmw(val.to_scalar(), place, ord, old.to_scalar())?;
         interp_ok(old)
     }
 
@@ -849,59 +863,6 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         this.validate_atomic_rmw(place, atomic)?;
 
         this.buffered_atomic_rmw(new, place, atomic, old)?;
-        interp_ok(old)
-    }
-
-    /// Perform an conditional atomic exchange with a memory place and a new
-    /// scalar value, the old value is returned.
-    fn atomic_min_max_scalar(
-        &mut self,
-        place: &MPlaceTy<'tcx>,
-        rhs: ImmTy<'tcx>,
-        min: bool,
-        atomic: AtomicRwOrd,
-    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
-        let this = self.eval_context_mut();
-        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
-
-        let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
-
-        // Inform GenMC about the atomic min/max operation.
-        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-            let (old_val, new_val) = genmc_ctx.atomic_min_max_op(
-                this,
-                place.ptr().addr(),
-                place.layout.size,
-                atomic,
-                min,
-                old.layout.backend_repr.is_signed(),
-                rhs.to_scalar(),
-                old.to_scalar(),
-            )?;
-            // The store might be the latest store in coherence order (determined by GenMC).
-            // If it is, we need to update the value in Miri's memory:
-            if let Some(new_val) = new_val {
-                this.allow_data_races_mut(|this| this.write_scalar(new_val, place))?;
-            }
-            return interp_ok(ImmTy::from_scalar(old_val, old.layout));
-        }
-
-        let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
-
-        #[rustfmt::skip] // rustfmt makes this unreadable
-        let new_val = if min {
-            if lt { &old } else { &rhs }
-        } else {
-            if lt { &rhs } else { &old }
-        };
-
-        this.allow_data_races_mut(|this| this.write_immediate(**new_val, place))?;
-
-        this.validate_atomic_rmw(place, atomic)?;
-
-        this.buffered_atomic_rmw(new_val.to_scalar(), place, atomic, old.to_scalar())?;
-
-        // Return the old value.
         interp_ok(old)
     }
 
