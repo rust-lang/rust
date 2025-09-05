@@ -740,6 +740,7 @@ where
                 | ty::Slice(_)
                 | ty::Foreign(..)
                 | ty::Adt(..)
+                | ty::Field(..)
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Placeholder(..)

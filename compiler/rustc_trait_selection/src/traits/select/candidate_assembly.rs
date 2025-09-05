@@ -1403,6 +1403,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match obligation.predicate.self_ty().skip_binder().kind() {
             ty::Ref(..)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Tuple(_)
             | ty::Array(..)
             | ty::FnDef(..)
