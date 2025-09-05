@@ -370,8 +370,10 @@ You can also use `rustdoc` directly to check small fixes. For example,
 `rustdoc src/doc/reference.md` will render reference to `doc/reference.html`.
 The CSS might be messed up, but you can verify that the HTML is right.
 
-Please notice that at this time we don't accept typography/spellcheck fixes to **internal documentation** (example:
-tests, library or compiler code) as it's usually not worth the churn or the review time.
+Please notice that we don't accept typography/spellcheck fixes to **internal documentation**
+as it's usually not worth the churn or the review time.
+Examples of internal documentation is code comments and rustc api docs.
+However, feel free to fix those if accompanied by other improvements in the same PR.
 
 ### Contributing to rustc-dev-guide
 
