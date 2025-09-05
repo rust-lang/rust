@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // This is testing an attempt to corrupt the discriminant of the match
 // arm in a guard, followed by an attempt to continue matching on that
 // corrupted discriminant in the remaining match arms.

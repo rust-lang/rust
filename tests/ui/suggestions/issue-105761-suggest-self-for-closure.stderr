@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
-  --> $DIR/issue-105761-suggest-self-for-closure.rs:11:9
+  --> $DIR/issue-105761-suggest-self-for-closure.rs:12:9
    |
 LL |         let x = |v: i32| {
    |                 -------- immutable borrow occurs here
@@ -23,7 +23,7 @@ LL ~         x(self, 3);
    |
 
 error[E0502]: cannot borrow `*self` as mutable because it is also borrowed as immutable
-  --> $DIR/issue-105761-suggest-self-for-closure.rs:23:9
+  --> $DIR/issue-105761-suggest-self-for-closure.rs:24:9
    |
 LL |         let y = || {
    |                 -- immutable borrow occurs here

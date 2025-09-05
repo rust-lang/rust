@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 #![allow(unused_macros)]
 
 macro_rules! errors_everywhere {

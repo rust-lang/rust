@@ -1,3 +1,4 @@
+//@ edition:2015..2021
 // After #39485, this test used to pass, but that change was reverted
 // due to numerous inference failures like #39808, so it now fails
 // again. #39485 made it so that diverging types never propagate
