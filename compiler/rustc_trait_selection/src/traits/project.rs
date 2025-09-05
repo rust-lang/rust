@@ -996,7 +996,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | LangItem::FnOnce
                         | LangItem::AsyncFn
                         | LangItem::AsyncFnMut
-                        | LangItem::AsyncFnOnce,
+                        | LangItem::AsyncFnOnce
+                        | LangItem::Field
+                        | LangItem::UnalignedField,
                     ) => true,
                     Some(LangItem::AsyncFnKindHelper) => {
                         // FIXME(async_closures): Validity constraints here could be cleaned up.

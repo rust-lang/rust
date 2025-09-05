@@ -836,6 +836,7 @@ bidirectional_lang_item_map! {
     Destruct,
     DiscriminantKind,
     Drop,
+    Field,
     Fn,
     FnMut,
     FnOnce,
@@ -849,6 +850,7 @@ bidirectional_lang_item_map! {
     Sized,
     TransmuteTrait,
     Tuple,
+    UnalignedField,
     Unpin,
     Unsize,
 // tidy-alphabetical-end
@@ -2578,6 +2580,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 fmt,
                 self,
                 Adt,
+                Field,
                 Array,
                 Slice,
                 RawPtr,
