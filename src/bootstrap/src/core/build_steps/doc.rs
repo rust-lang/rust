@@ -1005,7 +1005,7 @@ macro_rules! tool_doc {
                     }
                     Mode::ToolTarget => {
                         // target tools should be documented with the in-tree compiler
-                        prepare_doc_compiler(run.builder, run.builder.host_target, 2)
+                        prepare_doc_compiler(run.builder, run.builder.host_target, run.builder.top_stage)
                     }
                     _ => {
                         panic!("Unexpected tool mode for documenting: {:?}", $mode);
