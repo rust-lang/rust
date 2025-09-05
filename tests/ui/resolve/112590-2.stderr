@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: could not find `baf` in `foo`
-  --> $DIR/112590-2.rs:12:39
+  --> $DIR/112590-2.rs:13:39
    |
 LL |         let _: Vec<i32> = super::foo::baf::baz::MyVec::new();
    |                                       ^^^ could not find `baf` in `foo`
@@ -15,7 +15,7 @@ LL +         let _: Vec<i32> = MyVec::new();
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fox`
-  --> $DIR/112590-2.rs:18:27
+  --> $DIR/112590-2.rs:19:27
    |
 LL |         let _: Vec<i32> = fox::bar::baz::MyVec::new();
    |                           ^^^ use of unresolved module or unlinked crate `fox`
@@ -32,7 +32,7 @@ LL +         let _: Vec<i32> = MyVec::new();
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec`
-  --> $DIR/112590-2.rs:24:15
+  --> $DIR/112590-2.rs:25:15
    |
 LL |     type _B = vec::Vec::<u8>;
    |               ^^^ use of unresolved module or unlinked crate `vec`
@@ -44,7 +44,7 @@ LL + use std::vec;
    |
 
 error[E0433]: failed to resolve: could not find `sync_error` in `std`
-  --> $DIR/112590-2.rs:25:19
+  --> $DIR/112590-2.rs:26:19
    |
 LL |     let _t = std::sync_error::atomic::AtomicBool::new(true);
    |                   ^^^^^^^^^^ could not find `sync_error` in `std`
@@ -60,7 +60,7 @@ LL +     let _t = AtomicBool::new(true);
    |
 
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `vec`
-  --> $DIR/112590-2.rs:23:24
+  --> $DIR/112590-2.rs:24:24
    |
 LL |     let _t: Vec<i32> = vec::new();
    |                        ^^^

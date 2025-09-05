@@ -1,3 +1,4 @@
+//@ edition:2015
 pub trait Foo<A=Self> {
     fn foo(&self);
 }

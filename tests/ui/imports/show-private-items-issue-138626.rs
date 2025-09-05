@@ -1,3 +1,4 @@
+//@ edition:2015
 pub mod one {
     mod foo {
         pub struct Foo;

@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:weak-lang-items.rs
 //@ needs-unwind since it affects the error output
 //@ ignore-emscripten missing eh_catch_typeinfo lang item

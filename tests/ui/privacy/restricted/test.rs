@@ -1,3 +1,4 @@
+//@ edition:2015
 //@ aux-build:pub_restricted.rs
 
 #![allow(warnings)]

@@ -1,3 +1,4 @@
+//@ edition:2015
 // Issue https://github.com/rust-lang/rust/issues/123414
 trait MemoryUnit {
     extern "C" fn read_word(&mut self) -> u8;

@@ -1,3 +1,4 @@
+//@ edition:2015
 // We are going to disallow `&a..=b` and `box a..=b` in a pattern. However, the
 // older ... syntax is still allowed as a stability guarantee.
 

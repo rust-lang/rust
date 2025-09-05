@@ -1,3 +1,4 @@
+//@ edition:2015
 #[derive(Default)]
 enum E {
     A {},
