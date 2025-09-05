@@ -18,8 +18,8 @@ use crate::directives::directive_names::{
 use crate::directives::needs::CachedNeedsConditions;
 use crate::errors::ErrorKind;
 use crate::executor::{CollectedTestDesc, ShouldPanic};
-use crate::help;
 use crate::util::static_regex;
+use crate::{fatal, help};
 
 pub(crate) mod auxiliary;
 mod cfg;
@@ -1790,23 +1790,35 @@ fn parse_edition_range(
 ) -> Option<EditionRange> {
     let raw = config.parse_name_value_directive(line, "edition", testfile, line_number)?;
 
-    if let Some((greter_equal_than, lower_than)) = raw.split_once("..") {
-        Some(match (maybe_parse_edition(greter_equal_than), maybe_parse_edition(lower_than)) {
-            (Some(greater_equal_than), Some(lower_than)) if lower_than < greater_equal_than => {
+    // Edition range is half-open: `[lower_bound, upper_bound)`
+    if let Some((lower_bound, upper_bound)) = raw.split_once("..") {
+        Some(match (maybe_parse_edition(lower_bound), maybe_parse_edition(upper_bound)) {
+            (Some(lower_bound), Some(upper_bound)) if upper_bound < lower_bound => {
                 panic!("the left side of `//@ edition` cannot be higher than the right side");
             }
-            (Some(greater_equal_than), Some(lower_than)) if lower_than == greater_equal_than => {
+            (Some(lower_bound), Some(upper_bound)) if upper_bound == lower_bound => {
                 panic!("the left side of `//@ edition` cannot be equal to the right side");
             }
-            (Some(greater_equal_than), Some(lower_than)) => {
-                EditionRange::Range { greater_equal_than, lower_than }
+            (Some(lower_bound), Some(upper_bound)) => {
+                EditionRange::Range { lower_bound, upper_bound }
             }
-            (Some(greater_equal_than), None) => EditionRange::GreaterEqualThan(greater_equal_than),
-            (None, Some(_)) => panic!("..edition is not a supported range in //@ edition"),
-            (None, None) => panic!("'..' is not a supported range in //@ edition"),
+            (Some(lower_bound), None) => EditionRange::RangeFrom(lower_bound),
+            (None, Some(_)) => {
+                fatal!(
+                    "{testfile}:{line_number}: ..edition is not a supported range in //@ edition"
+                );
+            }
+            (None, None) => {
+                fatal!("{testfile}:{line_number}: '..' is not a supported range in //@ edition");
+            }
         })
     } else {
-        Some(EditionRange::Exact(maybe_parse_edition(&raw).expect("empty value for //@ edition")))
+        match maybe_parse_edition(&raw) {
+            Some(edition) => Some(EditionRange::Exact(edition)),
+            None => {
+                fatal!("{testfile}:{line_number}: empty value for //@ edition");
+            }
+        }
     }
 }
 
@@ -1852,8 +1864,12 @@ impl From<u32> for Edition {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum EditionRange {
     Exact(Edition),
-    GreaterEqualThan(Edition),
-    Range { greater_equal_than: Edition, lower_than: Edition },
+    RangeFrom(Edition),
+    /// Half-open range: `[lower_bound, upper_bound)`
+    Range {
+        lower_bound: Edition,
+        upper_bound: Edition,
+    },
 }
 
 impl EditionRange {
@@ -1864,18 +1880,18 @@ impl EditionRange {
 
         match *self {
             EditionRange::Exact(exact) => exact,
-            EditionRange::GreaterEqualThan(greater_equal_than) => {
-                if requested >= greater_equal_than {
+            EditionRange::RangeFrom(lower_bound) => {
+                if requested >= lower_bound {
                     requested
                 } else {
-                    greater_equal_than // Lower bound
+                    lower_bound
                 }
             }
-            EditionRange::Range { greater_equal_than, lower_than } => {
-                if requested >= greater_equal_than && requested < lower_than {
+            EditionRange::Range { lower_bound, upper_bound } => {
+                if requested >= lower_bound && requested < upper_bound {
                     requested
                 } else {
-                    greater_equal_than // Lower bound
+                    lower_bound
                 }
             }
         }
