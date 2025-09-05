@@ -1146,6 +1146,8 @@ tool_doc!(
         "mdman",
         "rustfix",
     ],
+    // Required because of the im-rc dependency of Cargo, which automatically opts into the
+    // "specialization" feature in its build script when it detects a nightly toolchain.
     allow_features: "specialization"
 );
 tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolBootstrap, crates = ["tidy"]);
