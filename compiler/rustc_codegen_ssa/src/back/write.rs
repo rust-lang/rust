@@ -490,7 +490,7 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
 
     let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
 
-    for module in &compiled_modules.modules {
+    for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
         let mut files = Vec::new();
         if let Some(object_file_path) = &module.object {
             files.push((OutputType::Object.extension(), object_file_path.as_path()));
@@ -960,6 +960,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
 
     WorkItemResult::Finished(CompiledModule {
         links_from_incr_cache,
+        kind: ModuleKind::Regular,
         name: module.name,
         object,
         dwarf_object,
