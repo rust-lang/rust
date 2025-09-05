@@ -1,7 +1,7 @@
 # The `rustdoc-json` test suite
 
 This page is specifically about the test suite named `rustdoc-json`, which tests rustdoc's [json output].
-For other test suites used for testing rustdoc, see [Rustdoc tests](../rustdoc.md#tests).
+For other test suites used for testing rustdoc, see [§Rustdoc test suites](../tests/compiletest.md#rustdoc-test-suites).
 
 Tests are run with compiletest, and have access to the usual set of [directives](../tests/directives.md).
 Frequenly used directives here are:
