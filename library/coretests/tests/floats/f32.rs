@@ -1,6 +1,6 @@
 use core::f32;
 
-use super::{assert_approx_eq, assert_biteq};
+use super::assert_biteq;
 
 /// First pattern over the mantissa
 const NAN_MASK1: u32 = 0x002a_aaaa;
@@ -46,25 +46,4 @@ fn test_float_bits_conv() {
 
     assert_eq!(f32::from_bits(masked_nan1).to_bits(), masked_nan1);
     assert_eq!(f32::from_bits(masked_nan2).to_bits(), masked_nan2);
-}
-
-#[test]
-fn test_algebraic() {
-    let a: f32 = 123.0;
-    let b: f32 = 456.0;
-
-    // Check that individual operations match their primitive counterparts.
-    //
-    // This is a check of current implementations and does NOT imply any form of
-    // guarantee about future behavior. The compiler reserves the right to make
-    // these operations inexact matches in the future.
-    let eps_add = if cfg!(miri) { 1e-3 } else { 0.0 };
-    let eps_mul = if cfg!(miri) { 1e-1 } else { 0.0 };
-    let eps_div = if cfg!(miri) { 1e-4 } else { 0.0 };
-
-    assert_approx_eq!(a.algebraic_add(b), a + b, eps_add);
-    assert_approx_eq!(a.algebraic_sub(b), a - b, eps_add);
-    assert_approx_eq!(a.algebraic_mul(b), a * b, eps_mul);
-    assert_approx_eq!(a.algebraic_div(b), a / b, eps_div);
-    assert_approx_eq!(a.algebraic_rem(b), a % b, eps_div);
 }
