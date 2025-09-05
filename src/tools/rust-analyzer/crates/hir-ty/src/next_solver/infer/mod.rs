@@ -37,7 +37,7 @@ use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
 use crate::next_solver::fold::BoundVarReplacerDelegate;
 use crate::next_solver::infer::opaque_types::table::OpaqueTypeStorageEntries;
-use crate::next_solver::{BoundRegion, BoundTy, BoundVarKind};
+use crate::next_solver::{BoundConst, BoundRegion, BoundTy, BoundVarKind};
 
 use super::generics::GenericParamDef;
 use super::{
@@ -864,8 +864,8 @@ impl<'db> InferCtxt<'db> {
             fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: BoundVar) -> Const<'db> {
-                self.args[bv.index()].expect_const()
+            fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+                self.args[bv.var.index()].expect_const()
             }
         }
         let delegate = ToFreshVars { args };

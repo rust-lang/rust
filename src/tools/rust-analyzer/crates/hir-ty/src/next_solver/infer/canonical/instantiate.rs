@@ -6,6 +6,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use crate::next_solver::BoundConst;
 use crate::next_solver::{
     AliasTy, Binder, BoundRegion, BoundTy, Canonical, CanonicalVarValues, Const, DbInterner, Goal,
     ParamEnv, Predicate, PredicateKind, Region, Ty, TyKind,
@@ -95,7 +96,7 @@ where
                 GenericArgKind::Type(ty) => ty,
                 r => panic!("{bound_ty:?} is a type but value is {r:?}"),
             },
-            consts: &mut |bound_ct: BoundVar| match var_values[bound_ct].kind() {
+            consts: &mut |bound_ct: BoundConst| match var_values[bound_ct.var].kind() {
                 GenericArgKind::Const(ct) => ct,
                 c => panic!("{bound_ct:?} is a const but value is {c:?}"),
             },

@@ -2,10 +2,10 @@
 
 use hir_def::{AssocItemId, GeneralConstId, TypeAliasId};
 use rustc_next_trait_solver::delegate::SolverDelegate;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::{
     InferCtxtLike, Interner, PredicatePolarity, TypeFlags, TypeVisitableExt, UniverseIndex,
     inherent::{IntoKind, SliceLike, Span as _, Term as _, Ty as _},
-    lang_items::TraitSolverLangItem,
     solve::{Certainty, NoSolution},
 };
 
@@ -225,14 +225,14 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             }
 
             if trait_pred.polarity() == PredicatePolarity::Positive {
-                match self.0.cx().as_lang_item(trait_pred.def_id()) {
-                    Some(TraitSolverLangItem::Sized) | Some(TraitSolverLangItem::MetaSized) => {
+                match self.0.cx().as_trait_lang_item(trait_pred.def_id()) {
+                    Some(SolverTraitLangItem::Sized) | Some(SolverTraitLangItem::MetaSized) => {
                         let predicate = self.resolve_vars_if_possible(goal.predicate);
                         if sizedness_fast_path(self.cx(), predicate, goal.param_env) {
                             return Some(Certainty::Yes);
                         }
                     }
-                    Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
+                    Some(SolverTraitLangItem::Copy | SolverTraitLangItem::Clone) => {
                         let self_ty =
                             self.resolve_vars_if_possible(trait_pred.self_ty().skip_binder());
                         // Unlike `Sized` traits, which always prefer the built-in impl,

@@ -208,10 +208,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         tracing::debug!(?trait_ref);
                         self.skip_resolved_segment();
                         let segment = self.current_or_prev_segment;
-                        let trait_id = match trait_ref.def_id {
-                            SolverDefId::TraitId(id) => id,
-                            _ => unreachable!(),
-                        };
+                        let trait_id = trait_ref.def_id.0;
                         let found =
                             trait_id.trait_items(self.ctx.db).associated_type_by_name(segment.name);
 

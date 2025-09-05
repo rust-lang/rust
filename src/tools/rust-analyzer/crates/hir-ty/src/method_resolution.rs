@@ -168,11 +168,7 @@ impl TyFingerprint {
                         _ => None,
                     })
                     .next()?;
-                let trait_id = match trait_ref {
-                    SolverDefId::TraitId(id) => id,
-                    _ => panic!("Bad GenericDefId in trait ref"),
-                };
-                TyFingerprint::Dyn(trait_id)
+                TyFingerprint::Dyn(trait_ref.0)
             }
             TyKind::Ref(_, _, mutability) => match mutability {
                 rustc_ast_ir::Mutability::Mut => TyFingerprint::Ref(Mutability::Mut),

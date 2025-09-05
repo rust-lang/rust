@@ -6,6 +6,8 @@ use rustc_type_ir::{
     inherent::{IntoKind, Region as _},
 };
 
+use crate::next_solver::BoundConst;
+
 use super::{
     Binder, BoundRegion, BoundTy, Const, ConstKind, DbInterner, Predicate, Region, Ty, TyKind,
 };
@@ -18,7 +20,7 @@ use super::{
 pub trait BoundVarReplacerDelegate<'db> {
     fn replace_region(&mut self, br: BoundRegion) -> Region<'db>;
     fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db>;
-    fn replace_const(&mut self, bv: BoundVar) -> Const<'db>;
+    fn replace_const(&mut self, bv: BoundConst) -> Const<'db>;
 }
 
 /// A simple delegate taking 3 mutable functions. The used functions must
@@ -27,7 +29,7 @@ pub trait BoundVarReplacerDelegate<'db> {
 pub struct FnMutDelegate<'db, 'a> {
     pub regions: &'a mut (dyn FnMut(BoundRegion) -> Region<'db> + 'a),
     pub types: &'a mut (dyn FnMut(BoundTy) -> Ty<'db> + 'a),
-    pub consts: &'a mut (dyn FnMut(BoundVar) -> Const<'db> + 'a),
+    pub consts: &'a mut (dyn FnMut(BoundConst) -> Const<'db> + 'a),
 }
 
 impl<'db, 'a> BoundVarReplacerDelegate<'db> for FnMutDelegate<'db, 'a> {
@@ -37,7 +39,7 @@ impl<'db, 'a> BoundVarReplacerDelegate<'db> for FnMutDelegate<'db, 'a> {
     fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
         (self.types)(bt)
     }
-    fn replace_const(&mut self, bv: BoundVar) -> Const<'db> {
+    fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
         (self.consts)(bv)
     }
 }

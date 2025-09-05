@@ -2,12 +2,11 @@
 
 use std::ops::ControlFlow;
 
-use hir_def::hir::generics::LocalTypeOrConstParamId;
 use hir_def::{
     AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
-    TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, hir::generics::LocalTypeOrConstParamId,
+    lang_item::LangItem, signatures::TraitFlags,
 };
-use hir_def::{TypeOrConstParamId, TypeParamId};
 use intern::Symbol;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -22,7 +21,7 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     lower_nextsolver::associated_ty_item_bounds,
     next_solver::{
-        Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate,
+        Clause, Clauses, DbInterner, GenericArgs, ParamEnv, SolverDefId, TraitPredicate, TraitRef,
         TypingMode, infer::DbInternerInferExt, mk_param,
     },
     traits::next_trait_solve_in_ctxt,
@@ -56,16 +55,12 @@ pub fn dyn_compatibility(
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
     let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
-    for super_trait in elaborate::supertrait_def_ids(interner, SolverDefId::TraitId(trait_)) {
-        let super_trait = match super_trait {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        if let Some(v) = db.dyn_compatibility_of_trait(super_trait) {
-            return if super_trait == trait_ {
+    for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()) {
+        if let Some(v) = db.dyn_compatibility_of_trait(super_trait.0) {
+            return if super_trait.0 == trait_ {
                 Some(v)
             } else {
-                Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait))
+                Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait.0))
             };
         }
     }
@@ -82,13 +77,8 @@ where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
     let interner = DbInterner::new_with(db, Some(trait_.krate(db)), None);
-    for super_trait in elaborate::supertrait_def_ids(interner, SolverDefId::TraitId(trait_)).skip(1)
-    {
-        let super_trait = match super_trait {
-            SolverDefId::TraitId(id) => id,
-            _ => unreachable!(),
-        };
-        if db.dyn_compatibility_of_trait(super_trait).is_some() {
+    for super_trait in elaborate::supertrait_def_ids(interner, trait_.into()).skip(1) {
+        if db.dyn_compatibility_of_trait(super_trait.0).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
     }
@@ -151,7 +141,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     elaborate::elaborate(interner, predicates.iter().copied()).any(|pred| {
         match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
-                if SolverDefId::TraitId(sized) == trait_pred.def_id()
+                if sized == trait_pred.def_id().0
                     && let rustc_type_ir::TyKind::Param(param_ty) =
                         trait_pred.trait_ref.self_ty().kind()
                     && param_ty.index == 0
@@ -257,15 +247,9 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
                         };
                         if self.super_traits.is_none() {
                             self.super_traits = Some(
-                                elaborate::supertrait_def_ids(
-                                    interner,
-                                    SolverDefId::TraitId(self.trait_),
-                                )
-                                .map(|super_trait| match super_trait {
-                                    SolverDefId::TraitId(id) => id,
-                                    _ => unreachable!(),
-                                })
-                                .collect(),
+                                elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                    .map(|super_trait| super_trait.0)
+                                    .collect(),
                             )
                         }
                         if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
@@ -390,8 +374,7 @@ where
             trait_ref: pred_trait_ref,
             polarity: PredicatePolarity::Positive,
         }) = pred
-            && let SolverDefId::TraitId(trait_id) = pred_trait_ref.def_id
-            && let trait_data = db.trait_signature(trait_id)
+            && let trait_data = db.trait_signature(pred_trait_ref.def_id.0)
             && trait_data.flags.contains(TraitFlags::AUTO)
             && let rustc_type_ir::TyKind::Param(crate::next_solver::ParamTy { index: 0, .. }) =
                 pred_trait_ref.self_ty().kind()
@@ -464,25 +447,17 @@ fn receiver_is_dispatchable<'db>(
         let generic_predicates = &*db.generic_predicates_ns(func.into());
 
         // Self: Unsize<U>
-        let unsize_predicate = crate::next_solver::TraitRef::new(
-            interner,
-            SolverDefId::TraitId(unsize_did),
-            [self_param_ty, unsized_self_ty],
-        );
+        let unsize_predicate =
+            TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let trait_def_id = SolverDefId::TraitId(trait_);
-        let args = GenericArgs::for_item(interner, trait_def_id, |name, index, kind, _| {
+        let args = GenericArgs::for_item(interner, trait_.into(), |name, index, kind, _| {
             if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, name, kind) }
         });
-        let trait_predicate =
-            crate::next_solver::TraitRef::new_from_args(interner, trait_def_id, args);
+        let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-        let meta_sized_predicate = crate::next_solver::TraitRef::new(
-            interner,
-            SolverDefId::TraitId(meta_sized_did),
-            [unsized_self_ty],
-        );
+        let meta_sized_predicate =
+            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]);
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
@@ -497,11 +472,8 @@ fn receiver_is_dispatchable<'db>(
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
-    let predicate = crate::next_solver::TraitRef::new(
-        interner,
-        SolverDefId::TraitId(dispatch_from_dyn_did),
-        [receiver_ty, unsized_receiver_ty],
-    );
+    let predicate =
+        TraitRef::new(interner, dispatch_from_dyn_did.into(), [receiver_ty, unsized_receiver_ty]);
     let goal = crate::next_solver::Goal::new(interner, param_env, predicate);
 
     let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
