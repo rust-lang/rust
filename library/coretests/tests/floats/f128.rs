@@ -1,7 +1,9 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-use super::{assert_approx_eq, assert_biteq};
+#[cfg(any(miri, target_has_reliable_f128_math))]
+use super::assert_approx_eq;
+use super::assert_biteq;
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
@@ -72,25 +74,6 @@ fn test_float_bits_conv() {
 
     assert_eq!(f128::from_bits(masked_nan1).to_bits(), masked_nan1);
     assert_eq!(f128::from_bits(masked_nan2).to_bits(), masked_nan2);
-}
-
-#[test]
-fn test_algebraic() {
-    let a: f128 = 123.0;
-    let b: f128 = 456.0;
-
-    // Check that individual operations match their primitive counterparts.
-    //
-    // This is a check of current implementations and does NOT imply any form of
-    // guarantee about future behavior. The compiler reserves the right to make
-    // these operations inexact matches in the future.
-    let eps = if cfg!(miri) { 1e-6 } else { 0.0 };
-
-    assert_approx_eq!(a.algebraic_add(b), a + b, eps);
-    assert_approx_eq!(a.algebraic_sub(b), a - b, eps);
-    assert_approx_eq!(a.algebraic_mul(b), a * b, eps);
-    assert_approx_eq!(a.algebraic_div(b), a / b, eps);
-    assert_approx_eq!(a.algebraic_rem(b), a % b, eps);
 }
 
 #[test]
