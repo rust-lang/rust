@@ -44,14 +44,14 @@ fn parse_pat_ty<'a>(
         parser.unexpected()?;
     }
 
-    Ok((ty, pat))
+    Ok((ty, Box::new(pat)))
 }
 
-fn ty_pat(kind: TyPatKind, span: Span) -> Box<TyPat> {
-    Box::new(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
+fn ty_pat(kind: TyPatKind, span: Span) -> TyPat {
+    TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None }
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> Box<TyPat> {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPat {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| Box::new(AnonConst { id: DUMMY_NODE_ID, value })),
