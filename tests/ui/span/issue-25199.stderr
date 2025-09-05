@@ -1,5 +1,5 @@
 error[E0597]: `container` does not live long enough
-  --> $DIR/issue-25199.rs:70:27
+  --> $DIR/issue-25199.rs:71:27
    |
 LL |     let container = Container::new();
    |         --------- binding `container` declared here

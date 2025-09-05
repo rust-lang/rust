@@ -1,5 +1,5 @@
 error[E0501]: cannot borrow `*f` as mutable because previous closure requires unique access
-  --> $DIR/borrowck-insert-during-each.rs:16:5
+  --> $DIR/borrowck-insert-during-each.rs:17:5
    |
 LL |       f.foo(
    |       ^ --- first borrow later used by call
@@ -14,7 +14,7 @@ LL | |         })
    | |__________^ second borrow occurs here
 
 error[E0500]: closure requires unique access to `f` but it is already borrowed
-  --> $DIR/borrowck-insert-during-each.rs:18:9
+  --> $DIR/borrowck-insert-during-each.rs:19:9
    |
 LL |     f.foo(
    |     - --- first borrow later used by call
