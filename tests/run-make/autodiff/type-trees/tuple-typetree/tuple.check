@@ -1,0 +1,4 @@
+; Check that tuple TypeTree metadata is correctly generated
+; Should show Float@double at offsets 0, 8, 16 for (f64, f64, f64)
+
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@double}"{{.*}}@test_tuple{{.*}}"enzyme_type"="{[]:Pointer}"

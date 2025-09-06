@@ -1,0 +1,2 @@
+; Check that mixed struct with large array compiles successfully
+CHECK: define{{.*}}"enzyme_type"="{[]:Float@float}"{{.*}}@test_mixed_struct{{.*}}"enzyme_type"="{[]:Pointer}"

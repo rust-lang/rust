@@ -1,0 +1,4 @@
+; Check that f128 TypeTree metadata is correctly generated
+; f128 maps to Unknown in our current implementation since CConcreteType doesn't have DT_F128
+
+CHECK: define{{.*}}"enzyme_type"={{.*}}@test_f128{{.*}}"enzyme_type"="{[]:Pointer}"

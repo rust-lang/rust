@@ -1,0 +1,4 @@
+; Check that i32 TypeTree metadata is correctly generated
+; Should show Integer for i32 values (integers are typically Const in autodiff)
+
+CHECK: define{{.*}}"enzyme_type"="{[]:Integer}"{{.*}}@test_i32{{.*}}"enzyme_type"="{[]:Integer}"
