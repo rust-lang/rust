@@ -1601,7 +1601,7 @@ declare_lint! {
     "detects patterns whose meaning will change in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>",
+        reference: "<https://doc.rust-lang.org/edition-guide/rust-2024/match-ergonomics.html>",
     };
 }
 
