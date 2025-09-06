@@ -9,6 +9,11 @@ pub extern "C" fn f() {}
 #[unsafe(export_name = "bar")]
 pub extern "C" fn g() {}
 
+//@ has foo/fn.escape.html '//*[@class="code-attribute"]' \
+//                         '#[unsafe(export_name = "<script>alert()</script>")]'
+#[unsafe(export_name = "<script>alert()</script>")]
+pub extern "C" fn escape() {}
+
 //@ has foo/fn.example.html '//*[@class="code-attribute"]' '#[unsafe(link_section = ".text")]'
 #[unsafe(link_section = ".text")]
 pub extern "C" fn example() {}
