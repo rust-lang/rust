@@ -685,6 +685,15 @@ impl<'a> AstValidator<'a> {
             });
         }
 
+        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+            self.dcx().emit_err(errors::CoroutineAndCVariadic {
+                spans: vec![coroutine_kind.span(), variadic_param.span],
+                coroutine_kind: coroutine_kind.as_str(),
+                coroutine_span: coroutine_kind.span(),
+                variadic_span: variadic_param.span,
+            });
+        }
+
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free => match sig.header.ext {

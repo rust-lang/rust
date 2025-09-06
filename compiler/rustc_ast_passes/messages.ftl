@@ -84,6 +84,10 @@ ast_passes_const_without_body =
 ast_passes_constraint_on_negative_bound =
     associated type constraints not allowed on negative bounds
 
+ast_passes_coroutine_and_c_variadic = functions cannot be both `{$coroutine_kind}` and C-variadic
+    .const = `{$coroutine_kind}` because of this
+    .variadic = C-variadic because of this
+
 ast_passes_equality_in_where = equality constraints are not yet supported in `where` clauses
     .label = not supported
     .suggestion = if `{$ident}` is an associated type you're trying to set, use the associated type binding syntax
