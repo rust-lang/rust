@@ -947,24 +947,28 @@ fn classify_name_ref<'db>(
             None
         }
     };
-    let after_if_expr = |node: SyntaxNode| {
-        let prev_expr = (|| {
-            let node = match node.parent().and_then(ast::ExprStmt::cast) {
-                Some(stmt) => stmt.syntax().clone(),
-                None => node,
-            };
-            let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
+    let prev_expr = |node: SyntaxNode| {
+        let node = match node.parent().and_then(ast::ExprStmt::cast) {
+            Some(stmt) => stmt.syntax().clone(),
+            None => node,
+        };
+        let prev_sibling = non_trivia_sibling(node.into(), Direction::Prev)?.into_node()?;
 
-            match_ast! {
-                match prev_sibling {
-                    ast::ExprStmt(stmt) => stmt.expr().filter(|_| stmt.semicolon_token().is_none()),
-                    ast::LetStmt(stmt) => stmt.initializer().filter(|_| stmt.semicolon_token().is_none()),
-                    ast::Expr(expr) => Some(expr),
-                    _ => None,
-                }
+        match_ast! {
+            match prev_sibling {
+                ast::ExprStmt(stmt) => stmt.expr().filter(|_| stmt.semicolon_token().is_none()),
+                ast::LetStmt(stmt) => stmt.initializer().filter(|_| stmt.semicolon_token().is_none()),
+                ast::Expr(expr) => Some(expr),
+                _ => None,
             }
-        })();
+        }
+    };
+    let after_if_expr = |node: SyntaxNode| {
+        let prev_expr = prev_expr(node);
         matches!(prev_expr, Some(ast::Expr::IfExpr(_)))
+    };
+    let after_incomplete_let = |node: SyntaxNode| {
+        prev_expr(node).and_then(|it| it.syntax().parent()).and_then(ast::LetStmt::cast)
     };
 
     // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
@@ -1265,10 +1269,14 @@ fn classify_name_ref<'db>(
         };
         let is_func_update = func_update_record(it);
         let in_condition = is_in_condition(&expr);
+        let after_incomplete_let = after_incomplete_let(it.clone()).is_some();
+        let incomplete_expr_stmt =
+            it.parent().and_then(ast::ExprStmt::cast).map(|it| it.semicolon_token().is_none());
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
-            .is_some_and(|it| it.semicolon_token().is_none());
+            .is_some_and(|it| it.semicolon_token().is_none())
+            || after_incomplete_let && incomplete_expr_stmt.unwrap_or(true);
         let in_value = it.parent().and_then(Either::<ast::LetStmt, ast::ArgList>::cast).is_some();
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
@@ -1292,6 +1300,7 @@ fn classify_name_ref<'db>(
                 self_param,
                 in_value,
                 incomplete_let,
+                after_incomplete_let,
                 impl_,
                 in_match_guard,
             },

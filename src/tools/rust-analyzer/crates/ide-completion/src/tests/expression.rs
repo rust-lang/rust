@@ -451,6 +451,155 @@ fn completes_in_let_initializer() {
 }
 
 #[test]
+fn completes_let_else() {
+    check(
+        r#"fn main() { let _ = 2 $0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+
+    check(
+        r#"fn main() { let _ = 2 el$0 }"#,
+        expect![[r#"
+            fn main() fn()
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw else
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+
+    check_edit(
+        "else",
+        r#"
+fn main() {
+    let _ = 2 $0
+}
+"#,
+        r#"
+fn main() {
+    let _ = 2 else {
+    $0
+};
+}
+"#,
+    );
+
+    check_edit(
+        "else",
+        r#"
+fn main() {
+    let _ = 2 el$0
+}
+"#,
+        r#"
+fn main() {
+    let _ = 2 else {
+    $0
+};
+}
+"#,
+    );
+
+    check_edit(
+        "else",
+        r#"
+fn main() {
+    let _ = 2 $0;
+}
+"#,
+        r#"
+fn main() {
+    let _ = 2 else {
+    $0
+};
+}
+"#,
+    );
+
+    check_edit(
+        "else",
+        r#"
+fn main() {
+    let _ = 2 el$0;
+}
+"#,
+        r#"
+fn main() {
+    let _ = 2 else {
+    $0
+};
+}
+"#,
+    );
+}
+
+#[test]
 fn completes_after_ref_expr() {
     check(
         r#"fn main() { let _ = &$0 }"#,
