@@ -1,9 +1,9 @@
 //@ edition:2018
 
-use st::cell::Cell; //~ ERROR failed to resolve: use of unresolved module or unlinked crate `st`
+use st::cell::Cell; //~ ERROR cannot find module or crate `st`
 
 mod bar {
-    pub fn bar() { bar::baz(); } //~ ERROR failed to resolve: function `bar` is not a crate or module
+    pub fn bar() { bar::baz(); } //~ ERROR cannot find module or crate `bar`
 
     fn baz() {}
 }
@@ -11,7 +11,7 @@ mod bar {
 use bas::bar; //~ ERROR unresolved import `bas`
 
 struct Foo {
-    bar: st::cell::Cell<bool> //~ ERROR failed to resolve: use of unresolved module or unlinked crate `st`
+    bar: st::cell::Cell<bool> //~ ERROR cannot find module or crate `st`
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `n`
+error[E0433]: cannot find module or crate `n` in this scope
   --> $DIR/issue-120856.rs:1:37
    |
 LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
@@ -9,7 +9,7 @@ LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;
    |
    = help: you might be missing a crate named `n`
 
-error[E0433]: failed to resolve: use of unresolved module or unlinked crate `m`
+error[E0433]: cannot find module or crate `m` in this scope
   --> $DIR/issue-120856.rs:1:25
    |
 LL | pub type Archived<T> = <m::Alias as n::Trait>::Archived;

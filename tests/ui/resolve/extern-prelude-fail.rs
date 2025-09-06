@@ -6,5 +6,5 @@
 
 fn main() {
     use extern_prelude::S; //~ ERROR unresolved import `extern_prelude`
-    let s = ::extern_prelude::S; //~ ERROR failed to resolve
+    let s = ::extern_prelude::S; //~ ERROR cannot find module or crate `extern_prelude`
 }
