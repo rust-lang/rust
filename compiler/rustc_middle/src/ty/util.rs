@@ -1409,7 +1409,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_structural_eq_shallow(self, tcx: TyCtxt<'tcx>) -> bool {
         match self.kind() {
             // Look for an impl of `StructuralPartialEq`.
-            ty::Adt(..) => tcx.has_structural_eq_impl(self),
+            ty::Adt(..) | ty::Field(..) => tcx.has_structural_eq_impl(self),
 
             // Primitive types that satisfy `Eq`.
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => true,

@@ -37,7 +37,8 @@ where
         | ty::FnPtr(..)
         | ty::Error(_)
         | ty::Never
-        | ty::Char => Ok(ty::Binder::dummy(vec![])),
+        | ty::Char
+        | ty::Field(..) => Ok(ty::Binder::dummy(vec![])),
 
         // This branch is only for `experimental_default_bounds`.
         // Other foreign types were rejected earlier in
@@ -377,6 +378,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Adt(_, _)
+        | ty::Field(_, _)
         | ty::Foreign(_)
         | ty::Str
         | ty::Array(_, _)
@@ -550,6 +552,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Adt(_, _)
+        | ty::Field(_, _)
         | ty::Foreign(_)
         | ty::Str
         | ty::Array(_, _)
@@ -700,6 +703,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Adt(_, _)
+        | ty::Field(_, _)
         | ty::Foreign(_)
         | ty::Str
         | ty::Array(_, _)

@@ -5,6 +5,7 @@
 
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::ControlFlow;
 
 use rustc_ast_ir::Mutability;
 
@@ -73,6 +74,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn new_error(interner: I, guar: I::ErrorGuaranteed) -> Self;
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
+
+    fn new_field_type(interner: I, container: I::Ty, field_path: I::FieldPath) -> Self;
 
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 

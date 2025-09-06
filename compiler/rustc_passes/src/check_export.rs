@@ -292,6 +292,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
             ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Bool | ty::Char | ty::Error(_) => {}
 
             ty::Array(_, _)
+            | ty::Field(..)
             | ty::Ref(_, _, _)
             | ty::Param(_)
             | ty::Closure(_, _)

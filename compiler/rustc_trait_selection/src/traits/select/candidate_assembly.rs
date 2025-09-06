@@ -683,6 +683,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Uint(_)
                 | ty::Float(_)
                 | ty::Adt(_, _)
+                | ty::Field(_, _)
                 | ty::Foreign(_)
                 | ty::Str
                 | ty::Array(_, _)
@@ -863,6 +864,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Pat(_, _)
                 | ty::Slice(_)
                 | ty::Adt(..)
+                | ty::Field(..)
                 | ty::RawPtr(_, _)
                 | ty::Ref(..)
                 | ty::FnDef(..)
@@ -1317,6 +1319,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)
@@ -1357,6 +1360,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Foreign(..)
             | ty::Str
             | ty::Array(..)
