@@ -99,13 +99,14 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     opaque((x * y) - y);
     opaque((x * y) - y);
 
-    // We cannot substitute through an immutable reference.
+    // We can substitute through an immutable reference.
     // CHECK: [[ref:_.*]] = &_3;
-    // CHECK: [[deref:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add(move [[deref]], copy _1);
+    // CHECK: [[deref:_.*]] = copy _3;
+    // CHECK: [[addref:_.*]] = Add(copy _3, copy _1);
     // CHECK: opaque::<u64>(move [[addref]])
-    // CHECK: [[deref2:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref2:_.*]] = Add(move [[deref2]], copy _1);
+    // But `_3` is not SSA so we cannot merge the values in two different blocks.
+    // CHECK: [[deref2:_.*]] = copy _3;
+    // CHECK: [[addref2:_.*]] = Add(copy _3, copy _1);
     // CHECK: opaque::<u64>(move [[addref2]])
     let a = &z;
     opaque(*a + x);
@@ -141,13 +142,14 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
 
     // We still cannot substitute again, and never with the earlier computations.
     // Important: `e` is not `a`!
-    // CHECK: [[ref2:_.*]] = &_3;
-    // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(move [[deref2]], copy _1);
-    // CHECK: opaque::<u64>(move [[addref2]])
-    // CHECK: [[deref3:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref3:_.*]] = Add(move [[deref3]], copy _1);
+    // CHECK: [[ref3:_.*]] = &_3;
+    // CHECK: [[deref3:_.*]] = copy _3;
+    // CHECK: [[addref3:_.*]] = Add(copy _3, copy _1);
     // CHECK: opaque::<u64>(move [[addref3]])
+    // And `_3` is not SSA so we cannot merge the values in two different blocks.
+    // CHECK: [[deref4:_.*]] = copy _3;
+    // CHECK: [[addref4:_.*]] = Add(copy _3, copy _1);
+    // CHECK: opaque::<u64>(move [[addref4]])
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
@@ -1065,8 +1067,8 @@ fn dereference_indexing(array: [u8; 2], index: usize) {
         &array[i]
     };
 
-    // CHECK-NOT: [{{.*}}]
-    // CHECK: [[tmp:_.*]] = copy (*[[a]]);
+    // CHECK-NOT: StorageDead([[i]]);
+    // CHECK: [[tmp:_.*]] = copy _1[[[i]]];
     // CHECK: opaque::<u8>(move [[tmp]])
     opaque(*a);
 }
