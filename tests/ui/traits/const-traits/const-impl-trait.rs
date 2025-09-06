@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
-//@ known-bug: #110395
+//@ check-pass
 
-// Broken until `(): const PartialEq`
+// Fixed: `(): const PartialEq` is now implemented
 
 #![allow(incomplete_features)]
 #![feature(const_trait_impl, const_cmp, const_destruct)]

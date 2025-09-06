@@ -51,7 +51,8 @@ pub use crate::ops::{
 /// assert_eq!(3 + 4 + 5, Range::from(3..6).into_iter().sum());
 /// ```
 #[lang = "RangeCopy"]
-#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Default, Hash)]
+#[derive_const(PartialEq, Eq)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).

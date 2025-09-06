@@ -38,7 +38,8 @@ use crate::hash::Hash;
 /// [slicing index]: crate::slice::SliceIndex
 #[lang = "RangeFull"]
 #[doc(alias = "..")]
-#[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Default, Hash)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -75,7 +76,8 @@ impl fmt::Debug for RangeFull {
 /// ```
 #[lang = "Range"]
 #[doc(alias = "..")]
-#[derive(Clone, Default, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Default, Hash)] // not Copy -- see #27186
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -184,7 +186,8 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// ```
 #[lang = "RangeFrom"]
 #[doc(alias = "..")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Hash)] // not Copy -- see #27186
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -266,7 +269,8 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// [slicing index]: crate::slice::SliceIndex
 #[lang = "RangeTo"]
 #[doc(alias = "..")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Hash)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
@@ -340,7 +344,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
-#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
+#[derive(Clone, Hash)] // not Copy -- see #27186
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -587,7 +592,8 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// [slicing index]: crate::slice::SliceIndex
 #[lang = "RangeToInclusive"]
 #[doc(alias = "..=")]
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Hash)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeToInclusive<Idx> {
     /// The upper bound of the range (inclusive)
@@ -668,7 +674,8 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 ///
 /// [`BTreeMap::range`]: ../../std/collections/btree_map/struct.BTreeMap.html#method.range
 #[stable(feature = "collections_bound", since = "1.17.0")]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash)]
+#[derive_const(PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.
     #[stable(feature = "collections_bound", since = "1.17.0")]

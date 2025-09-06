@@ -15,7 +15,8 @@ use crate::{ops, ptr, range};
 /// culturally-accepted standards requires locale-specific data that is outside the scope of
 /// the `str` type.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for str {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for str {
     #[inline]
     fn cmp(&self, other: &str) -> Ordering {
         self.as_bytes().cmp(other.as_bytes())
@@ -32,7 +33,8 @@ impl const PartialEq for str {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for str {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Eq for str {}
 
 /// Implements comparison operations on strings.
 ///
@@ -42,7 +44,8 @@ impl Eq for str {}
 /// culturally-accepted standards requires locale-specific data that is outside the scope of
 /// the `str` type.
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for str {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for str {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<Ordering> {
         Some(self.cmp(other))

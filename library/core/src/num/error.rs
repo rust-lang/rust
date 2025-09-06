@@ -6,7 +6,8 @@ use crate::fmt;
 
 /// The error type returned when a checked integral type conversion fails.
 #[stable(feature = "try_from", since = "1.34.0")]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone)]
+#[derive_const(PartialEq, Eq)]
 pub struct TryFromIntError(pub(crate) ());
 
 #[stable(feature = "try_from", since = "1.34.0")]
@@ -60,7 +61,8 @@ impl const From<!> for TryFromIntError {
 ///     println!("Failed conversion to i32: {e}");
 /// }
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError {
     pub(super) kind: IntErrorKind,
@@ -78,7 +80,8 @@ pub struct ParseIntError {
 /// # }
 /// ```
 #[stable(feature = "int_error_matching", since = "1.55.0")]
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash)]
+#[derive_const(PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.

@@ -170,7 +170,8 @@ pub trait Pattern: Sized {
 /// Result of calling [`Pattern::as_utf8_pattern()`].
 /// Can be used for inspecting the contents of a [`Pattern`] in cases
 /// where the underlying representation can be represented as UTF-8.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Debug)]
+#[derive_const(Eq, PartialEq)]
 pub enum Utf8Pattern<'a> {
     /// Type returned by String and str types.
     StringPattern(&'a [u8]),
@@ -181,7 +182,8 @@ pub enum Utf8Pattern<'a> {
 // Searcher
 
 /// Result of calling [`Searcher::next()`] or [`ReverseSearcher::next_back()`].
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Debug)]
+#[derive_const(Eq, PartialEq)]
 pub enum SearchStep {
     /// Expresses that a match of the pattern has been found at
     /// `haystack[a..b]`.

@@ -591,7 +591,8 @@ impl fmt::Display for CaseMappingIter {
 
 /// The error type returned when a checked char conversion fails.
 #[stable(feature = "u8_from_char", since = "1.59.0")]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone)]
+#[derive_const(PartialEq, Eq)]
 pub struct TryFromCharError(pub(crate) ());
 
 #[stable(feature = "u8_from_char", since = "1.59.0")]

@@ -68,7 +68,8 @@ pub enum IpAddr {
 /// assert!("0xcb.0x0.0x71.0x00".parse::<Ipv4Addr>().is_err()); // all octets are in hex
 /// ```
 #[rustc_diagnostic_item = "Ipv4Addr"]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     octets: [u8; 4],
@@ -161,7 +162,8 @@ impl Hash for Ipv4Addr {
 /// assert_eq!(localhost.is_loopback(), true);
 /// ```
 #[rustc_diagnostic_item = "Ipv6Addr"]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
+#[derive_const(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     octets: [u8; 16],
@@ -1183,7 +1185,8 @@ impl PartialEq<IpAddr> for Ipv4Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for Ipv4Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -1213,7 +1216,8 @@ impl PartialOrd<IpAddr> for Ipv4Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv4Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for Ipv4Addr {
     #[inline]
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
         self.octets.cmp(&other.octets)
@@ -2177,7 +2181,8 @@ impl PartialEq<Ipv6Addr> for IpAddr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl PartialOrd for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const PartialOrd for Ipv6Addr {
     #[inline]
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -2207,7 +2212,8 @@ impl PartialOrd<IpAddr> for Ipv6Addr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Ord for Ipv6Addr {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl const Ord for Ipv6Addr {
     #[inline]
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
         self.segments().cmp(&other.segments())

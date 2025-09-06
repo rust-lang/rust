@@ -1,4 +1,6 @@
-//@ known-bug: #110395
+//@ check-pass
+
+// Fixed: `(): const PartialEq` is now implemented, allowing const derives to work with unit types
 
 #![feature(const_trait_impl, const_default, const_cmp, derive_const)]
 

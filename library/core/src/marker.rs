@@ -828,24 +828,28 @@ impl<T: PointeeSized> Hash for PhantomData<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::PartialEq for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: PointeeSized> const cmp::PartialEq for PhantomData<T> {
     fn eq(&self, _other: &PhantomData<T>) -> bool {
         true
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::Eq for PhantomData<T> {}
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: PointeeSized> const cmp::Eq for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::PartialOrd for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: PointeeSized> const cmp::PartialOrd for PhantomData<T> {
     fn partial_cmp(&self, _other: &PhantomData<T>) -> Option<cmp::Ordering> {
         Option::Some(cmp::Ordering::Equal)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PointeeSized> cmp::Ord for PhantomData<T> {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: PointeeSized> const cmp::Ord for PhantomData<T> {
     fn cmp(&self, _other: &PhantomData<T>) -> cmp::Ordering {
         cmp::Ordering::Equal
     }
@@ -1021,7 +1025,8 @@ pub auto trait Unpin {}
 // marker in your struct acts as if you wrapped the entire struct in an `UnsafePinned`. This type
 // will likely eventually be deprecated, and all new code should be using `UnsafePinned` instead.
 #[stable(feature = "pin", since = "1.33.0")]
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Copy, Clone, Hash)]
+#[derive_const(Eq, PartialEq, Ord, PartialOrd)]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]

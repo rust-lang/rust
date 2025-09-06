@@ -8,7 +8,8 @@ use crate::ops::{self, ControlFlow};
 ///
 /// This is returned by [`Future::poll`](core::future::Future::poll).
 #[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, Hash)]
+#[derive_const(Eq, PartialEq, Ord, PartialOrd)]
 #[lang = "Poll"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub enum Poll<T> {

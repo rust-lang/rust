@@ -28,7 +28,8 @@ use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 /// assert_eq!(socket.port(), 8080);
 /// assert_eq!(socket.is_ipv4(), true);
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Hash)]
+#[derive_const(PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
     /// An IPv4 socket address.
@@ -76,7 +77,8 @@ pub enum SocketAddr {
 /// assert_eq!(socket.ip(), &Ipv4Addr::new(127, 0, 0, 1));
 /// assert_eq!(socket.port(), 8080);
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Hash)]
+#[derive_const(Eq, PartialEq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 {
     ip: Ipv4Addr,
@@ -142,7 +144,8 @@ pub struct SocketAddrV4 {
 /// with_scope.set_scope_id(3);
 /// assert_eq!("[2001:db8::1%3]:8080".parse(), Ok(with_scope));
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Hash)]
+#[derive_const(Eq, PartialEq, Ord, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 {
     ip: Ipv6Addr,

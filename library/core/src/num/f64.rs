@@ -1351,9 +1351,10 @@ impl f64 {
     /// }
     /// ```
     #[stable(feature = "total_cmp", since = "1.62.0")]
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
     #[must_use]
     #[inline]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i64;
         let mut right = other.to_bits() as i64;
 

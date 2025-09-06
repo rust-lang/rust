@@ -42,7 +42,8 @@ use crate::fmt;
 ///     }
 /// }
 /// ```
-#[derive(Copy, Eq, PartialEq, Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
+#[derive_const(Eq, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
     pub(super) valid_up_to: usize,
@@ -129,7 +130,8 @@ impl Error for Utf8Error {}
 /// An error returned when parsing a `bool` using [`from_str`] fails
 ///
 /// [`from_str`]: super::FromStr::from_str
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
+#[derive_const(PartialEq, Eq)]
 #[non_exhaustive]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError;
