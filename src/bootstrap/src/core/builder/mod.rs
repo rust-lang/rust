@@ -1126,6 +1126,7 @@ impl<'a> Builder<'a> {
                 test::RustdocJson,
                 test::HtmlCheck,
                 test::RustInstaller,
+                test::Stdarch,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
                 // Run run-make last, since these won't pass without make on Windows
