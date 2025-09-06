@@ -11,6 +11,12 @@ LL | |     });
    | |______- argument requires that `x` is borrowed for `'static`
 LL |   }
    |   - `x` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/regions-infer-proc-static-upvar.rs:4:19
+   |
+LL | fn foo<F:FnOnce()+'static>(_p: F) { }
+   |                   ^^^^^^^
 
 error: aborting due to 1 previous error
 
