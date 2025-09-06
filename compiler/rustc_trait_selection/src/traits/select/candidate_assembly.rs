@@ -1206,7 +1206,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Fallback to whatever user-defined impls or param-env clauses exist in this case.
-            ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
+            ty::Adt(..) | ty::Field(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {}
 
             ty::Infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;

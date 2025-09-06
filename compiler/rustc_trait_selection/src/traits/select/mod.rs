@@ -2222,6 +2222,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Slice(_)
             | ty::Dynamic(..)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Alias(..)
             | ty::Param(..)
             | ty::Placeholder(..)
