@@ -1870,6 +1870,34 @@ unsafe extern "C" {
         Scope: &'ll Metadata,
         InlinedAt: Option<&'ll Metadata>,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateQualifiedType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Tag: c_uint,
+        Type: &'ll DIType,
+    ) -> &'ll DIDerivedType;
+
+    pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        PointeeTy: &'ll DIType,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        AddressSpace: c_uint,
+        Name: *const c_char,
+        NameLen: size_t,
+    ) -> &'ll DIDerivedType;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateTypeArray<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Data: *const Option<&'ll DIDescriptor>, //FIXME: is it really const?
+        Length: size_t,
+    ) -> &'ll DIArray;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateSubrange<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Lo: i64,
+        Count: i64,
+    ) -> &'ll DISubrange;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2228,16 +2256,6 @@ unsafe extern "C" {
         Scope: Option<&'a DIScope>,
     ) -> &'a DIDerivedType;
 
-    pub(crate) fn LLVMRustDIBuilderCreatePointerType<'a>(
-        Builder: &DIBuilder<'a>,
-        PointeeTy: &'a DIType,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        AddressSpace: c_uint,
-        Name: *const c_char,
-        NameLen: size_t,
-    ) -> &'a DIDerivedType;
-
     pub(crate) fn LLVMRustDIBuilderCreateStructType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIDescriptor>,
@@ -2298,12 +2316,6 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIDerivedType;
 
-    pub(crate) fn LLVMRustDIBuilderCreateQualifiedType<'a>(
-        Builder: &DIBuilder<'a>,
-        Tag: c_uint,
-        Type: &'a DIType,
-    ) -> &'a DIDerivedType;
-
     pub(crate) fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
         Context: Option<&'a DIScope>,
@@ -2342,18 +2354,6 @@ unsafe extern "C" {
         Ty: &'a DIType,
         Subscripts: &'a DIArray,
     ) -> &'a DIType;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
-        Builder: &DIBuilder<'a>,
-        Lo: i64,
-        Count: i64,
-    ) -> &'a DISubrange;
-
-    pub(crate) fn LLVMRustDIBuilderGetOrCreateArray<'a>(
-        Builder: &DIBuilder<'a>,
-        Ptr: *const Option<&'a DIDescriptor>,
-        Count: c_uint,
-    ) -> &'a DIArray;
 
     pub(crate) fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
         Builder: &DIBuilder<'a>,
