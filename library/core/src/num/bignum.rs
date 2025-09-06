@@ -336,41 +336,102 @@ macro_rules! define_bignum {
                 (self, borrow)
             }
 
-            /// Divide self by another bignum, overwriting `q` with the quotient and `r` with the
-            /// remainder.
+            /// Knuth’s Algorithm D implementation
             pub fn div_rem(&self, d: &$name, q: &mut $name, r: &mut $name) {
-                // Stupid slow base-2 long division taken from
-                // https://en.wikipedia.org/wiki/Division_algorithm
-                // FIXME use a greater base ($ty) for the long division.
                 assert!(!d.is_zero());
                 let digitbits = <$ty>::BITS as usize;
+
                 for digit in &mut q.base[..] {
                     *digit = 0;
                 }
                 for digit in &mut r.base[..] {
                     *digit = 0;
                 }
-                r.size = d.size;
-                q.size = 1;
-                let mut q_is_zero = true;
-                let end = self.bit_length();
-                for i in (0..end).rev() {
-                    r.mul_pow2(1);
-                    r.base[0] |= self.get_bit(i) as $ty;
-                    if &*r >= d {
-                        r.sub(d);
-                        // Set bit `i` of q to 1.
-                        let digit_idx = i / digitbits;
-                        let bit_idx = i % digitbits;
-                        if q_is_zero {
-                            q.size = digit_idx + 1;
-                            q_is_zero = false;
+
+                if d.size == 1 {
+                    let mut tmp = self.clone();
+                    let (_q, rem) = tmp.div_rem_small(d.base[0]);
+                    *q = tmp;
+                    r.base[0] = rem;
+                    r.size = 1;
+                    return;
+                }
+
+                if self.is_zero() {
+                    q.size = 1;
+                    r.size = 1;
+                    return;
+                }
+
+                q.size = self.size;
+                r.size = 1;
+                r.base[0] = 0;
+
+                for i in (0..self.size).rev() {
+                    r.mul_pow2(digitbits);
+
+                    r.base[0] = self.base[i];
+
+                    while r.size > 1 && r.base[r.size - 1] == 0 {
+                        r.size -= 1;
+                    }
+
+                    if &*r < d {
+                        q.base[i] = 0;
+                        continue;
+                    }
+
+                    let r_top = r.base[r.size - 1] as u128;
+                    let r_next = if r.size >= 2 { r.base[r.size - 2] as u128 } else { 0u128 };
+                    let v = (r_top << digitbits) | r_next;
+                    let u = d.base[d.size - 1] as u128;
+
+                    // initial estimate
+                    let mut qhat = (v / u) as $ty;
+                    let base_limit = if digitbits == 64 {
+                        // avoid (1u128<<64) overflow: handle separately
+                        u128::MAX as u128
+                    } else {
+                        (1u128 << digitbits) - 1
+                    };
+                    if (qhat as u128) > base_limit {
+                        qhat = base_limit as $ty;
+                    }
+
+                    let mut prod = d.clone();
+                    if qhat != 0 {
+                        prod.mul_small(qhat);
+                    } else {
+                        prod.size = 1;
+                        prod.base[0] = 0;
+                    }
+
+                    while &prod > &*r {
+                        qhat = qhat - 1;
+                        // we know prod >= d because qhat was at least 1 when prod > r >= d
+                        prod.sub(d);
+                    }
+
+                    // Set quotient digit
+                    q.base[i] = qhat;
+
+                    if qhat != 0 {
+                        r.sub(&prod);
+                        while r.size > 1 && r.base[r.size - 1] == 0 {
+                            r.size -= 1;
                         }
-                        q.base[digit_idx] |= 1 << bit_idx;
                     }
                 }
-                debug_assert!(q.base[q.size..].iter().all(|&d| d == 0));
-                debug_assert!(r.base[r.size..].iter().all(|&d| d == 0));
+
+                let mut qsz = q.size;
+                while qsz > 1 && q.base[qsz - 1] == 0 {
+                    qsz -= 1;
+                }
+                q.size = qsz;
+
+                if r.size == 0 {
+                    r.size = 1;
+                }
             }
         }
 
