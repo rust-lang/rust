@@ -805,6 +805,7 @@ where
                 | ty::Float(_)
                 | ty::FnPtr(..)
                 | ty::Never
+                | ty::Field(..)
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
