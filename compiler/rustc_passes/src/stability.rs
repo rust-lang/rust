@@ -21,8 +21,8 @@ use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability::{AllowUnstable, Deprecated, DeprecationEntry, EvalResult};
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{AssocContainer, TyCtxt};
 use rustc_session::lint;
 use rustc_session::lint::builtin::{DEPRECATED, INEFFECTIVE_UNSTABLE_TRAIT_IMPL};
 use rustc_span::{Span, Symbol, sym};
@@ -486,8 +486,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         self.check_compatible_stability(ii.owner_id.def_id);
-        let impl_def_id = self.tcx.hir_get_parent_item(ii.hir_id());
-        if self.tcx.impl_trait_ref(impl_def_id).is_none() {
+        if let hir::ImplItemImplKind::Inherent { .. } = ii.impl_kind {
             self.check_missing_stability(ii.owner_id.def_id);
             self.check_missing_const_stability(ii.owner_id.def_id);
         }
@@ -711,7 +710,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 for impl_item_ref in items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.owner_id);
 
-                    if let Some(def_id) = impl_item.trait_item_def_id {
+                    if let AssocContainer::TraitImpl(Ok(def_id)) = impl_item.container {
                         // Pass `None` to skip deprecation warnings.
                         self.tcx.check_stability(
                             def_id,
