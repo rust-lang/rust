@@ -135,7 +135,16 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { unwind, .. } => {
+            TerminatorKind::Call { ref func, unwind, .. } => {
+                // We track calls because they make our function not a leaf (and in theory, the
+                // number of calls indicates how likely this function is to perturb other CGUs).
+                // But intrinsics don't have a body that gets assigned to a CGU, so they are
+                // ignored.
+                if let Some((fn_def_id, _)) = func.const_fn_def()
+                    && self.tcx.has_attr(fn_def_id, sym::rustc_intrinsic)
+                {
+                    return;
+                }
                 self.calls += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.landing_pads += 1;

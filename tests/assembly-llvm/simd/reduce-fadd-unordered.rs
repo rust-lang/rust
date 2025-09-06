@@ -16,6 +16,7 @@ use std::simd::*;
 // It would emit about an extra fadd, depending on the architecture.
 
 // CHECK-LABEL: reduce_fadd_negative_zero
+#[inline(never)]
 pub unsafe fn reduce_fadd_negative_zero(v: f32x4) -> f32 {
     // x86_64: addps
     // x86_64-NEXT: movshdup
