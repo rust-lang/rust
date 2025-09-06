@@ -1,0 +1,261 @@
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:188:31
+   |
+LL |     macro_rules! m4 { () => { a } }
+   |                               ^
+...
+LL |     crate::m4!();
+   |     ------------ in this macro invocation
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:183:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m4` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:226:31
+   |
+LL |     crate::m5!();
+   |     ------------ in this macro invocation
+...
+LL |     macro_rules! m5 { () => { a } }
+   |                               ^
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:221:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m5` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:188:31
+   |
+LL |     macro_rules! m4 { () => { a } }
+   |                               ^
+...
+LL |     crate::m4!();
+   |     ------------ in this macro invocation
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:183:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m4` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:226:31
+   |
+LL |     crate::m5!();
+   |     ------------ in this macro invocation
+...
+LL |     macro_rules! m5 { () => { a } }
+   |                               ^
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:221:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m5` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:188:31
+   |
+LL |     macro_rules! m4 { () => { a } }
+   |                               ^
+...
+LL |     crate::m4!();
+   |     ------------ in this macro invocation
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:183:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m4` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: cannot access the local binding `a`
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:226:31
+   |
+LL |     crate::m5!();
+   |     ------------ in this macro invocation
+...
+LL |     macro_rules! m5 { () => { a } }
+   |                               ^
+   |
+note: `a` is defined here
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:221:9
+   |
+LL |     let a: BindingF = 42;
+   |         ^
+   = note: this error originates in the macro `crate::m5` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:188:31
+   |
+LL |     macro_rules! m4 { () => { a } }
+   |                               ^ not found in this scope
+...
+LL |     crate::m4!();
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `crate::m4` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:226:31
+   |
+LL |     crate::m5!();
+   |     ------------ in this macro invocation
+...
+LL |     macro_rules! m5 { () => { a } }
+   |                               ^ not found in this scope
+   |
+   = note: this error originates in the macro `crate::m5` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:188:31
+   |
+LL |     macro_rules! m4 { () => { a } }
+   |                               ^ not found in this scope
+...
+LL |     crate::m4!();
+   |     ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `crate::m4` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:226:31
+   |
+LL |     crate::m5!();
+   |     ------------ in this macro invocation
+...
+LL |     macro_rules! m5 { () => { a } }
+   |                               ^ not found in this scope
+   |
+   = note: this error originates in the macro `crate::m5` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:20:29
+   |
+LL |     let a: BindingF = m!();
+   |                       ---- in this macro invocation
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:48:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+LL |     let a1: BindingF = m!();
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:64:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:79:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:79:29
+   |
+LL |     let a1: BindingF = m!();
+   |                        ---- in this macro invocation
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:135:29
+   |
+LL |     let a0: BindingF = m!();
+   |                        ---- in this macro invocation
+...
+LL |     let (f, _) = (|| -> BindingF { 42 }, ());
+   |          - `f` is defined here
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:135:29
+   |
+LL |     let a1: BindingF = m!();
+   |                        ---- in this macro invocation
+LL |     let (f, _) = (|| -> BindingF { 42 }, ());
+   |          - `f` is defined here
+...
+LL |     macro_rules! m {() => ( f() )}
+   |                             ^ not found in this scope
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:170:17
+   |
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+...
+LL |     let m2_0: i32 = m2!();
+   |                     ----- in this macro invocation
+...
+LL |         () => { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/fresh-should-shadow-definitation-in-macro-expand.rs:170:17
+   |
+LL |     let f = || -> BindingF { 42 };
+   |         - `f` is defined here
+...
+LL |     let m2_1: i32 = m2!();
+   |                     ----- in this macro invocation
+...
+LL |         () => { f() }
+   |                 ^ not found in this scope
+   |
+   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

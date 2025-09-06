@@ -53,6 +53,10 @@ resolve_binding_shadows_something_unacceptable =
 resolve_binding_shadows_something_unacceptable_suggestion =
     try specify the pattern arguments
 
+resolve_cannot_access_the_local_binding =
+    cannot access the local binding `{$name}`
+    .note = `{$name}` is defined here
+
 resolve_cannot_be_reexported_crate_public =
     `{$ident}` is only public within the crate, and cannot be re-exported outside
 

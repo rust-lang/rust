@@ -32,6 +32,7 @@ use tracing::debug;
 
 use super::NoConstantGenericsReason;
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::ident::ResolveIdentInBlockRes;
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
     LifetimeUseSet, QSelf, RibKind,
@@ -438,6 +439,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
+        self.detect_is_defined_later_in_block_for_macro_expansion(&mut err, path, source);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
@@ -898,7 +900,8 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if path.len() == 1 {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
-                if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
+                if let RibKind::Module(module) | RibKind::Block { module: Some(module), .. } =
+                    rib.kind
                     && let Some(did) = find_doc_alias_name(self.r, module, item.name)
                 {
                     return Some((did, item));
@@ -1246,6 +1249,37 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
         true
+    }
+
+    fn detect_is_defined_later_in_block_for_macro_expansion(
+        &mut self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        source: PathSource<'_, 'ast, 'ra>,
+    ) {
+        let ns = source.namespace();
+        if ns != Namespace::ValueNS {
+            return;
+        }
+        let [segment] = path else { return };
+        let mut ident = segment.ident;
+        for (rib_index, rib) in self.ribs[ns].iter().enumerate().rev() {
+            if let RibKind::Block { .. } = rib.kind
+                && let ResolveIdentInBlockRes::DefinedLater { def_site } =
+                    self.r.resolve_ident_in_block_lexical_scope(
+                        &mut ident,
+                        ns,
+                        &self.parent_scope,
+                        None,
+                        rib_index,
+                        &self.ribs[ns],
+                        None,
+                    )
+            {
+                err.span_label(def_site, format!("`{}` is defined here", segment.ident.name));
+                break;
+            }
+        }
     }
 
     fn detect_missing_binding_available_from_pattern(
@@ -2438,7 +2472,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) -> TypoCandidate {
         let mut names = Vec::new();
         if let [segment] = path {
-            let mut ctxt = segment.ident.span.ctxt();
+            let ctxt = segment.ident.span.ctxt();
 
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
@@ -2456,7 +2490,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                 }
 
-                if let RibKind::Block(Some(module)) = rib.kind {
+                if let RibKind::Block { module: Some(module), .. } = rib.kind {
                     self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
                 } else if let RibKind::Module(module) = rib.kind {
                     // Encountered a module item, abandon ribs and look into that module and preludes.
@@ -2469,14 +2503,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         filter_fn,
                     );
                     break;
-                }
-
-                if let RibKind::MacroDefinition(def) = rib.kind
-                    && def == self.r.macro_def(ctxt)
-                {
-                    // If an invocation of this macro created `ident`, give up on `ident`
-                    // and switch to `ident`'s source from the macro definition.
-                    ctxt.remove_mark();
                 }
             }
         } else {
