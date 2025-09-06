@@ -7,6 +7,8 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
+use std::ops::ControlFlow;
+
 use rustc_hir as hir;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::DefKind;
@@ -14,7 +16,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
-use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use rustc_middle::ty::{self, CrateInherentImpls, FieldPath, Ty, TyCtxt};
 use rustc_span::{ErrorGuaranteed, sym};
 
 use crate::errors;
@@ -112,6 +114,40 @@ impl<'tcx> InherentCollect<'tcx> {
         }
     }
 
+    fn check_field_type(
+        &mut self,
+        impl_def_id: LocalDefId,
+        container: Ty<'tcx>,
+        field_path: FieldPath<'tcx>,
+    ) -> Result<(), ErrorGuaranteed> {
+        if !matches!(container.kind(), ty::Adt(..)) {
+            return Err(self
+                .tcx
+                .dcx()
+                .emit_err(errors::InherentTyOutsideNew { span: self.tcx.def_span(impl_def_id) }));
+        }
+        if field_path
+            .walk(self.tcx, container, |base, _, _, _| {
+                if let ty::Adt(def, _) = base.kind()
+                    && !def.did().is_local()
+                {
+                    ControlFlow::Break(())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
+            .is_none()
+        {
+            self.impls_map
+                .incoherent_impls
+                .entry(SimplifiedType::Field)
+                .or_default()
+                .push(impl_def_id);
+        }
+
+        Ok(())
+    }
+
     fn check_primitive_impl(
         &mut self,
         impl_def_id: LocalDefId,
@@ -166,6 +202,7 @@ impl<'tcx> InherentCollect<'tcx> {
         }
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
+            ty::Field(container, field_path) => self.check_field_type(id, container, field_path),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),
             ty::Dynamic(data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(id, self_ty, data.principal_def_id().unwrap())
