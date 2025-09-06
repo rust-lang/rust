@@ -13,6 +13,7 @@
 #![feature(int_format_into)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
+#![feature(move_trait)]
 #![feature(pattern)]
 #![feature(trusted_len)]
 #![feature(try_reserve_kind)]

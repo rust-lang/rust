@@ -14,18 +14,22 @@
 #![no_std]
 #![no_core]
 
+#[lang = "copy"]
+pub trait Copy: ?Leak {}
+
 #[lang = "pointee_sized"]
-trait PointeeSized {}
+trait PointeeSized: ?Leak {}
 
 #[lang = "meta_sized"]
-trait MetaSized: PointeeSized {}
+trait MetaSized: PointeeSized + ?Leak {}
 
 #[lang = "sized"]
-trait Sized: MetaSized {}
+trait Sized: MetaSized + ?Leak {}
 
 #[lang = "legacy_receiver"]
-trait LegacyReceiver {}
+trait LegacyReceiver: ?Leak {}
 impl<T: ?Sized + ?Leak> LegacyReceiver for &T {}
+// Omit `T: ?Leak`.
 impl<T: ?Sized> LegacyReceiver for &mut T {}
 
 #[lang = "default_trait1"]
@@ -38,83 +42,40 @@ struct LeakS;
 mod supertraits {
     use crate::*;
 
-    trait MaybeLeakT1: ?Leak {}
-    trait MaybeLeakT2 where Self: ?Leak {}
+    trait MaybeLeak: ?Leak {}
+    impl MaybeLeak for NonLeakS {}
 
-    impl MaybeLeakT1 for NonLeakS {}
-    impl MaybeLeakT2 for NonLeakS {}
+    trait LeakT {}
+    impl LeakT for NonLeakS {}
+    //~^ ERROR the trait bound `NonLeakS: Leak` is not satisfied
 }
 
-mod maybe_self_assoc_type {
+mod assoc_type_maybe_bounds {
     use crate::*;
 
-    trait TestBase1<T: ?Sized> {}
-    trait TestBase2<T: ?Leak + ?Sized> {}
-
-    trait Test1<T> {
-        type MaybeLeakSelf: TestBase1<Self> where Self: ?Leak;
-        //~^ ERROR the trait bound `Self: Leak` is not satisfied
-        type LeakSelf: TestBase1<Self>;
-    }
-
-    trait Test2<T> {
-        type MaybeLeakSelf: TestBase2<Self> where Self: ?Leak;
-        type LeakSelf: TestBase2<Self>;
-    }
-
-    trait Test3 {
+    trait Test1 {
         type Leak1 = LeakS;
         type Leak2 = NonLeakS;
         //~^ ERROR the trait bound `NonLeakS: Leak` is not satisfied
     }
 
-    trait Test4 {
+    trait Test2 {
         type MaybeLeak1: ?Leak = LeakS;
         type MaybeLeak2: ?Leak = NonLeakS;
-    }
-
-    trait Test5: ?Leak {
-        // ok, because assoc types have implicit where Self: Leak
-        type MaybeLeakSelf1: TestBase1<Self>;
-        type MaybeLeakSelf2: TestBase2<Self>;
-    }
-}
-
-mod maybe_self_assoc_const {
-    use crate::*;
-
-    const fn size_of<T: ?Sized>() -> usize {
-        0
-    }
-
-    trait Trait {
-        const CLeak: usize = size_of::<Self>();
-        const CNonLeak: usize = size_of::<Self>() where Self: ?Leak;
-        //~^ ERROR the trait bound `Self: Leak` is not satisfied
     }
 }
 
 mod methods {
     use crate::*;
 
-    trait Trait {
-        fn leak_foo(&self) {}
-        fn maybe_leak_foo(&self) where Self: ?Leak {}
-        fn mut_leak_foo(&mut self) {}
-        // there is no relax bound on corresponding Receiver impl
-        fn mut_maybe_leak_foo(&mut self) where Self: ?Leak {}
-        //~^ ERROR `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types`
+    trait ReceiveCheck1: ?Leak {
+        fn foo(&self) {}
     }
 
-    impl Trait for NonLeakS {}
-    impl Trait for LeakS {}
-
-    fn foo() {
-        LeakS.leak_foo();
-        LeakS.maybe_leak_foo();
-        NonLeakS.leak_foo();
-        //~^ ERROR the trait bound `NonLeakS: Leak` is not satisfied
-        NonLeakS.maybe_leak_foo();
+    trait ReceiveCheck2: ?Leak {
+        // There is no `?Leak` bound on corresponding `LegacyReceiver` impl.
+        fn mut_foo(&mut self) {}
+        //~^ ERROR `&mut Self` cannot be used as the type of `self` without the `arbitrary_self_types`
     }
 }
 

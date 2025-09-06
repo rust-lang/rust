@@ -236,7 +236,7 @@ pub trait PointeeSized {
 #[lang = "unsize"]
 #[rustc_deny_explicit_impl]
 #[rustc_do_not_implement_via_object]
-pub trait Unsize<T: PointeeSized>: PointeeSized {
+pub trait Unsize<T: PointeeSized + ?crate::marker::Move>: PointeeSized {
     // Empty.
 }
 
@@ -819,7 +819,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T: PointeeSized>;
+pub struct PhantomData<T: PointeeSized + ?crate::marker::Move>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
@@ -913,7 +913,7 @@ pub trait DiscriminantKind {
 pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
-impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized + ?crate::marker::Move> !Freeze for UnsafeCell<T> {}
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -933,7 +933,7 @@ marker_impls! {
 #[lang = "unsafe_unpin"]
 pub(crate) unsafe auto trait UnsafeUnpin {}
 
-impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
+impl<T: ?Sized + ?crate::marker::Move> !UnsafeUnpin for UnsafePinned<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
 unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
@@ -1371,4 +1371,21 @@ pub trait CoercePointeeValidated {
 #[unstable(feature = "reborrow", issue = "145612")]
 pub trait Reborrow {
     // Empty.
+}
+
+/// Types that do not require a stable memory address, and so can be freely
+/// `move`d.
+#[lang = "default_trait1"]
+#[rustc_unsafe_specialization_marker]
+#[unstable(feature = "move_trait", issue = "none")]
+pub unsafe auto trait Move {
+    // empty.
+}
+marker_impls! {
+    #[unstable(feature = "move_trait", issue = "none")]
+    unsafe Move for
+        {T: ?Sized + PointeeSized} *const T,
+        {T: ?Sized + PointeeSized} *mut T,
+        {T: ?Sized + PointeeSized} &T,
+        {T: ?Sized + PointeeSized} &mut T,
 }
