@@ -289,6 +289,7 @@ fn characteristic_def_id_of_type_cached<'a>(
 ) -> Option<DefId> {
     match *ty.kind() {
         ty::Adt(adt_def, _) => Some(adt_def.did()),
+        ty::Field(ty, _) => characteristic_def_id_of_type_cached(ty, visited),
 
         ty::Dynamic(data, ..) => data.principal_def_id(),
 
