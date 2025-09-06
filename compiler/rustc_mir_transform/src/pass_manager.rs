@@ -4,7 +4,6 @@ use std::collections::hash_map::Entry;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::Session;
 use tracing::trace;
 
 use crate::lint::lint_body;
@@ -91,7 +90,7 @@ pub(super) trait MirPass<'tcx> {
     }
 
     /// Returns `true` if this pass is enabled with the current combination of compiler flags.
-    fn is_enabled(&self, _sess: &Session) -> bool {
+    fn is_enabled(&self, _tcx: TyCtxt<'tcx>) -> bool {
         true
     }
 
@@ -120,7 +119,7 @@ pub(super) trait MirLint<'tcx> {
         const { simplify_pass_type_name(std::any::type_name::<Self>()) }
     }
 
-    fn is_enabled(&self, _sess: &Session) -> bool {
+    fn is_enabled(&self, _tcx: TyCtxt<'tcx>) -> bool {
         true
     }
 
@@ -139,8 +138,8 @@ where
         self.0.name()
     }
 
-    fn is_enabled(&self, sess: &Session) -> bool {
-        self.0.is_enabled(sess)
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        self.0.is_enabled(tcx)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -166,8 +165,8 @@ where
         self.1.name()
     }
 
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.mir_opt_level() >= self.0 as usize
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= self.0 as usize
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -221,7 +220,7 @@ where
     let name = pass.name();
 
     if !pass.can_be_overridden() {
-        return pass.is_enabled(tcx.sess);
+        return pass.is_enabled(tcx);
     }
 
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
@@ -235,7 +234,7 @@ where
             *polarity
         });
     let suppressed = !pass.is_required() && matches!(optimizations, Optimizations::Suppressed);
-    overridden.unwrap_or_else(|| !suppressed && pass.is_enabled(tcx.sess))
+    overridden.unwrap_or_else(|| !suppressed && pass.is_enabled(tcx))
 }
 
 fn run_passes_inner<'tcx>(

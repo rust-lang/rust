@@ -108,13 +108,30 @@ use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::ssa::SsaLocals;
+use crate::pass_manager as pm;
+use crate::ssa::{SsaAnalysis, SsaLocals};
 
-pub(super) struct GVN;
+pub(super) enum GVN {
+    Partial,
+    Full,
+}
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn name(&self) -> &'static str {
+        match self {
+            GVN::Partial => "GVN-partial",
+            GVN::Full => "GVN",
+        }
+    }
+
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self {
+            GVN::Partial => {
+                tcx.sess.mir_opt_level() == 1
+                    && !pm::should_run_pass(tcx, &GVN::Full, pm::Optimizations::Allowed)
+            }
+            GVN::Full => tcx.sess.mir_opt_level() >= 2,
+        }
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -122,7 +139,11 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         debug!(def_id = ?body.source.def_id());
 
         let typing_env = body.typing_env(tcx);
-        let ssa = SsaLocals::new(tcx, body, typing_env);
+        let ssa_analysis = match self {
+            GVN::Partial => SsaAnalysis::Partial,
+            GVN::Full => SsaAnalysis::Full,
+        };
+        let ssa = SsaLocals::new(tcx, body, typing_env, ssa_analysis);
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
 
