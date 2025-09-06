@@ -697,14 +697,23 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free => match sig.header.ext {
-                Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }, _)
-                | Extern::Explicit(StrLit { symbol_unescaped: sym::C_dash_unwind, .. }, _)
-                | Extern::Implicit(_)
-                    if matches!(sig.header.safety, Safety::Unsafe(_)) =>
-                {
-                    return;
+                Extern::Implicit(_) => {
+                    if matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        return;
+                    }
+
+                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
                 }
-                _ => {
+                Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
+                    if matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
+                        if matches!(sig.header.safety, Safety::Unsafe(_)) {
+                            return;
+                        }
+                    }
+
+                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                }
+                Extern::None => {
                     self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
                 }
             },
