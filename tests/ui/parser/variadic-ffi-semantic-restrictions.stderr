@@ -88,13 +88,13 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn e_f2(..., x: isize);
    |             ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:52:23
    |
 LL |     fn i_f1(x: isize, ...) {}
    |                       ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:54:13
    |
 LL |     fn i_f2(...) {}
@@ -106,7 +106,7 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn i_f3(..., x: isize, ...) {}
    |             ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:56:28
    |
 LL |     fn i_f3(..., x: isize, ...) {}
@@ -118,7 +118,7 @@ error: `...` must be the last argument of a C-variadic function
 LL |     fn i_f4(..., x: isize, ...) {}
    |             ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:59:28
    |
 LL |     fn i_f4(..., x: isize, ...) {}
@@ -132,31 +132,31 @@ LL |     const fn i_f5(x: isize, ...) {}
    |     |
    |     `const` because of this
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:62:29
    |
 LL |     const fn i_f5(x: isize, ...) {}
    |                             ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:69:23
    |
 LL |     fn t_f1(x: isize, ...) {}
    |                       ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:71:23
    |
 LL |     fn t_f2(x: isize, ...);
    |                       ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:73:13
    |
 LL |     fn t_f3(...) {}
    |             ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/variadic-ffi-semantic-restrictions.rs:75:13
    |
 LL |     fn t_f4(...);

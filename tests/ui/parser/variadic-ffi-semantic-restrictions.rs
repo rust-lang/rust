@@ -50,30 +50,30 @@ struct X;
 
 impl X {
     fn i_f1(x: isize, ...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn i_f2(...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn i_f3(..., x: isize, ...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     //~| ERROR `...` must be the last argument of a C-variadic function
     fn i_f4(..., x: isize, ...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     //~| ERROR `...` must be the last argument of a C-variadic function
     const fn i_f5(x: isize, ...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     //~| ERROR functions cannot be both `const` and C-variadic
     //~| ERROR destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
 }
 
 trait T {
     fn t_f1(x: isize, ...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn t_f2(x: isize, ...);
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn t_f3(...) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn t_f4(...);
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR associated functions cannot have a C variable argument list
     fn t_f5(..., x: isize) {}
     //~^ ERROR `...` must be the last argument of a C-variadic function
     fn t_f6(..., x: isize);

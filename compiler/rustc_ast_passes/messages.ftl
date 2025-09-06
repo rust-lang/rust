@@ -66,6 +66,8 @@ ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
 
 ast_passes_bound_in_context = bounds on `type`s in {$ctx} have no effect
 
+ast_passes_c_variadic_associated_function = associated functions cannot have a C variable argument list
+
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this
     .variadic = C-variadic because of this

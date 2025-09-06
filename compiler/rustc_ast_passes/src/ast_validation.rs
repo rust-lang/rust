@@ -704,12 +704,16 @@ impl<'a> AstValidator<'a> {
                 {
                     return;
                 }
-                _ => {}
+                _ => {
+                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                }
             },
-            FnCtxt::Assoc(_) => {}
-        };
-
-        self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+            FnCtxt::Assoc(_) => {
+                // For now, C variable argument lists are unsupported in associated functions.
+                let err = errors::CVariadicAssociatedFunction { span: variadic_param.span };
+                self.dcx().emit_err(err);
+            }
+        }
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
