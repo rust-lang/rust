@@ -1091,16 +1091,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ty: Ty<'tcx>,
         lhs: Self::Value,
         rhs: Self::Value,
-    ) -> Option<Self::Value> {
-        // FIXME: See comment on the definition of `three_way_compare`.
-        if crate::llvm_util::get_version() < (20, 0, 0) {
-            return None;
-        }
-
+    ) -> Self::Value {
         let size = ty.primitive_size(self.tcx);
         let name = if ty.is_signed() { "llvm.scmp" } else { "llvm.ucmp" };
 
-        Some(self.call_intrinsic(name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs]))
+        self.call_intrinsic(name, &[self.type_i8(), self.type_ix(size.bits())], &[lhs, rhs])
     }
 
     /* Miscellaneous instructions */
