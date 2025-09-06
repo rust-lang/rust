@@ -121,9 +121,11 @@ impl Step for ToolBuild {
             cargo.env("RUSTC_WRAPPER", ccache);
         }
 
-        // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
+        // RustcPrivate tools (miri, clippy, rustfmt, rust-analyzer) and cargo
         // could use the additional optimizations.
-        if self.mode == Mode::ToolRustcPrivate && is_lto_stage(&self.build_compiler) {
+        if is_lto_stage(&self.build_compiler)
+            && (self.mode == Mode::ToolRustcPrivate || self.path == "src/tools/cargo")
+        {
             let lto = match builder.config.rust_lto {
                 RustcLto::Off => Some("off"),
                 RustcLto::Thin => Some("thin"),
