@@ -419,6 +419,31 @@ where
                     self.found_non_local_ty(ty)
                 }
             }
+            ty::Field(container, field_path) => {
+                if !matches!(container.kind(), ty::Adt(..)) {
+                    self.found_non_local_ty(container)
+                } else {
+                    field_path
+                        .walk(self.infcx.cx(), container, |base, _, _, _| match base.kind() {
+                            ty::Adt(def, _) => {
+                                // We don't check the field type for locality, since having a non-local
+                                // type as a field in a struct shouldn't make the field type non-local.
+                                if !self.def_id_is_local(def.def_id()) {
+                                    ControlFlow::Break(self.found_non_local_ty(base))
+                                } else {
+                                    ControlFlow::Continue(())
+                                }
+                            }
+                            // Tuples are the only exception.
+                            ty::Tuple(..) => ControlFlow::Continue(()),
+                            _ => {
+                                // FIXME(field_projections): no `bug!` available?
+                                panic!("field_path should only consist of tuples and structs for `ty::Field`, but found {base:?}")
+                            }
+                        })
+                        .unwrap_or(ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(container)))
+                }
+            }
             ty::Foreign(def_id) => {
                 if self.def_id_is_local(def_id) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
