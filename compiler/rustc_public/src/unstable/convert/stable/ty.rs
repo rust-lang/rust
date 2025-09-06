@@ -413,6 +413,10 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
                 tables.adt_def(adt_def.did()),
                 generic_args.stable(tables, cx),
             )),
+            ty::Field(ty, field_path) => TyKind::RigidTy(RigidTy::Field(
+                ty.stable(tables, cx),
+                field_path.stable(tables, cx),
+            )),
             ty::Foreign(def_id) => TyKind::RigidTy(RigidTy::Foreign(tables.foreign_def(*def_id))),
             ty::Str => TyKind::RigidTy(RigidTy::Str),
             ty::Array(ty, constant) => {
