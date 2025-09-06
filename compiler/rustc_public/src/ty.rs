@@ -551,6 +551,7 @@ pub enum RigidTy {
     Uint(UintTy),
     Float(FloatTy),
     Adt(AdtDef, GenericArgs),
+    Field(Ty, FieldPath),
     Foreign(ForeignDef),
     Str,
     Array(Ty, TyConst),
