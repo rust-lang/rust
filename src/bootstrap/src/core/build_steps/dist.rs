@@ -1406,8 +1406,8 @@ impl Step for Clippy {
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder.ensure(tool::Clippy::from_compilers(self.compilers));
-        let cargoclippy = builder.ensure(tool::CargoClippy::from_compilers(self.compilers));
+        let clippy = builder.ensure(tool::Clippy::from_compilers(self.compilers.clone()));
+        let cargoclippy = builder.ensure(tool::CargoClippy::from_compilers(self.compilers.clone()));
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1454,7 +1454,7 @@ impl Step for Miri {
             return None;
         }
 
-        let miri = builder.ensure(tool::Miri::from_compilers(self.compilers));
+        let miri = builder.ensure(tool::Miri::from_compilers(self.compilers.clone()));
         let cargomiri = builder.ensure(tool::CargoMiri::from_compilers(self.compilers));
 
         let mut tarball = Tarball::new(builder, "miri", &self.target.triple);
@@ -1522,7 +1522,8 @@ impl Step for CraneliftCodegenBackend {
         tarball.add_legal_and_readme_to("share/doc/rustc_codegen_cranelift");
 
         let compilers = self.compilers;
-        let stamp = builder.ensure(compile::CraneliftCodegenBackend { compilers });
+        let stamp =
+            builder.ensure(compile::CraneliftCodegenBackend { compilers: compilers.clone() });
 
         if builder.config.dry_run() {
             return None;
@@ -1581,7 +1582,7 @@ impl Step for Rustfmt {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let rustfmt = builder.ensure(tool::Rustfmt::from_compilers(self.compilers));
+        let rustfmt = builder.ensure(tool::Rustfmt::from_compilers(self.compilers.clone()));
         let cargofmt = builder.ensure(tool::Cargofmt::from_compilers(self.compilers));
 
         let mut tarball = Tarball::new(builder, "rustfmt", &self.target.triple);
@@ -1660,14 +1661,14 @@ impl Step for Extended {
         // Std stage N is documented with compiler stage N
         add_component!("rust-json-docs" => JsonDocs { build_compiler: target_compiler, target });
         add_component!("cargo" => Cargo { build_compiler, target });
-        add_component!("rustfmt" => Rustfmt { compilers: rustc_private_compilers, target });
-        add_component!("rust-analyzer" => RustAnalyzer { compilers: rustc_private_compilers, target });
+        add_component!("rustfmt" => Rustfmt { compilers: rustc_private_compilers.clone(), target });
+        add_component!("rust-analyzer" => RustAnalyzer { compilers: rustc_private_compilers.clone(), target });
         add_component!("llvm-components" => LlvmTools { target });
-        add_component!("clippy" => Clippy { compilers: rustc_private_compilers, target });
-        add_component!("miri" => Miri { compilers: rustc_private_compilers, target });
+        add_component!("clippy" => Clippy { compilers: rustc_private_compilers.clone(), target });
+        add_component!("miri" => Miri { compilers: rustc_private_compilers.clone(), target });
         add_component!("analysis" => Analysis { build_compiler, target });
         add_component!("rustc-codegen-cranelift" => CraneliftCodegenBackend {
-            compilers: rustc_private_compilers,
+            compilers: rustc_private_compilers.clone(),
             target
         });
         add_component!("llvm-bitcode-linker" => LlvmBitcodeLinker {

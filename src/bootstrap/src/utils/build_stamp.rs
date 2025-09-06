@@ -17,7 +17,7 @@ mod tests;
 
 /// Manages a stamp file to track build state. The file is created in the given
 /// directory and can have custom content and name.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BuildStamp {
     path: PathBuf,
     stamp: String,
@@ -32,6 +32,15 @@ impl BuildStamp {
         // It is more appropriate to assert that the path is not a file.
         assert!(!dir.is_file(), "can't be a file path");
         Self { path: dir.join(".stamp"), stamp: String::new() }
+    }
+
+    /// Loads the contents of the stamp from disk.
+    /// Returns `None` if the file does not exist on disk.
+    pub fn load_from_disk(self) -> Option<Self> {
+        let Ok(stamp) = std::fs::read_to_string(&self.path) else {
+            return None;
+        };
+        Some(Self { path: self.path, stamp })
     }
 
     /// Returns path of the stamp file.

@@ -149,7 +149,7 @@ impl Step for Miri {
         let compilers = self.compilers;
         let target = self.target;
 
-        builder.ensure(tool::Miri::from_compilers(compilers));
+        builder.ensure(tool::Miri::from_compilers(compilers.clone()));
 
         // Get a target sysroot for Miri.
         let miri_sysroot =
