@@ -1556,11 +1556,13 @@ class DocSearch {
          * module_path,
          * exact_module_path,
          * parent,
+         * trait_parent,
          * deprecated,
          * associated_item_disambiguator
          * @type {rustdoc.ArrayWithOptionals<[
          *     number,
          *     rustdoc.ItemType,
+         *     number,
          *     number,
          *     number,
          *     number,
@@ -1574,8 +1576,9 @@ class DocSearch {
             modulePath: raw[2] === 0 ? null : raw[2] - 1,
             exactModulePath: raw[3] === 0 ? null : raw[3] - 1,
             parent: raw[4] === 0 ? null : raw[4] - 1,
-            deprecated: raw[5] === 1 ? true : false,
-            associatedItemDisambiguator: raw.length === 6 ? null : raw[6],
+            traitParent: raw[5] === 0 ? null : raw[5] - 1,
+            deprecated: raw[6] === 1 ? true : false,
+            associatedItemDisambiguator: raw.length === 7 ? null : raw[7],
         };
     }
 
@@ -1838,9 +1841,17 @@ class DocSearch {
             (modulePathData.modulePath === "" ?
                 moduleName :
                 `${modulePathData.modulePath}::${moduleName}`);
-        const [parentName, parentPath] = entry !== null && entry.parent !== null ?
-            await Promise.all([this.getName(entry.parent), this.getPathData(entry.parent)]) :
-            [null, null];
+        /** @type {function("parent" | "traitParent"): Promise<rustdoc.RowParent>} */
+        const buildParentLike = async field => {
+            const [name, path] = entry !== null && entry[field] !== null ?
+                await Promise.all([this.getName(entry[field]), this.getPathData(entry[field])]) :
+                [null, null];
+            if (name !== null && path !== null) {
+                return { name: name, path: path };
+            } else {
+                return null;
+            }
+        };
         return {
             id,
             crate: entry ? nonnull(await this.getName(entry.krate)) : "",
@@ -1856,9 +1867,8 @@ class DocSearch {
             path,
             functionData,
             deprecated: entry ? entry.deprecated : false,
-            parent: parentName !== null && parentPath !== null ?
-                { name: parentName, path: parentPath } :
-                null,
+            parent: await buildParentLike("parent"),
+            traitParent: await buildParentLike("traitParent"),
         };
     }
 
@@ -2056,11 +2066,12 @@ class DocSearch {
 
         /**
          * @param {rustdoc.Row} item
-         * @returns {[string, string, string]}
+         * @returns {[string, string, string, string|null]}
          */
         const buildHrefAndPath = item => {
             let displayPath;
             let href;
+            let traitPath = null;
             const type = itemTypes[item.ty];
             const name = item.name;
             let path = item.modulePath;
@@ -2118,7 +2129,11 @@ class DocSearch {
                 href = this.rootPath + item.modulePath.replace(/::/g, "/") +
                     "/" + type + "." + name + ".html";
             }
-            return [displayPath, href, `${exactPath}::${name}`];
+            if (item.traitParent) {
+                const tparent = item.traitParent;
+                traitPath = `${tparent.path.exactModulePath}::${tparent.name}::${name}`;
+            }
+            return [displayPath, href, `${exactPath}::${name}`, traitPath];
         };
 
         /**
@@ -2546,7 +2561,13 @@ class DocSearch {
          * @returns {rustdoc.ResultObject[]}
          */
         const transformResults = (results, typeInfo, duplicates) => {
-            const out = [];
+            /** @type {rustdoc.ResultObject[]} */
+            let out = [];
+
+            // if we match a trait-associated item, we want to go back and
+            // remove all the items that are their equivalent but in an impl block.
+            /** @type {Map<string, number[]>} */
+            const traitImplIdxMap = new Map();
 
             for (const [result, item] of results) {
                 if (item.id !== -1) {
@@ -2577,16 +2598,35 @@ class DocSearch {
                         item,
                         displayPath: pathSplitter(res[0]),
                         fullPath: "",
+                        traitPath: null,
                         href: "",
                         displayTypeSignature: null,
                     }, result);
 
+                    // unlike other items, methods have a different ty when they are
+                    // in an impl block vs a trait.  want to normalize this away.
+                    let ty = obj.item.ty;
+                    if (ty === TY_TYMETHOD) {
+                        ty = TY_METHOD;
+                    }
                     // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath = res[2] + "|" + obj.item.ty;
+                    obj.fullPath = res[2] + "|" + ty;
+                    if (res[3]) {
+                        // "tymethod" is never used on impl blocks
+                        // (this is the reason we need to normalize tymethod away).
+                        obj.traitPath = res[3] + "|" + obj.item.ty;
+                    }
 
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
+
+                    // If we're showing something like `Iterator::next`,
+                    // we don't want to also show a bunch of `<SomeType as Iterator>::next`
+                    if (obj.traitPath && duplicates.has(obj.traitPath)) {
+                        continue;
+                    }
+
 
                     // Exports are specifically not shown if the items they point at
                     // are already in the results.
@@ -2608,14 +2648,36 @@ class DocSearch {
                         );
                     }
 
+                    // FIXME: if the trait item matches but is cut off due to MAX_RESULTS,
+                    // this deduplication will not happen.
                     obj.href = res[1];
+                    if (obj.traitPath) {
+                        let list = traitImplIdxMap.get(obj.traitPath);
+                        if (list === undefined) {
+                            list = [];
+                        }
+                        list.push(out.length);
+                        traitImplIdxMap.set(obj.traitPath, list);
+                    } else {
+                        // FIXME: this is `O(n*m)` because we're repeatedly
+                        // shifting with Array.splice, but could be `O(n+m)` if
+                        // we did the shifting manually in a more clever way.
+                        const toRemove = traitImplIdxMap.get(obj.fullPath);
+                        if (toRemove) {
+                            // iterate in reverse order so we don't shift the indexes
+                            for (let i = toRemove.length - 1; i >= 0; i--) {
+                                const rmIdx = toRemove[i];
+                                out = out.splice(rmIdx, 1);
+                            }
+                        }
+                        traitImplIdxMap.delete(obj.fullPath);
+                    }
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
                         break;
                     }
                 }
             }
-
             return out;
         };
 
