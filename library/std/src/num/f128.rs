@@ -467,10 +467,10 @@ impl f128 {
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
-    /// let f = std::f128::consts::FRAC_PI_2;
+    /// let f = std::f128::consts::FRAC_PI_4;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - std::f128::consts::FRAC_PI_2).abs();
+    /// let abs_difference = (f.sin().asin() - f).abs();
     ///
     /// assert!(abs_difference <= f128::EPSILON);
     /// # }
@@ -912,10 +912,10 @@ impl f128 {
     /// # #[cfg(not(miri))]
     /// # #[cfg(target_has_reliable_f128_math)] {
     ///
-    /// let e = std::f128::consts::E;
-    /// let f = e.tanh().atanh();
+    /// let x = std::f128::consts::FRAC_PI_6;
+    /// let f = x.tanh().atanh();
     ///
-    /// let abs_difference = (f - e).abs();
+    /// let abs_difference = (f - x).abs();
     ///
     /// assert!(abs_difference <= 1e-5);
     /// # }
