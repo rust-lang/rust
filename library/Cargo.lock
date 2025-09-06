@@ -328,7 +328,7 @@ dependencies = [
  "std_detect",
  "unwind",
  "wasi 0.11.1+wasi-snapshot-preview1",
- "wasi 0.14.3+wasi-0.2.4",
+ "wasi 0.14.4+wasi-0.2.4",
  "windows-targets 0.0.0",
 ]
 
@@ -402,9 +402,9 @@ dependencies = [
 
 [[package]]
 name = "wasi"
-version = "0.14.3+wasi-0.2.4"
+version = "0.14.4+wasi-0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a51ae83037bdd272a9e28ce236db8c07016dd0d50c27038b3f407533c030c95"
+checksum = "88a5f4a424faf49c3c2c344f166f0662341d470ea185e939657aaff130f0ec4a"
 dependencies = [
  "rustc-std-workspace-alloc",
  "rustc-std-workspace-core",
