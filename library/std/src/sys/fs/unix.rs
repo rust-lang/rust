@@ -1293,6 +1293,11 @@ impl File {
         return Ok(());
     }
 
+    #[cfg(target_os = "solaris")]
+    pub fn lock(&self) -> io::Result<()> {
+        self.emulate_flock(libc::F_WRLCK, libc::F_SETLK);
+    }
+
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1300,6 +1305,7 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
+        target_os = "solaris",
         target_vendor = "apple",
     )))]
     pub fn lock(&self) -> io::Result<()> {
@@ -1320,6 +1326,11 @@ impl File {
         return Ok(());
     }
 
+    #[cfg(target_os = "solaris")]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        self.emulate_flock(libc::F_RDLCK, libc::F_SETLK);
+    }
+
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1327,6 +1338,7 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
+        target_os = "solaris",
         target_vendor = "apple",
     )))]
     pub fn lock_shared(&self) -> io::Result<()> {
@@ -1355,6 +1367,20 @@ impl File {
         }
     }
 
+    #[cfg(target_os = "solaris")]
+    pub fn try_lock(&self) -> io::Result<()> {
+        let result = self.emulate_flock(libc::F_WRLCK, libc::F_SETLKW);
+        if let Err(err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                Err(TryLockError::WouldBlock)
+            } else {
+                Err(TryLockError::Error(err))
+            }
+        } else {
+            Ok(())
+        }
+    }
+
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1362,6 +1388,7 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
+        target_os = "solaris",
         target_vendor = "apple",
     )))]
     pub fn try_lock(&self) -> Result<(), TryLockError> {
@@ -1393,6 +1420,20 @@ impl File {
         }
     }
 
+    #[cfg(target_os = "solaris")]
+    pub fn try_lock_shared(&self) -> io::Result<()> {
+        let result = self.emulate_flock(libc::F_RDLCK, libc::F_SETLKW);
+        if let Err(err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                Err(TryLockError::WouldBlock)
+            } else {
+                Err(TryLockError::Error(err))
+            }
+        } else {
+            Ok(())
+        }
+    }
+
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1400,6 +1441,7 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
+        target_os = "solaris",
         target_vendor = "apple",
     )))]
     pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
@@ -1423,6 +1465,11 @@ impl File {
         return Ok(());
     }
 
+    #[cfg(target_os = "solaris")]
+    pub fn unlock(&self) -> io::Result<()> {
+        self.emulate_flock(libc::F_UNLCK, libc::F_SETLK)
+    }
+
     #[cfg(not(any(
         target_os = "freebsd",
         target_os = "fuchsia",
@@ -1430,10 +1477,20 @@ impl File {
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "cygwin",
+        target_os = "solaris",
         target_vendor = "apple",
     )))]
     pub fn unlock(&self) -> io::Result<()> {
         Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
+    }
+
+    /// Emulates flock by `fcntl`.
+    #[cfg(target_os = "solaris")]
+    fn emulate_flock(&self, lock_type: libc::c_int, cmd: libc::c_int) -> Result<()> {
+        let mut flock: libc::flock = unsafe { mem::zeroed() };
+        flock.l_whence = libc::SEEK_SET;
+        flock.l_type = lock_type;
+        cvt(unsafe { libc::fcntl(file.as_raw_fd(), cmd, &flock) })
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
