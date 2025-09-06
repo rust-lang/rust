@@ -87,6 +87,7 @@
 use std::borrow::Cow;
 
 use either::Either;
+use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
@@ -1023,15 +1024,15 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         };
 
-        if ty.is_array() && fields.len() > 4 {
-            let first = fields[0];
-            if fields.iter().all(|&v| v == first) {
-                let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
-                if let Some(op) = self.try_as_operand(first, location) {
-                    *rvalue = Rvalue::Repeat(op, len);
-                }
-                return Some(self.insert(ty, Value::Repeat(first, len)));
+        if ty.is_array()
+            && fields.len() > 4
+            && let Ok(&first) = fields.iter().all_equal_value()
+        {
+            let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
+            if let Some(op) = self.try_as_operand(first, location) {
+                *rvalue = Rvalue::Repeat(op, len);
             }
+            return Some(self.insert(ty, Value::Repeat(first, len)));
         }
 
         if let Some(value) =

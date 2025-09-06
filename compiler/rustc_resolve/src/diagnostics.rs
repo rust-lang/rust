@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
@@ -3469,16 +3470,11 @@ fn show_candidates(
                 err.note(note.to_string());
             }
         } else {
-            let (_, descr_first, _, _, _) = &inaccessible_path_strings[0];
-            let descr = if inaccessible_path_strings
+            let descr = inaccessible_path_strings
                 .iter()
-                .skip(1)
-                .all(|(_, descr, _, _, _)| descr == descr_first)
-            {
-                descr_first
-            } else {
-                "item"
-            };
+                .map(|&(_, descr, _, _, _)| descr)
+                .all_equal_value()
+                .unwrap_or("item");
             let plural_descr =
                 if descr.ends_with('s') { format!("{descr}es") } else { format!("{descr}s") };
 
