@@ -11,7 +11,7 @@ use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
-use rustc_codegen_ssa::{ModuleCodegen, looks_like_rust_object_file};
+use rustc_codegen_ssa::{ModuleCodegen, ModuleKind, looks_like_rust_object_file};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::DiagCtxtHandle;
@@ -225,9 +225,15 @@ fn fat_lto(
     // All the other modules will be serialized and reparsed into the new
     // context, so this hopefully avoids serializing and parsing the largest
     // codegen unit.
+    //
+    // Additionally use a regular module as the base here to ensure that various
+    // file copy operations in the backend work correctly. The only other kind
+    // of module here should be an allocator one, and if your crate is smaller
+    // than the allocator module then the size doesn't really matter anyway.
     let costliest_module = in_memory
         .iter()
         .enumerate()
+        .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, module)| {
             let cost = unsafe { llvm::LLVMRustModuleCost(module.module_llvm.llmod()) };
             (cost, i)
