@@ -1245,6 +1245,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Field(..)
             | ty::Error(_) => {
                 candidates.vec.push(SizedCandidate);
             }
