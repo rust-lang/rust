@@ -828,6 +828,7 @@ fn recursive_mkdir_failure() {
 }
 
 #[test]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn concurrent_recursive_mkdir() {
     for _ in 0..100 {
         let dir = tmpdir();
@@ -913,8 +914,10 @@ fn recursive_rmdir_of_file_fails() {
     let canary = tmpdir.join("do_not_delete");
     check!(check!(File::create(&canary)).write(b"foo"));
     let result = fs::remove_dir_all(&canary);
-    #[cfg(unix)]
+    #[cfg(all(not(target_os = "vxworks"),unix))]
     error!(result, "Not a directory");
+    #[cfg(target_os = "vxworks")]
+    error!(result, "not a directory");
     #[cfg(windows)]
     error!(result, 267); // ERROR_DIRECTORY - The directory name is invalid.
     assert!(result.is_err());
