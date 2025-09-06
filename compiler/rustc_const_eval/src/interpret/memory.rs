@@ -953,7 +953,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // # Global allocations
         if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
-            let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
+            let (size, mut align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
+            if let Some(min_global_align) = self.tcx.sess.target.min_global_align {
+                align = Ord::max(align, min_global_align);
+            }
             let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
             let kind = match global_alloc {
                 GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
