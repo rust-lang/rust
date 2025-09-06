@@ -1,33 +1,11 @@
-error: use of a disallowed macro `serde::Serialize`
-  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:22:14
-   |
-LL |     #[derive(Serialize)]
-   |              ^^^^^^^^^
-   |
-   = note: no serializing
-   = note: `-D clippy::disallowed-macros` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
-
-error: use of a disallowed macro `macros::attr`
-  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:42:1
-   |
-LL | / macros::attr! {
-LL | |
-LL | |     struct S;
-LL | | }
-   | |_^
-
-error: use of a disallowed macro `proc_macros::Derive`
-  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:62:10
-   |
-LL | #[derive(Derive)]
-   |          ^^^^^^
-
 error: use of a disallowed macro `std::println`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:13:5
    |
 LL |     println!("one");
    |     ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::disallowed-macros` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_macros)]`
 
 error: use of a disallowed macro `std::println`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:15:5
@@ -46,6 +24,14 @@ error: use of a disallowed macro `std::vec`
    |
 LL |     vec![1, 2, 3];
    |     ^^^^^^^^^^^^^
+
+error: use of a disallowed macro `serde::Serialize`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:22:14
+   |
+LL |     #[derive(Serialize)]
+   |              ^^^^^^^^^
+   |
+   = note: no serializing
 
 error: use of a disallowed macro `macros::expr`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:26:13
@@ -83,6 +69,15 @@ error: use of a disallowed macro `macros::binop`
 LL |     let _ = macros::binop!(1);
    |             ^^^^^^^^^^^^^^^^^
 
+error: use of a disallowed macro `macros::attr`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:42:1
+   |
+LL | / macros::attr! {
+LL | |
+LL | |     struct S;
+LL | | }
+   | |_^
+
 error: use of a disallowed macro `macros::item`
   --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:48:5
    |
@@ -100,6 +95,12 @@ error: use of a disallowed macro `macros::item`
    |
 LL |     macros::item!();
    |     ^^^^^^^^^^^^^^^
+
+error: use of a disallowed macro `proc_macros::Derive`
+  --> tests/ui-toml/disallowed_macros/disallowed_macros.rs:62:10
+   |
+LL | #[derive(Derive)]
+   |          ^^^^^^
 
 error: aborting due to 16 previous errors
 
