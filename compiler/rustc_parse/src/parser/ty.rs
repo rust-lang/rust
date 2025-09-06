@@ -142,14 +142,14 @@ impl<'a> Parser<'a> {
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the type.
     pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, Box<Ty>> {
-        let ty = self.parse_ty_common(
+        let ty = Box::new(self.parse_ty_common(
             AllowPlus::Yes,
             AllowCVariadic::Yes,
             RecoverQPath::Yes,
             RecoverReturnSign::Yes,
             None,
             RecoverQuestionMark::Yes,
-        )?;
+        )?);
 
         // Recover a trailing `= EXPR` if present.
         if self.may_recover()
@@ -172,7 +172,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok(Box::new(ty))
+        Ok(ty)
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
