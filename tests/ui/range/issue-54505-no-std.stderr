@@ -112,7 +112,7 @@ LL |     take_range(..=42);
    |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
-                 found struct `RangeToInclusive<{integer}>`
+                 found struct `core::ops::RangeToInclusive<{integer}>`
 note: function defined here
   --> $DIR/issue-54505-no-std.rs:25:4
    |

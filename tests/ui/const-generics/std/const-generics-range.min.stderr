@@ -58,7 +58,7 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
 LL + #![feature(adt_const_params)]
    |
 
-error: `RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
+error: `std::ops::RangeToInclusive<usize>` is forbidden as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:34:35
    |
 LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;

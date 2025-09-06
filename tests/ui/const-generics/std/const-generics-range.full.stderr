@@ -28,7 +28,7 @@ error[E0741]: `RangeTo<usize>` must implement `ConstParamTy` to be used as the t
 LL | struct _RangeTo<const R: std::ops::RangeTo<usize>>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0741]: `RangeToInclusive<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+error[E0741]: `std::ops::RangeToInclusive<usize>` must implement `ConstParamTy` to be used as the type of a const generic parameter
   --> $DIR/const-generics-range.rs:34:35
    |
 LL | struct _RangeToInclusive<const R: std::ops::RangeToInclusive<usize>>;
