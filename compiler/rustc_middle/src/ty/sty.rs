@@ -1945,7 +1945,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
+            ty::Adt(..) | ty::Field(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
 
             ty::UnsafeBinder(_) => false,
 

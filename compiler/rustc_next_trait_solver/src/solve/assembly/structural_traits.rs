@@ -221,6 +221,7 @@ where
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
+        | ty::Field(_, _)
         | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..) => Err(NoSolution),
