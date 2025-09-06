@@ -1,10 +1,10 @@
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:6:19
    |
 LL | fn f1_1(x: isize, ...) {}
    |                   ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: `...` is not supported for non-extern functions
   --> $DIR/variadic-ffi-semantic-restrictions.rs:9:9
    |
 LL | fn f1_2(...) {}

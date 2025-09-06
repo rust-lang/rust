@@ -46,7 +46,7 @@ error: `...` must be the last argument of a C-variadic function
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |            ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: `...` is not supported for non-extern functions
   --> $DIR/issue-86053-1.rs:11:36
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {

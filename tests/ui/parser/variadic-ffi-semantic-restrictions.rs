@@ -4,10 +4,10 @@
 fn main() {}
 
 fn f1_1(x: isize, ...) {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+//~^ ERROR `...` is not supported for non-extern functions
 
 fn f1_2(...) {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+//~^ ERROR `...` is not supported for non-extern functions
 
 extern "C" fn f2_1(x: isize, ...) {}
 //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention

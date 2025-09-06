@@ -714,7 +714,8 @@ impl<'a> AstValidator<'a> {
                     self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
                 }
                 Extern::None => {
-                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                    let err = errors::CVariadicNoExtern { span: variadic_param.span };
+                    self.dcx().emit_err(err);
                 }
             },
             FnCtxt::Assoc(_) => {
