@@ -1,1 +1,2 @@
-<link rel="icon" href="https://www.rust-lang.org/favicon.ico">
+<link rel="alternate icon" type="image/png" href="favicon-32x32.png">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">

@@ -575,6 +575,31 @@ impl Step for SharedAssets {
             FileType::Regular,
         );
 
+        builder.copy_link(
+            &builder
+                .src
+                .join("src")
+                .join("librustdoc")
+                .join("html")
+                .join("static")
+                .join("images")
+                .join("favicon.svg"),
+            &out.join("favicon.svg"),
+            FileType::Regular,
+        );
+        builder.copy_link(
+            &builder
+                .src
+                .join("src")
+                .join("librustdoc")
+                .join("html")
+                .join("static")
+                .join("images")
+                .join("favicon-32x32.png"),
+            &out.join("favicon-32x32.png"),
+            FileType::Regular,
+        );
+
         SharedAssetsPaths { version_info }
     }
 }
