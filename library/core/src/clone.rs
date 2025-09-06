@@ -36,7 +36,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::marker::{Destruct, PointeeSized};
+use crate::marker::Destruct;
 
 mod uninit;
 
@@ -322,7 +322,7 @@ impl_use_cloned! {
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
-pub struct AssertParamIsClone<T: Clone + PointeeSized> {
+pub struct AssertParamIsClone<T: Clone> {
     _field: crate::marker::PhantomData<T>,
 }
 #[doc(hidden)]
@@ -332,7 +332,7 @@ pub struct AssertParamIsClone<T: Clone + PointeeSized> {
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
-pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
+pub struct AssertParamIsCopy<T: Copy> {
     _field: crate::marker::PhantomData<T>,
 }
 
