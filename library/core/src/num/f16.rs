@@ -1175,7 +1175,8 @@ impl f16 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f16", issue = "116909")]
-    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i16;
         let mut right = other.to_bits() as i16;
 
