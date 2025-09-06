@@ -803,7 +803,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::Tuple(..) => {
                 self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps)
             }
-            _ => {}
+
+            ty::Alias(..)
+            | ty::Bound(..)
+            | ty::Closure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineClosure(..)
+            | ty::CoroutineWitness(..)
+            | ty::Dynamic(..)
+            | ty::Error(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Infer(..)
+            | ty::Pat(..)
+            | ty::Placeholder(..)
+            | ty::UnsafeBinder(..) => {}
         }
     }
 
