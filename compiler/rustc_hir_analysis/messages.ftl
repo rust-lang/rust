@@ -615,3 +615,4 @@ hir_analysis_wrong_number_of_generic_arguments_to_intrinsic =
         [one] parameter
         *[other] parameters
     }
+hir_analysis_no_field_on_type = no field `{$field}` on type `{$ty}`
