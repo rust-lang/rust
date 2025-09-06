@@ -360,6 +360,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 
                 write!(f, ">")
             }
+            Field(ty, field_path) => write!(f, "{ty:?}.{field_path:?}"),
             Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{t:?}; {c:?}]"),

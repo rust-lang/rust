@@ -180,6 +180,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Float(_)
             | ty::Str
             | ty::Never => "type".into(),
+            ty::Field(..) => "field representing type".into(),
             ty::Tuple(tys) if tys.is_empty() => "unit type".into(),
             ty::Adt(def, _) => def.descr().into(),
             ty::Foreign(_) => "extern type".into(),
