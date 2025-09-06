@@ -126,6 +126,11 @@ pub fn compile_codegen_unit(
         for arg in &tcx.sess.opts.cg.llvm_args {
             context.add_command_line_option(arg);
         }
+
+        if !tcx.sess.opts.cg.jump_tables {
+            context.add_command_line_option("-fno-jump-tables");
+        }
+
         // NOTE: This is needed to compile the file src/intrinsic/archs.rs during a bootstrap of rustc.
         context.add_command_line_option("-fno-var-tracking-assignments");
         // NOTE: an optimization (https://github.com/rust-lang/rustc_codegen_gcc/issues/53).
