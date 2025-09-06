@@ -9,6 +9,7 @@
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::any::Any;
+use core::cell::CloneFromCopy;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::clone::UseCloned;
@@ -281,6 +282,11 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Arc<U, A>> fo
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
+// SAFETY: The bitwise copy has the same `ArcInner` pointer as the original, so the clone increments
+// the right counts and maintains the invariants.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCopy for Arc<T> {}
+
 impl<T: ?Sized> Arc<T> {
     unsafe fn from_inner(ptr: NonNull<ArcInner<T>>) -> Self {
         unsafe { Self::from_inner_in(ptr, Global) }
@@ -355,6 +361,11 @@ unsafe impl<T: ?Sized + Sync + Send, A: Allocator + Sync> Sync for Weak<T, A> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> for Weak<T, A> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
+
+// SAFETY: The bitwise copy has the same `ArcInner` pointer as the original, so the clone increments
+// the right counts and maintains the invariants.
+#[unstable(feature = "cell_get_cloned", issue = "145329")]
+unsafe impl<T: ?Sized> CloneFromCopy for Weak<T> {}
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
