@@ -1407,10 +1407,6 @@ impl clean::FnDecl {
 
 pub(crate) fn visibility_print_with_space(item: &clean::Item, cx: &Context<'_>) -> impl Display {
     fmt::from_fn(move |f| {
-        if item.is_doc_hidden() {
-            f.write_str("#[doc(hidden)] ")?;
-        }
-
         match item.visibility(cx.tcx()) {
             None => {}
             Some(ty::Visibility::Public) => f.write_str("pub ")?,
