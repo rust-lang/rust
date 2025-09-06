@@ -6,7 +6,7 @@ LL | pub extern "C" fn naked(p: char) -> u128 {
    |
    = help: consider using `u32` or `libc::wchar_t` instead
    = note: the `char` type has no C equivalent
-   = note: `#[warn(improper_ctypes_definitions)]` on by default
+   = note: `#[warn(improper_c_fn_definitions)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: 1 warning emitted
 

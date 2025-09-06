@@ -350,21 +350,29 @@ lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dere
     .method_def = method calls to `{$method_name}` require a reference
     .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
 
-lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
+lint_improper_ctypes = {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
 
 lint_improper_ctypes_array_help = consider passing a pointer to the array
 
 lint_improper_ctypes_array_reason = passing raw arrays by value is not FFI-safe
-lint_improper_ctypes_box = box cannot be represented as a single pointer
 
 lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 
-lint_improper_ctypes_cstr_help =
-    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_help_const =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()` or `CString::as_ptr()`
+lint_improper_ctypes_cstr_help_mut =
+    consider passing a `*mut std::ffi::c_char` instead, and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+lint_improper_ctypes_cstr_help_owned =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+    (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
+lint_improper_ctypes_cstr_help_unknown =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use (depending on the use case) `CStr::as_ptr()`, `CString::into_raw()` then `CString::from_raw()`, or a dedicated buffer
 lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
 
 lint_improper_ctypes_dyn = trait objects have no C equivalent
@@ -375,7 +383,9 @@ lint_improper_ctypes_enum_repr_help =
 lint_improper_ctypes_enum_repr_reason = enum has no representation hint
 lint_improper_ctypes_fnptr_help = consider using an `extern fn(...) -> ...` function pointer instead
 
+lint_improper_ctypes_fnptr_indirect_reason = the function pointer to `{$ty}` is FFI-unsafe due to `{$inner_ty}`
 lint_improper_ctypes_fnptr_reason = this function pointer has Rust-specific calling convention
+
 lint_improper_ctypes_non_exhaustive = this enum is non-exhaustive
 lint_improper_ctypes_non_exhaustive_variant = this enum has non-exhaustive variants
 
@@ -383,31 +393,40 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_slice_help = consider using a raw pointer instead
-
+lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
 lint_improper_ctypes_slice_reason = slices have no C equivalent
+
 lint_improper_ctypes_str_help = consider using `*const u8` and a length instead
-
 lint_improper_ctypes_str_reason = string slices have no C equivalent
+
+lint_improper_ctypes_struct_consider_transparent = `{$ty}` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
+lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
+
 lint_improper_ctypes_struct_fieldless_help = consider adding a member to this struct
+lint_improper_ctypes_struct_fieldless_reason = `{$ty}` has no fields
 
-lint_improper_ctypes_struct_fieldless_reason = this struct has no fields
-lint_improper_ctypes_struct_layout_help = consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-
-lint_improper_ctypes_struct_layout_reason = this struct has unspecified layout
-lint_improper_ctypes_struct_non_exhaustive = this struct is non-exhaustive
-lint_improper_ctypes_struct_zst = this struct contains only zero-sized fields
+lint_improper_ctypes_struct_layout_help = consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `{$ty}`
+lint_improper_ctypes_struct_layout_reason = `{$ty}` has unspecified layout
+lint_improper_ctypes_struct_non_exhaustive = `{$ty}` is non-exhaustive
+lint_improper_ctypes_struct_zst = `{$ty}` contains only zero-sized fields
 
 lint_improper_ctypes_tuple_help = consider using a struct instead
-
 lint_improper_ctypes_tuple_reason = tuples have unspecified layout
-lint_improper_ctypes_union_fieldless_help = consider adding a member to this union
 
+lint_improper_ctypes_uninhabited_enum = zero-variant enums and other uninhabited types are not allowed in function arguments and static variables
+lint_improper_ctypes_uninhabited_never = the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
+
+lint_improper_ctypes_union_consider_transparent = `{$ty}` has exactly one non-zero-sized field, consider making it `#[repr(transparent)]` instead
+lint_improper_ctypes_union_fieldless_help = consider adding a member to this union
 lint_improper_ctypes_union_fieldless_reason = this union has no fields
-lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
+lint_improper_ctypes_union_layout_help = consider adding a `#[repr(C)]` attribute to this union
 
 lint_improper_ctypes_union_layout_reason = this union has unspecified layout
 lint_improper_ctypes_union_non_exhaustive = this union is non-exhaustive
+
+lint_improper_ctypes_unsized_box = this box for an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ptr = this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
+lint_improper_ctypes_unsized_ref = this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 lint_incomplete_include =
     include macro expected single expression in source
