@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, TypeckResults, Upcast, suggest_arbitrary_trait_bound,
-    suggest_constraining_type_param,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults, Upcast,
+    suggest_arbitrary_trait_bound, suggest_constraining_type_param,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -263,6 +263,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => (false, None),
         };
 
+        let mut finder = ParamFinder { .. };
+        finder.visit_binder(&trait_pred);
+
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         loop {
@@ -411,6 +414,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
 
+                hir::Node::TraitItem(hir::TraitItem {
+                    generics,
+                    kind: hir::TraitItemKind::Fn(..),
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    generics,
+                    trait_item_def_id: None,
+                    kind: hir::ImplItemKind::Fn(..),
+                    ..
+                }) if finder.can_suggest_bound(generics) => {
+                    // Missing generic type parameter bound.
+                    suggest_arbitrary_trait_bound(
+                        self.tcx,
+                        generics,
+                        err,
+                        trait_pred,
+                        associated_ty,
+                    );
+                }
                 hir::Node::Item(hir::Item {
                     kind:
                         hir::ItemKind::Struct(_, generics, _)
@@ -423,7 +446,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Const(_, generics, _, _)
                         | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
-                }) if !param_ty => {
+                }) if finder.can_suggest_bound(generics) => {
                     // Missing generic type parameter bound.
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
@@ -5068,8 +5091,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Suggesting `T: ?Sized` is only valid in an ADT if `T` is only used in a
         // borrow. `struct S<'a, T: ?Sized>(&'a T);` is valid, `struct S<T: ?Sized>(T);`
         // is not. Look for invalid "bare" parameter uses, and suggest using indirection.
-        let mut visitor =
-            FindTypeParam { param: param.name.ident().name, invalid_spans: vec![], nested: false };
+        let mut visitor = FindTypeParam { param: param.name.ident().name, .. };
         visitor.visit_item(item);
         if visitor.invalid_spans.is_empty() {
             return false;
@@ -5228,7 +5250,7 @@ fn hint_missing_borrow<'tcx>(
 /// Used to suggest replacing associated types with an explicit type in `where` clauses.
 #[derive(Debug)]
 pub struct SelfVisitor<'v> {
-    pub paths: Vec<&'v hir::Ty<'v>>,
+    pub paths: Vec<&'v hir::Ty<'v>> = Vec::new(),
     pub name: Option<Symbol>,
 }
 
@@ -5599,7 +5621,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                 );
                 // Search for the associated type `Self::{name}`, get
                 // its type and suggest replacing the bound with it.
-                let mut visitor = SelfVisitor { paths: vec![], name: Some(name) };
+                let mut visitor = SelfVisitor { name: Some(name), .. };
                 visitor.visit_trait_ref(trait_ref);
                 for path in visitor.paths {
                     err.span_suggestion_verbose(
@@ -5610,7 +5632,7 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
                     );
                 }
             } else {
-                let mut visitor = SelfVisitor { paths: vec![], name: None };
+                let mut visitor = SelfVisitor { name: None, .. };
                 visitor.visit_trait_ref(trait_ref);
                 let span: MultiSpan =
                     visitor.paths.iter().map(|p| p.span).collect::<Vec<Span>>().into();
@@ -5640,8 +5662,8 @@ fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
 /// `param: ?Sized` would be a valid constraint.
 struct FindTypeParam {
     param: rustc_span::Symbol,
-    invalid_spans: Vec<Span>,
-    nested: bool,
+    invalid_spans: Vec<Span> = Vec::new(),
+    nested: bool = false,
 }
 
 impl<'v> Visitor<'v> for FindTypeParam {
@@ -5677,5 +5699,40 @@ impl<'v> Visitor<'v> for FindTypeParam {
                 hir::intravisit::walk_ty(self, ty);
             }
         }
+    }
+}
+
+/// Look for type parameters in predicates. We use this to identify whether a bound is suitable in
+/// on a given item.
+struct ParamFinder {
+    params: Vec<Symbol> = Vec::new(),
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamFinder {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        match t.kind() {
+            ty::Param(p) => self.params.push(p.name),
+            _ => {}
+        }
+        t.super_visit_with(self)
+    }
+}
+
+impl ParamFinder {
+    /// Whether the `hir::Generics` of the current item can suggest the evaluated bound because its
+    /// references to type parameters are present in the generics.
+    fn can_suggest_bound(&self, generics: &hir::Generics<'_>) -> bool {
+        if self.params.is_empty() {
+            // There are no references to type parameters at all, so suggesting the bound
+            // would be reasonable.
+            return true;
+        }
+        generics.params.iter().any(|p| match p.name {
+            hir::ParamName::Plain(p_name) => {
+                // All of the parameters in the bound can be referenced in the current item.
+                self.params.iter().any(|p| *p == p_name.name || *p == kw::SelfUpper)
+            }
+            _ => true,
+        })
     }
 }
