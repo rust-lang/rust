@@ -301,11 +301,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
 
-            &Rvalue::CopyForDeref(place) => {
-                let op = &Operand::Copy(place);
-                self.consume_operand(location, op);
-            }
-
             &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
                 let af = match rvalue {
                     Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
@@ -336,6 +331,8 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             Rvalue::WrapUnsafeBinder(op, _) => {
                 self.consume_operand(location, op);
             }
+
+            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
         }
     }
 
