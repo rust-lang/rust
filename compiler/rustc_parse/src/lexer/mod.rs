@@ -44,18 +44,43 @@ pub(crate) struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
+/// Which tokens should be stripped before lexing the tokens.
+pub(crate) enum StripTokens {
+    /// Strip both shebang and frontmatter.
+    ShebangAndFrontmatter,
+    /// Strip the shebang but not frontmatter.
+    ///
+    /// That means that char sequences looking like frontmatter are simply
+    /// interpreted as regular Rust lexemes.
+    Shebang,
+    /// Strip nothing.
+    ///
+    /// In other words, char sequences looking like a shebang or frontmatter
+    /// are simply interpreted as regular Rust lexemes.
+    Nothing,
+}
+
 pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-    frontmatter_allowed: FrontmatterAllowed,
+    strip_tokens: StripTokens,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
-    // Skip `#!`, if present.
-    if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
-        src = &src[shebang_len..];
-        start_pos = start_pos + BytePos::from_usize(shebang_len);
+    match strip_tokens {
+        StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
+            if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
+                src = &src[shebang_len..];
+                start_pos = start_pos + BytePos::from_usize(shebang_len);
+            }
+        }
+        StripTokens::Nothing => {}
     }
+
+    let frontmatter_allowed = match strip_tokens {
+        StripTokens::ShebangAndFrontmatter => FrontmatterAllowed::Yes,
+        StripTokens::Shebang | StripTokens::Nothing => FrontmatterAllowed::No,
+    };
 
     let cursor = Cursor::new(src, frontmatter_allowed);
     let mut lexer = Lexer {
