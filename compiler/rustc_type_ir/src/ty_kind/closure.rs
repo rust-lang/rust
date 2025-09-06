@@ -391,7 +391,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         cx: I,
         parent_args: I::GenericArgsSlice,
         coroutine_kind_ty: I::Ty,
-        coroutine_def_id: I::DefId,
+        coroutine_def_id: I::CoroutineId,
         tupled_upvars_ty: I::Ty,
     ) -> I::Ty {
         let coroutine_args = ty::CoroutineArgs::new(
@@ -418,7 +418,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         self,
         cx: I,
         parent_args: I::GenericArgsSlice,
-        coroutine_def_id: I::DefId,
+        coroutine_def_id: I::CoroutineId,
         goal_kind: ty::ClosureKind,
         env_region: I::Region,
         closure_tupled_upvars_ty: I::Ty,

@@ -101,7 +101,7 @@ pub enum TyKind<I: Interner> {
     Adt(I::AdtDef, I::GenericArgs),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
-    Foreign(I::DefId),
+    Foreign(I::ForeignId),
 
     /// The pointee of a string slice. Written as `str`.
     Str,
@@ -137,7 +137,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(I::DefId, I::GenericArgs),
+    FnDef(I::FunctionId, I::GenericArgs),
 
     /// A pointer to a function. Written as `fn() -> i32`.
     ///
@@ -172,21 +172,21 @@ pub enum TyKind<I: Interner> {
     /// Closure args contain both the - potentially instantiated - generic parameters
     /// of its parent and some synthetic parameters. See the documentation for
     /// `ClosureArgs` for more details.
-    Closure(I::DefId, I::GenericArgs),
+    Closure(I::ClosureId, I::GenericArgs),
 
     /// The anonymous type of a closure. Used to represent the type of `async |a| a`.
     ///
     /// Coroutine-closure args contain both the - potentially instantiated - generic
     /// parameters of its parent and some synthetic parameters. See the documentation
     /// for `CoroutineClosureArgs` for more details.
-    CoroutineClosure(I::DefId, I::GenericArgs),
+    CoroutineClosure(I::CoroutineClosureId, I::GenericArgs),
 
     /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
     ///
     /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
-    Coroutine(I::DefId, I::GenericArgs),
+    Coroutine(I::CoroutineId, I::GenericArgs),
 
     /// A type representing the types stored inside a coroutine.
     /// This should only appear as part of the `CoroutineArgs`.
@@ -211,7 +211,7 @@ pub enum TyKind<I: Interner> {
     /// }
     /// # ;
     /// ```
-    CoroutineWitness(I::DefId, I::GenericArgs),
+    CoroutineWitness(I::CoroutineId, I::GenericArgs),
 
     /// The never type `!`.
     Never,

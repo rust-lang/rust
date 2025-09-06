@@ -605,7 +605,7 @@ fn coroutine_closure_to_certain_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
     goal_region: I::Region,
-    def_id: I::DefId,
+    def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
@@ -629,7 +629,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     cx: I,
     goal_kind: ty::ClosureKind,
     goal_region: I::Region,
-    def_id: I::DefId,
+    def_id: I::CoroutineClosureId,
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
@@ -664,7 +664,7 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
 pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     cx: I,
     self_ty: I::Ty,
-) -> Result<(ty::Binder<I, (I::FnInputTys, I::Ty)>, I::DefId, I::GenericArgs), NoSolution> {
+) -> Result<(ty::Binder<I, (I::FnInputTys, I::Ty)>, I::FunctionId, I::GenericArgs), NoSolution> {
     match self_ty.kind() {
         ty::FnDef(def_id, args) => {
             let sig = cx.fn_sig(def_id);
