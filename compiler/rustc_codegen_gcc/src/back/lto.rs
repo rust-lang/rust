@@ -305,12 +305,9 @@ pub(crate) fn run_thin(
     )
 }
 
-pub(crate) fn prepare_thin(
-    module: ModuleCodegen<GccContext>,
-    _emit_summary: bool,
-) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(module: ModuleCodegen<GccContext>) -> (String, ThinBuffer) {
     let name = module.name;
-    //let buffer = ThinBuffer::new(module.module_llvm.context, true, emit_summary);
+    //let buffer = ThinBuffer::new(module.module_llvm.context, true);
     let buffer = ThinBuffer::new(&module.module_llvm.context);
     (name, buffer)
 }
@@ -649,10 +646,6 @@ impl ThinBuffer {
 impl ThinBufferMethods for ThinBuffer {
     fn data(&self) -> &[u8] {
         &[]
-    }
-
-    fn thin_link_data(&self) -> &[u8] {
-        unimplemented!();
     }
 }
 

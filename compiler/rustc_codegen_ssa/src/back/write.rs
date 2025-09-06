@@ -830,6 +830,8 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     mut module: ModuleCodegen<B::Module>,
 ) -> WorkItemResult<B> {
+    let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*module.name);
+
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
@@ -862,7 +864,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
             WorkItemResult::Finished(module)
         }
         ComputedLtoType::Thin => {
-            let (name, thin_buffer) = B::prepare_thin(module, false);
+            let (name, thin_buffer) = B::prepare_thin(module);
             if let Some(path) = bitcode {
                 fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
@@ -890,6 +892,10 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: CachedModuleCodegen,
 ) -> WorkItemResult<B> {
+    let _timer = cgcx
+        .prof
+        .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*module.name);
+
     let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
 
     let mut links_from_incr_cache = Vec::new();
@@ -977,6 +983,8 @@ fn execute_fat_lto_work_item<B: ExtraBackendMethods>(
     mut needs_fat_lto: Vec<FatLtoInput<B>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> WorkItemResult<B> {
+    let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", "everything");
+
     for (module, wp) in import_only_modules {
         needs_fat_lto.push(FatLtoInput::Serialized { name: wp.cgu_name, buffer: module })
     }
@@ -995,6 +1003,8 @@ fn execute_thin_lto_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     module: lto::ThinModule<B>,
 ) -> WorkItemResult<B> {
+    let _timer = cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", module.name());
+
     let module = B::optimize_thin(cgcx, module);
     let module = B::codegen(cgcx, module, &cgcx.module_config);
     WorkItemResult::Finished(module)
@@ -1714,38 +1724,21 @@ fn spawn_work<'a, B: ExtraBackendMethods>(
 
     B::spawn_named_thread(cgcx.time_trace, work.short_description(), move || {
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
-            WorkItem::Optimize(m) => {
-                let _timer =
-                    cgcx.prof.generic_activity_with_arg("codegen_module_optimize", &*m.name);
-                execute_optimize_work_item(&cgcx, m)
-            }
-            WorkItem::CopyPostLtoArtifacts(m) => {
-                let _timer = cgcx
-                    .prof
-                    .generic_activity_with_arg("codegen_copy_artifacts_from_incr_cache", &*m.name);
-                execute_copy_from_cache_work_item(&cgcx, m)
-            }
+            WorkItem::Optimize(m) => execute_optimize_work_item(&cgcx, m),
+            WorkItem::CopyPostLtoArtifacts(m) => execute_copy_from_cache_work_item(&cgcx, m),
             WorkItem::FatLto {
                 exported_symbols_for_lto,
                 each_linked_rlib_for_lto,
                 needs_fat_lto,
                 import_only_modules,
-            } => {
-                let _timer =
-                    cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", "everything");
-                execute_fat_lto_work_item(
-                    &cgcx,
-                    &exported_symbols_for_lto,
-                    &each_linked_rlib_for_lto,
-                    needs_fat_lto,
-                    import_only_modules,
-                )
-            }
-            WorkItem::ThinLto(m) => {
-                let _timer =
-                    cgcx.prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
-                execute_thin_lto_work_item(&cgcx, m)
-            }
+            } => execute_fat_lto_work_item(
+                &cgcx,
+                &exported_symbols_for_lto,
+                &each_linked_rlib_for_lto,
+                needs_fat_lto,
+                import_only_modules,
+            ),
+            WorkItem::ThinLto(m) => execute_thin_lto_work_item(&cgcx, m),
         }));
 
         let msg = match result {
