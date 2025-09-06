@@ -579,7 +579,7 @@ impl<'tcx> Display for Const<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-/// Const-related utilities
+// Const-related utilities
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn span_as_caller_location(self, span: Span) -> ConstValue {
