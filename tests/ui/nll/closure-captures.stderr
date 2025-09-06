@@ -47,7 +47,9 @@ error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `F
    |
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
-...
+LL |
+LL | fn two_closures_ref_mut(mut x: i32) {
+   |                         ----- `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
@@ -89,6 +91,8 @@ error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `F
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
 ...
+LL | fn two_closures_ref(x: i32) {
+   |                     - `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
