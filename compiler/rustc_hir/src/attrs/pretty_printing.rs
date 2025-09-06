@@ -9,6 +9,8 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
+use crate::limit::Limit;
+
 /// This trait is used to print attributes in `rustc_hir_pretty`.
 ///
 /// For structs and enums it can be derived using [`rustc_macros::PrintAttribute`].
@@ -146,7 +148,7 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, (), ErrorGuaranteed);
-print_disp!(u16, bool, NonZero<u32>);
+print_disp!(u16, bool, NonZero<u32>, Limit);
 print_debug!(
     Symbol,
     Ident,

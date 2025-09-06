@@ -1,10 +1,10 @@
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
+use rustc_hir::limit::Limit;
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, AssocTag, Instance, Ty, TyCtxt, TypeFoldable};
-use rustc_session::Limit;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, sym};

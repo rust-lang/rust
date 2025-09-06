@@ -917,50 +917,50 @@ mod no_builtins {
 
 #[recursion_limit="0200"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod recursion_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![recursion_limit="0200"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![recursion_limit]` attribute can only be used at the crate root
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[recursion_limit="0200"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[recursion_limit="0200"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[recursion_limit="0200"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[type_length_limit="0100"]
 //~^ WARN crate-level attribute should be an inner attribute
-//~| HELP add a `!`
 mod type_length_limit {
+    //~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![type_length_limit="0100"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![type_length_limit]` attribute can only be used at the crate root
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[type_length_limit="0100"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[type_length_limit="0100"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[type_length_limit="0100"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
-    //~| HELP add a `!`
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 fn main() {}

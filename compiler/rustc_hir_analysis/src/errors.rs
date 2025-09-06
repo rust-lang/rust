@@ -6,6 +6,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     MultiSpan,
 };
+use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::{Ident, Span, Symbol};
@@ -557,7 +558,7 @@ pub(crate) struct AutoDerefReachedRecursionLimit<'a> {
     #[label]
     pub span: Span,
     pub ty: Ty<'a>,
-    pub suggested_limit: rustc_session::Limit,
+    pub suggested_limit: Limit,
     pub crate_name: Symbol,
 }
 
