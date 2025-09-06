@@ -7,6 +7,11 @@ LL |     let y = t();
    |             ^--
    |             |
    |             call expression requires function
+   |
+help: consider restricting type parameter `U` with trait `Fn`
+   |
+LL | fn foo<U: Fn()>(t: U) {
+   |         ++++++
 
 error[E0618]: expected function, found struct `Bar`
   --> $DIR/issue-21701.rs:9:13
