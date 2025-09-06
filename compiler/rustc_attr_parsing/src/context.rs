@@ -47,7 +47,7 @@ use crate::attributes::proc_macro_attrs::{
     ProcMacroAttributeParser, ProcMacroDeriveParser, ProcMacroParser, RustcBuiltinMacroParser,
 };
 use crate::attributes::prototype::CustomMirParser;
-use crate::attributes::repr::{AlignParser, ReprParser};
+use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
     RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
     RustcObjectLifetimeDefaultParser,
@@ -149,6 +149,7 @@ attribute_parsers!(
     pub(crate) static ATTRIBUTE_PARSERS = [
         // tidy-alphabetical-start
         AlignParser,
+        AlignStaticParser,
         BodyStabilityParser,
         ConfusablesParser,
         ConstStabilityParser,
