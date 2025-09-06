@@ -4,7 +4,7 @@
 //!
 //! How to run this
 //! $ ./x.py clean
-//! $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make
+//! $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make-cargo
 //!
 //! Supported targets:
 //! - thumbv6m-none-eabi (Bare Cortex-M0, M0+, M1)

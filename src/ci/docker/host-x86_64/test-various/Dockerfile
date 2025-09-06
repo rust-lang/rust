@@ -60,9 +60,10 @@ RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v19.0
   tar -xJ
 ENV PATH "$PATH:/wasmtime-v19.0.0-x86_64-linux"
 
-ENV WASM_WASIP_TARGET=wasm32-wasip1 
+ENV WASM_WASIP_TARGET=wasm32-wasip1
 ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_WASIP_TARGET \
   tests/run-make \
+  tests/run-make-cargo \
   tests/ui \
   tests/mir-opt \
   tests/codegen-units \
@@ -73,6 +74,7 @@ ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
   tests/run-make \
+  tests/run-make-cargo \
   tests/assembly-llvm
 
 ENV MUSL_TARGETS=x86_64-unknown-linux-musl \
@@ -88,8 +90,8 @@ ENV UEFI_TARGETS=aarch64-unknown-uefi,i686-unknown-uefi,x86_64-unknown-uefi \
     CC_x86_64_unknown_uefi=clang-11 \
     CXX_x86_64_unknown_uefi=clang++-11
 ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
-  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target aarch64-unknown-uefi && \
-  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target i686-unknown-uefi && \
-  python3 /checkout/x.py --stage 2 test tests/run-make/uefi-qemu/rmake.rs --target x86_64-unknown-uefi
+  python3 /checkout/x.py --stage 2 test tests/run-make-cargo/uefi-qemu/rmake.rs --target aarch64-unknown-uefi && \
+  python3 /checkout/x.py --stage 2 test tests/run-make-cargo/uefi-qemu/rmake.rs --target i686-unknown-uefi && \
+  python3 /checkout/x.py --stage 2 test tests/run-make-cargo/uefi-qemu/rmake.rs --target x86_64-unknown-uefi
 
 ENV SCRIPT $WASM_WASIP_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT

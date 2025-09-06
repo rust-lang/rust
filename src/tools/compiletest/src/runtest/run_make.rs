@@ -5,11 +5,12 @@ use build_helper::fs::{ignore_not_found, recursive_remove};
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::{ProcRes, TestCx, disable_error_reporting};
+use crate::common::TestSuite;
 use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
     pub(super) fn run_rmake_test(&self) {
-        // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
+        // For `run-make`, we need to perform 2 steps to build and run a `run-make` recipe
         // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
         // library and is available under
         // `build/$HOST/bootstrap-tools/$TARGET/release/librun_make_support.rlib`.
@@ -189,8 +190,12 @@ impl TestCx<'_> {
             // through a specific CI runner).
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
-        if let Some(ref cargo) = self.config.cargo_path {
-            cmd.env("CARGO", cargo);
+        // Only `run-make-cargo` test suite gets an in-tree `cargo`, not `run-make`.
+        if self.config.suite == TestSuite::RunMakeCargo {
+            cmd.env(
+                "CARGO",
+                self.config.cargo_path.as_ref().expect("cargo must be built and made available"),
+            );
         }
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {

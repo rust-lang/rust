@@ -24,8 +24,8 @@ In `ui` tests and other test suites that support `//@ rustc-env`, you can specif
 //@ rustc-env:RUSTC_BOOTSTRAP=-1
 ```
 
-For `run-make` tests, `//@ rustc-env` is not supported. You can do something
-like the following for individual `rustc` invocations.
+For `run-make`/`run-make-cargo` tests, `//@ rustc-env` is not supported. You can do
+something like the following for individual `rustc` invocations.
 
 ```rust,ignore
 use run_make_support::rustc;
