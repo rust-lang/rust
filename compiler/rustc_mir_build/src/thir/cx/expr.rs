@@ -821,10 +821,15 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             hir::ExprKind::OffsetOf(_, _) => {
                 let data = self.typeck_results.offset_of_data();
-                let &(container, ref indices) = data.get(expr.hir_id).unwrap();
-                let fields = tcx.mk_offset_of_from_iter(indices.iter().copied());
-
-                ExprKind::OffsetOf { container, fields }
+                match data.get(expr.hir_id).unwrap() {
+                    &Ok((container, fields)) => ExprKind::OffsetOf { container, fields },
+                    Err(err) => {
+                        // FIXME(field_projections): this `bug!` never seems to be reached, since
+                        // apparently this code is not invoked when computing `typeck_results`
+                        // produced an error.
+                        bug!("could not lower `offset_of!`: {err:?}")
+                    }
+                }
             }
 
             hir::ExprKind::ConstBlock(ref anon_const) => {

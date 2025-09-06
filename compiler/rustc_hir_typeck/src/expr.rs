@@ -5,7 +5,7 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::FieldIdx;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -20,7 +20,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath, find_attr};
-use rustc_hir_analysis::NoVariantNamed;
+use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
 use rustc_infer::traits::query::NoSolution;
@@ -44,8 +44,8 @@ use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotRemove, CantDereference, FieldMultiplySpecifiedInInitializer,
-    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnType,
-    NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, NakedAsmOutsideNakedFn,
+    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
     TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
@@ -3082,7 +3082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
             ident, base, expr, base_ty
         );
-        let mut err = self.no_such_field_err(ident, base_ty, expr);
+        let mut err = self.no_such_field_err(ident, base_ty, expr.span, expr.hir_id);
 
         match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
@@ -3295,12 +3295,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    fn no_such_field_err(
+    pub(crate) fn no_such_field_err(
         &self,
         field: Ident,
         base_ty: Ty<'tcx>,
-        expr: &hir::Expr<'tcx>,
+        span: Span,
+        hir_id: HirId,
     ) -> Diag<'_> {
+        let total_span = span;
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, base_ty);
 
@@ -3309,12 +3311,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.downgrade_to_delayed_bug();
         }
 
-        if let Some(within_macro_span) = span.within_macro(expr.span, self.tcx.sess.source_map()) {
+        if let Some(within_macro_span) = span.within_macro(total_span, self.tcx.sess.source_map()) {
             err.span_label(within_macro_span, "due to this macro variable");
         }
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
+        let mod_id = self.tcx.parent_module(hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
             && (self.tcx.is_diagnostic_item(sym::Result, def.did())
                 || self.tcx.is_diagnostic_item(sym::Option, def.did()))
@@ -3326,7 +3328,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (base_ty, "")
         };
         for found_fields in
-            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, expr.hir_id)
+            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, hir_id)
         {
             let field_names = found_fields.iter().map(|field| field.0.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
@@ -3338,7 +3340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         candidate_field,
                         vec![],
                         mod_id,
-                        expr.hir_id,
+                        hir_id,
                     )
                 })
                 .map(|mut field_path| {
@@ -3351,7 +3353,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let len = candidate_fields.len();
             // Don't suggest `.field` if the base expr is from a different
             // syntax context than the field.
-            if len > 0 && expr.span.eq_ctxt(field.span) {
+            if len > 0 && total_span.eq_ctxt(field.span) {
                 err.span_suggestions(
                     field.span.shrink_to_lo(),
                     format!(
@@ -3383,7 +3385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err
     }
 
-    fn private_field_err(&self, field: Ident, base_did: DefId) -> Diag<'_> {
+    pub(crate) fn private_field_err(&self, field: Ident, base_did: DefId) -> Diag<'_> {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_descr(base_did);
         struct_span_code_err!(
@@ -3843,172 +3845,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields: &[Ident],
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
-        let container = self.lower_ty(container).normalized;
+        let result = self.lower_field_path(
+            container,
+            fields,
+            expr.span,
+            expr.hir_id,
+            ty::FieldPathKind::OffsetOf,
+        );
 
-        let mut field_indices = Vec::with_capacity(fields.len());
-        let mut current_container = container;
-        let mut fields = fields.into_iter();
-
-        while let Some(&field) = fields.next() {
-            let container = self.structurally_resolve_type(expr.span, current_container);
-
-            match container.kind() {
-                ty::Adt(container_def, args) if container_def.is_enum() => {
-                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, _def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
-
-                    if !self.tcx.features().offset_of_enum() {
-                        rustc_session::parse::feature_err(
-                            &self.tcx.sess,
-                            sym::offset_of_enum,
-                            ident.span,
-                            "using enums in offset_of is experimental",
-                        )
-                        .emit();
-                    }
-
-                    let Some((index, variant)) = container_def
-                        .variants()
-                        .iter_enumerated()
-                        .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
-                    else {
-                        self.dcx()
-                            .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
-                            .with_span_label(field.span, "variant not found")
-                            .emit_unless_delay(container.references_error());
-                        break;
-                    };
-                    let Some(&subfield) = fields.next() else {
-                        type_error_struct!(
-                            self.dcx(),
-                            ident.span,
-                            container,
-                            E0795,
-                            "`{ident}` is an enum variant; expected field at end of `offset_of`",
-                        )
-                        .with_span_label(field.span, "enum variant")
-                        .emit();
-                        break;
-                    };
-                    let (subident, sub_def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
-
-                    let Some((subindex, field)) = variant
-                        .fields
-                        .iter_enumerated()
-                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
-                    else {
-                        self.dcx()
-                            .create_err(NoFieldOnVariant {
-                                span: ident.span,
-                                container,
-                                ident,
-                                field: subfield,
-                                enum_span: field.span,
-                                field_span: subident.span,
-                            })
-                            .emit_unless_delay(container.references_error());
-                        break;
-                    };
-
-                    let field_ty = self.field_ty(expr.span, field, args);
-
-                    // Enums are anyway always sized. But just to safeguard against future
-                    // language extensions, let's double-check.
-                    self.require_type_is_sized(
-                        field_ty,
-                        expr.span,
-                        ObligationCauseCode::FieldSized {
-                            adt_kind: AdtKind::Enum,
-                            span: self.tcx.def_span(field.did),
-                            last: false,
-                        },
-                    );
-
-                    if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
-                        self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                    } else {
-                        self.private_field_err(ident, container_def.did()).emit();
-                    }
-
-                    // Save the index of all fields regardless of their visibility in case
-                    // of error recovery.
-                    field_indices.push((index, subindex));
-                    current_container = field_ty;
-
-                    continue;
-                }
-                ty::Adt(container_def, args) => {
-                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
-
-                    let fields = &container_def.non_enum_variant().fields;
-                    if let Some((index, field)) = fields
-                        .iter_enumerated()
-                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
-                    {
-                        let field_ty = self.field_ty(expr.span, field, args);
-
-                        if self.tcx.features().offset_of_slice() {
-                            self.require_type_has_static_alignment(field_ty, expr.span);
-                        } else {
-                            self.require_type_is_sized(
-                                field_ty,
-                                expr.span,
-                                ObligationCauseCode::Misc,
-                            );
-                        }
-
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
-                        } else {
-                            self.private_field_err(ident, container_def.did()).emit();
-                        }
-
-                        // Save the index of all fields regardless of their visibility in case
-                        // of error recovery.
-                        field_indices.push((FIRST_VARIANT, index));
-                        current_container = field_ty;
-
-                        continue;
-                    }
-                }
-                ty::Tuple(tys) => {
-                    if let Ok(index) = field.as_str().parse::<usize>()
-                        && field.name == sym::integer(index)
-                    {
-                        if let Some(&field_ty) = tys.get(index) {
-                            if self.tcx.features().offset_of_slice() {
-                                self.require_type_has_static_alignment(field_ty, expr.span);
-                            } else {
-                                self.require_type_is_sized(
-                                    field_ty,
-                                    expr.span,
-                                    ObligationCauseCode::Misc,
-                                );
-                            }
-
-                            field_indices.push((FIRST_VARIANT, index.into()));
-                            current_container = field_ty;
-
-                            continue;
-                        }
-                    }
-                }
-                _ => (),
-            };
-
-            self.no_such_field_err(field, container, expr).emit();
-
-            break;
-        }
-
-        self.typeck_results
-            .borrow_mut()
-            .offset_of_data_mut()
-            .insert(expr.hir_id, (container, field_indices));
+        self.typeck_results.borrow_mut().offset_of_data_mut().insert(expr.hir_id, result);
 
         self.tcx.types.usize
     }

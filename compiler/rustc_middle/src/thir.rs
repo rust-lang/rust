@@ -32,8 +32,8 @@ use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
-    TyCtxt, UpvarArgs,
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FieldPath, FnSig, GenericArgsRef,
+    Ty, TyCtxt, UpvarArgs,
 };
 
 pub mod visit;
@@ -563,7 +563,7 @@ pub enum ExprKind<'tcx> {
     /// Field offset (`offset_of!`)
     OffsetOf {
         container: Ty<'tcx>,
-        fields: &'tcx List<(VariantIdx, FieldIdx)>,
+        fields: FieldPath<'tcx>,
     },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),

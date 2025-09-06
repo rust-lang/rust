@@ -39,8 +39,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
-    TypingMode, Upcast, fold_regions,
+    self, Const, FieldPath, FieldPathKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, Ty,
+    TyCtxt, TypeVisitableExt, TypingMode, Upcast, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -134,6 +134,15 @@ pub trait HirTyLowerer<'tcx> {
         hir_id: HirId,
         span: Span,
     );
+
+    fn lower_field_path(
+        &self,
+        container: &hir::Ty<'tcx>,
+        fields: &[Ident],
+        span: Span,
+        hir_id: HirId,
+        field_path_kind: FieldPathKind,
+    ) -> Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed>;
 
     /// Probe bounds in scope where the bounded type coincides with the given type parameter.
     ///

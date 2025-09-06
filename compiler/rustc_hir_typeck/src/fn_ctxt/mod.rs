@@ -9,15 +9,19 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
-use rustc_errors::DiagCtxtHandle;
+use rustc_abi::FIRST_VARIANT;
+use rustc_errors::{DiagCtxtHandle, E0795};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, HirId, ItemLocalMap};
+use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{
     HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, AdtKind, Const, FieldPath, FieldPathKind, Ty, TyCtxt, TypeVisitableExt,
+};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
@@ -27,9 +31,10 @@ use rustc_trait_selection::traits::{
 };
 
 use crate::coercion::DynamicCoerceMany;
+use crate::errors::NoFieldOnVariant;
 use crate::fallback::DivergingFallbackBehavior;
 use crate::fn_ctxt::checks::DivergingBlockBehavior;
-use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
+use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt, type_error_struct};
 
 /// The `FnCtxt` stores type-checking context needed to type-check bodies of
 /// functions, closures, and `const`s, including performing type inference
@@ -270,6 +275,193 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(span),
         }
+    }
+
+    fn lower_field_path(
+        &self,
+        container: &hir::Ty<'tcx>,
+        fields: &[Ident],
+        span: Span,
+        hir_id: HirId,
+        field_path_kind: FieldPathKind,
+    ) -> Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed> {
+        let container = self.lower_ty(container).normalized;
+
+        let mut field_indices = Vec::with_capacity(fields.len());
+        let mut current_container = container;
+        let mut fields = fields.into_iter();
+
+        while let Some(&field) = fields.next() {
+            let container = self.structurally_resolve_type(span, current_container);
+
+            match container.kind() {
+                ty::Adt(container_def, args)
+                    if container_def.is_enum() && field_path_kind == FieldPathKind::OffsetOf =>
+                {
+                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
+                    let (ident, _def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+
+                    if !self.tcx.features().offset_of_enum() {
+                        rustc_session::parse::feature_err(
+                            &self.tcx.sess,
+                            sym::offset_of_enum,
+                            ident.span,
+                            "using enums in offset_of is experimental",
+                        )
+                        .emit();
+                    }
+
+                    let Some((index, variant)) = container_def
+                        .variants()
+                        .iter_enumerated()
+                        .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
+                    else {
+                        return Err(self
+                            .dcx()
+                            .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
+                            .with_span_label(field.span, "variant not found")
+                            .emit_unless_delay(container.references_error()));
+                    };
+                    let Some(&subfield) = fields.next() else {
+                        return Err(type_error_struct!(
+                            self.dcx(),
+                            ident.span,
+                            container,
+                            E0795,
+                            "`{ident}` is an enum variant; expected field at end of `offset_of`",
+                        )
+                        .with_span_label(field.span, "enum variant")
+                        .emit());
+                    };
+                    let (subident, sub_def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
+
+                    let Some((subindex, field)) = variant
+                        .fields
+                        .iter_enumerated()
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
+                    else {
+                        return Err(self
+                            .dcx()
+                            .create_err(NoFieldOnVariant {
+                                span: ident.span,
+                                container,
+                                ident,
+                                field: subfield,
+                                enum_span: field.span,
+                                field_span: subident.span,
+                            })
+                            .emit_unless_delay(container.references_error()));
+                    };
+
+                    let field_ty = self.field_ty(span, field, args);
+
+                    // Enums are anyway always sized. But just to safeguard against future
+                    // language extensions, let's double-check.
+                    self.require_type_is_sized(
+                        field_ty,
+                        span,
+                        ObligationCauseCode::FieldSized {
+                            adt_kind: AdtKind::Enum,
+                            span: self.tcx.def_span(field.did),
+                            last: false,
+                        },
+                    );
+
+                    if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
+                        self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                    } else {
+                        self.private_field_err(ident, container_def.did()).emit();
+                    }
+
+                    // Save the index of all fields regardless of their visibility in case
+                    // of error recovery.
+                    field_indices.push((index, subindex));
+                    current_container = field_ty;
+
+                    continue;
+                }
+                ty::Adt(container_def, args) => {
+                    let block = self.tcx.local_def_id_to_hir_id(self.body_id);
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+
+                    let fields = &container_def.non_enum_variant().fields;
+                    if let Some((index, field)) = fields
+                        .iter_enumerated()
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == ident)
+                    {
+                        let field_ty = self.field_ty(span, field, args);
+
+                        match field_path_kind {
+                            FieldPathKind::OffsetOf => {
+                                if self.tcx.features().offset_of_slice() {
+                                    self.require_type_has_static_alignment(field_ty, span);
+                                } else {
+                                    self.require_type_is_sized(
+                                        field_ty,
+                                        span,
+                                        ObligationCauseCode::Misc,
+                                    );
+                                }
+                            }
+                            FieldPathKind::FieldOf => {
+                                // A field type always exists regardless of weather it is aligned or
+                                // not.
+                            }
+                        }
+
+                        if field.vis.is_accessible_from(def_scope, self.tcx) {
+                            self.tcx.check_stability(field.did, Some(hir_id), span, None);
+                        } else {
+                            self.private_field_err(ident, container_def.did()).emit();
+                        }
+
+                        // Save the index of all fields regardless of their visibility in case
+                        // of error recovery.
+                        field_indices.push((FIRST_VARIANT, index));
+                        current_container = field_ty;
+
+                        continue;
+                    }
+                }
+                ty::Tuple(tys) => {
+                    if let Ok(index) = field.as_str().parse::<usize>()
+                        && field.name == sym::integer(index)
+                    {
+                        if let Some(&field_ty) = tys.get(index) {
+                            match field_path_kind {
+                                FieldPathKind::OffsetOf => {
+                                    if self.tcx.features().offset_of_slice() {
+                                        self.require_type_has_static_alignment(field_ty, span);
+                                    } else {
+                                        self.require_type_is_sized(
+                                            field_ty,
+                                            span,
+                                            ObligationCauseCode::Misc,
+                                        );
+                                    }
+                                }
+                                FieldPathKind::FieldOf => {
+                                    // A field type always exists regardless of weather it is aligned or
+                                    // not.
+                                }
+                            }
+
+                            field_indices.push((FIRST_VARIANT, index.into()));
+                            current_container = field_ty;
+
+                            continue;
+                        }
+                    }
+                }
+                _ => (),
+            };
+
+            return Err(self.no_such_field_err(field, container, span, hir_id).emit());
+        }
+        Ok((container, self.tcx.mk_field_path_from_iter(field_indices.into_iter())))
     }
 
     fn register_trait_ascription_bounds(

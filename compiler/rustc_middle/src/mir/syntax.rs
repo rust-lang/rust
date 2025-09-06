@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{self, FieldPath, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -1574,7 +1574,7 @@ pub enum NullOp<'tcx> {
     /// Returns the minimum alignment of a type
     AlignOf,
     /// Returns the offset of a field
-    OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
+    OffsetOf(FieldPath<'tcx>),
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,
