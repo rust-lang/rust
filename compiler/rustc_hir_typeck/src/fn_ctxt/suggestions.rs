@@ -3614,15 +3614,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .must_apply_modulo_regions()
         {
             let sm = self.tcx.sess.source_map();
-            if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_expr.span)
-                && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_expr.span)
+            // If the span of rhs_expr or lhs_expr is in an external macro,
+            // we should find the user-written code span. See issue #139050
+            if let Some(rhs_span) = rhs_expr.span.find_ancestor_not_from_extern_macro(sm)
+                && let Some(lhs_span) = lhs_expr.span.find_ancestor_not_from_extern_macro(sm)
+                && let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
+                && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_span)
             {
                 err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
-                err.multipart_suggestion(
-                    "consider swapping the equality",
-                    vec![(lhs_expr.span, rhs_snippet), (rhs_expr.span, lhs_snippet)],
-                    Applicability::MaybeIncorrect,
-                );
+                if rhs_span != lhs_span {
+                    err.multipart_suggestion(
+                        "consider swapping the equality",
+                        vec![(lhs_span, rhs_snippet), (rhs_span, lhs_snippet)],
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    // rhs_span and lhs_span are the same because it from extern macro.
+                    // we should suggest to swap two arguments of the equality
+                    err.span_help(rhs_span, "consider swapping two arguments of the equality");
+                }
             }
         }
     }
