@@ -7,7 +7,7 @@ extern crate leaf;
 
 // Check that we inline a leaf cross-crate call
 #[no_mangle]
-pub fn leaf_outer() -> String {
+pub fn leaf_outer() -> bool {
     // CHECK-NOT: call {{.*}}leaf_fn
     leaf::leaf_fn()
 }

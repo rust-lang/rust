@@ -4,8 +4,8 @@
 
 // This function *looks* like it contains a call, but that call will be optimized out by MIR
 // optimizations.
-pub fn leaf_fn() -> String {
-    String::new()
+pub fn leaf_fn() -> bool {
+    Some(0).is_some()
 }
 
 // This function contains a call, even after MIR optimizations. It is only eligible for
