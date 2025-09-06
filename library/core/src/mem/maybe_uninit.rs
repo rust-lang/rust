@@ -252,6 +252,44 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///     std::process::exit(*code); // UB! Accessing uninitialized memory.
 /// }
 /// ```
+///
+/// # Validity
+///
+/// A `MaybeUninit<T>` has no validity requirement – any sequence of [bytes][reference-byte] of the
+/// appropriate length, initialized to any value or uninitialized, are a valid value of `MaybeUninit<T>`.
+///
+/// However, "round-tripping" via `MaybeUninit` does not always result in the original value.
+/// Concretely, given distinct `T` and `U` where `size_of::<T>() == size_of::<U>()`, the following
+/// code is not guaranteed to be sound:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// # struct T; struct U;
+/// fn identity(t: T) -> T {
+///     unsafe {
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u)
+///     }
+/// }
+/// ```
+///
+/// If the representation of `t` contains initialized bytes at byte offsets where `U` contains padding bytes, these
+/// may not be preserved in `MaybeUninit<U>`. Interpreting the representation of `u` at type `T` again (i.e., `transmute(u)` above) may thus
+/// be undefined behavior or yield a value different from `t` due to those bytes being lost. This is an active area of discussion, and this code
+/// may become sound in the future.
+///
+/// Note that, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
+///
+/// [reference-byte]: ../../reference/memory-model.html#bytes
+///
+/// ## Provenance
+///
+/// As stated above, `MaybeUninit` permits any byte value at any byte offset. This includes values
+/// which contain [pointer provenance][provenance]. A possibly useful implication is that, for any
+/// value, `p: P`, which contains provenance, transmuting `p` to `MaybeUninit<[u8; size_of::<P>]>`
+/// and then back to `P` will produce a value identical to `p`, including provenance.
+///
+/// [provenance]: ../ptr/index.html#provenance
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
