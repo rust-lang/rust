@@ -135,9 +135,8 @@ use crate::marker::PointeeSized;
 #[doc(alias = "&*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub trait Deref: PointeeSized {
+pub const trait Deref: PointeeSized {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_target"]
@@ -267,9 +266,8 @@ impl<T: ?Sized> const Deref for &mut T {
 #[lang = "deref_mut"]
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-pub trait DerefMut: [const] Deref + PointeeSized {
+pub const trait DerefMut: [const] Deref + PointeeSized {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "deref_mut_method"]
