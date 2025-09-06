@@ -686,6 +686,22 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::GenericParamDef {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::FieldPath<'tcx> {
+    type T = crate::ty::FieldPath;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        crate::ty::FieldPath(
+            self.into_iter()
+                .map(|(var, field)| (var.stable(tables, cx), field.stable(tables, cx)))
+                .collect(),
+        )
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
     type T = crate::ty::PredicateKind;
 

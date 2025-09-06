@@ -5,6 +5,7 @@ use rustc_public_bridge::Tables;
 use rustc_public_bridge::context::CompilerCtxt;
 
 use super::Stable;
+use crate::IndexedVal;
 use crate::compiler_interface::BridgeTys;
 
 mod abi;
@@ -22,9 +23,9 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
 }
 
 impl<'tcx> Stable<'tcx> for FieldIdx {
-    type T = usize;
+    type T = crate::mir::FieldIdx;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
-        self.as_usize()
+        crate::mir::FieldIdx::to_val(self.as_usize())
     }
 }
 

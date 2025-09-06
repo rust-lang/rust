@@ -80,6 +80,7 @@ pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
     TyCtxtFeed, tls,
 };
+pub use self::field_path::{FieldPath, FieldPathKind};
 pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
@@ -147,6 +148,7 @@ mod context;
 mod diagnostics;
 mod elaborate_impl;
 mod erase_regions;
+mod field_path;
 mod fold;
 mod generic_args;
 mod generics;
