@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test $DIR/nested-main.rs - foo (line 10) ... ok
 test $DIR/nested-main.rs - foo2 (line 19) ... ok
 

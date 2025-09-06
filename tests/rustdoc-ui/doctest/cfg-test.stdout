@@ -1,5 +1,5 @@
 
-running 2 tests
+running 2 standalone doctests
 test $DIR/cfg-test.rs - Bar (line 27) ... ok
 test $DIR/cfg-test.rs - Foo (line 19) ... ok
 
