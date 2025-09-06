@@ -33,3 +33,8 @@ llvm = ['rustc_driver_impl/llvm']
 max_level_info = ['rustc_driver_impl/max_level_info']
 rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
 # tidy-alphabetical-end
+
+[build-dependencies]
+# tidy-alphabetical-start
+rustc_windows_rc = { path = "../rustc_windows_rc" }
+# tidy-alphabetical-end
