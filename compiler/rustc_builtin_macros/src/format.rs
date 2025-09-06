@@ -565,6 +565,7 @@ fn make_format_args(
             &used,
             &args,
             &pieces,
+            &invalid_refs,
             detect_foreign_fmt,
             str_style,
             fmt_str,
@@ -645,6 +646,7 @@ fn report_missing_placeholders(
     used: &[bool],
     args: &FormatArguments,
     pieces: &[parse::Piece<'_>],
+    invalid_refs: &[(usize, Option<Span>, PositionUsedAs, FormatArgPositionKind)],
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
@@ -760,6 +762,45 @@ fn report_missing_placeholders(
     }
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
+    }
+
+    if !found_foreign && invalid_refs.is_empty() {
+        // Show example if user didn't use any format specifiers
+        let show_example = used.iter().all(|used| !used);
+
+        if !show_example && unused.len() > 1 {
+            diag.note(format!("consider adding {} format specifiers", unused.len()));
+        }
+
+        let original_fmt_str = if fmt_str.len() >= 1 { &fmt_str[..fmt_str.len() - 1] } else { "" };
+
+        if show_example && unused.len() == 1 {
+            diag.note("format specifiers use curly braces: `{}`");
+
+            diag.span_suggestion_verbose(
+                fmt_span,
+                "consider adding format specifier",
+                format!("\"{}{{}}\"", original_fmt_str),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        if show_example && unused.len() > 1 {
+            diag.note("format specifiers use curly braces: `{}`");
+
+            let mut suggest_fixed_fmt = format!("\"{}", original_fmt_str);
+            for _ in &unused {
+                suggest_fixed_fmt.push_str("{}");
+            }
+            suggest_fixed_fmt.push('"');
+
+            diag.span_suggestion_verbose(
+                fmt_span,
+                format!("consider adding {} format specifiers", unused.len()),
+                suggest_fixed_fmt,
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     diag.emit();
