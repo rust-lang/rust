@@ -3,6 +3,8 @@ expand_attributes_on_expressions_experimental =
     .help_outer_doc = `///` is used for outer documentation comments; for a plain comment, use `//`
     .help_inner_doc = `//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`
 
+expand_cfg_attr_no_attributes = `#[cfg_attr]` does not expand to any attributes
+
 expand_collapse_debuginfo_illegal =
     illegal value for attribute #[collapse_debuginfo(no|external|yes)]
 
@@ -78,6 +80,10 @@ expand_macro_body_stability =
     .label = invalid body stability attribute
     .label2 = body stability attribute affects this macro
 
+expand_macro_call_unused_doc_comment = unused doc comment
+    .label = rustdoc does not generate documentation for macro invocations
+    .help = to document an item produced by a macro, the macro must produce the documentation as part of its expansion
+
 expand_macro_const_stability =
     macros cannot have const stability attributes
     .label = invalid const stability attribute
@@ -88,6 +94,13 @@ expand_macro_expands_to_match_arm = macros cannot expand to match arms
 expand_malformed_feature_attribute =
     malformed `feature` attribute input
     .expected = expected just one word
+
+expand_metavariable_still_repeating = variable `{$name}` is still repeating at this depth
+    .label = expected repetition
+
+expand_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
+    .binder_label = expected repetition
+    .occurrence_label = conflicting repetition
 
 expand_meta_var_dif_seq_matchers = {$msg}
 
@@ -175,6 +188,8 @@ expand_resolve_relative_path =
     cannot resolve relative path in non-file source `{$path}`
 
 expand_trace_macro = trace_macro
+
+expand_unknown_macro_variable = unknown macro variable `{$name}`
 
 expand_unsupported_key_value =
     key-value macro attributes are not supported
