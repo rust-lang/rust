@@ -16,8 +16,7 @@ extern "C" fn f2_2(...) {}
 //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
 
 extern "C" fn f2_3(..., x: isize) {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-//~| ERROR `...` must be the last argument of a C-variadic function
+//~^ ERROR `...` must be the last argument of a C-variadic function
 
 extern "C" fn f3_1(x: isize, ...) {}
 //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
@@ -26,8 +25,7 @@ extern "C" fn f3_2(...) {}
 //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
 
 extern "C" fn f3_3(..., x: isize) {}
-//~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-//~| ERROR `...` must be the last argument of a C-variadic function
+//~^ ERROR `...` must be the last argument of a C-variadic function
 
 const unsafe extern "C" fn f4_1(x: isize, ...) {}
 //~^ ERROR functions cannot be both `const` and C-variadic
@@ -77,9 +75,7 @@ trait T {
     fn t_f4(...);
     //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
     fn t_f5(..., x: isize) {}
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-    //~| ERROR `...` must be the last argument of a C-variadic function
+    //~^ ERROR `...` must be the last argument of a C-variadic function
     fn t_f6(..., x: isize);
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-    //~| ERROR `...` must be the last argument of a C-variadic function
+    //~^ ERROR `...` must be the last argument of a C-variadic function
 }
