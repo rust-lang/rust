@@ -1,11 +1,9 @@
-use std::collections::HashMap;
 use std::str::FromStr;
 
 use itertools::Itertools;
 use regex::Regex;
 
 use super::intrinsic::X86IntrinsicType;
-use crate::common::argument::Argument;
 use crate::common::cli::Language;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, Sign, TypeKind};
 use crate::x86::xml_parser::Parameter;
