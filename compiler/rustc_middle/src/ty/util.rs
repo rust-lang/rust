@@ -1168,7 +1168,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::RawPtr(_, _)
             | ty::FnDef(..)
             | ty::Error(_)
-            | ty::FnPtr(..) => true,
+            | ty::FnPtr(..)
+            | ty::Field(..) => true,
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_freeze(),
             ty::Adt(..)
