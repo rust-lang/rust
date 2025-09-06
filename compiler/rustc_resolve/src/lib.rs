@@ -25,7 +25,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeSet;
 use std::fmt::{self, Formatter};
 use std::sync::Arc;
@@ -598,17 +598,17 @@ struct ModuleData<'ra> {
     underscore_disambiguator: CmCell<u32>, // FIXME(batched): Use an atomic in batched import resolution?
 
     /// Macro invocations that can expand into items in this module.
-    unexpanded_invocations: RefCell<FxHashSet<LocalExpnId>>,
+    unexpanded_invocations: CmRefCell<FxHashSet<LocalExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
 
-    glob_importers: RefCell<Vec<Import<'ra>>>,
-    globs: RefCell<Vec<Import<'ra>>>,
+    glob_importers: CmRefCell<Vec<Import<'ra>>>,
+    globs: CmRefCell<Vec<Import<'ra>>>,
 
     /// Used to memoize the traits in this module for faster searches through all traits in scope.
     traits:
-        RefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
+        CmRefCell<Option<Box<[(Macros20NormalizedIdent, NameBinding<'ra>, Option<Module<'ra>>)]>>>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -660,9 +660,9 @@ impl<'ra> ModuleData<'ra> {
             underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
-            glob_importers: RefCell::new(Vec::new()),
-            globs: RefCell::new(Vec::new()),
-            traits: RefCell::new(None),
+            glob_importers: CmRefCell::new(Vec::new()),
+            globs: CmRefCell::new(Vec::new()),
+            traits: CmRefCell::new(None),
             span,
             expansion,
             self_binding,
@@ -697,7 +697,7 @@ impl<'ra> Module<'ra> {
 
     /// This modifies `self` in place. The traits will be stored in `self.traits`.
     fn ensure_traits<'tcx>(self, resolver: &impl AsRef<Resolver<'ra, 'tcx>>) {
-        let mut traits = self.traits.borrow_mut();
+        let mut traits = self.traits.borrow_mut_unchecked();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
             self.for_each_child(resolver, |r, name, ns, binding| {
@@ -2587,7 +2587,7 @@ impl<T: Copy> CmCell<T> {
         self.value.get()
     }
 
-    pub fn update_unchecked(&self, f: impl FnOnce(T) -> T)
+    fn update_unchecked(&self, f: impl FnOnce(T) -> T)
     where
         T: Copy,
     {
@@ -2616,5 +2616,56 @@ impl<T> CmCell<T> {
 
     fn into_inner(self) -> T {
         self.value.into_inner()
+    }
+}
+#[derive(Default)]
+struct CmRefCell<T> {
+    ref_cell: RefCell<T>,
+}
+
+impl<T> CmRefCell<T> {
+    const fn new(value: T) -> CmRefCell<T> {
+        CmRefCell { ref_cell: RefCell::new(value) }
+    }
+
+    #[inline]
+    #[track_caller]
+    #[allow(dead_code)]
+    fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
+        if r.assert_speculative {
+            panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+        }
+        self.ref_cell.borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
+        self.ref_cell.borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn try_borrow_mut_unchecked(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
+        self.ref_cell.try_borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    #[allow(dead_code)]
+    fn try_borrow_mut<'ra, 'tcx>(
+        &self,
+        r: Resolver<'ra, 'tcx>,
+    ) -> Result<RefMut<'_, T>, BorrowMutError> {
+        if r.assert_speculative {
+            panic!("Not allowed to mutably borrow a CmRefCell during speculative resolution");
+        }
+        self.ref_cell.try_borrow_mut()
+    }
+
+    #[inline]
+    #[track_caller]
+    fn borrow(&self) -> Ref<'_, T> {
+        self.ref_cell.borrow()
     }
 }

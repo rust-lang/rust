@@ -483,7 +483,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let Ok(glob_importers) = module.glob_importers.try_borrow_mut() else {
+        let Ok(glob_importers) = module.glob_importers.try_borrow_mut_unchecked() else {
             return t;
         };
 
@@ -1511,7 +1511,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Add to module's glob_importers
-        module.glob_importers.borrow_mut().push(import);
+        module.glob_importers.borrow_mut_unchecked().push(import);
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
@@ -1553,7 +1553,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'ra>) {
         // Since import resolution is finished, globs will not define any more names.
-        *module.globs.borrow_mut() = Vec::new();
+        *module.globs.borrow_mut_unchecked() = Vec::new();
 
         let Some(def_id) = module.opt_def_id() else { return };
 

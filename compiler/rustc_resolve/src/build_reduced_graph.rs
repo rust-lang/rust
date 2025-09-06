@@ -505,7 +505,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     });
                 }
             }
-            ImportKind::Glob { .. } => current_module.globs.borrow_mut().push(import),
+            ImportKind::Glob { .. } => current_module.globs.borrow_mut_unchecked().push(import),
             _ => unreachable!(),
         }
     }
@@ -1196,7 +1196,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     /// directly into its parent scope's module.
     fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
-        self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unexpanded_invocations.borrow_mut_unchecked().insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
