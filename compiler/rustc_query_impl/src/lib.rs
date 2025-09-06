@@ -58,7 +58,7 @@ impl<'tcx, C: QueryCache, const ANON: bool, const DEPTH_LIMIT: bool, const FEEDA
     for DynamicConfig<'tcx, C, ANON, DEPTH_LIMIT, FEEDABLE>
 {
     fn clone(&self) -> Self {
-        DynamicConfig { dynamic: self.dynamic }
+        *self
     }
 }
 
