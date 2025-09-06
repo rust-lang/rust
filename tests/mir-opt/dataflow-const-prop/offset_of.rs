@@ -56,10 +56,10 @@ fn generic<T>() {
     // CHECK: debug dx => [[dx:_.*]];
     // CHECK: debug dy => [[dy:_.*]];
 
-    // CHECK: [[gx]] = OffsetOf(Gamma<T>, [(0, 0)]);
+    // CHECK: [[gx]] = OffsetOf(Gamma<T>, FieldPath([(0, 0)]));
     let gx = offset_of!(Gamma<T>, x);
 
-    // CHECK: [[gy]] = OffsetOf(Gamma<T>, [(0, 1)]);
+    // CHECK: [[gy]] = OffsetOf(Gamma<T>, FieldPath([(0, 1)]));
     let gy = offset_of!(Gamma<T>, y);
 
     // CHECK: [[dx]] = const 0_usize

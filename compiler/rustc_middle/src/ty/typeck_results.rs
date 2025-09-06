@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::iter;
 
-use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
@@ -23,8 +23,8 @@ use crate::infer::canonical::Canonical;
 use crate::mir::FakeReadCause;
 use crate::traits::ObligationCause;
 use crate::ty::{
-    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
-    GenericArgsRef, Ty, UserArgs, tls,
+    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, FieldPath, GenericArgKind,
+    GenericArgs, GenericArgsRef, Ty, UserArgs, tls,
 };
 
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
@@ -226,7 +226,7 @@ pub struct TypeckResults<'tcx> {
     pub transmutes_to_check: Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>,
 
     /// Container types and field indices of `offset_of!` expressions
-    offset_of_data: ItemLocalMap<(Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)>,
+    offset_of_data: ItemLocalMap<Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed>>,
 }
 
 impl<'tcx> TypeckResults<'tcx> {
@@ -561,13 +561,13 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn offset_of_data(
         &self,
-    ) -> LocalTableInContext<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
+    ) -> LocalTableInContext<'_, Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.offset_of_data }
     }
 
     pub fn offset_of_data_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, (Ty<'tcx>, Vec<(VariantIdx, FieldIdx)>)> {
+    ) -> LocalTableInContextMut<'_, Result<(Ty<'tcx>, FieldPath<'tcx>), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.offset_of_data }
     }
 }

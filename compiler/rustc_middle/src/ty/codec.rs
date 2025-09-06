@@ -489,10 +489,10 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<(VariantIdx, FieldIdx)> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::FieldPath<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
-        decoder.interner().mk_offset_of_from_iter(
+        decoder.interner().mk_field_path_from_iter(
             (0..len).map::<(VariantIdx, FieldIdx), _>(|_| Decodable::decode(decoder)),
         )
     }

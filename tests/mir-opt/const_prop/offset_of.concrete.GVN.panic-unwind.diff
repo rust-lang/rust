@@ -34,25 +34,25 @@
   
       bb0: {
           StorageLive(_1);
--         _1 = OffsetOf(Alpha, [(0, 0)]);
+-         _1 = OffsetOf(Alpha, FieldPath([(0, 0)]));
 +         _1 = const 4_usize;
           StorageLive(_2);
--         _2 = OffsetOf(Alpha, [(0, 1)]);
+-         _2 = OffsetOf(Alpha, FieldPath([(0, 1)]));
 +         _2 = const 0_usize;
           StorageLive(_3);
--         _3 = OffsetOf(Alpha, [(0, 2), (0, 0)]);
+-         _3 = OffsetOf(Alpha, FieldPath([(0, 2), (0, 0)]));
 +         _3 = const 2_usize;
           StorageLive(_4);
--         _4 = OffsetOf(Alpha, [(0, 2), (0, 1)]);
+-         _4 = OffsetOf(Alpha, FieldPath([(0, 2), (0, 1)]));
 +         _4 = const 3_usize;
           StorageLive(_5);
--         _5 = OffsetOf(Epsilon, [(0, 0)]);
+-         _5 = OffsetOf(Epsilon, FieldPath([(0, 0)]));
 +         _5 = const 1_usize;
           StorageLive(_6);
--         _6 = OffsetOf(Epsilon, [(0, 1)]);
+-         _6 = OffsetOf(Epsilon, FieldPath([(0, 1)]));
 +         _6 = const 2_usize;
           StorageLive(_7);
--         _7 = OffsetOf(Epsilon, [(2, 0)]);
+-         _7 = OffsetOf(Epsilon, FieldPath([(2, 0)]));
 +         _7 = const 4_usize;
           _0 = const ();
           StorageDead(_7);
