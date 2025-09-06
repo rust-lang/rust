@@ -373,6 +373,7 @@ lint_improper_ctypes_enum_repr_help =
     consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
 
 lint_improper_ctypes_enum_repr_reason = enum has no representation hint
+lint_improper_ctypes_field_representing_type_reason = field representing types have no C equivalent
 lint_improper_ctypes_fnptr_help = consider using an `extern fn(...) -> ...` function pointer instead
 
 lint_improper_ctypes_fnptr_reason = this function pointer has Rust-specific calling convention
