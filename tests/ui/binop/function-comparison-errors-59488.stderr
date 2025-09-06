@@ -1,0 +1,105 @@
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/function-comparison-errors-59488.rs:15:9
+   |
+LL |     foo > 12;
+   |     --- ^ -- {integer}
+   |     |
+   |     fn() -> i32 {foo}
+   |
+help: use parentheses to call this function
+   |
+LL |     foo() > 12;
+   |        ++
+
+error[E0308]: mismatched types
+  --> $DIR/function-comparison-errors-59488.rs:15:11
+   |
+LL |     foo > 12;
+   |           ^^ expected fn item, found `i32`
+   |
+   = note: expected fn item `fn() -> i32 {foo}`
+                 found type `i32`
+
+error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
+  --> $DIR/function-comparison-errors-59488.rs:19:9
+   |
+LL |     bar > 13;
+   |     --- ^ -- {integer}
+   |     |
+   |     fn(i64) -> i64 {bar}
+   |
+help: use parentheses to call this function
+   |
+LL |     bar(/* i64 */) > 13;
+   |        +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/function-comparison-errors-59488.rs:19:11
+   |
+LL |     bar > 13;
+   |           ^^ expected fn item, found `i64`
+   |
+   = note: expected fn item `fn(i64) -> i64 {bar}`
+                 found type `i64`
+
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/function-comparison-errors-59488.rs:23:9
+   |
+LL |     foo > foo;
+   |     --- ^ --- fn() -> i32 {foo}
+   |     |
+   |     fn() -> i32 {foo}
+   |
+help: use parentheses to call these
+   |
+LL |     foo() > foo();
+   |        ++      ++
+
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/function-comparison-errors-59488.rs:26:9
+   |
+LL |     foo > bar;
+   |     --- ^ --- fn(i64) -> i64 {bar}
+   |     |
+   |     fn() -> i32 {foo}
+
+error[E0308]: mismatched types
+  --> $DIR/function-comparison-errors-59488.rs:26:11
+   |
+LL |     foo > bar;
+   |           ^^^ expected fn item, found a different fn item
+   |
+   = note: expected fn item `fn() -> i32 {foo}`
+              found fn item `fn(i64) -> i64 {bar}`
+
+error[E0369]: binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}`
+  --> $DIR/function-comparison-errors-59488.rs:31:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     fn(usize) -> Foo {Foo::Bar}
+   |     fn(usize) -> Foo {Foo::Bar}
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
+  --> $DIR/function-comparison-errors-59488.rs:31:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `Debug`
+  --> $DIR/function-comparison-errors-59488.rs:31:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Debug` is not implemented for fn item `fn(usize) -> Foo {Foo::Bar}`
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0369.
+For more information about an error, try `rustc --explain E0277`.
