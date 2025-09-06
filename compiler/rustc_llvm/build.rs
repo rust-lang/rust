@@ -254,7 +254,10 @@ fn main() {
         println!("cargo:rustc-link-lib=kstat");
     }
 
-    if (target.starts_with("arm") && !target.contains("freebsd") && !target.contains("ohos"))
+    if (target.starts_with("arm")
+        && !target.starts_with("arm64")
+        && !target.contains("freebsd")
+        && !target.contains("ohos"))
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")
         || target.starts_with("powerpc-")
