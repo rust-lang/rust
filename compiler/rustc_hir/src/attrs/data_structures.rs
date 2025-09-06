@@ -626,6 +626,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
 
+    /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
+    RustcPassIndirectlyInNonRusticAbis(Span),
+
     /// Represents `#[sanitize]`
     ///
     /// the on set and off set are distjoint since there's a third option: unset.

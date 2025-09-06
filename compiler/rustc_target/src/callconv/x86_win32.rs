@@ -46,6 +46,11 @@ pub(crate) fn compute_abi_info<'a, Ty, C>(
             continue;
         }
 
+        if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+            arg.make_indirect();
+            continue;
+        }
+
         // FIXME: MSVC 2015+ will pass the first 3 vector arguments in [XYZ]MM0-2
         // See https://reviews.llvm.org/D72114 for Clang behavior
 

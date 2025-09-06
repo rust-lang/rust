@@ -37,6 +37,10 @@ where
         }
         return;
     }
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+        return;
+    }
 
     let size = arg.layout.size;
     if size.bits() <= 128 {
