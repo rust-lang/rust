@@ -8,8 +8,8 @@ note: required by an implicit `Sized` bound in `Add`
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
 help: consider further restricting `Self`
    |
-LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + Sized {}
-   |                                                                                                +++++++
+LL | trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> + std::marker::Sized {}
+   |                                                                                                ++++++++++++++++++++
 
 error: aborting due to 1 previous error
 
