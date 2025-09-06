@@ -3710,6 +3710,8 @@ pub enum TyKind<'hir, Unambig = ()> {
     /// We use pointer tagging to represent a `&'hir Lifetime` and `TraitObjectSyntax` pair
     /// as otherwise this type being `repr(C)` would result in `TyKind` increasing in size.
     TraitObject(&'hir [PolyTraitRef<'hir>], TaggedRef<'hir, Lifetime, TraitObjectSyntax>),
+    /// Field representing type (`field_of!`)
+    FieldOf(&'hir Ty<'hir>, &'hir [Ident]),
     /// Unused for now.
     Typeof(&'hir AnonConst),
     /// Placeholder for a type that has failed to be defined.

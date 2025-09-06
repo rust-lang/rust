@@ -2558,6 +2558,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let length = self.lower_const_arg(length, FeedConstTy::No);
                 Ty::new_array_with_const_len(tcx, self.lower_ty(ty), length)
             }
+            hir::TyKind::FieldOf(container, fields) => {
+                self.lower_field_of(hir_ty, container, fields)
+            }
             hir::TyKind::Typeof(e) => tcx.type_of(e.def_id).instantiate_identity(),
             hir::TyKind::Infer(()) => {
                 // Infer also appears as the type of arguments or return
@@ -2722,6 +2725,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         fn_ptr_ty
+    }
+
+    fn lower_field_of(
+        &self,
+        hir_ty: &hir::Ty<'tcx>,
+        container: &hir::Ty<'tcx>,
+        fields: &[Ident],
+    ) -> Ty<'tcx> {
+        match self.lower_field_path(
+            container,
+            fields,
+            hir_ty.span,
+            hir_ty.hir_id,
+            FieldPathKind::FieldOf,
+        ) {
+            Ok((container, field_path)) => Ty::new_field_type(self.tcx(), container, field_path),
+            Err(err) => Ty::new_error(self.tcx(), err),
+        }
     }
 
     /// Given a fn_hir_id for a impl function, suggest the type that is found on the
