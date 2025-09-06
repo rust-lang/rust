@@ -49,7 +49,7 @@ fn check_tys(local_ty: Ty, idx: FieldIdx, expected_ty: Ty) {
     let TyKind::RigidTy(RigidTy::Adt(def, args)) = local_ty.kind() else { unreachable!() };
     assert_eq!(def.ty_with_args(&args), local_ty);
 
-    let field_def = &def.variants_iter().next().unwrap().fields()[idx];
+    let field_def = &def.variants_iter().next().unwrap().fields()[idx.0];
     let field_ty = field_def.ty_with_args(&args);
     assert_eq!(field_ty, expected_ty);
 

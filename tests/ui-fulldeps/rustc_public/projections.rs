@@ -19,7 +19,7 @@ extern crate rustc_public;
 
 use rustc_public::ItemKind;
 use rustc_public::crate_def::CrateDef;
-use rustc_public::mir::{ProjectionElem, Rvalue, StatementKind};
+use rustc_public::mir::{FieldIdx, ProjectionElem, Rvalue, StatementKind};
 use rustc_public::ty::{RigidTy, TyKind, UintTy};
 use std::assert_matches::assert_matches;
 use std::io::Write;
@@ -45,7 +45,7 @@ fn test_place_projections() -> ControlFlow<()> {
             assert!(local_proj.is_empty());
             match &r_proj[..] {
                 // Similarly we can't match against a type, only against its kind.
-                [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => {
+                [ProjectionElem::Deref, ProjectionElem::Field(FieldIdx(2), ty)] => {
                     assert_matches!(
                         ty.kind(),
                         TyKind::RigidTy(RigidTy::Uint(rustc_public::ty::UintTy::U8))

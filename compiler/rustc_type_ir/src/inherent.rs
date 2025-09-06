@@ -625,6 +625,17 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
+pub trait FieldPath<I: Interner>: Copy + Debug + Hash + Eq {
+    fn walk<T>(
+        self,
+        interner: I,
+        container: I::Ty,
+        walker: impl FnMut(I::Ty, I::Symbol, I::Ty, bool) -> ControlFlow<T>,
+    ) -> Option<T>;
+
+    fn field_ty(self, interner: I, container: I::Ty) -> I::Ty;
+}
+
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
