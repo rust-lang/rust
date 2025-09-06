@@ -323,6 +323,8 @@ pub mod cmp;
 pub mod convert;
 pub mod default;
 pub mod error;
+#[unstable(feature = "sliceindex_wrappers", issue = "146179")]
+pub mod index;
 pub mod marker;
 pub mod ops;
 
