@@ -454,9 +454,6 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         ty::RawPtr(pointee_type, _) | ty::Ref(_, pointee_type, _) => {
             build_pointer_or_reference_di_node(cx, t, pointee_type, unique_type_id)
         }
-        // Some `Box` are newtyped pointers, make debuginfo aware of that.
-        // Only works if the allocator argument is a 1-ZST and hence irrelevant for layout
-        // (or if there is no allocator argument).
         ty::Adt(def, args)
             if def.is_box()
                 && args.get(1).is_none_or(|arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
@@ -473,6 +470,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
+        ty::Field(..) => build_field_type_di_node(cx, unique_type_id),
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
@@ -1257,6 +1255,32 @@ fn build_closure_env_di_node<'ll, 'tcx>(
         ),
         // Fields:
         |cx, owner| build_upvar_field_di_nodes(cx, closure_env_type, owner),
+        NO_GENERICS,
+    )
+}
+
+fn build_field_type_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    unique_type_id: UniqueTypeId<'tcx>,
+) -> DINodeCreationResult<'ll> {
+    let ty = unique_type_id.expect_ty();
+    let ty::Field(_, _) = ty.kind() else {
+        bug!("build_field_type_di_node() called with non-field-type: {ty:?}")
+    };
+    let type_name = compute_debuginfo_type_name(cx.tcx, ty, false);
+    type_map::build_type_with_children(
+        cx,
+        type_map::stub(
+            cx,
+            Stub::Struct,
+            unique_type_id,
+            &type_name,
+            None,
+            cx.size_and_align_of(ty),
+            None,
+            DIFlags::FlagZero,
+        ),
+        |_, _| smallvec![],
         NO_GENERICS,
     )
 }
