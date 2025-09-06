@@ -908,6 +908,21 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             )
         }
         "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
+        "arm" => {
+            // Types wider than 16 bytes are not currently supported. Clang has special logic for
+            // such types, but `VaArgSafe` is not implemented for any type that is this large.
+            assert!(bx.cx.size_of(target_ty).bytes() <= 16);
+
+            emit_ptr_va_arg(
+                bx,
+                addr,
+                target_ty,
+                PassMode::Direct,
+                SlotSize::Bytes4,
+                AllowHigherAlign::Yes,
+                ForceRightAdjust::No,
+            )
+        }
         "s390x" => emit_s390x_va_arg(bx, addr, target_ty),
         "powerpc" => emit_powerpc_va_arg(bx, addr, target_ty),
         "powerpc64" | "powerpc64le" => emit_ptr_va_arg(
