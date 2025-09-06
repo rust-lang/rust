@@ -46,11 +46,22 @@ error: `...` must be the last argument of a C-variadic function
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |            ^^^
 
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-  --> $DIR/issue-86053-1.rs:11:12
+error: `...` is not supported for non-extern functions
+  --> $DIR/issue-86053-1.rs:11:36
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
-   |            ^^^                     ^^^
+   |                                    ^^^
+
+error: functions with a C variable argument list must be unsafe
+  --> $DIR/issue-86053-1.rs:11:36
+   |
+LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
+   |                                    ^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL | unsafe fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
+   | ++++++
 
 error[E0412]: cannot find type `F` in this scope
   --> $DIR/issue-86053-1.rs:11:48
@@ -70,6 +81,6 @@ help: you might be missing a type parameter
 LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,
    |                       +++
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0412`.

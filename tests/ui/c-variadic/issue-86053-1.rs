@@ -13,6 +13,7 @@ fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
     //~| ERROR unexpected `self` parameter in function
     //~| ERROR unexpected `self` parameter in function
     //~| ERROR `...` must be the last argument of a C-variadic function
-    //~| ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~| ERROR `...` is not supported for non-extern functions
+    //~| ERROR: functions with a C variable argument list must be unsafe
     //~| ERROR cannot find type `F` in this scope
 }

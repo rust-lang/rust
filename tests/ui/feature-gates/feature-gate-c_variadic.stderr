@@ -1,14 +1,14 @@
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+error: associated functions cannot have a C variable argument list
   --> $DIR/feature-gate-c_variadic.rs:7:45
    |
-LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) { }
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
    |                                             ^^^^^^^
 
 error[E0658]: C-variadic functions are unstable
   --> $DIR/feature-gate-c_variadic.rs:3:1
    |
-LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub unsafe extern "C" fn test(_: i32, ap: ...) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #44930 <https://github.com/rust-lang/rust/issues/44930> for more information
    = help: add `#![feature(c_variadic)]` to the crate attributes to enable
@@ -17,8 +17,8 @@ LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
 error[E0658]: C-variadic functions are unstable
   --> $DIR/feature-gate-c_variadic.rs:7:5
    |
-LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe extern "C" fn trait_test(_: i32, ap: ...) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #44930 <https://github.com/rust-lang/rust/issues/44930> for more information
    = help: add `#![feature(c_variadic)]` to the crate attributes to enable
