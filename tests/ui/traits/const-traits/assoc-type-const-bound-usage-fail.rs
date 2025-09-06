@@ -17,7 +17,7 @@ const fn unqualified<T: Trait>() {
     T::Assoc::func();
     //~^ ERROR the trait bound `T: [const] Trait` is not satisfied
     <T as Trait>::Assoc::func();
-    //~^ ERROR the trait bound `T: [const] Trait` is not satisfied
+    //[current]~^ ERROR the trait bound `T: [const] Trait` is not satisfied
 }
 
 const fn works<T: [const] Trait>() {
