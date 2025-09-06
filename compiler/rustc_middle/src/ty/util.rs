@@ -1214,6 +1214,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
             ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => ty.is_trivially_unpin(),
             ty::Adt(..)
+            | ty::Field(..)
             | ty::Bound(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
