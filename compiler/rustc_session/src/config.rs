@@ -2407,17 +2407,8 @@ fn parse_opt_level(
     }
 }
 
-fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInfo {
-    let max_g = matches.opt_positions("g").into_iter().max();
-    let max_c = matches
-        .opt_strs_pos("C")
-        .into_iter()
-        .flat_map(|(i, s)| {
-            // NB: This can match a string without `=`.
-            if let Some("debuginfo") = s.split('=').next() { Some(i) } else { None }
-        })
-        .max();
-    if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
+fn select_debuginfo(_matches: &getopts::Matches, _cg: &CodegenOptions) -> DebugInfo {
+    DebugInfo::None
 }
 
 fn parse_assert_incr_state(
