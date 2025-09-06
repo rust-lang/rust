@@ -3513,17 +3513,6 @@ mod sealed {
         a.vec_srdb::<7>(b)
     }
 
-    unsafe fn funnel_shl_u128(a: u128, b: u128, c: u128) -> u128 {
-        #[repr(simd)]
-        struct Single([u128; 1]);
-
-        transmute(simd_funnel_shl::<Single>(
-            transmute(a),
-            transmute(b),
-            transmute(c),
-        ))
-    }
-
     macro_rules! impl_vec_sld {
         ($($ty:ident)*) => {
             $(
@@ -3533,21 +3522,21 @@ mod sealed {
                     #[target_feature(enable = "vector")]
                     unsafe fn vec_sld<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 4);
-                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 * 8 }))
+                        transmute(u128::funnel_shl(transmute(self), transmute(b), C  * 8))
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn vec_sldw<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 2);
-                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 * 4 * 8 }))
+                        transmute(u128::funnel_shl(transmute(self), transmute(b), C * 4 * 8))
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector-enhancements-2")]
                     unsafe fn vec_sldb<const C: u32>(self, b: Self) -> Self {
                         static_assert_uimm_bits!(C, 3);
-                        transmute(funnel_shl_u128(transmute(self), transmute(b), const { C as u128 }))
+                        transmute(u128::funnel_shl(transmute(self), transmute(b), C))
                     }
                 }
 
