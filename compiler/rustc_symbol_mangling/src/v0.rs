@@ -521,6 +521,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 self.push("E");
             }
 
+            ty::Field(..) => todo!("FIXME(field_projections): no idea what to do here"),
             // Mangle all nominal types as paths.
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args)
             | ty::FnDef(def_id, args)
