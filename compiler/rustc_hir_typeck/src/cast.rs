@@ -142,6 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Never
             | ty::Error(_) => {
                 let guar = self

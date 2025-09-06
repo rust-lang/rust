@@ -172,6 +172,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Array(_, _)
             | ty::Pat(_, _)

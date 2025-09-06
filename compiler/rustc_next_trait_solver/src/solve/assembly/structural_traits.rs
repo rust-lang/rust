@@ -119,6 +119,7 @@ where
         // impl {Meta,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
         // impl {Meta,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
         // impl {Meta,}Sized for Closure, CoroutineClosure
+        // impl {Meta,}Sized for Field
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -135,6 +136,7 @@ where
         | ty::Pat(..)
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
+        | ty::Field(..)
         | ty::Never
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
