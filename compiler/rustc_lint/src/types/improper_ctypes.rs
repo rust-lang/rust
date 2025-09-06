@@ -569,6 +569,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
+            ty::Field(..) => FfiUnsafe {
+                ty,
+                reason: fluent::lint_improper_ctypes_field_representing_type_reason,
+                help: None,
+            },
+
             ty::Char => FfiUnsafe {
                 ty,
                 reason: fluent::lint_improper_ctypes_char_reason,
