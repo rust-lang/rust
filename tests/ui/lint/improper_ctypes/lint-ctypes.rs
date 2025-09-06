@@ -52,7 +52,6 @@ extern "C" {
     pub fn str_type(p: &str); //~ ERROR: uses type `str`
     pub fn box_type(p: Box<u32>); //~ ERROR uses type `Box<u32>`
     pub fn opt_box_type(p: Option<Box<u32>>);
-    //~^ ERROR uses type `Option<Box<u32>>`
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
