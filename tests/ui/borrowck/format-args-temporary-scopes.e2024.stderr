@@ -1,0 +1,27 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:13:25
+   |
+LL |     println!("{:?}", { &temp() });
+   |                      ---^^^^^---
+   |                      |  |    |
+   |                      |  |    temporary value is freed at the end of this statement
+   |                      |  creates a temporary value which is freed while still in use
+   |                      borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/format-args-temporary-scopes.rs:19:29
+   |
+LL |     println!("{:?}{:?}", { &temp() }, ());
+   |                          ---^^^^^---
+   |                          |  |    |
+   |                          |  |    temporary value is freed at the end of this statement
+   |                          |  creates a temporary value which is freed while still in use
+   |                          borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.
