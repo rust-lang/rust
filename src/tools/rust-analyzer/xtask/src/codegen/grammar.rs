@@ -1081,7 +1081,6 @@ fn extract_struct_traits(ast: &mut AstSrc) {
         "Enum",
         "Variant",
         "Trait",
-        "TraitAlias",
         "Module",
         "Static",
         "Const",

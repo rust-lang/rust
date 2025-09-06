@@ -23,7 +23,7 @@ use crate::{
         BigModItem, Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl,
         ImportAlias, Interned, ItemTree, ItemTreeAstId, Macro2, MacroCall, MacroRules, Mod,
         ModItemId, ModKind, ModPath, RawAttrs, RawVisibility, RawVisibilityId, SmallModItem,
-        Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
+        Static, Struct, StructKind, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind,
         VisibilityExplicitness,
     },
 };
@@ -134,7 +134,6 @@ impl<'a> Ctx<'a> {
             ast::Item::Const(ast) => self.lower_const(ast).into(),
             ast::Item::Module(ast) => self.lower_module(ast)?.into(),
             ast::Item::Trait(ast) => self.lower_trait(ast)?.into(),
-            ast::Item::TraitAlias(ast) => self.lower_trait_alias(ast)?.into(),
             ast::Item::Impl(ast) => self.lower_impl(ast).into(),
             ast::Item::Use(ast) => self.lower_use(ast)?.into(),
             ast::Item::ExternCrate(ast) => self.lower_extern_crate(ast)?.into(),
@@ -264,19 +263,6 @@ impl<'a> Ctx<'a> {
 
         let def = Trait { name, visibility };
         self.tree.small_data.insert(ast_id.upcast(), SmallModItem::Trait(def));
-        Some(ast_id)
-    }
-
-    fn lower_trait_alias(
-        &mut self,
-        trait_alias_def: &ast::TraitAlias,
-    ) -> Option<ItemTreeAstId<TraitAlias>> {
-        let name = trait_alias_def.name()?.as_name();
-        let visibility = self.lower_visibility(trait_alias_def);
-        let ast_id = self.source_ast_id_map.ast_id(trait_alias_def);
-
-        let alias = TraitAlias { name, visibility };
-        self.tree.small_data.insert(ast_id.upcast(), SmallModItem::TraitAlias(alias));
         Some(ast_id)
     }
 

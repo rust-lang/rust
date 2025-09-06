@@ -1,11 +1,11 @@
 mod generated;
 
 use expect_test::expect;
-use hir::Semantics;
+use hir::{Semantics, db::HirDatabase, setup_tracing};
 use ide_db::{
     EditionedFileId, FileRange, RootDatabase, SnippetCap,
     assists::ExprFillDefaultMode,
-    base_db::SourceDatabase,
+    base_db::{SourceDatabase, salsa},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
 };
@@ -16,7 +16,7 @@ use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{
     Assist, AssistConfig, AssistContext, AssistKind, AssistResolveStrategy, Assists, SingleResolve,
-    assists, handlers::Handler,
+    handlers::Handler,
 };
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
@@ -102,6 +102,18 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     expr_fill_default: ExprFillDefaultMode::Todo,
     prefer_self_ty: false,
 };
+
+fn assists(
+    db: &RootDatabase,
+    config: &AssistConfig,
+    resolve: AssistResolveStrategy,
+    range: ide_db::FileRange,
+) -> Vec<Assist> {
+    salsa::attach(db, || {
+        HirDatabase::zalsa_register_downcaster(db);
+        crate::assists(db, config, resolve, range)
+    })
+}
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
     RootDatabase::with_single_file(text)
@@ -305,6 +317,7 @@ fn check_with_config(
     expected: ExpectedResult<'_>,
     assist_label: Option<&str>,
 ) {
+    let _tracing = setup_tracing();
     let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
     db.enable_proc_attr_macros();
     let text_without_caret = db.file_text(file_with_caret_id.file_id(&db)).text(&db).to_string();
@@ -318,7 +331,10 @@ fn check_with_config(
         _ => AssistResolveStrategy::All,
     };
     let mut acc = Assists::new(&ctx, resolve);
-    handler(&mut acc, &ctx);
+    salsa::attach(&db, || {
+        HirDatabase::zalsa_register_downcaster(&db);
+        handler(&mut acc, &ctx);
+    });
     let mut res = acc.finish();
 
     let assist = match assist_label {
@@ -453,7 +469,6 @@ pub fn test_some_range(a: int) -> bool {
     let expected = labels(&assists);
 
     expect![[r#"
-        Convert integer base
         Extract into...
         Replace if let with match
     "#]]
@@ -486,7 +501,6 @@ pub fn test_some_range(a: int) -> bool {
         let expected = labels(&assists);
 
         expect![[r#"
-            Convert integer base
             Extract into...
             Replace if let with match
         "#]]

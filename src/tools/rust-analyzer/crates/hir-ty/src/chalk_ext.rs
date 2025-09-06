@@ -14,10 +14,9 @@ use hir_def::{
 use crate::{
     AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
     ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
-    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, mapping::ToChalk, to_chalk_trait_id,
-    utils::ClosureSubst,
+    QuantifiedWhereClause, Substitution, ToChalk, TraitRef, Ty, TyBuilder, TyKind, TypeFlags,
+    WhereClause, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub trait TyExt {
@@ -307,7 +306,7 @@ impl TyExt for Ty {
                 predicates.map(|it| it.into_value_and_skipped_binders().0)
             }
             TyKind::Placeholder(idx) => {
-                let id = from_placeholder_idx(db, *idx);
+                let id = from_placeholder_idx(db, *idx).0;
                 let generic_params = db.generic_params(id.parent);
                 let param_data = &generic_params[id.local_id];
                 match param_data {
@@ -371,7 +370,7 @@ impl TyExt for Ty {
             value: InEnvironment::new(&env.env, trait_ref.cast(Interner)),
             binders: CanonicalVarKinds::empty(Interner),
         };
-        db.trait_solve(crate_id, None, goal).is_some()
+        !db.trait_solve(crate_id, None, goal).no_solution()
     }
 
     fn equals_ctor(&self, other: &Ty) -> bool {

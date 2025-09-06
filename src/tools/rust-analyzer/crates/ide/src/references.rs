@@ -1783,7 +1783,7 @@ trait Bar$0 = Foo where Self: ;
 fn foo<T: Bar>(_: impl Bar, _: &dyn Bar) {}
 "#,
             expect![[r#"
-                Bar TraitAlias FileId(0) 13..42 19..22
+                Bar Trait FileId(0) 13..42 19..22
 
                 FileId(0) 53..56
                 FileId(0) 66..69

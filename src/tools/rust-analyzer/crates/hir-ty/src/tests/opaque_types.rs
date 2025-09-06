@@ -71,7 +71,7 @@ fn test() {
     let x = S3.baz();
       //^ Binary<impl Foo + ?Sized, Unary<impl Bar + ?Sized>>
     let y = x.1.0.bar();
-      //^ Unary<Bar::Item<impl Bar + ?Sized>>
+      //^ Unary<<impl Bar + ?Sized as Bar>::Item>
 }
         "#,
     );
@@ -158,4 +158,20 @@ static ALIAS: i32 = {
             205..211: expected impl Trait + ?Sized, got Struct
         "#]],
     )
+}
+
+#[test]
+fn leak_auto_traits() {
+    check_no_mismatches(
+        r#"
+//- minicore: send
+fn foo() -> impl Sized {}
+
+fn is_send<T: Send>(_: T) {}
+
+fn main() {
+    is_send(foo());
+}
+        "#,
+    );
 }

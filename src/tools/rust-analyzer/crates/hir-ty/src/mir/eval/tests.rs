@@ -5,7 +5,9 @@ use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
 use crate::display::DisplayTarget;
-use crate::{Interner, Substitution, db::HirDatabase, mir::MirLowerError, test_db::TestDB};
+use crate::{
+    Interner, Substitution, db::HirDatabase, mir::MirLowerError, setup_tracing, test_db::TestDB,
+};
 
 use super::{MirEvalError, interpret_mir};
 
@@ -35,7 +37,7 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
-    let (result, output) = interpret_mir(db, body, false, None)?;
+    let (result, output) = salsa::attach(db, || interpret_mir(db, body, false, None))?;
     result?;
     Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
@@ -49,6 +51,7 @@ fn check_pass_and_stdio(
     expected_stdout: &str,
     expected_stderr: &str,
 ) {
+    let _tracing = setup_tracing();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let x = eval_main(&db, file_id);

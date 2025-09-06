@@ -23,6 +23,10 @@ use crate::{
         LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
         Ty, TyBuilder, TyExt, pad16,
     },
+    next_solver::{
+        DbInterner,
+        mapping::{ChalkToNextSolver, convert_ty_for_result},
+    },
 };
 
 mod simd;
@@ -171,6 +175,7 @@ impl Evaluator<'_> {
         destination: Interval,
         span: MirSpan,
     ) -> Result<()> {
+        let interner = DbInterner::new_with(self.db, None, None);
         match self_ty.kind(Interner) {
             TyKind::Function(_) => {
                 let [arg] = args else {
@@ -188,7 +193,7 @@ impl Evaluator<'_> {
                 let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure((*id).into());
                 let infer = self.db.infer(closure_owner);
                 let (captures, _) = infer.closure_info(id);
-                let layout = self.layout(&self_ty)?;
+                let layout = self.layout(self_ty.to_nextsolver(interner))?;
                 let ty_iter = captures.iter().map(|c| c.ty(subst));
                 self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
             }
@@ -197,7 +202,7 @@ impl Evaluator<'_> {
                     not_supported!("wrong arg count for clone");
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
-                let layout = self.layout(&self_ty)?;
+                let layout = self.layout(self_ty.to_nextsolver(interner))?;
                 let ty_iter = subst.iter(Interner).map(|ga| ga.assert_ty_ref(Interner).clone());
                 self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
             }
@@ -226,8 +231,9 @@ impl Evaluator<'_> {
         destination: Interval,
         span: MirSpan,
     ) -> Result<()> {
+        let interner = DbInterner::new_with(self.db, None, None);
         for (i, ty) in ty_iter.enumerate() {
-            let size = self.layout(&ty)?.size.bytes_usize();
+            let size = self.layout(ty.to_nextsolver(interner))?.size.bytes_usize();
             let tmp = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
             let arg = IntervalAndTy {
                 interval: Interval { addr: tmp, size: self.ptr_size() },
@@ -592,6 +598,7 @@ impl Evaluator<'_> {
         span: MirSpan,
         needs_override: bool,
     ) -> Result<bool> {
+        let interner = DbInterner::new_with(self.db, None, None);
         if let Some(name) = name.strip_prefix("atomic_") {
             return self
                 .exec_atomic_intrinsic(name, args, generic_args, destination, locals, span)
@@ -769,7 +776,7 @@ impl Evaluator<'_> {
                         "align_of generic arg is not provided".into(),
                     ));
                 };
-                let align = self.layout(ty)?.align.abi.bytes();
+                let align = self.layout(ty.to_nextsolver(interner))?.align.abi.bytes();
                 destination.write_from_bytes(self, &align.to_le_bytes()[0..destination.size])
             }
             "size_of_val" => {
@@ -1025,7 +1032,7 @@ impl Evaluator<'_> {
                 let is_overflow = u128overflow
                     || ans.to_le_bytes()[op_size..].iter().any(|&it| it != 0 && it != 255);
                 let is_overflow = vec![u8::from(is_overflow)];
-                let layout = self.layout(&result_ty)?;
+                let layout = self.layout(result_ty.to_nextsolver(interner))?;
                 let result = self.construct_with_layout(
                     layout.size.bytes_usize(),
                     &layout,
@@ -1249,7 +1256,7 @@ impl Evaluator<'_> {
                         "const_eval_select arg[0] is not a tuple".into(),
                     ));
                 };
-                let layout = self.layout(&tuple.ty)?;
+                let layout = self.layout(tuple.ty.to_nextsolver(interner))?;
                 for (i, field) in fields.iter(Interner).enumerate() {
                     let field = field.assert_ty_ref(Interner).clone();
                     let offset = layout.fields.offset(i).bytes_usize();
@@ -1408,6 +1415,7 @@ impl Evaluator<'_> {
         metadata: Interval,
         locals: &Locals,
     ) -> Result<(usize, usize)> {
+        let interner = DbInterner::new_with(self.db, None, None);
         Ok(match ty.kind(Interner) {
             TyKind::Str => (from_bytes!(usize, metadata.get(self)?), 1),
             TyKind::Slice(inner) => {
@@ -1416,7 +1424,7 @@ impl Evaluator<'_> {
                 (size * len, align)
             }
             TyKind::Dyn(_) => self.size_align_of_sized(
-                self.vtable_map.ty_of_bytes(metadata.get(self)?)?,
+                &convert_ty_for_result(interner, self.vtable_map.ty_of_bytes(metadata.get(self)?)?),
                 locals,
                 "dyn concrete type",
             )?,
@@ -1463,6 +1471,7 @@ impl Evaluator<'_> {
         locals: &Locals,
         _span: MirSpan,
     ) -> Result<()> {
+        let interner = DbInterner::new_with(self.db, None, None);
         // We are a single threaded runtime with no UB checking and no optimization, so
         // we can implement atomic intrinsics as normal functions.
 
@@ -1560,7 +1569,7 @@ impl Evaluator<'_> {
                 Substitution::from_iter(Interner, [ty.clone(), TyBuilder::bool()]),
             )
             .intern(Interner);
-            let layout = self.layout(&result_ty)?;
+            let layout = self.layout(result_ty.to_nextsolver(interner))?;
             let result = self.construct_with_layout(
                 layout.size.bytes_usize(),
                 &layout,

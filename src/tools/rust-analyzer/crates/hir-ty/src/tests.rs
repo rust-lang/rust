@@ -6,14 +6,12 @@ mod incremental;
 mod macros;
 mod method_resolution;
 mod never_type;
+mod opaque_types;
 mod patterns;
 mod regression;
 mod simple;
+mod trait_aliases;
 mod traits;
-mod type_alias_impl_traits;
-
-use std::env;
-use std::sync::LazyLock;
 
 use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;
@@ -35,8 +33,6 @@ use syntax::{
     ast::{self, AstNode, HasName},
 };
 use test_fixture::WithFixture;
-use tracing_subscriber::{Registry, layer::SubscriberExt};
-use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;
 
 use crate::{
@@ -44,29 +40,13 @@ use crate::{
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     infer::{Adjustment, TypeMismatch},
+    setup_tracing,
     test_db::TestDB,
 };
 
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using expect. Use
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
-
-fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
-    if !*ENABLE {
-        return None;
-    }
-
-    let filter: tracing_subscriber::filter::Targets =
-        env::var("CHALK_DEBUG").ok().and_then(|it| it.parse().ok()).unwrap_or_default();
-    let layer = HierarchicalLayer::default()
-        .with_indent_lines(true)
-        .with_ansi(false)
-        .with_indent_amount(2)
-        .with_writer(std::io::stderr);
-    let subscriber = Registry::default().with(filter).with(layer);
-    Some(tracing::subscriber::set_default(subscriber))
-}
 
 #[track_caller]
 fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -177,11 +157,13 @@ fn check_impl(
             };
             let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
-                let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db), true).unwrap()
-                } else {
-                    ty.display_test(&db, display_target).to_string()
-                };
+                let actual = salsa::attach(&db, || {
+                    if display_source {
+                        ty.display_source_code(&db, def.module(&db), true).unwrap()
+                    } else {
+                        ty.display_test(&db, display_target).to_string()
+                    }
+                });
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
         }
@@ -193,11 +175,13 @@ fn check_impl(
             };
             let range = node.as_ref().original_file_range_rooted(&db);
             if let Some(expected) = types.remove(&range) {
-                let actual = if display_source {
-                    ty.display_source_code(&db, def.module(&db), true).unwrap()
-                } else {
-                    ty.display_test(&db, display_target).to_string()
-                };
+                let actual = salsa::attach(&db, || {
+                    if display_source {
+                        ty.display_source_code(&db, def.module(&db), true).unwrap()
+                    } else {
+                        ty.display_test(&db, display_target).to_string()
+                    }
+                });
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
             if let Some(expected) = adjustments.remove(&range) {
@@ -223,11 +207,13 @@ fn check_impl(
                 continue;
             };
             let range = node.as_ref().original_file_range_rooted(&db);
-            let actual = format!(
-                "expected {}, got {}",
-                mismatch.expected.display_test(&db, display_target),
-                mismatch.actual.display_test(&db, display_target)
-            );
+            let actual = salsa::attach(&db, || {
+                format!(
+                    "expected {}, got {}",
+                    mismatch.expected.display_test(&db, display_target),
+                    mismatch.actual.display_test(&db, display_target)
+                )
+            });
             match mismatches.remove(&range) {
                 Some(annotation) => assert_eq!(actual, annotation),
                 None => format_to!(unexpected_type_mismatches, "{:?}: {}\n", range.range, actual),
@@ -422,7 +408,9 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     for (def, krate) in defs {
         let (body, source_map) = db.body_with_source_map(def);
         let infer = db.infer(def);
-        infer_def(infer, body, source_map, krate);
+        salsa::attach(&db, || {
+            infer_def(infer, body, source_map, krate);
+        })
     }
 
     buf.truncate(buf.trim_end().len());

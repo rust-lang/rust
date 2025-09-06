@@ -27,6 +27,27 @@ pub use ide_db::rename::RenameError;
 
 type RenameResult<T> = Result<T, RenameError>;
 
+/// This is similar to `collect::<Result<Vec<_>, _>>`, but unlike it, it succeeds if there is *any* `Ok` item.
+fn ok_if_any<T, E>(iter: impl Iterator<Item = Result<T, E>>) -> Result<Vec<T>, E> {
+    let mut err = None;
+    let oks = iter
+        .filter_map(|item| match item {
+            Ok(it) => Some(it),
+            Err(it) => {
+                err = Some(it);
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    if !oks.is_empty() {
+        Ok(oks)
+    } else if let Some(err) = err {
+        Err(err)
+    } else {
+        Ok(Vec::new())
+    }
+}
+
 /// Prepares a rename. The sole job of this function is to return the TextRange of the thing that is
 /// being targeted for a rename.
 pub(crate) fn prepare_rename(
@@ -95,58 +116,57 @@ pub(crate) fn rename(
         alias_fallback(syntax, position, &new_name.display(db, edition).to_string());
 
     let ops: RenameResult<Vec<SourceChange>> = match alias_fallback {
-        Some(_) => defs
-            // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
-            // properly find "direct" usages/references.
-            .map(|(.., def, new_name, _)| {
-                match kind {
-                    IdentifierKind::Ident => (),
-                    IdentifierKind::Lifetime => {
-                        bail!("Cannot alias reference to a lifetime identifier")
-                    }
-                    IdentifierKind::Underscore => bail!("Cannot alias reference to `_`"),
-                    IdentifierKind::LowercaseSelf => {
-                        bail!("Cannot rename alias reference to `self`")
-                    }
-                };
-                let mut usages = def.usages(&sema).all();
+        Some(_) => ok_if_any(
+            defs
+                // FIXME: This can use the `ide_db::rename_reference` (or def.rename) method once we can
+                // properly find "direct" usages/references.
+                .map(|(.., def, new_name, _)| {
+                    match kind {
+                        IdentifierKind::Ident => (),
+                        IdentifierKind::Lifetime => {
+                            bail!("Cannot alias reference to a lifetime identifier")
+                        }
+                        IdentifierKind::Underscore => bail!("Cannot alias reference to `_`"),
+                        IdentifierKind::LowercaseSelf => {
+                            bail!("Cannot rename alias reference to `self`")
+                        }
+                    };
+                    let mut usages = def.usages(&sema).all();
 
-                // FIXME: hack - removes the usage that triggered this rename operation.
-                match usages.references.get_mut(&file_id).and_then(|refs| {
-                    refs.iter()
-                        .position(|ref_| ref_.range.contains_inclusive(position.offset))
-                        .map(|idx| refs.remove(idx))
-                }) {
-                    Some(_) => (),
-                    None => never!(),
-                };
+                    // FIXME: hack - removes the usage that triggered this rename operation.
+                    match usages.references.get_mut(&file_id).and_then(|refs| {
+                        refs.iter()
+                            .position(|ref_| ref_.range.contains_inclusive(position.offset))
+                            .map(|idx| refs.remove(idx))
+                    }) {
+                        Some(_) => (),
+                        None => never!(),
+                    };
 
-                let mut source_change = SourceChange::default();
-                source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
-                    (
-                        position.file_id,
-                        source_edit_from_references(db, refs, def, &new_name, edition),
-                    )
-                }));
+                    let mut source_change = SourceChange::default();
+                    source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
+                        (
+                            position.file_id,
+                            source_edit_from_references(db, refs, def, &new_name, edition),
+                        )
+                    }));
 
-                Ok(source_change)
-            })
-            .collect(),
-        None => defs
-            .map(|(.., def, new_name, rename_def)| {
-                if let Definition::Local(local) = def {
-                    if let Some(self_param) = local.as_self_param(sema.db) {
-                        cov_mark::hit!(rename_self_to_param);
-                        return rename_self_to_param(&sema, local, self_param, &new_name, kind);
-                    }
-                    if kind == IdentifierKind::LowercaseSelf {
-                        cov_mark::hit!(rename_to_self);
-                        return rename_to_self(&sema, local);
-                    }
+                    Ok(source_change)
+                }),
+        ),
+        None => ok_if_any(defs.map(|(.., def, new_name, rename_def)| {
+            if let Definition::Local(local) = def {
+                if let Some(self_param) = local.as_self_param(sema.db) {
+                    cov_mark::hit!(rename_self_to_param);
+                    return rename_self_to_param(&sema, local, self_param, &new_name, kind);
                 }
-                def.rename(&sema, new_name.as_str(), rename_def)
-            })
-            .collect(),
+                if kind == IdentifierKind::LowercaseSelf {
+                    cov_mark::hit!(rename_to_self);
+                    return rename_to_self(&sema, local);
+                }
+            }
+            def.rename(&sema, new_name.as_str(), rename_def)
+        })),
     };
 
     ops?.into_iter()
@@ -320,7 +340,7 @@ fn find_definitions(
             })
         });
 
-    let res: RenameResult<Vec<_>> = symbols.filter_map(Result::transpose).collect();
+    let res: RenameResult<Vec<_>> = ok_if_any(symbols.filter_map(Result::transpose));
     match res {
         Ok(v) => {
             // remove duplicates, comparing `Definition`s

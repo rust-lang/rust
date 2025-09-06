@@ -194,7 +194,7 @@ fn insert_use_with_alias_option(
         use_tree = use_tree.clone_for_update();
         use_tree.wrap_in_tree_list();
     }
-    let use_item = make::use_(None, use_tree).clone_for_update();
+    let use_item = make::use_(None, None, use_tree).clone_for_update();
     for attr in
         scope.required_cfgs.iter().map(|attr| attr.syntax().clone_subtree().clone_for_update())
     {

@@ -144,6 +144,7 @@ pub(crate) fn infer_cycle_result(_: &dyn HirDatabase, _: DefWithBodyId) -> Arc<I
 ///
 /// This is appropriate to use only after type-check: it assumes
 /// that normalization will succeed, for example.
+#[tracing::instrument(level = "debug", skip(db))]
 pub(crate) fn normalize(db: &dyn HirDatabase, trait_env: Arc<TraitEnvironment>, ty: Ty) -> Ty {
     // FIXME: TypeFlags::HAS_CT_PROJECTION is not implemented in chalk, so TypeFlags::HAS_PROJECTION only
     // works for the type case, so we check array unconditionally. Remove the array part
@@ -1077,14 +1078,22 @@ impl<'db> InferenceContext<'db> {
         // Functions might be defining usage sites of TAITs.
         // To define an TAITs, that TAIT must appear in the function's signatures.
         // So, it suffices to check for params and return types.
-        if self
-            .return_ty
-            .data(Interner)
-            .flags
-            .intersects(TypeFlags::HAS_TY_OPAQUE.union(TypeFlags::HAS_TY_INFER))
-        {
-            tait_candidates.insert(self.return_ty.clone());
-        }
+        fold_tys(
+            self.return_ty.clone(),
+            |ty, _| {
+                match ty.kind(Interner) {
+                    TyKind::OpaqueType(..)
+                    | TyKind::Alias(AliasTy::Opaque(..))
+                    | TyKind::InferenceVar(..) => {
+                        tait_candidates.insert(self.return_ty.clone());
+                    }
+                    _ => {}
+                }
+                ty
+            },
+            DebruijnIndex::INNERMOST,
+        );
+
         self.make_tait_coercion_table(tait_candidates.iter());
     }
 
@@ -1779,7 +1788,6 @@ impl<'db> InferenceContext<'db> {
             TypeNs::AdtId(AdtId::EnumId(_))
             | TypeNs::BuiltinType(_)
             | TypeNs::TraitId(_)
-            | TypeNs::TraitAliasId(_)
             | TypeNs::ModuleId(_) => {
                 // FIXME diagnostic
                 (self.err_ty(), None)

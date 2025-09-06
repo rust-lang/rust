@@ -11,7 +11,7 @@ use test_utils::skip_slow_tests;
 
 use crate::{
     Const, ConstScalar, Interner, MemoryMap, consteval::try_const_usize, db::HirDatabase,
-    display::DisplayTarget, mir::pad16, test_db::TestDB,
+    display::DisplayTarget, mir::pad16, setup_tracing, test_db::TestDB,
 };
 
 use super::{
@@ -76,7 +76,7 @@ fn check_str(#[rust_analyzer::rust_fixture] ra_fixture: &str, answer: &str) {
 #[track_caller]
 fn check_answer(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
-    check: impl FnOnce(&[u8], &MemoryMap),
+    check: impl FnOnce(&[u8], &MemoryMap<'_>),
 ) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
@@ -116,6 +116,7 @@ fn pretty_print_err(e: ConstEvalError, db: TestDB) -> String {
 }
 
 fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const, ConstEvalError> {
+    let _tracing = setup_tracing();
     let module_id = db.module_for_file(file_id.file_id(db));
     let def_map = module_id.def_map(db);
     let scope = &def_map[module_id.local_id].scope;

@@ -10,6 +10,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
+    base_db::salsa,
     defs::Definition,
     documentation::{Documentation, HasDocs},
 };
@@ -226,9 +227,6 @@ impl TryToNav for FileSymbol {
                         hir::ModuleDef::Trait(it) => {
                             Some(it.display(db, display_target).to_string())
                         }
-                        hir::ModuleDef::TraitAlias(it) => {
-                            Some(it.display(db, display_target).to_string())
-                        }
                         hir::ModuleDef::TypeAlias(it) => {
                             Some(it.display(db, display_target).to_string())
                         }
@@ -261,7 +259,6 @@ impl TryToNav for Definition {
             Definition::Const(it) => it.try_to_nav(db),
             Definition::Static(it) => it.try_to_nav(db),
             Definition::Trait(it) => it.try_to_nav(db),
-            Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::ExternCrateDecl(it) => it.try_to_nav(db),
             Definition::InlineAsmOperand(it) => it.try_to_nav(db),
@@ -287,7 +284,6 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Const(it) => it.try_to_nav(db),
             hir::ModuleDef::Static(it) => it.try_to_nav(db),
             hir::ModuleDef::Trait(it) => it.try_to_nav(db),
-            hir::ModuleDef::TraitAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
             hir::ModuleDef::Macro(it) => it.try_to_nav(db),
             hir::ModuleDef::BuiltinType(_) => None,
@@ -366,12 +362,6 @@ impl ToNavFromAst for hir::Trait {
         container_name(db, self, self.krate(db).edition(db))
     }
 }
-impl ToNavFromAst for hir::TraitAlias {
-    const KIND: SymbolKind = SymbolKind::TraitAlias;
-    fn container_name(self, db: &RootDatabase) -> Option<SmolStr> {
-        container_name(db, self, self.krate(db).edition(db))
-    }
-}
 
 impl<D> TryToNav for D
 where
@@ -388,8 +378,9 @@ where
             )
             .map(|mut res| {
                 res.docs = self.docs(db);
-                res.description =
-                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string());
+                res.description = salsa::attach(db, || {
+                    Some(self.display(db, self.krate(db).to_display_target(db)).to_string())
+                });
                 res.container_name = self.container_name(db);
                 res
             }),
@@ -496,8 +487,9 @@ impl TryToNav for hir::Field {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
                         res.docs = self.docs(db);
-                        res.description =
-                            Some(self.display(db, krate.to_display_target(db)).to_string());
+                        res.description = salsa::attach(db, || {
+                            Some(self.display(db, krate.to_display_target(db)).to_string())
+                        });
                         res
                     },
                 )
