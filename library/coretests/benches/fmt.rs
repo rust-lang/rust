@@ -342,3 +342,27 @@ fn write_i128_hex(bh: &mut Bencher) {
         black_box(&mut buf).clear();
     });
 }
+
+#[bench]
+fn write_i64_exp(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(1024);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:e}", black_box(0_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(-100_i64)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(1_i64 << 32)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
+
+#[bench]
+fn write_i128_exp(bh: &mut Bencher) {
+    let mut buf = String::with_capacity(1024);
+    bh.iter(|| {
+        write!(black_box(&mut buf), "{:e}", black_box(0_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(-100_i128)).unwrap();
+        write!(black_box(&mut buf), "{:e}", black_box(1_i128 << 64)).unwrap();
+        black_box(&mut buf).clear();
+    });
+}
