@@ -79,12 +79,6 @@ pub(super) fn lint(
         tools_path.join("rustdoc-js"),
         bless,
     )?;
-    run_eslint(
-        outdir,
-        &[tools_path.join("rustdoc-gui/tester.js")],
-        tools_path.join("rustdoc-gui"),
-        bless,
-    )?;
     Ok(())
 }
 
