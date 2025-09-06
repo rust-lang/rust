@@ -1555,6 +1555,17 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
             }
         });
         (metadata_ty.into(), obligations)
+    } else if tcx.is_lang_item(trait_def_id, LangItem::UnalignedField) {
+        let &ty::Field(container, field_path) = self_ty.kind() else {
+            bug!("only `field_of!()` can implement `UnalignedField`")
+        };
+        if tcx.is_lang_item(item_def_id, LangItem::UnalignedFieldBase) {
+            (container.into(), PredicateObligations::new())
+        } else if tcx.is_lang_item(item_def_id, LangItem::UnalignedFieldType) {
+            (field_path.field_ty(tcx, container).into(), PredicateObligations::new())
+        } else {
+            bug!("unexpected associated type {:?} in `UnalignedField`", obligation.predicate);
+        }
     } else {
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
