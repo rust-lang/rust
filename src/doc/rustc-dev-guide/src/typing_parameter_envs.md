@@ -82,7 +82,7 @@ In the large majority of cases, when a `ParamEnv` is required it either already 
 - In the next-gen trait solver all `Goal`s have a [`param_env` field][goal_param_env] specifying what environment to prove the goal in
 - When editing an existing [`TypeRelation`][typerelation] if it implements [`PredicateEmittingRelation`][predicate_emitting_relation] then a [`param_env` method][typerelation_param_env] will be available.
 
-If you aren't sure if there's a `ParamEnv` in scope somewhere that can be used it can be worth opening a thread in the [`#t-compiler/help`][compiler_help] zulip channel where someone may be able to point out where a `ParamEnv` can be acquired from.
+If you aren't sure if there's a `ParamEnv` in scope somewhere that can be used it can be worth opening a thread in the [`#t-compiler/help`][compiler_help] Zulip channel where someone may be able to point out where a `ParamEnv` can be acquired from.
 
 Manually constructing a `ParamEnv` is typically only needed at the start of some kind of top level analysis (e.g. hir typeck or borrow checking). In such cases there are three ways it can be done:
 - Calling the [`tcx.param_env(def_id)` query][param_env_query] which returns the environment associated with a given definition.
