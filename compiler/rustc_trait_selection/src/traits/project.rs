@@ -1025,6 +1025,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Uint(_)
                         | ty::Float(_)
                         | ty::Adt(..)
+                        | ty::Field(..)
                         | ty::Foreign(_)
                         | ty::Str
                         | ty::Array(..)
@@ -1099,6 +1100,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // If returned by `struct_tail` this is a unit struct
                             // without any fields, or not a struct, and therefore is Sized.
                             | ty::Adt(..)
+                            // field traits are always sized
+                            | ty::Field(..)
                             // If returned by `struct_tail` this is the empty tuple.
                             | ty::Tuple(..)
                             // Integers and floats are always Sized, and so have unit type metadata.

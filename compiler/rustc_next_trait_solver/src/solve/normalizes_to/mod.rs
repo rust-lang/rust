@@ -660,7 +660,8 @@ where
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Never
-            | ty::Foreign(..) => Ty::new_unit(cx),
+            | ty::Foreign(..)
+            | ty::Field(..) => Ty::new_unit(cx),
 
             ty::Error(e) => Ty::new_error(cx, e),
 
@@ -915,6 +916,7 @@ where
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Str
             | ty::Slice(_)
             | ty::Dynamic(_, _, _)

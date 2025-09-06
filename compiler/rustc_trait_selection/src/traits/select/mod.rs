@@ -2119,6 +2119,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Field(..)
             | ty::Error(_) => ty::Binder::dummy(vec![]),
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {

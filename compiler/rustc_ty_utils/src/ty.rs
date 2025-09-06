@@ -38,6 +38,7 @@ fn sizedness_constraint_for_ty<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
+        | ty::Field(..)
         | ty::Never => None,
 
         ty::Str | ty::Slice(..) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
@@ -370,6 +371,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Uint(_)
         | ty::Float(_)
         | ty::Adt(_, _)
+        | ty::Field(_, _)
         | ty::Foreign(_)
         | ty::Array(_, _)
         | ty::Pat(_, _)

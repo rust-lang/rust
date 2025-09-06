@@ -1625,6 +1625,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(..)
+            | ty::Field(..)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(..)
@@ -1683,6 +1684,7 @@ impl<'tcx> Ty<'tcx> {
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
+            | ty::Field(..)
             // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             | ty::Tuple(..) => Ok(tcx.types.unit),
@@ -1869,6 +1871,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Never
+            | ty::Field(..)
             | ty::Error(_) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) => match sizedness {
