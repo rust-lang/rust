@@ -397,12 +397,18 @@ your test, causing separate files to be generated for 32bit and 64bit systems.
 
 ### `run-make` tests
 
-The tests in [`tests/run-make`] are general-purpose tests using Rust *recipes*,
-which are small programs (`rmake.rs`) allowing arbitrary Rust code such as
-`rustc` invocations, and is supported by a [`run_make_support`] library. Using
-Rust recipes provide the ultimate in flexibility.
+The tests in [`tests/run-make`] and [`tests/run-make-cargo`] are general-purpose
+tests using Rust *recipes*, which are small programs (`rmake.rs`) allowing
+arbitrary Rust code such as `rustc` invocations, and is supported by a
+[`run_make_support`] library. Using Rust recipes provide the ultimate in
+flexibility.
 
 `run-make` tests should be used if no other test suites better suit your needs.
+
+The `run-make-cargo` test suite additionally builds an in-tree `cargo` to support
+use cases that require testing in-tree `cargo` in conjunction with in-tree `rustc`.
+The `run-make` test suite does not have access to in-tree `cargo` (so it can be the
+faster-to-iterate test suite).
 
 #### Using Rust recipes
 
@@ -476,6 +482,7 @@ Then add a corresponding entry to `"rust-analyzer.linkedProjects"`
 ```
 
 [`tests/run-make`]: https://github.com/rust-lang/rust/tree/master/tests/run-make
+[`tests/run-make-cargo`]: https://github.com/rust-lang/rust/tree/master/tests/run-make-cargo
 [`run_make_support`]: https://github.com/rust-lang/rust/tree/master/src/tools/run-make-support
 
 ### Coverage tests
