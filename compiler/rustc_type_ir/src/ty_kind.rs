@@ -86,6 +86,9 @@ pub enum TyKind<I: Interner> {
     /// by using something like `adt_def.all_fields().map(|field| field.ty(interner, args))`.
     Adt(I::AdtDef, I::GenericArgs),
 
+    /// Field representing type.
+    Field(I::Ty, I::FieldPath),
+
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(I::ForeignId),
 
@@ -290,6 +293,7 @@ impl<I: Interner> TyKind<I> {
             | ty::Uint(_)
             | ty::Float(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::Foreign(_)
             | ty::Str
             | ty::Array(_, _)

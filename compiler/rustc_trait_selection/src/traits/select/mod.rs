@@ -2263,6 +2263,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
+            | ty::Field(..)
             | ty::Char => {
                 ty::Binder::dummy(AutoImplConstituents { types: vec![], assumptions: vec![] })
             }
