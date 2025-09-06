@@ -80,10 +80,10 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let preds = cx.tcx.explicit_item_self_bounds(def_id)
             // If is a Future
-            && preds.iter_instantiated_copied(cx.tcx, args).any(|(p, _)| {
-                p.as_trait_clause()
-                    .is_some_and(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
-            })
+            && preds
+                .iter_instantiated_copied(cx.tcx, args)
+                .filter_map(|(p, _)| p.as_trait_clause())
+                .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
         {
             let span = decl.output.span();
             let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
