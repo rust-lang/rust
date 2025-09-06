@@ -128,6 +128,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &mut candidates,
                     );
                 }
+                Some(LangItem::Field) => {
+                    self.assemble_builtin_candidates_for_field(obligation, &mut candidates);
+                }
+                Some(LangItem::UnalignedField) => {
+                    self.assemble_builtin_candidates_for_unaligned_field(
+                        obligation,
+                        &mut candidates,
+                    );
+                }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
                     // After the builtin impls we need to also add user written impls, which we do not want to
@@ -1437,6 +1446,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_builtin_candidates_for_field(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Field(container, field_path) => {
+                if field_path
+                    .walk(self.infcx.tcx, *container, |base, _, _, _| {
+                        if let ty::Adt(def, _) = base.kind()
+                            && def.repr().packed()
+                        {
+                            ControlFlow::Break(())
+                        } else {
+                            ControlFlow::Continue(())
+                        }
+                    })
+                    .is_none()
+                {
+                    // we only implement `Field` if all base types are not `repr(packed)`
+                    candidates.vec.push(BuiltinCandidate)
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    fn assemble_builtin_candidates_for_unaligned_field(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match obligation.predicate.self_ty().skip_binder().kind() {
+            ty::Field(_, _) => candidates.vec.push(BuiltinCandidate),
+            _ => {}
         }
     }
 }
