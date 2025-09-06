@@ -504,6 +504,10 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        ty::Field(..) => todo!(
+            "FIXME(field_projections): no idea what to do here, probably not supported in ABI?"
+        ),
+
         ty::Foreign(def_id) => {
             // <length><name>, where <name> is <unscoped-name>
             let mut s = String::new();
