@@ -12,5 +12,5 @@ tracing-tree = "0.3.1"
 
 [features]
 # tidy-alphabetical-start
-max_level_info = ['tracing/max_level_info']
+max_level_info = ['tracing/max_level_info', 'tracing/release_max_level_info']
 # tidy-alphabetical-end
