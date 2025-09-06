@@ -165,6 +165,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
+                    | ty::Field(..)
                     | ty::Placeholder(_) => {
                         bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
                     }
@@ -183,6 +184,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Coroutine(_, _)
                     | ty::Tuple(_) => (),
                     ty::Bool
+                    | ty::Field(..)
                     | ty::Char
                     | ty::Int(_)
                     | ty::Uint(_)

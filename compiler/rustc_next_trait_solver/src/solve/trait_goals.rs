@@ -1257,6 +1257,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Adt(_, _)
+            | ty::Field(_, _)
             | ty::UnsafeBinder(_) => check_impls(),
             ty::Error(_) => None,
         }
