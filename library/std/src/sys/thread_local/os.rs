@@ -1,5 +1,6 @@
 use super::key::{Key, LazyKey, get, set};
 use super::{abort_on_dtor_unwind, guard};
+use crate::alloc::Layout;
 use crate::cell::Cell;
 use crate::marker::PhantomData;
 use crate::ptr;
@@ -11,8 +12,8 @@ use crate::ptr;
 #[rustc_macro_transparency = "semitransparent"]
 pub macro thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
-    (@key $t:ty, const $init:expr) => {
-        $crate::thread::local_impl::thread_local_inner!(@key $t, { const INIT_EXPR: $t = $init; INIT_EXPR })
+    (@key $t:ty, $(#[$($align_attr:tt)*])*, const $init:expr) => {
+        $crate::thread::local_impl::thread_local_inner!(@key $t, $(#[$($align_attr)*])*, { const INIT_EXPR: $t = $init; INIT_EXPR })
     },
 
     // NOTE: we cannot import `Storage` or `LocalKey` with a `use` because that can shadow user
@@ -20,7 +21,7 @@ pub macro thread_local_inner {
     // `tests/thread.rs` if these types are renamed.
 
     // used to generate the `LocalKey` value for `thread_local!`.
-    (@key $t:ty, $init:expr) => {{
+    (@key $t:ty, $(#[$($align_attr:tt)*])*, $init:expr) => {{
         #[inline]
         fn __init() -> $t { $init }
 
@@ -31,13 +32,77 @@ pub macro thread_local_inner {
             $crate::thread::LocalKey::new(|init| {
                 static VAL: $crate::thread::local_impl::Storage<$t>
                     = $crate::thread::local_impl::Storage::new();
-                VAL.get(init, __init)
+                VAL.get($crate::thread::local_impl::thread_local_inner!(@align $(#[$($align_attr)*])*), init, __init)
             })
         }
     }},
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
+
+    // Handle `rustc_align_static` attributes,
+    // by translating them into an argumemt to pass to `Storage::get`:
+
+    // fast path for when there are none
+    (@align) => (1),
+
+    // `rustc_align_static` attributes are present,
+    // translate them into a `const` block that computes the alignment
+    (@align $(#[$($attr:tt)*])+) => {
+        const {
+            // Ensure that attributes have valid syntax
+            // and that the proper feature gate is enabled
+            $(#[$($attr)*])+
+            static DUMMY: () = ();
+
+            let mut final_align = 1_usize;
+            $($crate::thread::local_impl::thread_local_inner!(@align_single final_align, $($attr)*);)+
+            final_align
+        }
+    },
+
+    // process a single `rustc_align_static` attribute
+    (@align_single $final_align:ident, rustc_align_static $($attr_rest:tt)*) => {
+        #[allow(unused_parens)]
+        let new_align: usize = $($attr_rest)*;
+        if new_align > $final_align {
+            $final_align = new_align;
+        }
+    },
+
+    // process a single `cfg_attr` attribute
+    // by translating it into a `cfg`ed block and recursing.
+    // https://doc.rust-lang.org/reference/conditional-compilation.html#railroad-ConfigurationPredicate
+
+    (@align_single $final_align:ident, cfg_attr(true, $($cfg_rhs:tt)*)) => {
+        #[cfg(true)]
+        {
+            $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
+        }
+    },
+
+    (@align_single $final_align:ident, cfg_attr(false, $($cfg_rhs:tt)*)) => {
+        #[cfg(false)]
+        {
+            $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
+        }
+    },
+
+    (@align_single $final_align:ident, cfg_attr($cfg_op:ident ($($cfg_preds:tt)*), $($cfg_rhs:tt)*)) => {
+        #[cfg($cfg_op ($($cfg_preds)*))]
+        {
+            $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
+        }
+    },
+
+    (@align_single $final_align:ident, cfg_attr($cfg_ident:ident $(= $cfg_val:expr)?, $($cfg_rhs:tt)*)) => {
+        #[cfg($cfg_ident $(= $cfg_val)?)]
+        {
+            $crate::thread::local_impl::thread_local_inner!(@align_single $final_align, $($cfg_rhs)*);
+        }
+    },
+
+
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $(#[$($align_attr:tt)*])*, $($init:tt)*) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::thread::local_impl::thread_local_inner!(@key $t, $($init)*);
+            $crate::thread::local_impl::thread_local_inner!(@key $t, $(#[$($align_attr)*])*, $($init)*);
     },
 }
 
@@ -51,8 +116,11 @@ pub struct Storage<T> {
 
 unsafe impl<T> Sync for Storage<T> {}
 
+#[repr(C)]
 struct Value<T: 'static> {
+    // This field must be first, for correctness of `#[rustc_align_static]`
     value: T,
+    align: usize,
     // INVARIANT: if this value is stored under a TLS key, `key` must be that `key`.
     key: Key,
 }
@@ -68,7 +136,12 @@ impl<T: 'static> Storage<T> {
     ///
     /// The resulting pointer may not be used after reentrant inialialization
     /// or thread destruction has occurred.
-    pub fn get(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+    pub fn get(
+        &'static self,
+        align: usize,
+        i: Option<&mut Option<T>>,
+        f: impl FnOnce() -> T,
+    ) -> *const T {
         let key = self.key.force();
         let ptr = unsafe { get(key) as *mut Value<T> };
         if ptr.addr() > 1 {
@@ -77,7 +150,7 @@ impl<T: 'static> Storage<T> {
             unsafe { &(*ptr).value }
         } else {
             // SAFETY: trivially correct.
-            unsafe { Self::try_initialize(key, ptr, i, f) }
+            unsafe { Self::try_initialize(key, align, ptr, i, f) }
         }
     }
 
@@ -86,6 +159,7 @@ impl<T: 'static> Storage<T> {
     /// * `ptr` must be the current value associated with `key`.
     unsafe fn try_initialize(
         key: Key,
+        align: usize,
         ptr: *mut Value<T>,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
@@ -95,8 +169,16 @@ impl<T: 'static> Storage<T> {
             return ptr::null();
         }
 
-        let value = Box::new(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
-        let ptr = Box::into_raw(value);
+        // Manually allocate with the requested alignment
+        let layout = Layout::new::<Value<T>>().align_to(align).unwrap();
+        let ptr: *mut Value<T> = (unsafe { crate::alloc::alloc(layout) }).cast();
+        unsafe {
+            ptr.write(Value {
+                value: i.and_then(Option::take).unwrap_or_else(f),
+                align: layout.align(),
+                key,
+            });
+        }
 
         // SAFETY:
         // * key came from a `LazyKey` and is thus correct.
@@ -114,7 +196,10 @@ impl<T: 'static> Storage<T> {
             // initializer has already returned and the next scope only starts
             // after we return the pointer. Therefore, there can be no references
             // to the old value.
-            drop(unsafe { Box::from_raw(old) });
+            unsafe {
+                old.drop_in_place();
+                crate::alloc::dealloc(old.cast(), layout);
+            }
         }
 
         // SAFETY: We just created this value above.
@@ -133,13 +218,23 @@ unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
     // Note that to prevent an infinite loop we reset it back to null right
     // before we return from the destructor ourselves.
     abort_on_dtor_unwind(|| {
-        let ptr = unsafe { Box::from_raw(ptr as *mut Value<T>) };
-        let key = ptr.key;
-        // SAFETY: `key` is the TLS key `ptr` was stored under.
-        unsafe { set(key, ptr::without_provenance_mut(1)) };
-        drop(ptr);
-        // SAFETY: `key` is the TLS key `ptr` was stored under.
-        unsafe { set(key, ptr::null_mut()) };
+        let value_ptr: *mut Value<T> = ptr.cast();
+        unsafe {
+            let key = (*value_ptr).key;
+            let align = (*value_ptr).align;
+
+            // SAFETY: `key` is the TLS key `ptr` was stored under.
+            set(key, ptr::without_provenance_mut(1));
+
+            // drop and deallocate the value
+            let layout =
+                Layout::from_size_align_unchecked(crate::mem::size_of::<Value<T>>(), align);
+            value_ptr.drop_in_place();
+            crate::alloc::dealloc(ptr, layout);
+
+            // SAFETY: `key` is the TLS key `ptr` was stored under.
+            set(key, ptr::null_mut());
+        };
         // Make sure that the runtime cleanup will be performed
         // after the next round of TLS destruction.
         guard::enable();

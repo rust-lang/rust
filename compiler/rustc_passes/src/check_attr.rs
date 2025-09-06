@@ -1608,6 +1608,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                 item: target.plural_name(),
                             });
                         }
+                        Target::Static => {
+                            if self.tcx.features().static_align() {
+                                self.dcx().emit_err(errors::ReprAlignShouldBeAlignStatic {
+                                    span: *repr_span,
+                                    item: target.plural_name(),
+                                });
+                            }
+                        }
                         _ => {
                             self.dcx().emit_err(errors::AttrApplication::StructEnumUnion {
                                 hint_span: *repr_span,

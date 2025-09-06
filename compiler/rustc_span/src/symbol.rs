@@ -1846,6 +1846,7 @@ symbols! {
         rustc_abi,
         // FIXME(#82232, #143834): temporary name to mitigate `#[align]` nameres ambiguity
         rustc_align,
+        rustc_align_static,
         rustc_allocator,
         rustc_allocator_zeroed,
         rustc_allocator_zeroed_variant,
@@ -2097,6 +2098,7 @@ symbols! {
         staged_api,
         start,
         state,
+        static_align,
         static_in_const,
         static_nobundle,
         static_recursion,
