@@ -74,7 +74,7 @@ Example of things that might require MCPs include major refactorings, changes
 to important types, or important changes to how the compiler does something, or
 smaller user-facing changes.
 
-**When in doubt, ask on [zulip]. It would be a shame to put a lot of work
+**When in doubt, ask on [Zulip]. It would be a shame to put a lot of work
 into a PR that ends up not getting merged!** [See this document][mcpinfo] for
 more info on MCPs.
 
@@ -126,7 +126,7 @@ when contributing to Rust under [the git section](./git.md).
 > from), and work with the compiler team to see if we can help you **break down a large potentially
 > unreviewable PR into a series of smaller more individually reviewable PRs**.
 >
-> You can communicate with the compiler team by creating a [#t-compiler thread on zulip][t-compiler]
+> You can communicate with the compiler team by creating a [#t-compiler thread on Zulip][t-compiler]
 > to discuss your proposed changes.
 >
 > Communicating with the compiler team beforehand helps in several ways:
