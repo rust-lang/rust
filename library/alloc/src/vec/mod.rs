@@ -3788,19 +3788,14 @@ impl<T, A: Allocator> Vec<T, A> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        while let Some(element) = iterator.next() {
-            let len = self.len();
-            if len == self.capacity() {
-                let (lower, _) = iterator.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-            unsafe {
-                ptr::write(self.as_mut_ptr().add(len), element);
-                // Since next() executes user code which can panic we have to bump the length
-                // after each step.
-                // NB can't overflow since we would have had to alloc the address space
-                self.set_len(len + 1);
-            }
+        while let Err(item) = iterator.try_for_each(|item| self.push_within_capacity(item)) {
+            // As long as there is enough space, we push the items directly into
+            // the vector. Once we need more space, look at the iterators size
+            // hint to get an estimate for how much space to reserve.
+            let (lower, _) = iterator.size_hint();
+            self.reserve(lower.saturating_add(1));
+            // SAFETY: we just reserved space for at least one item.
+            unsafe { self.push_within_capacity(item).unwrap_unchecked() };
         }
     }
 
