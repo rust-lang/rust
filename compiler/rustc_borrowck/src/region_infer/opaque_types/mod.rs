@@ -503,7 +503,16 @@ pub(crate) fn apply_computed_concrete_opaque_types<'tcx>(
     let mut errors = Vec::new();
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = get_concrete_opaque_type(concrete_opaque_types, key.def_id) else {
-            assert!(tcx.use_typing_mode_borrowck(), "non-defining use in defining scope");
+            if !tcx.use_typing_mode_borrowck() {
+                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                    && alias_ty.def_id == key.def_id.to_def_id()
+                    && alias_ty.args == key.args
+                {
+                    continue;
+                } else {
+                    unreachable!("non-defining use in defining scope");
+                }
+            }
             errors.push(DeferredOpaqueTypeError::NonDefiningUseInDefiningScope {
                 span: hidden_type.span,
                 opaque_type_key: key,
