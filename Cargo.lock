@@ -336,7 +336,7 @@ dependencies = [
  "curl",
  "indexmap",
  "serde",
- "toml 0.7.8",
+ "toml 0.8.23",
 ]
 
 [[package]]
