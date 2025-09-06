@@ -271,7 +271,6 @@ struct IterUsage {
     span: Span,
 }
 
-#[allow(clippy::too_many_lines)]
 fn parse_iter_usage<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,

@@ -237,7 +237,7 @@ impl_lint_pass!(FormatArgs<'_> => [
     POINTER_FORMAT,
 ]);
 
-#[allow(clippy::struct_field_names)]
+#[expect(clippy::struct_field_names)]
 pub struct FormatArgs<'tcx> {
     format_args: FormatArgsStorage,
     msrv: Msrv,

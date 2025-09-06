@@ -31,8 +31,10 @@ extern crate rustc_ast;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
-// The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate.
-#[allow(unused_extern_crates)]
+#[expect(
+    unused_extern_crates,
+    reason = "The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate."
+)]
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
@@ -2813,7 +2815,6 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtx
             moved_before_use,
             same_ctxt,
         },
-        #[allow(unreachable_patterns)]
         Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
             node: Node::Crate(cx.tcx.hir_root_module()),

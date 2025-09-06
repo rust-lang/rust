@@ -12,7 +12,6 @@ use rustc_span::symbol::{Symbol, sym};
 use super::CLONE_ON_COPY;
 
 /// Checks for the `CLONE_ON_COPY` lint.
-#[allow(clippy::too_many_lines)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,

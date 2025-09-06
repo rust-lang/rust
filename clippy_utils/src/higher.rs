@@ -212,7 +212,7 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-    #[allow(clippy::similar_names)]
+    #[expect(clippy::similar_names)]
     pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
         match expr.kind {
             ExprKind::Call(path, [arg1, arg2])

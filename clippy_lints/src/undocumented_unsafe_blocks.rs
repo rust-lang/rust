@@ -489,7 +489,6 @@ enum HasSafetyComment {
 }
 
 /// Checks if the lines immediately preceding the item contain a safety comment.
-#[allow(clippy::collapsible_match)]
 fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSafetyComment {
     match span_from_macro_expansion_has_safety_comment(cx, item.span) {
         HasSafetyComment::Maybe => (),
@@ -551,7 +550,6 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
 }
 
 /// Checks if the lines immediately preceding the item contain a safety comment.
-#[allow(clippy::collapsible_match)]
 fn stmt_has_safety_comment(
     cx: &LateContext<'_>,
     span: Span,

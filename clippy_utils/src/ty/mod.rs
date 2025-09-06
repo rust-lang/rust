@@ -954,7 +954,6 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
 }
 
 /// Asserts that the given arguments match the generic parameters of the given item.
-#[allow(dead_code)]
 fn assert_generic_args_match<'tcx>(tcx: TyCtxt<'tcx>, did: DefId, args: &[GenericArg<'tcx>]) {
     let g = tcx.generics_of(did);
     let parent = g.parent.map(|did| tcx.generics_of(did));

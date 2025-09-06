@@ -280,7 +280,7 @@ fn is_filter_ok_map_unwrap(cx: &LateContext<'_>, expr: &Expr<'_>, filter_arg: &E
 }
 
 /// lint use of `filter().map()` or `find().map()` for `Iterators`
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn check(
     cx: &LateContext<'_>,
     expr: &Expr<'_>,

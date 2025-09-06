@@ -4886,7 +4886,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         if impl_item.span.in_external_macro(cx.sess().source_map()) {
             return;
@@ -4958,7 +4957,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 }
 
 impl Methods {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_methods<'tcx>(&self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Handle method calls whose receiver and arguments may not come from expansion
         if let Some((name, recv, args, span, call_span)) = method_call(expr) {

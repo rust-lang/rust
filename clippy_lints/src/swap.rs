@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for Swap {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn generate_swap_warning<'tcx>(
     block: &'tcx Block<'tcx>,
     cx: &LateContext<'tcx>,

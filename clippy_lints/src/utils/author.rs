@@ -205,7 +205,6 @@ struct PrintVisitor<'a, 'tcx> {
     first: Cell<bool>,
 }
 
-#[allow(clippy::unused_self)]
 impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> Self {
         Self {
@@ -410,7 +409,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         self.expr(field!(arm.body));
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn expr(&self, expr: &Binding<&hir::Expr<'_>>) {
         if let Some(higher::While { condition, body, .. }) = higher::While::hir(expr.value) {
             bind!(self, condition, body);
