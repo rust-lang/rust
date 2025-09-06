@@ -2,7 +2,10 @@ use rustc_hir::attrs::{CoverageAttrKind, OptimizeAttr, SanitizerSet, UsedBy};
 use rustc_session::parse::feature_err;
 
 use super::prelude::*;
-use crate::session_diagnostics::{NakedFunctionIncompatibleAttribute, NullOnExport};
+use crate::session_diagnostics::{
+    NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass, NullOnObjcSelector,
+    ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
+};
 
 pub(crate) struct OptimizeParser;
 
@@ -147,6 +150,70 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
             return None;
         }
         Some(AttributeKind::ExportName { name, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct ObjcClassParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ObjcClassParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "ClassName");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(classname) = nv.value_as_str() else {
+            // `#[rustc_objc_class = ...]` is expected to be used as an implementatioin detail
+            // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
+            // Use a custom error message instead.
+            cx.emit_err(ObjcClassExpectedStringLiteral { span: nv.value_span });
+            return None;
+        };
+        if classname.as_str().contains('\0') {
+            // `#[rustc_objc_class = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnObjcClass { span: nv.value_span });
+            return None;
+        }
+        Some(AttributeKind::ObjcClass { classname, span: cx.attr_span })
+    }
+}
+
+pub(crate) struct ObjcSelectorParser;
+
+impl<S: Stage> SingleAttributeParser<S> for ObjcSelectorParser {
+    const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
+    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "methodName");
+
+    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
+        let Some(nv) = args.name_value() else {
+            cx.expected_name_value(cx.attr_span, None);
+            return None;
+        };
+        let Some(methname) = nv.value_as_str() else {
+            // `#[rustc_objc_selector = ...]` is expected to be used as an implementatioin detail
+            // inside a standard library macro, but `cx.expected_string_literal` exposes too much.
+            // Use a custom error message instead.
+            cx.emit_err(ObjcSelectorExpectedStringLiteral { span: nv.value_span });
+            return None;
+        };
+        if methname.as_str().contains('\0') {
+            // `#[rustc_objc_selector = ...]` will be converted to a null-terminated string,
+            // so it may not contain any null characters.
+            cx.emit_err(NullOnObjcSelector { span: nv.value_span });
+            return None;
+        }
+        Some(AttributeKind::ObjcSelector { methname, span: cx.attr_span })
     }
 }
 

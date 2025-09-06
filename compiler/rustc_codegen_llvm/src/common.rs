@@ -108,6 +108,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         bytes_in_context(self.llcx(), bytes)
     }
 
+    pub(crate) fn null_terminate_const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+        null_terminate_bytes_in_context(self.llcx(), bytes)
+    }
+
     pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             let idx = c_uint::try_from(idx).expect("LLVMGetAggregateElement index overflow");
@@ -378,6 +382,16 @@ pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), TRUE)
+    }
+}
+
+pub(crate) fn null_terminate_bytes_in_context<'ll>(
+    llcx: &'ll llvm::Context,
+    bytes: &[u8],
+) -> &'ll Value {
+    unsafe {
+        let ptr = bytes.as_ptr() as *const c_char;
+        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), FALSE)
     }
 }
 
