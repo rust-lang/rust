@@ -374,14 +374,6 @@ pub trait Receiver: PointeeSized {
     type Target: ?Sized;
 }
 
-#[unstable(feature = "arbitrary_self_types", issue = "44874")]
-impl<P: ?Sized, T: ?Sized> Receiver for P
-where
-    P: Deref<Target = T>,
-{
-    type Target = T;
-}
-
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
@@ -399,6 +391,14 @@ pub trait LegacyReceiver: PointeeSized {
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: PointeeSized> LegacyReceiver for &T {}
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<T: PointeeSized> Receiver for &T {
+    type Target = T;
+}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: PointeeSized> LegacyReceiver for &mut T {}
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+impl<T: PointeeSized> Receiver for &mut T {
+    type Target = T;
+}
