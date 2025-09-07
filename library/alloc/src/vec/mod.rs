@@ -2222,6 +2222,53 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// Remove and return the element at position `index` within the vector,
+    /// shifting all elements after it to the left, or [`None`] if it does not
+    /// exist.
+    ///
+    /// Note: Because this shifts over the remaining elements, it has a
+    /// worst-case performance of *O*(*n*). If you'd like to remove
+    /// elements from the beginning of the `Vec`, consider using
+    /// [`VecDeque::pop_front`] instead.
+    ///
+    /// [`VecDeque::pop_front`]: crate::collections::VecDeque::pop_front
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec!['a', 'b', 'c'];
+    /// assert_eq!(v.try_remove(1), Some('b'));
+    /// assert_eq!(v, ['a', 'c']);
+    ///
+    /// assert_eq!(v.try_remove(2), None);
+    /// assert_eq!(v, ['a', 'c']);
+    /// ```
+    #[stable(feature = "vec_try_remove", since = "1.92.0")]
+    #[track_caller]
+    #[rustc_confusables("delete", "take", "remove")]
+    pub fn try_remove(&mut self, index: usize) -> Option<T> {
+        let len = self.len();
+        if index >= len {
+            return None;
+        }
+        unsafe {
+            // infallible
+            let ret;
+            {
+                // the place we are taking from.
+                let ptr = self.as_mut_ptr().add(index);
+                // copy it out, unsafely having a copy of the value on
+                // the stack and in the vector at the same time.
+                ret = ptr::read(ptr);
+
+                // Shift everything down to fill in that spot.
+                ptr::copy(ptr.add(1), ptr, len - index - 1);
+            }
+            self.set_len(len - 1);
+            Some(ret)
+        }
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` for which `f(&e)` returns `false`.
