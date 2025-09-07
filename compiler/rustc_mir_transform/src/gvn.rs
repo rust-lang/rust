@@ -213,6 +213,8 @@ enum Value<'a, 'tcx> {
     /// An aggregate value, either tuple/closure/struct/enum.
     /// This does not contain unions, as we cannot reason with the value.
     Aggregate(VariantIdx, &'a [VnIndex]),
+    /// A union aggregate value.
+    Union(FieldIdx, VnIndex),
     /// A raw pointer aggregate built from a thin pointer and metadata.
     RawPtr {
         /// Thin pointer component. This is field 0 in MIR.
@@ -600,6 +602,21 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     return None;
                 }
             }
+            Union(active_field, field) => {
+                let field = self.evaluated[field].as_ref()?;
+                if matches!(ty.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..))
+                {
+                    let dest = self.ecx.allocate(ty, MemoryKind::Stack).discard_err()?;
+                    let field_dest = self.ecx.project_field(&dest, active_field).discard_err()?;
+                    self.ecx.copy_op(field, &field_dest).discard_err()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .discard_err()?;
+                    dest.into()
+                } else {
+                    return None;
+                }
+            }
             RawPtr { pointer, metadata } => {
                 let pointer = self.evaluated[pointer].as_ref()?;
                 let metadata = self.evaluated[metadata].as_ref()?;
@@ -802,11 +819,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
             }
             ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
-            ProjectionElem::Field(f, _) => {
-                if let Value::Aggregate(_, fields) = self.get(value) {
-                    return Some((projection_ty, fields[f.as_usize()]));
-                } else if let Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant)) = self.get(value)
-                    && let Value::Aggregate(written_variant, fields) = self.get(outer_value)
+            ProjectionElem::Field(f, _) => match self.get(value) {
+                Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),
+                Value::Union(active, field) if active == f => return Some((projection_ty, field)),
+                Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant))
+                    if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -822,12 +839,12 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     // accessing the wrong variant is not UB if the enum has repr.
                     // So it's not impossible for a series of MIR opts to generate
                     // a downcast to an inactive variant.
-                    && written_variant == read_variant
+                    && written_variant == read_variant =>
                 {
                     return Some((projection_ty, fields[f.as_usize()]));
                 }
-                ProjectionElem::Field(f, ())
-            }
+                _ => ProjectionElem::Field(f, ()),
+            },
             ProjectionElem::Index(idx) => {
                 if let Value::Repeat(inner, _) = self.get(value) {
                     return Some((projection_ty, inner));
@@ -1167,7 +1184,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             | AggregateKind::Coroutine(..) => FIRST_VARIANT,
             AggregateKind::Adt(_, variant_index, _, _, None) => variant_index,
             // Do not track unions.
-            AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
+            AggregateKind::Adt(_, _, _, _, Some(active_field)) => {
+                let field = *fields.first()?;
+                return Some(self.insert(ty, Value::Union(active_field, field)));
+            }
             AggregateKind::RawPtr(..) => {
                 assert_eq!(field_ops.len(), 2);
                 let [mut pointer, metadata] = fields.try_into().unwrap();
