@@ -1,6 +1,8 @@
 use cli::ProcessedCli;
 
-use crate::common::{intrinsic::Intrinsic, intrinsic_helpers::IntrinsicTypeDefinition};
+use crate::common::{
+    compile_c::CppCompilation, intrinsic::Intrinsic, intrinsic_helpers::IntrinsicTypeDefinition,
+};
 
 pub mod argument;
 pub mod cli;
@@ -17,14 +19,22 @@ pub mod values;
 /// Architectures must support this trait
 /// to be successfully tested.
 pub trait SupportedArchitectureTest {
-    type IntrinsicImpl: IntrinsicTypeDefinition;
+    type IntrinsicImpl: IntrinsicTypeDefinition + Sync;
 
     fn cli_options(&self) -> &ProcessedCli;
     fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
 
     fn create(cli_options: ProcessedCli) -> Self;
 
-    const PLATFORM_HEADERS: &[&str];
+    const NOTICE: &str;
+
+    const PLATFORM_C_HEADERS: &[&str];
+    const PLATFORM_C_DEFINITIONS: &str;
+
+    const PLATFORM_RUST_CFGS: &str;
+    const PLATFORM_RUST_DEFINITIONS: &str;
+
+    fn cpp_compilation(&self) -> Option<CppCompilation>;
 
     fn build_c_file(&self) -> bool;
     fn build_rust_file(&self) -> bool;

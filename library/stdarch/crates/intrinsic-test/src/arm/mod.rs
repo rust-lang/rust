@@ -5,11 +5,12 @@ mod intrinsic;
 mod json_parser;
 mod types;
 
-use std::fs::{self, File};
+use std::fs::File;
 
 use rayon::prelude::*;
 
 use crate::common::cli::ProcessedCli;
+use crate::common::compile_c::CppCompilation;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
 use crate::common::gen_rust::{
     compile_rust_programs, write_bin_cargo_toml, write_lib_cargo_toml, write_lib_rs, write_main_rs,
@@ -17,7 +18,6 @@ use crate::common::gen_rust::{
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::{SupportedArchitectureTest, chunk_info};
-use config::{AARCH_CONFIGURATIONS, F16_FORMATTING_DEF, POLY128_OSTREAM_DEF, build_notices};
 use intrinsic::ArmIntrinsicType;
 use json_parser::get_neon_intrinsics;
 
@@ -65,24 +65,40 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         }
     }
 
-    const PLATFORM_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
+    const NOTICE: &str = config::NOTICE;
+
+    const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
+    const PLATFORM_C_DEFINITIONS: &str = config::POLY128_OSTREAM_DEF;
+
+    const PLATFORM_RUST_DEFINITIONS: &str = config::F16_FORMATTING_DEF;
+    const PLATFORM_RUST_CFGS: &str = config::AARCH_CONFIGURATIONS;
+
+    fn cpp_compilation(&self) -> Option<CppCompilation> {
+        compile::build_cpp_compilation(&self.cli_options)
+    }
 
     fn build_c_file(&self) -> bool {
         let c_target = "aarch64";
 
-        let (chunk_size, chunk_count) = chunk_info(self.intrinsics.len());
+        let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
 
-        let cpp_compiler_wrapped = compile::build_cpp_compilation(&self.cli_options);
+        let cpp_compiler_wrapped = self.cpp_compilation();
 
-        let notice = &build_notices("// ");
-        fs::create_dir_all("c_programs").unwrap();
-        self.intrinsics
+        std::fs::create_dir_all("c_programs").unwrap();
+        self.intrinsics()
             .par_chunks(chunk_size)
             .enumerate()
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/mod_{i}.cpp");
                 let mut file = File::create(&c_filename).unwrap();
-                write_mod_cpp(&mut file, notice, c_target, Self::PLATFORM_HEADERS, chunk).unwrap();
+                write_mod_cpp(
+                    &mut file,
+                    Self::NOTICE,
+                    c_target,
+                    Self::PLATFORM_C_HEADERS,
+                    chunk,
+                )
+                .unwrap();
 
                 // compile this cpp file into a .o file.
                 //
@@ -103,8 +119,8 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         write_main_cpp(
             &mut file,
             c_target,
-            POLY128_OSTREAM_DEF,
-            self.intrinsics.iter().map(|i| i.name.as_str()),
+            Self::PLATFORM_C_DEFINITIONS,
+            self.intrinsics().iter().map(|i| i.name.as_str()),
         )
         .unwrap();
 
@@ -149,7 +165,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         write_main_rs(
             &mut main_rs,
             chunk_count,
-            AARCH_CONFIGURATIONS,
+            Self::PLATFORM_RUST_CFGS,
             "",
             self.intrinsics.iter().map(|i| i.name.as_str()),
         )
@@ -159,7 +175,6 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         let toolchain = self.cli_options.toolchain.as_deref();
         let linker = self.cli_options.linker.as_deref();
 
-        let notice = &build_notices("// ");
         self.intrinsics
             .par_chunks(chunk_size)
             .enumerate()
@@ -170,9 +185,14 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
                 trace!("generating `{rust_filename}`");
                 let mut file = File::create(rust_filename)?;
 
-                let cfg = AARCH_CONFIGURATIONS;
-                let definitions = F16_FORMATTING_DEF;
-                write_lib_rs(&mut file, architecture, notice, cfg, definitions, chunk)?;
+                write_lib_rs(
+                    &mut file,
+                    architecture,
+                    Self::NOTICE,
+                    Self::PLATFORM_RUST_CFGS,
+                    Self::PLATFORM_RUST_DEFINITIONS,
+                    chunk,
+                )?;
 
                 let toml_filename = format!("rust_programs/mod_{i}/Cargo.toml");
                 trace!("generating `{toml_filename}`");

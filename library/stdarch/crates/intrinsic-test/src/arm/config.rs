@@ -1,12 +1,7 @@
-pub fn build_notices(line_prefix: &str) -> String {
-    format!(
-        "\
-{line_prefix}This is a transient test file, not intended for distribution. Some aspects of the
-{line_prefix}test are derived from a JSON specification, published under the same license as the
-{line_prefix}`intrinsic-test` crate.\n
-"
-    )
-}
+pub const NOTICE: &str = "\
+// This is a transient test file, not intended for distribution. Some aspects of the
+// test are derived from a JSON specification, published under the same license as the
+// `intrinsic-test` crate.\n";
 
 pub const POLY128_OSTREAM_DEF: &str = r#"std::ostream& operator<<(std::ostream& os, poly128_t value) {
     std::stringstream temp;
