@@ -105,7 +105,6 @@ trivially_parameterized_over_tcx! {
     rustc_middle::ty::AssocItemContainer,
     rustc_middle::ty::AsyncDestructor,
     rustc_middle::ty::Asyncness,
-    rustc_middle::ty::DeducedParamAttrs,
     rustc_middle::ty::Destructor,
     rustc_middle::ty::Generics,
     rustc_middle::ty::ImplTraitInTraitData,

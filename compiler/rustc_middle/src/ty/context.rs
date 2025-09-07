@@ -40,7 +40,6 @@ use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
 use rustc_query_system::dep_graph::DepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
@@ -3519,21 +3518,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         false
     }
-}
-
-/// Parameter attributes that can only be determined by examining the body of a function instead
-/// of just its signature.
-///
-/// These can be useful for optimization purposes when a function is directly called. We compute
-/// them and store them into the crate metadata so that downstream crates can make use of them.
-///
-/// Right now, we only have `read_only`, but `no_capture` and `no_alias` might be useful in the
-/// future.
-#[derive(Clone, Copy, PartialEq, Debug, Default, TyDecodable, TyEncodable, HashStable)]
-pub struct DeducedParamAttrs {
-    /// The parameter is marked immutable in the function and contains no `UnsafeCell` (i.e. its
-    /// type is freeze).
-    pub read_only: bool,
 }
 
 pub fn provide(providers: &mut Providers) {

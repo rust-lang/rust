@@ -45,7 +45,6 @@ use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
-mod deduce_param_attrs;
 mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
@@ -221,7 +220,6 @@ pub fn provide(providers: &mut Providers) {
         mir_callgraph_cyclic: inline::cycle::mir_callgraph_cyclic,
         mir_inliner_callees: inline::cycle::mir_inliner_callees,
         promoted_mir,
-        deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
         ..providers.queries
     };

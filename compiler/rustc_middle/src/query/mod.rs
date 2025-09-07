@@ -2656,11 +2656,6 @@ rustc_queries! {
         return_result_from_ensure_ok
     }
 
-    query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {
-        desc { |tcx| "deducing parameter attributes for {}", tcx.def_path_str(def_id) }
-        separate_provide_extern
-    }
-
     query doc_link_resolutions(def_id: DefId) -> &'tcx DocLinkResMap {
         eval_always
         desc { "resolutions for documentation links for a module" }

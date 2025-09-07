@@ -282,20 +282,6 @@ provide! { tcx, def_id, other, cdata,
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
     trait_def => { table }
-    deduced_param_attrs => {
-        // FIXME: `deduced_param_attrs` has some sketchy encoding settings,
-        // where we don't encode unless we're optimizing, doing codegen,
-        // and not incremental (see `encoder.rs`). I don't think this is right!
-        cdata
-            .root
-            .tables
-            .deduced_param_attrs
-            .get(cdata, def_id.index)
-            .map(|lazy| {
-                &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
-            })
-            .unwrap_or_default()
-    }
     opaque_ty_origin => { table }
     assumed_wf_types_for_rpitit => { table }
     collect_return_position_impl_trait_in_trait_tys => {

@@ -10,7 +10,6 @@ use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
-use rustc_session::config::OptLevel;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
@@ -610,43 +609,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
         return;
     }
 
-    let tcx = cx.tcx();
-
     if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx);
-
-        // Look up the deduced parameter attributes for this function, if we have its def ID and
-        // we're optimizing in non-incremental mode. We'll tag its parameters with those attributes
-        // as appropriate.
-        let deduced_param_attrs =
-            if tcx.sess.opts.optimize != OptLevel::No && tcx.sess.opts.incremental.is_none() {
-                fn_def_id.map(|fn_def_id| tcx.deduced_param_attrs(fn_def_id)).unwrap_or_default()
-            } else {
-                &[]
-            };
-
-        for (arg_idx, arg) in fn_abi.args.iter_mut().enumerate() {
-            if arg.is_ignore() {
-                continue;
-            }
-
-            // If we deduced that this parameter was read-only, add that to the attribute list now.
-            //
-            // The `readonly` parameter only applies to pointers, so we can only do this if the
-            // argument was passed indirectly. (If the argument is passed directly, it's an SSA
-            // value, so it's implicitly immutable.)
-            if let &mut PassMode::Indirect { ref mut attrs, .. } = &mut arg.mode {
-                // The `deduced_param_attrs` list could be empty if this is a type of function
-                // we can't deduce any parameters for, so make sure the argument index is in
-                // bounds.
-                if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx)
-                    && deduced_param_attrs.read_only
-                {
-                    attrs.regular.insert(ArgAttribute::ReadOnly);
-                    debug!("added deduced read-only attribute");
-                }
-            }
-        }
     } else {
         fn_abi.adjust_for_foreign_abi(cx, abi);
     }
