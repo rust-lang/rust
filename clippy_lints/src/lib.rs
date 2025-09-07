@@ -744,7 +744,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(missing_assert_message::MissingAssertMessage));
     store.register_late_pass(|_| Box::new(needless_maybe_sized::NeedlessMaybeSized));
     store.register_late_pass(|_| Box::new(redundant_async_block::RedundantAsyncBlock));
-    store.register_late_pass(|_| Box::new(let_with_type_underscore::UnderscoreTyped));
+    store.register_early_pass(|| Box::new(let_with_type_underscore::UnderscoreTyped));
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(conf)));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
     store.register_late_pass(move |_| Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(conf)));
