@@ -170,6 +170,8 @@ pub(crate) struct UnusedCaptureMaybeCaptureRef {
 #[note]
 pub(crate) struct UnusedVarAssignedOnly {
     pub name: Symbol,
+    #[subdiagnostic]
+    pub typo: Option<PatternTypo>,
 }
 
 #[derive(LintDiagnostic)]
@@ -235,6 +237,8 @@ pub(crate) enum UnusedVariableSugg {
         #[suggestion_part(code = "_{name}")]
         spans: Vec<Span>,
         name: Symbol,
+        #[subdiagnostic]
+        typo: Option<PatternTypo>,
     },
 
     #[help(mir_transform_unused_variable_args_in_macro)]
@@ -264,6 +268,20 @@ impl Subdiagnostic for UnusedVariableStringInterp {
             Applicability::MachineApplicable,
         );
     }
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    mir_transform_unused_variable_typo,
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct PatternTypo {
+    #[suggestion_part(code = "{code}")]
+    pub span: Span,
+    pub code: String,
+    pub item_name: Symbol,
+    pub kind: &'static str,
 }
 
 pub(crate) struct MustNotSupend<'a, 'tcx> {
