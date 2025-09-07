@@ -2200,26 +2200,7 @@ impl<T, A: Allocator> Vec<T, A> {
             panic!("removal index (is {index}) should be < len (is {len})");
         }
 
-        let len = self.len();
-        if index >= len {
-            assert_failed(index, len);
-        }
-        unsafe {
-            // infallible
-            let ret;
-            {
-                // the place we are taking from.
-                let ptr = self.as_mut_ptr().add(index);
-                // copy it out, unsafely having a copy of the value on
-                // the stack and in the vector at the same time.
-                ret = ptr::read(ptr);
-
-                // Shift everything down to fill in that spot.
-                ptr::copy(ptr.add(1), ptr, len - index - 1);
-            }
-            self.set_len(len - 1);
-            ret
-        }
+        self.try_remove(index).unwrap_or_else(|| assert_failed(index, self.len()))
     }
 
     /// Remove and return the element at position `index` within the vector,
