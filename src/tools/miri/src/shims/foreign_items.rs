@@ -16,6 +16,7 @@ use rustc_target::callconv::FnAbi;
 
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
+use crate::concurrency::GenmcEvalContextExt as _;
 use crate::helpers::EvalContextExt as _;
 use crate::*;
 
@@ -482,6 +483,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     {
                         this.machine.symbolic_alignment.get_mut().insert(alloc_id, (offset, align));
                     }
+                }
+            }
+
+            // GenMC mode: Assume statements block the current thread when their condition is false.
+            "miri_genmc_assume" => {
+                let [condition] =
+                    this.check_shim_sig_lenient(abi, CanonAbi::Rust, link_name, args)?;
+                if this.machine.data_race.as_genmc_ref().is_some() {
+                    this.handle_genmc_verifier_assume(condition)?;
+                } else {
+                    throw_unsup_format!("miri_genmc_assume is only supported in GenMC mode")
                 }
             }
 

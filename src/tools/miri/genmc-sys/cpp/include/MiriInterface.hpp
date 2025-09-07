@@ -134,6 +134,13 @@ struct MiriGenmcShim : private GenMCDriver {
     void handle_thread_finish(ThreadId thread_id, uint64_t ret_val);
     void handle_thread_kill(ThreadId thread_id);
 
+    /**** Blocking instructions ****/
+    /// Inform GenMC that the thread should be blocked.
+    /// Note: this function is currently hardcoded for `AssumeType::User`, corresponding to user
+    /// supplied assume statements. This can become a parameter once more types of assumes are
+    /// added.
+    void handle_assume_block(ThreadId thread_id);
+
     /***** Exploration related functionality *****/
 
     /** Ask the GenMC scheduler for a new thread to schedule and return whether the execution is

@@ -29,6 +29,7 @@ use crate::{
 mod config;
 mod global_allocations;
 mod helper;
+mod intercept;
 mod run;
 pub(crate) mod scheduling;
 mod thread_id_map;
@@ -36,6 +37,7 @@ mod thread_id_map;
 pub use genmc_sys::GenmcParams;
 
 pub use self::config::GenmcConfig;
+pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
 
 #[derive(Debug)]
@@ -732,17 +734,6 @@ impl GenmcCtx {
         self.exec_state.exit_status.set(Some(exit_status));
         interp_ok(())
     }
-
-    /**** Blocking instructions ****/
-
-    #[allow(unused)]
-    pub(crate) fn handle_verifier_assume<'tcx>(
-        &self,
-        machine: &MiriMachine<'tcx>,
-        condition: bool,
-    ) -> InterpResult<'tcx, ()> {
-        if condition { interp_ok(()) } else { self.handle_user_block(machine) }
-    }
 }
 
 impl GenmcCtx {
@@ -903,8 +894,13 @@ impl GenmcCtx {
     /// Handle a user thread getting blocked.
     /// This may happen due to an manual `assume` statement added by a user
     /// or added by some automated program transformation, e.g., for spinloops.
-    fn handle_user_block<'tcx>(&self, _machine: &MiriMachine<'tcx>) -> InterpResult<'tcx> {
-        todo!()
+    fn handle_assume_block<'tcx>(&self, machine: &MiriMachine<'tcx>) -> InterpResult<'tcx> {
+        let curr_thread = machine.threads.active_thread();
+        let genmc_curr_thread =
+            self.exec_state.thread_id_manager.borrow().get_genmc_tid(curr_thread);
+        debug!("GenMC: assume statement, blocking thread {curr_thread:?} ({genmc_curr_thread:?})");
+        self.handle.borrow_mut().pin_mut().handle_assume_block(genmc_curr_thread);
+        interp_ok(())
     }
 }
 
