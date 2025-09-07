@@ -185,12 +185,9 @@ pub(crate) fn run_thin(
     thin_lto(cgcx, dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
 }
 
-pub(crate) fn prepare_thin(
-    module: ModuleCodegen<ModuleLlvm>,
-    emit_summary: bool,
-) -> (String, ThinBuffer) {
+pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
     let name = module.name;
-    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true, emit_summary);
+    let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }
 
@@ -687,9 +684,9 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub(crate) fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
+    pub(crate) fn new(m: &llvm::Module, is_thin: bool) -> ThinBuffer {
         unsafe {
-            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
+            let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin);
             ThinBuffer(buffer)
         }
     }
@@ -698,6 +695,14 @@ impl ThinBuffer {
         let mut ptr = NonNull::new(ptr).unwrap();
         ThinBuffer(unsafe { ptr.as_mut() })
     }
+
+    pub(crate) fn thin_link_data(&self) -> &[u8] {
+        unsafe {
+            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
+            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
+            slice::from_raw_parts(ptr, len)
+        }
+    }
 }
 
 impl ThinBufferMethods for ThinBuffer {
@@ -705,14 +710,6 @@ impl ThinBufferMethods for ThinBuffer {
         unsafe {
             let ptr = llvm::LLVMRustThinLTOBufferPtr(self.0) as *const _;
             let len = llvm::LLVMRustThinLTOBufferLen(self.0);
-            slice::from_raw_parts(ptr, len)
-        }
-    }
-
-    fn thin_link_data(&self) -> &[u8] {
-        unsafe {
-            let ptr = llvm::LLVMRustThinLTOBufferThinLinkDataPtr(self.0) as *const _;
-            let len = llvm::LLVMRustThinLTOBufferThinLinkDataLen(self.0);
             slice::from_raw_parts(ptr, len)
         }
     }
