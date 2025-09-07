@@ -1,0 +1,121 @@
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:4:16
+   |
+LL |     fn a(&&self) {}
+   |                ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn a(&&self) {}
+LL +     fn a(&self) {}
+   |
+help: or if you want exactly &&self, please write it like this
+   |
+LL -     fn a(&&self) {}
+LL +     fn a(self: &&Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:8:20
+   |
+LL |     fn b(&&&&&&self) {}
+   |                    ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn b(&&&&&&self) {}
+LL +     fn b(&self) {}
+   |
+help: or if you want exactly &&&&&&self, please write it like this
+   |
+LL -     fn b(&&&&&&self) {}
+LL +     fn b(self: &&&&&&Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:13:20
+   |
+LL |     fn d(&mut &self) {}
+   |                    ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn d(&mut &self) {}
+LL +     fn d(&self) {}
+   |
+help: or if you want exactly &mut &self, please write it like this
+   |
+LL -     fn d(&mut &self) {}
+LL +     fn d(self: &mut &Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:17:22
+   |
+LL |     fn e(&mut &&&self) {}
+   |                      ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn e(&mut &&&self) {}
+LL +     fn e(&self) {}
+   |
+help: or if you want exactly &mut &&&self, please write it like this
+   |
+LL -     fn e(&mut &&&self) {}
+LL +     fn e(self: &mut &&&Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:21:29
+   |
+LL |     fn f(&mut &mut &mut self) {}
+   |                             ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn f(&mut &mut &mut self) {}
+LL +     fn f(&mut self) {}
+   |
+help: or if you want exactly &mut &mut &mut self, please write it like this
+   |
+LL -     fn f(&mut &mut &mut self) {}
+LL +     fn f(self: &mut &mut &mut Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:25:26
+   |
+LL |     fn g(&mut & &mut self) {}
+   |                          ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn g(&mut & &mut self) {}
+LL +     fn g(&mut self) {}
+   |
+help: or if you want exactly &mut &&mut self, please write it like this
+   |
+LL -     fn g(&mut & &mut self) {}
+LL +     fn g(self: &mut &&mut Self) {}
+   |
+
+error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `:`, `{`, or `|`, found `)`
+  --> $DIR/lot-of-references-self.rs:29:39
+   |
+LL |     fn h(&mut & & & && &        & self) {}
+   |                                       ^ expected one of 9 possible tokens
+   |
+help: `self` should be `self`, `&self` or `&mut self`, please remove extra references
+   |
+LL -     fn h(&mut & & & && &        & self) {}
+LL +     fn h(& self) {}
+   |
+help: or if you want exactly &mut &&&&&&&self, please write it like this
+   |
+LL -     fn h(&mut & & & && &        & self) {}
+LL +     fn h(self: &mut &&&&&&&Self) {}
+   |
+
+error: aborting due to 7 previous errors
+

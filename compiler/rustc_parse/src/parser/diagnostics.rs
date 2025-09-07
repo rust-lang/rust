@@ -2,13 +2,12 @@ use std::mem::take;
 use std::ops::{Deref, DerefMut};
 
 use ast::token::IdentIsRaw;
-use rustc_ast as ast;
 use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
-    AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
-    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Mutability, Param,
+    Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -2304,6 +2303,62 @@ impl<'a> Parser<'a> {
                             pat.span,
                             pat.span.shrink_to_lo(),
                         )
+                    }
+                    PatKind::Ref(ref inner_pat, mutble) => {
+                        let mut inner = inner_pat;
+                        let mut span_vec = vec![pat.span];
+                        let mut mut_vec = vec![mutble];
+
+                        while let PatKind::Ref(ref inner_type, mutble) = inner.kind {
+                            inner = inner_type;
+                            span_vec.push(inner.span.shrink_to_lo());
+                            mut_vec.push(mutble);
+                        }
+
+                        let mut refs_string = String::new();
+                        for &mutability in &mut_vec {
+                            match mutability {
+                                Mutability::Not => refs_string.push('&'),
+                                Mutability::Mut => refs_string.push_str("&mut "),
+                            }
+                        }
+
+                        if span_vec.len() <= 1 {
+                            if let Some(_) = pat.to_ty() {
+                                err.span_suggestion_verbose(
+                                    pat.span.shrink_to_lo(),
+                                    "explicitly ignore the parameter name",
+                                    "_: ".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                                maybe_emit_anon_params_note(self, err);
+                            }
+
+                            return None;
+                        }
+
+                        let span = if span_vec.len() == 2 {
+                            span_vec[0].until(inner_pat.span.shrink_to_lo())
+                        } else {
+                            span_vec[0].until(span_vec[span_vec.len() - 2].shrink_to_lo())
+                        };
+
+                        err.span_suggestion_verbose(
+                            span,
+                            "`self` should be `self`, `&self` or `&mut self`, please remove extra references",
+                            "".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+
+                        err.span_suggestion_verbose(
+                            span_vec[0],
+                            format!("or if you want exactly {refs_string}self, please write it like this"),
+                            format!("self: {refs_string}Self"),
+                            Applicability::MachineApplicable,
+                        );
+
+                        maybe_emit_anon_params_note(self, err);
+                        return None;
                     }
                     _ => {
                         // Otherwise, try to get a type and emit a suggestion.
