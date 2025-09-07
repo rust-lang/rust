@@ -31,7 +31,7 @@ pub fn test(
 ) {
 }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_callbacks)]
 struct Test {
     u128: extern "cmse-nonsecure-call" fn() -> u128, //~ ERROR [E0798]
     i128: extern "cmse-nonsecure-call" fn() -> i128, //~ ERROR [E0798]

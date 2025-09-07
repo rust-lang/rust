@@ -43,19 +43,19 @@ pub extern "cmse-nonsecure-entry" fn f4() -> ReprCAlign16 {
 }
 
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn f5() -> [u8; 5] {
     //~^ ERROR [E0798]
     [0xAA; 5]
 }
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn u128() -> u128 {
     //~^ ERROR [E0798]
     123
 }
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn i128() -> i128 {
     //~^ ERROR [E0798]
     456
@@ -72,7 +72,7 @@ pub union ReprCUnionU64 {
 }
 
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "cmse-nonsecure-entry" fn union_rust() -> ReprRustUnionU64 {
     //~^ ERROR [E0798]
     ReprRustUnionU64 { _unused: 1 }

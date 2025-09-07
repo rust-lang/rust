@@ -6,7 +6,7 @@ LL |             fn hidden_niche_transparent_no_niche() -> Option<TransparentNoN
    |
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
-   = note: `#[warn(improper_ctypes)]` on by default
+   = note: `#[warn(improper_ctypes)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: `extern` block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
   --> $DIR/clashing-extern-fn.rs:487:46

@@ -1,5 +1,5 @@
 //@ check-pass
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_c_fn_definitions, improper_c_callbacks)]
 #![feature(unsized_fn_params)]
 #![crate_type = "lib"]
 

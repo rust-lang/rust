@@ -29,7 +29,7 @@
     asm_experimental_arch,
     unboxed_closures
 )]
-#![allow(unused, improper_ctypes_definitions, internal_features)]
+#![allow(unused, internal_features)]
 #![no_std]
 #![no_core]
 

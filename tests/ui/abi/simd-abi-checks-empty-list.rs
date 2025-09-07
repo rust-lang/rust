@@ -6,7 +6,7 @@
 //@ build-fail
 #![no_core]
 #![feature(no_core, repr_simd)]
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_c_fn_definitions)]
 
 extern crate minicore;
 use minicore::*;

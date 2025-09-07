@@ -16,12 +16,12 @@ const unsafe extern "C" fn bar2(val: bool) -> bool {
     !val
 }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 const extern "C" fn unsize(x: &[u8; 3]) -> &[u8] {
     x
 }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 const unsafe extern "C" fn closure() -> fn() {
     || {}
 }

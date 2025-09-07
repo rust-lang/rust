@@ -1,21 +1,13 @@
-warning: `extern` fn uses type `str`, which is not FFI-safe
+warning: `extern` callback uses type `str`, which is not FFI-safe
   --> $DIR/extern-C-str-arg-ice-80125.rs:3:23
    |
 LL | type ExternCallback = extern "C" fn(*const u8, u32, str);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(*const u8, u32, str)` is FFI-unsafe due to `str`
    = help: consider using `*const u8` and a length instead
    = note: string slices have no C equivalent
-   = note: `#[warn(improper_ctypes_definitions)]` on by default
-
-warning: `extern` fn uses type `str`, which is not FFI-safe
-  --> $DIR/extern-C-str-arg-ice-80125.rs:9:44
-   |
-LL | pub extern "C" fn register_something(bind: ExternCallback) -> Struct {
-   |                                            ^^^^^^^^^^^^^^ not FFI-safe
-   |
-   = help: consider using `*const u8` and a length instead
-   = note: string slices have no C equivalent
+   = note: `#[warn(improper_c_callbacks)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
 warning: `extern` fn uses type `Struct`, which is not FFI-safe
   --> $DIR/extern-C-str-arg-ice-80125.rs:9:63
@@ -23,13 +15,14 @@ warning: `extern` fn uses type `Struct`, which is not FFI-safe
 LL | pub extern "C" fn register_something(bind: ExternCallback) -> Struct {
    |                                                               ^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `Struct`
+   = note: `Struct` has unspecified layout
 note: the type is defined here
   --> $DIR/extern-C-str-arg-ice-80125.rs:6:1
    |
 LL | pub struct Struct(ExternCallback);
    | ^^^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_c_fn_definitions)]` (part of `#[warn(improper_c_boundaries)]`) on by default
 
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 
