@@ -10,7 +10,6 @@ use std::fs::{self, File};
 use rayon::prelude::*;
 
 use crate::common::cli::ProcessedCli;
-use crate::common::compare::compare_outputs;
 use crate::common::gen_c::{write_main_cpp, write_mod_cpp};
 use crate::common::gen_rust::{
     compile_rust_programs, write_bin_cargo_toml, write_lib_cargo_toml, write_lib_rs, write_main_rs,
@@ -28,7 +27,17 @@ pub struct ArmArchitectureTest {
 }
 
 impl SupportedArchitectureTest for ArmArchitectureTest {
-    fn create(cli_options: ProcessedCli) -> Box<Self> {
+    type IntrinsicImpl = ArmIntrinsicType;
+
+    fn cli_options(&self) -> &ProcessedCli {
+        &self.cli_options
+    }
+
+    fn intrinsics(&self) -> &[Intrinsic<ArmIntrinsicType>] {
+        &self.intrinsics
+    }
+
+    fn create(cli_options: ProcessedCli) -> Self {
         let a32 = cli_options.target.contains("v7");
         let mut intrinsics = get_neon_intrinsics(&cli_options.filename, &cli_options.target)
             .expect("Error parsing input file");
@@ -50,10 +59,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .collect::<Vec<_>>();
         intrinsics.dedup();
 
-        Box::new(Self {
+        Self {
             intrinsics,
             cli_options,
-        })
+        }
     }
 
     fn build_c_file(&self) -> bool {
@@ -176,23 +185,5 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .unwrap();
 
         compile_rust_programs(toolchain, target, linker)
-    }
-
-    fn compare_outputs(&self) -> bool {
-        if self.cli_options.toolchain.is_some() {
-            let intrinsics_name_list = self
-                .intrinsics
-                .iter()
-                .map(|i| i.name.clone())
-                .collect::<Vec<_>>();
-
-            compare_outputs(
-                &intrinsics_name_list,
-                &self.cli_options.runner,
-                &self.cli_options.target,
-            )
-        } else {
-            true
-        }
     }
 }

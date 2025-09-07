@@ -1,5 +1,7 @@
 use cli::ProcessedCli;
 
+use crate::common::{intrinsic::Intrinsic, intrinsic_helpers::IntrinsicTypeDefinition};
+
 pub mod argument;
 pub mod cli;
 pub mod compare;
@@ -15,12 +17,33 @@ pub mod values;
 /// Architectures must support this trait
 /// to be successfully tested.
 pub trait SupportedArchitectureTest {
-    fn create(cli_options: ProcessedCli) -> Box<Self>
-    where
-        Self: Sized;
+    type IntrinsicImpl: IntrinsicTypeDefinition;
+
+    fn cli_options(&self) -> &ProcessedCli;
+    fn intrinsics(&self) -> &[Intrinsic<Self::IntrinsicImpl>];
+
+    fn create(cli_options: ProcessedCli) -> Self;
+
     fn build_c_file(&self) -> bool;
     fn build_rust_file(&self) -> bool;
-    fn compare_outputs(&self) -> bool;
+
+    fn compare_outputs(&self) -> bool {
+        if self.cli_options().toolchain.is_some() {
+            let intrinsics_name_list = self
+                .intrinsics()
+                .iter()
+                .map(|i| i.name.clone())
+                .collect::<Vec<_>>();
+
+            compare::compare_outputs(
+                &intrinsics_name_list,
+                &self.cli_options().runner,
+                &self.cli_options().target,
+            )
+        } else {
+            true
+        }
+    }
 }
 
 pub fn chunk_info(intrinsic_count: usize) -> (usize, usize) {
