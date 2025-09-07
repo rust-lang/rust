@@ -3,6 +3,7 @@ use std::env;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").expect("CARGO_CFG_TARGET_ARCH was not set");
+    let target = env::var("TARGET").expect("TARGET was not set");
     let target_os = env::var("CARGO_CFG_TARGET_OS").expect("CARGO_CFG_TARGET_OS was not set");
     let target_vendor =
         env::var("CARGO_CFG_TARGET_VENDOR").expect("CARGO_CFG_TARGET_VENDOR was not set");
@@ -73,5 +74,6 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(backtrace_in_libstd)");
     println!("cargo:rustc-cfg=backtrace_in_libstd");
 
-    println!("cargo:rustc-env=STD_ENV_ARCH={}", env::var("CARGO_CFG_TARGET_ARCH").unwrap());
+    println!("cargo:rustc-env=STD_ENV_ARCH={target_arch}");
+    println!("cargo:rustc-env=STD_ENV_HOST_TUPLE={target}"); // the target becomes the host from std's perspective
 }
