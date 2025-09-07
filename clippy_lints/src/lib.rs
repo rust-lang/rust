@@ -360,6 +360,7 @@ mod temporary_assignment;
 mod tests_outside_test_module;
 mod to_digit_is_some;
 mod to_string_trait_impl;
+mod toplevel_ref_arg;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
@@ -831,5 +832,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     store.register_late_pass(|_| Box::new(cloned_ref_to_slice_refs::ClonedRefToSliceRefs::new(conf)));
     store.register_late_pass(|_| Box::new(infallible_try_from::InfallibleTryFrom));
     store.register_late_pass(|_| Box::new(coerce_container_to_any::CoerceContainerToAny));
+    store.register_late_pass(|_| Box::new(toplevel_ref_arg::ToplevelRefArg));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
