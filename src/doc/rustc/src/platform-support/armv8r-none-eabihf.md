@@ -16,7 +16,10 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Target maintainers
 
-[@chrisnc](https://github.com/chrisnc)
+* [@chrisnc](https://github.com/chrisnc)
+* [Rust Embedded Devices Working Group Arm Team]
+
+[Rust Embedded Devices Working Group Arm Team]: https://github.com/rust-embedded/wg?tab=readme-ov-file#the-arm-team
 
 ## Requirements
 
@@ -34,7 +37,14 @@ Technical Reference Manual for more details.
 
 [fpu]: https://developer.arm.com/documentation/100026/0104/Advanced-SIMD-and-floating-point-support/About-the-Advanced-SIMD-and-floating-point-support
 
-## Cross-compilation toolchains and C code
+### Table of supported CPUs for `armv8r-none-eabihf`
 
-This target supports C code compiled with the `arm-none-eabi` target triple and
-`-march=armv8-r` or a suitable `-mcpu` flag.
+| CPU         | FPU | Neon | Target CPU       | Target Features    |
+|:----------- | --- |:---- |:---------------- |:------------------ |
+| Any         | SP  | No   | None             | None               |
+| Cortex-R52  | SP  | No   | `cortex-r52`     | `-fp64,-d32,-neon` |
+| Cortex-R52  | DP  | No   | `cortex-r52`     | `-neon`            |
+| Cortex-R52  | DP  | Yes  | `cortex-r52`     | None               |
+| Cortex-R52+ | SP  | No   | `cortex-r52plus` | `-fp64,-d32,-neon` |
+| Cortex-R52+ | DP  | No   | `cortex-r52plus` | `-neon`            |
+| Cortex-R52+ | DP  | Yes  | `cortex-r52plus` | None               |
