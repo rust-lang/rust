@@ -226,6 +226,7 @@ fn file_test_io_seek_and_write() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_multiple_shared() {
@@ -249,6 +250,7 @@ fn file_lock_multiple_shared() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_blocking() {
@@ -273,6 +275,7 @@ fn file_lock_blocking() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_drop() {
@@ -294,6 +297,7 @@ fn file_lock_drop() {
     target_os = "freebsd",
     target_os = "linux",
     target_os = "netbsd",
+    target_os = "solaris",
     target_vendor = "apple",
 ))]
 fn file_lock_dup() {
