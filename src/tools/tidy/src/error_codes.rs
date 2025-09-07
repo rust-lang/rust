@@ -95,7 +95,6 @@ fn check_removed_error_code_explanation(ci_info: &crate::CiInfo, bad: &mut bool)
         eprintln!("Take a look at E0001 to see how to handle it.");
         return;
     }
-    println!("No error code explanation was removed!");
 }
 
 /// Stage 1: Parses a list of error codes from `error_codes.rs`.
