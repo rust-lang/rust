@@ -41,10 +41,14 @@
 pub use bool;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use char;
+#[unstable(feature = "f16", issue = "116909")]
+pub use f16;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f32;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use f64;
+#[unstable(feature = "f128", issue = "116909")]
+pub use f128;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use i8;
 #[stable(feature = "core_primitive", since = "1.43.0")]
