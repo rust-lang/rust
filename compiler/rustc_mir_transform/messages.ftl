@@ -104,3 +104,5 @@ mir_transform_unused_variable = unused variable: `{$name}`
 mir_transform_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
 
 mir_transform_unused_variable_try_ignore = try ignoring the field
+
+mir_transform_unused_variable_typo = you might have meant to pattern match on the similarly named {$kind} `{$item_name}`
