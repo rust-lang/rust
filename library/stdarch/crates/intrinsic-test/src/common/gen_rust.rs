@@ -98,7 +98,6 @@ pub fn write_main_rs<'a>(
 
 pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
-    architecture: &str,
     notice: &str,
     cfg: &str,
     definitions: &str,
@@ -116,8 +115,6 @@ pub fn write_lib_rs<T: IntrinsicTypeDefinition>(
     writeln!(w, "#![allow(non_snake_case)]")?;
 
     writeln!(w, "{cfg}")?;
-
-    writeln!(w, "use core_arch::arch::{architecture}::*;")?;
 
     writeln!(w, "{definitions}")?;
 

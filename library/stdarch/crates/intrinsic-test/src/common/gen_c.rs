@@ -93,8 +93,8 @@ pub fn create_c_test_function<T: IntrinsicTypeDefinition>(
 pub fn write_mod_cpp<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
     notice: &str,
-    architecture: &str,
     platform_headers: &[&str],
+    forward_declarations: &str,
     intrinsics: &[Intrinsic<T>],
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
@@ -125,12 +125,7 @@ std::ostream& operator<<(std::ostream& os, float16_t value);
 "#
     )?;
 
-    writeln!(w, "#ifdef __{architecture}__")?;
-    writeln!(
-        w,
-        "std::ostream& operator<<(std::ostream& os, poly128_t value);"
-    )?;
-    writeln!(w, "#endif")?;
+    writeln!(w, "{}", forward_declarations)?;
 
     for intrinsic in intrinsics {
         create_c_test_function(w, intrinsic)?;
@@ -141,7 +136,6 @@ std::ostream& operator<<(std::ostream& os, float16_t value);
 
 pub fn write_main_cpp<'a>(
     w: &mut impl std::io::Write,
-    architecture: &str,
     arch_specific_definitions: &str,
     intrinsics: impl Iterator<Item = &'a str> + Clone,
 ) -> std::io::Result<()> {
@@ -170,9 +164,8 @@ std::ostream& operator<<(std::ostream& os, float16_t value) {{
 "#
     )?;
 
-    writeln!(w, "#ifdef __{architecture}__")?;
+    // NOTE: It's assumed that this value contains the required `ifdef`s.
     writeln!(w, "{arch_specific_definitions }")?;
-    writeln!(w, "#endif")?;
 
     for intrinsic in intrinsics.clone() {
         writeln!(w, "extern int run_{intrinsic}(void);")?;

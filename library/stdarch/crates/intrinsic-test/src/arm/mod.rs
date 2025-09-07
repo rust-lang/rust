@@ -29,6 +29,19 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         &self.intrinsics
     }
 
+    const NOTICE: &str = config::NOTICE;
+
+    const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
+    const PLATFORM_C_DEFINITIONS: &str = config::POLY128_OSTREAM_DEF;
+    const PLATFORM_C_FORWARD_DECLARATIONS: &str = config::POLY128_OSTREAM_DECL;
+
+    const PLATFORM_RUST_DEFINITIONS: &str = config::F16_FORMATTING_DEF;
+    const PLATFORM_RUST_CFGS: &str = config::AARCH_CONFIGURATIONS;
+
+    fn cpp_compilation(&self) -> Option<CppCompilation> {
+        compile::build_cpp_compilation(&self.cli_options)
+    }
+
     fn create(cli_options: ProcessedCli) -> Self {
         let a32 = cli_options.target.contains("v7");
         let mut intrinsics = get_neon_intrinsics(&cli_options.filename, &cli_options.target)
@@ -55,17 +68,5 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             intrinsics,
             cli_options,
         }
-    }
-
-    const NOTICE: &str = config::NOTICE;
-
-    const PLATFORM_C_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
-    const PLATFORM_C_DEFINITIONS: &str = config::POLY128_OSTREAM_DEF;
-
-    const PLATFORM_RUST_DEFINITIONS: &str = config::F16_FORMATTING_DEF;
-    const PLATFORM_RUST_CFGS: &str = config::AARCH_CONFIGURATIONS;
-
-    fn cpp_compilation(&self) -> Option<CppCompilation> {
-        compile::build_cpp_compilation(&self.cli_options)
     }
 }

@@ -41,6 +41,7 @@ pub trait SupportedArchitectureTest {
 
     const PLATFORM_C_HEADERS: &[&str];
     const PLATFORM_C_DEFINITIONS: &str;
+    const PLATFORM_C_FORWARD_DECLARATIONS: &str;
 
     const PLATFORM_RUST_CFGS: &str;
     const PLATFORM_RUST_DEFINITIONS: &str;
@@ -48,8 +49,6 @@ pub trait SupportedArchitectureTest {
     fn cpp_compilation(&self) -> Option<CppCompilation>;
 
     fn build_c_file(&self) -> bool {
-        let c_target = "aarch64";
-
         let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
 
         let cpp_compiler_wrapped = self.cpp_compilation();
@@ -64,8 +63,8 @@ pub trait SupportedArchitectureTest {
                 write_mod_cpp(
                     &mut file,
                     Self::NOTICE,
-                    c_target,
                     Self::PLATFORM_C_HEADERS,
+                    Self::PLATFORM_C_FORWARD_DECLARATIONS,
                     chunk,
                 )
                 .unwrap();
@@ -88,7 +87,6 @@ pub trait SupportedArchitectureTest {
         let mut file = File::create("c_programs/main.cpp").unwrap();
         write_main_cpp(
             &mut file,
-            c_target,
             Self::PLATFORM_C_DEFINITIONS,
             self.intrinsics().iter().map(|i| i.name.as_str()),
         )
@@ -119,12 +117,6 @@ pub trait SupportedArchitectureTest {
 
     fn build_rust_file(&self) -> bool {
         std::fs::create_dir_all("rust_programs/src").unwrap();
-
-        let architecture = if self.cli_options().target.contains("v7") {
-            "arm"
-        } else {
-            "aarch64"
-        };
 
         let (chunk_size, chunk_count) = chunk_info(self.intrinsics().len());
 
@@ -157,7 +149,6 @@ pub trait SupportedArchitectureTest {
 
                 write_lib_rs(
                     &mut file,
-                    architecture,
                     Self::NOTICE,
                     Self::PLATFORM_RUST_CFGS,
                     Self::PLATFORM_RUST_DEFINITIONS,
