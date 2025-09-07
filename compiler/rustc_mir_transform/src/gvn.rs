@@ -998,7 +998,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn simplify_rvalue(
         &mut self,
-        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -1018,7 +1017,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 Value::Repeat(op, amount)
             }
             Rvalue::NullaryOp(op, ty) => Value::NullaryOp(op, ty),
-            Rvalue::Aggregate(..) => return self.simplify_aggregate(lhs, rvalue, location),
+            Rvalue::Aggregate(..) => return self.simplify_aggregate(rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
@@ -1126,7 +1125,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
     fn simplify_aggregate(
         &mut self,
-        lhs: &Place<'tcx>,
         rvalue: &mut Rvalue<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
@@ -1206,15 +1204,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
 
         if let Some(value) = self.simplify_aggregate_to_copy(ty, variant_index, &fields) {
-            // Allow introducing places with non-constant offsets, as those are still better than
-            // reconstructing an aggregate. But avoid creating `*a = copy (*b)`, as they might be
-            // aliases resulting in overlapping assignments.
-            let allow_complex_projection =
-                lhs.projection[..].iter().all(PlaceElem::is_stable_offset);
-            if let Some(place) = self.try_as_place(value, location, allow_complex_projection) {
-                self.reused_locals.insert(place.local);
-                *rvalue = Rvalue::Use(Operand::Copy(place));
-            }
             return Some(value);
         }
 
@@ -1860,13 +1849,21 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     ) {
         self.simplify_place_projection(lhs, location);
 
-        let value = self.simplify_rvalue(lhs, rvalue, location);
+        let value = self.simplify_rvalue(rvalue, location);
         if let Some(value) = value {
+            // Allow introducing places with non-constant offsets, as those are still better than
+            // reconstructing an aggregate. But avoid creating `*a = copy (*b)`, as they might be
+            // aliases resulting in overlapping assignments.
+            let allow_complex_projection =
+                lhs.projection[..].iter().all(PlaceElem::is_stable_offset);
+
             if let Some(const_) = self.try_as_constant(value) {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-            } else if let Some(place) = self.try_as_place(value, location, false)
+            } else if let Some(place) = self.try_as_place(value, location, allow_complex_projection)
                 && *rvalue != Rvalue::Use(Operand::Move(place))
                 && *rvalue != Rvalue::Use(Operand::Copy(place))
+                // Avoid introducing overlapping assignments to the same local.
+                && place.local != lhs.local
             {
                 *rvalue = Rvalue::Use(Operand::Copy(place));
                 self.reused_locals.insert(place.local);
