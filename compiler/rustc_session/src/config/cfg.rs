@@ -125,7 +125,9 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
                 None | Some(_),
             ) => disallow(cfg, "-Z sanitizer=cfi"),
             (sym::proc_macro, None) => disallow(cfg, "--crate-type proc-macro"),
-            (sym::panic, Some(sym::abort | sym::unwind)) => disallow(cfg, "-C panic"),
+            (sym::panic, Some(sym::abort | sym::unwind | sym::immediate_abort)) => {
+                disallow(cfg, "-C panic")
+            }
             (sym::target_feature, Some(_)) => disallow(cfg, "-C target-feature"),
             (sym::unix, None)
             | (sym::windows, None)
@@ -204,6 +206,9 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
     }
 
     ins_sym!(sym::panic, sess.panic_strategy().desc_symbol());
+    if sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+        ins_sym!(sym::panic, PanicStrategy::Abort.desc_symbol());
+    }
 
     // JUSTIFICATION: before wrapper fn is available
     #[allow(rustc::bad_opt_access)]

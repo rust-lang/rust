@@ -1195,6 +1195,7 @@ symbols! {
         if_let_rescope,
         if_while_or_patterns,
         ignore,
+        immediate_abort,
         impl_header_lifetime_elision,
         impl_lint_pass,
         impl_trait_in_assoc_type,

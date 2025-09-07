@@ -3858,8 +3858,8 @@ impl<T> [T] {
     {
         // The panic code path was put into a cold function to not bloat the
         // call site.
-        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
-        #[cfg_attr(feature = "panic_immediate_abort", inline)]
+        #[cfg_attr(not(panic = "immediate_abort"), inline(never), cold)]
+        #[cfg_attr(panic = "immediate_abort", inline)]
         #[track_caller]
         const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
             const_panic!(

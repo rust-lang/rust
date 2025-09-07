@@ -1027,6 +1027,10 @@ impl CStore {
         let name = match desired_strategy {
             PanicStrategy::Unwind => sym::panic_unwind,
             PanicStrategy::Abort => sym::panic_abort,
+            PanicStrategy::ImmediateAbort => {
+                // Immediate-aborting panics don't use a runtime.
+                return;
+            }
         };
         info!("panic runtime not found -- loading {}", name);
 
