@@ -24,7 +24,9 @@ pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
         loaded_args = intrinsic.arguments().load_values_c(body_indentation),
         intrinsic_call = intrinsic.name(),
         args = intrinsic.arguments().as_call_param_c(),
-        print_result = intrinsic.print_result_c(body_indentation, additional)
+        print_result = intrinsic
+            .results()
+            .print_result_c(body_indentation, additional)
     )
 }
 

@@ -1,5 +1,4 @@
 use super::argument::ArgumentList;
-use super::indentation::Indentation;
 use super::intrinsic_helpers::{IntrinsicTypeDefinition, TypeKind};
 
 /// An intrinsic
@@ -27,11 +26,6 @@ where
     fn results(&self) -> T;
 
     fn name(&self) -> String;
-
-    /// Generates a std::cout for the intrinsics results that will match the
-    /// rust debug output format for the return type. The generated line assumes
-    /// there is an int i in scope which is the current pass number.
-    fn print_result_c(&self, _indentation: Indentation, _additional: &str) -> String;
 }
 
 pub fn format_f16_return_value<T: IntrinsicTypeDefinition>(
