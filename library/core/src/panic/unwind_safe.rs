@@ -313,7 +313,10 @@ impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
 }
 
 #[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
-impl<T> From<T> for AssertUnwindSafe<T> {
+impl<T> From<T> for AssertUnwindSafe<T>
+where
+    T: UnwindSafe,
+{
     #[inline(always)]
     fn from(value: T) -> Self {
         Self(value)

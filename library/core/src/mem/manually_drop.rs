@@ -278,7 +278,10 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 unsafe impl<T: ?Sized> DerefPure for ManuallyDrop<T> {}
 
 #[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
-impl<T> From<T> for ManuallyDrop<T> {
+impl<T> From<T> for ManuallyDrop<T>
+where
+    T: Copy,
+{
     #[inline(always)]
     fn from(value: T) -> Self {
         Self::new(value)
