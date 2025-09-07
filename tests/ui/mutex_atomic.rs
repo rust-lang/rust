@@ -1,3 +1,4 @@
+//@no-rustfix
 #![warn(clippy::mutex_integer)]
 #![warn(clippy::mutex_atomic)]
 #![allow(clippy::borrow_as_ptr)]
@@ -48,11 +49,11 @@ fn main() {
     }
 }
 
-static MTX: Mutex<u32> = Mutex::new(0);
-//~^ mutex_integer
-
 // don't lint on _use_, only declaration
 fn issue13378() {
+    static MTX: Mutex<u32> = Mutex::new(0);
+    //~^ mutex_integer
+
     let mut guard = MTX.lock().unwrap();
     *guard += 1;
 
