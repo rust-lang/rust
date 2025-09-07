@@ -233,7 +233,7 @@ mod tests {
             }
 
             #[derive(Serialize)]
-            struct Root1{ bar: f64, bay: i64, baz: (), r#box: bool, foo: String }
+            struct Root1 { bar: f64, bay: i64, baz: (), r#box: bool, foo: String }
 
             "#,
         );
@@ -252,9 +252,9 @@ mod tests {
             }
             "#,
             r#"
-            struct Value1{  }
-            struct Bar1{ kind: String, value: Value1 }
-            struct Root1{ bar: Bar1, foo: String }
+            struct Value1 {  }
+            struct Bar1 { kind: String, value: Value1 }
+            struct Root1 { bar: Bar1, foo: String }
 
             "#,
         );
@@ -284,12 +284,12 @@ mod tests {
             }
             "#,
             r#"
-            struct Address1{ house: i64, street: String }
-            struct User1{ address: Address1, email: String }
-            struct AnotherUser1{ user: User1 }
-            struct Address2{ house: i64, street: String }
-            struct User2{ address: Address2, email: String }
-            struct Root1{ another_user: AnotherUser1, user: User2 }
+            struct Address1 { house: i64, street: String }
+            struct User1 { address: Address1, email: String }
+            struct AnotherUser1 { user: User1 }
+            struct Address2 { house: i64, street: String }
+            struct User2 { address: Address2, email: String }
+            struct Root1 { another_user: AnotherUser1, user: User2 }
 
             "#,
         );
@@ -326,9 +326,9 @@ mod tests {
             use serde::Deserialize;
 
             #[derive(Serialize, Deserialize)]
-            struct OfObject1{ x: i64, y: i64 }
+            struct OfObject1 { x: i64, y: i64 }
             #[derive(Serialize, Deserialize)]
-            struct Root1{ empty: Vec<_>, nested: Vec<Vec<Vec<i64>>>, of_object: Vec<OfObject1>, of_string: Vec<String> }
+            struct Root1 { empty: Vec<_>, nested: Vec<Vec<Vec<i64>>>, of_object: Vec<OfObject1>, of_string: Vec<String> }
 
             "#,
         );
