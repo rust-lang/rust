@@ -1249,7 +1249,6 @@ impl Step for Tidy {
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             if !builder.config.json_output {
-                builder.info("fmt check");
                 if builder.config.initial_rustfmt.is_none() {
                     let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                     eprintln!(
@@ -1277,10 +1276,8 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             }
         }
 
-        builder.info("tidy check");
         cmd.delay_failure().run(builder);
 
-        builder.info("x.py completions check");
         let completion_paths = get_completion_paths(builder);
         if builder.config.cmd.bless() {
             builder.ensure(crate::core::build_steps::run::GenerateCompletions);
