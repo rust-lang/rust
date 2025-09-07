@@ -7,7 +7,6 @@ use std::str::FromStr;
 const RUSTDOC_JSON_TYPES: &str = "src/rustdoc-json-types";
 
 pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
-    println!("Checking tidy rustdoc_json...");
     let Some(base_commit) = &ci_info.base_commit else {
         eprintln!("No base commit, skipping rustdoc_json check");
         return;
@@ -16,7 +15,6 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
     // First we check that `src/rustdoc-json-types` was modified.
     if !crate::files_modified(ci_info, |p| p == RUSTDOC_JSON_TYPES) {
         // `rustdoc-json-types` was not modified so nothing more to check here.
-        println!("`rustdoc-json-types` was not modified.");
         return;
     }
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
