@@ -107,4 +107,19 @@ pub fn main() {
     }
     let a = Wrap(&()).get();
     v!(a, "type_name_basic::main::Wrap<&()>::get::Info");
+
+    struct Issue146249<T>(T);
+    impl Issue146249<Box<dyn FnOnce()>> {
+        pub fn bar(&self) {
+            let f = || {};
+            v!(
+                f,
+                "type_name_basic::main::Issue146249<\
+                    alloc::boxed::Box<dyn core::ops::function::FnOnce()>\
+                >::bar::{{closure}}"
+            );
+        }
+    }
+    let v: Issue146249<Box<dyn FnOnce()>> = Issue146249(Box::new(|| {}));
+    v.bar();
 }
