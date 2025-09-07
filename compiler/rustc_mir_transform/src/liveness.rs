@@ -1,8 +1,8 @@
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
@@ -11,11 +11,13 @@ use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::*;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
 use rustc_session::lint;
 use rustc_span::Span;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
 
 use crate::errors;
@@ -199,6 +201,62 @@ fn maybe_suggest_literal_matching_name(
     };
     finder.visit_body(body);
     finder.found
+}
+
+/// Give a diagnostic when an unused variable may be a typo of a unit variant or a struct.
+fn maybe_suggest_unit_pattern_typo<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body_def_id: DefId,
+    name: Symbol,
+    span: Span,
+    ty: Ty<'tcx>,
+) -> Option<errors::PatternTypo> {
+    if let ty::Adt(adt_def, _) = ty.peel_refs().kind() {
+        let variant_names: Vec<_> = adt_def
+            .variants()
+            .iter()
+            .filter(|v| matches!(v.ctor, Some((CtorKind::Const, _))))
+            .map(|v| v.name)
+            .collect();
+        if let Some(name) = find_best_match_for_name(&variant_names, name, None)
+            && let Some(variant) = adt_def
+                .variants()
+                .iter()
+                .find(|v| v.name == name && matches!(v.ctor, Some((CtorKind::Const, _))))
+        {
+            return Some(errors::PatternTypo {
+                span,
+                code: with_no_trimmed_paths!(tcx.def_path_str(variant.def_id)),
+                kind: tcx.def_descr(variant.def_id),
+                item_name: variant.name,
+            });
+        }
+    }
+
+    // Look for consts of the same type with similar names as well,
+    // not just unit structs and variants.
+    let constants = tcx
+        .hir_body_owners()
+        .filter(|&def_id| {
+            matches!(tcx.def_kind(def_id), DefKind::Const)
+                && tcx.type_of(def_id).instantiate_identity() == ty
+                && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
+        })
+        .collect::<Vec<_>>();
+    let names = constants.iter().map(|&def_id| tcx.item_name(def_id)).collect::<Vec<_>>();
+    if let Some(item_name) = find_best_match_for_name(&names, name, None)
+        && let Some(position) = names.iter().position(|&n| n == item_name)
+        && let Some(&def_id) = constants.get(position)
+    {
+        return Some(errors::PatternTypo {
+            span,
+            code: with_no_trimmed_paths!(tcx.def_path_str(def_id)),
+            kind: "constant",
+            item_name,
+        });
+    }
+
+    None
 }
 
 /// Return whether we should consider the current place as a drop guard and skip reporting.
@@ -855,12 +913,27 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             let from_macro = def_span.from_expansion()
                 && introductions.iter().any(|intro| intro.span.eq_ctxt(def_span));
 
+            let maybe_suggest_typo = || {
+                if let LocalKind::Arg = self.body.local_kind(local) {
+                    None
+                } else {
+                    maybe_suggest_unit_pattern_typo(
+                        tcx,
+                        self.body.source.def_id(),
+                        name,
+                        def_span,
+                        decl.ty,
+                    )
+                }
+            };
+
             let statements = &mut self.assignments[index];
             if statements.is_empty() {
                 let sugg = if from_macro {
                     errors::UnusedVariableSugg::NoSugg { span: def_span, name }
                 } else {
-                    errors::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name }
+                    let typo = maybe_suggest_typo();
+                    errors::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name, typo }
                 };
                 tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
@@ -909,11 +982,12 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     continue;
                 }
 
+                let typo = maybe_suggest_typo();
                 tcx.emit_node_span_lint(
                     lint::builtin::UNUSED_VARIABLES,
                     hir_id,
                     def_span,
-                    errors::UnusedVarAssignedOnly { name },
+                    errors::UnusedVarAssignedOnly { name, typo },
                 );
                 continue;
             }
@@ -944,9 +1018,11 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             } else if from_macro {
                 errors::UnusedVariableSugg::NoSugg { span: def_span, name }
             } else if !introductions.is_empty() {
-                errors::UnusedVariableSugg::TryPrefix { name, spans: spans.clone() }
+                let typo = maybe_suggest_typo();
+                errors::UnusedVariableSugg::TryPrefix { name, typo, spans: spans.clone() }
             } else {
-                errors::UnusedVariableSugg::TryPrefix { name, spans: vec![def_span] }
+                let typo = maybe_suggest_typo();
+                errors::UnusedVariableSugg::TryPrefix { name, typo, spans: vec![def_span] }
             };
 
             tcx.emit_node_span_lint(
