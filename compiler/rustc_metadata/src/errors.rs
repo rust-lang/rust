@@ -76,6 +76,16 @@ pub struct RequiredPanicStrategy {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_incompatible_with_immediate_abort)]
+pub struct IncompatibleWithImmediateAbort {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_with_immediate_abort_core)]
+pub struct IncompatibleWithImmediateAbortCore;
+
+#[derive(Diagnostic)]
 #[diag(metadata_incompatible_panic_in_drop_strategy)]
 pub struct IncompatiblePanicInDropStrategy {
     pub crate_name: Symbol,

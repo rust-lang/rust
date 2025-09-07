@@ -42,7 +42,6 @@ use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, FileName, SourceFileHash, SourceFileHashAlgorithm, Span,
     Symbol, sym,
 };
-use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::{solve, traits};
 use tracing::{info, instrument};
 
@@ -282,7 +281,7 @@ fn configure_and_expand(
         feature_err(sess, sym::export_stable, DUMMY_SP, "`sdylib` crate type is unstable").emit();
     }
 
-    if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
+    if is_proc_macro_crate && !sess.panic_strategy().unwinds() {
         sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
     }
 

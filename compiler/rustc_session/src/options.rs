@@ -802,7 +802,7 @@ mod desc {
     pub(crate) const parse_threads: &str = parse_number;
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
-    pub(crate) const parse_panic_strategy: &str = "either `unwind` or `abort`";
+    pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
     pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
@@ -1165,6 +1165,7 @@ pub mod parse {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
             Some("abort") => *slot = Some(PanicStrategy::Abort),
+            Some("immediate-abort") => *slot = Some(PanicStrategy::ImmediateAbort),
             _ => return false,
         }
         true
@@ -1174,6 +1175,7 @@ pub mod parse {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
+            Some("immediate-abort") => *slot = PanicStrategy::ImmediateAbort,
             _ => return false,
         }
         true
