@@ -1,5 +1,3 @@
-use crate::common::argument::ArgumentList;
-use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::IntrinsicType;
 use std::ops::{Deref, DerefMut};
 
@@ -20,19 +18,5 @@ impl Deref for ArmIntrinsicType {
 impl DerefMut for ArmIntrinsicType {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
-    }
-}
-
-impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
-    fn arguments(&self) -> ArgumentList<ArmIntrinsicType> {
-        self.arguments.clone()
-    }
-
-    fn results(&self) -> ArmIntrinsicType {
-        self.results.clone()
-    }
-
-    fn name(&self) -> String {
-        self.name.clone()
     }
 }

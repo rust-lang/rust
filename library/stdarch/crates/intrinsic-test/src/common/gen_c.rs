@@ -1,6 +1,7 @@
+use crate::common::intrinsic::Intrinsic;
+
 use super::argument::Argument;
 use super::indentation::Indentation;
-use super::intrinsic::IntrinsicDefinition;
 use super::intrinsic_helpers::IntrinsicTypeDefinition;
 
 // The number of times each intrinsic will be called.
@@ -8,7 +9,7 @@ const PASSES: u32 = 20;
 
 pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
     w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
+    intrinsic: &Intrinsic<T>,
     indentation: Indentation,
     additional: &str,
     passes: u32,
@@ -21,18 +22,18 @@ pub fn generate_c_test_loop<T: IntrinsicTypeDefinition + Sized>(
             {body_indentation}auto __return_value = {intrinsic_call}({args});\n\
             {print_result}\n\
         {indentation}}}",
-        loaded_args = intrinsic.arguments().load_values_c(body_indentation),
-        intrinsic_call = intrinsic.name(),
-        args = intrinsic.arguments().as_call_param_c(),
+        loaded_args = intrinsic.arguments.load_values_c(body_indentation),
+        intrinsic_call = intrinsic.name,
+        args = intrinsic.arguments.as_call_param_c(),
         print_result = intrinsic
-            .results()
+            .results
             .print_result_c(body_indentation, additional)
     )
 }
 
 pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
     w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
+    intrinsic: &Intrinsic<T>,
     indentation: Indentation,
     constraints: &mut (impl Iterator<Item = &'a Argument<T>> + Clone),
     name: String,
@@ -65,14 +66,14 @@ pub fn generate_c_constraint_blocks<'a, T: IntrinsicTypeDefinition + 'a>(
 // Compiles C test programs using specified compiler
 pub fn create_c_test_function<T: IntrinsicTypeDefinition>(
     w: &mut impl std::io::Write,
-    intrinsic: &dyn IntrinsicDefinition<T>,
+    intrinsic: &Intrinsic<T>,
 ) -> std::io::Result<()> {
     let indentation = Indentation::default();
 
-    writeln!(w, "int run_{}() {{", intrinsic.name())?;
+    writeln!(w, "int run_{}() {{", intrinsic.name)?;
 
     // Define the arrays of arguments.
-    let arguments = intrinsic.arguments();
+    let arguments = &intrinsic.arguments;
     arguments.gen_arglists_c(w, indentation.nested(), PASSES)?;
 
     generate_c_constraint_blocks(
@@ -94,7 +95,7 @@ pub fn write_mod_cpp<T: IntrinsicTypeDefinition>(
     notice: &str,
     architecture: &str,
     platform_headers: &[&str],
-    intrinsics: &[impl IntrinsicDefinition<T>],
+    intrinsics: &[Intrinsic<T>],
 ) -> std::io::Result<()> {
     write!(w, "{notice}")?;
 
