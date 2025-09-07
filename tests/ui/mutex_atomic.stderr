@@ -1,74 +1,105 @@
-error: consider using an `AtomicBool` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:7:5
    |
 LL |     Mutex::new(true);
    |     ^^^^^^^^^^^^^^^^
    |
+   = help: consider using an `AtomicBool` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
    = note: `-D clippy::mutex-atomic` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mutex_atomic)]`
 
-error: consider using an `AtomicUsize` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:10:5
    |
 LL |     Mutex::new(5usize);
    |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicUsize` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicIsize` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:13:5
    |
 LL |     Mutex::new(9isize);
    |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicIsize` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicPtr` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:17:5
    |
 LL |     Mutex::new(&x as *const u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicPtr` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicPtr` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:20:5
    |
 LL |     Mutex::new(&mut x as *mut u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicPtr` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicU32` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:23:5
    |
 LL |     Mutex::new(0u32);
    |     ^^^^^^^^^^^^^^^^
    |
+   = help: consider using an `AtomicU32` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
    = note: `-D clippy::mutex-integer` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
 
-error: consider using an `AtomicI32` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:26:5
    |
 LL |     Mutex::new(0i32);
    |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicI32` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicU8` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:30:5
    |
 LL |     Mutex::new(0u8);
    |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicU8` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicI16` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:33:5
    |
 LL |     Mutex::new(0i16);
    |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicI16` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicI8` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:36:25
    |
 LL |     let _x: Mutex<i8> = Mutex::new(0);
    |                         ^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicI8` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: consider using an `AtomicI64` instead of a `Mutex` here; if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:40:5
    |
 LL |     Mutex::new(X);
    |     ^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicI64` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: aborting due to 11 previous errors
 
