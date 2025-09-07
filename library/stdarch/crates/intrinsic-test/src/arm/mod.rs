@@ -65,9 +65,10 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
         }
     }
 
+    const PLATFORM_HEADERS: &[&str] = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
+
     fn build_c_file(&self) -> bool {
         let c_target = "aarch64";
-        let platform_headers = &["arm_neon.h", "arm_acle.h", "arm_fp16.h"];
 
         let (chunk_size, chunk_count) = chunk_info(self.intrinsics.len());
 
@@ -81,7 +82,7 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
             .map(|(i, chunk)| {
                 let c_filename = format!("c_programs/mod_{i}.cpp");
                 let mut file = File::create(&c_filename).unwrap();
-                write_mod_cpp(&mut file, notice, c_target, platform_headers, chunk).unwrap();
+                write_mod_cpp(&mut file, notice, c_target, Self::PLATFORM_HEADERS, chunk).unwrap();
 
                 // compile this cpp file into a .o file.
                 //

@@ -24,6 +24,8 @@ pub trait SupportedArchitectureTest {
 
     fn create(cli_options: ProcessedCli) -> Self;
 
+    const PLATFORM_HEADERS: &[&str];
+
     fn build_c_file(&self) -> bool;
     fn build_rust_file(&self) -> bool;
 
