@@ -89,10 +89,9 @@ impl<'tcx> LateLintPass<'tcx> for ToplevelRefArg {
             let ctxt = local.span.ctxt();
             let mut app = Applicability::MachineApplicable;
             let sugg_init = Sugg::hir_with_context(cx, init, ctxt, "..", &mut app);
-            let (mutopt, initref) = if mutabl == Mutability::Mut {
-                ("mut ", sugg_init.mut_addr())
-            } else {
-                ("", sugg_init.addr())
+            let (mutopt, initref) = match mutabl {
+                Mutability::Mut => ("mut ", sugg_init.mut_addr()),
+                Mutability::Not => ("", sugg_init.addr()),
             };
             let tyopt = if let Some(ty) = local.ty {
                 let ty_snip = snippet_with_context(cx, ty.span, ctxt, "_", &mut app).0;
