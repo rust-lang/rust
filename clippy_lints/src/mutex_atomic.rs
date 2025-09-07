@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::ty_from_hir_ty;
 use rustc_errors::Diag;
-use rustc_hir::Expr;
+use rustc_hir::{Expr, Item, ItemKind, LetStmt};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_session::declare_lint_pass;
@@ -89,26 +90,43 @@ declare_clippy_lint! {
 
 declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
+// NOTE: we don't use `check_expr` because that would make us lint every _use_ of such mutexes, not
+// just their definitions
 impl<'tcx> LateLintPass<'tcx> for Mutex {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let ty = cx.typeck_results().expr_ty(expr);
-        if let ty::Adt(_, subst) = ty.kind()
-            && ty.is_diag_item(cx, sym::Mutex)
-            && let mutex_param = subst.type_at(0)
-            && let Some(atomic_name) = get_atomic_name(mutex_param)
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        if !item.span.from_expansion()
+            && let ItemKind::Static(_, _, ty, body_id) = item.kind
         {
-            let msg = "using a `Mutex` where an atomic would do";
-            let diag = |diag: &mut Diag<'_, _>| {
-                diag.help(format!("consider using an `{atomic_name}` instead"));
-                diag.help(
-                    "if you just want the locking behavior and not the internal type, consider using `Mutex<()>`",
-                );
-            };
-            match *mutex_param.kind() {
-                ty::Uint(t) if t != UintTy::Usize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
-                ty::Int(t) if t != IntTy::Isize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
-                _ => span_lint_and_then(cx, MUTEX_ATOMIC, expr.span, msg, diag),
-            }
+            let body = cx.tcx.hir_body(body_id);
+            let mid_ty = ty_from_hir_ty(cx, ty);
+            check_expr(cx, body.value.peel_blocks(), mid_ty);
+        }
+    }
+    fn check_local(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx LetStmt<'_>) {
+        if !stmt.span.from_expansion()
+            && let Some(init) = stmt.init
+        {
+            let mid_ty = cx.typeck_results().expr_ty(init);
+            check_expr(cx, init.peel_blocks(), mid_ty);
+        }
+    }
+}
+
+fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty: Ty<'tcx>) {
+    if let ty::Adt(_, subst) = ty.kind()
+        && ty.is_diag_item(cx, sym::Mutex)
+        && let mutex_param = subst.type_at(0)
+        && let Some(atomic_name) = get_atomic_name(mutex_param)
+    {
+        let msg = "using a `Mutex` where an atomic would do";
+        let diag = |diag: &mut Diag<'_, _>| {
+            diag.help(format!("consider using an `{atomic_name}` instead"));
+            diag.help("if you just want the locking behavior and not the internal type, consider using `Mutex<()>`");
+        };
+        match *mutex_param.kind() {
+            ty::Uint(t) if t != UintTy::Usize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
+            ty::Int(t) if t != IntTy::Isize => span_lint_and_then(cx, MUTEX_INTEGER, expr.span, msg, diag),
+            _ => span_lint_and_then(cx, MUTEX_ATOMIC, expr.span, msg, diag),
         }
     }
 }

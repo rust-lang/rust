@@ -1,8 +1,8 @@
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:7:5
+  --> tests/ui/mutex_atomic.rs:8:13
    |
-LL |     Mutex::new(true);
-   |     ^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(true);
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicBool` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
@@ -10,46 +10,46 @@ LL |     Mutex::new(true);
    = help: to override `-D warnings` add `#[allow(clippy::mutex_atomic)]`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:10:5
+  --> tests/ui/mutex_atomic.rs:11:13
    |
-LL |     Mutex::new(5usize);
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(5usize);
+   |             ^^^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicUsize` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:13:5
+  --> tests/ui/mutex_atomic.rs:14:13
    |
-LL |     Mutex::new(9isize);
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(9isize);
+   |             ^^^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicIsize` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:17:5
+  --> tests/ui/mutex_atomic.rs:18:13
    |
-LL |     Mutex::new(&x as *const u32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using an `AtomicPtr` instead
-   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
-
-error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:20:5
-   |
-LL |     Mutex::new(&mut x as *mut u32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(&x as *const u32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicPtr` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:23:5
+  --> tests/ui/mutex_atomic.rs:21:13
    |
-LL |     Mutex::new(0u32);
-   |     ^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(&mut x as *mut u32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicPtr` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+
+error: using a `Mutex` where an atomic would do
+  --> tests/ui/mutex_atomic.rs:24:13
+   |
+LL |     let _ = Mutex::new(0u32);
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicU32` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
@@ -57,34 +57,34 @@ LL |     Mutex::new(0u32);
    = help: to override `-D warnings` add `#[allow(clippy::mutex_integer)]`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:26:5
+  --> tests/ui/mutex_atomic.rs:27:13
    |
-LL |     Mutex::new(0i32);
-   |     ^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(0i32);
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicI32` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:30:5
+  --> tests/ui/mutex_atomic.rs:31:13
    |
-LL |     Mutex::new(0u8);
-   |     ^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(0u8);
+   |             ^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicU8` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:33:5
+  --> tests/ui/mutex_atomic.rs:34:13
    |
-LL |     Mutex::new(0i16);
-   |     ^^^^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(0i16);
+   |             ^^^^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicI16` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:36:25
+  --> tests/ui/mutex_atomic.rs:37:25
    |
 LL |     let _x: Mutex<i8> = Mutex::new(0);
    |                         ^^^^^^^^^^^^^
@@ -93,13 +93,40 @@ LL |     let _x: Mutex<i8> = Mutex::new(0);
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:40:5
+  --> tests/ui/mutex_atomic.rs:41:13
    |
-LL |     Mutex::new(X);
-   |     ^^^^^^^^^^^^^
+LL |     let _ = Mutex::new(X);
+   |             ^^^^^^^^^^^^^
    |
    = help: consider using an `AtomicI64` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: aborting due to 11 previous errors
+error: using a `Mutex` where an atomic would do
+  --> tests/ui/mutex_atomic.rs:51:26
+   |
+LL | static MTX: Mutex<u32> = Mutex::new(0);
+   |                          ^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicU32` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+
+error: using a `Mutex` where an atomic would do
+  --> tests/ui/mutex_atomic.rs:59:15
+   |
+LL |     let mtx = Mutex::new(0);
+   |               ^^^^^^^^^^^^^
+   |
+   = help: consider using an `AtomicI32` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+
+error: using a `Mutex` where an atomic would do
+  --> tests/ui/mutex_atomic.rs:63:22
+   |
+LL |     let reassigned = mtx;
+   |                      ^^^
+   |
+   = help: consider using an `AtomicI32` instead
+   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
+
+error: aborting due to 14 previous errors
 
