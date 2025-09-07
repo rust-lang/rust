@@ -1045,6 +1045,48 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &str = env!("STD_ENV_ARCH");
 
+    /// A string identifying the platform for which the standard library was built
+    #[doc = concat!("(`\"", env!("STD_ENV_HOST_TUPLE"), "\"`).")]
+    ///
+    /// This is also known as a *host tuple*, *target triple*, or *target platform*.
+    ///
+    /// The exact format of this string may vary. For details about the platform,
+    /// use the [`ARCH`], [`FAMILY`], and [`OS`] constants.
+    ///
+    /// For platform-specific code, use the [`#[cfg]` attribute][cfg] or [`cfg!` macro](crate::cfg!)
+    /// with the predefined [`target_*` options][target_cfg].
+    ///
+    /// When cross-compiling, the `HOST` seen by build scripts and procedural macros is going
+    /// to be the platform running the cross-compilation, not the target platform of the build.
+    ///
+    /// [cfg]: ../../../reference/conditional-compilation.html#the-cfg-attribute
+    /// [target_cfg]: ../../../reference/conditional-compilation.html#r-cfg.options.set
+    ///
+    /// <details><summary>Example values</summary>
+    ///
+    /// * `"aarch64-apple-ios-sim"`
+    /// * `"aarch64-unknown-linux-gnu"`
+    /// * `"aarch64-unknown-linux-gnu_ilp32"`
+    /// * `"avr-none"`
+    /// * `"loongarch64-unknown-none-softfloat"`
+    /// * `"mipsel-sony-psx"`
+    /// * `"nvptx64-nvidia-cuda"`
+    /// * `"powerpc64le-unknown-freebsd"`
+    /// * `"riscv64-linux-android"`
+    /// * `"sparcv9-sun-solaris"`
+    /// * `"thumbv7a-uwp-windows-msvc"`
+    /// * `"thumbv7neon-unknown-linux-musleabihf"`
+    /// * `"thumbv8m.main-none-eabihf"`
+    /// * `"wasm32-wasip1"`
+    /// * `"x86_64-pc-windows-msvc"`
+    /// * `"x86_64-unknown-redox"`
+    /// * `"xtensa-esp32s3-none-elf"`
+    ///
+    /// </details>
+    #[unstable(feature = "env_host_tuple", issue = "146295")]
+    #[doc(alias = "TARGET")]
+    pub const HOST: &str = env!("STD_ENV_HOST_TUPLE");
+
     /// A string describing the family of the operating system.
     /// An example value may be: `"unix"`, or `"windows"`.
     ///
