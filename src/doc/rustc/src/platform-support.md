@@ -156,8 +156,6 @@ target | std | notes
 `arm-unknown-linux-musleabi` | ✓ | Armv6 Linux with musl 1.2.3
 `arm-unknown-linux-musleabihf` | ✓ | Armv6 Linux with musl 1.2.3, hardfloat
 [`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ✓ | Arm64EC Windows MSVC
-[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
-[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
 [`armv5te-unknown-linux-gnueabi`](platform-support/armv5te-unknown-linux-gnueabi.md) | ✓ | Armv5TE Linux (kernel 4.4+, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.3
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | Armv7-A Android
@@ -283,6 +281,8 @@ target | std | host | notes
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
 [`arm64e-apple-tvos`](platform-support/arm64e-apple-tvos.md)  | ✓ | | ARM64e Apple tvOS
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | Arm BE8 the default Arm big-endian architecture since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
+[`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
+[`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
 [`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare Armv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | Armv4T Linux
 [`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare Armv5TE
