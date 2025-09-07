@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "browser-ui-test": "^0.21.3",
+    "browser-ui-test": "^0.22.0",
     "es-check": "^6.2.1",
     "eslint": "^8.57.1",
     "eslint-js": "github:eslint/js",
