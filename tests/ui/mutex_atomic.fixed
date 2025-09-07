@@ -5,40 +5,40 @@
 use std::sync::Mutex;
 
 fn main() {
-    let _ = Mutex::new(true);
+    let _ = std::sync::atomic::AtomicBool::new(true);
     //~^ mutex_atomic
 
-    let _ = Mutex::new(5usize);
+    let _ = std::sync::atomic::AtomicUsize::new(5usize);
     //~^ mutex_atomic
 
-    let _ = Mutex::new(9isize);
+    let _ = std::sync::atomic::AtomicIsize::new(9isize);
     //~^ mutex_atomic
 
     let mut x = 4u32;
     // `AtomicPtr` only accepts `*mut T`, so this should not lint
     let _ = Mutex::new(&x as *const u32);
 
-    let _ = Mutex::new(&mut x as *mut u32);
+    let _ = std::sync::atomic::AtomicPtr::new(&mut x as *mut u32);
     //~^ mutex_atomic
 
-    let _ = Mutex::new(0u32);
+    let _ = std::sync::atomic::AtomicU32::new(0u32);
     //~^ mutex_integer
 
-    let _ = Mutex::new(0i32);
+    let _ = std::sync::atomic::AtomicI32::new(0i32);
     //~^ mutex_integer
 
     let _ = Mutex::new(0f32); // there are no float atomics, so this should not lint
-    let _ = Mutex::new(0u8);
+    let _ = std::sync::atomic::AtomicU8::new(0u8);
     //~^ mutex_integer
 
-    let _ = Mutex::new(0i16);
+    let _ = std::sync::atomic::AtomicI16::new(0i16);
     //~^ mutex_integer
 
-    let _x: Mutex<i8> = Mutex::new(0);
+    let _x = std::sync::atomic::AtomicI8::new(0);
     //~^ mutex_integer
 
     const X: i64 = 0;
-    let _ = Mutex::new(X);
+    let _ = std::sync::atomic::AtomicI64::new(X);
     //~^ mutex_integer
 
     // there are no 128 atomics, so these two should not lint
@@ -50,10 +50,10 @@ fn main() {
 
 // don't lint on _use_, only declaration
 fn issue13378() {
-    static MTX: Mutex<u32> = Mutex::new(0);
+    static MTX: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     //~^ mutex_integer
 
-    let mtx = Mutex::new(0);
+    let mtx = std::sync::atomic::AtomicI32::new(0);
     //~^ mutex_integer
     // This will still lint, since we're reassigning the mutex to a variable -- oh well.
     // But realistically something like this won't really come up.
@@ -62,6 +62,6 @@ fn issue13378() {
 
     // don't eat the `)` when removing the type ascription -- see
     // https://github.com/rust-lang/rust-clippy/issues/15377
-    let (funky_mtx): Mutex<u64> = Mutex::new(0);
+    let (funky_mtx) = std::sync::atomic::AtomicU64::new(0);
     //~^ mutex_integer
 }

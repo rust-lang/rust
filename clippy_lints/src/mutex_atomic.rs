@@ -1,10 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeDef;
+use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::ty_from_hir_ty;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{self as hir, Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_session::declare_lint_pass;
@@ -101,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
         {
             let body = cx.tcx.hir_body(body_id);
             let mid_ty = ty_from_hir_ty(cx, ty);
-            check_expr(cx, body.value.peel_blocks(), mid_ty);
+            check_expr(cx, body.value.peel_blocks(), &TypeAscriptionKind::Required(ty), mid_ty);
         }
     }
     fn check_local(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx LetStmt<'_>) {
@@ -109,12 +110,26 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
             && let Some(init) = stmt.init
         {
             let mid_ty = cx.typeck_results().expr_ty(init);
-            check_expr(cx, init.peel_blocks(), mid_ty);
+            check_expr(cx, init.peel_blocks(), &TypeAscriptionKind::Optional(stmt.ty), mid_ty);
         }
     }
 }
 
-fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty: Ty<'tcx>) {
+/// Whether the type ascription `: Mutex<X>` (which we'll suggest replacing with `AtomicX`) is
+/// required
+enum TypeAscriptionKind<'tcx> {
+    /// Yes; for us, this is the case for statics
+    Required(&'tcx hir::Ty<'tcx>),
+    /// No; the ascription might've been necessary in an expression like:
+    /// ```ignore
+    /// let mutex: Mutex<u64> = Mutex::new(0);
+    /// ```
+    /// to specify the type of `0`, but since `AtomicX` already refers to a concrete type, we won't
+    /// need this ascription anymore.
+    Optional(Option<&'tcx hir::Ty<'tcx>>),
+}
+
+fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty_ascription: &TypeAscriptionKind<'tcx>, ty: Ty<'tcx>) {
     if let ty::Adt(_, subst) = ty.kind()
         && ty.is_diag_item(cx, sym::Mutex)
         && let mutex_param = subst.type_at(0)
@@ -129,8 +144,22 @@ fn check_expr<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, ty: Ty<'tcx>) {
             {
                 let mut applicability = Applicability::MaybeIncorrect;
                 let arg = Sugg::hir_with_applicability(cx, arg, "_", &mut applicability);
-
-                let suggs = vec![(expr.span, format!("std::sync::atomic::{atomic_name}::new({arg})"))];
+                let mut suggs = vec![(expr.span, format!("std::sync::atomic::{atomic_name}::new({arg})"))];
+                match ty_ascription {
+                    TypeAscriptionKind::Required(ty_ascription) => {
+                        suggs.push((ty_ascription.span, format!("std::sync::atomic::{atomic_name}")));
+                    },
+                    TypeAscriptionKind::Optional(Some(ty_ascription)) => {
+                        // See https://github.com/rust-lang/rust-clippy/pull/15386 for why this is
+                        // required
+                        let colon_ascription = (cx.sess().source_map())
+                            .span_extend_to_prev_char_before(ty_ascription.span, ':', true)
+                            .with_leading_whitespace(cx)
+                            .into_span();
+                        suggs.push((colon_ascription, String::new()));
+                    },
+                    TypeAscriptionKind::Optional(None) => {}, // nothing to remove/replace
+                }
                 diag.multipart_suggestion("try", suggs, applicability);
             } else {
                 diag.help(format!("consider using an `{atomic_name}` instead"));
