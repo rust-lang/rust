@@ -47,8 +47,8 @@ use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
-    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
-    SanitizerSet, SplitDebuginfo,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, RelocModel, RelroLevel, SanitizerSet,
+    SplitDebuginfo,
 };
 use tracing::{debug, info, warn};
 
@@ -2512,10 +2512,10 @@ fn add_order_independent_options(
     if sess.target.os == "emscripten" {
         cmd.cc_arg(if sess.opts.unstable_opts.emscripten_wasm_eh {
             "-fwasm-exceptions"
-        } else if sess.panic_strategy() == PanicStrategy::Abort {
-            "-sDISABLE_EXCEPTION_CATCHING=1"
-        } else {
+        } else if sess.panic_strategy().unwinds() {
             "-sDISABLE_EXCEPTION_CATCHING=0"
+        } else {
+            "-sDISABLE_EXCEPTION_CATCHING=1"
         });
     }
 

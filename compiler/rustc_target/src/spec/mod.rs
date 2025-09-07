@@ -834,6 +834,7 @@ crate::target_spec_enum! {
     pub enum PanicStrategy {
         Unwind = "unwind",
         Abort = "abort",
+        ImmediateAbort = "immediate-abort",
     }
 
     parse_error_type = "panic strategy";
@@ -852,11 +853,16 @@ impl PanicStrategy {
         match *self {
             PanicStrategy::Unwind => sym::unwind,
             PanicStrategy::Abort => sym::abort,
+            PanicStrategy::ImmediateAbort => sym::immediate_abort,
         }
     }
 
-    pub const fn all() -> [Symbol; 2] {
-        [Self::Abort.desc_symbol(), Self::Unwind.desc_symbol()]
+    pub const fn all() -> [Symbol; 3] {
+        [Self::Abort.desc_symbol(), Self::Unwind.desc_symbol(), Self::ImmediateAbort.desc_symbol()]
+    }
+
+    pub fn unwinds(self) -> bool {
+        matches!(self, PanicStrategy::Unwind)
     }
 }
 
