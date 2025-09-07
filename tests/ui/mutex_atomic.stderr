@@ -25,14 +25,6 @@ LL |     let _ = Mutex::new(9isize);
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
 error: using a `Mutex` where an atomic would do
-  --> tests/ui/mutex_atomic.rs:19:13
-   |
-LL |     let _ = Mutex::new(&x as *const u32);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::sync::atomic::AtomicPtr::new(&x as *const u32)`
-   |
-   = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
-
-error: using a `Mutex` where an atomic would do
   --> tests/ui/mutex_atomic.rs:22:13
    |
 LL |     let _ = Mutex::new(&mut x as *mut u32);
@@ -115,5 +107,5 @@ LL |     let reassigned = mtx;
    = help: consider using an `AtomicI32` instead
    = help: if you just want the locking behavior and not the internal type, consider using `Mutex<()>`
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 

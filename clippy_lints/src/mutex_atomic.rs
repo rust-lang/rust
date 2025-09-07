@@ -5,6 +5,7 @@ use clippy_utils::ty::ty_from_hir_ty;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::{Expr, ExprKind, Item, ItemKind, LetStmt, QPath};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty::{self, IntTy, Ty, UintTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -169,7 +170,8 @@ fn get_atomic_name(ty: Ty<'_>) -> Option<&'static str> {
                 IntTy::I128 => None,
             }
         },
-        ty::RawPtr(_, _) => Some("AtomicPtr"),
+        // `AtomicPtr` only accepts `*mut T`
+        ty::RawPtr(_, Mutability::Mut) => Some("AtomicPtr"),
         _ => None,
     }
 }

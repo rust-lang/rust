@@ -16,8 +16,8 @@ fn main() {
     //~^ mutex_atomic
 
     let mut x = 4u32;
+    // `AtomicPtr` only accepts `*mut T`, so this should not lint
     let _ = Mutex::new(&x as *const u32);
-    //~^ mutex_atomic
 
     let _ = Mutex::new(&mut x as *mut u32);
     //~^ mutex_atomic
