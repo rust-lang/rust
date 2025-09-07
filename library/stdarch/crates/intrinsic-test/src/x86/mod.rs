@@ -17,7 +17,7 @@ use crate::common::gen_rust::{
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::TypeKind;
 use crate::common::{SupportedArchitectureTest, chunk_info};
-use crate::x86::config::{F16_FORMATTING_DEF, X86_CONFIGURATIONS};
+use crate::x86::config::{F16_FORMATTING_DEF, LANE_FUNCTION_HELPERS, X86_CONFIGURATIONS};
 use config::build_notices;
 use intrinsic::X86IntrinsicType;
 use xml_parser::get_xml_intrinsics;
@@ -137,7 +137,7 @@ impl SupportedArchitectureTest for X86ArchitectureTest {
             &mut main_rs,
             chunk_count,
             X86_CONFIGURATIONS,
-            "",
+            LANE_FUNCTION_HELPERS,
             self.intrinsics.iter().map(|i| i.name.as_str()),
         )
         .unwrap();

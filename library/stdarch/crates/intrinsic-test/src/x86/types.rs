@@ -121,7 +121,29 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
 
     /// Determines the get lane function for this type.
     fn get_lane_function(&self) -> String {
-        todo!("get_lane_function for X86IntrinsicType needs to be implemented!");
+        let total_vector_bits: Option<u32> = self
+            .vec_len
+            .zip(self.bit_len)
+            .and_then(|(vec_len, bit_len)| Some(vec_len * bit_len));
+
+        match (self.bit_len, total_vector_bits) {
+            (Some(8), Some(128)) => String::from("_mm_extract_epi8"),
+            (Some(16), Some(128)) => String::from("_mm_extract_epi16"),
+            (Some(32), Some(128)) => String::from("_mm_extract_epi32"),
+            (Some(64), Some(128)) => String::from("_mm_extract_epi64"),
+            (Some(8), Some(256)) => String::from("_mm256_extract_epi8"),
+            (Some(16), Some(256)) => String::from("_mm256_extract_epi16"),
+            (Some(32), Some(256)) => String::from("_mm256_extract_epi32"),
+            (Some(64), Some(256)) => String::from("_mm256_extract_epi64"),
+            (Some(8), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi8"),
+            (Some(16), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi16"),
+            (Some(32), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi32"),
+            (Some(64), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi64"),
+            _ => unreachable!(
+                "invalid length for vector argument: {:?}, {:?}",
+                self.bit_len, self.vec_len
+            ),
+        }
     }
 }
 

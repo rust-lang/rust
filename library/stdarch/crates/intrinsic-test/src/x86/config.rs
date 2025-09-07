@@ -14,6 +14,46 @@ pub const F16_FORMATTING_DEF: &str = r#"
 struct Hex<T>(T);
  "#;
 
+pub const LANE_FUNCTION_HELPERS: &str = r#"
+int mm512_extract(__m512i m, int vec_len, int bit_len, int index) {
+    int lane_len = 128;
+    int max_major_index = vec_len / lane_len;
+    int max_minor_index = lane_len / bit_len;
+
+    int major_index = index / max_major_index;
+    int minor_index = index % max_minor_index;
+
+    __m128i lane = _mm512_extracti64x2_epi64(m, major_index);
+
+    switch(bit_len){
+        case 8:
+            return _mm_extract_epi8(lane, minor_index);
+        case 16:
+            return _mm_extract_epi16(lane, minor_index);
+        case 32:
+            return _mm_extract_epi32(lane, minor_index);
+        case 64:
+            return _mm_extract_epi64(lane, minor_index);
+    }
+}
+
+int _mm512_extract_intrinsic_test_epi8(__m512i m, int lane) {
+    return mm512_extract(m, 512, 8, lane)
+}
+
+int _mm512_extract_intrinsic_test_epi16(__m512i m, int lane) {
+    return mm512_extract(m, 512, 16, lane)
+}
+
+int mm512_extract_intrinsic_test_epi16(__m512i m, int lane) {
+    return mm512_extract(m, 512, 16, lane)
+}
+
+int mm512_extract_intrinsic_test_epi64(__m512i m, int lane) {
+    return mm512_extract(m, 512, 64, lane)
+}
+"#;
+
 pub const X86_CONFIGURATIONS: &str = r#"
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512_bf16))]
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512_f16))]
