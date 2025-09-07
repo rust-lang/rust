@@ -84,6 +84,7 @@ impl IntrinsicDefinition<X86IntrinsicType> for Intrinsic<X86IntrinsicType> {
                     TypeKind::Float if self.results().inner_size() == 64 => "double".to_string(),
                     TypeKind::Float if self.results().inner_size() == 32 => "float".to_string(),
                     TypeKind::Mask => format!("__mmask{}", self.results.bit_len.unwrap()),
+                    TypeKind::Vector => format!("__m{}i", self.results.bit_len.unwrap()),
                     // TypeKind::Float if self.results().inner_size() == 16 => "float16_t".to_string(),
                     // TypeKind::Int(true) if self.results().inner_size() == 64 => "long".to_string(),
                     // TypeKind::Int(false) if self.results().inner_size() == 64 => "unsigned long".to_string(),

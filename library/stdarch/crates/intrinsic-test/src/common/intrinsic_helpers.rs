@@ -75,6 +75,7 @@ impl TypeKind {
             Self::Float => "float",
             Self::Int(Sign::Signed) => "int",
             Self::Int(Sign::Unsigned) => "uint",
+            Self::Mask => "uint",
             Self::Poly => "poly",
             Self::Char(Sign::Signed) => "char",
             _ => unreachable!("Not used: {:#?}", self),
