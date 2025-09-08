@@ -82,7 +82,7 @@ Most importantly, remove the code which flags an error if the feature-gate is no
 gate_all!(pub_restricted, "`pub(restricted)` syntax is experimental");
 ```
 
-This `gate_feature_post!` macro prints an error if the `pub_restricted` feature is not enabled. It is not needed now that `#[pub_restricted]` is stable.
+The `gate_all!` macro reports an error if the `pub_restricted` feature is not enabled. It is not needed now that `pub(restricted)` is stable.
 
 For more subtle features, you may find code like this:
 
