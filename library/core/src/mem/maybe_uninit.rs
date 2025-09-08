@@ -279,7 +279,12 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// be undefined behavior or yield a value different from `t` due to those bytes being lost. This is an active area of discussion, and this code
 /// may become sound in the future.
 ///
-/// Note that, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
+/// However, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
+/// In particular, since `[u8; N]` has no padding bytes, transmuting `t` to `MaybeUninit<[u8; size_of::<T>]>`
+/// and back will always produce the original value `t` again. This is true even if `t` contains [provenance]:
+/// the resulting value will have the same provenance as the original `t`.
+///
+/// [provenance]: crate::ptr#provenance
 ///
 /// [reference-byte]: ../../reference/memory-model.html#bytes
 ///
