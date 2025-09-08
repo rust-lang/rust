@@ -9,7 +9,7 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::WasiFd;
-pub use crate::sys::fs::common::exists;
+pub use crate::sys::fs::common::{Dir, exists};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, unsupported_err};
 use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
