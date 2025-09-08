@@ -287,15 +287,6 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// [provenance]: crate::ptr#provenance
 ///
 /// [reference-byte]: ../../reference/memory-model.html#bytes
-///
-/// ## Provenance
-///
-/// As stated above, `MaybeUninit` permits any byte value at any byte offset. This includes values
-/// which contain [pointer provenance][provenance]. A possibly useful implication is that, for any
-/// value, `p: P`, which contains provenance, transmuting `p` to `MaybeUninit<[u8; size_of::<P>]>`
-/// and then back to `P` will produce a value identical to `p`, including provenance.
-///
-/// [provenance]: ../ptr/index.html#provenance
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
