@@ -6,12 +6,13 @@ use crate::{
     navigation_target::{self, ToNav},
 };
 use hir::{
-    AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, ModuleDef, Semantics, sym,
+    AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, ModuleDef, PathResolution,
+    Semantics, sym,
 };
 use ide_db::{
     RootDatabase, SymbolKind,
     base_db::{AnchoredPath, SourceDatabase},
-    defs::{Definition, IdentClass},
+    defs::{Definition, IdentClass, find_std_module},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
 };
@@ -88,6 +89,9 @@ pub(crate) fn goto_definition(
         .into_iter()
         .filter_map(|token| {
             if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &token.value) {
+                return Some(navs);
+            }
+            if let Some(navs) = find_definition_for_builtin_types(sema, &token.value, edition) {
                 return Some(navs);
             }
 
@@ -202,6 +206,25 @@ fn find_definition_for_known_blanket_dual_impls(
     let _t = f.as_assoc_item(sema.db)?.implemented_trait(sema.db)?;
     let def = Definition::from(f);
     Some(def_to_nav(sema.db, def))
+}
+
+// If the token is a builtin type search the definition from the rustdoc module shims.
+fn find_definition_for_builtin_types(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+    edition: Edition,
+) -> Option<Vec<NavigationTarget>> {
+    let path = original_token.parent_ancestors().find_map(ast::Path::cast)?;
+    let res = sema.resolve_path(&path)?;
+    let PathResolution::Def(ModuleDef::BuiltinType(builtin)) = res else {
+        return None;
+    };
+
+    let fd = FamousDefs(sema, sema.scope(path.syntax())?.krate());
+    let primitive_mod = format!("prim_{}", builtin.name().display(fd.0.db, edition));
+    let doc_owner = find_std_module(&fd, &primitive_mod, edition)?;
+
+    Some(def_to_nav(sema.db, doc_owner.into()))
 }
 
 fn try_lookup_include_path(

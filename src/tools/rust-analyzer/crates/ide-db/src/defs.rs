@@ -363,7 +363,7 @@ impl Definition {
     }
 }
 
-fn find_std_module(
+pub fn find_std_module(
     famous_defs: &FamousDefs<'_, '_>,
     name: &str,
     edition: Edition,
