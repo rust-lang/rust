@@ -28,6 +28,9 @@ fn compare_against_sw_vers() {
     let subminor: i32 = sw_vers.next().unwrap_or("0").parse().unwrap();
     assert_eq!(sw_vers.count(), 0);
 
+    // Test directly against the lookup
+    assert_eq!(lookup_version().get(), pack_os_version(major as _, minor as _, subminor as _));
+
     // Current version is available
     assert_eq!(__isOSVersionAtLeast(major, minor, subminor), 1);
 
@@ -40,9 +43,6 @@ fn compare_against_sw_vers() {
     assert_eq!(__isOSVersionAtLeast(major, minor, subminor + 1), 0);
     assert_eq!(__isOSVersionAtLeast(major, minor + 1, subminor), 0);
     assert_eq!(__isOSVersionAtLeast(major + 1, minor, subminor), 0);
-
-    // Test directly against the lookup
-    assert_eq!(lookup_version().get(), pack_os_version(major as _, minor as _, subminor as _));
 }
 
 #[test]
