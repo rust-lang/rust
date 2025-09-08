@@ -24,17 +24,16 @@ use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 /// span, e.g. a string literal `"//"`, but we know that this isn't the case for empty
 /// match arms.
 fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
-    if let Some(ff) = span.get_source_range(cx)
-        && let Some(text) = ff.as_str()
-    {
-        text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")
-    } else {
-        false
-    }
+    span.check_source_text(cx, |text| text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*"))
 }
 
-#[rustfmt::skip]
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>, contains_comments: bool) {
+pub(crate) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    ex: &'tcx Expr<'_>,
+    arms: &'tcx [Arm<'_>],
+    expr: &'tcx Expr<'_>,
+    contains_comments: bool,
+) {
     if let [arm1, arm2] = arms
         && !arms.iter().any(|arm| arm.guard.is_some() || arm.pat.span.from_expansion())
         && !expr.span.from_expansion()
@@ -226,13 +225,13 @@ enum PatState<'a> {
     Wild,
     /// A std enum we know won't be extended. Tracks the states of each variant separately.
     ///
-    /// This is not used for `Option` since it uses the current pattern to track it's state.
+    /// This is not used for `Option` since it uses the current pattern to track its state.
     StdEnum(&'a mut [PatState<'a>]),
     /// Either the initial state for a pattern or a non-std enum. There is currently no need to
     /// distinguish these cases.
     ///
     /// For non-std enums there's no need to track the state of sub-patterns as the state of just
-    /// this pattern on it's own is enough for linting. Consider two cases:
+    /// this pattern on its own is enough for linting. Consider two cases:
     /// * This enum has no wild match. This case alone is enough to determine we can lint.
     /// * This enum has a wild match and therefore all sub-patterns also have a wild match.
     ///
@@ -380,7 +379,11 @@ impl<'a> PatState<'a> {
                 self.add_pat(cx, pat)
             },
             PatKind::Tuple([sub_pat], pos)
-                if pos.as_opt_usize().is_none() || cx.typeck.pat_ty(pat).tuple_fields().len() == 1 =>
+                // `pat` looks like `(sub_pat)`, without a `..` -- has only one sub-pattern
+                if pos.as_opt_usize().is_none()
+                    // `pat` looks like `(sub_pat, ..)` or `(.., sub_pat)`, but its type is a unary tuple,
+                    // so it still only has one sub-pattern
+                    || cx.typeck.pat_ty(pat).tuple_fields().len() == 1 =>
             {
                 self.add_pat(cx, sub_pat)
             },
