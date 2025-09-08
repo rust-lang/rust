@@ -259,6 +259,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// appropriate length, initialized or uninitialized, are a valid representation of `MaybeUninit<T>`.
 ///
 /// However, "round-tripping" via `MaybeUninit` does not always result in the original value.
+/// `MaybeUninit` can have padding, and the contents of that padding are not preserved.
 /// Concretely, given distinct `T` and `U` where `size_of::<T>() == size_of::<U>()`, the following
 /// code is not guaranteed to be sound:
 ///
