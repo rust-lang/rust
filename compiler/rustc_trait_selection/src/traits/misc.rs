@@ -1,7 +1,5 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use std::assert_matches::assert_matches;
-
 use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_hir as hir;
@@ -99,10 +97,8 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
-    lang_item: LangItem,
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
-    assert_matches!(lang_item, LangItem::ConstParamTy);
     let mut need_unstable_feature_bound = false;
 
     let inner_tys: Vec<_> = match *self_type.kind() {
@@ -135,7 +131,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
                 adt,
                 args,
                 parent_cause.clone(),
-                lang_item,
+                LangItem::ConstParamTy,
             )
             .map_err(ConstParamTyImplementationError::InfrigingFields)?;
 
@@ -165,7 +161,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
             parent_cause.clone(),
             param_env,
             inner_ty,
-            tcx.require_lang_item(lang_item, parent_cause.span),
+            tcx.require_lang_item(LangItem::ConstParamTy, parent_cause.span),
         );
 
         let errors = ocx.select_all_or_error();
