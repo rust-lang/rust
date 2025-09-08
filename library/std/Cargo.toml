@@ -81,7 +81,7 @@ wasi = { version = "0.11.0", features = [
 ], default-features = false }
 
 [target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
-wasip2 = { version = '0.14.3', features = [
+wasip2 = { version = '0.14.4', features = [
     'rustc-dep-of-std',
 ], default-features = false, package = 'wasi' }
 

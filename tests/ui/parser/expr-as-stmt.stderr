@@ -77,6 +77,15 @@ help: parentheses are required to parse this as an expression
 LL |     (unsafe { 1 }) + unsafe { 1 }
    |     +            +
 
+error: expected `;`, found keyword `match`
+  --> $DIR/expr-as-stmt.rs:82:53
+   |
+LL |     match () { _ => true } && match () { _ => true }
+   |                                                     ^ help: add `;` here
+LL |
+LL |     match () { _ => true } && true;
+   |     ----- unexpected token
+
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:64:7
    |
@@ -227,9 +236,12 @@ error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:69:5
    |
 LL |     match () { () => 1 } + match () { () => 1 }
-   |     ^^^^^^^^^^^^^^^^^^^^- help: consider using a semicolon here
-   |     |
-   |     expected `()`, found integer
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found integer
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { () => 1 }) + match () { () => 1 }
+   |     +                    +
 
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:75:14
@@ -242,7 +254,65 @@ help: you might have meant to return this value
 LL |     unsafe { return 1; } + unsafe { 1 }
    |              ++++++  +
 
-error: aborting due to 22 previous errors
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:81:5
+   |
+LL |     match () { _ => true } && match () { _ => true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && match () { _ => true };
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:82:5
+   |
+LL |     match () { _ => true } && match () { _ => true }
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && match () { _ => true }
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:84:5
+   |
+LL |     match () { _ => true } && true;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true;
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:85:5
+   |
+LL |     match () { _ => true } && true
+   |     ^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true
+   |     +                      +
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:85:28
+   |
+LL | fn matches() -> bool {
+   |                 ---- expected `bool` because of return type
+...
+LL |     match () { _ => true } && true
+   |                            ^^^^^^^ expected `bool`, found `&&bool`
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match () { _ => true }) && true
+   |     +                      +
+
+error: aborting due to 28 previous errors
 
 Some errors have detailed explanations: E0308, E0600, E0614.
 For more information about an error, try `rustc --explain E0308`.

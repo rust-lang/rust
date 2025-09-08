@@ -46,7 +46,9 @@ use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, errors, meth, mir};
+use crate::{
+    CachedModuleCodegen, CodegenLintLevels, CrateInfo, ModuleCodegen, ModuleKind, errors, meth, mir,
+};
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
     match (op, signed) {
@@ -1124,7 +1126,12 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
         // We can re-use either the pre- or the post-thinlto state. If no LTO is
         // being performed then we can use post-LTO artifacts, otherwise we must
         // reuse pre-LTO artifacts
-        match compute_per_cgu_lto_type(&tcx.sess.lto(), &tcx.sess.opts, tcx.crate_types()) {
+        match compute_per_cgu_lto_type(
+            &tcx.sess.lto(),
+            &tcx.sess.opts,
+            tcx.crate_types(),
+            ModuleKind::Regular,
+        ) {
             ComputedLtoType::No => CguReuse::PostLto,
             _ => CguReuse::PreLto,
         }

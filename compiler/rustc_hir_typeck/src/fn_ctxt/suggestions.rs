@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use core::cmp::min;
 use core::iter;
 
@@ -766,53 +767,118 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         needs_block: bool,
         parent_is_closure: bool,
     ) {
-        if expected.is_unit() {
-            // `BlockTailExpression` only relevant if the tail expr would be
-            // useful on its own.
-            match expression.kind {
-                ExprKind::Call(..)
-                | ExprKind::MethodCall(..)
-                | ExprKind::Loop(..)
-                | ExprKind::If(..)
-                | ExprKind::Match(..)
-                | ExprKind::Block(..)
-                    if expression.can_have_side_effects()
-                        // If the expression is from an external macro, then do not suggest
-                        // adding a semicolon, because there's nowhere to put it.
-                        // See issue #81943.
-                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
+        if !expected.is_unit() {
+            return;
+        }
+        // `BlockTailExpression` only relevant if the tail expr would be
+        // useful on its own.
+        match expression.kind {
+            ExprKind::Call(..)
+            | ExprKind::MethodCall(..)
+            | ExprKind::Loop(..)
+            | ExprKind::If(..)
+            | ExprKind::Match(..)
+            | ExprKind::Block(..)
+                if expression.can_have_side_effects()
+                    // If the expression is from an external macro, then do not suggest
+                    // adding a semicolon, because there's nowhere to put it.
+                    // See issue #81943.
+                    && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
+            {
+                if needs_block {
+                    err.multipart_suggestion(
+                        "consider using a semicolon here",
+                        vec![
+                            (expression.span.shrink_to_lo(), "{ ".to_owned()),
+                            (expression.span.shrink_to_hi(), "; }".to_owned()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
+                } else if let hir::Node::Block(block) = self.tcx.parent_hir_node(expression.hir_id)
+                    && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(block.hir_id)
+                    && let hir::Node::Expr(if_expr) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::If(_cond, _then, Some(_else)) = if_expr.kind
+                    && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(if_expr.hir_id)
+                    && let hir::StmtKind::Expr(_) = stmt.kind
+                    && self.is_next_stmt_expr_continuation(stmt.hir_id)
                 {
-                    if needs_block {
-                        err.multipart_suggestion(
-                            "consider using a semicolon here",
-                            vec![
-                                (expression.span.shrink_to_lo(), "{ ".to_owned()),
-                                (expression.span.shrink_to_hi(), "; }".to_owned()),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    } else {
-                        err.span_suggestion(
-                            expression.span.shrink_to_hi(),
-                            "consider using a semicolon here",
-                            ";",
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
-                ExprKind::Path(..) | ExprKind::Lit(_)
-                    if parent_is_closure
-                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
-                {
-                    err.span_suggestion_verbose(
-                        expression.span.shrink_to_lo(),
-                        "consider ignoring the value",
-                        "_ = ",
+                    err.multipart_suggestion(
+                        "parentheses are required to parse this as an expression",
+                        vec![
+                            (stmt.span.shrink_to_lo(), "(".to_string()),
+                            (stmt.span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.span_suggestion(
+                        expression.span.shrink_to_hi(),
+                        "consider using a semicolon here",
+                        ";",
                         Applicability::MachineApplicable,
                     );
                 }
-                _ => (),
             }
+            ExprKind::Path(..) | ExprKind::Lit(_)
+                if parent_is_closure
+                    && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
+            {
+                err.span_suggestion_verbose(
+                    expression.span.shrink_to_lo(),
+                    "consider ignoring the value",
+                    "_ = ",
+                    Applicability::MachineApplicable,
+                );
+            }
+            _ => {
+                if let hir::Node::Block(block) = self.tcx.parent_hir_node(expression.hir_id)
+                    && let hir::Node::Expr(expr) = self.tcx.parent_hir_node(block.hir_id)
+                    && let hir::Node::Expr(if_expr) = self.tcx.parent_hir_node(expr.hir_id)
+                    && let hir::ExprKind::If(_cond, _then, Some(_else)) = if_expr.kind
+                    && let hir::Node::Stmt(stmt) = self.tcx.parent_hir_node(if_expr.hir_id)
+                    && let hir::StmtKind::Expr(_) = stmt.kind
+                    && self.is_next_stmt_expr_continuation(stmt.hir_id)
+                {
+                    // The error is pointing at an arm of an if-expression, and we want to get the
+                    // `Span` of the whole if-expression for the suggestion. This only works for a
+                    // single level of nesting, which is fine.
+                    // We have something like `if true { false } else { true } && true`. Suggest
+                    // wrapping in parentheses. We find the statement or expression following the
+                    // `if` (`&& true`) and see if it is something that can reasonably be
+                    // interpreted as a binop following an expression.
+                    err.multipart_suggestion(
+                        "parentheses are required to parse this as an expression",
+                        vec![
+                            (stmt.span.shrink_to_lo(), "(".to_string()),
+                            (stmt.span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        }
+    }
+
+    pub(crate) fn is_next_stmt_expr_continuation(&self, hir_id: HirId) -> bool {
+        if let hir::Node::Block(b) = self.tcx.parent_hir_node(hir_id)
+            && let mut stmts = b.stmts.iter().skip_while(|s| s.hir_id != hir_id)
+            && let Some(_) = stmts.next() // The statement the statement that was passed in
+            && let Some(next) = match (stmts.next(), b.expr) { // The following statement
+                (Some(next), _) => match next.kind {
+                    hir::StmtKind::Expr(next) | hir::StmtKind::Semi(next) => Some(next),
+                    _ => None,
+                },
+                (None, Some(next)) => Some(next),
+                _ => None,
+            }
+            && let hir::ExprKind::AddrOf(..) // prev_stmt && next
+                | hir::ExprKind::Unary(..) // prev_stmt * next
+                | hir::ExprKind::Err(_) = next.kind
+        // prev_stmt + next
+        {
+            true
+        } else {
+            false
         }
     }
 

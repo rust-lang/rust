@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
     self as ast, CRATE_NODE_ID, Crate, ItemKind, ModKind, NodeId, Path, join_path_idents,
@@ -1986,7 +1987,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let extern_prelude_ambiguity = || {
             self.extern_prelude.get(&Macros20NormalizedIdent::new(ident)).is_some_and(|entry| {
                 entry.item_binding.map(|(b, _)| b) == Some(b1)
-                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().binding()) == Some(b2)
+                    && entry.flag_binding.as_ref().and_then(|pb| pb.get().0.binding()) == Some(b2)
             })
         };
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
@@ -3469,16 +3470,11 @@ fn show_candidates(
                 err.note(note.to_string());
             }
         } else {
-            let (_, descr_first, _, _, _) = &inaccessible_path_strings[0];
-            let descr = if inaccessible_path_strings
+            let descr = inaccessible_path_strings
                 .iter()
-                .skip(1)
-                .all(|(_, descr, _, _, _)| descr == descr_first)
-            {
-                descr_first
-            } else {
-                "item"
-            };
+                .map(|&(_, descr, _, _, _)| descr)
+                .all_equal_value()
+                .unwrap_or("item");
             let plural_descr =
                 if descr.ends_with('s') { format!("{descr}es") } else { format!("{descr}s") };
 

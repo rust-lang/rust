@@ -1,7 +1,6 @@
 use std::ffi::CString;
 use std::sync::Arc;
 
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::memmap::Mmap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportLevel};
@@ -96,19 +95,6 @@ pub(super) fn exported_symbols_for_lto(
             .filter_map(|&(s, info): &(ExportedSymbol<'_>, SymbolExportInfo)| {
                 if info.level.is_below_threshold(export_threshold) || info.used {
                     Some(symbol_name_for_instance_in_crate(tcx, s, cnum))
-                } else if export_threshold == SymbolExportLevel::C
-                    && info.rustc_std_internal_symbol
-                    && let Some(AllocatorKind::Default) = allocator_kind_for_codegen(tcx)
-                {
-                    // Export the __rdl_* exports for usage by the allocator shim when not using
-                    // #[global_allocator]. Most of the conditions above are only used to avoid
-                    // unnecessary expensive symbol_name_for_instance_in_crate calls.
-                    let sym = symbol_name_for_instance_in_crate(tcx, s, cnum);
-                    if sym.contains("__rdl_") || sym.contains("__rg_oom") {
-                        Some(sym)
-                    } else {
-                        None
-                    }
                 } else {
                     None
                 }

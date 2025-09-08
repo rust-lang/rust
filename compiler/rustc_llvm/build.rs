@@ -174,10 +174,10 @@ fn main() {
 
     // Prevent critical warnings when we're compiling from rust-lang/rust CI,
     // except on MSVC, as the compiler throws warnings that are only reported
-    // for this platform. See https://github.com/rust-lang/rust/pull/145031#issuecomment-3162677202
-    // FIXME(llvm22): It looks like the specific problem code has been removed
-    // in https://github.com/llvm/llvm-project/commit/e8fc808bf8e78a3c80d1f8e293a92677b92366dd,
-    // retry msvc once we bump our LLVM version.
+    // for this platform. See https://github.com/rust-lang/rust/pull/145031#issuecomment-3162677202.
+    // Moreover, LLVM generally guarantees warning-freedom only when building with Clang, as other
+    // compilers have too many false positives. This is typically the case for MSVC, which throws
+    // many false-positive warnings. We keep it excluded, for these reasons.
     if std::env::var_os("CI").is_some() && !target.contains("msvc") {
         cfg.warnings_into_errors(true);
     }

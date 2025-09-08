@@ -2742,7 +2742,7 @@ impl<'a> Parser<'a> {
     /// The specified `edition` in `let_chains_policy` should be that of the whole `if` construct,
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
-    // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
+    // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
     pub fn parse_expr_cond(
         &mut self,
         let_chains_policy: LetChainsPolicy,

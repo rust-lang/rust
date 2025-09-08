@@ -1025,7 +1025,6 @@ impl f32 {
                 ((self as f64 + other as f64) / 2.0) as f32
             }
             _ => {
-                const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
 
                 let (a, b) = (self, other);
@@ -1035,14 +1034,7 @@ impl f32 {
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
                     (a + b) / 2.
-                } else if abs_a < LO {
-                    // Not safe to halve `a` (would underflow)
-                    a + (b / 2.)
-                } else if abs_b < LO {
-                    // Not safe to halve `b` (would underflow)
-                    (a / 2.) + b
                 } else {
-                    // Safe to halve `a` and `b`
                     (a / 2.) + (b / 2.)
                 }
             }
@@ -1954,8 +1946,8 @@ pub mod math {
     /// let abs_difference_x = (f32::math::abs_sub(x, 1.0) - 2.0).abs();
     /// let abs_difference_y = (f32::math::abs_sub(y, 1.0) - 0.0).abs();
     ///
-    /// assert!(abs_difference_x <= f32::EPSILON);
-    /// assert!(abs_difference_y <= f32::EPSILON);
+    /// assert!(abs_difference_x <= 1e-6);
+    /// assert!(abs_difference_y <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.
@@ -2000,7 +1992,7 @@ pub mod math {
     /// // x^(1/3) - 2 == 0
     /// let abs_difference = (f32::math::cbrt(x) - 2.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.

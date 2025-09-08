@@ -1,4 +1,4 @@
-///! Definition of `InferCtxtLike` from the librarified type layer.
+//! Definition of `InferCtxtLike` from the librarified type layer.
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::relate::RelateResult;

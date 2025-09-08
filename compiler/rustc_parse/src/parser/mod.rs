@@ -22,6 +22,8 @@ use std::{fmt, mem, slice};
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
+// Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+pub use expr::LetChainsPolicy;
 pub(crate) use item::{FnContext, FnParseMode};
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;

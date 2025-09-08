@@ -839,3 +839,9 @@ tool_check_step!(Linkchecker {
     mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
+
+tool_check_step!(BumpStage0 {
+    path: "src/tools/bump-stage0",
+    mode: |_builder| Mode::ToolBootstrap,
+    default: false
+});

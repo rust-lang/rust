@@ -27,6 +27,9 @@ trait TestableFloat: Sized {
     const NAN_MASK1: Self::Int;
     /// Second pattern over the mantissa
     const NAN_MASK2: Self::Int;
+    const EPS_ADD: Self;
+    const EPS_MUL: Self;
+    const EPS_DIV: Self;
 }
 
 impl TestableFloat for f16 {
@@ -44,6 +47,9 @@ impl TestableFloat for f16 {
     const MAX_DOWN: Self = Self::from_bits(0x7bfe);
     const NAN_MASK1: Self::Int = 0x02aa;
     const NAN_MASK2: Self::Int = 0x0155;
+    const EPS_ADD: Self = if cfg!(miri) { 1e1 } else { 0.0 };
+    const EPS_MUL: Self = if cfg!(miri) { 1e3 } else { 0.0 };
+    const EPS_DIV: Self = if cfg!(miri) { 1e0 } else { 0.0 };
 }
 
 impl TestableFloat for f32 {
@@ -63,6 +69,9 @@ impl TestableFloat for f32 {
     const MAX_DOWN: Self = Self::from_bits(0x7f7f_fffe);
     const NAN_MASK1: Self::Int = 0x002a_aaaa;
     const NAN_MASK2: Self::Int = 0x0055_5555;
+    const EPS_ADD: Self = if cfg!(miri) { 1e-3 } else { 0.0 };
+    const EPS_MUL: Self = if cfg!(miri) { 1e-1 } else { 0.0 };
+    const EPS_DIV: Self = if cfg!(miri) { 1e-4 } else { 0.0 };
 }
 
 impl TestableFloat for f64 {
@@ -78,6 +87,9 @@ impl TestableFloat for f64 {
     const MAX_DOWN: Self = Self::from_bits(0x7fef_ffff_ffff_fffe);
     const NAN_MASK1: Self::Int = 0x000a_aaaa_aaaa_aaaa;
     const NAN_MASK2: Self::Int = 0x0005_5555_5555_5555;
+    const EPS_ADD: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const EPS_MUL: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const EPS_DIV: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
 }
 
 impl TestableFloat for f128 {
@@ -93,6 +105,9 @@ impl TestableFloat for f128 {
     const MAX_DOWN: Self = Self::from_bits(0x7ffefffffffffffffffffffffffffffe);
     const NAN_MASK1: Self::Int = 0x0000aaaaaaaaaaaaaaaaaaaaaaaaaaaa;
     const NAN_MASK2: Self::Int = 0x00005555555555555555555555555555;
+    const EPS_ADD: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const EPS_MUL: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
+    const EPS_DIV: Self = if cfg!(miri) { 1e-6 } else { 0.0 };
 }
 
 /// Determine the tolerance for values of the argument type.
@@ -1438,5 +1453,29 @@ float_test! {
         assert!(nan.to_radians().is_nan());
         assert_biteq!(inf.to_radians(), inf);
         assert_biteq!(neg_inf.to_radians(), neg_inf);
+    }
+}
+
+float_test! {
+    name: to_algebraic,
+    attrs: {
+        f16: #[cfg(target_has_reliable_f16)],
+        f128: #[cfg(target_has_reliable_f128)],
+    },
+    test<Float> {
+        let a: Float = 123.0;
+        let b: Float = 456.0;
+
+        // Check that individual operations match their primitive counterparts.
+        //
+        // This is a check of current implementations and does NOT imply any form of
+        // guarantee about future behavior. The compiler reserves the right to make
+        // these operations inexact matches in the future.
+
+        assert_approx_eq!(a.algebraic_add(b), a + b, Float::EPS_ADD);
+        assert_approx_eq!(a.algebraic_sub(b), a - b, Float::EPS_ADD);
+        assert_approx_eq!(a.algebraic_mul(b), a * b, Float::EPS_MUL);
+        assert_approx_eq!(a.algebraic_div(b), a / b, Float::EPS_DIV);
+        assert_approx_eq!(a.algebraic_rem(b), a % b, Float::EPS_DIV);
     }
 }

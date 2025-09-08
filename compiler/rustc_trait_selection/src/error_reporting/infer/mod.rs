@@ -318,7 +318,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let (expected, found) = if expected_str == found_str {
                         (join_path_syms(&expected_abs), join_path_syms(&found_abs))
                     } else {
-                        (expected_str.clone(), found_str.clone())
+                        (expected_str, found_str)
                     };
 
                     // We've displayed "expected `a::b`, found `a::b`". We add context to

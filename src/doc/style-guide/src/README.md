@@ -112,6 +112,14 @@ fn bar() {}
 fn baz() {}
 ```
 
+### Trailing whitespace
+
+Do not include trailing whitespace on the end of any line. This includes blank
+lines, comment lines, code lines, and string literals.
+
+Note that avoiding trailing whitespace in string literals requires care to
+preserve the value of the literal.
+
 ### Sorting
 
 In various cases, the default Rust style specifies to sort things. If not
@@ -225,8 +233,8 @@ newline after the opening sigil, and a newline before the closing sigil.
 
 Prefer to put a comment on its own line. Where a comment follows code, put a
 single space before it. Where a block comment appears inline, use surrounding
-whitespace as if it were an identifier or keyword. Do not include trailing
-whitespace after a comment or at the end of any line in a multi-line comment.
+whitespace as if it were an identifier or keyword.
+
 Examples:
 
 ```rust

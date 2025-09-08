@@ -247,9 +247,8 @@ use crate::ops::ControlFlow;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
+pub const trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]

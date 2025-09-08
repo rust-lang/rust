@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 #![feature(const_trait_impl)]
-const fn impls_fn<F: ~const Fn(u32) -> Foo>(_: &F) {}
+const fn impls_fn<F: [const] Fn(u32) -> Foo>(_: &F) {}
 
 struct Foo(u32);
 

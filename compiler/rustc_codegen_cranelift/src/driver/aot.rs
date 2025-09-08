@@ -12,7 +12,9 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use rustc_codegen_ssa::assert_module_sources::CguReuse;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, errors as ssa_errors};
+use rustc_codegen_ssa::{
+    CodegenResults, CompiledModule, CrateInfo, ModuleKind, errors as ssa_errors,
+};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
@@ -361,6 +363,7 @@ fn emit_cgu(
         invocation_temp,
         prof,
         product.object,
+        ModuleKind::Regular,
         name.clone(),
         producer,
     )?;
@@ -369,6 +372,7 @@ fn emit_cgu(
         module_regular,
         module_global_asm: global_asm_object_file.map(|global_asm_object_file| CompiledModule {
             name: format!("{name}.asm"),
+            kind: ModuleKind::Regular,
             object: Some(global_asm_object_file),
             dwarf_object: None,
             bytecode: None,
@@ -385,6 +389,7 @@ fn emit_module(
     invocation_temp: Option<&str>,
     prof: &SelfProfilerRef,
     mut object: cranelift_object::object::write::Object<'_>,
+    kind: ModuleKind,
     name: String,
     producer_str: &str,
 ) -> Result<CompiledModule, String> {
@@ -425,6 +430,7 @@ fn emit_module(
 
     Ok(CompiledModule {
         name,
+        kind,
         object: Some(tmp_file),
         dwarf_object: None,
         bytecode: None,
@@ -479,6 +485,7 @@ fn reuse_workproduct_for_cgu(
     Ok(ModuleCodegenResult {
         module_regular: CompiledModule {
             name: cgu.name().to_string(),
+            kind: ModuleKind::Regular,
             object: Some(obj_out_regular),
             dwarf_object: None,
             bytecode: None,
@@ -488,6 +495,7 @@ fn reuse_workproduct_for_cgu(
         },
         module_global_asm: source_file_global_asm.map(|source_file| CompiledModule {
             name: cgu.name().to_string(),
+            kind: ModuleKind::Regular,
             object: Some(obj_out_global_asm),
             dwarf_object: None,
             bytecode: None,
@@ -643,6 +651,7 @@ fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
             tcx.sess.invocation_temp.as_deref(),
             &tcx.sess.prof,
             product.object,
+            ModuleKind::Allocator,
             "allocator_shim".to_owned(),
             &crate::debuginfo::producer(tcx.sess),
         ) {

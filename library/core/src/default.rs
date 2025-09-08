@@ -103,9 +103,8 @@ use crate::ascii::Char as AsciiChar;
 /// ```
 #[rustc_diagnostic_item = "Default"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[const_trait]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-pub trait Default: Sized {
+pub const trait Default: Sized {
     /// Returns the "default value" for a type.
     ///
     /// Default values are often some kind of initial value, identity value, or anything else that

@@ -244,18 +244,16 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 
 ## Example 1: Redirecting control flow using an indirect branch/call to an invalid destination
 
-```rust,ignore (making doc tests pass cross-platform is hard)
-use std::arch::naked_asm;
-use std::mem;
-
+```rust
 fn add_one(x: i32) -> i32 {
     x + 1
 }
 
 #[unsafe(naked)]
-pub extern "C" fn add_two(x: i32) {
+# #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+pub extern "sysv64" fn add_two(x: i32) {
     // x + 2 preceded by a landing pad/nop block
-    naked_asm!(
+    std::arch::naked_asm!(
         "
          nop
          nop
@@ -281,16 +279,18 @@ fn main() {
 
     println!("The answer is: {}", answer);
 
-    println!("With CFI enabled, you should not see the next answer");
-    let f: fn(i32) -> i32 = unsafe {
-        // Offset 0 is a valid branch/call destination (i.e., the function entry
-        // point), but offsets 1-8 within the landing pad/nop block are invalid
-        // branch/call destinations (i.e., within the body of the function).
-        mem::transmute::<*const u8, fn(i32) -> i32>((add_two as *const u8).offset(5))
-    };
-    let next_answer = do_twice(f, 5);
+#   #[cfg(all(target_os = "linux", target_arch = "x86_64"))] {
+        println!("With CFI enabled, you should not see the next answer");
+        let f: fn(i32) -> i32 = unsafe {
+            // Offset 0 is a valid branch/call destination (i.e., the function entry
+            // point), but offsets 1-8 within the landing pad/nop block are invalid
+            // branch/call destinations (i.e., within the body of the function).
+            std::mem::transmute::<*const u8, fn(i32) -> i32>((add_two as *const u8).offset(5))
+        };
+        let next_answer = do_twice(f, 5);
 
-    println!("The next answer is: {}", next_answer);
+        println!("The next answer is: {}", next_answer);
+#   }
 }
 ```
 Fig. 1. Redirecting control flow using an indirect branch/call to an invalid

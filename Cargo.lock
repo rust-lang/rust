@@ -336,7 +336,7 @@ dependencies = [
  "curl",
  "indexmap",
  "serde",
- "toml 0.7.8",
+ "toml 0.8.23",
 ]
 
 [[package]]
@@ -4022,6 +4022,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
+ "bitflags",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -4072,7 +4073,6 @@ name = "rustc_log"
 version = "0.0.0"
 dependencies = [
  "tracing",
- "tracing-core",
  "tracing-subscriber",
  "tracing-tree",
 ]
@@ -5541,9 +5541,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.30"
+version = "0.1.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
+checksum = "b9d12581f227e93f094d3af2ae690a574abb8a2b9b7a96e7cfe9647b2b617678"
 dependencies = [
  "once_cell",
  "valuable",
