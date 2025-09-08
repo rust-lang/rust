@@ -23,7 +23,7 @@ use crate::{NativeLib, common, errors};
 /// then the CodegenResults value contains one NativeLib instance for each block. However, the
 /// linker appears to expect only a single import library for each library used, so we need to
 /// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs_windows<'a>(
+fn collate_raw_dylibs<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
 ) -> Vec<(String, Vec<DllImport>)> {
@@ -32,14 +32,21 @@ fn collate_raw_dylibs_windows<'a>(
 
     for lib in used_libraries {
         if lib.kind == NativeLibKind::RawDylib {
-            let ext = if lib.verbatim { "" } else { ".dll" };
-            let name = format!("{}{}", lib.name, ext);
+            let name = if lib.verbatim {
+                lib.name.as_str().to_owned()
+            } else {
+                let prefix = sess.target.dll_prefix.as_ref();
+                let suffix = sess.target.dll_suffix.as_ref();
+                format!("{prefix}{}{suffix}", lib.name)
+            };
             let imports = dylib_table.entry(name.clone()).or_default();
             for import in &lib.dll_imports {
                 if let Some(old_import) = imports.insert(import.name, import) {
                     // FIXME: when we add support for ordinals, figure out if we need to do anything
                     // if we have two DllImport values with the same name but different ordinals.
-                    if import.calling_convention != old_import.calling_convention {
+                    if sess.target.is_like_windows
+                        && import.calling_convention != old_import.calling_convention
+                    {
                         sess.dcx().emit_err(errors::MultipleExternalFuncDecl {
                             span: import.span,
                             function: import.name,
@@ -66,7 +73,7 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
     tmpdir: &Path,
     is_direct_dependency: bool,
 ) -> Vec<PathBuf> {
-    collate_raw_dylibs_windows(sess, used_libraries)
+    collate_raw_dylibs(sess, used_libraries)
         .into_iter()
         .map(|(raw_dylib_name, raw_dylib_imports)| {
             let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
@@ -119,50 +126,12 @@ pub(super) fn create_raw_dylib_dll_import_libs<'a>(
         .collect()
 }
 
-/// Extract all symbols defined in raw-dylib libraries, collated by library name.
-///
-/// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
-/// then the CodegenResults value contains one NativeLib instance for each block. However, the
-/// linker appears to expect only a single import library for each library used, so we need to
-/// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs_elf<'a>(
-    sess: &Session,
-    used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-) -> Vec<(String, Vec<DllImport>)> {
-    // Use index maps to preserve original order of imports and libraries.
-    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
-
-    for lib in used_libraries {
-        if lib.kind == NativeLibKind::RawDylib {
-            let filename = if lib.verbatim {
-                lib.name.as_str().to_owned()
-            } else {
-                let ext = sess.target.dll_suffix.as_ref();
-                let prefix = sess.target.dll_prefix.as_ref();
-                format!("{prefix}{}{ext}", lib.name)
-            };
-
-            let imports = dylib_table.entry(filename.clone()).or_default();
-            for import in &lib.dll_imports {
-                imports.insert(import.name, import);
-            }
-        }
-    }
-    sess.dcx().abort_if_errors();
-    dylib_table
-        .into_iter()
-        .map(|(name, imports)| {
-            (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
-        })
-        .collect()
-}
-
 pub(super) fn create_raw_dylib_elf_stub_shared_objects<'a>(
     sess: &Session,
     used_libraries: impl IntoIterator<Item = &'a NativeLib>,
     raw_dylib_so_dir: &Path,
 ) -> Vec<String> {
-    collate_raw_dylibs_elf(sess, used_libraries)
+    collate_raw_dylibs(sess, used_libraries)
         .into_iter()
         .map(|(load_filename, raw_dylib_imports)| {
             use std::hash::Hash;
