@@ -308,7 +308,7 @@ where
             Some(if return_nan { ecx.generate_nan(&[base]) } else { one })
         }
 
-        _ => return None,
+        _ => None,
     }
 }
 
