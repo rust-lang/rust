@@ -911,12 +911,16 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
         use rustc_middle::mir::visit::PlaceContext::*;
 
         // Dereferencing just read the address of `place.local`.
-        if place.projection.first() == Some(&PlaceElem::Deref) {
+        if place.is_indirect_first_projection() {
             context = NonMutatingUse(NonMutatingUseContext::Copy);
         }
 
         self.visit_local(place.local, context, loc);
         self.visit_projection(place.as_ref(), context, loc);
+    }
+
+    fn visit_var_debug_info(&mut self, _: &VarDebugInfo<'tcx>) {
+        // explicitly skip debug info
     }
 
     fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {

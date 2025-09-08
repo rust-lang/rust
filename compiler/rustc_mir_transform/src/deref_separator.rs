@@ -1,4 +1,3 @@
-use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -18,11 +17,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
         self.tcx
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, cntxt: PlaceContext, loc: Location) {
-        if !place.projection.is_empty()
-            && cntxt != PlaceContext::NonUse(VarDebugInfo)
-            && place.projection[1..].contains(&ProjectionElem::Deref)
-        {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _cntxt: PlaceContext, loc: Location) {
+        if !place.projection.is_empty() && place.projection[1..].contains(&ProjectionElem::Deref) {
             let mut place_local = place.local;
             let mut last_len = 0;
             let mut last_deref_idx = 0;

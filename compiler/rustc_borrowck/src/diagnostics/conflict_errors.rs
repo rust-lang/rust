@@ -558,7 +558,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err: &mut Diag<'infcx>,
     ) {
         let var_info = self.body.var_debug_info.iter().find(|info| match info.value {
-            VarDebugInfoContents::Place(ref p) => p == place,
+            VarDebugInfoContents::Place(ref p) => {
+                // This will become a simple == when Derefer is moved before borrowck
+                place.local == p.local
+                    && p.projection_chain
+                        .iter()
+                        .flatten()
+                        .enumerate()
+                        .all(|(i, elem)| place.projection.get(i) == Some(&elem))
+            }
             _ => false,
         });
         let arg_name = if let Some(var_info) = var_info {

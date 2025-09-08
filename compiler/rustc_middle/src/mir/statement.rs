@@ -1,5 +1,6 @@
 //! Functionality for statements, operands, places, and things that appear in them.
 
+use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -558,7 +559,7 @@ impl From<Local> for PlaceRef<'_> {
 /// A place possibly containing derefs in the middle of its projection by chaining projection lists.
 ///
 /// In `AnalysisPhase::PostCleanup` and later, [`Place`] and [`PlaceRef`] cannot represent these
-/// kinds of places.
+/// kinds of places, requiring this struct to be used instead.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CompoundPlace<'tcx> {
     pub local: Local,
@@ -579,6 +580,35 @@ pub struct CompoundPlaceRef<'tcx> {
 
 // these impls are bare-bones for now
 impl<'tcx> CompoundPlace<'tcx> {
+    pub fn from_place(place: Place<'tcx>, tcx: TyCtxt<'tcx>) -> CompoundPlace<'tcx> {
+        let mut segment_start = 0;
+        // size picked from sole user
+        let mut new_projection_chain = SmallVec::<[_; 2]>::new();
+
+        for (i, elem) in place.projection.iter().enumerate() {
+            if elem == PlaceElem::Deref && i > 0 {
+                new_projection_chain.push(tcx.mk_place_elems(&place.projection[segment_start..i]));
+                segment_start = i;
+            }
+        }
+
+        if segment_start == 0 {
+            new_projection_chain.push(place.projection);
+        } else {
+            new_projection_chain.push(tcx.mk_place_elems(&place.projection[segment_start..]));
+        }
+
+        if cfg!(debug_assertions) {
+            let new_projections: Vec<_> = new_projection_chain.iter().copied().flatten().collect();
+            assert_eq!(new_projections.as_slice(), place.projection.as_slice());
+        }
+
+        CompoundPlace {
+            local: place.local,
+            projection_chain: tcx.mk_place_elem_chain(&new_projection_chain),
+        }
+    }
+
     pub fn as_ref(&self) -> CompoundPlaceRef<'tcx> {
         let (last, base) = self
             .projection_chain
@@ -589,6 +619,59 @@ impl<'tcx> CompoundPlace<'tcx> {
         CompoundPlaceRef { local: self.local, projection_chain_base: base, last_projection: last }
     }
 
+    pub fn as_local(&self) -> Option<Local> {
+        if self.projection_chain.is_empty() { Some(self.local) } else { None }
+    }
+
+    pub fn local_or_deref_local(&self) -> Option<Local> {
+        self.as_ref().local_or_deref_local()
+    }
+
+    /// Returns a [`Place`] with only the first segment in the projection chain.
+    pub fn base_place(&self) -> Place<'tcx> {
+        Place {
+            local: self.local,
+            projection: self.projection_chain.first().copied().unwrap_or_default(),
+        }
+    }
+
+    /// Replaces the local and first segment of the projection with `new_base`.
+    pub fn replace_base_place(&mut self, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
+        self.local = new_base.local;
+        self.projection_chain =
+            match (new_base.projection.is_empty(), self.projection_chain.is_empty()) {
+                (false, false) => {
+                    let mut new_projection_chain = self.projection_chain.to_vec();
+                    new_projection_chain[0] = new_base.projection;
+                    tcx.mk_place_elem_chain(&new_projection_chain)
+                }
+                (false, true) => tcx.mk_place_elem_chain(&[new_base.projection]),
+
+                (true, false) => tcx.mk_place_elem_chain(&self.projection_chain[1..]),
+                (true, true) => List::empty(),
+            }
+        // FIXME: this logic is a mess
+        // maybe separate out projection before first deref?
+    }
+
+    /// Replaces the local with `new_base`.
+    pub fn replace_local_with_place(&mut self, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
+        let base_place = self.base_place();
+
+        if new_base.projection.is_empty() {
+            self.local = new_base.local;
+        } else if base_place.is_indirect_first_projection() {
+            let mut new_projection_chain = Vec::with_capacity(self.projection_chain.len() + 1);
+            new_projection_chain.push(new_base.projection);
+            new_projection_chain.extend_from_slice(self.projection_chain);
+
+            self.local = new_base.local;
+            self.projection_chain = tcx.mk_place_elem_chain(&new_projection_chain);
+        } else {
+            self.replace_base_place(new_base.project_deeper(base_place.projection, tcx), tcx);
+        }
+    }
+
     pub fn iter_projections(
         self,
     ) -> impl Iterator<Item = (CompoundPlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
@@ -596,14 +679,15 @@ impl<'tcx> CompoundPlace<'tcx> {
             projs.iter().enumerate().map(move |(j, elem)| {
                 let base = if j == 0 && i > 0 {
                     // last_projection should only be empty if projection_chain_base is too
-                    // otherwise it has to have a deref at least
-
                     debug_assert_eq!(elem, PlaceElem::Deref);
                     CompoundPlaceRef {
                         local: self.local,
                         projection_chain_base: &self.projection_chain[..i - 1],
-                        last_projection: &projs[..=j],
+                        last_projection: &self.projection_chain[i - 1],
                     }
+
+                    // FIXME: the fact that i messed up this logic the first time is good evidence that
+                    // the invariants are confusing and difficult to uphold
                 } else {
                     CompoundPlaceRef {
                         local: self.local,
@@ -611,6 +695,19 @@ impl<'tcx> CompoundPlace<'tcx> {
                         last_projection: &projs[..j],
                     }
                 };
+
+                if cfg!(debug_assertions) {
+                    let self_projections: Vec<_> = self.projection_chain.iter().flatten().collect();
+                    let base_projections: Vec<_> = base
+                        .projection_chain_base
+                        .iter()
+                        .copied()
+                        .flatten()
+                        .chain(base.last_projection.iter().copied())
+                        .collect();
+
+                    assert_eq!(self_projections[..base_projections.len()], base_projections);
+                }
 
                 (base, elem)
             })
@@ -626,6 +723,13 @@ impl<'tcx> CompoundPlace<'tcx> {
     }
 }
 
+impl From<Local> for CompoundPlace<'_> {
+    #[inline]
+    fn from(local: Local) -> Self {
+        CompoundPlace { local, projection_chain: List::empty() }
+    }
+}
+
 impl<'tcx> CompoundPlaceRef<'tcx> {
     pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
     where
@@ -634,6 +738,17 @@ impl<'tcx> CompoundPlaceRef<'tcx> {
         PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
             .projection_chain_ty(tcx, self.projection_chain_base)
             .multi_projection_ty(tcx, self.last_projection)
+    }
+
+    pub fn local_or_deref_local(&self) -> Option<Local> {
+        match *self {
+            CompoundPlaceRef {
+                local,
+                projection_chain_base: [],
+                last_projection: [] | [ProjectionElem::Deref],
+            } => Some(local),
+            _ => None,
+        }
     }
 }
 

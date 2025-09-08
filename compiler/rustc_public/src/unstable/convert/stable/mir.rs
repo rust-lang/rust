@@ -422,6 +422,26 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     }
 }
 
+// lowering to just Place for now
+impl<'tcx> Stable<'tcx> for mir::CompoundPlace<'tcx> {
+    type T = crate::mir::Place;
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        crate::mir::Place {
+            local: self.local.as_usize(),
+            projection: self
+                .projection_chain
+                .iter()
+                .flatten()
+                .map(|e| e.stable(tables, cx))
+                .collect(),
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
     type T = crate::mir::ProjectionElem;
     fn stable<'cx>(

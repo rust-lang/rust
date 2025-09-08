@@ -1187,8 +1187,8 @@ impl<'tcx> LocalDecl<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub enum VarDebugInfoContents<'tcx> {
-    /// This `Place` only contains projection which satisfy `can_use_in_debuginfo`.
-    Place(Place<'tcx>),
+    /// This `CompoundPlace` only contains projection which satisfy `can_use_in_debuginfo`.
+    Place(CompoundPlace<'tcx>),
     Const(ConstOperand<'tcx>),
 }
 
