@@ -1062,8 +1062,7 @@ impl<'db> SourceAnalyzer<'db> {
             // in this case we have to check for inert/builtin attributes and tools and prioritize
             // resolution of attributes over other namespaces
             if let Some(name_ref) = path.as_single_name_ref() {
-                let builtin =
-                    BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text());
+                let builtin = BuiltinAttr::builtin(&name_ref.text());
                 if builtin.is_some() {
                     return builtin.map(|it| (PathResolution::BuiltinAttr(it), None));
                 }

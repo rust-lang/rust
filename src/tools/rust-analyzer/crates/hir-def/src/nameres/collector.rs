@@ -298,12 +298,6 @@ impl<'db> DefCollector<'db> {
                         );
                     crate_data.unstable_features.extend(features);
                 }
-                () if *attr_name == sym::register_attr => {
-                    if let Some(ident) = attr.single_ident_value() {
-                        crate_data.registered_attrs.push(ident.sym.clone());
-                        cov_mark::hit!(register_attr);
-                    }
-                }
                 () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_tools.push(ident.sym.clone());

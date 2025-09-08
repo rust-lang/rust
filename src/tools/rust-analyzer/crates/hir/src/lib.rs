@@ -4060,49 +4060,25 @@ impl DeriveHelper {
     }
 }
 
-// FIXME: Wrong name? This is could also be a registered attribute
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BuiltinAttr {
-    krate: Option<base_db::Crate>,
     idx: u32,
 }
 
 impl BuiltinAttr {
-    // FIXME: consider crates\hir_def\src\nameres\attr_resolution.rs?
-    pub(crate) fn by_name(db: &dyn HirDatabase, krate: Crate, name: &str) -> Option<Self> {
-        if let builtin @ Some(_) = Self::builtin(name) {
-            return builtin;
-        }
-        let idx = crate_def_map(db, krate.id)
-            .registered_attrs()
-            .iter()
-            .position(|it| it.as_str() == name)? as u32;
-        Some(BuiltinAttr { krate: Some(krate.id), idx })
-    }
-
     fn builtin(name: &str) -> Option<Self> {
         hir_expand::inert_attr_macro::find_builtin_attr_idx(&Symbol::intern(name))
-            .map(|idx| BuiltinAttr { krate: None, idx: idx as u32 })
+            .map(|idx| BuiltinAttr { idx: idx as u32 })
     }
 
-    pub fn name(&self, db: &dyn HirDatabase) -> Name {
-        match self.krate {
-            Some(krate) => Name::new_symbol_root(
-                crate_def_map(db, krate).registered_attrs()[self.idx as usize].clone(),
-            ),
-            None => Name::new_symbol_root(Symbol::intern(
-                hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].name,
-            )),
-        }
+    pub fn name(&self) -> Name {
+        Name::new_symbol_root(Symbol::intern(
+            hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].name,
+        ))
     }
 
-    pub fn template(&self, _: &dyn HirDatabase) -> Option<AttributeTemplate> {
-        match self.krate {
-            Some(_) => None,
-            None => {
-                Some(hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].template)
-            }
-        }
+    pub fn template(&self) -> Option<AttributeTemplate> {
+        Some(hir_expand::inert_attr_macro::INERT_ATTRIBUTES[self.idx as usize].template)
     }
 }
 
