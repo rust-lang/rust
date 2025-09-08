@@ -1,3 +1,5 @@
+use core::panic::RefUnwindSafe;
+
 use crate::fmt;
 use crate::sync::nonpoison::{Condvar, Mutex};
 
@@ -30,6 +32,9 @@ pub struct Barrier {
     cvar: Condvar,
     num_threads: usize,
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl RefUnwindSafe for Barrier {}
 
 // The inner state of a double barrier
 struct BarrierState {

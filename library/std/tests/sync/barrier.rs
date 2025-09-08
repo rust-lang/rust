@@ -1,3 +1,4 @@
+use std::panic::RefUnwindSafe;
 use std::sync::mpsc::{TryRecvError, channel};
 use std::sync::{Arc, Barrier};
 use std::thread;
@@ -32,4 +33,13 @@ fn test_barrier() {
         }
     }
     assert!(leader_found);
+}
+
+#[expect(dead_code, reason = "this is essentially a compile pass test")]
+fn check_barrier_is_ref_unwind_safe() {
+    let barrier = Arc::new(Barrier::new(10));
+
+    fn check<T: RefUnwindSafe>(_: T) {}
+
+    check(barrier);
 }
