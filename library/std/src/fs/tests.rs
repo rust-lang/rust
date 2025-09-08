@@ -1,5 +1,7 @@
 use rand::RngCore;
 
+#[cfg(not(miri))]
+use super::Dir;
 #[cfg(any(
     windows,
     target_os = "freebsd",
@@ -2225,4 +2227,29 @@ fn test_open_options_invalid_combinations() {
     let err = result.unwrap_err();
     assert_eq!(err.kind(), ErrorKind::InvalidInput);
     assert_eq!(err.to_string(), "must specify at least one of read, write, or append access");
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_smoke_test() {
+    let tmpdir = tmpdir();
+    let dir = Dir::open(tmpdir.path());
+    check!(dir);
+}
+
+#[test]
+// FIXME: libc calls fail on miri
+#[cfg(not(miri))]
+fn test_dir_read_file() {
+    let tmpdir = tmpdir();
+    let mut f = check!(File::create(tmpdir.join("foo.txt")));
+    check!(f.write(b"bar"));
+    check!(f.flush());
+    drop(f);
+    let dir = check!(Dir::open(tmpdir.path()));
+    let mut f = check!(dir.open_file("foo.txt"));
+    let mut buf = [0u8; 3];
+    check!(f.read_exact(&mut buf));
+    assert_eq!(b"bar", &buf);
 }

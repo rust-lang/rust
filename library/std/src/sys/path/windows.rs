@@ -47,6 +47,15 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&WCStr) -> io::Result<T>) -> 
 }
 
 #[inline]
+pub fn with_native_path_bytes<T>(
+    path: &Path,
+    f: &dyn Fn(&[u16]) -> io::Result<T>,
+) -> io::Result<T> {
+    let path = maybe_verbatim(path)?;
+    f(&path)
+}
+
+#[inline]
 pub fn is_sep_byte(b: u8) -> bool {
     b == b'/' || b == b'\\'
 }
