@@ -698,7 +698,6 @@ impl<'a> AstValidator<'a> {
             FnCtxt::Foreign => return,
             FnCtxt::Free => match sig.header.ext {
                 Extern::Implicit(_) => {
-                    // Implicitly defaults to C.
                     if !matches!(sig.header.safety, Safety::Unsafe(_)) {
                         self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
                             span: variadic_param.span,
@@ -708,7 +707,11 @@ impl<'a> AstValidator<'a> {
                 }
                 Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
                     if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
-                        self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                        self.dcx().emit_err(errors::CVariadicBadExtern {
+                            span: variadic_param.span,
+                            abi: symbol_unescaped,
+                            extern_span: sig.extern_span(),
+                        });
                     }
 
                     if !matches!(sig.header.safety, Safety::Unsafe(_)) {

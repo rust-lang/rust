@@ -67,6 +67,6 @@ extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> 
 }
 
 unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-    //~^ ERROR defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
+    //~^ ERROR `...` is not supported for `extern "cmse-nonsecure-entry"` functions
     //~| ERROR requires `va_list` lang_item
 }

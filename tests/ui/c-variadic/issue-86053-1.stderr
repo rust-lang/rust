@@ -51,6 +51,8 @@ error: `...` is not supported for non-extern functions
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                                    ^^^
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error[E0412]: cannot find type `F` in this scope
   --> $DIR/issue-86053-1.rs:11:48

@@ -2325,6 +2325,11 @@ impl FnSig {
             }
         }
     }
+
+    /// The span of the header's extern, or where to insert it if empty.
+    pub fn extern_span(&self) -> Span {
+        self.header.ext.span().unwrap_or(self.safety_span().shrink_to_hi())
+    }
 }
 
 /// A constraint on an associated item.

@@ -57,8 +57,6 @@ ast_passes_auto_super_lifetime = auto traits cannot have super traits or lifetim
     .label = {ast_passes_auto_super_lifetime}
     .suggestion = remove the super traits or lifetime bounds
 
-ast_passes_bad_c_variadic = defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-
 ast_passes_body_in_extern = incorrect `{$kind}` inside `extern` block
     .cannot_have = cannot have a body
     .invalid = the invalid body
@@ -68,11 +66,16 @@ ast_passes_bound_in_context = bounds on `type`s in {$ctx} have no effect
 
 ast_passes_c_variadic_associated_function = associated functions cannot have a C variable argument list
 
+ast_passes_c_variadic_bad_extern = `...` is not supported for `extern "{$abi}"` functions
+    .label = `extern "{$abi}"` because of this
+    .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+
 ast_passes_c_variadic_must_be_unsafe =
     functions with a C variable argument list must be unsafe
     .suggestion = add the `unsafe` keyword to this definition
 
 ast_passes_c_variadic_no_extern = `...` is not supported for non-extern functions
+    .help = only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
     .const = `const` because of this

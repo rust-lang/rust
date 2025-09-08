@@ -9,6 +9,9 @@ fn f1_1(x: isize, ...) {}
 fn f1_2(...) {}
 //~^ ERROR `...` is not supported for non-extern functions
 
+unsafe extern "Rust" fn f1_3(...) {}
+//~^ ERROR `...` is not supported for `extern "Rust"` functions
+
 extern "C" fn f2_1(x: isize, ...) {}
 //~^ ERROR functions with a C variable argument list must be unsafe
 
