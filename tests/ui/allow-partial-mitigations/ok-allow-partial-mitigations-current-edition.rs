@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-//@ revisions: control-flow-guard-2024-default control-flow-guard-2024-deny-reset-by-mitigation stack-protector-2024-deny-reset-by-mitigation stack-protector-2024-allow-deny-reset-by-mitigation
+//@ revisions: control-flow-guard-2024-default control-flow-guard-2024-deny-reset-by-mitigation stack-protector-2024-deny-reset-by-mitigation stack-protector-2024-allow-deny-reset-by-mitigation stack-protector-stable stack-protector-unstable
 //@ check-pass
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-unknown-unknown stack protector is not supported
@@ -21,5 +21,10 @@
 
 // check that this is the case even if there was an "allow" then a "deny"
 //@ [stack-protector-2024-allow-deny-reset-by-mitigation] compile-flags: -Z unstable-options -Z allow-partial-mitigations=stack-protector -Z deny-partial-mitigations=stack-protector -Z stack-protector=all
+
+// also check that stack protector is allowed by default in 2024, for both -C and -Z
+//@ [stack-protector-stable] compile-flags: -C stack-protector=all
+//@ [stack-protector-unstable] compile-flags: -Z stack-protector=all
+
 
 fn main() {}
