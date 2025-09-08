@@ -6,8 +6,7 @@ LL |     println!("C", unsafe { &symbol });
    |              |
    |              formatting specifier missing
    |
-   = note: format specifiers use curly braces: `{}`
-help: consider adding format specifier
+help: format specifiers use curly braces, consider adding a format specifier
    |
 LL |     println!("C{}", unsafe { &symbol });
    |                ++

@@ -63,8 +63,7 @@ LL |     format!("", 1, 2);
    |             |   argument never used
    |             multiple missing formatting specifiers
    |
-   = note: format specifiers use curly braces: `{}`
-help: consider adding 2 format specifiers
+help: format specifiers use curly braces, consider adding 2 format specifiers
    |
 LL |     format!("{}{}", 1, 2);
    |              ++++
@@ -109,8 +108,7 @@ LL |     format!("", foo=2);
    |             |
    |             formatting specifier missing
    |
-   = note: format specifiers use curly braces: `{}`
-help: consider adding format specifier
+help: format specifiers use curly braces, consider adding a format specifier
    |
 LL |     format!("{}", foo=2);
    |              ++

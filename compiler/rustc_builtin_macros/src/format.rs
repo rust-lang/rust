@@ -768,38 +768,24 @@ fn report_missing_placeholders(
         // Show example if user didn't use any format specifiers
         let show_example = used.iter().all(|used| !used);
 
-        if !show_example && unused.len() > 1 {
-            diag.note(format!("consider adding {} format specifiers", unused.len()));
-        }
-
-        let original_fmt_str = if fmt_str.len() >= 1 { &fmt_str[..fmt_str.len() - 1] } else { "" };
-
-        if show_example && unused.len() == 1 {
-            diag.note("format specifiers use curly braces: `{}`");
-
-            diag.span_suggestion_verbose(
-                fmt_span,
-                "consider adding format specifier",
-                format!("\"{}{{}}\"", original_fmt_str),
-                Applicability::MaybeIncorrect,
-            );
-        }
-
-        if show_example && unused.len() > 1 {
-            diag.note("format specifiers use curly braces: `{}`");
-
-            let mut suggest_fixed_fmt = format!("\"{}", original_fmt_str);
-            for _ in &unused {
-                suggest_fixed_fmt.push_str("{}");
+        if !show_example {
+            if unused.len() > 1 {
+                diag.note(format!("consider adding {} format specifiers", unused.len()));
             }
-            suggest_fixed_fmt.push('"');
+        } else {
+            let original_fmt_str =
+                if fmt_str.len() >= 1 { &fmt_str[..fmt_str.len() - 1] } else { "" };
 
-            diag.span_suggestion_verbose(
-                fmt_span,
-                format!("consider adding {} format specifiers", unused.len()),
-                suggest_fixed_fmt,
-                Applicability::MaybeIncorrect,
-            );
+            let msg = if unused.len() == 1 {
+                "a format specifier".to_string()
+            } else {
+                format!("{} format specifiers", unused.len())
+            };
+
+            let sugg = format!("\"{}{}\"", original_fmt_str, "{}".repeat(unused.len()));
+            let msg = format!("format specifiers use curly braces, consider adding {msg}");
+
+            diag.span_suggestion_verbose(fmt_span, msg, sugg, Applicability::MaybeIncorrect);
         }
     }
 

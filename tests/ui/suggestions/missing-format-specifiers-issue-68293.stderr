@@ -6,8 +6,7 @@ LL |     println!("Hello", "World");
    |              |
    |              formatting specifier missing
    |
-   = note: format specifiers use curly braces: `{}`
-help: consider adding format specifier
+help: format specifiers use curly braces, consider adding a format specifier
    |
 LL |     println!("Hello{}", "World");
    |                    ++
@@ -22,8 +21,7 @@ LL |     println!("list: ", 1, 2, 3);
    |              |         argument never used
    |              multiple missing formatting specifiers
    |
-   = note: format specifiers use curly braces: `{}`
-help: consider adding 3 format specifiers
+help: format specifiers use curly braces, consider adding 3 format specifiers
    |
 LL |     println!("list: {}{}{}", 1, 2, 3);
    |                     ++++++
