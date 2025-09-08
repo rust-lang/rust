@@ -53,6 +53,13 @@ int mm512_extract_intrinsic_test_epi64(__m512i m, int lane) {
     return mm512_extract(m, 512, 64, lane)
 }
 
+int mm64_extract_intrinsic_test_epi8(__m64 m, int lane) {
+    int real_lane_shift = lane / 2;
+    int real_bit_shift = (lane % 2) * 8;
+    int result = _mm_extract_pi16(m, lane / 2);
+    return (result >> real_bit_shift);
+}
+
 int mm64_extract_intrinsic_test_epi32(__m64 m, int lane) {
     int bit_shift_amount = lane * 32;
     return _m_to_int(m >> bit_shift_amount);
