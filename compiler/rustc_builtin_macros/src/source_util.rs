@@ -1,3 +1,5 @@
+//! The implementation of built-in macros which relate to the file system.
+
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -23,11 +25,7 @@ use crate::util::{
     check_zero_tts, get_single_str_from_tts, get_single_str_spanned_from_tts, parse_expr,
 };
 
-// These macros all relate to the file system; they either return
-// the column/row/filename of the expression, or they include
-// a given file into the current one.
-
-/// line!(): expands to the current line number
+/// Expand `line!()` to the current line number.
 pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -42,7 +40,7 @@ pub(crate) fn expand_line(
     ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.line as u32)))
 }
 
-/* column!(): expands to the current column number */
+/// Expand `column!()` to the current column number.
 pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -57,9 +55,7 @@ pub(crate) fn expand_column(
     ExpandResult::Ready(MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32 + 1)))
 }
 
-/// file!(): expands to the current filename */
-/// The source_file (`loc.file`) contains a bunch more information we could spit
-/// out if we wanted.
+/// Expand `file!()` to the current filename.
 pub(crate) fn expand_file(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -81,6 +77,7 @@ pub(crate) fn expand_file(
     )))
 }
 
+/// Expand `stringify!($input)`.
 pub(crate) fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -91,6 +88,7 @@ pub(crate) fn expand_stringify(
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&s))))
 }
 
+/// Expand `module_path!()` to (a textual representation of) the current module path.
 pub(crate) fn expand_mod(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -104,9 +102,9 @@ pub(crate) fn expand_mod(
     ExpandResult::Ready(MacEager::expr(cx.expr_str(sp, Symbol::intern(&string))))
 }
 
-/// include! : parse the given file as an expr
-/// This is generally a bad idea because it's going to behave
-/// unhygienically.
+/// Expand `include!($input)`.
+///
+/// This works in item and expression position. Notably, it doesn't work in pattern position.
 pub(crate) fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -187,7 +185,9 @@ pub(crate) fn expand_include<'cx>(
     ExpandResult::Ready(Box::new(ExpandInclude { p, node_id: cx.current_expansion.lint_node_id }))
 }
 
-/// `include_str!`: read the given file, insert it as a literal string expr
+/// Expand `include_str!($input)` to the content of the UTF-8-encoded file given by path `$input` as a string literal.
+///
+/// This works in expression, pattern and statement position.
 pub(crate) fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -206,6 +206,7 @@ pub(crate) fn expand_include_str(
         Ok((bytes, bsp)) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
                 let interned_src = Symbol::intern(src);
+                // MacEager converts the expr into a pat if need be.
                 MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
             }
             Err(utf8err) => {
@@ -218,6 +219,9 @@ pub(crate) fn expand_include_str(
     })
 }
 
+/// Expand `include_bytes!($input)` to the content of the file given by path `$input`.
+///
+/// This works in expression, pattern and statement position.
 pub(crate) fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -237,6 +241,7 @@ pub(crate) fn expand_include_bytes(
             // Don't care about getting the span for the raw bytes,
             // because the console can't really show them anyway.
             let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(ByteSymbol::intern(&bytes)));
+            // MacEager converts the expr into a pat if need be.
             MacEager::expr(expr)
         }
         Err(dummy) => dummy,
