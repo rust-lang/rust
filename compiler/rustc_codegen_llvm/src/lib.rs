@@ -300,18 +300,31 @@ impl CodegenBackend for LlvmCodegenBackend {
         Generate stack canaries in all functions.
 
     strong
-        Generate stack canaries in a function if it either:
-        - has a local variable of `[T; N]` type, regardless of `T` and `N`
-        - takes the address of a local variable.
+        Generate stack canaries for all functions, unless the compiler
+        can prove these functions can't be the source of a stack
+        buffer overflow (even in the presence of undefined behavior).
 
-          (Note that a local variable being borrowed is not equivalent to its
-          address being taken: e.g. some borrows may be removed by optimization,
-          while by-value argument passing may be implemented with reference to a
-          local stack variable in the ABI.)
+        This provides the same security guarantees as Clang's
+        `-fstack-protector=strong`.
+
+        The exact rules are unstable and subject to change, but
+        currently, it generates stack protectors for functions that,
+        *post-optimization*, contain either arrays (of any size
+        or type) or address-taken locals.
 
     basic
-        Generate stack canaries in functions with local variables of `[T; N]`
+        Generate stack canaries in functions that are heuristically
+        suspected to contain buffer overflows.
+
+        The heuristic is subject to change, but currently it
+        includes functions with local variables of `[T; N]`
         type, where `T` is byte-sized and `N` >= 8.
+
+        This heuristic originated from C, where it detects
+        functions that allocate a `char buf[N];` buffer on the
+        stack, and are therefore likely to have a stack buffer overflow
+        in the case of a length-calculation error. It is *not* a good
+        heuristic for Rust code.
 
     none
         Do not generate stack canaries.
