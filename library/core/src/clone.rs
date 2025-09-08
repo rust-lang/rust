@@ -191,8 +191,7 @@ mod uninit;
 #[rustc_diagnostic_item = "Clone"]
 #[rustc_trivial_field_reads]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
-#[const_trait]
-pub trait Clone: Sized {
+pub const trait Clone: Sized {
     /// Returns a duplicate of the value.
     ///
     /// Note that what "duplicate" means varies by type:

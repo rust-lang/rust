@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
+object = { version = "0.37.0", default-features = false, features = ["elf", "macho"] }
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_messages = { path = "../rustc_error_messages" }
@@ -20,9 +21,3 @@ serde_path_to_error = "0.1.17"
 tracing = "0.1"
 # tidy-alphabetical-end
 
-[dependencies.object]
-# tidy-alphabetical-start
-default-features = false
-features = ["elf", "macho"]
-version = "0.37.0"
-# tidy-alphabetical-end

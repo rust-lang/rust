@@ -264,8 +264,11 @@ impl<'a> BootstrapCommand {
         self
     }
 
-    pub fn do_not_cache(&mut self) -> &mut Self {
-        self.should_cache = false;
+    /// Cache the command. If it will be executed multiple times with the exact same arguments
+    /// and environment variables in the same bootstrap invocation, the previous result will be
+    /// loaded from memory.
+    pub fn cached(&mut self) -> &mut Self {
+        self.should_cache = true;
         self
     }
 
@@ -425,7 +428,7 @@ impl From<Command> for BootstrapCommand {
     fn from(command: Command) -> Self {
         let program = command.get_program().to_owned();
         Self {
-            should_cache: true,
+            should_cache: false,
             command,
             failure_behavior: BehaviorOnFailure::Exit,
             run_in_dry_run: false,

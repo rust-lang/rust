@@ -6,7 +6,7 @@ use rustc_ast::util::unicode::{TEXT_FLOW_CONTROL_CHARS, contains_text_flow_contr
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, StashKey};
 use rustc_lexer::{
-    Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_whitespace,
+    Base, Cursor, DocStyle, FrontmatterAllowed, LiteralKind, RawStrError, is_horizontal_whitespace,
 };
 use rustc_literal_escaper::{EscapeError, Mode, check_for_errors};
 use rustc_session::lint::BuiltinLintDiag;
@@ -44,18 +44,43 @@ pub(crate) struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
+/// Which tokens should be stripped before lexing the tokens.
+pub(crate) enum StripTokens {
+    /// Strip both shebang and frontmatter.
+    ShebangAndFrontmatter,
+    /// Strip the shebang but not frontmatter.
+    ///
+    /// That means that char sequences looking like frontmatter are simply
+    /// interpreted as regular Rust lexemes.
+    Shebang,
+    /// Strip nothing.
+    ///
+    /// In other words, char sequences looking like a shebang or frontmatter
+    /// are simply interpreted as regular Rust lexemes.
+    Nothing,
+}
+
 pub(crate) fn lex_token_trees<'psess, 'src>(
     psess: &'psess ParseSess,
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-    frontmatter_allowed: FrontmatterAllowed,
+    strip_tokens: StripTokens,
 ) -> Result<TokenStream, Vec<Diag<'psess>>> {
-    // Skip `#!`, if present.
-    if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
-        src = &src[shebang_len..];
-        start_pos = start_pos + BytePos::from_usize(shebang_len);
+    match strip_tokens {
+        StripTokens::Shebang | StripTokens::ShebangAndFrontmatter => {
+            if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
+                src = &src[shebang_len..];
+                start_pos = start_pos + BytePos::from_usize(shebang_len);
+            }
+        }
+        StripTokens::Nothing => {}
     }
+
+    let frontmatter_allowed = match strip_tokens {
+        StripTokens::ShebangAndFrontmatter => FrontmatterAllowed::Yes,
+        StripTokens::Shebang | StripTokens::Nothing => FrontmatterAllowed::No,
+    };
 
     let cursor = Cursor::new(src, frontmatter_allowed);
     let mut lexer = Lexer {
@@ -597,7 +622,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let last_line_start = within.rfind('\n').map_or(0, |i| i + 1);
         let last_line = &within[last_line_start..];
-        let last_line_trimmed = last_line.trim_start_matches(is_whitespace);
+        let last_line_trimmed = last_line.trim_start_matches(is_horizontal_whitespace);
         let last_line_start_pos = frontmatter_opening_end_pos + BytePos(last_line_start as u32);
 
         let frontmatter_span = self.mk_sp(frontmatter_opening_pos, self.pos);
@@ -640,7 +665,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             });
         }
 
-        if !rest.trim_matches(is_whitespace).is_empty() {
+        if !rest.trim_matches(is_horizontal_whitespace).is_empty() {
             let span = self.mk_sp(last_line_start_pos, self.pos);
             self.dcx().emit_err(errors::FrontmatterExtraCharactersAfterClose { span });
         }

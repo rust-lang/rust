@@ -1,0 +1,16 @@
+error: consider moving the `;` inside the block for consistent formatting
+  --> tests/ui/semicolon_inside_block_stmt_expr_attrs.rs:9:5
+   |
+LL |     {0; 0};
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::semicolon-inside-block` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::semicolon_inside_block)]`
+help: put the `;` here
+   |
+LL -     {0; 0};
+LL +     {0; 0;}
+   |
+
+error: aborting due to 1 previous error
+

@@ -3,10 +3,10 @@ error[E0412]: cannot find type `F` in this scope
    |
 LL |          let f: F = async { 1 };
    |                 ^
+   |
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = note: similarly named trait `Fn` defined here
-   |
 help: a trait with a similar name exists
    |
 LL |          let f: Fn = async { 1 };

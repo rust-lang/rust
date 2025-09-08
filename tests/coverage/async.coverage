@@ -24,8 +24,8 @@
    LL|       |
    LL|      0|async fn foo() -> [bool; 10] { [false; 10] } // unused function; executor does not block on `h()`
    LL|       |
-   LL|      1|pub async fn g(x: u8) {
-                                    ^0
+   LL|      1|async fn g(x: u8) {
+                                ^0
    LL|      0|    match x {
    LL|      0|        y if e().await == y => (),
    LL|      0|        y if f().await == y => (),

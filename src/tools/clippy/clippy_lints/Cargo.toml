@@ -27,6 +27,10 @@ url = "2.2"
 [dev-dependencies]
 walkdir = "2.3"
 
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = ['cfg(bootstrap)']
+
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]
 rustc_private = true

@@ -69,7 +69,7 @@
 //~| WARN previously accepted
 //~| HELP can only be applied to
 //~| HELP remove the attribute
-#![link()] //~ WARN attribute should be applied to an `extern` block
+#![link(name = "x")] //~ WARN attribute should be applied to an `extern` block
 //~^ WARN this was previously accepted
 #![link_name = "1900"]
 //~^ WARN attribute cannot be used on
@@ -482,21 +482,26 @@ mod no_implicit_prelude {
 
 #[reexport_test_harness_main = "2900"]
 //~^ WARN crate-level attribute should be
+//~| HELP add a `!`
 mod reexport_test_harness_main {
     mod inner { #![reexport_test_harness_main="2900"] }
     //~^ WARN crate-level attribute should be
 
     #[reexport_test_harness_main = "2900"] fn f() { }
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] struct S;
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] type T = S;
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 
     #[reexport_test_harness_main = "2900"] impl S { }
     //~^ WARN crate-level attribute should be
+    //~| HELP add a `!`
 }
 
 // Cannot feed "2700" to `#[macro_escape]` without signaling an error.
@@ -534,21 +539,26 @@ mod macro_escape {
 
 #[no_std]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod no_std {
     mod inner { #![no_std] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[no_std] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_std] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_std] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_std] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 // At time of authorship, #[proc_macro_derive = "2500"] signals error
@@ -682,38 +692,38 @@ mod link_section {
 
 // Note that this is a `check-pass` test, so it will never invoke the linker.
 
-#[link()]
+#[link(name = "x")]
 //~^ WARN attribute should be applied to an `extern` block
 //~| WARN this was previously accepted
 mod link {
     //~^ NOTE not an `extern` block
 
-    mod inner { #![link()] }
+    mod inner { #![link(name = "x")] }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] fn f() { }
+    #[link(name = "x")] fn f() { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] struct S;
+    #[link(name = "x")] struct S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] type T = S;
+    #[link(name = "x")] type T = S;
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] impl S { }
+    #[link(name = "x")] impl S { }
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
     //~| NOTE not an `extern` block
 
-    #[link()] extern "Rust" {}
+    #[link(name = "x")] extern "Rust" {}
     //~^ WARN attribute should be applied to an `extern` block
     //~| WARN this was previously accepted
 }
@@ -760,21 +770,26 @@ mod must_use {
 
 #[windows_subsystem = "windows"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod windows_subsystem {
     mod inner { #![windows_subsystem="windows"] }
     //~^ WARN crate-level attribute should be in the root module
 
     #[windows_subsystem = "windows"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[windows_subsystem = "windows"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES
@@ -782,135 +797,170 @@ mod windows_subsystem {
 #[crate_name = "0900"]
 //~^ WARN crate-level attribute should be an inner attribute
 mod crate_name {
+//~^ NOTE This attribute does not have an `!`, which means it is applied to this module
     mod inner { #![crate_name="0900"] }
-//~^ WARN crate-level attribute should be in the root module
+//~^ WARN the `#![crate_name]` attribute can only be used at the crate root
 
     #[crate_name = "0900"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this function
 
     #[crate_name = "0900"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this struct
 
     #[crate_name = "0900"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this type alias
 
     #[crate_name = "0900"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| NOTE This attribute does not have an `!`, which means it is applied to this implementation block
 }
 
 #[crate_type = "0800"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod crate_type {
     mod inner { #![crate_type="0800"] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[crate_type = "0800"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[crate_type = "0800"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[feature(x0600)]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod feature {
     mod inner { #![feature(x0600)] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[feature(x0600)] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[feature(x0600)] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 
 #[no_main]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod no_main_1 {
     mod inner { #![no_main] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[no_main] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_main] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[no_builtins]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod no_builtins {
     mod inner { #![no_builtins] }
     //~^ WARN crate-level attribute should be in the root module
 
     #[no_builtins] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[no_builtins] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[recursion_limit="0200"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod recursion_limit {
     mod inner { #![recursion_limit="0200"] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[recursion_limit="0200"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[recursion_limit="0200"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[recursion_limit="0200"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[recursion_limit="0200"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 #[type_length_limit="0100"]
 //~^ WARN crate-level attribute should be an inner attribute
+//~| HELP add a `!`
 mod type_length_limit {
     mod inner { #![type_length_limit="0100"] }
 //~^ WARN crate-level attribute should be in the root module
 
     #[type_length_limit="0100"] fn f() { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[type_length_limit="0100"] struct S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[type_length_limit="0100"] type T = S;
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 
     #[type_length_limit="0100"] impl S { }
     //~^ WARN crate-level attribute should be an inner attribute
+    //~| HELP add a `!`
 }
 
 fn main() {}

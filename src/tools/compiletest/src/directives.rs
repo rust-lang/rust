@@ -1012,7 +1012,7 @@ impl Config {
         if let Some(raw) = self.parse_name_value_directive(line, "revisions", testfile, line_number)
         {
             if self.mode == TestMode::RunMake {
-                panic!("`run-make` tests do not support revisions: {}", testfile);
+                panic!("`run-make` mode tests do not support revisions: {}", testfile);
             }
 
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();

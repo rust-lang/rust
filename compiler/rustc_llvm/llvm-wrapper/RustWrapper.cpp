@@ -242,7 +242,7 @@ enum class LLVMRustAttributeKind {
   MinSize = 4,
   Naked = 5,
   NoAlias = 6,
-  NoCapture = 7,
+  CapturesAddress = 7,
   NoInline = 8,
   NonNull = 9,
   NoRedZone = 10,
@@ -297,12 +297,6 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::Naked;
   case LLVMRustAttributeKind::NoAlias:
     return Attribute::NoAlias;
-  case LLVMRustAttributeKind::NoCapture:
-#if LLVM_VERSION_GE(21, 0)
-    report_fatal_error("NoCapture doesn't exist in LLVM 21");
-#else
-    return Attribute::NoCapture;
-#endif
   case LLVMRustAttributeKind::NoCfCheck:
     return Attribute::NoCfCheck;
   case LLVMRustAttributeKind::NoInline:
@@ -377,6 +371,7 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
 #else
     report_fatal_error("DeadOnReturn attribute requires LLVM 21 or later");
 #endif
+  case LLVMRustAttributeKind::CapturesAddress:
   case LLVMRustAttributeKind::CapturesReadOnly:
     report_fatal_error("Should be handled separately");
   }
@@ -429,9 +424,9 @@ extern "C" void LLVMRustEraseInstFromParent(LLVMValueRef Instr) {
 extern "C" LLVMAttributeRef
 LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttributeKind RustAttr) {
 #if LLVM_VERSION_GE(21, 0)
-  // LLVM 21 replaced the NoCapture attribute with Captures(none).
-  if (RustAttr == LLVMRustAttributeKind::NoCapture) {
-    return wrap(Attribute::getWithCaptureInfo(*unwrap(C), CaptureInfo::none()));
+  if (RustAttr == LLVMRustAttributeKind::CapturesAddress) {
+    return wrap(Attribute::getWithCaptureInfo(
+        *unwrap(C), CaptureInfo(CaptureComponents::Address)));
   }
   if (RustAttr == LLVMRustAttributeKind::CapturesReadOnly) {
     return wrap(Attribute::getWithCaptureInfo(
@@ -488,6 +483,9 @@ extern "C" LLVMAttributeRef
 LLVMRustCreateRangeAttribute(LLVMContextRef C, unsigned NumBits,
                              const uint64_t LowerWords[],
                              const uint64_t UpperWords[]) {
+  // FIXME(Zalathar): There appears to be no stable guarantee that C++
+  // `AttrKind` values correspond directly to the `unsigned KindID` values
+  // accepted by LLVM-C API functions, though in practice they currently do.
   return LLVMCreateConstantRangeAttribute(C, Attribute::Range, NumBits,
                                           LowerWords, UpperWords);
 }

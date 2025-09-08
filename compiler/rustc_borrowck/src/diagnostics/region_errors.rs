@@ -61,7 +61,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             | ConstraintCategory::Boring
             | ConstraintCategory::BoringNoLocation
             | ConstraintCategory::Internal
-            | ConstraintCategory::IllegalUniverse => "",
+            | ConstraintCategory::OutlivesUnnameablePlaceholder(..) => "",
         }
     }
 }
@@ -369,11 +369,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let error_vid = self.regioncx.region_from_element(longer_fr, &error_element);
 
                     // Find the code to blame for the fact that `longer_fr` outlives `error_fr`.
-                    let (_, cause) = self.regioncx.find_outlives_blame_span(
-                        longer_fr,
-                        NllRegionVariableOrigin::Placeholder(placeholder),
-                        error_vid,
-                    );
+                    let cause = self
+                        .regioncx
+                        .best_blame_constraint(
+                            longer_fr,
+                            NllRegionVariableOrigin::Placeholder(placeholder),
+                            error_vid,
+                        )
+                        .0
+                        .cause;
 
                     let universe = placeholder.universe;
                     let universe_info = self.regioncx.universe_info(universe);
@@ -429,9 +433,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         debug!("report_region_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (blame_constraint, path) = self.regioncx.best_blame_constraint(fr, fr_origin, |r| {
-            self.regioncx.provides_universal_region(r, fr, outlived_fr)
-        });
+        let (blame_constraint, path) =
+            self.regioncx.best_blame_constraint(fr, fr_origin, outlived_fr);
         let BlameConstraint { category, cause, variance_info, .. } = blame_constraint;
 
         debug!("report_region_error: category={:?} {:?} {:?}", category, cause, variance_info);

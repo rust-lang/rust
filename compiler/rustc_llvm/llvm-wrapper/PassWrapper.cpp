@@ -1226,12 +1226,6 @@ extern "C" void LLVMRustPrintPasses() {
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
                                            size_t Len) {
   auto PreserveFunctions = [=](const GlobalValue &GV) {
-    // Preserve LLVM-injected, ASAN-related symbols.
-    // See also https://github.com/rust-lang/rust/issues/113404.
-    if (GV.getName() == "___asan_globals_registered") {
-      return true;
-    }
-
     // Preserve symbols exported from Rust modules.
     for (size_t I = 0; I < Len; I++) {
       if (GV.getName() == Symbols[I]) {
@@ -1574,12 +1568,11 @@ extern "C" bool LLVMRustPrepareThinLTOImport(const LLVMRustThinLTOData *Data,
   return true;
 }
 
-extern "C" LLVMRustThinLTOBuffer *
-LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin, bool emit_summary) {
+extern "C" LLVMRustThinLTOBuffer *LLVMRustThinLTOBufferCreate(LLVMModuleRef M,
+                                                              bool is_thin) {
   auto Ret = std::make_unique<LLVMRustThinLTOBuffer>();
   {
     auto OS = raw_string_ostream(Ret->data);
-    auto ThinLinkOS = raw_string_ostream(Ret->thin_link_data);
     {
       if (is_thin) {
         PassBuilder PB;
@@ -1593,11 +1586,7 @@ LLVMRustThinLTOBufferCreate(LLVMModuleRef M, bool is_thin, bool emit_summary) {
         PB.registerLoopAnalyses(LAM);
         PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
         ModulePassManager MPM;
-        // We only pass ThinLinkOS to be filled in if we want the summary,
-        // because otherwise LLVM does extra work and may double-emit some
-        // errors or warnings.
-        MPM.addPass(
-            ThinLTOBitcodeWriterPass(OS, emit_summary ? &ThinLinkOS : nullptr));
+        MPM.addPass(ThinLTOBitcodeWriterPass(OS, nullptr));
         MPM.run(*unwrap(M), MAM);
       } else {
         WriteBitcodeToFile(*unwrap(M), OS);

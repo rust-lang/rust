@@ -17,7 +17,7 @@ pub(crate) fn target() -> Target {
         arch: "loongarch64".into(),
         options: TargetOptions {
             cpu: "generic".into(),
-            features: "+f,+d".into(),
+            features: "+f,+d,-lsx".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             llvm_abiname: "lp64d".into(),

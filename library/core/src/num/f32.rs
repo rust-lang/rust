@@ -839,6 +839,13 @@ impl f32 {
 
     /// Converts radians to degrees.
     ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
+    ///
     /// ```
     /// let angle = std::f32::consts::PI;
     ///
@@ -852,12 +859,20 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_degrees(self) -> f32 {
-        // Use a constant for better precision.
+        // Use a literal to avoid double rounding, consts::PI is already rounded,
+        // and dividing would round again.
         const PIS_IN_180: f32 = 57.2957795130823208767981548141051703_f32;
         self * PIS_IN_180
     }
 
     /// Converts degrees to radians.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// # Examples
     ///
     /// ```
     /// let angle = 180.0f32;
@@ -872,6 +887,9 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_radians(self) -> f32 {
+        // The division here is correctly rounded with respect to the true value of π/180.
+        // Although π is irrational and already rounded, the double rounding happens
+        // to produce correct result for f32.
         const RADS_PER_DEG: f32 = consts::PI / 180.0;
         self * RADS_PER_DEG
     }
@@ -1007,7 +1025,6 @@ impl f32 {
                 ((self as f64 + other as f64) / 2.0) as f32
             }
             _ => {
-                const LO: f32 = f32::MIN_POSITIVE * 2.;
                 const HI: f32 = f32::MAX / 2.;
 
                 let (a, b) = (self, other);
@@ -1017,14 +1034,7 @@ impl f32 {
                 if abs_a <= HI && abs_b <= HI {
                     // Overflow is impossible
                     (a + b) / 2.
-                } else if abs_a < LO {
-                    // Not safe to halve `a` (would underflow)
-                    a + (b / 2.)
-                } else if abs_b < LO {
-                    // Not safe to halve `b` (would underflow)
-                    (a / 2.) + b
                 } else {
-                    // Safe to halve `a` and `b`
                     (a / 2.) + (b / 2.)
                 }
             }
@@ -1936,8 +1946,8 @@ pub mod math {
     /// let abs_difference_x = (f32::math::abs_sub(x, 1.0) - 2.0).abs();
     /// let abs_difference_y = (f32::math::abs_sub(y, 1.0) - 0.0).abs();
     ///
-    /// assert!(abs_difference_x <= f32::EPSILON);
-    /// assert!(abs_difference_y <= f32::EPSILON);
+    /// assert!(abs_difference_x <= 1e-6);
+    /// assert!(abs_difference_y <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.
@@ -1982,7 +1992,7 @@ pub mod math {
     /// // x^(1/3) - 2 == 0
     /// let abs_difference = (f32::math::cbrt(x) - 2.0).abs();
     ///
-    /// assert!(abs_difference <= f32::EPSILON);
+    /// assert!(abs_difference <= 1e-6);
     /// ```
     ///
     /// _This standalone function is for testing only.

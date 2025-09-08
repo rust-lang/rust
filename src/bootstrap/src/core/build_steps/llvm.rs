@@ -205,6 +205,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         // tier 1
         ("aarch64-unknown-linux-gnu", false),
         ("aarch64-apple-darwin", false),
+        ("aarch64-pc-windows-msvc", false),
         ("i686-pc-windows-gnu", false),
         ("i686-pc-windows-msvc", false),
         ("i686-unknown-linux-gnu", false),
@@ -213,7 +214,6 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("x86_64-pc-windows-gnu", true),
         ("x86_64-pc-windows-msvc", true),
         // tier 2 with host tools
-        ("aarch64-pc-windows-msvc", false),
         ("aarch64-unknown-linux-musl", false),
         ("arm-unknown-linux-gnueabi", false),
         ("arm-unknown-linux-gnueabihf", false),
@@ -486,8 +486,11 @@ impl Step for Llvm {
             let LlvmResult { host_llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
-                let llvm_bindir =
-                    command(&host_llvm_config).arg("--bindir").run_capture_stdout(builder).stdout();
+                let llvm_bindir = command(&host_llvm_config)
+                    .arg("--bindir")
+                    .cached()
+                    .run_capture_stdout(builder)
+                    .stdout();
                 let host_bin = Path::new(llvm_bindir.trim());
                 cfg.define(
                     "LLVM_TABLEGEN",
@@ -593,7 +596,13 @@ impl Step for Llvm {
 }
 
 pub fn get_llvm_version(builder: &Builder<'_>, llvm_config: &Path) -> String {
-    command(llvm_config).arg("--version").run_capture_stdout(builder).stdout().trim().to_owned()
+    command(llvm_config)
+        .arg("--version")
+        .cached()
+        .run_capture_stdout(builder)
+        .stdout()
+        .trim()
+        .to_owned()
 }
 
 pub fn get_llvm_version_major(builder: &Builder<'_>, llvm_config: &Path) -> u8 {

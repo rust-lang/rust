@@ -385,6 +385,8 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
 
     // Foreign items by default use no mangling for their symbol name.
     if tcx.is_foreign_item(did) {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::FOREIGN_ITEM;
+
         // There's a few exceptions to this rule though:
         if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
@@ -426,9 +428,16 @@ fn check_result(
     // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && !tcx.features().target_feature_inline_always()
         && let Some(span) = interesting_spans.inline
     {
-        tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
+        feature_err(
+            tcx.sess,
+            sym::target_feature_inline_always,
+            span,
+            "cannot use `#[inline(always)]` with `#[target_feature]`",
+        )
+        .emit();
     }
 
     // warn that inline has no effect when no_sanitize is present

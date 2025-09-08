@@ -2102,6 +2102,61 @@ pub const fn saturating_add<T: Copy>(a: T, b: T) -> T;
 #[rustc_intrinsic]
 pub const fn saturating_sub<T: Copy>(a: T, b: T) -> T;
 
+/// Funnel Shift left.
+///
+/// Concatenates `a` and `b` (with `a` in the most significant half),
+/// creating an integer twice as wide. Then shift this integer left
+/// by `shift`), and extract the most significant half. If `a` and `b`
+/// are the same, this is equivalent to a rotate left operation.
+///
+/// It is undefined behavior if `shift` is greater than or equal to the
+/// bit size of `T`.
+///
+/// Safe versions of this intrinsic are available on the integer primitives
+/// via the `funnel_shl` method. For example, [`u32::funnel_shl`].
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+#[unstable(feature = "funnel_shifts", issue = "145686")]
+#[track_caller]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn unchecked_funnel_shl<T: [const] fallback::FunnelShift>(
+    a: T,
+    b: T,
+    shift: u32,
+) -> T {
+    // SAFETY: caller ensures that `shift` is in-range
+    unsafe { a.unchecked_funnel_shl(b, shift) }
+}
+
+/// Funnel Shift right.
+///
+/// Concatenates `a` and `b` (with `a` in the most significant half),
+/// creating an integer twice as wide. Then shift this integer right
+/// by `shift` (taken modulo the bit size of `T`), and extract the
+/// least significant half. If `a` and `b` are the same, this is equivalent
+/// to a rotate right operation.
+///
+/// It is undefined behavior if `shift` is greater than or equal to the
+/// bit size of `T`.
+///
+/// Safer versions of this intrinsic are available on the integer primitives
+/// via the `funnel_shr` method. For example, [`u32::funnel_shr`]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[rustc_const_unstable(feature = "funnel_shifts", issue = "145686")]
+#[unstable(feature = "funnel_shifts", issue = "145686")]
+#[track_caller]
+#[miri::intrinsic_fallback_is_spec]
+pub const unsafe fn unchecked_funnel_shr<T: [const] fallback::FunnelShift>(
+    a: T,
+    b: T,
+    shift: u32,
+) -> T {
+    // SAFETY: caller ensures that `shift` is in-range
+    unsafe { a.unchecked_funnel_shr(b, shift) }
+}
+
 /// This is an implementation detail of [`crate::ptr::read`] and should
 /// not be used anywhere else.  See its comments for why this exists.
 ///

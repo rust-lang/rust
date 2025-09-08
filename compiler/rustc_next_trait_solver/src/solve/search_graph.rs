@@ -7,8 +7,9 @@ use rustc_type_ir::solve::{CanonicalInput, Certainty, NoSolution, QueryResult};
 use rustc_type_ir::{Interner, TypingMode};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::inspect::ProofTreeBuilder;
-use crate::solve::{EvalCtxt, FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints};
+use crate::solve::{
+    EvalCtxt, FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints, inspect,
+};
 
 /// This type is never constructed. We only use it to implement `search_graph::Delegate`
 /// for all types which impl `SolverDelegate` and doing it directly fails in coherence.
@@ -34,7 +35,7 @@ where
 
     const FIXPOINT_STEP_LIMIT: usize = FIXPOINT_STEP_LIMIT;
 
-    type ProofTreeBuilder = ProofTreeBuilder<D>;
+    type ProofTreeBuilder = inspect::ProofTreeBuilder<D>;
     fn inspect_is_noop(inspect: &mut Self::ProofTreeBuilder) -> bool {
         inspect.is_noop()
     }
@@ -81,12 +82,7 @@ where
         Self::initial_provisional_result(cx, kind, input) == result
     }
 
-    fn on_stack_overflow(
-        cx: I,
-        input: CanonicalInput<I>,
-        inspect: &mut ProofTreeBuilder<D>,
-    ) -> QueryResult<I> {
-        inspect.canonical_goal_evaluation_overflow();
+    fn on_stack_overflow(cx: I, input: CanonicalInput<I>) -> QueryResult<I> {
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 

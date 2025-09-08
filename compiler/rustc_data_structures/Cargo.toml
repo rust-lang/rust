@@ -13,6 +13,7 @@ ena = "0.14.3"
 indexmap = "2.4.0"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "12.0.1"
+parking_lot = "0.12"
 rustc-hash = "2.0.0"
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
@@ -33,9 +34,6 @@ tracing = "0.1"
 version = "0.15.2"
 default-features = false
 features = ["nightly"] # for may_dangle
-
-[dependencies.parking_lot]
-version = "0.12"
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.61.0"

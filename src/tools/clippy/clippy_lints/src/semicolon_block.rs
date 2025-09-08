@@ -155,6 +155,11 @@ impl LateLintPass<'_> for SemicolonBlock {
                 kind: ExprKind::Block(block, _),
                 ..
             }) if !block.span.from_expansion() => {
+                let attrs = cx.tcx.hir_attrs(stmt.hir_id);
+                if !attrs.is_empty() && !cx.tcx.features().stmt_expr_attributes() {
+                    return;
+                }
+
                 if let Some(tail) = block.expr {
                     self.semicolon_inside_block(cx, block, tail, stmt.span);
                 }

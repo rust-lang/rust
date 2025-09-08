@@ -243,6 +243,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `relax`
 `relaxed-simd`
 `rtm`
+`rva23u64`
 `sb`
 `scq`
 `sha`
@@ -304,6 +305,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `ssve-fp8dot2`
 `ssve-fp8dot4`
 `ssve-fp8fma`
+`supm`
 `sve`
 `sve-b16b16`
 `sve2`

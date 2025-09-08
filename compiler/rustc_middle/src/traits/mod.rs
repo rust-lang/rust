@@ -389,10 +389,14 @@ pub enum ObligationCauseCode<'tcx> {
     /// against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
+    UnOp {
+        hir_id: HirId,
+    },
+
     BinOp {
         lhs_hir_id: HirId,
-        rhs_hir_id: Option<HirId>,
-        rhs_span: Option<Span>,
+        rhs_hir_id: HirId,
+        rhs_span: Span,
         rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },

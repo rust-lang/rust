@@ -132,10 +132,7 @@ impl Cargo {
     }
 
     pub fn into_cmd(self) -> BootstrapCommand {
-        let mut cmd: BootstrapCommand = self.into();
-        // Disable caching for commands originating from Cargo-related operations.
-        cmd.do_not_cache();
-        cmd
+        self.into()
     }
 
     /// Same as [`Cargo::new`] except this one doesn't configure the linker with
@@ -536,7 +533,7 @@ impl Builder<'_> {
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustc | Mode::ToolBootstrap => {
+                Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
                     self.compiler_doc_out(target)
                 }
                 Mode::Std => {
@@ -586,7 +583,7 @@ impl Builder<'_> {
 
         // We synthetically interpret a stage0 compiler used to build tools as a
         // "raw" compiler in that it's the exact snapshot we download. For things like
-        // ToolRustc, we would have to use the artificial stage0-sysroot compiler instead.
+        // ToolRustcPrivate, we would have to use the artificial stage0-sysroot compiler instead.
         let use_snapshot =
             mode == Mode::ToolBootstrap || (mode == Mode::ToolTarget && build_compiler_stage == 0);
         assert!(!use_snapshot || build_compiler_stage == 0 || self.local_rebuild);
@@ -646,7 +643,8 @@ impl Builder<'_> {
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
         // library unnecessary. This can be removed when windows-rs enables raw-dylib
         // unconditionally.
-        if let Mode::Rustc | Mode::ToolRustc | Mode::ToolBootstrap | Mode::ToolTarget = mode {
+        if let Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget = mode
+        {
             rustflags.arg("--cfg=windows_raw_dylib");
         }
 
@@ -660,7 +658,7 @@ impl Builder<'_> {
         // - rust-analyzer, due to the rowan crate
         // so we exclude an entire category of steps here due to lack of fine-grained control over
         // rustflags.
-        if self.config.rust_randomize_layout && mode != Mode::ToolRustc {
+        if self.config.rust_randomize_layout && mode != Mode::ToolRustcPrivate {
             rustflags.arg("-Zrandomize-layout");
         }
 
@@ -720,7 +718,7 @@ impl Builder<'_> {
 
         match mode {
             Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
-            Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
+            Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
                 if target != compiler.host && cmd_kind != Kind::Check {
@@ -781,7 +779,7 @@ impl Builder<'_> {
                 "binary-dep-depinfo,proc_macro_span,proc_macro_span_shrink,proc_macro_diagnostic"
                     .to_string()
             }
-            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => String::new(),
+            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => String::new(),
         };
 
         cargo.arg("-j").arg(self.jobs().to_string());
@@ -828,7 +826,7 @@ impl Builder<'_> {
             // rustc step and one that we just built. This isn't always a
             // problem, somehow -- not really clear why -- but we know that this
             // fixes things.
-            Mode::ToolRustc => metadata.push_str("tool-rustc"),
+            Mode::ToolRustcPrivate => metadata.push_str("tool-rustc"),
             // Same for codegen backends.
             Mode::Codegen => metadata.push_str("codegen"),
             _ => {}
@@ -880,8 +878,11 @@ impl Builder<'_> {
             .env("RUSTC_LIBDIR", libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env("RUSTDOC_REAL", rustdoc_path)
-            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
-            .env("RUSTC_BREAK_ON_ICE", "1");
+            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+
+        if self.config.rust_break_on_ice {
+            cargo.env("RUSTC_BREAK_ON_ICE", "1");
+        }
 
         // Set RUSTC_WRAPPER to the bootstrap shim, which switches between beta and in-tree
         // sysroot depending on whether we're building build scripts.
@@ -920,7 +921,7 @@ impl Builder<'_> {
         let debuginfo_level = match mode {
             Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
             Mode::Std => self.config.rust_debuginfo_level_std,
-            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc | Mode::ToolTarget => {
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                 self.config.rust_debuginfo_level_tools
             }
         };
@@ -933,7 +934,7 @@ impl Builder<'_> {
             match mode {
                 Mode::Std => self.config.std_debug_assertions,
                 Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
-                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustc | Mode::ToolTarget => {
+                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
                     self.config.tools_debug_assertions
                 }
             }
@@ -1008,7 +1009,7 @@ impl Builder<'_> {
             }
             Mode::Std
             | Mode::ToolBootstrap
-            | Mode::ToolRustc
+            | Mode::ToolRustcPrivate
             | Mode::ToolStd
             | Mode::ToolTarget => {
                 if let Some(ref map_to) =
@@ -1081,11 +1082,11 @@ impl Builder<'_> {
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
         // rustc args as a workaround.
-        if (mode == Mode::ToolRustc || mode == Mode::Codegen)
+        if (mode == Mode::ToolRustcPrivate || mode == Mode::Codegen)
             && let Some(llvm_config) = self.llvm_config(target)
         {
             let llvm_libdir =
-                command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
+                command(llvm_config).cached().arg("--libdir").run_capture_stdout(self).stdout();
             if target.is_msvc() {
                 rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
             } else {
@@ -1326,12 +1327,7 @@ impl Builder<'_> {
 
             if let Some(limit) = limit
                 && (build_compiler_stage == 0
-                    || self
-                        .config
-                        .default_codegen_backend(target)
-                        .cloned()
-                        .unwrap_or_default()
-                        .is_llvm())
+                    || self.config.default_codegen_backend(target).is_llvm())
             {
                 rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={limit}"));
             }

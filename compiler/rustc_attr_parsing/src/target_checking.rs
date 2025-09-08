@@ -1,13 +1,13 @@
 use std::borrow::Cow;
 
+use rustc_ast::AttrStyle;
 use rustc_errors::DiagArgValue;
-use rustc_feature::Features;
-use rustc_hir::lints::{AttributeLint, AttributeLintKind};
-use rustc_hir::{AttrPath, MethodKind, Target};
-use rustc_span::Span;
+use rustc_feature::{AttributeType, Features};
+use rustc_hir::lints::AttributeLintKind;
+use rustc_hir::{MethodKind, Target};
 
 use crate::AttributeParser;
-use crate::context::Stage;
+use crate::context::{AcceptContext, Stage};
 use crate::session_diagnostics::InvalidTarget;
 
 #[derive(Debug)]
@@ -68,40 +68,36 @@ pub(crate) enum Policy {
     Error(Target),
 }
 
-impl<S: Stage> AttributeParser<'_, S> {
+impl<'sess, S: Stage> AttributeParser<'sess, S> {
     pub(crate) fn check_target(
-        &self,
-        attr_name: AttrPath,
-        attr_span: Span,
         allowed_targets: &AllowedTargets,
         target: Target,
-        target_id: S::Id,
-        mut emit_lint: impl FnMut(AttributeLint<S::Id>),
+        cx: &mut AcceptContext<'_, 'sess, S>,
     ) {
         match allowed_targets.is_allowed(target) {
             AllowedResult::Allowed => {}
             AllowedResult::Warn => {
                 let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) =
-                    allowed_targets_applied(allowed_targets, target, self.features);
-                emit_lint(AttributeLint {
-                    id: target_id,
-                    span: attr_span,
-                    kind: AttributeLintKind::InvalidTarget {
-                        name: attr_name,
+                let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
+                let name = cx.attr_path.clone();
+                let attr_span = cx.attr_span;
+                cx.emit_lint(
+                    AttributeLintKind::InvalidTarget {
+                        name,
                         target,
                         only: if only { "only " } else { "" },
                         applied,
                     },
-                });
+                    attr_span,
+                );
             }
             AllowedResult::Error => {
                 let allowed_targets = allowed_targets.allowed_targets();
-                let (applied, only) =
-                    allowed_targets_applied(allowed_targets, target, self.features);
-                self.dcx().emit_err(InvalidTarget {
-                    span: attr_span,
-                    name: attr_name,
+                let (applied, only) = allowed_targets_applied(allowed_targets, target, cx.features);
+                let name = cx.attr_path.clone();
+                cx.dcx().emit_err(InvalidTarget {
+                    span: cx.attr_span.clone(),
+                    name,
                     target: target.plural_name(),
                     only: if only { "only " } else { "" },
                     applied: DiagArgValue::StrListSepByAnd(
@@ -110,6 +106,32 @@ impl<S: Stage> AttributeParser<'_, S> {
                 });
             }
         }
+    }
+
+    pub(crate) fn check_type(
+        attribute_type: AttributeType,
+        target: Target,
+        cx: &mut AcceptContext<'_, 'sess, S>,
+    ) {
+        let is_crate_root = S::id_is_crate_root(cx.target_id);
+
+        if is_crate_root {
+            return;
+        }
+
+        if attribute_type != AttributeType::CrateLevel {
+            return;
+        }
+
+        let lint = AttributeLintKind::InvalidStyle {
+            name: cx.attr_path.clone(),
+            is_used_as_inner: cx.attr_style == AttrStyle::Inner,
+            target,
+            target_span: cx.target_span,
+        };
+        let attr_span = cx.attr_span;
+
+        cx.emit_lint(lint, attr_span);
     }
 }
 

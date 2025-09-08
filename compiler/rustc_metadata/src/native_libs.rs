@@ -3,25 +3,21 @@ use std::path::{Path, PathBuf};
 
 use rustc_abi::ExternAbi;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, NativeLibKind, PeImportNameType};
 use rustc_hir::find_attr;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::CrateType;
-use rustc_session::cstore::{
-    DllCallingConvention, DllImport, ForeignModule, NativeLib, PeImportNameType,
-};
-use rustc_session::parse::feature_err;
+use rustc_session::cstore::{DllCallingConvention, DllImport, ForeignModule, NativeLib};
 use rustc_session::search_paths::PathKind;
-use rustc_session::utils::NativeLibKind;
+use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::{Symbol, sym};
 use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
 
-use crate::{errors, fluent_generated};
+use crate::errors;
 
 /// The fallback directories are passed to linker, but not used when rustc does the search,
 /// because in the latter case the set of fallback directories cannot always be determined
@@ -192,7 +188,9 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => {
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+        }
         None => true,
     }
 }
@@ -213,289 +211,23 @@ impl<'tcx> Collector<'tcx> {
             return;
         }
 
-        // Process all of the #[link(..)]-style arguments
-        let features = self.tcx.features();
-
-        for m in self.tcx.get_attrs(def_id, sym::link) {
-            let Some(items) = m.meta_item_list() else {
-                continue;
-            };
-
-            let mut name = None;
-            let mut kind = None;
-            let mut modifiers = None;
-            let mut cfg = None;
-            let mut wasm_import_module = None;
-            let mut import_name_type = None;
-            for item in items.iter() {
-                match item.name() {
-                    Some(sym::name) => {
-                        if name.is_some() {
-                            sess.dcx().emit_err(errors::MultipleNamesInLink { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_name) = item.value_str() else {
-                            sess.dcx().emit_err(errors::LinkNameForm { span: item.span() });
-                            continue;
-                        };
-                        let span = item.name_value_literal_span().unwrap();
-                        if link_name.is_empty() {
-                            sess.dcx().emit_err(errors::EmptyLinkName { span });
-                        }
-                        name = Some((link_name, span));
-                    }
-                    Some(sym::kind) => {
-                        if kind.is_some() {
-                            sess.dcx().emit_err(errors::MultipleKindsInLink { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_kind) = item.value_str() else {
-                            sess.dcx().emit_err(errors::LinkKindForm { span: item.span() });
-                            continue;
-                        };
-
-                        let span = item.name_value_literal_span().unwrap();
-                        let link_kind = match link_kind.as_str() {
-                            "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
-                            "dylib" => NativeLibKind::Dylib { as_needed: None },
-                            "framework" => {
-                                if !sess.target.is_like_darwin {
-                                    sess.dcx().emit_err(errors::LinkFrameworkApple { span });
-                                }
-                                NativeLibKind::Framework { as_needed: None }
-                            }
-                            "raw-dylib" => {
-                                if sess.target.is_like_windows {
-                                    // raw-dylib is stable and working on Windows
-                                } else if sess.target.binary_format == BinaryFormat::Elf
-                                    && features.raw_dylib_elf()
-                                {
-                                    // raw-dylib is unstable on ELF, but the user opted in
-                                } else if sess.target.binary_format == BinaryFormat::Elf
-                                    && sess.is_nightly_build()
-                                {
-                                    feature_err(
-                                        sess,
-                                        sym::raw_dylib_elf,
-                                        span,
-                                        fluent_generated::metadata_raw_dylib_elf_unstable,
-                                    )
-                                    .emit();
-                                } else {
-                                    sess.dcx().emit_err(errors::RawDylibOnlyWindows { span });
-                                }
-
-                                NativeLibKind::RawDylib
-                            }
-                            "link-arg" => {
-                                if !features.link_arg_attribute() {
-                                    feature_err(
-                                        sess,
-                                        sym::link_arg_attribute,
-                                        span,
-                                        fluent_generated::metadata_link_arg_unstable,
-                                    )
-                                    .emit();
-                                }
-                                NativeLibKind::LinkArg
-                            }
-                            kind => {
-                                sess.dcx().emit_err(errors::UnknownLinkKind { span, kind });
-                                continue;
-                            }
-                        };
-                        kind = Some(link_kind);
-                    }
-                    Some(sym::modifiers) => {
-                        if modifiers.is_some() {
-                            sess.dcx()
-                                .emit_err(errors::MultipleLinkModifiers { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_modifiers) = item.value_str() else {
-                            sess.dcx().emit_err(errors::LinkModifiersForm { span: item.span() });
-                            continue;
-                        };
-                        modifiers = Some((link_modifiers, item.name_value_literal_span().unwrap()));
-                    }
-                    Some(sym::cfg) => {
-                        if cfg.is_some() {
-                            sess.dcx().emit_err(errors::MultipleCfgs { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_cfg) = item.meta_item_list() else {
-                            sess.dcx().emit_err(errors::LinkCfgForm { span: item.span() });
-                            continue;
-                        };
-                        let [link_cfg] = link_cfg else {
-                            sess.dcx()
-                                .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
-                            continue;
-                        };
-                        let Some(link_cfg) = link_cfg.meta_item_or_bool() else {
-                            sess.dcx()
-                                .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
-                            continue;
-                        };
-                        if !features.link_cfg() {
-                            feature_err(
-                                sess,
-                                sym::link_cfg,
-                                item.span(),
-                                fluent_generated::metadata_link_cfg_unstable,
-                            )
-                            .emit();
-                        }
-                        cfg = Some(link_cfg.clone());
-                    }
-                    Some(sym::wasm_import_module) => {
-                        if wasm_import_module.is_some() {
-                            sess.dcx().emit_err(errors::MultipleWasmImport { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_wasm_import_module) = item.value_str() else {
-                            sess.dcx().emit_err(errors::WasmImportForm { span: item.span() });
-                            continue;
-                        };
-                        wasm_import_module = Some((link_wasm_import_module, item.span()));
-                    }
-                    Some(sym::import_name_type) => {
-                        if import_name_type.is_some() {
-                            sess.dcx()
-                                .emit_err(errors::MultipleImportNameType { span: item.span() });
-                            continue;
-                        }
-                        let Some(link_import_name_type) = item.value_str() else {
-                            sess.dcx().emit_err(errors::ImportNameTypeForm { span: item.span() });
-                            continue;
-                        };
-                        if self.tcx.sess.target.arch != "x86" {
-                            sess.dcx().emit_err(errors::ImportNameTypeX86 { span: item.span() });
-                            continue;
-                        }
-
-                        let link_import_name_type = match link_import_name_type.as_str() {
-                            "decorated" => PeImportNameType::Decorated,
-                            "noprefix" => PeImportNameType::NoPrefix,
-                            "undecorated" => PeImportNameType::Undecorated,
-                            import_name_type => {
-                                sess.dcx().emit_err(errors::UnknownImportNameType {
-                                    span: item.span(),
-                                    import_name_type,
-                                });
-                                continue;
-                            }
-                        };
-                        import_name_type = Some((link_import_name_type, item.span()));
-                    }
-                    _ => {
-                        sess.dcx().emit_err(errors::UnexpectedLinkArg { span: item.span() });
-                    }
-                }
-            }
-
-            // Do this outside the above loop so we don't depend on modifiers coming after kinds
-            let mut verbatim = None;
-            if let Some((modifiers, span)) = modifiers {
-                for modifier in modifiers.as_str().split(',') {
-                    let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
-                        Some(m) => (m, modifier.starts_with('+')),
-                        None => {
-                            sess.dcx().emit_err(errors::InvalidLinkModifier { span });
-                            continue;
-                        }
-                    };
-
-                    macro report_unstable_modifier($feature: ident) {
-                        if !features.$feature() {
-                            // FIXME: make this translatable
-                            #[expect(rustc::untranslatable_diagnostic)]
-                            feature_err(
-                                sess,
-                                sym::$feature,
-                                span,
-                                format!("linking modifier `{modifier}` is unstable"),
-                            )
-                            .emit();
-                        }
-                    }
-                    let assign_modifier = |dst: &mut Option<bool>| {
-                        if dst.is_some() {
-                            sess.dcx().emit_err(errors::MultipleModifiers { span, modifier });
-                        } else {
-                            *dst = Some(value);
-                        }
-                    };
-                    match (modifier, &mut kind) {
-                        ("bundle", Some(NativeLibKind::Static { bundle, .. })) => {
-                            assign_modifier(bundle)
-                        }
-                        ("bundle", _) => {
-                            sess.dcx().emit_err(errors::BundleNeedsStatic { span });
-                        }
-
-                        ("verbatim", _) => assign_modifier(&mut verbatim),
-
-                        ("whole-archive", Some(NativeLibKind::Static { whole_archive, .. })) => {
-                            assign_modifier(whole_archive)
-                        }
-                        ("whole-archive", _) => {
-                            sess.dcx().emit_err(errors::WholeArchiveNeedsStatic { span });
-                        }
-
-                        ("as-needed", Some(NativeLibKind::Dylib { as_needed }))
-                        | ("as-needed", Some(NativeLibKind::Framework { as_needed })) => {
-                            report_unstable_modifier!(native_link_modifiers_as_needed);
-                            assign_modifier(as_needed)
-                        }
-                        ("as-needed", _) => {
-                            sess.dcx().emit_err(errors::AsNeededCompatibility { span });
-                        }
-
-                        _ => {
-                            sess.dcx().emit_err(errors::UnknownLinkModifier { span, modifier });
-                        }
-                    }
-                }
-            }
-
-            if let Some((_, span)) = wasm_import_module {
-                if name.is_some() || kind.is_some() || modifiers.is_some() || cfg.is_some() {
-                    sess.dcx().emit_err(errors::IncompatibleWasmLink { span });
-                }
-            }
-
-            if wasm_import_module.is_some() {
-                (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
-            }
-            let Some((name, name_span)) = name else {
-                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span() });
-                continue;
-            };
-
-            // Do this outside of the loop so that `import_name_type` can be specified before `kind`.
-            if let Some((_, span)) = import_name_type {
-                if kind != Some(NativeLibKind::RawDylib) {
-                    sess.dcx().emit_err(errors::ImportNameTypeRaw { span });
-                }
-            }
-
-            let dll_imports = match kind {
-                Some(NativeLibKind::RawDylib) => {
-                    if name.as_str().contains('\0') {
-                        sess.dcx().emit_err(errors::RawDylibNoNul { span: name_span });
-                    }
-                    foreign_items
-                        .iter()
-                        .map(|&child_item| {
-                            self.build_dll_import(
-                                abi,
-                                import_name_type.map(|(import_name_type, _)| import_name_type),
-                                child_item,
-                            )
-                        })
-                        .collect()
-                }
+        for attr in
+            find_attr!(self.tcx.get_all_attrs(def_id), AttributeKind::Link(links, _) => links)
+                .iter()
+                .map(|v| v.iter())
+                .flatten()
+        {
+            let dll_imports = match attr.kind {
+                NativeLibKind::RawDylib => foreign_items
+                    .iter()
+                    .map(|&child_item| {
+                        self.build_dll_import(
+                            abi,
+                            attr.import_name_type.map(|(import_name_type, _)| import_name_type),
+                            child_item,
+                        )
+                    })
+                    .collect(),
                 _ => {
                     for &child_item in foreign_items {
                         if let Some(span) = find_attr!(self.tcx.get_all_attrs(child_item), AttributeKind::LinkOrdinal {span, ..} => *span)
@@ -508,15 +240,20 @@ impl<'tcx> Collector<'tcx> {
                 }
             };
 
-            let kind = kind.unwrap_or(NativeLibKind::Unspecified);
-            let filename = find_bundled_library(name, verbatim, kind, cfg.is_some(), self.tcx);
+            let filename = find_bundled_library(
+                attr.name,
+                attr.verbatim,
+                attr.kind,
+                attr.cfg.is_some(),
+                self.tcx,
+            );
             self.libs.push(NativeLib {
-                name,
+                name: attr.name,
                 filename,
-                kind,
-                cfg,
+                kind: attr.kind,
+                cfg: attr.cfg.clone(),
                 foreign_module: Some(def_id.to_def_id()),
-                verbatim,
+                verbatim: attr.verbatim,
                 dll_imports,
             });
         }

@@ -3,6 +3,11 @@ error[E0599]: no method named `test` found for opaque type `impl Future<Output =
    |
 LL |     let x: u32 = foo().test();
    |                        ^^^^ method not found in `impl Future<Output = A>`
+   |
+help: consider `await`ing on the `Future` and calling the method on its `Output`
+   |
+LL |     let x: u32 = foo().await.test();
+   |                        ++++++
 
 error: aborting due to 1 previous error
 

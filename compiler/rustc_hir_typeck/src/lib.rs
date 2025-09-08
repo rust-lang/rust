@@ -46,12 +46,12 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{HirId, HirIdMap, Node, find_attr};
+use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -174,7 +174,7 @@ fn typeck_with_inspect<'tcx>(
                 .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
         );
 
-        if find_attr!(tcx.get_all_attrs(def_id), AttributeKind::Naked(..)) {
+        if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
             naked_functions::typeck_naked_fn(tcx, def_id, body);
         }
 
@@ -247,6 +247,13 @@ fn typeck_with_inspect<'tcx>(
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
+    // We need to handle opaque types before emitting ambiguity errors as applying
+    // defining uses may guide type inference.
+    if fcx.next_trait_solver() {
+        fcx.handle_opaque_type_uses_next();
+    }
+
+    fcx.select_obligations_where_possible(|_| {});
     if let None = fcx.infcx.tainted_by_errors() {
         fcx.report_ambiguity_errors();
     }

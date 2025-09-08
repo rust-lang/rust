@@ -10,8 +10,7 @@ use std::{io, ops, str};
 use regex::Regex;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
-    self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
-    traversal,
+    self, BasicBlock, Body, Location, MirDumper, graphviz_safe_def_name, traversal,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -61,11 +60,13 @@ where
                 fs::File::create_buffered(&path)?
             }
 
-            None if dump_enabled(tcx, A::NAME, def_id) => {
-                create_dump_file(tcx, "dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+            None => {
+                let Some(dumper) = MirDumper::new(tcx, A::NAME, body) else {
+                    return Ok(());
+                };
+                let disambiguator = &pass_name.unwrap_or("-----");
+                dumper.set_disambiguator(disambiguator).create_dump_file("dot", body)?
             }
-
-            _ => return Ok(()),
         }
     };
     let mut file = match file {

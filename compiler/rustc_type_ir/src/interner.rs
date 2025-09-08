@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -8,9 +9,11 @@ use rustc_index::bit_set::DenseBitSet;
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::lang_items::TraitSolverLangItem;
+use crate::lang_items::{SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
+use crate::solve::{
+    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, inspect,
+};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -38,6 +41,13 @@ pub trait Interner:
 
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
+    /// A `DefId` of a trait.
+    ///
+    /// In rustc this is just a `DefId`, but rust-analyzer uses different types for different items.
+    ///
+    /// Note: The `TryFrom<DefId>` always succeeds (in rustc), so don't use it to check if some `DefId`
+    /// is a trait!
+    type TraitId: DefId<Self> + Into<Self::DefId> + TryFrom<Self::DefId, Error: std::fmt::Debug>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -271,7 +281,7 @@ pub trait Interner:
 
     fn explicit_super_predicates_of(
         self,
-        def_id: Self::DefId,
+        def_id: Self::TraitId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
     fn explicit_implied_predicates_of(
@@ -302,19 +312,25 @@ pub trait Interner:
 
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
-    fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
+    fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId;
 
-    fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+    fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> Self::TraitId;
 
-    fn is_default_trait(self, def_id: Self::DefId) -> bool;
+    fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool;
 
-    fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
+    fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
+
+    fn is_default_trait(self, def_id: Self::TraitId) -> bool;
+
+    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
+
+    fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
 
     fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
 
     fn for_each_relevant_impl(
         self,
-        trait_def_id: Self::DefId,
+        trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
         f: impl FnMut(Self::DefId),
     );
@@ -329,20 +345,20 @@ pub trait Interner:
 
     fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
 
-    fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_alias(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_dyn_compatible(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
+    fn trait_is_fundamental(self, def_id: Self::TraitId) -> bool;
 
-    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_may_be_implemented_via_object(self, trait_def_id: Self::TraitId) -> bool;
 
     /// Returns `true` if this is an `unsafe trait`.
-    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 
     fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
@@ -367,6 +383,13 @@ pub trait Interner:
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds;
+
+    type Probe: Debug + Hash + Eq + Borrow<inspect::Probe<Self>>;
+    fn mk_probe(self, probe: inspect::Probe<Self>) -> Self::Probe;
+    fn evaluate_root_goal_for_proof_tree_raw(
+        self,
+        canonical_goal: CanonicalInput<Self>,
+    ) -> (QueryResult<Self>, Self::Probe);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

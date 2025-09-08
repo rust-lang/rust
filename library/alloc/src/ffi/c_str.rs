@@ -1061,17 +1061,10 @@ impl IntoStringError {
     }
 }
 
-impl IntoStringError {
-    fn description(&self) -> &str {
-        "C string contained non-utf8 bytes"
-    }
-}
-
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl fmt::Display for IntoStringError {
-    #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.description().fmt(f)
+        "C string contained non-utf8 bytes".fmt(f)
     }
 }
 
@@ -1291,23 +1284,13 @@ impl PartialEq<CString> for Cow<'_, CStr> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl core::error::Error for NulError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "nul byte found in data"
-    }
-}
+impl core::error::Error for NulError {}
 
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 impl core::error::Error for FromVecWithNulError {}
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
 impl core::error::Error for IntoStringError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        "C string contained non-utf8 bytes"
-    }
-
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         Some(&self.error)
     }

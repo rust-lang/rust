@@ -19,7 +19,9 @@ use rustc_middle::ty::{
     self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
-use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Symbol, hygiene};
+use rustc_span::{
+    DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Span, Symbol, hygiene,
+};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
@@ -423,6 +425,14 @@ fn build_slice_type_di_node<'ll, 'tcx>(
 /// This function will look up the debuginfo node in the TypeMap. If it can't find it, it
 /// will create the node by dispatching to the corresponding `build_*_di_node()` function.
 pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
+    spanned_type_di_node(cx, t, DUMMY_SP)
+}
+
+pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    t: Ty<'tcx>,
+    span: Span,
+) -> &'ll DIType {
     let unique_type_id = UniqueTypeId::for_ty(cx.tcx, t);
 
     if let Some(existing_di_node) = debug_context(cx).type_map.di_node_for_unique_id(unique_type_id)
@@ -460,7 +470,7 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
         ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
             AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
-            AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id),
+            AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),

@@ -21,7 +21,7 @@ pub fn is_useless_with_eq_exprs(kind: BinOpKind) -> bool {
 }
 
 /// Checks if each element in the first slice is contained within the latter as per `eq_fn`.
-pub fn unordered_over<X>(left: &[X], right: &[X], mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
+pub fn unordered_over<X, Y>(left: &[X], right: &[Y], mut eq_fn: impl FnMut(&X, &Y) -> bool) -> bool {
     left.len() == right.len() && left.iter().all(|l| right.iter().any(|r| eq_fn(l, r)))
 }
 

@@ -95,9 +95,8 @@ impl<T: PartialOrd> PartialOrd for [T] {
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialEq
-#[const_trait]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-trait SlicePartialEq<B> {
+const trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
 
     fn not_equal(&self, other: &[B]) -> bool {

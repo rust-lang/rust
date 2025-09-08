@@ -303,7 +303,7 @@ fn check_impl(
     }
 
     if js_lint {
-        rustdoc_js::lint(outdir, librustdoc_path, tools_path)?;
+        rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless)?;
         rustdoc_js::es_check(outdir, librustdoc_path)?;
     }
 
@@ -720,21 +720,19 @@ impl ExtraCheckArg {
         if !self.auto {
             return true;
         }
-        let ext = match self.lang {
-            ExtraCheckLang::Py => ".py",
-            ExtraCheckLang::Cpp => ".cpp",
-            ExtraCheckLang::Shell => ".sh",
-            ExtraCheckLang::Js => ".js",
+        let exts: &[&str] = match self.lang {
+            ExtraCheckLang::Py => &[".py"],
+            ExtraCheckLang::Cpp => &[".cpp"],
+            ExtraCheckLang::Shell => &[".sh"],
+            ExtraCheckLang::Js => &[".js", ".ts"],
             ExtraCheckLang::Spellcheck => {
-                for dir in SPELLCHECK_DIRS {
-                    if Path::new(filepath).starts_with(dir) {
-                        return true;
-                    }
+                if SPELLCHECK_DIRS.iter().any(|dir| Path::new(filepath).starts_with(dir)) {
+                    return true;
                 }
-                return false;
+                &[]
             }
         };
-        filepath.ends_with(ext)
+        exts.iter().any(|ext| filepath.ends_with(ext))
     }
 
     fn has_supported_kind(&self) -> bool {

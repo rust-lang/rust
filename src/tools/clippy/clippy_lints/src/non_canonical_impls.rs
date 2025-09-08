@@ -134,7 +134,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
             return;
         }
 
-        if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl.def_id)
+        let trait_name = cx.tcx.get_diagnostic_name(trait_impl.def_id);
+        if trait_name == Some(sym::Clone)
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
             && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
         {
@@ -170,12 +171,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     String::new(),
                     Applicability::MaybeIncorrect,
                 );
-
-                return;
             }
-        }
-
-        if cx.tcx.is_diagnostic_item(sym::PartialOrd, trait_impl.def_id)
+        } else if trait_name == Some(sym::PartialOrd)
             && impl_item.ident.name == sym::partial_cmp
             && let Some(ord_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
             && implements_trait(cx, trait_impl.self_ty(), ord_def_id, &[])

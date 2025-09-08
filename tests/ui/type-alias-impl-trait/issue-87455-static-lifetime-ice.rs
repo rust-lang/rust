@@ -1,6 +1,6 @@
 //@ check-pass
 
-use std::error::Error as StdError;
+use std::error::Error;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -51,7 +51,7 @@ impl<S> Stream for SseKeepAlive<S>
 where
     S: TryStream + Send + 'static,
     S::Ok: ServerSentEvent,
-    S::Error: StdError + Send + Sync + 'static,
+    S::Error: Error + Send + Sync + 'static,
 {
     type Item = Result<SseComment<&'static str>, ()>;
     fn poll_next(self: Pin<&mut Self>, _cx: &mut Context) -> Poll<Option<Self::Item>> {
@@ -65,7 +65,7 @@ pub fn keep<S>(
 where
     S: TryStream + Send + 'static,
     S::Ok: ServerSentEvent + Send,
-    S::Error: StdError + Send + Sync + 'static,
+    S::Error: Error + Send + Sync + 'static,
 {
     SseKeepAlive { event_stream }
 }

@@ -3,7 +3,7 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
@@ -33,7 +33,7 @@ where
         self.with_replaced_self_ty(cx, self_ty)
     }
 
-    fn trait_def_id(self, _: I) -> I::DefId {
+    fn trait_def_id(self, _: I) -> I::TraitId {
         self.def_id()
     }
 
@@ -237,7 +237,7 @@ where
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
         let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
-            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
         });
         let requirements = cx
             .const_conditions(def_id)

@@ -235,7 +235,6 @@ trigger_files = [
     "src/etc/htmldocck.py",
     "src/tools/jsondocck",
     "src/tools/jsondoclint",
-    "src/tools/rustdoc-gui",
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
 
@@ -336,6 +335,7 @@ trigger_files = [
     "tests/mir-opt",
     "tests/pretty",
     "tests/run-make",
+    "tests/run-make-cargo",
     "tests/ui",
     "tests/ui-fulldeps",
 ]
@@ -380,6 +380,7 @@ trigger_files = [
 [autolabel."O-apple"]
 trigger_files = [
     "library/std/src/os/darwin",
+    "library/std/src/sys/platform_version/darwin",
     "library/std/src/sys/sync/thread_parking/darwin.rs",
     "compiler/rustc_target/src/spec/base/apple",
 ]
@@ -450,7 +451,8 @@ trigger_files = [
 
 [autolabel."O-wasi"]
 trigger_files = [
-    "library/std/src/sys/pal/wasi",
+    "library/std/src/sys/pal/wasip1",
+    "library/std/src/sys/pal/wasip2",
     "library/std/src/os/wasi"
 ]
 
@@ -591,6 +593,7 @@ trigger_files = [
 [autolabel."A-run-make"]
 trigger_files = [
     "tests/run-make",
+    "tests/run-make-cargo",
     "src/tools/run-make-support"
 ]
 
@@ -1305,6 +1308,21 @@ cc = ["@m-ou-se"]
 [mentions."compiler/rustc_ast_lowering/src/format.rs"]
 cc = ["@m-ou-se"]
 
+[mentions."#[miri::intrinsic_fallback_is_spec]"]
+type = "content"
+message = """
+`#[miri::intrinsic_fallback_is_spec]` must only be used if the function actively checks for all UB cases,
+and explores the possible non-determinism of the intrinsic.
+"""
+cc = ["@rust-lang/miri"]
+[mentions."#[rustc_allow_const_fn_unstable"]
+type = "content"
+message = """
+`#[rustc_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
+implementation details on stable.
+"""
+cc = ["@rust-lang/wg-const-eval"]
+
 
 # ------------------------------------------------------------------------------
 # PR assignments
@@ -1526,6 +1544,7 @@ dep-bumps = [
 "/src/rustdoc-json-types" =                              ["rustdoc"]
 "/src/stage0" =                                          ["bootstrap"]
 "/tests/run-make" =                                      ["@jieyouxu"]
+"/tests/run-make-cargo" =                                ["@jieyouxu"]
 "/tests/rustdoc" =                                       ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]

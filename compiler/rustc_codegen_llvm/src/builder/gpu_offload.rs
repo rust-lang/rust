@@ -193,7 +193,7 @@ fn gen_define_handling<'ll>(
     // reference) types.
     let num_ptr_types = types
         .iter()
-        .map(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer))
+        .filter(|&x| matches!(cx.type_kind(x), rustc_codegen_ssa::common::TypeKind::Pointer))
         .count();
 
     // We do not know their size anymore at this level, so hardcode a placeholder.

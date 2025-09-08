@@ -575,6 +575,31 @@ impl Step for SharedAssets {
             FileType::Regular,
         );
 
+        builder.copy_link(
+            &builder
+                .src
+                .join("src")
+                .join("librustdoc")
+                .join("html")
+                .join("static")
+                .join("images")
+                .join("favicon.svg"),
+            &out.join("favicon.svg"),
+            FileType::Regular,
+        );
+        builder.copy_link(
+            &builder
+                .src
+                .join("src")
+                .join("librustdoc")
+                .join("html")
+                .join("static")
+                .join("images")
+                .join("favicon-32x32.png"),
+            &out.join("favicon-32x32.png"),
+            FileType::Regular,
+        );
+
         SharedAssetsPaths { version_info }
     }
 }
@@ -616,7 +641,7 @@ impl Step for Std {
             return;
         }
         run.builder.ensure(Std {
-            build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
             target: run.target,
             format: if run.builder.config.cmd.json() {
                 DocumentationFormat::Json
@@ -784,14 +809,18 @@ fn doc_std(
 
     let description =
         format!("library{} in {} format", crate_description(requested_crates), format.as_str());
-    let _guard = builder.msg(Kind::Doc, description, None, build_compiler, target);
+    let _guard = builder.msg(Kind::Doc, description, Mode::Std, build_compiler, target);
 
     cargo.into_cmd().run(builder);
     builder.cp_link_r(&out_dir, out);
 }
 
 /// Prepare a compiler that will be able to document something for `target` at `stage`.
-fn prepare_doc_compiler(builder: &Builder<'_>, target: TargetSelection, stage: u32) -> Compiler {
+pub fn prepare_doc_compiler(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    stage: u32,
+) -> Compiler {
     assert!(stage > 0, "Cannot document anything in stage 0");
     let build_compiler = builder.compiler(stage - 1, builder.host_target);
     builder.std(build_compiler, target);
@@ -961,9 +990,11 @@ macro_rules! tool_doc {
     (
         $tool: ident,
         $path: literal,
-        $(rustc_private_tool = $rustc_private_tool:literal, )?
-        $(is_library = $is_library:expr,)?
-        $(crates = $crates:expr)?
+        mode = $mode:expr
+        $(, is_library = $is_library:expr )?
+        $(, crates = $crates:expr )?
+        // Subset of nightly features that are allowed to be used when documenting
+        $(, allow_features: $allow_features:expr )?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
@@ -984,20 +1015,29 @@ macro_rules! tool_doc {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let (build_compiler, mode) = if true $(&& $rustc_private_tool)? {
-                    // Rustdoc needs the rustc sysroot available to build.
-                    let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
+                let build_compiler = match $mode {
+                    Mode::ToolRustcPrivate => {
+                        // Rustdoc needs the rustc sysroot available to build.
+                        let compilers = RustcPrivateCompilers::new(run.builder, run.builder.top_stage, target);
 
-                    // Build rustc docs so that we generate relative links.
-                    run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
-
-                    (compilers.build_compiler(), Mode::ToolRustc)
-                } else {
-                    // bootstrap/host tools have to be documented with the stage 0 compiler
-                    (prepare_doc_compiler(run.builder, target, 1), Mode::ToolBootstrap)
+                        // Build rustc docs so that we generate relative links.
+                        run.builder.ensure(Rustc::from_build_compiler(run.builder, compilers.build_compiler(), target));
+                        compilers.build_compiler()
+                    }
+                    Mode::ToolBootstrap => {
+                        // bootstrap/host tools should be documented with the stage 0 compiler
+                        prepare_doc_compiler(run.builder, run.builder.host_target, 1)
+                    }
+                    Mode::ToolTarget => {
+                        // target tools should be documented with the in-tree compiler
+                        prepare_doc_compiler(run.builder, run.builder.host_target, run.builder.top_stage)
+                    }
+                    _ => {
+                        panic!("Unexpected tool mode for documenting: {:?}", $mode);
+                    }
                 };
 
-                run.builder.ensure($tool { build_compiler, mode, target });
+                run.builder.ensure($tool { build_compiler, mode: $mode, target });
             }
 
             /// Generates documentation for a tool.
@@ -1028,6 +1068,15 @@ macro_rules! tool_doc {
                     source_type,
                     &[],
                 );
+                let allow_features = {
+                    let mut _value = "";
+                    $( _value = $allow_features; )?
+                    _value
+                };
+
+                if !allow_features.is_empty() {
+                    cargo.allow_features(allow_features);
+                }
 
                 cargo.arg("-Zskip-rustdoc-fingerprint");
                 // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -1083,18 +1132,33 @@ macro_rules! tool_doc {
 tool_doc!(
     BuildHelper,
     "src/build_helper",
-    rustc_private_tool = false,
+    mode = Mode::ToolBootstrap,
     is_library = true,
     crates = ["build_helper"]
 );
-tool_doc!(Rustdoc, "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
-tool_doc!(Rustfmt, "src/tools/rustfmt", crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]);
-tool_doc!(Clippy, "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
-tool_doc!(Miri, "src/tools/miri", crates = ["miri"]);
+tool_doc!(
+    Rustdoc,
+    "src/tools/rustdoc",
+    mode = Mode::ToolRustcPrivate,
+    crates = ["rustdoc", "rustdoc-json-types"]
+);
+tool_doc!(
+    Rustfmt,
+    "src/tools/rustfmt",
+    mode = Mode::ToolRustcPrivate,
+    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
+);
+tool_doc!(
+    Clippy,
+    "src/tools/clippy",
+    mode = Mode::ToolRustcPrivate,
+    crates = ["clippy_config", "clippy_utils"]
+);
+tool_doc!(Miri, "src/tools/miri", mode = Mode::ToolRustcPrivate, crates = ["miri"]);
 tool_doc!(
     Cargo,
     "src/tools/cargo",
-    rustc_private_tool = false,
+    mode = Mode::ToolTarget,
     crates = [
         "cargo",
         "cargo-credential",
@@ -1106,27 +1170,30 @@ tool_doc!(
         "crates-io",
         "mdman",
         "rustfix",
-    ]
+    ],
+    // Required because of the im-rc dependency of Cargo, which automatically opts into the
+    // "specialization" feature in its build script when it detects a nightly toolchain.
+    allow_features: "specialization"
 );
-tool_doc!(Tidy, "src/tools/tidy", rustc_private_tool = false, crates = ["tidy"]);
+tool_doc!(Tidy, "src/tools/tidy", mode = Mode::ToolBootstrap, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
     "src/bootstrap",
-    rustc_private_tool = false,
+    mode = Mode::ToolBootstrap,
     is_library = true,
     crates = ["bootstrap"]
 );
 tool_doc!(
     RunMakeSupport,
     "src/tools/run-make-support",
-    rustc_private_tool = false,
+    mode = Mode::ToolBootstrap,
     is_library = true,
     crates = ["run_make_support"]
 );
 tool_doc!(
     Compiletest,
     "src/tools/compiletest",
-    rustc_private_tool = false,
+    mode = Mode::ToolBootstrap,
     is_library = true,
     crates = ["compiletest"]
 );
@@ -1289,6 +1356,8 @@ impl Step for RustcBook {
         // functional sysroot.
         builder.std(self.build_compiler, self.target);
         let mut cmd = builder.tool_cmd(Tool::LintDocs);
+        cmd.arg("--build-rustc-stage");
+        cmd.arg(self.build_compiler.stage.to_string());
         cmd.arg("--src");
         cmd.arg(builder.src.join("compiler"));
         cmd.arg("--out");

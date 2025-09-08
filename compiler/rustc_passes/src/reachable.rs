@@ -183,7 +183,7 @@ impl<'tcx> ReachableContext<'tcx> {
             } else {
                 CodegenFnAttrs::EMPTY
             };
-            let is_extern = codegen_attrs.contains_extern_indicator(self.tcx, search_item.into());
+            let is_extern = codegen_attrs.contains_extern_indicator();
             if is_extern {
                 self.reachable_symbols.insert(search_item);
             }
@@ -425,7 +425,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
 
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-    codegen_attrs.contains_extern_indicator(tcx, def_id.into())
+    codegen_attrs.contains_extern_indicator()
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.

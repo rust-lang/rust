@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
 
-        match autoderef.final_ty(false).kind() {
+        match autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
                 let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
                 self.check_call_abi(abi, call_expr.span);
@@ -200,8 +200,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         autoderef: &Autoderef<'a, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
-        let adjusted_ty =
-            self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
+        let adjusted_ty = self.structurally_resolve_type(autoderef.span(), autoderef.final_ty());
 
         // If the callee is a function pointer or a closure, then we're all set.
         match *adjusted_ty.kind() {
@@ -511,7 +510,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Untranslatable diagnostics are okay for rustc internals
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
+                if self.has_rustc_attrs
+                    && self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses)
+                {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
@@ -894,7 +895,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
+        if self.has_rustc_attrs && self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
             return;
         }
 

@@ -1598,7 +1598,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair<'_>) -> PResult<'a, Box<Expr>> {
+    fn parse_expr_array_or_repeat(&mut self, close: ExpTokenPair) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[` or other open delim
 
@@ -2077,7 +2077,7 @@ impl<'a> Parser<'a> {
         (token::Lit { symbol: name, suffix: None, kind: token::Char }, span)
     }
 
-    pub fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
+    fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
         ast::MetaItemLit {
             symbol: name,
             suffix: None,
@@ -2086,7 +2086,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn handle_missing_lit<L>(
+    fn handle_missing_lit<L>(
         &mut self,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
     ) -> PResult<'a, L> {
@@ -2742,7 +2742,7 @@ impl<'a> Parser<'a> {
     /// The specified `edition` in `let_chains_policy` should be that of the whole `if` construct,
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
-    // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
+    // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
     pub fn parse_expr_cond(
         &mut self,
         let_chains_policy: LetChainsPolicy,
@@ -2910,7 +2910,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
+    // Public to use it for custom `for` expressions in rustfmt forks like https://github.com/tucant/rustfmt
+    pub fn parse_for_head(&mut self) -> PResult<'a, (Box<Pat>, Box<Expr>)> {
         let begin_paren = if self.token == token::OpenParen {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
@@ -3661,7 +3662,7 @@ impl<'a> Parser<'a> {
         &mut self,
         pth: ast::Path,
         recover: bool,
-        close: ExpTokenPair<'_>,
+        close: ExpTokenPair,
     ) -> PResult<
         'a,
         (
@@ -3680,8 +3681,8 @@ impl<'a> Parser<'a> {
             errors::HelpUseLatestEdition::new().add_to_diag(e);
         };
 
-        while self.token != *close.tok {
-            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(close.tok) {
+        while self.token != close.tok {
+            if self.eat(exp!(DotDot)) || self.recover_struct_field_dots(&close.tok) {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(close) {

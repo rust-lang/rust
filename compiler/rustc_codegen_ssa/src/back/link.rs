@@ -14,11 +14,13 @@ use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
+use rustc_attr_parsing::{ShouldEmit, eval_config_entry};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
 use rustc_fs_util::{TempDirBuilder, fix_windows_verbatim_for_gcc, try_canonicalize};
+use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -38,7 +40,6 @@ use rustc_session::config::{
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
-use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};
@@ -57,6 +58,7 @@ use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
+use crate::base::needs_allocator_shim_for_linking;
 use crate::{
     CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
 };
@@ -2079,9 +2081,17 @@ fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &Codeg
 }
 
 /// Add object files for allocator code linked once for the whole crate tree.
-fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
-    if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref()) {
-        cmd.add_object(obj);
+fn add_local_crate_allocator_objects(
+    cmd: &mut dyn Linker,
+    codegen_results: &CodegenResults,
+    crate_type: CrateType,
+) {
+    if needs_allocator_shim_for_linking(&codegen_results.crate_info.dependency_formats, crate_type)
+    {
+        if let Some(obj) = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref())
+        {
+            cmd.add_object(obj);
+        }
     }
 }
 
@@ -2280,7 +2290,7 @@ fn linker_with_args(
         codegen_results,
         metadata,
     );
-    add_local_crate_allocator_objects(cmd, codegen_results);
+    add_local_crate_allocator_objects(cmd, codegen_results, crate_type);
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -3019,7 +3029,9 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr_parsing::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => {
+            eval_config_entry(sess, cfg, CRATE_NODE_ID, None, ShouldEmit::ErrorsAndLints).as_bool()
+        }
         None => true,
     }
 }

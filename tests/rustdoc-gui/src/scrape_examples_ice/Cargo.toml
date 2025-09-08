@@ -1,0 +1,9 @@
+[package]
+name = "scrape_ice"
+version = "0.1.0"
+edition = "2024"
+
+[[example]]
+name = "bar"
+path = "examples/bar.rs"
+doc-scrape-examples = true

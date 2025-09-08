@@ -80,7 +80,7 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
     ("src/tools/test-float-parse", EXCEPTIONS, None, &[]),
-    ("tests/run-make/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
+    ("tests/run-make-cargo/uefi-qemu/uefi_qemu_test", EXCEPTIONS_UEFI_QEMU_TEST, None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -287,14 +287,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "gimli",
     "gsgdt",
     "hashbrown",
+    "icu_collections",
     "icu_list",
-    "icu_list_data",
-    "icu_locid",
-    "icu_locid_transform",
-    "icu_locid_transform_data",
+    "icu_locale",
+    "icu_locale_core",
+    "icu_locale_data",
     "icu_provider",
-    "icu_provider_adapters",
-    "icu_provider_macros",
     "ident_case",
     "indexmap",
     "intl-memoizer",
@@ -332,6 +330,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "polonius-engine",
     "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
     "portable-atomic-util",
+    "potential_utf",
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
@@ -361,7 +360,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "scoped-tls",
     "scopeguard",
     "self_cell",
-    "semver",
     "serde",
     "serde_derive",
     "serde_json",
@@ -448,6 +446,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerocopy-derive",
     "zerofrom",
     "zerofrom-derive",
+    "zerotrie",
     "zerovec",
     "zerovec-derive",
     // tidy-alphabetical-end
@@ -491,6 +490,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "wit-bindgen",
     // tidy-alphabetical-end
 ];
 
@@ -799,7 +799,10 @@ fn check_runtime_no_duplicate_dependencies(metadata: &Metadata, bad: &mut bool) 
             continue;
         }
 
-        if !seen_pkgs.insert(&*pkg.name) {
+        // Skip the `wasi` crate here which the standard library explicitly
+        // depends on two version of (one for the `wasm32-wasip1` target and
+        // another for the `wasm32-wasip2` target).
+        if pkg.name.to_string() != "wasi" && !seen_pkgs.insert(&*pkg.name) {
             tidy_error!(
                 bad,
                 "duplicate package `{}` is not allowed for the standard library",

@@ -263,7 +263,6 @@
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
-#![cfg_attr(any(windows, target_os = "uefi"), feature(round_char_boundary))]
 #![cfg_attr(target_family = "wasm", feature(stdarch_wasm_atomic_wait))]
 #![cfg_attr(target_arch = "wasm64", feature(simd_wasm64))]
 //
@@ -291,11 +290,11 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
-#![feature(extended_varargs_abi_support)]
 #![feature(f16)]
 #![feature(f128)]
 #![feature(ffi_const)]
 #![feature(formatting_options)]
+#![feature(funnel_shifts)]
 #![feature(hash_map_internals)]
 #![feature(hash_map_macro)]
 #![feature(if_let_guard)]
@@ -334,6 +333,7 @@
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(const_cmp)]
+#![feature(const_convert)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_try)]
@@ -354,6 +354,7 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
+#![feature(int_from_ascii)]
 #![feature(ip)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
@@ -369,9 +370,9 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
+#![feature(slice_split_once)]
 #![feature(std_internals)]
 #![feature(str_internals)]
-#![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
 #![feature(temporary_niche_types)]
 #![feature(ub_checks)]
@@ -391,6 +392,7 @@
 #![feature(try_with_capacity)]
 #![feature(unique_rc_arc)]
 #![feature(vec_into_raw_parts)]
+#![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
 // Library features (unwind):

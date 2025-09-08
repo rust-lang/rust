@@ -10,7 +10,6 @@ pub use unicode_data::conversions;
 
 #[rustfmt::skip]
 pub(crate) use unicode_data::alphabetic::lookup as Alphabetic;
-pub(crate) use unicode_data::cc::lookup as Cc;
 pub(crate) use unicode_data::grapheme_extend::lookup as Grapheme_Extend;
 pub(crate) use unicode_data::lowercase::lookup as Lowercase;
 pub(crate) use unicode_data::n::lookup as N;
