@@ -755,7 +755,7 @@
 #rust.frame-pointers = false
 
 # Indicates whether stack protectors should be used
-# via the unstable option `-Zstack-protector`.
+# via `-Cstack-protector`.
 #
 # Valid options are : `none`(default),`basic`,`strong`, or `all`.
 # `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.

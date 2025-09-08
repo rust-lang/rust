@@ -1,11 +1,10 @@
-//@ build-pass
-//@ revisions: all strong basic
+//@ check-fail
+//@ revisions: all strong all-z
 //@ compile-flags: --target nvptx64-nvidia-cuda
 //@ needs-llvm-components: nvptx
 //@ [all] compile-flags: -C stack-protector=all
 //@ [strong] compile-flags: -C stack-protector=strong
-//@ [basic] compile-flags: -C stack-protector=basic
-//@ ignore-backends: gcc
+//@ [all-z] compile-flags: -Z stack-protector=all
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
@@ -26,6 +25,6 @@ trait Copy {}
 
 pub fn main(){}
 
-//[all]~? WARN `-Z stack-protector=all` is not supported for target nvptx64-nvidia-cuda and will be ignored
-//[strong]~? WARN `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored
-//[basic]~? WARN `-Z stack-protector=basic` is not supported for target nvptx64-nvidia-cuda and will be ignored
+//[all]~? ERROR `-C stack-protector=all` is not supported for target nvptx64-nvidia-cuda
+//[all-z]~? ERROR `-C stack-protector=all` is not supported for target nvptx64-nvidia-cuda
+//[strong]~? ERROR `-C stack-protector=strong` is not supported for target nvptx64-nvidia-cuda
