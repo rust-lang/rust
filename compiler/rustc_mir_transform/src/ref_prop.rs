@@ -386,32 +386,14 @@ struct Replacer<'tcx> {
     any_replacement: bool,
 }
 
-impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
+impl<'tcx> Replacer<'tcx> {
+    fn replace_base(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) -> bool {
+        let mut replaced = false;
 
-    fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        // If the debuginfo is a pointer to another place
-        // and it's a reborrow: see through it
-        while let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
-            && place.projection.is_empty()
-            && let Value::Pointer(target, _) = self.targets[place.local]
-            && let &[PlaceElem::Deref] = &target.projection[..]
-        {
-            *place = Place::from(target.local);
-            self.any_replacement = true;
-        }
-
-        // Simplify eventual projections left inside `debuginfo`.
-        self.super_var_debug_info(debuginfo);
-    }
-
-    fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
         loop {
-            let Some((&PlaceElem::Deref, rest)) = place.projection.split_first() else { return };
+            let Some((&PlaceElem::Deref, rest)) = place.projection.split_first() else { break };
 
-            let Value::Pointer(target, _) = self.targets[place.local] else { return };
+            let Value::Pointer(target, _) = self.targets[place.local] else { break };
 
             let perform_opt = match ctxt {
                 PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {
@@ -422,11 +404,54 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             };
 
             if !perform_opt {
-                return;
+                break;
             }
 
             *place = target.project_deeper(rest, self.tcx);
+            replaced = true;
             self.any_replacement = true;
+        }
+
+        replaced
+    }
+}
+
+impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
+        // If the debuginfo is a pointer to another place
+        // and it's a reborrow: see through it
+        while let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
+            && let Some(local) = place.as_local()
+            && let Value::Pointer(target, _) = self.targets[local]
+            && let &[PlaceElem::Deref] = &target.projection[..]
+        {
+            *place = CompoundPlace::from(target.local);
+            self.any_replacement = true;
+        }
+
+        // Simplify eventual projections left inside `debuginfo`.
+        self.super_var_debug_info(debuginfo);
+    }
+
+    fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
+        self.replace_base(place, ctxt, loc);
+    }
+
+    fn visit_compound_place(
+        &mut self,
+        place: &mut CompoundPlace<'tcx>,
+        ctxt: PlaceContext,
+        loc: Location,
+    ) {
+        let mut base = place.base_place();
+        let replaced = self.replace_base(&mut base, ctxt, loc);
+
+        if replaced {
+            place.replace_base_place(base, self.tcx);
         }
     }
 

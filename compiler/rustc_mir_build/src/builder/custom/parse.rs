@@ -260,7 +260,9 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             let operand = self.parse_operand(operand)?;
             let value = match operand {
                 Operand::Constant(c) => VarDebugInfoContents::Const(*c),
-                Operand::Copy(p) | Operand::Move(p) => VarDebugInfoContents::Place(p),
+                Operand::Copy(p) | Operand::Move(p) => {
+                    VarDebugInfoContents::Place(CompoundPlace::from_place(p, self.tcx))
+                }
             };
             let dbginfo = VarDebugInfo {
                 name,

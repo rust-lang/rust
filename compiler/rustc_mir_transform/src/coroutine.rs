@@ -158,15 +158,29 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
             }
         }
     }
+
+    fn visit_compound_place(
+        &mut self,
+        place: &mut CompoundPlace<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        if place.local == SELF_ARG {
+            place.replace_local_with_place(self.new_base, self.tcx);
+        } else {
+            self.visit_local(&mut place.local, context, location);
+
+            for elem in place.projection_chain.iter().flatten() {
+                if let PlaceElem::Index(local) = elem {
+                    assert_ne!(local, SELF_ARG);
+                }
+            }
+        }
+    }
 }
 
 fn replace_base<'tcx>(place: &mut Place<'tcx>, new_base: Place<'tcx>, tcx: TyCtxt<'tcx>) {
-    place.local = new_base.local;
-
-    let mut new_projection = new_base.projection.to_vec();
-    new_projection.append(&mut place.projection.to_vec());
-
-    place.projection = tcx.mk_place_elems(&new_projection);
+    *place = new_base.project_deeper(place.projection, tcx);
 }
 
 const SELF_ARG: Local = Local::from_u32(1);
@@ -403,6 +417,18 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        }
+    }
+
+    fn visit_compound_place(
+        &mut self,
+        place: &mut CompoundPlace<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        // Replace an Local in the remap with a coroutine struct access
+        if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
+            place.replace_local_with_place(self.make_field(variant_index, idx, ty), self.tcx);
         }
     }
 
@@ -1693,14 +1719,11 @@ impl EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 }
 
 impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, _context: PlaceContext, location: Location) {
         let Some(lhs) = self.assigned_local else {
             // This visitor only invokes `visit_place` for the right-hand side of an assignment
-            // and only after setting `self.assigned_local`. However, the default impl of
-            // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
-            // with debuginfo. Ignore them here.
-            assert!(!context.is_use());
-            return;
+            // and only after setting `self.assigned_local`.
+            bug!()
         };
 
         let Some(rhs) = self.saved_local_for_direct_place(*place) else { return };

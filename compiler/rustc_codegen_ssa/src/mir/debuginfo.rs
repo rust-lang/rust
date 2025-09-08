@@ -491,7 +491,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 match var.value {
                     mir::VarDebugInfoContents::Place(place) => {
-                        self.monomorphized_place_ty(place.as_ref())
+                        let tcx = bx.tcx();
+                        let place_ty = place.ty(self.mir, tcx);
+                        self.monomorphize(place_ty.ty)
                     }
                     mir::VarDebugInfoContents::Const(c) => self.monomorphize(c.ty()),
                 }
@@ -501,7 +503,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let var_kind = if let Some(arg_index) = var.argument_index
                     && var.composite.is_none()
                     && let mir::VarDebugInfoContents::Place(place) = var.value
-                    && place.projection.is_empty()
+                    && place.as_local().is_some()
                 {
                     let arg_index = arg_index as usize;
                     if target_is_msvc {
@@ -566,7 +568,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         source_info: var.source_info,
                         dbg_var,
                         fragment,
-                        projection: place.projection,
+                        // FIXME change field to be projection chain
+                        projection: bx
+                            .tcx()
+                            .mk_place_elems_from_iter(place.projection_chain.iter().flatten()),
                     });
                 }
                 mir::VarDebugInfoContents::Const(c) => {

@@ -923,7 +923,7 @@ macro_rules! make_mir_visitor {
                 match value {
                     VarDebugInfoContents::Const(c) => self.visit_const_operand(c, location),
                     VarDebugInfoContents::Place(place) =>
-                        self.visit_place(
+                        self.visit_compound_place(
                             place,
                             PlaceContext::NonUse(NonUseContext::VarDebugInfo),
                             location

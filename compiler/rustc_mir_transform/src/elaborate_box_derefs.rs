@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{List, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -118,17 +118,25 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         for debug_info in body.var_debug_info.iter_mut() {
             if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
-                let mut new_projections: Option<Vec<_>> = None;
+                let mut new_projection_chain = None;
 
-                for (base, elem) in place.iter_projections() {
-                    let base_ty = base.ty(&body.local_decls, tcx).ty;
+                let mut base_ty = PlaceTy::from_ty(body.local_decls.local_decls()[place.local].ty);
 
-                    if let PlaceElem::Deref = elem
-                        && let Some(boxed_ty) = base_ty.boxed_ty()
-                    {
+                // Maybe the first segment should just be empty if place starts with a deref?
+                let new_base =
+                    place.base_place().is_indirect_first_projection().then_some((0, List::empty()));
+
+                let Some((last, rest)) = place.projection_chain.split_last() else { continue };
+
+                for (i, projs) in new_base.into_iter().chain(rest.iter().copied().enumerate()) {
+                    base_ty = base_ty.multi_projection_ty(tcx, projs);
+
+                    if let Some(boxed_ty) = base_ty.ty.boxed_ty() {
                         // Clone the projections before us, since now we need to mutate them.
-                        let new_projections =
-                            new_projections.get_or_insert_with(|| base.projection.to_vec());
+                        let new_projection_chain = new_projection_chain
+                            .get_or_insert_with(|| place.projection_chain[..i].to_vec());
+
+                        let mut new_projections = projs.to_vec();
 
                         let (unique_ty, nonnull_ty, ptr_ty) =
                             build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
@@ -137,16 +145,18 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         // While we can't project into `NonNull<_>` in a basic block
                         // due to MCP#807, this is debug info where it's fine.
                         new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
-                        new_projections.push(PlaceElem::Deref);
-                    } else if let Some(new_projections) = new_projections.as_mut() {
+
+                        new_projection_chain.push(tcx.mk_place_elems(&new_projections))
+                    } else if let Some(new_projection_chain) = new_projection_chain.as_mut() {
                         // Keep building up our projections list once we've started it.
-                        new_projections.push(elem);
+                        new_projection_chain.push(projs);
                     }
                 }
 
                 // Store the mutated projections if we actually changed something.
-                if let Some(new_projections) = new_projections {
-                    place.projection = tcx.mk_place_elems(&new_projections);
+                if let Some(mut new_projection_chain) = new_projection_chain {
+                    new_projection_chain.push(last);
+                    place.projection_chain = tcx.mk_place_elem_chain(&new_projection_chain);
                 }
             }
         }

@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
-use rustc_middle::mir::visit::{NonUseContext, PlaceContext, ProjectionBase, Visitor};
+use rustc_middle::mir::visit::{PlaceContext, ProjectionBase, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -883,7 +883,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                if place.projection.iter().any(|p| !p.can_use_in_debuginfo()) {
+                if place.projection_chain.iter().flatten().any(|p| !p.can_use_in_debuginfo()) {
                     self.fail(
                         START_BLOCK.start_location(),
                         format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
@@ -900,7 +900,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
         if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial)
             && place.projection.len() > 1
-            && cntxt != PlaceContext::NonUse(NonUseContext::VarDebugInfo)
             && place.projection[1..].contains(&ProjectionElem::Deref)
         {
             self.fail(
