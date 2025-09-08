@@ -1077,6 +1077,8 @@ impl Builder<'_> {
         cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
 
         if let Some(stack_protector) = &self.config.rust_stack_protector {
+            // Use -Zstack-protector here instead of -Cstack-protector
+            // to avoid bootstrap problems using the 1.99 stage0 compiler.
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
 

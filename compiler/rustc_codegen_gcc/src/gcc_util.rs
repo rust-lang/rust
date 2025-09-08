@@ -218,7 +218,6 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     match sess.stack_protector() {
         StackProtector::All => context.add_command_line_option("-fstack-protector-all"),
         StackProtector::Strong => context.add_command_line_option("-fstack-protector-strong"),
-        StackProtector::Basic => context.add_command_line_option("-fstack-protector"),
         StackProtector::None => (),
     }
 

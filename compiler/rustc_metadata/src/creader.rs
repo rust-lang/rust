@@ -506,9 +506,12 @@ impl CStore {
                         mitigation_level: my_mitigation.level.level_str().to_string(),
                         extern_crate: data.name(),
                     };
-                    if my_mitigation.kind == DeniedPartialMitigationKind::StackProtector {
-                        // make stack-protector only a forward-compat warning since it was
-                        // pretty widely used
+                    if my_mitigation.kind == DeniedPartialMitigationKind::StackProtector
+                        && !tcx.sess.using_stable_stack_protector()
+                    {
+                        // make stack-protector with -Z stack-protector only a forward-compat warning since it was
+                        // pretty widely used. When using -C stack-protector, it should still be a hard error since
+                        // -C stack-protector has no pre-existing users
                         tcx.sess.psess.buffer_crate_lint(PARTIAL_STACK_PROTECTOR, diagnostic);
                     } else {
                         tcx.dcx().emit_err(diagnostic);
