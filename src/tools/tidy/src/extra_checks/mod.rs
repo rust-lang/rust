@@ -290,10 +290,10 @@ fn check_impl(
         args.extend_from_slice(SPELLCHECK_DIRS);
 
         if bless {
-            eprintln!("spellcheck files and fix");
+            eprintln!("spellchecking files and fixing typos");
             args.push("--write-changes");
         } else {
-            eprintln!("spellcheck files");
+            eprintln!("spellchecking files");
         }
         spellcheck_runner(root_path, &outdir, &cargo, &args)?;
     }
@@ -303,11 +303,17 @@ fn check_impl(
     }
 
     if js_lint {
+        if bless {
+            eprintln!("linting javascript files");
+        } else {
+            eprintln!("linting javascript files and applying suggestions");
+        }
         rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless)?;
         rustdoc_js::es_check(outdir, librustdoc_path)?;
     }
 
     if js_typecheck {
+        eprintln!("typechecking javascript files");
         rustdoc_js::typecheck(outdir, librustdoc_path)?;
     }
 
