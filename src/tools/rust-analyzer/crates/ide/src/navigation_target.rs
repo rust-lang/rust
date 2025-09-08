@@ -5,14 +5,15 @@ use std::fmt;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
-    AssocItem, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId, InFile,
-    LocalSource, ModuleSource, db::ExpandDatabase, symbols::FileSymbol,
+    AssocItem, Crate, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId,
+    InFile, LocalSource, ModuleSource, Semantics, db::ExpandDatabase, symbols::FileSymbol,
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
-    base_db::salsa,
-    defs::Definition,
+    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb, salsa},
+    defs::{Definition, find_std_module},
     documentation::{Documentation, HasDocs},
+    famous_defs::FamousDefs,
 };
 use span::Edition;
 use stdx::never;
@@ -262,8 +263,8 @@ impl TryToNav for Definition {
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::ExternCrateDecl(it) => it.try_to_nav(db),
             Definition::InlineAsmOperand(it) => it.try_to_nav(db),
+            Definition::BuiltinType(it) => it.try_to_nav(db),
             Definition::BuiltinLifetime(_)
-            | Definition::BuiltinType(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_)
@@ -743,6 +744,26 @@ impl TryToNav for hir::InlineAsmOperand {
                 }
             },
         ))
+    }
+}
+
+impl TryToNav for hir::BuiltinType {
+    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+        let sema = Semantics::new(db);
+
+        let krate = db
+            .all_crates()
+            .iter()
+            .copied()
+            .find(|&krate| matches!(krate.data(db).origin, CrateOrigin::Lang(LangCrateOrigin::Std)))
+            .map(Crate::from)?;
+        let edition = krate.edition(db);
+
+        let fd = FamousDefs(&sema, krate);
+        let primitive_mod = format!("prim_{}", self.name().display(fd.0.db, edition));
+        let doc_owner = find_std_module(&fd, &primitive_mod, edition)?;
+
+        Some(doc_owner.to_nav(db))
     }
 }
 
