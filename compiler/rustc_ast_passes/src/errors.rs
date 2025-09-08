@@ -322,7 +322,7 @@ pub(crate) struct ExternItemAscii {
 #[diag(ast_passes_bad_c_variadic)]
 pub(crate) struct BadCVariadic {
     #[primary_span]
-    pub span: Vec<Span>,
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -656,7 +656,7 @@ pub(crate) struct ConstAndCVariadic {
     #[label(ast_passes_const)]
     pub const_span: Span,
     #[label(ast_passes_variadic)]
-    pub variadic_spans: Vec<Span>,
+    pub variadic_span: Span,
 }
 
 #[derive(Diagnostic)]
