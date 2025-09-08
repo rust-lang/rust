@@ -58,7 +58,7 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     logLevel = to_genmc_verbosity_level(log_level);
 }
 
-/* unsafe */ auto MiriGenmcShim::create_handle(const GenmcParams& params)
+/* unsafe */ auto MiriGenmcShim::create_handle(const GenmcParams& params, bool estimation_mode)
     -> std::unique_ptr<MiriGenmcShim> {
     auto conf = std::make_shared<Config>();
 
@@ -82,7 +82,8 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     // Miri.
     conf->warnOnGraphSize = 1024 * 1024;
 
-    // We only support the `RC11` memory model for Rust, and `SC` when weak memory emulation is disabled.
+    // We only support the `RC11` memory model for Rust, and `SC` when weak memory emulation is
+    // disabled.
     conf->model = params.disable_weak_memory_emulation ? ModelType::SC : ModelType::RC11;
 
     // This prints the seed that GenMC picks for randomized scheduling during estimation mode.
@@ -119,12 +120,20 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     );
     conf->symmetryReduction = params.do_symmetry_reduction;
 
-    // FIXME(genmc): expose this setting to Miri (useful for testing Miri-GenMC).
-    conf->schedulePolicy = SchedulePolicy::WF;
+    // Set the scheduling policy. GenMC uses `WFR` for estimation mode.
+    // For normal verification, `WF` has the best performance and is the GenMC default.
+    // Other scheduling policies are used by GenMC for testing and for modes currently
+    // unsupported with Miri such as bounding, which uses LTR.
+    conf->schedulePolicy = estimation_mode ? SchedulePolicy::WFR : SchedulePolicy::WF;
 
+    // Set the min and max number of executions tested in estimation mode.
+    conf->estimationMin = 10; // default taken from GenMC
+    conf->estimationMax = params.estimation_max;
+    // Deviation threshold % under which estimation is deemed good enough.
+    conf->sdThreshold = 10; // default taken from GenMC
     // Set the mode used for this driver, either estimation or verification.
-    // FIXME(genmc): implement estimation mode.
-    const auto mode = GenMCDriver::Mode(GenMCDriver::VerificationMode {});
+    const auto mode = estimation_mode ? GenMCDriver::Mode(GenMCDriver::EstimationMode {})
+                                      : GenMCDriver::Mode(GenMCDriver::VerificationMode {});
 
     // Running Miri-GenMC without race detection is not supported.
     // Disabling this option also changes the behavior of the replay scheduler to only schedule

@@ -1,3 +1,4 @@
+Running GenMC Verification...
 [1, 1, 1, 1, 1]
 [1, 1, 1, 0, 1]
 [1, 1, 1, 0, 0]
@@ -26,5 +27,4 @@
 [0, 0, 0, 0, 0]
 [0, 0, 0, 0, 1]
 [0, 0, 0, 0, 0]
-(GenMC) Verification complete. No errors were detected.
-Number of complete executions explored: 28
+Verification complete with 28 executions. No errors found.

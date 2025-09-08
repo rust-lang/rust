@@ -1,2 +1,4 @@
-(GenMC) Verification complete. No errors were detected.
-Number of complete executions explored: 180
+Estimating GenMC verification time...
+Expected verification time: [MEAN] ± [SD]
+Running GenMC Verification...
+Verification complete with 180 executions. No errors found.

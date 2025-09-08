@@ -24,6 +24,8 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
 ### Supported Parameters
 
 - `-Zmiri-genmc`: Enable GenMC mode (not required if any other GenMC options are used).
+- `-Zmiri-genmc-estimate`: This enables estimation of the concurrent execution space and verification time, before running the full verification. This should help users detect when their program is too complex to fully verify in a reasonable time. This will explore enough executions to make a good estimation, but at least 10 and at most `estimation-max` executions.
+- `-Zmiri-genmc-estimation-max={MAX_ITERATIONS}`: Set the maximum number of executions that will be explored during estimation (default: 1000).
 - `-Zmiri-genmc-print-exec-graphs={none,explored,blocked,all}`: Make GenMC print the execution graph of the program after every explored, every blocked, or after every execution (default: None).
 - `-Zmiri-genmc-print-exec-graphs`: Shorthand for suffix `=explored`.
 - `-Zmiri-genmc-print-genmc-output`: Print the output that GenMC provides. NOTE: this output is quite verbose and the events in the printed execution graph are hard to map back to the Rust code location they originate from.
@@ -36,6 +38,7 @@ Note that `cargo miri test` in GenMC mode is currently not supported.
     - `debug1`:   Print revisits considered by GenMC.
     - `debug2`:   Print the execution graph after every memory access.
     - `debug3`:   Print reads-from values considered by GenMC.
+- `-Zmiri-genmc-verbose`: Show more information, such as estimated number of executions, and time taken for verification.
 
 #### Regular Miri parameters useful for GenMC mode
 

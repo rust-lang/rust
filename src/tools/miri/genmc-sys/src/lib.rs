@@ -27,6 +27,7 @@ static GENMC_LOG_LEVEL: OnceLock<LogLevel> = OnceLock::new();
 pub fn create_genmc_driver_handle(
     params: &GenmcParams,
     genmc_log_level: LogLevel,
+    do_estimation: bool,
 ) -> UniquePtr<MiriGenmcShim> {
     // SAFETY: Only setting the GenMC log level once is guaranteed by the `OnceLock`.
     // No other place calls `set_log_level_raw`, so the `logLevel` value in GenMC will not change once we initialize it once.
@@ -40,7 +41,7 @@ pub fn create_genmc_driver_handle(
         }),
         "Attempt to change the GenMC log level after it was already set"
     );
-    unsafe { MiriGenmcShim::create_handle(params) }
+    unsafe { MiriGenmcShim::create_handle(params, do_estimation) }
 }
 
 impl GenmcScalar {
@@ -54,6 +55,7 @@ impl GenmcScalar {
 impl Default for GenmcParams {
     fn default() -> Self {
         Self {
+            estimation_max: 1000, // default taken from GenMC
             print_random_schedule_seed: false,
             do_symmetry_reduction: false,
             // GenMC graphs can be quite large since Miri produces a lot of (non-atomic) events.
@@ -67,6 +69,20 @@ impl Default for LogLevel {
     fn default() -> Self {
         // FIXME(genmc): set `Tip` by default once the GenMC tips are relevant to Miri.
         Self::Warning
+    }
+}
+
+impl FromStr for SchedulePolicy {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "wf" => SchedulePolicy::WF,
+            "wfr" => SchedulePolicy::WFR,
+            "arbitrary" | "random" => SchedulePolicy::Arbitrary,
+            "ltr" => SchedulePolicy::LTR,
+            _ => return Err("invalid scheduling policy"),
+        })
     }
 }
 
@@ -92,9 +108,12 @@ mod ffi {
     /**** Types shared between Miri/Rust and Miri/C++ through cxx_bridge: ****/
 
     /// Parameters that will be given to GenMC for setting up the model checker.
-    /// (The fields of this struct are visible to both Rust and C++)
+    /// The fields of this struct are visible to both Rust and C++.
+    /// Note that this struct is #[repr(C)], so the order of fields matters.
     #[derive(Clone, Debug)]
     struct GenmcParams {
+        /// Maximum number of executions explored in estimation mode.
+        pub estimation_max: u32,
         pub print_random_schedule_seed: bool,
         pub do_symmetry_reduction: bool,
         pub print_execution_graphs: ExecutiongraphPrinting,
@@ -167,6 +186,19 @@ mod ffi {
 
     #[must_use]
     #[derive(Debug)]
+    struct EstimationResult {
+        /// Expected number of total executions.
+        mean: f64,
+        /// Standard deviation of the total executions estimate.
+        sd: f64,
+        /// Number of explored executions during the estimation.
+        explored_execs: u64,
+        /// Number of encounteded blocked executions during the estimation.
+        blocked_execs: u64,
+    }
+
+    #[must_use]
+    #[derive(Debug)]
     struct LoadResult {
         /// If not null, contains the error encountered during the handling of the load.
         error: UniquePtr<CxxString>,
@@ -213,6 +245,14 @@ mod ffi {
 
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
     "importing" externally defined C++ types. ****/
+
+    #[derive(Clone, Copy, Debug)]
+    enum SchedulePolicy {
+        LTR,
+        WF,
+        WFR,
+        Arbitrary,
+    }
 
     #[derive(Debug)]
     /// Corresponds to GenMC's type with the same name.
@@ -272,6 +312,7 @@ mod ffi {
         type ActionKind;
         type MemOrdering;
         type RMWBinOp;
+        type SchedulePolicy;
 
         /// Set the log level for GenMC.
         ///
@@ -295,7 +336,10 @@ mod ffi {
         /// start creating handles.
         /// There should not be any other (safe) way to create a `MiriGenmcShim`.
         #[Self = "MiriGenmcShim"]
-        unsafe fn create_handle(params: &GenmcParams) -> UniquePtr<MiriGenmcShim>;
+        unsafe fn create_handle(
+            params: &GenmcParams,
+            estimation_mode: bool,
+        ) -> UniquePtr<MiriGenmcShim>;
         /// Get the bit mask that GenMC expects for global memory allocations.
         fn get_global_alloc_static_mask() -> u64;
 
@@ -403,5 +447,10 @@ mod ffi {
         fn get_result_message(self: &MiriGenmcShim) -> UniquePtr<CxxString>;
         /// If an error occurred, return a string describing the error, otherwise, return `nullptr`.
         fn get_error_string(self: &MiriGenmcShim) -> UniquePtr<CxxString>;
+
+        /**** Printing functionality. ****/
+
+        /// Get the results of a run in estimation mode.
+        fn get_estimation_results(self: &MiriGenmcShim) -> EstimationResult;
     }
 }
