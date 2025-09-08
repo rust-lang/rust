@@ -945,8 +945,7 @@ mod desc {
         "either no value or one of `legacy` (the default), `off`, or `next`";
     pub(crate) const parse_annotate_moves: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc.), or a size limit in bytes";
-    pub(crate) const parse_stack_protector: &str =
-        "one of (`none` (default), `basic`, `strong`, or `all`)";
+    pub(crate) const parse_stack_protector: &str = "one of (`none` (default), `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
