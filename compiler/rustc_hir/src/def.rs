@@ -440,6 +440,13 @@ impl DefKind {
             | DefKind::ExternCrate => false,
         }
     }
+
+    /// Returns `true` if `self` is a kind of definition that does not have its own
+    /// type-checking context, i.e. closure, coroutine or inline const.
+    #[inline]
+    pub fn is_typeck_child(self) -> bool {
+        matches!(self, DefKind::Closure | DefKind::InlineConst | DefKind::SyntheticCoroutineBody)
+    }
 }
 
 /// The resolution of a path or export.
