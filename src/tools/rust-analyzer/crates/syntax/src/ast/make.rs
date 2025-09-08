@@ -1244,14 +1244,17 @@ pub fn struct_(
     generic_param_list: Option<ast::GenericParamList>,
     field_list: ast::FieldList,
 ) -> ast::Struct {
-    let semicolon = if matches!(field_list, ast::FieldList::TupleFieldList(_)) { ";" } else { "" };
+    let (semicolon, ws) =
+        if matches!(field_list, ast::FieldList::TupleFieldList(_)) { (";", "") } else { ("", " ") };
     let type_params = generic_param_list.map_or_else(String::new, |it| it.to_string());
     let visibility = match visibility {
         None => String::new(),
         Some(it) => format!("{it} "),
     };
 
-    ast_from_text(&format!("{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",))
+    ast_from_text(&format!(
+        "{visibility}struct {strukt_name}{type_params}{ws}{field_list}{semicolon}"
+    ))
 }
 
 pub fn enum_(
