@@ -3947,4 +3947,18 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn goto_builtin_type() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+const _: &str$0 = ""; }
+
+//- /libstd.rs crate:std
+mod prim_str {}
+//  ^^^^^^^^
+"#,
+        );
+    }
 }
