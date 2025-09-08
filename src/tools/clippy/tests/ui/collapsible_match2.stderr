@@ -77,6 +77,8 @@ LL | |         },
 help: the outer pattern can be modified to include the inner pattern
   --> tests/ui/collapsible_match2.rs:54:14
    |
+LL |     match Some(&[1]) {
+   |           ---------- use: `Some(&[1]).copied()`
 LL |         Some(s) => match *s {
    |              ^ replace this binding
 LL |

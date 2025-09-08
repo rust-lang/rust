@@ -153,7 +153,12 @@ fn prepare_vtable_segments_inner<'tcx, T>(
 
         // emit innermost item, move to next sibling and stop there if possible, otherwise jump to outer level.
         while let Some((inner_most_trait_ref, emit_vptr, mut siblings)) = stack.pop() {
-            let has_entries = has_own_existential_vtable_entries(tcx, inner_most_trait_ref.def_id);
+            // We don't need to emit a vptr for "truly-empty" supertraits, but we *do* need to emit a
+            // vptr for supertraits that have no methods, but that themselves have supertraits
+            // with methods, so we check if any transitive supertrait has entries here (this includes
+            // the trait itself).
+            let has_entries = ty::elaborate::supertrait_def_ids(tcx, inner_most_trait_ref.def_id)
+                .any(|def_id| has_own_existential_vtable_entries(tcx, def_id));
 
             segment_visitor(VtblSegment::TraitOwnEntries {
                 trait_ref: inner_most_trait_ref,

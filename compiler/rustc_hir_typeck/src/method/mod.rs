@@ -117,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => false,
             Err(IllegalSizedBound { .. }) => true,
-            Err(BadReturnType) => false,
+            Err(BadReturnType) => true,
             Err(ErrorReported(_)) => false,
         }
     }

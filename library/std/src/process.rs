@@ -2495,6 +2495,7 @@ pub fn exit(code: i32) -> ! {
 #[stable(feature = "process_abort", since = "1.17.0")]
 #[cold]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn abort() -> ! {
     crate::sys::abort_internal();
 }

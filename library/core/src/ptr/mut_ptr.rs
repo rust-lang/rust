@@ -106,6 +106,7 @@ impl<T: PointeeSized> *mut T {
     ///
     /// // This dereference is UB. The pointer only has provenance for `x` but points to `y`.
     /// println!("{:?}", unsafe { &*bad });
+    /// ```
     #[unstable(feature = "set_ptr_value", issue = "75091")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[inline]

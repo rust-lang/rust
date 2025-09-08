@@ -127,6 +127,7 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
         Warn(Target::Field),
         Warn(Target::Arm),
         Warn(Target::MacroDef),
+        Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -174,6 +175,7 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
+        Warn(Target::MacroCall),
     ]);
 
     fn finalize(self, cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
@@ -278,6 +280,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
         Warn(Target::MacroDef),
         Warn(Target::Arm),
         Warn(Target::Field),
+        Warn(Target::MacroCall),
     ]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::TrackCaller;
 }
@@ -365,7 +368,8 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
             }
         },
     )];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
+    const ALLOWED_TARGETS: AllowedTargets =
+        AllowedTargets::AllowList(&[Allow(Target::Static), Warn(Target::MacroCall)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         // Ratcheting behaviour, if both `linker` and `compiler` are specified, use `linker`
@@ -450,6 +454,7 @@ impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
         Warn(Target::Field),
         Warn(Target::Arm),
         Warn(Target::MacroDef),
+        Warn(Target::MacroCall),
     ]);
 }
 

@@ -83,10 +83,10 @@ related tests.
     - E.g. for an implementation of RFC 2093 specifically, we can group a
       collection of tests under `tests/ui/rfc-2093-infer-outlives/`. For the
       directory name, include what the RFC is about.
-- For the [`run-make`] test suite, each `rmake.rs` must be contained within an
-  immediate subdirectory under `tests/run-make/`. Further nesting is not
-  presently supported. Avoid including issue number in the directory name too,
-  include that info in a comment inside `rmake.rs`.
+- For the [`run-make`]/`run-make-support` test suites, each `rmake.rs` must
+  be contained within an immediate subdirectory under `tests/run-make/` or
+  `tests/run-make-cargo/` respectively. Further nesting is not presently
+  supported. Avoid using _only_ an issue number for the test name as well.
 
 ## Test descriptions
 

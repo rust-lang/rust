@@ -24,6 +24,12 @@ pub fn check(root_path: &Path, compiler_path: &Path, bad: &mut bool) {
         .output()
         .expect("Cannot determine git SHA of the src/gcc checkout");
 
+    // Git is not available or we are in a tarball
+    if !git_output.status.success() {
+        eprintln!("Cannot figure out the SHA of the GCC submodule");
+        return;
+    }
+
     // This can return e.g.
     // -e607be166673a8de9fc07f6f02c60426e556c5f2 src/gcc
     //  e607be166673a8de9fc07f6f02c60426e556c5f2 src/gcc (master-e607be166673a8de9fc07f6f02c60426e556c5f2.e607be)

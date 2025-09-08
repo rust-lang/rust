@@ -28,7 +28,9 @@ use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
+use self::metadata::{
+    UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, spanned_type_di_node, type_di_node,
+};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
 use crate::builder::Builder;
@@ -626,7 +628,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let type_metadata = type_di_node(self, variable_type);
+        let type_metadata = spanned_type_di_node(self, variable_type, span);
 
         let (argument_index, dwarf_tag) = match variable_kind {
             ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),

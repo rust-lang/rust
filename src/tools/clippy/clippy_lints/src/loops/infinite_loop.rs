@@ -4,7 +4,8 @@ use hir::intravisit::{Visitor, walk_expr};
 use rustc_ast::Label;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    self as hir, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, Expr, ExprKind, FnRetTy, FnSig, Node, TyKind,
+    self as hir, Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, FnRetTy,
+    FnSig, Node, TyKind,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::sym;
@@ -73,7 +74,11 @@ fn is_inside_unawaited_async_block(cx: &LateContext<'_>, expr: &Expr<'_>) -> boo
         if let Node::Expr(Expr {
             kind:
                 ExprKind::Closure(Closure {
-                    kind: ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)),
+                    kind:
+                        ClosureKind::Coroutine(CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Block | CoroutineSource::Closure,
+                        )),
                     ..
                 }),
             ..

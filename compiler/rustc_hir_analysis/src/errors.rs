@@ -410,17 +410,6 @@ pub(crate) struct UnconstrainedOpaqueType {
     pub what: &'static str,
 }
 
-#[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat2)]
-#[note]
-pub(crate) struct TaitForwardCompat2 {
-    #[primary_span]
-    pub span: Span,
-    #[note(hir_analysis_opaque)]
-    pub opaque_type_span: Span,
-    pub opaque_type: String,
-}
-
 pub(crate) struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,

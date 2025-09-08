@@ -89,7 +89,9 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         {
             // We don't want to lint inside io::Read or io::Write implementations, as the author has more
             // information about their trait implementation than our lint, see https://github.com/rust-lang/rust-clippy/issues/4836
-            if cx.tcx.is_diagnostic_item(sym::IoRead, trait_id) || cx.tcx.is_diagnostic_item(sym::IoWrite, trait_id) {
+            if let Some(trait_name) = cx.tcx.get_diagnostic_name(trait_id)
+                && matches!(trait_name, sym::IoRead | sym::IoWrite)
+            {
                 return;
             }
 

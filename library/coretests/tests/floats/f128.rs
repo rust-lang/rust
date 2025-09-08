@@ -1,18 +1,20 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
 #![cfg(target_has_reliable_f128)]
 
-use std::f128::consts;
-
-use super::{assert_approx_eq, assert_biteq};
+#[cfg(any(miri, target_has_reliable_f128_math))]
+use super::assert_approx_eq;
+use super::assert_biteq;
 
 // Note these tolerances make sense around zero, but not for more extreme exponents.
 
 /// Default tolerances. Works for values that should be near precise but not exact. Roughly
 /// the precision carried by `100 * 100`.
+#[allow(unused)]
 const TOL: f128 = 1e-12;
 
 /// For operations that are near exact, usually not involving math of different
 /// signs.
+#[allow(unused)]
 const TOL_PRECISE: f128 = 1e-28;
 
 /// First pattern over the mantissa
@@ -44,70 +46,12 @@ fn test_mul_add() {
 
 #[test]
 #[cfg(any(miri, target_has_reliable_f128_math))]
-fn test_recip() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(1.0f128.recip(), 1.0);
-    assert_biteq!(2.0f128.recip(), 0.5);
-    assert_biteq!((-0.4f128).recip(), -2.5);
-    assert_biteq!(0.0f128.recip(), inf);
+fn test_max_recip() {
     assert_approx_eq!(
         f128::MAX.recip(),
         8.40525785778023376565669454330438228902076605e-4933,
         1e-4900
     );
-    assert!(nan.recip().is_nan());
-    assert_biteq!(inf.recip(), 0.0);
-    assert_biteq!(neg_inf.recip(), -0.0);
-}
-
-#[test]
-#[cfg(not(miri))]
-#[cfg(target_has_reliable_f128_math)]
-fn test_powi() {
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(1.0f128.powi(1), 1.0);
-    assert_approx_eq!((-3.1f128).powi(2), 9.6100000000000005506706202140776519387, TOL);
-    assert_approx_eq!(5.9f128.powi(-2), 0.028727377190462507313100483690639638451, TOL);
-    assert_biteq!(8.3f128.powi(0), 1.0);
-    assert!(nan.powi(2).is_nan());
-    assert_biteq!(inf.powi(3), inf);
-    assert_biteq!(neg_inf.powi(2), inf);
-}
-
-#[test]
-fn test_to_degrees() {
-    let pi: f128 = consts::PI;
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(0.0f128.to_degrees(), 0.0);
-    assert_approx_eq!((-5.8f128).to_degrees(), -332.31552117587745090765431723855668471, TOL);
-    assert_approx_eq!(pi.to_degrees(), 180.0, TOL);
-    assert!(nan.to_degrees().is_nan());
-    assert_biteq!(inf.to_degrees(), inf);
-    assert_biteq!(neg_inf.to_degrees(), neg_inf);
-    assert_biteq!(1_f128.to_degrees(), 57.2957795130823208767981548141051703);
-}
-
-#[test]
-fn test_to_radians() {
-    let pi: f128 = consts::PI;
-    let nan: f128 = f128::NAN;
-    let inf: f128 = f128::INFINITY;
-    let neg_inf: f128 = f128::NEG_INFINITY;
-    assert_biteq!(0.0f128.to_radians(), 0.0);
-    assert_approx_eq!(154.6f128.to_radians(), 2.6982790235832334267135442069489767804, TOL);
-    assert_approx_eq!((-332.31f128).to_radians(), -5.7999036373023566567593094812182763013, TOL);
-    // check approx rather than exact because round trip for pi doesn't fall on an exactly
-    // representable value (unlike `f32` and `f64`).
-    assert_approx_eq!(180.0f128.to_radians(), pi, TOL_PRECISE);
-    assert!(nan.to_radians().is_nan());
-    assert_biteq!(inf.to_radians(), inf);
-    assert_biteq!(neg_inf.to_radians(), neg_inf);
 }
 
 #[test]
@@ -130,25 +74,6 @@ fn test_float_bits_conv() {
 
     assert_eq!(f128::from_bits(masked_nan1).to_bits(), masked_nan1);
     assert_eq!(f128::from_bits(masked_nan2).to_bits(), masked_nan2);
-}
-
-#[test]
-fn test_algebraic() {
-    let a: f128 = 123.0;
-    let b: f128 = 456.0;
-
-    // Check that individual operations match their primitive counterparts.
-    //
-    // This is a check of current implementations and does NOT imply any form of
-    // guarantee about future behavior. The compiler reserves the right to make
-    // these operations inexact matches in the future.
-    let eps = if cfg!(miri) { 1e-6 } else { 0.0 };
-
-    assert_approx_eq!(a.algebraic_add(b), a + b, eps);
-    assert_approx_eq!(a.algebraic_sub(b), a - b, eps);
-    assert_approx_eq!(a.algebraic_mul(b), a * b, eps);
-    assert_approx_eq!(a.algebraic_div(b), a / b, eps);
-    assert_approx_eq!(a.algebraic_rem(b), a % b, eps);
 }
 
 #[test]

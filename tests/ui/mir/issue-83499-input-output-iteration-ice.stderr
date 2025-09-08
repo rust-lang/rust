@@ -1,4 +1,4 @@
-error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
   --> $DIR/issue-83499-input-output-iteration-ice.rs:7:16
    |
 LL | fn foo(_: Bar, ...) -> impl {}

@@ -1,7 +1,7 @@
 //@ compile-flags: -Znext-solver
-#![feature(const_from, never_type, const_trait_impl)]
+#![feature(const_convert, never_type, const_trait_impl)]
 
-const fn impls_from<T: ~const From<!>>() {}
+const fn impls_from<T: [const] From<!>>() {}
 
 const fn foo() {
     // This previously ICE'd when encountering the reservation impl

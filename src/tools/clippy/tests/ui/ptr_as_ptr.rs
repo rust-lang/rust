@@ -229,3 +229,9 @@ fn issue15283() {
         //~^ ptr_as_ptr
     }
 }
+
+fn issue15232() {
+    let mut b = Box::new(0i32);
+    let _ptr = std::ptr::addr_of_mut!(*b) as *mut ();
+    //~^ ptr_as_ptr
+}

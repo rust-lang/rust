@@ -9,25 +9,47 @@ LL | #[doc]
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
-error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
+error[E0539]: malformed `link` attribute input
   --> $DIR/malformed-regressions.rs:7:1
    |
 LL | #[link]
-   | ^^^^^^^
+   | ^^^^^^^ expected this to be a list
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[link(name = "...")]
+   |       ++++++++++++++
+LL | #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |       +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...")]
+   |       +++++++++++++++++++++++++++++++++++++++++
+LL | #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |       ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+   = and 1 other candidate
 
-error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
-  --> $DIR/malformed-regressions.rs:9:1
+error[E0539]: malformed `link` attribute input
+  --> $DIR/malformed-regressions.rs:8:1
    |
 LL | #[link = ""]
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^^^^ expected this to be a list
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[link = ""]
+LL + #[link(name = "...")]
+   |
+LL - #[link = ""]
+LL + #[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+LL - #[link = ""]
+LL + #[link(name = "...", kind = "dylib|static|...")]
+   |
+LL - #[link = ""]
+LL + #[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]
+   |
+   = and 1 other candidate
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
   --> $DIR/malformed-regressions.rs:3:1
@@ -49,6 +71,7 @@ LL | #[inline = ""]
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `#[doc(hidden)]`, `#[doc(inline)]`, and `#[doc = "string"]`
   --> $DIR/malformed-regressions.rs:1:1
@@ -59,30 +82,6 @@ LL | #[doc]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: for more information, visit <https://doc.rust-lang.org/rustdoc/write-documentation/the-doc-attribute.html>
-   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
-  --> $DIR/malformed-regressions.rs:7:1
-   |
-LL | #[link]
-   | ^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
-   = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
-
-Future breakage diagnostic:
-error: valid forms for the attribute are `#[link(name = "...")]`, `#[link(name = "...", kind = "dylib|static|...")]`, `#[link(name = "...", wasm_import_module = "...")]`, `#[link(name = "...", import_name_type = "decorated|noprefix|undecorated")]`, and `#[link(name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated")]`
-  --> $DIR/malformed-regressions.rs:9:1
-   |
-LL | #[link = ""]
-   | ^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
-   = note: for more information, visit <https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute>
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:

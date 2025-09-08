@@ -32,7 +32,7 @@ The names of the files created by the `link` emit kind.
 
 ## `sysroot`
 
-Abosulte path to the sysroot.
+Absolute path to the sysroot.
 
 Example (with rustup and the stable toolchain):
 
@@ -184,7 +184,7 @@ Example:
 
 ```bash
 $ rustc --print native-static-libs --crate-type staticlib a.rs
-note: Link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
+note: link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
 
 note: native-static-libs: -lgcc_s -lutil [REDACTED] -lpthread -lm -ldl -lc
 ```

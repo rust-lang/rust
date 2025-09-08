@@ -20,6 +20,7 @@ pub(crate) mod linux_ohos;
 pub(crate) mod linux_uclibc;
 pub(crate) mod linux_wasm;
 pub(crate) mod lynxos178;
+pub(crate) mod managarm_mlibc;
 pub(crate) mod msvc;
 pub(crate) mod netbsd;
 pub(crate) mod nto_qnx;

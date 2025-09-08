@@ -1,8 +1,0 @@
-error: non-defining use of `impl Sized + '_` in the defining scope
-  --> $DIR/as-projection-term.rs:14:19
-   |
-LL |     prove_proj(|| recur());
-   |                   ^^^^^^^
-
-error: aborting due to 1 previous error
-

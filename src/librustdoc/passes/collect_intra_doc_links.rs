@@ -19,7 +19,7 @@ use rustc_hir::{Mutability, Safety};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_docs, prepare_to_doc_link_resolution,
+    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
     source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_session::config::CrateType;
@@ -1073,7 +1073,7 @@ impl LinkCollector<'_, '_> {
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs)
+            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
         {
             // Skip link resolution for non-exported items.
             return;

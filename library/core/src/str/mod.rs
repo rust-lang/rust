@@ -396,7 +396,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(round_char_boundary)]
     /// let s = "❤️🧡💛💚💙💜";
     /// assert_eq!(s.len(), 26);
     /// assert!(!s.is_char_boundary(13));
@@ -405,7 +404,8 @@ impl str {
     /// assert_eq!(closest, 10);
     /// assert_eq!(&s[..closest], "❤️🧡");
     /// ```
-    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn floor_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -439,7 +439,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(round_char_boundary)]
     /// let s = "❤️🧡💛💚💙💜";
     /// assert_eq!(s.len(), 26);
     /// assert!(!s.is_char_boundary(13));
@@ -448,7 +447,8 @@ impl str {
     /// assert_eq!(closest, 14);
     /// assert_eq!(&s[..closest], "❤️🧡💛");
     /// ```
-    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "round_char_boundary", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn ceil_char_boundary(&self, index: usize) -> usize {
         if index >= self.len() {
@@ -3072,13 +3072,14 @@ impl str {
     /// for example references to `Box<str>` or `Arc<str>`.
     #[inline]
     #[unstable(feature = "str_as_str", issue = "130366")]
-    pub fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<[u8]> for str {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const AsRef<[u8]> for str {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.as_bytes()

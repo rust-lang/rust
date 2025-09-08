@@ -116,6 +116,14 @@ impl Environment {
     pub fn stage0(&self) -> Utf8PathBuf {
         self.stage0_root.clone().unwrap_or_else(|| self.build_artifacts().join("stage0"))
     }
+
+    pub fn llvm_bolt(&self) -> Utf8PathBuf {
+        self.host_llvm_dir().join(format!("bin/llvm-bolt{}", executable_extension()))
+    }
+
+    pub fn merge_fdata(&self) -> Utf8PathBuf {
+        self.host_llvm_dir().join(format!("bin/merge-fdata{}", executable_extension()))
+    }
 }
 
 /// What is the extension of binary executables on this platform?

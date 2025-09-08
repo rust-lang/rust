@@ -10,12 +10,6 @@ error: suffixes on string literals are invalid
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
-error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:39:15
-   |
-LL | #[link(name = "string"suffix)]
-   |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
-
 warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/bad-lit-suffixes.rs:3:1
    |
@@ -160,6 +154,12 @@ LL - #[must_use = "string"suffix]
 LL + #[must_use]
    |
 
+error: suffixes on string literals are invalid
+  --> $DIR/bad-lit-suffixes.rs:39:15
+   |
+LL | #[link(name = "string"suffix)]
+   |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
+
 error: invalid suffix `suffix` for number literal
   --> $DIR/bad-lit-suffixes.rs:43:41
    |
@@ -168,14 +168,11 @@ LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |
    = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
-error[E0539]: malformed `rustc_layout_scalar_valid_range_start` attribute input
-  --> $DIR/bad-lit-suffixes.rs:43:1
+error: suffixes on string literals are invalid
+  --> $DIR/bad-lit-suffixes.rs:48:25
    |
-LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
-   | |                                       |
-   | |                                       expected an integer literal here
-   | help: must be of the form: `#[rustc_layout_scalar_valid_range_start(start)]`
+LL |     #[rustc_confusables("blah"suffix)]
+   |                         ^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: aborting due to 22 previous errors; 2 warnings emitted
 

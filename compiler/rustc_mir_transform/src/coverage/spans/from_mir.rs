@@ -5,10 +5,9 @@ use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
     self, FakeReadCause, Statement, StatementKind, Terminator, TerminatorKind,
 };
-use rustc_span::{ExpnKind, Span};
+use rustc_span::Span;
 
-use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
-use crate::coverage::spans::Covspan;
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
 
 #[derive(Debug)]
 pub(crate) struct RawSpanFromMir {
@@ -158,34 +157,5 @@ impl Hole {
 
         self.span = self.span.to(other.span);
         true
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct SpanFromMir {
-    /// A span that has been extracted from MIR and then "un-expanded" back to
-    /// within the current function's `body_span`. After various intermediate
-    /// processing steps, this span is emitted as part of the final coverage
-    /// mappings.
-    ///
-    /// With the exception of `fn_sig_span`, this should always be contained
-    /// within `body_span`.
-    pub(crate) span: Span,
-    pub(crate) expn_kind: Option<ExpnKind>,
-    pub(crate) bcb: BasicCoverageBlock,
-}
-
-impl SpanFromMir {
-    pub(crate) fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self::new(fn_sig_span, None, START_BCB)
-    }
-
-    pub(crate) fn new(span: Span, expn_kind: Option<ExpnKind>, bcb: BasicCoverageBlock) -> Self {
-        Self { span, expn_kind, bcb }
-    }
-
-    pub(crate) fn into_covspan(self) -> Covspan {
-        let Self { span, expn_kind: _, bcb } = self;
-        Covspan { span, bcb }
     }
 }

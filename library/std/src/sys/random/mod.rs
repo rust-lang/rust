@@ -86,9 +86,13 @@ cfg_select! {
         mod vxworks;
         pub use vxworks::fill_bytes;
     }
-    target_os = "wasi" => {
-        mod wasi;
-        pub use wasi::fill_bytes;
+    all(target_os = "wasi", target_env = "p1") => {
+        mod wasip1;
+        pub use wasip1::fill_bytes;
+    }
+    all(target_os = "wasi", target_env = "p2") => {
+        mod wasip2;
+        pub use wasip2::{fill_bytes, hashmap_random_keys};
     }
     target_os = "zkvm" => {
         mod zkvm;
@@ -110,6 +114,7 @@ cfg_select! {
     target_os = "linux",
     target_os = "android",
     all(target_family = "wasm", target_os = "unknown"),
+    all(target_os = "wasi", target_env = "p2"),
     target_os = "xous",
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {

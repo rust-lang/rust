@@ -30,6 +30,8 @@ Current stable, released 2025-08-07
 * Removed superseded lints: `transmute_float_to_int`, `transmute_int_to_char`,
   `transmute_int_to_float`, `transmute_num_to_bytes` (now in rustc)
   [#14703](https://github.com/rust-lang/rust-clippy/pull/14703)
+* Move [`uninlined_format_args`] to `pedantic` (from `style`, now allow-by-default)
+  [#15287](https://github.com/rust-lang/rust-clippy/pull/15287)
 
 ### Enhancements
 
@@ -74,6 +76,9 @@ Current stable, released 2025-08-07
   [#14719](https://github.com/rust-lang/rust-clippy/pull/14719)
 * [`unnecessary_to_owned`] fixed FP when map key is a reference
   [#14834](https://github.com/rust-lang/rust-clippy/pull/14834)
+* [`swap_with_temporary`]: fix false positive leading to different semantics
+  being suggested, and use the right number of dereferences in suggestion
+  [#15172](https://github.com/rust-lang/rust-clippy/pull/15172)
 
 ### ICE Fixes
 
@@ -6707,6 +6712,7 @@ Released 2018-09-13
 [`check-inconsistent-struct-field-initializers`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-inconsistent-struct-field-initializers
 [`check-private-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-private-items
 [`cognitive-complexity-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#cognitive-complexity-threshold
+[`const-literal-digits-threshold`]: https://doc.rust-lang.org/clippy/lint_configuration.html#const-literal-digits-threshold
 [`disallowed-macros`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-macros
 [`disallowed-methods`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-methods
 [`disallowed-names`]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-names

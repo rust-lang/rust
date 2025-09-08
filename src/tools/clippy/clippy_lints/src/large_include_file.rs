@@ -64,8 +64,8 @@ impl LateLintPass<'_> for LargeIncludeFile {
             }
             && len as u64 > self.max_file_size
             && let Some(macro_call) = root_macro_call_first_node(cx, expr)
-            && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
-                || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
+            && let Some(macro_name) = cx.tcx.get_diagnostic_name(macro_call.def_id)
+            && matches!(macro_name, sym::include_bytes_macro | sym::include_str_macro)
         {
             #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
             span_lint_and_then(

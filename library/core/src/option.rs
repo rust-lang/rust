@@ -1379,11 +1379,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
-    pub fn as_deref(&self) -> Option<&T::Target>
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_deref(&self) -> Option<&T::Target>
     where
-        T: Deref,
+        T: [const] Deref,
     {
-        self.as_ref().map(|t| t.deref())
+        self.as_ref().map(Deref::deref)
     }
 
     /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
@@ -1402,11 +1403,12 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "option_deref", since = "1.40.0")]
-    pub fn as_deref_mut(&mut self) -> Option<&mut T::Target>
+    #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+    pub const fn as_deref_mut(&mut self) -> Option<&mut T::Target>
     where
-        T: DerefMut,
+        T: [const] DerefMut,
     {
-        self.as_mut().map(|t| t.deref_mut())
+        self.as_mut().map(DerefMut::deref_mut)
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -1638,7 +1640,7 @@ impl<T> Option<T> {
     pub const fn or_else<F>(self, f: F) -> Option<T>
     where
         F: [const] FnOnce() -> Option<T> + [const] Destruct,
-        //FIXME(const_hack): this `T: ~const Destruct` is unnecessary, but even precise live drops can't tell
+        //FIXME(const_hack): this `T: [const] Destruct` is unnecessary, but even precise live drops can't tell
         // no value of type `T` gets dropped here
         T: [const] Destruct,
     {
@@ -1961,6 +1963,42 @@ impl<T> Option<T> {
             _ => None,
         }
     }
+
+    /// Reduces two options into one, using the provided function if both are `Some`.
+    ///
+    /// If `self` is `Some(s)` and `other` is `Some(o)`, this method returns `Some(f(s, o))`.
+    /// Otherwise, if only one of `self` and `other` is `Some`, that one is returned.
+    /// If both `self` and `other` are `None`, `None` is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_reduce)]
+    ///
+    /// let s12 = Some(12);
+    /// let s17 = Some(17);
+    /// let n = None;
+    /// let f = |a, b| a + b;
+    ///
+    /// assert_eq!(s12.reduce(s17, f), Some(29));
+    /// assert_eq!(s12.reduce(n, f), Some(12));
+    /// assert_eq!(n.reduce(s17, f), Some(17));
+    /// assert_eq!(n.reduce(n, f), None);
+    /// ```
+    #[unstable(feature = "option_reduce", issue = "144273")]
+    pub fn reduce<U, R, F>(self, other: Option<U>, f: F) -> Option<R>
+    where
+        T: Into<R>,
+        U: Into<R>,
+        F: FnOnce(T, U) -> R,
+    {
+        match (self, other) {
+            (Some(a), Some(b)) => Some(f(a, b)),
+            (Some(a), _) => Some(a.into()),
+            (_, Some(b)) => Some(b.into()),
+            _ => None,
+        }
+    }
 }
 
 impl<T, U> Option<(T, U)> {
@@ -2144,10 +2182,10 @@ const fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 impl<T> const Clone for Option<T>
 where
-    // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct in clone_from.
+    // FIXME(const_hack): the T: [const] Destruct should be inferred from the Self: [const] Destruct in clone_from.
     // See https://github.com/rust-lang/rust/issues/144207
     T: [const] Clone + [const] Destruct,
 {
@@ -2233,7 +2271,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 }
 
 #[stable(since = "1.12.0", feature = "option_from")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<T> for Option<T> {
     /// Moves `val` into a new [`Some`].
     ///
@@ -2250,7 +2288,7 @@ impl<T> const From<T> for Option<T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
     /// Converts from `&Option<T>` to `Option<&T>`.
     ///
@@ -2278,7 +2316,7 @@ impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
 }
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
-#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
     /// Converts from `&mut Option<T>` to `Option<&mut T>`
     ///

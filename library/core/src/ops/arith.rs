@@ -74,8 +74,7 @@
     append_const_msg
 )]
 #[doc(alias = "+")]
-#[const_trait]
-pub trait Add<Rhs = Self> {
+pub const trait Add<Rhs = Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -188,8 +187,7 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
     append_const_msg
 )]
 #[doc(alias = "-")]
-#[const_trait]
-pub trait Sub<Rhs = Self> {
+pub const trait Sub<Rhs = Self> {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -323,8 +321,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
     label = "no implementation for `{Self} * {Rhs}`"
 )]
 #[doc(alias = "*")]
-#[const_trait]
-pub trait Mul<Rhs = Self> {
+pub const trait Mul<Rhs = Self> {
     /// The resulting type after applying the `*` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -462,8 +459,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
     label = "no implementation for `{Self} / {Rhs}`"
 )]
 #[doc(alias = "/")]
-#[const_trait]
-pub trait Div<Rhs = Self> {
+pub const trait Div<Rhs = Self> {
     /// The resulting type after applying the `/` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -572,8 +568,7 @@ div_impl_float! { f16 f32 f64 f128 }
     label = "no implementation for `{Self} % {Rhs}`"
 )]
 #[doc(alias = "%")]
-#[const_trait]
-pub trait Rem<Rhs = Self> {
+pub const trait Rem<Rhs = Self> {
     /// The resulting type after applying the `%` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -694,8 +689,7 @@ rem_impl_float! { f16 f32 f64 f128 }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
 #[doc(alias = "-")]
-#[const_trait]
-pub trait Neg {
+pub const trait Neg {
     /// The resulting type after applying the `-` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -772,8 +766,7 @@ neg_impl! { isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
 )]
 #[doc(alias = "+")]
 #[doc(alias = "+=")]
-#[const_trait]
-pub trait AddAssign<Rhs = Self> {
+pub const trait AddAssign<Rhs = Self> {
     /// Performs the `+=` operation.
     ///
     /// # Example
@@ -844,8 +837,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f
 )]
 #[doc(alias = "-")]
 #[doc(alias = "-=")]
-#[const_trait]
-pub trait SubAssign<Rhs = Self> {
+pub const trait SubAssign<Rhs = Self> {
     /// Performs the `-=` operation.
     ///
     /// # Example
@@ -907,8 +899,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f
 )]
 #[doc(alias = "*")]
 #[doc(alias = "*=")]
-#[const_trait]
-pub trait MulAssign<Rhs = Self> {
+pub const trait MulAssign<Rhs = Self> {
     /// Performs the `*=` operation.
     ///
     /// # Example
@@ -970,8 +961,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f
 )]
 #[doc(alias = "/")]
 #[doc(alias = "/=")]
-#[const_trait]
-pub trait DivAssign<Rhs = Self> {
+pub const trait DivAssign<Rhs = Self> {
     /// Performs the `/=` operation.
     ///
     /// # Example
@@ -1036,8 +1026,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f
 )]
 #[doc(alias = "%")]
 #[doc(alias = "%=")]
-#[const_trait]
-pub trait RemAssign<Rhs = Self> {
+pub const trait RemAssign<Rhs = Self> {
     /// Performs the `%=` operation.
     ///
     /// # Example

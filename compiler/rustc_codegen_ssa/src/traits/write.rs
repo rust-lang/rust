@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::WorkProduct;
 
 use crate::back::lto::{SerializedModule, ThinModule};
@@ -22,7 +22,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
+    ) -> ModuleCodegen<Self::Module>;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
@@ -32,7 +32,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<(String, Self::ThinBuffer)>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<ThinModule<Self>>, Vec<WorkProduct>), FatalError>;
+    ) -> (Vec<ThinModule<Self>>, Vec<WorkProduct>);
     fn print_pass_timings(&self);
     fn print_statistics(&self);
     fn optimize(
@@ -40,26 +40,22 @@ pub trait WriteBackendMethods: Clone + 'static {
         dcx: DiagCtxtHandle<'_>,
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<(), FatalError>;
+    );
     fn optimize_thin(
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
-    ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
+    ) -> ModuleCodegen<Self::Module>;
     fn codegen(
         cgcx: &CodegenContext<Self>,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
-    ) -> Result<CompiledModule, FatalError>;
-    fn prepare_thin(
-        module: ModuleCodegen<Self::Module>,
-        want_summary: bool,
-    ) -> (String, Self::ThinBuffer);
+    ) -> CompiledModule;
+    fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
 }
 
 pub trait ThinBufferMethods: Send + Sync {
     fn data(&self) -> &[u8];
-    fn thin_link_data(&self) -> &[u8];
 }
 
 pub trait ModuleBufferMethods: Send + Sync {

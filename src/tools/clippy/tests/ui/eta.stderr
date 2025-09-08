@@ -215,28 +215,46 @@ LL |         let _field = bind.or_else(|| get_default()).unwrap();
    |                                   ^^^^^^^^^^^^^^^^ help: replace the closure with the function itself: `get_default`
 
 error: redundant closure
-  --> tests/ui/eta.rs:588:14
+  --> tests/ui/eta.rs:592:16
+   |
+LL |     accepts_fn(|| f());
+   |                ^^^^^^ help: replace the closure with the function itself: `**f`
+
+error: redundant closure
+  --> tests/ui/eta.rs:596:16
+   |
+LL |     accepts_fn(|| g());
+   |                ^^^^^^ help: replace the closure with the function itself: `g`
+
+error: redundant closure
+  --> tests/ui/eta.rs:609:16
+   |
+LL |     accepts_fn(|| b());
+   |                ^^^^^^ help: replace the closure with the function itself: `***b`
+
+error: redundant closure
+  --> tests/ui/eta.rs:633:14
    |
 LL |         .map(|n| MyError::A(n))
    |              ^^^^^^^^^^^^^^^^^ help: replace the closure with the tuple variant itself: `MyError::A`
 
 error: redundant closure
-  --> tests/ui/eta.rs:585:14
+  --> tests/ui/eta.rs:630:14
    |
 LL |         .map(|n| S(n))
    |              ^^^^^^^^ help: replace the closure with the tuple struct itself: `S`
 
 error: redundant closure
-  --> tests/ui/eta.rs:582:14
+  --> tests/ui/eta.rs:627:14
    |
 LL |         .map(|n| g(n))
    |              ^^^^^^^^ help: replace the closure with the function itself: `g`
 
 error: redundant closure
-  --> tests/ui/eta.rs:579:14
+  --> tests/ui/eta.rs:624:14
    |
 LL |         .map(|n| f(n))
    |              ^^^^^^^^ help: replace the closure with the function itself: `f`
 
-error: aborting due to 39 previous errors
+error: aborting due to 42 previous errors
 

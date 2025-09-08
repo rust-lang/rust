@@ -2166,10 +2166,9 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     }
 }
 
-/// Align pointer `p`.
+/// Calculate an element-offset that increases a pointer's alignment.
 ///
-/// Calculate offset (in terms of elements of `size_of::<T>()` stride) that has to be applied
-/// to pointer `p` so that pointer `p` would get aligned to `a`.
+/// Calculate an element-offset (not byte-offset) that when added to a given pointer `p`, increases `p`'s alignment to at least the given alignment `a`.
 ///
 /// # Safety
 /// `a` must be a power of two.

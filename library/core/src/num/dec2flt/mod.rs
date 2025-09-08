@@ -219,21 +219,16 @@ enum FloatErrorKind {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseFloatError {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        match self.kind {
-            FloatErrorKind::Empty => "cannot parse float from empty string",
-            FloatErrorKind::Invalid => "invalid float literal",
-        }
-    }
-}
+impl Error for ParseFloatError {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseFloatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[allow(deprecated)]
-        self.description().fmt(f)
+        match self.kind {
+            FloatErrorKind::Empty => "cannot parse float from empty string",
+            FloatErrorKind::Invalid => "invalid float literal",
+        }
+        .fmt(f)
     }
 }
 

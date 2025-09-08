@@ -509,10 +509,6 @@ hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by
 
 hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
 
-hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`
-    .note = consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-    .opaque = this opaque type is supposed to be constrained
-
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 
 hir_analysis_too_large_static = extern static is too large for the target architecture

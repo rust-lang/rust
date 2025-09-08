@@ -22,6 +22,7 @@ use crate::core::build_steps::{
 };
 use crate::core::config::flags::Subcommand;
 use crate::core::config::{DryRun, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, ExecutionContext, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
@@ -144,8 +145,7 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
 }
 
 /// Metadata that describes an executed step, mostly for testing and tracing.
-#[allow(unused)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StepMetadata {
     name: String,
     kind: Kind,
@@ -179,6 +179,10 @@ impl StepMetadata {
 
     pub fn test(name: &str, target: TargetSelection) -> Self {
         Self::new(name, target, Kind::Test)
+    }
+
+    pub fn run(name: &str, target: TargetSelection) -> Self {
+        Self::new(name, target, Kind::Run)
     }
 
     fn new(name: &str, target: TargetSelection, kind: Kind) -> Self {
@@ -291,7 +295,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
         return "".into();
     }
 
-    let mut descr = String::from(" {");
+    let mut descr = String::from("{");
     descr.push_str(crates[0].as_ref());
     for krate in &crates[1..] {
         descr.push_str(", ");
@@ -440,6 +444,7 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
             "tests/mir-opt",
             "tests/pretty",
             "tests/run-make",
+            "tests/run-make-cargo",
             "tests/rustdoc",
             "tests/rustdoc-gui",
             "tests/rustdoc-js",
@@ -1057,6 +1062,7 @@ impl<'a> Builder<'a> {
                 check::FeaturesStatusDump,
                 check::CoverageDump,
                 check::Linkchecker,
+                check::BumpStage0,
                 // This has special staging logic, it may run on stage 1 while others run on stage 0.
                 // It takes quite some time to build stage 1, so put this at the end.
                 //
@@ -1123,8 +1129,8 @@ impl<'a> Builder<'a> {
                 test::RustInstaller,
                 test::TestFloatParse,
                 test::CollectLicenseMetadata,
-                // Run run-make last, since these won't pass without make on Windows
                 test::RunMake,
+                test::RunMakeCargo,
             ),
             Kind::Miri => describe!(test::Crate),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
@@ -1308,8 +1314,9 @@ impl<'a> Builder<'a> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
 
-    pub fn default_doc(&self, paths: &[PathBuf]) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), paths);
+    /// Run all default documentation steps to build documentation.
+    pub fn run_default_doc_steps(&self) {
+        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1353,6 +1360,30 @@ impl<'a> Builder<'a> {
     )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
+    }
+
+    /// This function can be used to provide a build compiler for building
+    /// the standard library, in order to avoid unnecessary rustc builds in case where std uplifting
+    /// would happen anyway.
+    ///
+    /// This is an important optimization mainly for CI.
+    ///
+    /// Normally, to build stage N libstd, we need stage N rustc.
+    /// However, if we know that we will uplift libstd from stage 1 anyway, building the stage N
+    /// rustc can be wasteful.
+    /// In particular, if we do a cross-compiling dist stage 2 build from target1 to target2,
+    /// we need:
+    /// - stage 2 libstd for target2 (uplifted from stage 1, where it was built by target1 rustc)
+    /// - stage 2 rustc for target2
+    ///
+    /// However, without this optimization, we would also build stage 2 rustc for **target1**,
+    /// which is completely wasteful.
+    pub fn compiler_for_std(&self, stage: u32) -> Compiler {
+        if compile::Std::should_be_uplifted_from_stage_1(self, stage) {
+            self.compiler(1, self.host_target)
+        } else {
+            self.compiler(stage, self.host_target)
+        }
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1411,6 +1442,8 @@ impl<'a> Builder<'a> {
     /// The standard library will be linked to the sysroot of the passed compiler.
     ///
     /// Prefer using this method rather than manually invoking `Std::new`.
+    ///
+    /// Returns an optional build stamp, if libstd was indeed built.
     #[cfg_attr(
         feature = "tracing",
         instrument(
@@ -1424,29 +1457,38 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
-    pub fn std(&self, compiler: Compiler, target: TargetSelection) {
+    pub fn std(&self, compiler: Compiler, target: TargetSelection) -> Option<BuildStamp> {
         // FIXME: make the `Std` step return some type-level "proof" that std was indeed built,
         // and then require passing that to all Cargo invocations that we do.
 
-        // The "stage 0" std is always precompiled and comes with the stage0 compiler, so we have
-        // special logic for it, to avoid creating needless and confusing Std steps that don't
+        // The "stage 0" std is almost always precompiled and comes with the stage0 compiler, so we
+        // have special logic for it, to avoid creating needless and confusing Std steps that don't
         // actually build anything.
+        // We only allow building the stage0 stdlib if we do a local rebuild, so the stage0 compiler
+        // actually comes from in-tree sources, and we're cross-compiling, so the stage0 for the
+        // given `target` is not available.
         if compiler.stage == 0 {
             if target != compiler.host {
-                panic!(
-                    r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
+                if self.local_rebuild {
+                    self.ensure(Std::new(compiler, target))
+                } else {
+                    panic!(
+                        r"It is not possible to build the standard library for `{target}` using the stage0 compiler.
 You have to build a stage1 compiler for `{}` first, and then use it to build a standard library for `{target}`.
+Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler built from in-tree sources.
 ",
-                    compiler.host
-                )
+                        compiler.host
+                    )
+                }
+            } else {
+                // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
+                self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
+                None
             }
-
-            // We still need to link the prebuilt standard library into the ephemeral stage0 sysroot
-            self.ensure(StdLink::from_std(Std::new(compiler, target), compiler));
         } else {
             // This step both compiles the std and links it into the compiler's sysroot.
             // Yes, it's quite magical and side-effecty.. would be nice to refactor later.
-            self.ensure(Std::new(compiler, target));
+            self.ensure(Std::new(compiler, target))
         }
     }
 

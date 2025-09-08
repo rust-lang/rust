@@ -1954,6 +1954,7 @@ supported_targets! {
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
+    ("aarch64_be-unknown-linux-musl", aarch64_be_unknown_linux_musl),
     ("x86_64-unknown-linux-musl", x86_64_unknown_linux_musl),
     ("i686-unknown-linux-musl", i686_unknown_linux_musl),
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
@@ -2030,6 +2031,10 @@ supported_targets! {
     ("aarch64-unknown-redox", aarch64_unknown_redox),
     ("i586-unknown-redox", i586_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
+
+    ("x86_64-unknown-managarm-mlibc", x86_64_unknown_managarm_mlibc),
+    ("aarch64-unknown-managarm-mlibc", aarch64_unknown_managarm_mlibc),
+    ("riscv64gc-unknown-managarm-mlibc", riscv64gc_unknown_managarm_mlibc),
 
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
@@ -2149,6 +2154,7 @@ supported_targets! {
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
     ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
+    ("riscv64a23-unknown-linux-gnu", riscv64a23_unknown_linux_gnu),
 
     ("sparc-unknown-none-elf", sparc_unknown_none_elf),
 
@@ -2325,7 +2331,7 @@ pub struct Target {
     /// Used for generating target documentation.
     pub metadata: TargetMetadata,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
-    pub pointer_width: u32,
+    pub pointer_width: u16,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
     pub arch: StaticCow<str>,

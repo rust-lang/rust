@@ -3,6 +3,11 @@ error[E0616]: field `len` of struct `Foo` is private
    |
 LL |     if x.len {
    |          ^^^ private field
+   |
+help: a method `len` also exists, call it with parentheses
+   |
+LL |     if x.len() {
+   |             ++
 
 error: aborting due to 1 previous error
 

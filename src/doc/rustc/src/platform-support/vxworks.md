@@ -20,6 +20,7 @@ Target triplets available:
 ## Target maintainers
 
 [@biabbas](https://github.com/biabbas)
+[@hax0kartik](https://github.com/hax0kartik)
 
 ## Requirements
 

@@ -4,7 +4,7 @@ error[E0080]: constructing invalid value: encountered a null reference
 LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -15,7 +15,7 @@ error[E0080]: constructing invalid value: encountered a null reference
 LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
    | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -26,7 +26,7 @@ error[E0080]: constructing invalid value: encountered a dangling reference (goin
 LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -37,7 +37,7 @@ error[E0080]: constructing invalid value at .<deref>[0]: encountered uninitializ
 LL | pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) };
    | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -50,7 +50,7 @@ LL | pub static S5: &[u8] = unsafe { from_raw_parts((&D3) as *const _ as _, size
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -61,7 +61,7 @@ error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x11, but e
 LL | pub static S6: &[bool] = unsafe { from_raw_parts((&D0) as *const _ as _, 4) };
    | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -72,7 +72,7 @@ error[E0080]: constructing invalid value at .<deref>[1]: encountered uninitializ
 LL | pub static S7: &[u16] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -83,7 +83,7 @@ error[E0080]: constructing invalid value: encountered a dangling reference (goin
 LL | pub static S8: &[u64] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -94,7 +94,7 @@ error[E0080]: constructing invalid value: encountered a null reference
 LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -117,7 +117,7 @@ error[E0080]: constructing invalid value at .<deref>[0]: encountered uninitializ
 LL | pub static R4: &[u8] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -130,7 +130,7 @@ LL | pub static R5: &[u8] = unsafe {
    |
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -141,7 +141,7 @@ error[E0080]: constructing invalid value at .<deref>[0]: encountered 0x11, but e
 LL | pub static R6: &[bool] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }
@@ -152,7 +152,7 @@ error[E0080]: constructing invalid value: encountered an unaligned reference (re
 LL | pub static R7: &[u16] = unsafe {
    | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
                HEX_DUMP
            }

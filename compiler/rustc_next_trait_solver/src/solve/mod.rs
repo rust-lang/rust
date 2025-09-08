@@ -27,7 +27,10 @@ pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, TypingMode};
 use tracing::instrument;
 
-pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
+pub use self::eval_ctxt::{
+    EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
+    evaluate_root_goal_for_proof_tree_raw_provider,
+};
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
 
@@ -41,12 +44,6 @@ use crate::solve::assembly::Candidate;
 /// is required, we can add a new attribute for that or revert this to be dependant on the
 /// recursion limit again. However, this feels very unlikely.
 const FIXPOINT_STEP_LIMIT: usize = 8;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum GoalEvaluationKind {
-    Root,
-    Nested,
-}
 
 /// Whether evaluating this goal ended up changing the
 /// inference state.
@@ -130,7 +127,7 @@ where
         }
     }
 
-    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::DefId) -> QueryResult<I> {
+    fn compute_dyn_compatible_goal(&mut self, trait_def_id: I::TraitId) -> QueryResult<I> {
         if self.cx().trait_is_dyn_compatible(trait_def_id) {
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         } else {

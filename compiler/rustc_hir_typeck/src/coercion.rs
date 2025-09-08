@@ -1897,7 +1897,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                     fcx.suggest_semicolon_at_end(cond_expr.span, &mut err);
                 }
             }
-        };
+        }
 
         // If this is due to an explicit `return`, suggest adding a return type.
         if let Some((fn_id, fn_decl)) = fcx.get_fn_decl(block_or_return_id)

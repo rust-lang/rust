@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
     /// - `}` for mod items
     pub fn parse_mod(
         &mut self,
-        term: ExpTokenPair<'_>,
+        term: ExpTokenPair,
     ) -> PResult<'a, (AttrVec, ThinVec<Box<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
@@ -1201,7 +1201,7 @@ impl<'a> Parser<'a> {
         }?;
 
         let dash = exp!(Minus);
-        if self.token != *dash.tok {
+        if self.token != dash.tok {
             return Ok(ident);
         }
 
