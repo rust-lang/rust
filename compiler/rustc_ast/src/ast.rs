@@ -2309,6 +2309,22 @@ impl FnSig {
 
         self.span.shrink_to_lo()
     }
+
+    /// The span of the header's safety, or where to insert it if empty.
+    pub fn safety_span(&self) -> Span {
+        match self.header.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => span,
+            Safety::Default => {
+                // Insert after the `coroutine_kind` if available.
+                if let Some(extern_span) = self.header.ext.span() {
+                    return extern_span.shrink_to_lo();
+                }
+
+                // Insert right at the front of the signature.
+                self.header_span().shrink_to_hi()
+            }
+        }
+    }
 }
 
 /// A constraint on an associated item.
@@ -3551,6 +3567,13 @@ impl Extern {
         match abi {
             Some(name) => Extern::Explicit(name, span),
             None => Extern::Implicit(span),
+        }
+    }
+
+    pub fn span(self) -> Option<Span> {
+        match self {
+            Extern::None => None,
+            Extern::Implicit(span) | Extern::Explicit(_, span) => Some(span),
         }
     }
 }

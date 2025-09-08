@@ -698,20 +698,25 @@ impl<'a> AstValidator<'a> {
             FnCtxt::Foreign => return,
             FnCtxt::Free => match sig.header.ext {
                 Extern::Implicit(_) => {
-                    if matches!(sig.header.safety, Safety::Unsafe(_)) {
-                        return;
+                    // Implicitly defaults to C.
+                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                            span: variadic_param.span,
+                            unsafe_span: sig.safety_span(),
+                        });
                     }
-
-                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
                 }
                 Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
-                    if matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
-                        if matches!(sig.header.safety, Safety::Unsafe(_)) {
-                            return;
-                        }
+                    if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
+                        self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
                     }
 
-                    self.dcx().emit_err(errors::BadCVariadic { span: variadic_param.span });
+                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                            span: variadic_param.span,
+                            unsafe_span: sig.safety_span(),
+                        });
+                    }
                 }
                 Extern::None => {
                     let err = errors::CVariadicNoExtern { span: variadic_param.span };
