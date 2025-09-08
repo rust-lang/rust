@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 
-// Translated from GenMC's "IRIW-acq-sc" test.
+// Translated from GenMC's "litmus/IRIW-acq-sc" test.
 
 #![no_main]
 

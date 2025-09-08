@@ -498,6 +498,8 @@ impl<'tcx> MiriMachine<'tcx> {
         // Also remember this address for future reuse.
         let thread = self.threads.active_thread();
         global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
+            // We already excluded GenMC above. We cannot use `self.release_clock` as
+            // `self.alloc_addresses` is borrowed.
             if let Some(data_race) = self.data_race.as_vclocks_ref() {
                 data_race.release_clock(&self.threads, |clock| clock.clone())
             } else {

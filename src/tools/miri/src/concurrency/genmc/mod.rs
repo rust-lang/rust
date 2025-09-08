@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
 use genmc_sys::{
-    GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering, MiriGenmcShim, UniquePtr,
+    GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering, MiriGenmcShim, RMWBinOp, UniquePtr,
     create_genmc_driver_handle,
 };
 use rustc_abi::{Align, Size};
@@ -12,7 +12,9 @@ use rustc_middle::{throw_machine_stop, throw_ub_format, throw_unsup_format};
 use tracing::{debug, info};
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
-use self::helper::{MAX_ACCESS_SIZE, genmc_scalar_to_scalar, scalar_to_genmc_scalar};
+use self::helper::{
+    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, scalar_to_genmc_scalar, to_genmc_rmw_op,
+};
 use self::thread_id_map::ThreadIdMap;
 use crate::concurrency::genmc::helper::split_access;
 use crate::intrinsics::AtomicRmwOp;
@@ -28,6 +30,8 @@ mod helper;
 mod run;
 pub(crate) mod scheduling;
 mod thread_id_map;
+
+pub use genmc_sys::GenmcParams;
 
 pub use self::config::GenmcConfig;
 pub use self::run::run_genmc_mode;
@@ -126,22 +130,19 @@ impl GenmcCtx {
 
     /// Get the number of blocked executions encountered by GenMC.
     pub fn get_blocked_execution_count(&self) -> u64 {
-        let mc = self.handle.borrow();
-        mc.as_ref().unwrap().get_blocked_execution_count()
+        self.handle.borrow().get_blocked_execution_count()
     }
 
     /// Get the number of explored executions encountered by GenMC.
     pub fn get_explored_execution_count(&self) -> u64 {
-        let mc = self.handle.borrow();
-        mc.as_ref().unwrap().get_explored_execution_count()
+        self.handle.borrow().get_explored_execution_count()
     }
 
     /// Check if GenMC encountered an error that wasn't immediately returned during execution.
     /// Returns a string representation of the error if one occurred.
     pub fn try_get_error(&self) -> Option<String> {
-        let mc = self.handle.borrow();
-        mc.as_ref()
-            .unwrap()
+        self.handle
+            .borrow()
             .get_error_string()
             .as_ref()
             .map(|error| error.to_string_lossy().to_string())
@@ -150,9 +151,8 @@ impl GenmcCtx {
     /// Check if GenMC encountered an error that wasn't immediately returned during execution.
     /// Returns a string representation of the error if one occurred.
     pub fn get_result_message(&self) -> String {
-        let mc = self.handle.borrow();
-        mc.as_ref()
-            .unwrap()
+        self.handle
+            .borrow()
             .get_result_message()
             .as_ref()
             .map(|error| error.to_string_lossy().to_string())
@@ -163,8 +163,7 @@ impl GenmcCtx {
     ///
     /// In GenMC mode, the input program should be repeatedly executed until this function returns `true` or an error is found.
     pub fn is_exploration_done(&self) -> bool {
-        let mut mc = self.handle.borrow_mut();
-        mc.as_mut().unwrap().is_exploration_done()
+        self.handle.borrow_mut().pin_mut().is_exploration_done()
     }
 
     /// Select whether data race free actions should be allowed. This function should be used carefully!
@@ -196,8 +195,7 @@ impl GenmcCtx {
         // Reset per-execution state.
         self.exec_state.reset();
         // Inform GenMC about the new execution.
-        let mut mc = self.handle.borrow_mut();
-        mc.as_mut().unwrap().handle_execution_start();
+        self.handle.borrow_mut().pin_mut().handle_execution_start();
     }
 
     /// Inform GenMC that the program's execution has ended.
@@ -214,13 +212,11 @@ impl GenmcCtx {
     ///
     /// To get the all messages (warnings, errors) that GenMC produces, use the `get_result_message` method.
     fn handle_execution_end(&self) -> Option<String> {
-        let mut mc = self.handle.borrow_mut();
-        let result = mc.as_mut().unwrap().handle_execution_end();
+        let result = self.handle.borrow_mut().pin_mut().handle_execution_end();
         result.as_ref().map(|msg| msg.to_string_lossy().to_string())?;
 
         // GenMC currently does not return an error value immediately in all cases.
         // We manually query for any errors here to ensure we don't miss any.
-        drop(mc); // `try_get_error` needs access to the `RefCell`.
         self.try_get_error()
     }
 
@@ -282,11 +278,17 @@ impl GenmcCtx {
     /// Inform GenMC about an atomic fence.
     pub(crate) fn atomic_fence<'tcx>(
         &self,
-        _machine: &MiriMachine<'tcx>,
-        _ordering: AtomicFenceOrd,
+        machine: &MiriMachine<'tcx>,
+        ordering: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         assert!(!self.get_alloc_data_races(), "atomic fence with data race checking disabled.");
-        throw_unsup_format!("FIXME(genmc): Add support for atomic fences.")
+
+        let thread_infos = self.exec_state.thread_id_manager.borrow();
+        let curr_thread = machine.threads.active_thread();
+        let genmc_tid = thread_infos.get_genmc_tid(curr_thread);
+
+        self.handle.borrow_mut().pin_mut().handle_fence(genmc_tid, ordering.to_genmc());
+        interp_ok(())
     }
 
     /// Inform GenMC about an atomic read-modify-write operation.
@@ -296,20 +298,24 @@ impl GenmcCtx {
     /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
     pub(crate) fn atomic_rmw_op<'tcx>(
         &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        _address: Size,
-        _size: Size,
-        _is_signed: bool,
-        _ordering: AtomicRwOrd,
-        _atomic_op: AtomicRmwOp,
-        _rhs_scalar: Scalar,
-        _old_value: Scalar,
+        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
+        address: Size,
+        size: Size,
+        atomic_op: AtomicRmwOp,
+        is_signed: bool,
+        ordering: AtomicRwOrd,
+        rhs_scalar: Scalar,
+        old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        assert!(
-            !self.get_alloc_data_races(),
-            "atomic read-modify-write operation with data race checking disabled."
-        );
-        throw_unsup_format!("FIXME(genmc): Add support for atomic RMW.")
+        self.handle_atomic_rmw_op(
+            ecx,
+            address,
+            size,
+            ordering,
+            to_genmc_rmw_op(atomic_op, is_signed),
+            scalar_to_genmc_scalar(ecx, rhs_scalar)?,
+            scalar_to_genmc_scalar(ecx, old_value)?,
+        )
     }
 
     /// Returns `(old_val, Option<new_val>)`. `new_val` might not be the latest write in coherence order, which is indicated by `None`.
@@ -317,18 +323,22 @@ impl GenmcCtx {
     /// `old_value` is the value that a non-atomic load would read here, or `None` if the memory is uninitalized.
     pub(crate) fn atomic_exchange<'tcx>(
         &self,
-        _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
-        _address: Size,
-        _size: Size,
-        _rhs_scalar: Scalar,
-        _ordering: AtomicRwOrd,
-        _old_value: Scalar,
+        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
+        address: Size,
+        size: Size,
+        rhs_scalar: Scalar,
+        ordering: AtomicRwOrd,
+        old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
-        assert!(
-            !self.get_alloc_data_races(),
-            "atomic swap operation with data race checking disabled."
-        );
-        throw_unsup_format!("FIXME(genmc): Add support for atomic swap.")
+        self.handle_atomic_rmw_op(
+            ecx,
+            address,
+            size,
+            ordering,
+            /* genmc_rmw_op */ RMWBinOp::Xchg,
+            scalar_to_genmc_scalar(ecx, rhs_scalar)?,
+            scalar_to_genmc_scalar(ecx, old_value)?,
+        )
     }
 
     /// Inform GenMC about an atomic compare-exchange operation.
@@ -493,9 +503,11 @@ impl GenmcCtx {
         // GenMC doesn't support ZSTs, so we set the minimum size to 1 byte
         let genmc_size = size.bytes().max(1);
 
-        let mut mc = self.handle.borrow_mut();
-        let pinned_mc = mc.as_mut().unwrap();
-        let chosen_address = pinned_mc.handle_malloc(genmc_tid, genmc_size, alignment.bytes());
+        let chosen_address = self.handle.borrow_mut().pin_mut().handle_malloc(
+            genmc_tid,
+            genmc_size,
+            alignment.bytes(),
+        );
 
         // Non-global addresses should not be in the global address space or null.
         assert_ne!(0, chosen_address, "GenMC malloc returned nullptr.");
@@ -530,9 +542,7 @@ impl GenmcCtx {
         let curr_thread = machine.threads.active_thread();
         let genmc_tid = thread_infos.get_genmc_tid(curr_thread);
 
-        let mut mc = self.handle.borrow_mut();
-        let pinned_mc = mc.as_mut().unwrap();
-        pinned_mc.handle_free(genmc_tid, address.bytes());
+        self.handle.borrow_mut().pin_mut().handle_free(genmc_tid, address.bytes());
 
         interp_ok(())
     }
@@ -554,9 +564,7 @@ impl GenmcCtx {
         let genmc_parent_tid = thread_infos.get_genmc_tid(curr_thread_id);
         let genmc_new_tid = thread_infos.add_thread(new_thread_id);
 
-        let mut mc = self.handle.borrow_mut();
-        mc.as_mut().unwrap().handle_thread_create(genmc_new_tid, genmc_parent_tid);
-
+        self.handle.borrow_mut().pin_mut().handle_thread_create(genmc_new_tid, genmc_parent_tid);
         interp_ok(())
     }
 
@@ -571,8 +579,7 @@ impl GenmcCtx {
         let genmc_curr_tid = thread_infos.get_genmc_tid(active_thread_id);
         let genmc_child_tid = thread_infos.get_genmc_tid(child_thread_id);
 
-        let mut mc = self.handle.borrow_mut();
-        mc.as_mut().unwrap().handle_thread_join(genmc_curr_tid, genmc_child_tid);
+        self.handle.borrow_mut().pin_mut().handle_thread_join(genmc_curr_tid, genmc_child_tid);
 
         interp_ok(())
     }
@@ -585,9 +592,8 @@ impl GenmcCtx {
         let genmc_tid = thread_infos.get_genmc_tid(curr_thread_id);
 
         debug!("GenMC: thread {curr_thread_id:?} ({genmc_tid:?}) finished.");
-        let mut mc = self.handle.borrow_mut();
         // NOTE: Miri doesn't support return values for threads, but GenMC expects one, so we return 0
-        mc.as_mut().unwrap().handle_thread_finish(genmc_tid, /* ret_val */ 0);
+        self.handle.borrow_mut().pin_mut().handle_thread_finish(genmc_tid, /* ret_val */ 0);
     }
 
     /// Handle a call to `libc::exit` or the exit of the main thread.
@@ -618,8 +624,7 @@ impl GenmcCtx {
             let thread_infos = self.exec_state.thread_id_manager.borrow();
             let genmc_tid = thread_infos.get_genmc_tid(thread);
 
-            let mut mc = self.handle.borrow_mut();
-            mc.as_mut().unwrap().handle_thread_kill(genmc_tid);
+            self.handle.borrow_mut().pin_mut().handle_thread_kill(genmc_tid);
         } else {
             assert_eq!(thread, ThreadId::MAIN_THREAD);
         }
@@ -669,9 +674,7 @@ impl GenmcCtx {
             addr = address.bytes()
         );
 
-        let mut mc = self.handle.borrow_mut();
-        let pinned_mc = mc.as_mut().unwrap();
-        let load_result = pinned_mc.handle_load(
+        let load_result = self.handle.borrow_mut().pin_mut().handle_load(
             genmc_tid,
             address.bytes(),
             size.bytes(),
@@ -722,9 +725,7 @@ impl GenmcCtx {
             addr = address.bytes()
         );
 
-        let mut mc = self.handle.borrow_mut();
-        let pinned_mc = mc.as_mut().unwrap();
-        let store_result = pinned_mc.handle_store(
+        let store_result = self.handle.borrow_mut().pin_mut().handle_store(
             genmc_tid,
             address.bytes(),
             size.bytes(),
@@ -739,6 +740,62 @@ impl GenmcCtx {
         }
 
         interp_ok(store_result.is_coherence_order_maximal_write)
+    }
+
+    /// Inform GenMC about an atomic read-modify-write operation.
+    /// This includes atomic swap (also often called "exchange"), but does *not*
+    /// include compare-exchange (see `RMWBinOp` for full list of operations).
+    /// Returns the previous value at that memory location, and optionally the value that should be written back to Miri's memory.
+    fn handle_atomic_rmw_op<'tcx>(
+        &self,
+        ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
+        address: Size,
+        size: Size,
+        ordering: AtomicRwOrd,
+        genmc_rmw_op: RMWBinOp,
+        genmc_rhs_scalar: GenmcScalar,
+        genmc_old_value: GenmcScalar,
+    ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
+        assert!(
+            !self.get_alloc_data_races(),
+            "atomic read-modify-write operation with data race checking disabled."
+        );
+        assert_ne!(0, size.bytes());
+        assert!(
+            size.bytes() <= MAX_ACCESS_SIZE,
+            "GenMC currently does not support atomic accesses larger than {} bytes (got {} bytes)",
+            MAX_ACCESS_SIZE,
+            size.bytes()
+        );
+
+        let curr_thread_id = ecx.machine.threads.active_thread();
+        let genmc_tid = self.exec_state.thread_id_manager.borrow().get_genmc_tid(curr_thread_id);
+        debug!(
+            "GenMC: atomic_rmw_op, thread: {curr_thread_id:?} ({genmc_tid:?}) (op: {genmc_rmw_op:?}, rhs value: {genmc_rhs_scalar:?}), address: {address:?}, size: {size:?}, ordering: {ordering:?}",
+        );
+        let rmw_result = self.handle.borrow_mut().pin_mut().handle_read_modify_write(
+            genmc_tid,
+            address.bytes(),
+            size.bytes(),
+            genmc_rmw_op,
+            ordering.to_genmc(),
+            genmc_rhs_scalar,
+            genmc_old_value,
+        );
+
+        if let Some(error) = rmw_result.error.as_ref() {
+            // FIXME(genmc): error handling
+            throw_ub_format!("{}", error.to_string_lossy());
+        }
+
+        let old_value_scalar = genmc_scalar_to_scalar(ecx, rmw_result.old_value, size)?;
+
+        let new_value_scalar = if rmw_result.is_coherence_order_maximal_write {
+            Some(genmc_scalar_to_scalar(ecx, rmw_result.new_value, size)?)
+        } else {
+            None
+        };
+        interp_ok((old_value_scalar, new_value_scalar))
     }
 
     /**** Blocking functionality ****/

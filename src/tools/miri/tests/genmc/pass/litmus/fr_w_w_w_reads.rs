@@ -38,7 +38,6 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
                 result[3] = X.load(Relaxed);
             }),
         ];
-
         // Join so we can read the final values.
         join_pthreads(ids);
 

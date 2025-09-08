@@ -793,9 +793,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 this,
                 place.ptr().addr(),
                 place.layout.size,
+                atomic_op,
                 place.layout.backend_repr.is_signed(),
                 ord,
-                atomic_op,
                 rhs.to_scalar(),
                 old.to_scalar(),
             )?;
@@ -901,7 +901,6 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                 can_fail_spuriously,
                 old.to_scalar(),
             )?;
-
             // The store might be the latest store in coherence order (determined by GenMC).
             // If it is, we need to update the value in Miri's memory:
             if let Some(new_value) = new_value {
@@ -959,11 +958,20 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// with this program point.
     ///
     /// The closure will only be invoked if data race handling is on.
-    fn release_clock<R>(&self, callback: impl FnOnce(&VClock) -> R) -> Option<R> {
+    fn release_clock<R>(
+        &self,
+        callback: impl FnOnce(&VClock) -> R,
+    ) -> InterpResult<'tcx, Option<R>> {
         let this = self.eval_context_ref();
-        Some(
-            this.machine.data_race.as_vclocks_ref()?.release_clock(&this.machine.threads, callback),
-        )
+        interp_ok(match &this.machine.data_race {
+            GlobalDataRaceHandler::None => None,
+            GlobalDataRaceHandler::Genmc(_genmc_ctx) =>
+                throw_unsup_format!(
+                    "this operation performs synchronization that is not supported in GenMC mode"
+                ),
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                Some(data_race.release_clock(&this.machine.threads, callback)),
+        })
     }
 
     /// Acquire the given clock into the current thread, establishing synchronization with
@@ -973,7 +981,9 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         match &this.machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Genmc(_genmc_ctx) =>
-                throw_unsup_format!("acquire_clock is not (yet) supported in GenMC mode."),
+                throw_unsup_format!(
+                    "this operation performs synchronization that is not supported in GenMC mode"
+                ),
             GlobalDataRaceHandler::Vclocks(data_race) =>
                 data_race.acquire_clock(clock, &this.machine.threads),
         }

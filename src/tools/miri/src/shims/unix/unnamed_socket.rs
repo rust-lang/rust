@@ -259,7 +259,7 @@ fn anonsocket_write<'tcx>(
         // Remember this clock so `read` can synchronize with us.
         ecx.release_clock(|clock| {
             writebuf.clock.join(clock);
-        });
+        })?;
         // Do full write / partial write based on the space available.
         let write_size = len.min(available_space);
         let actual_write_size = ecx.write_to_host(&mut writebuf.buf, write_size, ptr)?.unwrap();

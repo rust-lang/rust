@@ -1,11 +1,9 @@
-error: Undefined Behavior: entering unreachable code
+error: abnormal termination: the program aborted execution
   --> tests/genmc/fail/simple/2w2w_weak.rs:LL:CC
    |
-LL |             std::hint::unreachable_unchecked();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+LL |             std::process::abort();
+   |             ^^^^^^^^^^^^^^^^^^^^^ abnormal termination occurred here
    |
-   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
-   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `miri_start` at tests/genmc/fail/simple/2w2w_weak.rs:LL:CC
 
