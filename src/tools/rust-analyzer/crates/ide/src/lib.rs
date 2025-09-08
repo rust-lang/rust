@@ -483,7 +483,7 @@ impl Analysis {
             salsa::attach(&self.db, || {
                 symbols
                     .into_iter()
-                    .filter_map(|s| s.try_to_nav(&self.db))
+                    .filter_map(|s| s.try_to_nav(&Semantics::new(&self.db)))
                     .take(limit)
                     .map(UpmappingResult::call_site)
                     .collect::<Vec<_>>()

@@ -158,15 +158,15 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
             _ => None,
         };
-        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
+        add_opt(runnable.or_else(|| module_def_doctest(&sema, def)), Some(def));
         if let Definition::SelfType(impl_) = def {
             impl_.items(db).into_iter().for_each(|assoc| {
                 let runnable = match assoc {
                     hir::AssocItem::Function(it) => {
-                        runnable_fn(&sema, it).or_else(|| module_def_doctest(sema.db, it.into()))
+                        runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
                     }
-                    hir::AssocItem::Const(it) => module_def_doctest(sema.db, it.into()),
-                    hir::AssocItem::TypeAlias(it) => module_def_doctest(sema.db, it.into()),
+                    hir::AssocItem::Const(it) => module_def_doctest(&sema, it.into()),
+                    hir::AssocItem::TypeAlias(it) => module_def_doctest(&sema, it.into()),
                 };
                 add_opt(runnable, Some(assoc.into()))
             });
@@ -410,7 +410,7 @@ pub(crate) fn runnable_impl(
         return None;
     }
     let cfg = attrs.cfg();
-    let nav = def.try_to_nav(sema.db)?.call_site();
+    let nav = def.try_to_nav(sema)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
@@ -486,7 +486,8 @@ fn runnable_mod_outline_definition(
     })
 }
 
-fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
+fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Option<Runnable> {
+    let db = sema.db;
     let attrs = match def {
         Definition::Module(it) => it.attrs(db),
         Definition::Function(it) => it.attrs(db),
@@ -540,7 +541,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
 
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
-        def => def.try_to_nav(db)?,
+        def => def.try_to_nav(sema)?,
     }
     .call_site();
     nav.focus_range = None;

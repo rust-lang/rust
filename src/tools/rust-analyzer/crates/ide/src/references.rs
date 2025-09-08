@@ -138,7 +138,7 @@ pub(crate) fn find_all_refs(
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))
                 }
-                def => def.try_to_nav(sema.db),
+                def => def.try_to_nav(sema),
             }
             .map(|nav| {
                 let (nav, extra_ref) = match nav.def_site {

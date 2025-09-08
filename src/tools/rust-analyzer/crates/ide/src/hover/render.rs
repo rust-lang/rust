@@ -10,7 +10,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
-    defs::Definition,
+    defs::{Definition, find_std_module},
     documentation::{DocsRangeMap, HasDocs},
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
@@ -128,7 +128,7 @@ pub(super) fn try_expr(
     };
     walk_and_push_ty(sema.db, &inner_ty, &mut push_new_def);
     walk_and_push_ty(sema.db, &body_ty, &mut push_new_def);
-    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets, edition) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema, targets, edition) {
         res.actions.push(actions);
     }
 
@@ -210,7 +210,7 @@ pub(super) fn deref_expr(
         )
         .into()
     };
-    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets, edition) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema, targets, edition) {
         res.actions.push(actions);
     }
 
@@ -323,7 +323,7 @@ pub(super) fn struct_rest_pat(
 
         Markup::fenced_block(&s)
     };
-    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets, edition) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema, targets, edition) {
         res.actions.push(actions);
     }
     res
@@ -1030,7 +1030,7 @@ fn type_info(
         };
         desc.into()
     };
-    if let Some(actions) = HoverAction::goto_type_from_targets(db, targets, edition) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema, targets, edition) {
         res.actions.push(actions);
     }
     Some(res)
@@ -1098,7 +1098,7 @@ fn closure_ty(
     format_to!(markup, "{adjusted}\n\n## Captures\n{}", captures_rendered,);
 
     let mut res = HoverResult::default();
-    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets, edition) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema, targets, edition) {
         res.actions.push(actions);
     }
     res.markup = markup.into();
@@ -1158,19 +1158,6 @@ fn markup(
     } else {
         (buf.into(), None)
     }
-}
-
-fn find_std_module(
-    famous_defs: &FamousDefs<'_, '_>,
-    name: &str,
-    edition: Edition,
-) -> Option<hir::Module> {
-    let db = famous_defs.0.db;
-    let std_crate = famous_defs.std()?;
-    let std_root_module = std_crate.root_module();
-    std_root_module.children(db).find(|module| {
-        module.name(db).is_some_and(|module| module.display(db, edition).to_string() == name)
-    })
 }
 
 fn render_memory_layout(
@@ -1315,7 +1302,7 @@ fn keyword_hints(
                     KeywordHint {
                         description,
                         keyword_mod,
-                        actions: HoverAction::goto_type_from_targets(sema.db, targets, edition)
+                        actions: HoverAction::goto_type_from_targets(sema, targets, edition)
                             .into_iter()
                             .collect(),
                     }
