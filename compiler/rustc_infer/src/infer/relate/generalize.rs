@@ -522,7 +522,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                             // Record that `vid` and `new_var_id` have to be subtypes
                             // of each other. This is currently only used for diagnostics.
                             // To see why, see the docs in the `type_variables` module.
-                            inner.type_variables().sub(vid, new_var_id);
+                            inner.type_variables().sub_unify(vid, new_var_id);
                             // If we're in the new solver and create a new inference
                             // variable inside of an alias we eagerly constrain that
                             // inference variable to prevent unexpected ambiguity errors.

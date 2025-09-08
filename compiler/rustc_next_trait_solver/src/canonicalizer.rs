@@ -67,6 +67,12 @@ pub struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner> {
     variables: &'a mut Vec<I::GenericArg>,
     var_kinds: Vec<CanonicalVarKind<I>>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
+    /// Maps each `sub_unification_table_root_var` to the index of the first
+    /// variable which used it.
+    ///
+    /// This means in case two type variables have the same sub relations root,
+    /// we set the `sub_root` of the second variable to the position of the first.
+    /// Otherwise the `sub_root` of each type variable is just its own position.
     sub_root_lookup_table: HashMap<ty::TyVid, usize>,
     binder_index: ty::DebruijnIndex,
 
@@ -273,7 +279,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     }
 
     fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
-        let root_vid = self.delegate.sub_root_ty_var(vid);
+        let root_vid = self.delegate.sub_unification_table_root_var(vid);
         let idx =
             *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
         ty::BoundVar::from(idx)

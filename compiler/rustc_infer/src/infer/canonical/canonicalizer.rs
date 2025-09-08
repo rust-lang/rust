@@ -294,6 +294,12 @@ struct Canonicalizer<'cx, 'tcx> {
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
     indices: FxHashMap<GenericArg<'tcx>, BoundVar>,
+    /// Maps each `sub_unification_table_root_var` to the index of the first
+    /// variable which used it.
+    ///
+    /// This means in case two type variables have the same sub relations root,
+    /// we set the `sub_root` of the second variable to the position of the first.
+    /// Otherwise the `sub_root` of each type variable is just its own position.
     sub_root_lookup_table: SsoHashMap<ty::TyVid, usize>,
     canonicalize_mode: &'cx dyn CanonicalizeMode,
     needs_canonical_flags: TypeFlags,
@@ -662,7 +668,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     }
 
     fn get_or_insert_sub_root(&mut self, vid: ty::TyVid) -> ty::BoundVar {
-        let root_vid = self.infcx.unwrap().sub_root_var(vid);
+        let root_vid = self.infcx.unwrap().sub_unification_table_root_var(vid);
         let idx =
             *self.sub_root_lookup_table.entry(root_vid).or_insert_with(|| self.variables.len());
         ty::BoundVar::from(idx)

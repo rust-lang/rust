@@ -93,10 +93,11 @@ impl<'tcx> InferCtxt<'tcx> {
         match kind {
             CanonicalVarKind::Ty { ui, sub_root } => {
                 let vid = self.next_ty_vid_in_universe(span, universe_map(ui));
-                // Fetch the `sub_root` in case it exists.
+                // If this inference variable is related to an earlier variable
+                // via subtyping, we need to add that info to the inference context.
                 if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
                     if let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
-                        self.inner.borrow_mut().type_variables().sub(vid, sub_root);
+                        self.sub_unify_ty_vids_raw(vid, sub_root);
                     } else {
                         unreachable!()
                     }

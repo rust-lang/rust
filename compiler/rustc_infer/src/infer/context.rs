@@ -59,8 +59,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.root_var(var)
     }
 
-    fn sub_root_ty_var(&self, var: ty::TyVid) -> ty::TyVid {
-        self.sub_root_var(var)
+    fn sub_unification_table_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.sub_unification_table_root_var(var)
     }
 
     fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
@@ -183,8 +183,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
-    fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
-        self.sub_ty_vids_raw(a, b);
+    fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.sub_unify_ty_vids_raw(a, b);
     }
 
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid) {

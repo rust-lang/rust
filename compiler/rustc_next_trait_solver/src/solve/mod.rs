@@ -121,7 +121,7 @@ where
     fn compute_subtype_goal(&mut self, goal: Goal<I, ty::SubtypePredicate<I>>) -> QueryResult<I> {
         match (goal.predicate.a.kind(), goal.predicate.b.kind()) {
             (ty::Infer(ty::TyVar(a_vid)), ty::Infer(ty::TyVar(b_vid))) => {
-                self.sub_ty_vids_raw(a_vid, b_vid);
+                self.sub_unify_ty_vids_raw(a_vid, b_vid);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
             _ => {
