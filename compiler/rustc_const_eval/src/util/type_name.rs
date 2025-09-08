@@ -168,10 +168,11 @@ impl<'tcx> PrettyPrinter<'tcx> for TypeNamePrinter<'tcx> {
         // Bound regions are always printed (as `'_`), which gives some idea that they are special,
         // even though the `for` is omitted by the pretty printer.
         // E.g. `for<'a, 'b> fn(&'a u32, &'b u32)` is printed as "fn(&'_ u32, &'_ u32)".
+        let kind = region.kind();
         match region.kind() {
-            ty::ReErased | ty::ReEarlyParam(_) => false,
+            ty::ReErased | ty::ReEarlyParam(_) | ty::ReStatic => false,
             ty::ReBound(..) => true,
-            _ => unreachable!(),
+            _ => panic!("type_name unhandled region: {kind:?}"),
         }
     }
 
