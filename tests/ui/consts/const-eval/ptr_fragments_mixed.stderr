@@ -1,0 +1,23 @@
+error[E0080]: unable to read parts of a pointer from memory at ALLOC0
+  --> $DIR/ptr_fragments_mixed.rs:20:25
+   |
+LL | const APTR: *const u8 = mix_ptr();
+   |                         ^^^^^^^^^ evaluation of `APTR` failed inside this call
+   |
+   = help: this code performed an operation that depends on the underlying bytes representing a pointer
+   = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
+note: inside `mix_ptr`
+  --> $DIR/ptr_fragments_mixed.rs:11:9
+   |
+LL | /         core::ptr::copy_nonoverlapping(
+LL | |             (&raw const x).cast::<u8>(),
+LL | |             (&raw mut y).cast::<u8>(),
+LL | |             HALF_PTR,
+LL | |         );
+   | |_________^
+note: inside `std::ptr::copy_nonoverlapping::<u8>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
