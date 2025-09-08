@@ -259,8 +259,8 @@ impl Definition {
             Definition::ExternCrateDecl(it) => it.docs_with_rangemap(db),
 
             Definition::BuiltinAttr(it) => {
-                let name = it.name(db);
-                let AttributeTemplate { word, list, name_value_str } = it.template(db)?;
+                let name = it.name();
+                let AttributeTemplate { word, list, name_value_str } = it.template()?;
                 let mut docs = "Valid forms are:".to_owned();
                 if word {
                     format_to!(docs, "\n - #\\[{}]", name.display(db, display_target.edition));
@@ -348,7 +348,7 @@ impl Definition {
             Definition::Label(it) => it.name(db).display(db, display_target.edition).to_string(),
             Definition::ExternCrateDecl(it) => it.display(db, display_target).to_string(),
             Definition::BuiltinAttr(it) => {
-                format!("#[{}]", it.name(db).display(db, display_target.edition))
+                format!("#[{}]", it.name().display(db, display_target.edition))
             }
             Definition::ToolModule(it) => {
                 it.name(db).display(db, display_target.edition).to_string()
