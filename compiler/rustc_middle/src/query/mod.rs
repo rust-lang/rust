@@ -135,7 +135,7 @@ use crate::traits::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
-use crate::ty::print::{PrintTraitRefExt, describe_as_module};
+use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, SizedTraitKind, Ty,
@@ -2731,3 +2731,12 @@ rustc_queries! {
 
 rustc_with_all_queries! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
+
+fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
+    let def_id = def_id.into();
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id))
+    }
+}
