@@ -695,6 +695,34 @@ Note that all three options are supported on Linux and Apple platforms,
 Attempting to use an unsupported option requires using the nightly channel
 with the `-Z unstable-options` flag.
 
+## stack-protector
+
+The option `-C stack-protector` (currently also supported in the
+old style `-Z stack-protector`) controls the generation of
+stack-protector canaries.
+
+This flag controls stack smashing protection strategy.
+
+Supported values for this option are:
+- `none` (default): Disable stack canary generation
+- `basic`: Generate stack canaries in functions that are suspected
+  to have a high chance of containing stack buffer overflows (deprecated).
+- `strong`: Generate stack canaries in all functions, unless the compiler
+  can prove these functions can't be the source of a stack
+  buffer overflow (even in the presence of undefined behavior).
+
+  This provides the same security guarantees as Clang's
+  `-fstack-protector=strong`.
+
+  The exact rules are unstable and subject to change, but
+  currently, it generates stack protectors for functions that,
+  *post-optimization*, contain either arrays (of any size
+  or type) or address-taken locals.
+- `all`: Generate stack canaries in all functions
+
+Stack protectors are not supported on many GPU targets, use of stack
+protectors on these targets is an error.
+
 ## strip
 
 The option `-C strip=val` controls stripping of debuginfo and similar auxiliary
