@@ -139,6 +139,8 @@ impl IntrinsicTypeDefinition for X86IntrinsicType {
             (Some(16), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi16"),
             (Some(32), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi32"),
             (Some(64), Some(512)) => String::from("_mm512_extract_intrinsic_test_epi64"),
+            (Some(16), Some(64)) => String::from("_mm_extract_pi16"),
+            (Some(32), Some(64)) => String::from("mm64_extract_intrinsic_test_epi32"),
             _ => unreachable!(
                 "invalid length for vector argument: {:?}, {:?}",
                 self.bit_len, self.vec_len
