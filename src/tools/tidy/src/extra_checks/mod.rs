@@ -147,9 +147,16 @@ fn check_impl(
     }
 
     if python_lint {
-        eprintln!("linting python files");
         let py_path = py_path.as_ref().unwrap();
-        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &["check".as_ref()]);
+        let args: &[&OsStr] = if bless {
+            eprintln!("linting python files and applying suggestions");
+            &["check".as_ref(), "--fix".as_ref()]
+        } else {
+            eprintln!("linting python files");
+            &["check".as_ref()]
+        };
+
+        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
 
         if res.is_err() && show_diff {
             eprintln!("\npython linting failed! Printing diff suggestions:");
