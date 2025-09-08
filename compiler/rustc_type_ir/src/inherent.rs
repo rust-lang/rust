@@ -74,7 +74,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_adt(interner: I, adt_def: I::AdtDef, args: I::GenericArgs) -> Self;
 
-    fn new_foreign(interner: I, def_id: I::DefId) -> Self;
+    fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
     fn new_dynamic(
         interner: I,
@@ -83,17 +83,21 @@ pub trait Ty<I: Interner<Ty = Self>>:
         kind: ty::DynKind,
     ) -> Self;
 
-    fn new_coroutine(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_coroutine(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
-    fn new_coroutine_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_coroutine_closure(
+        interner: I,
+        def_id: I::CoroutineClosureId,
+        args: I::GenericArgs,
+    ) -> Self;
 
-    fn new_closure(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_closure(interner: I, def_id: I::ClosureId, args: I::GenericArgs) -> Self;
 
-    fn new_coroutine_witness(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_coroutine_witness(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
     fn new_coroutine_witness_for_coroutine(
         interner: I,
-        def_id: I::DefId,
+        def_id: I::CoroutineId,
         coroutine_args: I::GenericArgs,
     ) -> Self;
 
@@ -112,7 +116,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
         It: Iterator<Item = T>,
         T: CollectAndApply<Self, Self>;
 
-    fn new_fn_def(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self;
+    fn new_fn_def(interner: I, def_id: I::FunctionId, args: I::GenericArgs) -> Self;
 
     fn new_fn_ptr(interner: I, sig: ty::Binder<I, ty::FnSig<I>>) -> Self;
 
@@ -599,7 +603,7 @@ pub trait ParamLike: Copy + Debug + Hash + Eq {
 }
 
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
-    fn def_id(self) -> I::DefId;
+    fn def_id(self) -> I::AdtId;
 
     fn is_struct(self) -> bool;
 
@@ -644,6 +648,16 @@ pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn is_local(self) -> bool;
 
     fn as_local(self) -> Option<I::LocalDefId>;
+}
+
+pub trait SpecificDefId<I: Interner>:
+    DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>
+{
+}
+
+impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::fmt::Debug>>
+    SpecificDefId<I> for T
+{
 }
 
 pub trait BoundExistentialPredicates<I: Interner>:

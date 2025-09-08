@@ -9,7 +9,7 @@ This list will be used to ask for help both in diagnosing and testing
 Windows-related issues as well as suggestions on how to resolve
 interesting questions regarding our Windows support.
 
-The group also has an associated Zulip stream ([`#t-compiler/windows`])
+The group also has an associated Zulip channel ([`#t-compiler/windows`])
 where people can go to pose questions and discuss Windows-specific
 topics.
 

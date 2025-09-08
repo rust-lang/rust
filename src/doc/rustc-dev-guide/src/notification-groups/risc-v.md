@@ -9,7 +9,7 @@ This list will be used to ask for help both in diagnosing and testing
 RISC-V-related issues as well as suggestions on how to resolve
 interesting questions regarding our RISC-V support.
 
-The group also has an associated Zulip stream ([`#t-compiler/risc-v`])
+The group also has an associated Zulip channel ([`#t-compiler/risc-v`])
 where people can go to pose questions and discuss RISC-V-specific
 topics.
 

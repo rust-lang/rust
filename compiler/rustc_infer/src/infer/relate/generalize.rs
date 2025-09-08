@@ -6,8 +6,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, AliasRelationDirection, InferConst, MaxUniverse, Term, Ty, TyCtxt, TypeVisitable,
-    TypeVisitableExt, TypingMode,
+    self, AliasRelationDirection, InferConst, Term, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument, warn};
@@ -287,6 +287,45 @@ impl<'tcx> InferCtxt<'tcx> {
         let value_may_be_infer = generalizer.relate(source_term, source_term)?;
         let has_unconstrained_ty_var = generalizer.has_unconstrained_ty_var;
         Ok(Generalization { value_may_be_infer, has_unconstrained_ty_var })
+    }
+}
+
+/// Finds the max universe present
+struct MaxUniverse {
+    max_universe: ty::UniverseIndex,
+}
+
+impl MaxUniverse {
+    fn new() -> Self {
+        MaxUniverse { max_universe: ty::UniverseIndex::ROOT }
+    }
+
+    fn max_universe(self) -> ty::UniverseIndex {
+        self.max_universe
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        if let ty::Placeholder(placeholder) = t.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: ty::Const<'tcx>) {
+        if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
+
+        c.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) {
+        if let ty::RePlaceholder(placeholder) = r.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
+        }
     }
 }
 

@@ -2,7 +2,7 @@ use hir::def::Namespace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use tracing::{debug, instrument, trace};
 
@@ -393,16 +393,6 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistenti
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     fn print(&self, p: &mut P) -> Result<(), PrintError> {
         p.print_const(*self)
-    }
-}
-
-// This is only used by query descriptions
-pub fn describe_as_module(def_id: impl Into<LocalDefId>, tcx: TyCtxt<'_>) -> String {
-    let def_id = def_id.into();
-    if def_id.is_top_level_module() {
-        "top-level module".to_string()
-    } else {
-        format!("module `{}`", tcx.def_path_str(def_id))
     }
 }
 
