@@ -1640,7 +1640,7 @@ impl<T> Option<T> {
     pub const fn or_else<F>(self, f: F) -> Option<T>
     where
         F: [const] FnOnce() -> Option<T> + [const] Destruct,
-        //FIXME(const_hack): this `T: ~const Destruct` is unnecessary, but even precise live drops can't tell
+        //FIXME(const_hack): this `T: [const] Destruct` is unnecessary, but even precise live drops can't tell
         // no value of type `T` gets dropped here
         T: [const] Destruct,
     {
@@ -2185,7 +2185,7 @@ const fn expect_failed(msg: &str) -> ! {
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 impl<T> const Clone for Option<T>
 where
-    // FIXME(const_hack): the T: ~const Destruct should be inferred from the Self: ~const Destruct in clone_from.
+    // FIXME(const_hack): the T: [const] Destruct should be inferred from the Self: [const] Destruct in clone_from.
     // See https://github.com/rust-lang/rust/issues/144207
     T: [const] Clone + [const] Destruct,
 {

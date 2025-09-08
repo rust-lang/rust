@@ -7,9 +7,8 @@
 )]
 #![allow(missing_docs)]
 
-#[const_trait]
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-pub trait CarryingMulAdd: Copy + 'static {
+pub const trait CarryingMulAdd: Copy + 'static {
     type Unsigned: Copy + 'static;
     fn carrying_mul_add(
         self,
@@ -111,9 +110,8 @@ impl const CarryingMulAdd for i128 {
     }
 }
 
-#[const_trait]
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-pub trait DisjointBitOr: Copy + 'static {
+pub const trait DisjointBitOr: Copy + 'static {
     /// See [`super::disjoint_bitor`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
     unsafe fn disjoint_bitor(self, other: Self) -> Self;
@@ -149,9 +147,8 @@ impl_disjoint_bitor! {
     i8, i16, i32, i64, i128, isize,
 }
 
-#[const_trait]
 #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
-pub trait FunnelShift: Copy + 'static {
+pub const trait FunnelShift: Copy + 'static {
     /// See [`super::unchecked_funnel_shl`]; we just need the trait indirection to handle
     /// different types since calling intrinsics with generics doesn't work.
     unsafe fn unchecked_funnel_shl(self, rhs: Self, shift: u32) -> Self;
