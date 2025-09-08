@@ -76,7 +76,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         goal_trait_ref: ty::TraitRef<Self::Interner>,
         trait_assoc_def_id: <Self::Interner as Interner>::DefId,
-        impl_def_id: <Self::Interner as Interner>::DefId,
+        impl_def_id: <Self::Interner as Interner>::ImplId,
     ) -> Result<
         Option<<Self::Interner as Interner>::DefId>,
         <Self::Interner as Interner>::ErrorGuaranteed,
