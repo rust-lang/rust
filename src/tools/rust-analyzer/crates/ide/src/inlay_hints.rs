@@ -672,7 +672,7 @@ impl fmt::Debug for InlayHintLabelPart {
 
 #[derive(Debug)]
 struct InlayHintLabelBuilder<'a> {
-    db: &'a RootDatabase,
+    sema: &'a Semantics<'a, RootDatabase>,
     result: InlayHintLabel,
     last_part: String,
     resolve: bool,
@@ -694,7 +694,7 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
             LazyProperty::Lazy
         } else {
             LazyProperty::Computed({
-                let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+                let Some(location) = ModuleDef::from(def).try_to_nav(self.sema) else { return };
                 let location = location.call_site();
                 FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
             })
@@ -782,7 +782,7 @@ fn label_of_ty(
     }
 
     let mut label_builder = InlayHintLabelBuilder {
-        db: sema.db,
+        sema,
         last_part: String::new(),
         location: None,
         result: InlayHintLabel::default(),

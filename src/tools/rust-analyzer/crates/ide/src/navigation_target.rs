@@ -83,14 +83,20 @@ pub(crate) trait ToNav {
 }
 
 pub trait TryToNav {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>>;
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>>;
 }
 
 impl<T: TryToNav, U: TryToNav> TryToNav for Either<T, U> {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            Either::Left(it) => it.try_to_nav(db),
-            Either::Right(it) => it.try_to_nav(db),
+            Either::Left(it) => it.try_to_nav(sema),
+            Either::Right(it) => it.try_to_nav(sema),
         }
     }
 }
@@ -185,7 +191,11 @@ impl NavigationTarget {
 }
 
 impl TryToNav for FileSymbol {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let edition =
             self.def.module(db).map(|it| it.krate().edition(db)).unwrap_or(Edition::CURRENT);
         let display_target = self.def.krate(db).to_display_target(db);
@@ -244,49 +254,55 @@ impl TryToNav for FileSymbol {
 }
 
 impl TryToNav for Definition {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            Definition::Local(it) => Some(it.to_nav(db)),
-            Definition::Label(it) => it.try_to_nav(db),
-            Definition::Module(it) => Some(it.to_nav(db)),
-            Definition::Crate(it) => Some(it.to_nav(db)),
-            Definition::Macro(it) => it.try_to_nav(db),
-            Definition::Field(it) => it.try_to_nav(db),
-            Definition::SelfType(it) => it.try_to_nav(db),
-            Definition::GenericParam(it) => it.try_to_nav(db),
-            Definition::Function(it) => it.try_to_nav(db),
-            Definition::Adt(it) => it.try_to_nav(db),
-            Definition::Variant(it) => it.try_to_nav(db),
-            Definition::Const(it) => it.try_to_nav(db),
-            Definition::Static(it) => it.try_to_nav(db),
-            Definition::Trait(it) => it.try_to_nav(db),
-            Definition::TypeAlias(it) => it.try_to_nav(db),
-            Definition::ExternCrateDecl(it) => it.try_to_nav(db),
-            Definition::InlineAsmOperand(it) => it.try_to_nav(db),
-            Definition::BuiltinType(it) => it.try_to_nav(db),
+            Definition::Local(it) => Some(it.to_nav(sema.db)),
+            Definition::Label(it) => it.try_to_nav(sema),
+            Definition::Module(it) => Some(it.to_nav(sema.db)),
+            Definition::Crate(it) => Some(it.to_nav(sema.db)),
+            Definition::Macro(it) => it.try_to_nav(sema),
+            Definition::Field(it) => it.try_to_nav(sema),
+            Definition::SelfType(it) => it.try_to_nav(sema),
+            Definition::GenericParam(it) => it.try_to_nav(sema),
+            Definition::Function(it) => it.try_to_nav(sema),
+            Definition::Adt(it) => it.try_to_nav(sema),
+            Definition::Variant(it) => it.try_to_nav(sema),
+            Definition::Const(it) => it.try_to_nav(sema),
+            Definition::Static(it) => it.try_to_nav(sema),
+            Definition::Trait(it) => it.try_to_nav(sema),
+            Definition::TypeAlias(it) => it.try_to_nav(sema),
+            Definition::ExternCrateDecl(it) => it.try_to_nav(sema),
+            Definition::InlineAsmOperand(it) => it.try_to_nav(sema),
+            Definition::BuiltinType(it) => it.try_to_nav(sema),
             Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
             | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_)
             | Definition::BuiltinAttr(_) => None,
             // FIXME: The focus range should be set to the helper declaration
-            Definition::DeriveHelper(it) => it.derive().try_to_nav(db),
+            Definition::DeriveHelper(it) => it.derive().try_to_nav(sema),
         }
     }
 }
 
 impl TryToNav for hir::ModuleDef {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            hir::ModuleDef::Module(it) => Some(it.to_nav(db)),
-            hir::ModuleDef::Function(it) => it.try_to_nav(db),
-            hir::ModuleDef::Adt(it) => it.try_to_nav(db),
-            hir::ModuleDef::Variant(it) => it.try_to_nav(db),
-            hir::ModuleDef::Const(it) => it.try_to_nav(db),
-            hir::ModuleDef::Static(it) => it.try_to_nav(db),
-            hir::ModuleDef::Trait(it) => it.try_to_nav(db),
-            hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
-            hir::ModuleDef::Macro(it) => it.try_to_nav(db),
+            hir::ModuleDef::Module(it) => Some(it.to_nav(sema.db)),
+            hir::ModuleDef::Function(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Adt(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Variant(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Const(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Static(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Trait(it) => it.try_to_nav(sema),
+            hir::ModuleDef::TypeAlias(it) => it.try_to_nav(sema),
+            hir::ModuleDef::Macro(it) => it.try_to_nav(sema),
             hir::ModuleDef::BuiltinType(_) => None,
         }
     }
@@ -369,7 +385,11 @@ where
     D: HasSource + ToNavFromAst + Copy + HasDocs + HirDisplay + HasCrate,
     D::Ast: ast::HasName,
 {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let src = self.source(db)?;
         Some(
             NavigationTarget::from_named(
@@ -423,7 +443,11 @@ impl ToNav for hir::Crate {
 }
 
 impl TryToNav for hir::Impl {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = self.source(db)?;
         let derive_path = self.as_builtin_derive_path(db);
 
@@ -447,7 +471,11 @@ impl TryToNav for hir::Impl {
 }
 
 impl TryToNav for hir::ExternCrateDecl {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let src = self.source(db)?;
         let InFile { file_id, value } = src;
         let focus = value
@@ -479,7 +507,11 @@ impl TryToNav for hir::ExternCrateDecl {
 }
 
 impl TryToNav for hir::Field {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let src = self.source(db)?;
         let krate = self.parent_def(db).module(db).krate();
 
@@ -512,7 +544,11 @@ impl TryToNav for hir::Field {
 }
 
 impl TryToNav for hir::Macro {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let src = self.source(db)?;
         let name_owner: &dyn ast::HasName = match &src.value {
             Either::Left(it) => it,
@@ -533,31 +569,40 @@ impl TryToNav for hir::Macro {
 }
 
 impl TryToNav for hir::Adt {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            hir::Adt::Struct(it) => it.try_to_nav(db),
-            hir::Adt::Union(it) => it.try_to_nav(db),
-            hir::Adt::Enum(it) => it.try_to_nav(db),
+            hir::Adt::Struct(it) => it.try_to_nav(sema),
+            hir::Adt::Union(it) => it.try_to_nav(sema),
+            hir::Adt::Enum(it) => it.try_to_nav(sema),
         }
     }
 }
 
 impl TryToNav for hir::AssocItem {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            AssocItem::Function(it) => it.try_to_nav(db),
-            AssocItem::Const(it) => it.try_to_nav(db),
-            AssocItem::TypeAlias(it) => it.try_to_nav(db),
+            AssocItem::Function(it) => it.try_to_nav(sema),
+            AssocItem::Const(it) => it.try_to_nav(sema),
+            AssocItem::TypeAlias(it) => it.try_to_nav(sema),
         }
     }
 }
 
 impl TryToNav for hir::GenericParam {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
         match self {
-            hir::GenericParam::TypeParam(it) => it.try_to_nav(db),
-            hir::GenericParam::ConstParam(it) => it.try_to_nav(db),
-            hir::GenericParam::LifetimeParam(it) => it.try_to_nav(db),
+            hir::GenericParam::TypeParam(it) => it.try_to_nav(sema),
+            hir::GenericParam::ConstParam(it) => it.try_to_nav(sema),
+            hir::GenericParam::LifetimeParam(it) => it.try_to_nav(sema),
         }
     }
 }
@@ -606,7 +651,11 @@ impl ToNav for hir::Local {
 }
 
 impl TryToNav for hir::Label {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = self.source(db)?;
         // Labels can't be keywords, so no escaping needed.
         let name = self.name(db).display_no_db(Edition::Edition2015).to_smolstr();
@@ -628,7 +677,11 @@ impl TryToNav for hir::Label {
 }
 
 impl TryToNav for hir::TypeParam {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = self.merge().source(db)?;
         let edition = self.module(db).krate().edition(db);
         let name = self.name(db).display_no_db(edition).to_smolstr();
@@ -665,13 +718,20 @@ impl TryToNav for hir::TypeParam {
 }
 
 impl TryToNav for hir::TypeOrConstParam {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
-        self.split(db).try_to_nav(db)
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        self.split(sema.db).try_to_nav(sema)
     }
 }
 
 impl TryToNav for hir::LifetimeParam {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = self.source(db)?;
         // Lifetimes cannot be keywords, so not escaping needed.
         let name = self.name(db).display_no_db(Edition::Edition2015).to_smolstr();
@@ -693,7 +753,11 @@ impl TryToNav for hir::LifetimeParam {
 }
 
 impl TryToNav for hir::ConstParam {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = self.merge().source(db)?;
         let edition = self.module(db).krate().edition(db);
         let name = self.name(db).display_no_db(edition).to_smolstr();
@@ -723,7 +787,11 @@ impl TryToNav for hir::ConstParam {
 }
 
 impl TryToNav for hir::InlineAsmOperand {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let InFile { file_id, value } = &self.source(db)?;
         let file_id = *file_id;
         Some(orig_range_with_focus(db, file_id, value.syntax(), value.name()).map(
@@ -748,9 +816,11 @@ impl TryToNav for hir::InlineAsmOperand {
 }
 
 impl TryToNav for hir::BuiltinType {
-    fn try_to_nav(&self, db: &RootDatabase) -> Option<UpmappingResult<NavigationTarget>> {
-        let sema = Semantics::new(db);
-
+    fn try_to_nav(
+        &self,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> Option<UpmappingResult<NavigationTarget>> {
+        let db = sema.db;
         let krate = db
             .all_crates()
             .iter()
@@ -759,7 +829,7 @@ impl TryToNav for hir::BuiltinType {
             .map(Crate::from)?;
         let edition = krate.edition(db);
 
-        let fd = FamousDefs(&sema, krate);
+        let fd = FamousDefs(sema, krate);
         let primitive_mod = format!("prim_{}", self.name().display(fd.0.db, edition));
         let doc_owner = find_std_module(&fd, &primitive_mod, edition)?;
 

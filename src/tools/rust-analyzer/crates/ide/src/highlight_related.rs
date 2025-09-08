@@ -277,7 +277,7 @@ fn highlight_references(
                     Definition::Module(module) => {
                         NavigationTarget::from_module_to_decl(sema.db, module)
                     }
-                    def => match def.try_to_nav(sema.db) {
+                    def => match def.try_to_nav(sema) {
                         Some(it) => it,
                         None => continue,
                     },
