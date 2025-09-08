@@ -344,6 +344,7 @@ fn process_builtin_attrs(
                             if i.is_default { Linkage::LinkOnceAny } else { Linkage::External },
                             Visibility::Default,
                         ));
+                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
                     }
                 }
                 _ => {}
