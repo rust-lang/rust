@@ -248,6 +248,46 @@ fn main() {
         );
 
         check_edit(
+            "else",
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } $0
+    let y = 92;
+}
+"#,
+            r#"
+fn main() {
+    let x = if true {
+        ()
+    } else {
+    $0
+};
+    let y = 92;
+}
+"#,
+        );
+
+        check_edit(
+            "else",
+            r#"
+fn main() {
+    let x = 2 $0
+    let y = 92;
+}
+"#,
+            r#"
+fn main() {
+    let x = 2 else {
+    $0
+};
+    let y = 92;
+}
+"#,
+        );
+
+        check_edit(
             "loop",
             r#"
 fn main() {
