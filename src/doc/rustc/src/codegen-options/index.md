@@ -688,6 +688,34 @@ Note that all three options are supported on Linux and Apple platforms,
 Attempting to use an unsupported option requires using the nightly channel
 with the `-Z unstable-options` flag.
 
+## stack-protector
+
+The option `-C stack-protector` controls the generation of
+stack-protector canaries which offer stack smashing protection.
+
+Stack-protector canaries only affect the semantics of programs exhibiting
+undefined behavior. This is a best-effort mitigation but the exact behavior of programs
+exhibiting undefined behavior cannot be guaranteed. The presence, location and behavior
+of the stack-protector canaries depend on rustc's codegen backend, the target
+architecture, and codegen details, and are unstable and subject to change.
+A particular codegen backend and architecture might not generate
+any canaries even for `-C stack-protector=all`.
+
+Supported values for this option are (the description describes the
+current behavior of LLVM and GCC backends for common architectures):
+- `none` (default): Disable stack canary generation
+- `strong`: Generate stack canaries in any function that could be the source
+  of a stack buffer overflow (even in the presence of undefined behavior).
+  This provides similar security guarantees to Clang (or GCC's)
+  `-fstack-protector-strong`.
+- `all`: Generate stack canaries in all functions
+
+There is no mode equivalent to Clang's (or GCC's) plain `-fstack-protector`
+because its heuristic is tuned for C and does not offer protection for Rust programs.
+
+Stack protectors are not supported on some targets such as GPU targets; use
+of stack protectors on these targets is an error.
+
 ## strip
 
 The option `-C strip=val` controls stripping of debuginfo and similar auxiliary
