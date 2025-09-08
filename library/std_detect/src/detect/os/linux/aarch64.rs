@@ -210,10 +210,10 @@ impl From<auxvec::AuxVec> for AtHwcap {
             ..Default::default()
         };
 
-        // Hardware capabilites from bits 32 to 63 should only
+        // Hardware capabilities from bits 32 to 63 should only
         // be tested on LP64 targets with 64 bits `usize`.
         // On ILP32 targets like `aarch64-unknown-linux-gun_ilp32`,
-        // these hardware capabilites will default to `false`.
+        // these hardware capabilities will default to `false`.
         // https://github.com/rust-lang/rust/issues/146230
         #[cfg(target_pointer_width = "64")]
         {
