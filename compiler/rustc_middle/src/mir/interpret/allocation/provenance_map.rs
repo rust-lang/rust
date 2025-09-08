@@ -376,18 +376,24 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     pub fn apply_copy(&mut self, copy: ProvenanceCopy<Prov>, range: AllocRange, repeat: u64) {
         let shift_offset = |idx: u64, offset: Size| offset + range.start + idx * range.size;
         if !copy.ptrs.is_empty() {
-            for i in 0..repeat {
-                self.ptrs.insert_presorted(
-                    copy.ptrs.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)),
-                );
-            }
+            // We want to call `insert_presorted` only once so that, if possible, the entries
+            // after the range we insert are moved back only once.
+            let chunk_len = copy.ptrs.len() as u64;
+            self.ptrs.insert_presorted((0..chunk_len * repeat).map(|i| {
+                let chunk = i / chunk_len;
+                let (offset, reloc) = copy.ptrs[(i % chunk_len) as usize];
+                (shift_offset(chunk, offset), reloc)
+            }));
         }
         if !copy.bytes.is_empty() {
-            for i in 0..repeat {
-                self.bytes.get_or_insert_with(Box::default).insert_presorted(
-                    copy.bytes.iter().map(|&(offset, reloc)| (shift_offset(i, offset), reloc)),
-                );
-            }
+            let chunk_len = copy.bytes.len() as u64;
+            self.bytes.get_or_insert_with(Box::default).insert_presorted(
+                (0..chunk_len * repeat).map(|i| {
+                    let chunk = i / chunk_len;
+                    let (offset, reloc) = copy.bytes[(i % chunk_len) as usize];
+                    (shift_offset(chunk, offset), reloc)
+                }),
+            );
         }
     }
 }

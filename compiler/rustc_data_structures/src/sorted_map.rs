@@ -249,7 +249,7 @@ impl<K: Ord, V> SortedMap<K, V> {
             }
         };
 
-        // Insert the rest
+        // Insert the rest. This is super inefficicent since each insertion copies the entire tail.
         for (k, v) in elements {
             self.insert(k, v);
         }
