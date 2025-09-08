@@ -608,7 +608,7 @@ fn check_and_update_one_event_interest<'tcx>(
         // If we are tracking data races, remember the current clock so we can sync with it later.
         ecx.release_clock(|clock| {
             event_instance.clock.clone_from(clock);
-        });
+        })?;
         // Triggers the notification by inserting it to the ready list.
         ready_list.insert(epoll_key, event_instance);
         interp_ok(true)

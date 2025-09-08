@@ -958,16 +958,20 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// with this program point.
     ///
     /// The closure will only be invoked if data race handling is on.
-    fn release_clock<R>(&self, callback: impl FnOnce(&VClock) -> R) -> Option<R> {
+    fn release_clock<R>(
+        &self,
+        callback: impl FnOnce(&VClock) -> R,
+    ) -> InterpResult<'tcx, Option<R>> {
         let this = self.eval_context_ref();
-        // FIXME: make this a proper error instead of ICEing the interpreter.
-        assert!(
-            this.machine.data_race.as_genmc_ref().is_none(),
-            "this operation performs synchronization that is not supported in GenMC mode"
-        );
-        Some(
-            this.machine.data_race.as_vclocks_ref()?.release_clock(&this.machine.threads, callback),
-        )
+        interp_ok(match &this.machine.data_race {
+            GlobalDataRaceHandler::None => None,
+            GlobalDataRaceHandler::Genmc(_genmc_ctx) =>
+                throw_unsup_format!(
+                    "this operation performs synchronization that is not supported in GenMC mode"
+                ),
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                Some(data_race.release_clock(&this.machine.threads, callback)),
+        })
     }
 
     /// Acquire the given clock into the current thread, establishing synchronization with
