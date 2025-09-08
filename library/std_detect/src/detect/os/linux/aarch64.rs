@@ -209,6 +209,12 @@ impl From<auxvec::AuxVec> for AtHwcap {
             wfxt: bit::test(auxv.hwcap2, 31),
             ..Default::default()
         };
+
+        // Hardware capabilites from bits 32 to 63 should only
+        // be tested on LP64 targets with 64 bits `usize`.
+        // On ILP32 targets like `aarch64-unknown-linux-gun_ilp32`,
+        // these hardware capabilites will default to `false`.
+        // https://github.com/rust-lang/rust/issues/146230
         #[cfg(target_pointer_width = "64")]
         {
             // cap.ebf16: bit::test(auxv.hwcap2, 32);
