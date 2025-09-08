@@ -578,7 +578,7 @@ pub(super) fn write_code(
 }
 
 fn write_footer(out: &mut String, playground_button: Option<&str>) {
-    write_str(out, format_args_nl!("</code></pre>{}</div>", playground_button.unwrap_or_default()));
+    write_str(out, format_args!("</code></pre>{}</div>", playground_button.unwrap_or_default()));
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
