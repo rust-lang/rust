@@ -13,9 +13,11 @@ use rustc_expand::base::{
 };
 use rustc_expand::module::DirOwnership;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_parse::lexer::StripTokens;
+use rustc_parse::parser::ForceCollect;
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
+use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ByteSymbol, Pos, Span, Symbol};
 use smallvec::SmallVec;
@@ -114,39 +116,48 @@ pub(crate) fn expand_include<'cx>(
     let ExpandResult::Ready(mac) = get_single_str_from_tts(cx, sp, tts, "include!") else {
         return ExpandResult::Retry(());
     };
-    let file = match mac {
-        Ok(file) => file,
+    let path = match mac {
+        Ok(path) => path,
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     // The file will be added to the code map by the parser
-    let file = match resolve_path(&cx.sess, file.as_str(), sp) {
-        Ok(f) => f,
+    let path = match resolve_path(&cx.sess, path.as_str(), sp) {
+        Ok(path) => path,
         Err(err) => {
             let guar = err.emit();
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
     };
-    let p = unwrap_or_emit_fatal(new_parser_from_file(cx.psess(), &file, Some(sp)));
 
     // If in the included file we have e.g., `mod bar;`,
-    // then the path of `bar.rs` should be relative to the directory of `file`.
+    // then the path of `bar.rs` should be relative to the directory of `path`.
     // See https://github.com/rust-lang/rust/pull/69838/files#r395217057 for a discussion.
     // `MacroExpander::fully_expand_fragment` later restores, so "stack discipline" is maintained.
-    let dir_path = file.parent().unwrap_or(&file).to_owned();
+    let dir_path = path.parent().unwrap_or(&path).to_owned();
     cx.current_expansion.module = Rc::new(cx.current_expansion.module.with_dir_path(dir_path));
     cx.current_expansion.dir_ownership = DirOwnership::Owned { relative: None };
 
     struct ExpandInclude<'a> {
-        p: Parser<'a>,
+        psess: &'a ParseSess,
+        path: PathBuf,
         node_id: ast::NodeId,
+        span: Span,
     }
     impl<'a> MacResult for ExpandInclude<'a> {
-        fn make_expr(mut self: Box<ExpandInclude<'a>>) -> Option<Box<ast::Expr>> {
-            let expr = parse_expr(&mut self.p).ok()?;
-            if self.p.token != token::Eof {
-                self.p.psess.buffer_lint(
+        fn make_expr(self: Box<ExpandInclude<'a>>) -> Option<Box<ast::Expr>> {
+            let mut p = unwrap_or_emit_fatal(new_parser_from_file(
+                self.psess,
+                &self.path,
+                // Don't strip frontmatter for backward compatibility, `---` may be the start of a
+                // manifold negation. FIXME: Ideally, we wouldn't strip shebangs here either.
+                StripTokens::Shebang,
+                Some(self.span),
+            ));
+            let expr = parse_expr(&mut p).ok()?;
+            if p.token != token::Eof {
+                p.psess.buffer_lint(
                     INCOMPLETE_INCLUDE,
-                    self.p.token.span,
+                    p.token.span,
                     self.node_id,
                     BuiltinLintDiag::IncompleteInclude,
                 );
@@ -154,24 +165,27 @@ pub(crate) fn expand_include<'cx>(
             Some(expr)
         }
 
-        fn make_items(mut self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+        fn make_items(self: Box<ExpandInclude<'a>>) -> Option<SmallVec<[Box<ast::Item>; 1]>> {
+            let mut p = unwrap_or_emit_fatal(new_parser_from_file(
+                self.psess,
+                &self.path,
+                StripTokens::ShebangAndFrontmatter,
+                Some(self.span),
+            ));
             let mut ret = SmallVec::new();
             loop {
-                match self.p.parse_item(ForceCollect::No) {
+                match p.parse_item(ForceCollect::No) {
                     Err(err) => {
                         err.emit();
                         break;
                     }
                     Ok(Some(item)) => ret.push(item),
                     Ok(None) => {
-                        if self.p.token != token::Eof {
-                            self.p
-                                .dcx()
-                                .create_err(errors::ExpectedItem {
-                                    span: self.p.token.span,
-                                    token: &pprust::token_to_string(&self.p.token),
-                                })
-                                .emit();
+                        if p.token != token::Eof {
+                            p.dcx().emit_err(errors::ExpectedItem {
+                                span: p.token.span,
+                                token: &pprust::token_to_string(&p.token),
+                            });
                         }
 
                         break;
@@ -182,7 +196,12 @@ pub(crate) fn expand_include<'cx>(
         }
     }
 
-    ExpandResult::Ready(Box::new(ExpandInclude { p, node_id: cx.current_expansion.lint_node_id }))
+    ExpandResult::Ready(Box::new(ExpandInclude {
+        psess: cx.psess(),
+        path,
+        node_id: cx.current_expansion.lint_node_id,
+        span: sp,
+    }))
 }
 
 /// Expand `include_str!($input)` to the content of the UTF-8-encoded file given by path `$input` as a string literal.
