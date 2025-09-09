@@ -44,8 +44,11 @@ pub struct PerLocalVarDebugInfo<'tcx, D> {
     /// if this is a fragment of a composite `VarDebugInfo`.
     pub fragment: Option<Range<Size>>,
 
-    /// `.place.projection` from `mir::VarDebugInfo`.
-    pub projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
+    /// `.place.direct_projection` from `mir::VarDebugInfo`.
+    pub direct_projection: &'tcx ty::List<mir::PlaceElem<'tcx>>,
+
+    /// `.place.projection_chain` from `mir::VarDebugInfo`.
+    pub projection_chain: &'tcx ty::List<mir::ProjectionFragment<'tcx>>,
 }
 
 /// Information needed to emit a constant.
@@ -168,46 +171,68 @@ fn calculate_debuginfo_offset<
     L: DebugInfoOffsetLocation<'tcx, Bx>,
 >(
     bx: &mut Bx,
-    projection: &[mir::PlaceElem<'tcx>],
+    direct_projection: &[mir::PlaceElem<'tcx>],
+    projection_chain: &[mir::ProjectionFragment<'tcx>],
     base: L,
 ) -> DebugInfoOffset<L> {
-    let mut direct_offset = Size::ZERO;
-    // FIXME(eddyb) use smallvec here.
-    let mut indirect_offsets = vec![];
-    let mut place = base;
-
-    for elem in projection {
-        match *elem {
-            mir::ProjectionElem::Deref => {
-                indirect_offsets.push(Size::ZERO);
-                place = place.deref(bx);
-            }
+    let project_direct = |bx: &mut Bx, place: L, offset, elem| {
+        let (new_place, new_offset) = match elem {
             mir::ProjectionElem::Field(field, _) => {
-                let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
-                *offset += place.layout().fields.offset(field.index());
-                place = place.project_field(bx, field);
+                let offset = place.layout().fields.offset(field.index());
+                let place = place.project_field(bx, field);
+
+                (place, offset)
             }
-            mir::ProjectionElem::Downcast(_, variant) => {
-                place = place.downcast(bx, variant);
-            }
+            mir::ProjectionElem::Downcast(_, variant) => (place.downcast(bx, variant), Size::ZERO),
             mir::ProjectionElem::ConstantIndex {
                 offset: index,
                 min_length: _,
                 from_end: false,
             } => {
-                let offset = indirect_offsets.last_mut().unwrap_or(&mut direct_offset);
                 let FieldsShape::Array { stride, count: _ } = place.layout().fields else {
                     bug!("ConstantIndex on non-array type {:?}", place.layout())
                 };
-                *offset += stride * index;
-                place = place.project_constant_index(bx, index);
+                let offset = stride * index;
+                let place = place.project_constant_index(bx, index);
+
+                (place, offset)
+            }
+
+            mir::ProjectionElem::Deref => {
+                // derefs handled separately
+                bug!(
+                    "unexpected deref in var debuginfo projection `{direct_projection:?} {projection_chain:?}`"
+                )
             }
             _ => {
                 // Sanity check for `can_use_in_debuginfo`.
                 assert!(!elem.can_use_in_debuginfo());
-                bug!("unsupported var debuginfo projection `{:?}`", projection)
+                bug!(
+                    "unsupported var debuginfo projection `{direct_projection:?} {projection_chain:?}`"
+                )
             }
-        }
+        };
+        (new_place, offset + new_offset)
+    };
+
+    let (mut place, direct_offset) = direct_projection
+        .iter()
+        .fold((base, Size::ZERO), |(place, offset), &elem| project_direct(bx, place, offset, elem));
+
+    // FIXME(eddyb) use smallvec here.
+    let mut indirect_offsets = vec![];
+
+    for projection in projection_chain {
+        debug_assert_eq!(projection[0], mir::ProjectionElem::Deref);
+        let pointee = place.deref(bx);
+
+        let (projected, offset) =
+            projection[1..].iter().fold((pointee, Size::ZERO), |(place, offset), &elem| {
+                project_direct(bx, place, offset, elem)
+            });
+
+        place = projected;
+        indirect_offsets.push(offset);
     }
 
     DebugInfoOffset { direct_offset, indirect_offsets, result: place }
@@ -262,8 +287,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().find(|var| var.projection.is_empty()).cloned();
-        let has_proj = || vars.iter().any(|var| !var.projection.is_empty());
+        let whole_local_var = vars
+            .iter()
+            .find(|var| var.direct_projection.is_empty() && var.projection_chain.is_empty())
+            .cloned();
+        let has_proj = || {
+            vars.iter()
+                .any(|var| !var.direct_projection.is_empty() || !var.projection_chain.is_empty())
+        };
 
         let fallback_var = if self.mir.local_kind(local) == mir::LocalKind::Arg {
             let arg_index = local.index() - 1;
@@ -305,7 +336,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     source_info: decl.source_info,
                     dbg_var,
                     fragment: None,
-                    projection: ty::List::empty(),
+                    direct_projection: ty::List::empty(),
+                    projection_chain: ty::List::empty(),
                 })
             }
         } else {
@@ -388,7 +420,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let Some(dbg_loc) = self.dbg_loc(var.source_info) else { return };
 
         let DebugInfoOffset { direct_offset, indirect_offsets, result: _ } =
-            calculate_debuginfo_offset(bx, var.projection, base.layout);
+            calculate_debuginfo_offset(
+                bx,
+                var.direct_projection,
+                var.projection_chain,
+                base.layout,
+            );
 
         // When targeting MSVC, create extra allocas for arguments instead of pointing multiple
         // dbg_var_addr() calls into the same alloca with offsets. MSVC uses CodeView records
@@ -406,7 +443,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if should_create_individual_allocas {
             let DebugInfoOffset { direct_offset: _, indirect_offsets: _, result: place } =
-                calculate_debuginfo_offset(bx, var.projection, base);
+                calculate_debuginfo_offset(bx, var.direct_projection, var.projection_chain, base);
 
             // Create a variable which will be a pointer to the actual value
             let ptr_ty = Ty::new_mut_ptr(bx.tcx(), place.layout.ty);
@@ -543,7 +580,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let var_layout = self.cx.layout_of(var_ty);
 
                 let DebugInfoOffset { direct_offset, indirect_offsets, result: fragment_layout } =
-                    calculate_debuginfo_offset(bx, &fragment.projection, var_layout);
+                    calculate_debuginfo_offset(bx, &fragment.projection, &[], var_layout);
                 assert!(indirect_offsets.is_empty());
 
                 if fragment_layout.size == Size::ZERO {
@@ -562,16 +599,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             };
 
             match var.value {
-                mir::VarDebugInfoContents::Place(place) => {
-                    per_local[place.local].push(PerLocalVarDebugInfo {
+                mir::VarDebugInfoContents::Place(mir::CompoundPlace {
+                    local,
+                    direct_projection,
+                    projection_chain,
+                }) => {
+                    per_local[local].push(PerLocalVarDebugInfo {
                         name: var.name,
                         source_info: var.source_info,
                         dbg_var,
                         fragment,
-                        // FIXME change field to be projection chain
-                        projection: bx
-                            .tcx()
-                            .mk_place_elems_from_iter(place.iter_projection_elems()),
+                        direct_projection,
+                        projection_chain,
                     });
                 }
                 mir::VarDebugInfoContents::Const(c) => {
