@@ -162,9 +162,9 @@ impl RetReplacement<'_> {
 impl Display for RetReplacement<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Empty => write!(f, ""),
-            Self::Block => write!(f, "{{}}"),
-            Self::Unit => write!(f, "()"),
+            Self::Empty => f.write_str(""),
+            Self::Block => f.write_str("{}"),
+            Self::Unit => f.write_str("()"),
             Self::NeedsPar(inner, _) => write!(f, "({inner})"),
             Self::Expr(inner, _) => write!(f, "{inner}"),
         }
@@ -228,7 +228,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         // we need both a let-binding stmt and an expr
         if let Some(retexpr) = block.expr
-            && let Some(stmt) = block.stmts.iter().last()
+            && let Some(stmt) = block.stmts.last()
             && let StmtKind::Let(local) = &stmt.kind
             && local.ty.is_none()
             && cx.tcx.hir_attrs(local.hir_id).is_empty()
@@ -315,7 +315,7 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, 
     if let ExprKind::Block(block, _) = expr_kind {
         if let Some(block_expr) = block.expr {
             check_final_expr(cx, block_expr, semi_spans, RetReplacement::Empty, None);
-        } else if let Some(stmt) = block.stmts.iter().last() {
+        } else if let Some(stmt) = block.stmts.last() {
             match stmt.kind {
                 StmtKind::Expr(expr) => {
                     check_final_expr(cx, expr, semi_spans, RetReplacement::Empty, None);
