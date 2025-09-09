@@ -1278,17 +1278,19 @@ impl Debug for CompoundPlace<'_> {
 
 impl Debug for CompoundPlaceRef<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        pre_fmt_projection(self.last_projection, fmt)?;
-        for projection in self.projection_chain_base.iter().rev() {
+        let (stem, suffix) = self.projection_chain.unwrap_or_default();
+
+        pre_fmt_projection(suffix, fmt)?;
+        for projection in stem.iter().rev() {
             pre_fmt_projection(projection, fmt)?;
         }
 
         write!(fmt, "{:?}", self.local)?;
 
-        for projection in self.projection_chain_base {
+        for projection in stem {
             post_fmt_projection(projection, fmt)?;
         }
-        post_fmt_projection(self.last_projection, fmt)?;
+        post_fmt_projection(suffix, fmt)?;
 
         Ok(())
     }
