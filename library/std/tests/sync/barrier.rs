@@ -35,11 +35,10 @@ fn test_barrier() {
     assert!(leader_found);
 }
 
-#[expect(dead_code, reason = "this is essentially a compile pass test")]
-fn check_barrier_is_ref_unwind_safe() {
-    let barrier = Arc::new(Barrier::new(10));
-
-    fn check<T: RefUnwindSafe>(_: T) {}
-
-    check(barrier);
-}
+/// Asserts that `Barrier` is ref unwind safe.
+///
+/// See <https://github.com/rust-lang/rust/issues/146087>.
+const _: () = {
+    const fn check_ref_unwind_safe<T: RefUnwindSafe>() {}
+    check_ref_unwind_safe::<Barrier>();
+};
