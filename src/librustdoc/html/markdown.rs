@@ -2038,7 +2038,7 @@ fn is_default_id(id: &str) -> bool {
         | "crate-search"
         | "crate-search-div"
         // This is the list of IDs used in HTML generated in Rust (including the ones
-        // used in tera template files).
+        // used in askama template files).
         | "themeStyle"
         | "settings-menu"
         | "help-button"
@@ -2077,7 +2077,7 @@ fn is_default_id(id: &str) -> bool {
         | "blanket-implementations-list"
         | "deref-methods"
         | "layout"
-        | "aliased-type"
+        | "aliased-type",
     )
 }
 

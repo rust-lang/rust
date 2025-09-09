@@ -2847,7 +2847,7 @@ fn clean_maybe_renamed_item<'tcx>(
                         source: display_macro_source(cx, name, macro_def),
                         macro_rules: macro_def.macro_rules,
                     },
-                    None,
+                    MacroKinds::BANG,
                 ),
                 MacroKinds::ATTR => clean_proc_macro(item, &mut name, MacroKind::Attr, cx),
                 MacroKinds::DERIVE => clean_proc_macro(item, &mut name, MacroKind::Derive, cx),
@@ -2857,7 +2857,7 @@ fn clean_maybe_renamed_item<'tcx>(
                             source: display_macro_source(cx, name, macro_def),
                             macro_rules: macro_def.macro_rules,
                         },
-                        Some(kinds),
+                        kinds,
                     );
                     let mac = generate_item_with_correct_attrs(
                         cx,

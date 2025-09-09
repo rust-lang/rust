@@ -846,8 +846,12 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro, Option<MacroKinds>),
+    MacroItem(Macro, MacroKinds),
+    /// This is NOT an attribute proc-macro but a bang macro with support for being used as an
+    /// attribute macro.
     AttrMacroItem,
+    /// This is NOT an attribute proc-macro but a bang macro with support for being used as a
+    /// derive macro.
     DeriveMacroItem,
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),

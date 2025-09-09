@@ -169,7 +169,10 @@ impl SharedContext<'_> {
 
 struct SidebarItem {
     name: String,
-    is_actually_macro: bool,
+    /// Bang macros can now be used as attribute/derive macros, making it tricky to correctly
+    /// handle all their cases at once, which means that even if they are categorized as
+    /// derive/attribute macros, they should still link to a "macro_rules" URL.
+    is_macro_rules: bool,
 }
 
 impl serde::Serialize for SidebarItem {
@@ -177,7 +180,7 @@ impl serde::Serialize for SidebarItem {
     where
         S: serde::Serializer,
     {
-        if self.is_actually_macro {
+        if self.is_macro_rules {
             let mut seq = serializer.serialize_seq(Some(2))?;
             seq.serialize_element(&self.name)?;
             seq.serialize_element(&1)?;
@@ -349,7 +352,7 @@ impl<'tcx> Context<'tcx> {
                 let name = name.to_string();
                 map.entry(type_)
                     .or_default()
-                    .push(SidebarItem { name, is_actually_macro: item.is_macro_placeholder() });
+                    .push(SidebarItem { name, is_macro_rules: item.is_macro_placeholder() });
             }
         }
 
