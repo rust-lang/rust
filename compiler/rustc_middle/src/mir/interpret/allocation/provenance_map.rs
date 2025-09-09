@@ -11,6 +11,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::trace;
 
 use super::{AllocRange, CtfeProvenance, Provenance, alloc_range};
+use crate::mir::interpret::{AllocError, AllocResult};
 
 /// Stores the provenance information of pointers stored in memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -137,6 +138,11 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         let Some(bytes) = self.bytes.as_deref_mut() else {
             return true;
         };
+        if !Prov::OFFSET_IS_ADDR {
+            // FIXME(#146291): We need to ensure that we don't mix different pointers with
+            // the same provenance.
+            return false;
+        }
         let ptr_size = cx.data_layout().pointer_size();
         while let Some((offset, (prov, _))) = bytes.iter().next().copied() {
             // Check if this fragment starts a pointer.
@@ -285,7 +291,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
         dest: Size,
         count: u64,
         cx: &impl HasDataLayout,
-    ) -> ProvenanceCopy<Prov> {
+    ) -> AllocResult<ProvenanceCopy<Prov>> {
         let shift_offset = move |idx, offset| {
             // compute offset for current repetition
             let dest_offset = dest + src.size * idx; // `Size` operations
@@ -363,6 +369,12 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             }
             trace!("byte provenances: {bytes:?}");
 
+            if !bytes.is_empty() && !Prov::OFFSET_IS_ADDR {
+                // FIXME(#146291): We need to ensure that we don't mix different pointers with
+                // the same provenance.
+                return Err(AllocError::ReadPartialPointer(src.start));
+            }
+
             // And again a buffer for the new list on the target side.
             let mut dest_bytes = Vec::with_capacity(bytes.len() * (count as usize));
             for i in 0..count {
@@ -373,7 +385,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
             dest_bytes_box = Some(dest_bytes.into_boxed_slice());
         }
 
-        ProvenanceCopy { dest_ptrs: dest_ptrs_box, dest_bytes: dest_bytes_box }
+        Ok(ProvenanceCopy { dest_ptrs: dest_ptrs_box, dest_bytes: dest_bytes_box })
     }
 
     /// Applies a provenance copy.
