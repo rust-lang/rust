@@ -1284,9 +1284,11 @@ impl Debug for CompoundPlaceRef<'_> {
         for projection in stem.iter().rev() {
             pre_fmt_projection(projection, fmt)?;
         }
+        pre_fmt_projection(self.direct_projection, fmt)?;
 
         write!(fmt, "{:?}", self.local)?;
 
+        post_fmt_projection(self.direct_projection, fmt)?;
         for projection in stem {
             post_fmt_projection(projection, fmt)?;
         }

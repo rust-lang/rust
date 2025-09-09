@@ -883,7 +883,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         match debuginfo.value {
             VarDebugInfoContents::Const(_) => {}
             VarDebugInfoContents::Place(place) => {
-                if place.projection_chain.iter().flatten().any(|p| !p.can_use_in_debuginfo()) {
+                if place.iter_projection_elems().any(|p| !p.can_use_in_debuginfo()) {
                     self.fail(
                         START_BLOCK.start_location(),
                         format!("illegal place {:?} in debuginfo for {:?}", place, debuginfo.name),
@@ -935,17 +935,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         // Set off any `bug!`s in the type computation code
         let _ = place.ty(&self.body.local_decls, self.tcx);
 
+        if place.direct_projection.contains(&PlaceElem::Deref) {
+            self.fail(location, format!("compound place {place:?} has deref in direct_projection"));
+        }
+
         for (i, projection) in place.projection_chain.iter().enumerate() {
             if projection.is_empty() {
                 self.fail(location, format!("compound place {place:?} has empty segment {i}"));
             }
 
-            if i > 0 && projection.first() != Some(&ProjectionElem::Deref) {
+            if projection.first() != Some(&ProjectionElem::Deref) {
                 self.fail(
                     location,
-                    format!(
-                        "compound place {place:?} has later segment without deref (segment {i})"
-                    ),
+                    format!("compound place {place:?} missing deref in segment {i}"),
                 );
             }
 

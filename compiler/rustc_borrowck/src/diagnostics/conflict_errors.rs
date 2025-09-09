@@ -561,9 +561,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             VarDebugInfoContents::Place(ref p) => {
                 // This will become a simple == when Derefer is moved before borrowck
                 place.local == p.local
-                    && p.projection_chain
-                        .iter()
-                        .flatten()
+                    && p.iter_projection_elems()
                         .enumerate()
                         .all(|(i, elem)| place.projection.get(i) == Some(&elem))
             }

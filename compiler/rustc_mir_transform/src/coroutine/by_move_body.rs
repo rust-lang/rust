@@ -332,13 +332,34 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         context: mir::visit::PlaceContext,
         location: mir::Location,
     ) {
+        // See comments above in visit_place
         if place.local == ty::CAPTURE_STRUCT_LOCAL
-            && let Some((first_projection, rest)) = place.projection_chain.split_first()
-            && let Some((&mir::ProjectionElem::Field(idx, _), first_projection)) =
-                first_projection.split_first()
+            && let Some((&mir::ProjectionElem::Field(idx, _), direct_projection)) =
+                place.direct_projection.split_first()
             && let Some(&(remapped_idx, remapped_ty, peel_deref, ref bridging_projections)) =
                 self.field_remapping.get(&idx)
         {
+            // equivalent to `final_projections` above
+            let (next, tail) = if peel_deref {
+                assert!(direct_projection.is_empty());
+                let Some((next_projection, rest)) = place.projection_chain.split_first() else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {direct_projection:#?}"
+                    );
+                };
+
+                let Some((mir::ProjectionElem::Deref, projection)) = next_projection.split_first()
+                else {
+                    bug!(
+                        "There should be at least a single deref for an upvar local initialization, found {next_projection:#?}"
+                    );
+                };
+
+                (projection, rest)
+            } else {
+                (direct_projection, place.projection_chain.as_slice())
+            };
+
             // it might be good to use smallvec here
             let mut new_projection_chain = vec![];
             let mut last_projection = vec![mir::ProjectionElem::Field(remapped_idx, remapped_ty)];
@@ -357,35 +378,14 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 }
             }
 
-            let (next, tail) = if peel_deref {
-                assert!(first_projection.is_empty());
-                let Some((next_projection, rest)) = rest.split_first() else {
-                    bug!(
-                        "There should be at least a single deref for an upvar local initialization, found {rest:#?}"
-                    );
-                };
-
-                let Some((mir::ProjectionElem::Deref, projection)) = next_projection.split_first()
-                else {
-                    bug!(
-                        "There should be at least a single deref for an upvar local initialization, found {next_projection:#?}"
-                    );
-                };
-
-                (projection, rest)
-            } else {
-                (first_projection, rest)
-            };
-
             last_projection.extend_from_slice(next);
             new_projection_chain.push(self.tcx.mk_place_elems(&last_projection));
             new_projection_chain.extend_from_slice(tail);
 
             *place = mir::CompoundPlace {
                 local: place.local,
-                projection_chain: self.tcx.mk_place_elem_chain_from_iter(
-                    new_projection_chain.into_iter().map(|p| self.tcx.mk_place_elems(&p)),
-                ),
+                direct_projection: new_projection_chain[0],
+                projection_chain: self.tcx.mk_place_elem_chain(&new_projection_chain[1..]),
             };
         }
         self.super_compound_place(place, context, location);

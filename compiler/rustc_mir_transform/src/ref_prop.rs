@@ -447,11 +447,23 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         ctxt: PlaceContext,
         loc: Location,
     ) {
-        let mut base = place.base_place();
+        // We only replace if the place starts with a deref.
+        let Some(local) = place.base_place().as_local() else { return };
+        let Some(&first_indirect_projection) = place.projection_chain.first() else { return };
+
+        let mut base = Place { local, projection: first_indirect_projection };
         let replaced = self.replace_base(&mut base, ctxt, loc);
 
         if replaced {
-            place.replace_base_place(base, self.tcx);
+            place.local = base.local;
+            if base.is_indirect_first_projection() {
+                let mut new_projection_chain = place.projection_chain.to_vec();
+                new_projection_chain[0] = base.projection;
+                place.projection_chain = self.tcx.mk_place_elem_chain(&new_projection_chain);
+            } else {
+                place.direct_projection = base.projection;
+                place.projection_chain = self.tcx.mk_place_elem_chain(&place.projection_chain[1..]);
+            }
         }
     }
 
