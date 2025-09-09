@@ -28,6 +28,7 @@ use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
+use rustc_parse::lexer::StripTokens;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_passes::{abi_test, input_stats, layout_test};
 use rustc_resolve::{Resolver, ResolverOutputs};
@@ -52,10 +53,18 @@ pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let mut krate = sess
         .time("parse_crate", || {
             let mut parser = unwrap_or_emit_fatal(match &sess.io.input {
-                Input::File(file) => new_parser_from_file(&sess.psess, file, None),
-                Input::Str { input, name } => {
-                    new_parser_from_source_str(&sess.psess, name.clone(), input.clone())
-                }
+                Input::File(file) => new_parser_from_file(
+                    &sess.psess,
+                    file,
+                    StripTokens::ShebangAndFrontmatter,
+                    None,
+                ),
+                Input::Str { input, name } => new_parser_from_source_str(
+                    &sess.psess,
+                    name.clone(),
+                    input.clone(),
+                    StripTokens::ShebangAndFrontmatter,
+                ),
             });
             parser.parse_crate_mod()
         })
