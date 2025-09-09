@@ -309,8 +309,10 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         The exact rules are unstable and subject to change, but
         currently, it generates stack protectors for functions that,
-        *post-optimization*, contain either arrays (of any size
-        or type) or address-taken locals.
+        *post-optimization*, contain LLVM allocas (which
+        include all stack allocations - including fixed-size
+        allocations - that are used in a way that is not completely
+        determined by static control flow).
 
     none
         Do not generate stack canaries.
