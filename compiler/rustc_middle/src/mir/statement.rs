@@ -161,7 +161,7 @@ impl<'tcx> PlaceTy<'tcx> {
     pub fn projection_chain_ty(
         self,
         tcx: TyCtxt<'tcx>,
-        chain: &[&List<PlaceElem<'tcx>>],
+        chain: &[ProjectionFragment<'tcx>],
     ) -> PlaceTy<'tcx> {
         chain
             .iter()
@@ -556,6 +556,13 @@ impl From<Local> for PlaceRef<'_> {
     }
 }
 
+// In the future this will also have the type being projected alongside it.
+// This will be needed to represent derefs of non-pointer types like `Box`.
+//
+// (`Ty::builtin_deref` currently works on `Box` but that will be changed too)
+pub type ProjectionFragment<'tcx> = &'tcx List<PlaceElem<'tcx>>;
+pub type ProjectionFragmentRef<'tcx> = &'tcx [PlaceElem<'tcx>];
+
 /// A place possibly containing derefs in the middle of its projection by chaining projection lists.
 ///
 /// In `AnalysisPhase::PostCleanup` and later, [`Place`] and [`PlaceRef`] cannot represent these
@@ -567,15 +574,15 @@ pub struct CompoundPlace<'tcx> {
     /// - All segments in the chain other than the first must start with a deref.
     /// - Derefs may only appear at the start of a segment.
     /// - No segment may be empty.
-    pub projection_chain: &'tcx List<&'tcx List<PlaceElem<'tcx>>>,
+    pub projection_chain: &'tcx List<ProjectionFragment<'tcx>>,
 }
 
 /// Borrowed form of [`CompoundPlace`].
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CompoundPlaceRef<'tcx> {
     pub local: Local,
-    pub projection_chain_base: &'tcx [&'tcx List<PlaceElem<'tcx>>],
-    pub last_projection: &'tcx [PlaceElem<'tcx>],
+    pub projection_chain_base: &'tcx [ProjectionFragment<'tcx>],
+    pub last_projection: ProjectionFragmentRef<'tcx>,
 }
 
 // these impls are bare-bones for now
