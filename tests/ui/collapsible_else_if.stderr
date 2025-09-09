@@ -151,7 +151,7 @@ LL | |     }
    | |_____^ help: collapse nested if block: `if false {}`
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:130:12
+  --> tests/ui/collapsible_else_if.rs:157:12
    |
 LL |       } else {
    |  ____________^

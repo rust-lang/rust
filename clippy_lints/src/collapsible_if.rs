@@ -1,16 +1,16 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block_with_applicability};
-use clippy_utils::{span_contains_non_whitespace, tokenize_with_text};
-use rustc_ast::BinOpKind;
+use clippy_utils::{span_contains_non_whitespace, sym, tokenize_with_text};
+use rustc_ast::{BinOpKind, MetaItemInner};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,14 +95,14 @@ impl CollapsibleIf {
 
     fn check_collapsible_else_if(&self, cx: &LateContext<'_>, then_span: Span, else_block: &Block<'_>) {
         if let Some(else_) = expr_block(else_block)
-            && cx.tcx.hir_attrs(else_.hir_id).is_empty()
             && !else_.span.from_expansion()
             && let ExprKind::If(else_if_cond, ..) = else_.kind
-            && !block_starts_with_significant_tokens(cx, else_block, else_, self.lint_commented_code)
+            && self.check_significant_tokens_and_expect_attrs(cx, else_block, else_, sym::collapsible_else_if)
         {
-            span_lint_and_then(
+            span_lint_hir_and_then(
                 cx,
                 COLLAPSIBLE_ELSE_IF,
+                else_.hir_id,
                 else_block.span,
                 "this `else { if .. }` block can be collapsed",
                 |diag| {
@@ -166,15 +166,15 @@ impl CollapsibleIf {
 
     fn check_collapsible_if_if(&self, cx: &LateContext<'_>, expr: &Expr<'_>, check: &Expr<'_>, then: &Block<'_>) {
         if let Some(inner) = expr_block(then)
-            && cx.tcx.hir_attrs(inner.hir_id).is_empty()
             && let ExprKind::If(check_inner, _, None) = &inner.kind
             && self.eligible_condition(cx, check_inner)
             && expr.span.eq_ctxt(inner.span)
-            && !block_starts_with_significant_tokens(cx, then, inner, self.lint_commented_code)
+            && self.check_significant_tokens_and_expect_attrs(cx, then, inner, sym::collapsible_if)
         {
-            span_lint_and_then(
+            span_lint_hir_and_then(
                 cx,
                 COLLAPSIBLE_IF,
+                inner.hir_id,
                 expr.span,
                 "this `if` statement can be collapsed",
                 |diag| {
@@ -219,6 +219,45 @@ impl CollapsibleIf {
         !matches!(cond.kind, ExprKind::Let(..))
             || (cx.tcx.sess.edition().at_least_rust_2024() && self.msrv.meets(cx, msrvs::LET_CHAINS))
     }
+
+    // Check that nothing significant can be found between the initial `{` of `inner_if` and
+    // the beginning of `inner_if_expr`...
+    //
+    // Unless it's only an `#[expect(clippy::collapsible{,_else}_if)]` attribute, in which case we
+    // _do_ need to lint, in order to actually fulfill its expectation (#13365)
+    fn check_significant_tokens_and_expect_attrs(
+        &self,
+        cx: &LateContext<'_>,
+        inner_if: &Block<'_>,
+        inner_if_expr: &Expr<'_>,
+        expected_lint_name: Symbol,
+    ) -> bool {
+        match cx.tcx.hir_attrs(inner_if_expr.hir_id) {
+            [] => {
+                // There aren't any attributes, so just check for significant tokens
+                let span = inner_if.span.split_at(1).1.until(inner_if_expr.span);
+                !span_contains_non_whitespace(cx, span, self.lint_commented_code)
+            },
+
+            [attr]
+                if matches!(Level::from_attr(attr), Some((Level::Expect, _)))
+                    && let Some(metas) = attr.meta_item_list()
+                    && let Some(MetaItemInner::MetaItem(meta_item)) = metas.first()
+                    && let [tool, lint_name] = meta_item.path.segments.as_slice()
+                    && tool.ident.name == sym::clippy
+                    && [expected_lint_name, sym::style, sym::all].contains(&lint_name.ident.name) =>
+            {
+                // There is an `expect` attribute -- check that there is no _other_ significant text
+                let span_before_attr = inner_if.span.split_at(1).1.until(attr.span());
+                let span_after_attr = attr.span().between(inner_if_expr.span);
+                !span_contains_non_whitespace(cx, span_before_attr, self.lint_commented_code)
+                    && !span_contains_non_whitespace(cx, span_after_attr, self.lint_commented_code)
+            },
+
+            // There are other attributes, which are significant tokens -- check failed
+            _ => false,
+        }
+    }
 }
 
 impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
@@ -240,18 +279,6 @@ impl LateLintPass<'_> for CollapsibleIf {
             }
         }
     }
-}
-
-// Check that nothing significant can be found but whitespaces between the initial `{` of `block`
-// and the beginning of `stop_at`.
-fn block_starts_with_significant_tokens(
-    cx: &LateContext<'_>,
-    block: &Block<'_>,
-    stop_at: &Expr<'_>,
-    lint_commented_code: bool,
-) -> bool {
-    let span = block.span.split_at(1).1.until(stop_at.span);
-    span_contains_non_whitespace(cx, span, lint_commented_code)
 }
 
 /// If `block` is a block with either one expression or a statement containing an expression,

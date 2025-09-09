@@ -87,6 +87,33 @@ fn issue_7318() {
     //~^^^ collapsible_else_if
 }
 
+fn issue_13365() {
+    // all the `expect`s that we should fulfill
+    if true {
+    } else {
+        #[expect(clippy::collapsible_else_if)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::style)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(clippy::all)]
+        if false {}
+    }
+
+    if true {
+    } else {
+        #[expect(warnings)]
+        if false {}
+    }
+}
+
 fn issue14799() {
     use std::ops::ControlFlow;
 
