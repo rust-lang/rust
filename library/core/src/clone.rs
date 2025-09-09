@@ -388,17 +388,14 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///
 /// # Examples
 ///
-// FIXME(#126799): when `Box::clone` allows use of `CloneToUninit`, rewrite these examples with it
-// since `Rc` is a distraction.
 ///
 /// If you are defining a trait, you can add `CloneToUninit` as a supertrait to enable cloning of
 /// `dyn` values of your trait:
 ///
 /// ```
 /// #![feature(clone_to_uninit)]
-/// use std::rc::Rc;
 ///
-/// trait Foo: std::fmt::Debug + std::clone::CloneToUninit {
+/// trait Foo: std::clone::CloneToUninit {
 ///     fn modify(&mut self);
 ///     fn value(&self) -> i32;
 /// }
@@ -412,10 +409,10 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///     }
 /// }
 ///
-/// let first: Rc<dyn Foo> = Rc::new(1234);
+/// let first: Box<dyn Foo> = Box::new(1234);
 ///
-/// let mut second = first.clone();
-/// Rc::make_mut(&mut second).modify(); // make_mut() will call clone_to_uninit()
+/// let mut second = first.clone(); // clone() will call clone_to_uninit()
+/// second.modify();
 ///
 /// assert_eq!(first.value(), 1234);
 /// assert_eq!(second.value(), 12340);
@@ -429,7 +426,6 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 /// #![feature(clone_to_uninit)]
 /// use std::clone::CloneToUninit;
 /// use std::mem::offset_of;
-/// use std::rc::Rc;
 ///
 /// #[derive(PartialEq)]
 /// struct MyDst<T: ?Sized> {
@@ -485,14 +481,13 @@ pub struct AssertParamIsCopy<T: Copy + PointeeSized> {
 ///
 /// fn main() {
 ///     // Construct MyDst<[u8; 4]>, then coerce to MyDst<[u8]>.
-///     let first: Rc<MyDst<[u8]>> = Rc::new(MyDst {
+///     let first: Box<MyDst<[u8]>> = Box::new(MyDst {
 ///         label: String::from("hello"),
 ///         contents: [1, 2, 3, 4],
 ///     });
 ///
-///     let mut second = first.clone();
-///     // make_mut() will call clone_to_uninit().
-///     for elem in Rc::make_mut(&mut second).contents.iter_mut() {
+///     let mut second = first.clone(); // clone() will call clone_to_uninit().
+///     for elem in second.contents.iter_mut() {
 ///         *elem *= 10;
 ///     }
 ///
