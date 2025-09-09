@@ -217,6 +217,8 @@ mod convert;
 mod iter;
 /// [`ThinBox`] implementation.
 mod thin;
+#[cfg(not(no_global_oom_handling))]
+mod uninit;
 
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
