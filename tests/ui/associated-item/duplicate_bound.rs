@@ -3,6 +3,7 @@
 #![feature(associated_const_equality, return_type_notation)]
 #![allow(dead_code, refining_impl_trait_internal, type_alias_bounds)]
 
+use std::any::TypeId;
 use std::iter;
 use std::mem::ManuallyDrop;
 
@@ -225,17 +226,19 @@ fn uncallable_rtn(_: impl Trait<foo(..): Trait<ASSOC = 3>, foo(..): Trait<ASSOC 
 fn callable_rtn(_: impl Trait<foo(..): Send, foo(..): Send, foo(..): Eq>) {}
 
 type Works = dyn Iterator<Item = i32, Item = i32>;
-// ^~ ERROR conflicting associated type bounds
 
 trait Trait2 {
     const ASSOC: u32;
 }
 
 type AlsoWorks = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
-// ^~ ERROR conflicting associated type bounds
 
 fn main() {
     callable(iter::empty::<i32>());
     callable_const(());
     callable_rtn(());
+    assert_eq!(
+        TypeId::of::<dyn Iterator<Item = u32>>(),
+        TypeId::of::<dyn Iterator<Item = u32, Item = u32>>()
+    );
 }
