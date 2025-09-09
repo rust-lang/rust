@@ -27,6 +27,16 @@ use crate::marker::{FnPtr, PhantomData};
 use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::{mem, ptr};
 
+// We currently only test `dlsym!`, but that doesn't work on all platforms, so
+// we gate the tests to only the platforms where it is actually used.
+//
+// FIXME(joboet): add more tests, reorganise the whole module and get rid of
+//                `#[allow(dead_code, unused_macros)]`.
+#[cfg(any(
+    target_vendor = "apple",
+    all(target_os = "linux", target_env = "gnu"),
+    target_os = "freebsd",
+))]
 #[cfg(test)]
 mod tests;
 
