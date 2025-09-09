@@ -247,3 +247,7 @@ attr_parsing_raw_dylib_only_windows =
 
 attr_parsing_whole_archive_needs_static =
     linking modifier `whole-archive` is only compatible with `static` linking kind
+
+attr_parsing_limit_invalid =
+    `limit` must be a non-negative integer
+    .label = {$error_str}

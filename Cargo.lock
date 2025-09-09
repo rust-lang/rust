@@ -2167,6 +2167,7 @@ version = "0.1.0"
 dependencies = [
  "html5ever",
  "regex",
+ "urlencoding",
 ]
 
 [[package]]
@@ -4411,7 +4412,6 @@ dependencies = [
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
  "tracing",
 ]
@@ -5833,6 +5833,12 @@ dependencies = [
  "idna",
  "percent-encoding",
 ]
+
+[[package]]
+name = "urlencoding"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
 
 [[package]]
 name = "utf-8"
