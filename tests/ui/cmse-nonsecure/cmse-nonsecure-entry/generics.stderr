@@ -1,8 +1,12 @@
-error: defining functions with C-variadic arguments is only allowed for free functions with the "C" or "C-unwind" calling convention
-  --> $DIR/generics.rs:73:53
+error: `...` is not supported for `extern "cmse-nonsecure-entry"` functions
+  --> $DIR/generics.rs:69:60
    |
-LL | extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |                                                     ^^^^^^
+LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |        -----------------------------                       ^^^^^^
+   |        |
+   |        `extern "cmse-nonsecure-entry"` because of this
+   |
+   = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error[E0798]: functions with the `"cmse-nonsecure-entry"` ABI cannot contain generics in their type
   --> $DIR/generics.rs:30:1
@@ -50,28 +54,28 @@ LL | extern "cmse-nonsecure-entry" fn trait_object(x: &dyn Trait) -> &dyn Trait 
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:58:6
+  --> $DIR/generics.rs:56:80
    |
-LL | ) -> &'static dyn Trait {
-   |      ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+LL | extern "cmse-nonsecure-entry" fn static_trait_object(x: &'static dyn Trait) -> &'static dyn Trait {
+   |                                                                                ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error[E0798]: return value of `"cmse-nonsecure-entry"` function too large to pass via registers
-  --> $DIR/generics.rs:68:6
+  --> $DIR/generics.rs:64:81
    |
-LL | ) -> WrapperTransparent {
-   |      ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
+LL | extern "cmse-nonsecure-entry" fn wrapped_trait_object(x: WrapperTransparent) -> WrapperTransparent {
+   |                                                                                 ^^^^^^^^^^^^^^^^^^ this type doesn't fit in the available registers
    |
    = note: functions with the `"cmse-nonsecure-entry"` ABI must pass their result via the available return registers
    = note: the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 error: requires `va_list` lang_item
-  --> $DIR/generics.rs:73:53
+  --> $DIR/generics.rs:69:60
    |
-LL | extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
-   |                                                     ^^^^^^
+LL | unsafe extern "cmse-nonsecure-entry" fn c_variadic(_: u32, _: ...) {
+   |                                                            ^^^^^^
 
 error: aborting due to 9 previous errors
 
