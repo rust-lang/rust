@@ -724,6 +724,11 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             }
             // If we get here, we have to check per-byte provenance, and join them together.
             let prov = 'prov: {
+                if !Prov::OFFSET_IS_ADDR {
+                    // FIXME(#146291): We need to ensure that we don't mix different pointers with
+                    // the same provenance.
+                    return Err(AllocError::ReadPartialPointer(range.start));
+                }
                 // Initialize with first fragment. Must have index 0.
                 let Some((mut joint_prov, 0)) = self.provenance.get_byte(range.start, cx) else {
                     break 'prov None;
