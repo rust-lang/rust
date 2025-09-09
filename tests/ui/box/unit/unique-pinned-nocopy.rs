@@ -9,6 +9,6 @@ impl Drop for R {
 
 fn main() {
     let i = Box::new(R { b: true });
-    let _j = i.clone(); //~ ERROR the method
+    let _j = i.clone(); //~ ERROR no method named `clone` found for struct `Box<R>` in the current scope [E0599]
     println!("{:?}", i);
 }

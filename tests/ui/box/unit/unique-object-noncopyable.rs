@@ -21,5 +21,5 @@ impl Foo for Bar {
 fn main() {
     let x = Box::new(Bar { x: 10 });
     let y: Box<dyn Foo> = x as Box<dyn Foo>;
-    let _z = y.clone(); //~ ERROR the method
+    let _z = y.clone(); //~ ERROR no method named `clone` found for struct `Box<dyn Foo>` in the current scope [E0599]
 }
