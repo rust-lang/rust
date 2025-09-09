@@ -734,15 +734,13 @@ impl<'db, T: HasInterner<Interner = Interner> + ChalkToNextSolver<'db, U>, U>
             interner,
             self.binders.iter(Interner).map(|k| match &k.kind {
                 chalk_ir::VariableKind::Ty(ty_variable_kind) => match ty_variable_kind {
-                    TyVariableKind::General => rustc_type_ir::CanonicalVarKind::Ty(
-                        rustc_type_ir::CanonicalTyVarKind::General(UniverseIndex::ROOT),
-                    ),
-                    TyVariableKind::Integer => {
-                        rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Int)
-                    }
-                    TyVariableKind::Float => rustc_type_ir::CanonicalVarKind::Ty(
-                        rustc_type_ir::CanonicalTyVarKind::Float,
-                    ),
+                    // FIXME(next-solver): the info is incorrect, but we have no way to store the information in Chalk.
+                    TyVariableKind::General => rustc_type_ir::CanonicalVarKind::Ty {
+                        ui: UniverseIndex::ROOT,
+                        sub_root: BoundVar::from_u32(0),
+                    },
+                    TyVariableKind::Integer => rustc_type_ir::CanonicalVarKind::Int,
+                    TyVariableKind::Float => rustc_type_ir::CanonicalVarKind::Float,
                 },
                 chalk_ir::VariableKind::Lifetime => {
                     rustc_type_ir::CanonicalVarKind::Region(UniverseIndex::ROOT)
@@ -767,24 +765,20 @@ impl<'db, T: NextSolverToChalk<'db, U>, U: HasInterner<Interner = Interner>>
         let binders = chalk_ir::CanonicalVarKinds::from_iter(
             Interner,
             self.variables.iter().map(|v| match v {
-                rustc_type_ir::CanonicalVarKind::Ty(
-                    rustc_type_ir::CanonicalTyVarKind::General(ui),
-                ) => chalk_ir::CanonicalVarKind::new(
-                    chalk_ir::VariableKind::Ty(TyVariableKind::General),
-                    chalk_ir::UniverseIndex { counter: ui.as_usize() },
+                rustc_type_ir::CanonicalVarKind::Ty { ui, sub_root: _ } => {
+                    chalk_ir::CanonicalVarKind::new(
+                        chalk_ir::VariableKind::Ty(TyVariableKind::General),
+                        chalk_ir::UniverseIndex { counter: ui.as_usize() },
+                    )
+                }
+                rustc_type_ir::CanonicalVarKind::Int => chalk_ir::CanonicalVarKind::new(
+                    chalk_ir::VariableKind::Ty(TyVariableKind::Integer),
+                    chalk_ir::UniverseIndex::root(),
                 ),
-                rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Int) => {
-                    chalk_ir::CanonicalVarKind::new(
-                        chalk_ir::VariableKind::Ty(TyVariableKind::Integer),
-                        chalk_ir::UniverseIndex::root(),
-                    )
-                }
-                rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Float) => {
-                    chalk_ir::CanonicalVarKind::new(
-                        chalk_ir::VariableKind::Ty(TyVariableKind::Float),
-                        chalk_ir::UniverseIndex::root(),
-                    )
-                }
+                rustc_type_ir::CanonicalVarKind::Float => chalk_ir::CanonicalVarKind::new(
+                    chalk_ir::VariableKind::Ty(TyVariableKind::Float),
+                    chalk_ir::UniverseIndex::root(),
+                ),
                 rustc_type_ir::CanonicalVarKind::Region(ui) => chalk_ir::CanonicalVarKind::new(
                     chalk_ir::VariableKind::Lifetime,
                     chalk_ir::UniverseIndex { counter: ui.as_usize() },

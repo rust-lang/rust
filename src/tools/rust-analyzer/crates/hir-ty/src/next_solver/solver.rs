@@ -9,6 +9,7 @@ use rustc_type_ir::{
     solve::{Certainty, NoSolution},
 };
 
+use crate::next_solver::CanonicalVarKind;
 use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     TraitRefExt,
@@ -117,13 +118,14 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         canonical.instantiate(self.cx(), &values)
     }
 
-    fn instantiate_canonical_var_with_infer(
+    fn instantiate_canonical_var(
         &self,
-        cv_info: rustc_type_ir::CanonicalVarKind<Self::Interner>,
-        _span: <Self::Interner as rustc_type_ir::Interner>::Span,
+        kind: CanonicalVarKind<'db>,
+        span: <Self::Interner as Interner>::Span,
+        var_values: &[GenericArg<'db>],
         universe_map: impl Fn(rustc_type_ir::UniverseIndex) -> rustc_type_ir::UniverseIndex,
-    ) -> <Self::Interner as rustc_type_ir::Interner>::GenericArg {
-        self.0.instantiate_canonical_var(cv_info, universe_map)
+    ) -> GenericArg<'db> {
+        self.0.instantiate_canonical_var(kind, var_values, universe_map)
     }
 
     fn add_item_bounds_for_hidden_type(
