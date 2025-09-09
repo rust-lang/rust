@@ -420,7 +420,6 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 NullOp::SizeOf
                 | NullOp::AlignOf
                 | NullOp::OffsetOf(..)
-                | NullOp::FieldOffset
                 | NullOp::UbChecks
                 | NullOp::ContractChecks,
                 _,

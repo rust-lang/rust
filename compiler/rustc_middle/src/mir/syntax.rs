@@ -1575,8 +1575,6 @@ pub enum NullOp<'tcx> {
     AlignOf,
     /// Returns the offset of a field
     OffsetOf(FieldPath<'tcx>),
-    /// Returns the offset of the field represented by the type
-    FieldOffset,
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,

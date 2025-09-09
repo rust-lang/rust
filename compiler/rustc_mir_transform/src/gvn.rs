@@ -497,16 +497,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         .tcx
                         .offset_of_subfield(self.typing_env(), arg_layout, fields.iter())
                         .bytes(),
-                    NullOp::FieldOffset => {
-                        let &ty::Field(container, field_path) = arg_ty.kind() else {
-                            bug!("expected `ty::Field`, found {arg_ty:?}")
-                        };
-                        let layout = self.ecx.layout_of(container).ok()?;
-                        self.ecx
-                            .tcx
-                            .offset_of_subfield(self.typing_env(), layout, field_path.iter())
-                            .bytes()
-                    }
                     NullOp::UbChecks => return None,
                     NullOp::ContractChecks => return None,
                 };

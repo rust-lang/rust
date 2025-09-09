@@ -536,12 +536,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.tcx.offset_of_subfield(self.typing_env, layout, fields.iter()).bytes();
                 ImmTy::from_uint(val, usize_layout())
             }
-            FieldOffset => {
-                let &ty::Field(container, field_path) = arg_ty.kind() else {
-                    span_bug!(self.cur_span(), "expected `ty::Field`, found {arg_ty:?}")
-                };
-                self.nullary_op(OffsetOf(field_path), container)?
-            }
             UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
             ContractChecks => ImmTy::from_bool(M::contract_checks(self)?, *self.tcx),
         })
