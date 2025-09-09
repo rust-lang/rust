@@ -705,8 +705,6 @@ This flag controls stack smashing protection strategy.
 
 Supported values for this option are:
 - `none` (default): Disable stack canary generation
-- `basic`: Generate stack canaries in functions that are suspected
-  to have a high chance of containing stack buffer overflows (deprecated).
 - `strong`: Generate stack canaries in all functions, unless the compiler
   can prove these functions can't be the source of a stack
   buffer overflow (even in the presence of undefined behavior).

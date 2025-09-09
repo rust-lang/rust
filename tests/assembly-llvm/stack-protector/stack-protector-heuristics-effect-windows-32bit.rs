@@ -1,11 +1,10 @@
-//@ revisions: all strong basic none missing
+//@ revisions: all strong none missing
 //@ assembly-output: emit-asm
 //@ only-windows
 //@ only-msvc
 //@ ignore-64bit 64-bit table based SEH has slightly different behaviors than classic SEH
 //@ [all] compile-flags: -C stack-protector=all
 //@ [strong] compile-flags: -C stack-protector=strong
-//@ [basic] compile-flags: -C stack-protector=basic
 //@ [none] compile-flags: -C stack-protector=none
 //@ compile-flags: -C opt-level=2 -Z merge-functions=disabled -Cpanic=abort -Cdebuginfo=1
 
@@ -18,7 +17,6 @@
 pub fn emptyfn() {
     // all: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 }
@@ -36,7 +34,6 @@ pub fn array_char(f: fn(*const char)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -54,7 +51,6 @@ pub fn array_u8_1(f: fn(*const u8)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -70,10 +66,10 @@ pub fn array_u8_small(f: fn(*const u8)) {
     f(&b as *const _);
 
     // Small arrays do not lead to stack protection by the 'basic' heuristic.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -88,10 +84,10 @@ pub fn array_u8_large(f: fn(*const u8)) {
 
     // Since `a` is a byte array with size greater than 8, the basic heuristic
     // will also protect this function.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -109,10 +105,10 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
 
     // Since `a` is a byte array in the LLVM output, the basic heuristic will
     // also protect this function.
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -138,10 +134,10 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // }
     // EOF
     // ```
+    // (basic is not currently supported, leaving the test anyway).
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -159,7 +155,6 @@ pub fn local_string_addr_taken(f: fn(&String)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -190,7 +185,6 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
 
     // all: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -229,7 +223,6 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -260,7 +253,6 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
 
     // all: __security_check_cookie
     // strong: __security_check_cookie
-    // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -302,7 +294,6 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
 
     // all: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -316,7 +307,6 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
 
     // all: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -330,7 +320,6 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
 
     // all: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
@@ -352,12 +341,10 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // function and into `f()`, this is implemented with pass-by-reference
     // using a suitably constructed fat-pointer (as if the functions
     // accepted &[u8]). This function therefore doesn't need dynamic array
-    // alloca, and is therefore not protected by the `strong` or `basic`
-    // heuristics.
+    // alloca, and is therefore not protected by the `strong` heuristic.
 
     // all-NOT: __security_check_cookie
     // strong-NOT: __security_check_cookie
-    // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
