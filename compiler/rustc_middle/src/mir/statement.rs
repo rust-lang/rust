@@ -581,8 +581,9 @@ pub struct CompoundPlace<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CompoundPlaceRef<'tcx> {
     pub local: Local,
-    pub projection_chain_base: &'tcx [ProjectionFragment<'tcx>],
-    pub last_projection: ProjectionFragmentRef<'tcx>,
+    /// `None` is equivalent to an empty projection chain,
+    /// `Some((stem, suffix))` is equivalent to `stem` with `suffix` appended to it
+    pub projection_chain: Option<(&'tcx [ProjectionFragment<'tcx>], ProjectionFragmentRef<'tcx>)>,
 }
 
 // these impls are bare-bones for now
@@ -617,13 +618,7 @@ impl<'tcx> CompoundPlace<'tcx> {
     }
 
     pub fn as_ref(&self) -> CompoundPlaceRef<'tcx> {
-        let (last, base) = self
-            .projection_chain
-            .split_last()
-            .map(|(&last, base)| (last, base))
-            .unwrap_or_default();
-
-        CompoundPlaceRef { local: self.local, projection_chain_base: base, last_projection: last }
+        CompoundPlaceRef::from_slice(self.local, self.projection_chain)
     }
 
     pub fn as_local(&self) -> Option<Local> {
@@ -684,37 +679,11 @@ impl<'tcx> CompoundPlace<'tcx> {
     ) -> impl Iterator<Item = (CompoundPlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
         self.projection_chain.iter().enumerate().flat_map(move |(i, projs)| {
             projs.iter().enumerate().map(move |(j, elem)| {
-                let base = if j == 0 && i > 0 {
-                    // last_projection should only be empty if projection_chain_base is too
-                    debug_assert_eq!(elem, PlaceElem::Deref);
-                    CompoundPlaceRef {
-                        local: self.local,
-                        projection_chain_base: &self.projection_chain[..i - 1],
-                        last_projection: &self.projection_chain[i - 1],
-                    }
-
-                    // FIXME: the fact that i messed up this logic the first time is good evidence that
-                    // the invariants are confusing and difficult to uphold
-                } else {
-                    CompoundPlaceRef {
-                        local: self.local,
-                        projection_chain_base: &self.projection_chain[..i],
-                        last_projection: &projs[..j],
-                    }
-                };
-
-                if cfg!(debug_assertions) {
-                    let self_projections: Vec<_> = self.projection_chain.iter().flatten().collect();
-                    let base_projections: Vec<_> = base
-                        .projection_chain_base
-                        .iter()
-                        .copied()
-                        .flatten()
-                        .chain(base.last_projection.iter().copied())
-                        .collect();
-
-                    assert_eq!(self_projections[..base_projections.len()], base_projections);
-                }
+                let base = CompoundPlaceRef::from_stem_with_suffix(
+                    self.local,
+                    &self.projection_chain[..i],
+                    &projs[..j],
+                );
 
                 (base, elem)
             })
@@ -742,20 +711,46 @@ impl<'tcx> CompoundPlaceRef<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        PlaceTy::from_ty(local_decls.local_decls()[self.local].ty)
-            .projection_chain_ty(tcx, self.projection_chain_base)
-            .multi_projection_ty(tcx, self.last_projection)
+        let local_ty = PlaceTy::from_ty(local_decls.local_decls()[self.local].ty);
+
+        match self.projection_chain {
+            Some((stem, suffix)) => {
+                local_ty.projection_chain_ty(tcx, stem).multi_projection_ty(tcx, suffix)
+            }
+            None => local_ty,
+        }
     }
 
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match *self {
-            CompoundPlaceRef {
-                local,
-                projection_chain_base: [],
-                last_projection: [] | [ProjectionElem::Deref],
-            } => Some(local),
+            CompoundPlaceRef { local, projection_chain: None | Some(([], [PlaceElem::Deref])) } => {
+                Some(local)
+            }
             _ => None,
         }
+    }
+
+    fn from_slice(local: Local, chain: &'tcx [ProjectionFragment<'tcx>]) -> CompoundPlaceRef<'tcx> {
+        let projection_chain = match chain {
+            [stem @ .., suffix] => Some((stem, suffix.as_slice())),
+            [] => None,
+        };
+
+        CompoundPlaceRef { local, projection_chain }
+    }
+
+    fn from_stem_with_suffix(
+        local: Local,
+        stem: &'tcx [ProjectionFragment<'tcx>],
+        suffix: ProjectionFragmentRef<'tcx>,
+    ) -> CompoundPlaceRef<'tcx> {
+        let projection_chain = match (stem, suffix) {
+            ([], []) => None,
+            ([stem @ .., suffix], []) => Some((stem, suffix.as_slice())),
+            _ => Some((stem, suffix)),
+        };
+
+        CompoundPlaceRef { local, projection_chain }
     }
 }
 
