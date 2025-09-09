@@ -3566,6 +3566,13 @@ unsafe impl CloneToUninit for Path {
         // SAFETY: Path is just a transparent wrapper around OsStr
         unsafe { self.inner.clone_to_uninit(dst) }
     }
+
+    #[inline]
+    #[cfg_attr(debug_assertions, track_caller)]
+    unsafe fn clone_to_init(&self, dst: *mut u8) {
+        // SAFETY: Path is just a transparent wrapper around OsStr
+        unsafe { self.inner.clone_to_init(dst) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
