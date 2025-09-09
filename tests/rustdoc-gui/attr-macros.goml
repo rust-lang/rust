@@ -27,7 +27,7 @@ assert-count: ("#main-content a[href='macro.attr_macro.html']", 2)
 // First in the "Macros" section.
 assert-text: ("#macros + .item-table a[href='macro.attr_macro.html']", "attr_macro")
 // Then in the "Attribute Macros" section.
-assert-text: ("#attributes + .item-table a[href='macro.attr_macro.html']", "attr_macro")
+assert-text: ("#attribute-macros + .item-table a[href='macro.attr_macro.html']", "attr_macro")
 
 // And finally we check it's correctly listed in the "all items" page.
 go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
@@ -36,4 +36,4 @@ assert-count: ("#main-content a[href='macro.attr_macro.html']", 2)
 // First in the "Macros" section.
 assert-text: ("#macros + .all-items a[href='macro.attr_macro.html']", "attr_macro")
 // Then in the "Attribute Macros" section.
-assert-text: ("#attributes + .all-items a[href='macro.attr_macro.html']", "attr_macro")
+assert-text: ("#attribute-macros + .all-items a[href='macro.attr_macro.html']", "attr_macro")
