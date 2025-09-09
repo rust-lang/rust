@@ -190,12 +190,13 @@ impl<'db> InferCtxtInner<'db> {
     }
 
     #[inline]
-    fn int_unification_table(&mut self) -> UnificationTable<'_, 'db, IntVid> {
+    pub(crate) fn int_unification_table(&mut self) -> UnificationTable<'_, 'db, IntVid> {
+        tracing::debug!(?self.int_unification_storage);
         self.int_unification_storage.with_log(&mut self.undo_log)
     }
 
     #[inline]
-    fn float_unification_table(&mut self) -> UnificationTable<'_, 'db, FloatVid> {
+    pub(crate) fn float_unification_table(&mut self) -> UnificationTable<'_, 'db, FloatVid> {
         self.float_unification_storage.with_log(&mut self.undo_log)
     }
 
@@ -213,6 +214,7 @@ impl<'db> InferCtxtInner<'db> {
     }
 }
 
+#[derive(Clone)]
 pub struct InferCtxt<'db> {
     pub interner: DbInterner<'db>,
 
@@ -500,6 +502,13 @@ impl<'db> InferCtxt<'db> {
         self.next_ty_var_with_origin(TypeVariableOrigin { param_def_id: None })
     }
 
+    pub fn next_ty_vid(&self) -> TyVid {
+        self.inner
+            .borrow_mut()
+            .type_variables()
+            .new_var(self.universe(), TypeVariableOrigin { param_def_id: None })
+    }
+
     pub fn next_ty_var_with_origin(&self, origin: TypeVariableOrigin) -> Ty<'db> {
         let vid = self.inner.borrow_mut().type_variables().new_var(self.universe(), origin);
         Ty::new_var(self.interner, vid)
@@ -517,6 +526,17 @@ impl<'db> InferCtxt<'db> {
 
     pub fn next_const_var(&self) -> Const<'db> {
         self.next_const_var_with_origin(ConstVariableOrigin { param_def_id: None })
+    }
+
+    pub fn next_const_vid(&self) -> ConstVid {
+        self.inner
+            .borrow_mut()
+            .const_unification_table()
+            .new_key(ConstVariableValue::Unknown {
+                origin: ConstVariableOrigin { param_def_id: None },
+                universe: self.universe(),
+            })
+            .vid
     }
 
     pub fn next_const_var_with_origin(&self, origin: ConstVariableOrigin) -> Const<'db> {
@@ -546,10 +566,16 @@ impl<'db> InferCtxt<'db> {
         Ty::new_int_var(self.interner, next_int_var_id)
     }
 
+    pub fn next_int_vid(&self) -> IntVid {
+        self.inner.borrow_mut().int_unification_table().new_key(IntVarValue::Unknown)
+    }
+
     pub fn next_float_var(&self) -> Ty<'db> {
-        let next_float_var_id =
-            self.inner.borrow_mut().float_unification_table().new_key(FloatVarValue::Unknown);
-        Ty::new_float_var(self.interner, next_float_var_id)
+        Ty::new_float_var(self.interner, self.next_float_vid())
+    }
+
+    pub fn next_float_vid(&self) -> FloatVid {
+        self.inner.borrow_mut().float_unification_table().new_key(FloatVarValue::Unknown)
     }
 
     /// Creates a fresh region variable with the next available index.
@@ -557,6 +583,10 @@ impl<'db> InferCtxt<'db> {
     /// thus far, allowing it to name any region created thus far.
     pub fn next_region_var(&self) -> Region<'db> {
         self.next_region_var_in_universe(self.universe())
+    }
+
+    pub fn next_region_vid(&self) -> RegionVid {
+        self.inner.borrow_mut().unwrap_region_constraints().new_region_var(self.universe())
     }
 
     /// Creates a fresh region variable with the next available index
@@ -782,6 +812,16 @@ impl<'db> InferCtxt<'db> {
         }
     }
 
+    pub fn resolve_int_var(&self, vid: IntVid) -> Option<Ty<'db>> {
+        let mut inner = self.inner.borrow_mut();
+        let value = inner.int_unification_table().probe_value(vid);
+        match value {
+            IntVarValue::IntType(ty) => Some(Ty::new_int(self.interner, ty)),
+            IntVarValue::UintType(ty) => Some(Ty::new_uint(self.interner, ty)),
+            IntVarValue::Unknown => None,
+        }
+    }
+
     /// Resolves a float var to a rigid int type, if it was constrained to one,
     /// or else the root float var in the unification table.
     pub fn opportunistic_resolve_float_var(&self, vid: FloatVid) -> Ty<'db> {
@@ -792,6 +832,15 @@ impl<'db> InferCtxt<'db> {
             FloatVarValue::Unknown => {
                 Ty::new_float_var(self.interner, inner.float_unification_table().find(vid))
             }
+        }
+    }
+
+    pub fn resolve_float_var(&self, vid: FloatVid) -> Option<Ty<'db>> {
+        let mut inner = self.inner.borrow_mut();
+        let value = inner.float_unification_table().probe_value(vid);
+        match value {
+            FloatVarValue::Known(ty) => Some(Ty::new_float(self.interner, ty)),
+            FloatVarValue::Unknown => None,
         }
     }
 

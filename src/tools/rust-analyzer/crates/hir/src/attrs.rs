@@ -14,7 +14,11 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use hir_ty::{db::HirDatabase, method_resolution};
+use hir_ty::{
+    db::HirDatabase,
+    method_resolution,
+    next_solver::{DbInterner, mapping::ChalkToNextSolver},
+};
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
@@ -271,7 +275,11 @@ fn resolve_impl_trait_item<'db>(
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
     _ = method_resolution::iterate_path_candidates(
-        &canonical,
+        &canonical.to_nextsolver(DbInterner::new_with(
+            db,
+            Some(environment.krate),
+            environment.block,
+        )),
         db,
         environment,
         &traits_in_scope,

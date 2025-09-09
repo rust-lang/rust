@@ -42,6 +42,7 @@ use rustc_type_ir::{
     },
 };
 
+pub mod canonicalizer;
 pub mod instantiate;
 
 impl<'db> InferCtxt<'db> {

@@ -9,12 +9,12 @@ use rustc_type_ir::{
     solve::{Certainty, NoSolution},
 };
 
+use crate::next_solver::mapping::NextSolverToChalk;
 use crate::{
     TraitRefExt,
     db::HirDatabase,
     next_solver::{
-        ClauseKind, CoercePredicate, PredicateKind, SubtypePredicate,
-        mapping::{ChalkToNextSolver, convert_args_for_result},
+        ClauseKind, CoercePredicate, PredicateKind, SubtypePredicate, mapping::ChalkToNextSolver,
         util::sizedness_fast_path,
     },
 };
@@ -200,7 +200,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             SolverDefId::StaticId(c) => GeneralConstId::StaticId(c),
             _ => unreachable!(),
         };
-        let subst = convert_args_for_result(self.interner, uv.args.as_slice());
+        let subst = uv.args.to_chalk(self.interner);
         let ec = self.cx().db.const_eval(c, subst, None).ok()?;
         Some(ec.to_nextsolver(self.interner))
     }

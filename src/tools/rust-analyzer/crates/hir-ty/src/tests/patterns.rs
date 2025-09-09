@@ -48,12 +48,12 @@ fn infer_pattern() {
             83..84 '1': i32
             86..93 '"hello"': &'static str
             101..151 'for (e...     }': fn into_iter<{unknown}>({unknown}) -> <{unknown} as IntoIterator>::IntoIter
-            101..151 'for (e...     }': {unknown}
+            101..151 'for (e...     }': <{unknown} as IntoIterator>::IntoIter
             101..151 'for (e...     }': !
-            101..151 'for (e...     }': {unknown}
-            101..151 'for (e...     }': &'? mut {unknown}
+            101..151 'for (e...     }': <{unknown} as IntoIterator>::IntoIter
+            101..151 'for (e...     }': &'? mut <{unknown} as IntoIterator>::IntoIter
             101..151 'for (e...     }': fn next<{unknown}>(&'? mut {unknown}) -> Option<<{unknown} as Iterator>::Item>
-            101..151 'for (e...     }': Option<({unknown}, {unknown})>
+            101..151 'for (e...     }': Option<<{unknown} as Iterator>::Item>
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
             101..151 'for (e...     }': ()
@@ -719,28 +719,28 @@ fn test() {
             51..58 'loop {}': !
             56..58 '{}': ()
             72..171 '{     ... x); }': ()
-            78..81 'foo': fn foo<&'? (i32, &'? str), i32, impl FnOnce(&'? (i32, &'? str)) -> i32>(&'? (i32, &'? str), impl FnOnce(&'? (i32, &'? str)) -> i32) -> i32
+            78..81 'foo': fn foo<&'? (i32, &'static str), i32, impl FnOnce(&'? (i32, &'static str)) -> i32>(&'? (i32, &'static str), impl FnOnce(&'? (i32, &'static str)) -> i32) -> i32
             78..105 'foo(&(...y)| x)': i32
             82..91 '&(1, "a")': &'? (i32, &'static str)
             83..91 '(1, "a")': (i32, &'static str)
             84..85 '1': i32
             87..90 '"a"': &'static str
-            93..104 '|&(x, y)| x': impl FnOnce(&'? (i32, &'? str)) -> i32
-            94..101 '&(x, y)': &'? (i32, &'? str)
-            95..101 '(x, y)': (i32, &'? str)
+            93..104 '|&(x, y)| x': impl FnOnce(&'? (i32, &'static str)) -> i32
+            94..101 '&(x, y)': &'? (i32, &'static str)
+            95..101 '(x, y)': (i32, &'static str)
             96..97 'x': i32
-            99..100 'y': &'? str
+            99..100 'y': &'static str
             103..104 'x': i32
-            142..145 'foo': fn foo<&'? (i32, &'? str), &'? i32, impl FnOnce(&'? (i32, &'? str)) -> &'? i32>(&'? (i32, &'? str), impl FnOnce(&'? (i32, &'? str)) -> &'? i32) -> &'? i32
+            142..145 'foo': fn foo<&'? (i32, &'static str), &'? i32, impl FnOnce(&'? (i32, &'static str)) -> &'? i32>(&'? (i32, &'static str), impl FnOnce(&'? (i32, &'static str)) -> &'? i32) -> &'? i32
             142..168 'foo(&(...y)| x)': &'? i32
             146..155 '&(1, "a")': &'? (i32, &'static str)
             147..155 '(1, "a")': (i32, &'static str)
             148..149 '1': i32
             151..154 '"a"': &'static str
-            157..167 '|(x, y)| x': impl FnOnce(&'? (i32, &'? str)) -> &'? i32
-            158..164 '(x, y)': (i32, &'? str)
+            157..167 '|(x, y)| x': impl FnOnce(&'? (i32, &'static str)) -> &'? i32
+            158..164 '(x, y)': (i32, &'static str)
             159..160 'x': &'? i32
-            162..163 'y': &'? &'? str
+            162..163 'y': &'? &'static str
             166..167 'x': &'? i32
         "#]],
     );
