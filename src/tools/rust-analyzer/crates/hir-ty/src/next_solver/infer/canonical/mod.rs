@@ -82,9 +82,7 @@ impl<'db> InferCtxt<'db> {
         let var_values = CanonicalVarValues::instantiate(
             self.interner,
             canonical.variables,
-            |var_values, info| {
-                self.instantiate_canonical_var(info, &var_values, |ui| universes[ui])
-            },
+            |var_values, info| self.instantiate_canonical_var(info, var_values, |ui| universes[ui]),
         );
         let result = canonical.instantiate(self.interner, &var_values);
         (result, var_values)

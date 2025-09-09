@@ -1,8 +1,8 @@
 //! Definition of `SolverDefId`
 
 use hir_def::{
-    AdtId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId, StaticId, StructId,
-    TraitId, TypeAliasId, UnionId,
+    AdtId, CallableDefId, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, ImplId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use rustc_type_ir::inherent;
 use stdx::impl_from;
@@ -42,7 +42,8 @@ impl_from!(
     TypeAliasId,
     InternedClosureId,
     InternedCoroutineId,
-    InternedOpaqueTyId
+    InternedOpaqueTyId,
+    Ctor
     for SolverDefId
 );
 
@@ -145,3 +146,59 @@ macro_rules! declare_id_wrapper {
 }
 
 declare_id_wrapper!(TraitIdWrapper, TraitId);
+declare_id_wrapper!(TypeAliasIdWrapper, TypeAliasId);
+declare_id_wrapper!(ClosureIdWrapper, InternedClosureId);
+declare_id_wrapper!(CoroutineIdWrapper, InternedCoroutineId);
+declare_id_wrapper!(AdtIdWrapper, AdtId);
+declare_id_wrapper!(ImplIdWrapper, ImplId);
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CallableIdWrapper(pub CallableDefId);
+
+impl std::fmt::Debug for CallableIdWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.0, f)
+    }
+}
+impl From<CallableIdWrapper> for CallableDefId {
+    #[inline]
+    fn from(value: CallableIdWrapper) -> CallableDefId {
+        value.0
+    }
+}
+impl From<CallableDefId> for CallableIdWrapper {
+    #[inline]
+    fn from(value: CallableDefId) -> CallableIdWrapper {
+        Self(value)
+    }
+}
+impl From<CallableIdWrapper> for SolverDefId {
+    #[inline]
+    fn from(value: CallableIdWrapper) -> SolverDefId {
+        match value.0 {
+            CallableDefId::FunctionId(it) => it.into(),
+            CallableDefId::StructId(it) => Ctor::Struct(it).into(),
+            CallableDefId::EnumVariantId(it) => Ctor::Enum(it).into(),
+        }
+    }
+}
+impl TryFrom<SolverDefId> for CallableIdWrapper {
+    type Error = ();
+    #[inline]
+    fn try_from(value: SolverDefId) -> Result<Self, Self::Error> {
+        match value {
+            SolverDefId::FunctionId(it) => Ok(Self(it.into())),
+            SolverDefId::Ctor(Ctor::Struct(it)) => Ok(Self(it.into())),
+            SolverDefId::Ctor(Ctor::Enum(it)) => Ok(Self(it.into())),
+            _ => Err(()),
+        }
+    }
+}
+impl<'db> inherent::DefId<DbInterner<'db>> for CallableIdWrapper {
+    fn as_local(self) -> Option<SolverDefId> {
+        Some(self.into())
+    }
+    fn is_local(self) -> bool {
+        true
+    }
+}

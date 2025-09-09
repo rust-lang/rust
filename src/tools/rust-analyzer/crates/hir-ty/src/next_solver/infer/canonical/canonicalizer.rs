@@ -400,7 +400,7 @@ impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Canonicalizer<'cx, 'db> {
             TyKind::Infer(IntVar(vid)) => {
                 let nt = self.infcx.opportunistic_resolve_int_var(vid);
                 if nt != t {
-                    return self.fold_ty(nt);
+                    self.fold_ty(nt)
                 } else {
                     self.canonicalize_ty_var(CanonicalVarKind::Int, t)
                 }
@@ -408,7 +408,7 @@ impl<'cx, 'db> TypeFolder<DbInterner<'db>> for Canonicalizer<'cx, 'db> {
             TyKind::Infer(FloatVar(vid)) => {
                 let nt = self.infcx.opportunistic_resolve_float_var(vid);
                 if nt != t {
-                    return self.fold_ty(nt);
+                    self.fold_ty(nt)
                 } else {
                     self.canonicalize_ty_var(CanonicalVarKind::Float, t)
                 }

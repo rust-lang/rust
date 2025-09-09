@@ -9,8 +9,8 @@ use rustc_type_ir::{
     solve::{Certainty, NoSolution},
 };
 
-use crate::next_solver::CanonicalVarKind;
 use crate::next_solver::mapping::NextSolverToChalk;
+use crate::next_solver::{CanonicalVarKind, ImplIdWrapper};
 use crate::{
     TraitRefExt,
     db::HirDatabase,
@@ -148,12 +148,8 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         &self,
         goal_trait_ref: rustc_type_ir::TraitRef<Self::Interner>,
         trait_assoc_def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
-        impl_def_id: <Self::Interner as rustc_type_ir::Interner>::DefId,
+        impl_id: ImplIdWrapper,
     ) -> Result<Option<<Self::Interner as rustc_type_ir::Interner>::DefId>, ErrorGuaranteed> {
-        let impl_id = match impl_def_id {
-            SolverDefId::ImplId(id) => id,
-            _ => panic!("Unexpected SolverDefId"),
-        };
         let trait_assoc_id = match trait_assoc_def_id {
             SolverDefId::TypeAliasId(id) => id,
             _ => panic!("Unexpected SolverDefId"),
@@ -162,7 +158,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
             .0
             .interner
             .db()
-            .impl_trait(impl_id)
+            .impl_trait(impl_id.0)
             // ImplIds for impls where the trait ref can't be resolved should never reach solver
             .expect("invalid impl passed to next-solver")
             .into_value_and_skipped_binders()
@@ -170,7 +166,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
         let trait_ = trait_ref.hir_trait_id();
         let trait_data = trait_.trait_items(self.0.interner.db());
         let id =
-            impl_id.impl_items(self.0.interner.db()).items.iter().find_map(|item| -> Option<_> {
+            impl_id.0.impl_items(self.0.interner.db()).items.iter().find_map(|item| -> Option<_> {
                 match item {
                     (_, AssocItemId::TypeAliasId(type_alias)) => {
                         let name = &self.0.interner.db().type_alias_signature(*type_alias).name;

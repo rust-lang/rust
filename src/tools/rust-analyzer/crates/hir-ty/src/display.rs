@@ -59,7 +59,7 @@ use crate::{
     lt_from_placeholder_idx,
     mir::pad16,
     next_solver::{
-        BoundExistentialPredicate, Ctor, DbInterner, GenericArgs, SolverDefId,
+        BoundExistentialPredicate, DbInterner, GenericArgs, SolverDefId,
         mapping::{
             ChalkToNextSolver, convert_args_for_result, convert_const_for_result,
             convert_region_for_result, convert_ty_for_result,
@@ -911,14 +911,13 @@ fn render_const_scalar_inner(
                 f.write_str("&")?;
                 render_const_scalar_ns(f, bytes, memory_map, t)
             }
-            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id() {
-                SolverDefId::AdtId(hir_def::AdtId::StructId(s)) => {
+            TyKind::Adt(adt, _) if b.len() == 2 * size_of::<usize>() => match adt.def_id().0 {
+                hir_def::AdtId::StructId(s) => {
                     let data = f.db.struct_signature(s);
                     write!(f, "&{}", data.name.display(f.db, f.edition()))?;
                     Ok(())
                 }
-                SolverDefId::AdtId(_) => f.write_str("<unsized-enum-or-union>"),
-                _ => unreachable!(),
+                _ => f.write_str("<unsized-enum-or-union>"),
             },
             _ => {
                 let addr = usize::from_le_bytes(match b.try_into() {
@@ -966,10 +965,7 @@ fn render_const_scalar_inner(
             f.write_str(")")
         }
         TyKind::Adt(def, args) => {
-            let def = match def.def_id() {
-                SolverDefId::AdtId(def) => def,
-                _ => unreachable!(),
-            };
+            let def = def.def_id().0;
             let Ok(layout) = f.db.layout_of_adt(def, args, trait_env.clone()) else {
                 return f.write_str("<layout-error>");
             };
@@ -1300,12 +1296,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 sig.hir_fmt(f)?;
             }
             TyKind::FnDef(def, args) => {
-                let def = match def {
-                    SolverDefId::FunctionId(id) => CallableDefId::FunctionId(id),
-                    SolverDefId::Ctor(Ctor::Enum(e)) => CallableDefId::EnumVariantId(e),
-                    SolverDefId::Ctor(Ctor::Struct(s)) => CallableDefId::StructId(s),
-                    _ => unreachable!(),
-                };
+                let def = def.0;
                 let sig = db
                     .callable_item_signature(def)
                     .substitute(Interner, &convert_args_for_result(interner, args.as_slice()));
@@ -1406,10 +1397,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 }
             }
             TyKind::Adt(def, parameters) => {
-                let def_id = match def.def_id() {
-                    SolverDefId::AdtId(id) => id,
-                    _ => unreachable!(),
-                };
+                let def_id = def.def_id().0;
                 f.start_location_link(def_id.into());
                 match f.display_kind {
                     DisplayKind::Diagnostics | DisplayKind::Test => {
@@ -1448,7 +1436,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 hir_fmt_generics(
                     f,
                     convert_args_for_result(interner, parameters.as_slice()).as_slice(Interner),
-                    def.def_id().try_into().ok(),
+                    Some(def.def_id().0.into()),
                     None,
                 )?;
             }
@@ -1466,13 +1454,9 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
 
                 projection_ty.hir_fmt(f)?;
             }
-            TyKind::Foreign(type_alias) => {
-                let alias = match type_alias {
-                    SolverDefId::TypeAliasId(id) => id,
-                    _ => unreachable!(),
-                };
-                let type_alias = db.type_alias_signature(alias);
-                f.start_location_link(alias.into());
+            TyKind::Foreign(alias) => {
+                let type_alias = db.type_alias_signature(alias.0);
+                f.start_location_link(alias.0.into());
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
             }
@@ -1549,10 +1533,7 @@ impl<'db> HirDisplay for crate::next_solver::Ty<'db> {
                 }
             }
             TyKind::Closure(id, substs) => {
-                let id = match id {
-                    SolverDefId::InternedClosureId(id) => id,
-                    _ => unreachable!(),
-                };
+                let id = id.0;
                 let substs = convert_args_for_result(interner, substs.as_slice());
                 if f.display_kind.is_source_code() {
                     if !f.display_kind.allows_opaque() {
