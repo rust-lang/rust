@@ -709,7 +709,7 @@ Supported values for this option are:
   can prove these functions can't be the source of a stack
   buffer overflow (even in the presence of undefined behavior).
 
-  This provides the same security guarantees as Clang's
+  This provides similar security guarantees to Clang's
   `-fstack-protector=strong`.
 
   The exact rules are unstable and subject to change, but
