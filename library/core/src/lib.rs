@@ -252,47 +252,16 @@ pub use crate::macros::cfg_select;
 #[macro_use]
 mod internal_macros;
 
-#[path = "num/shells/int_macros.rs"]
-#[macro_use]
-mod int_macros;
-
-#[rustc_diagnostic_item = "i128_legacy_mod"]
-#[path = "num/shells/i128.rs"]
-pub mod i128;
-#[rustc_diagnostic_item = "i16_legacy_mod"]
-#[path = "num/shells/i16.rs"]
-pub mod i16;
-#[rustc_diagnostic_item = "i32_legacy_mod"]
-#[path = "num/shells/i32.rs"]
-pub mod i32;
-#[rustc_diagnostic_item = "i64_legacy_mod"]
-#[path = "num/shells/i64.rs"]
-pub mod i64;
-#[rustc_diagnostic_item = "i8_legacy_mod"]
-#[path = "num/shells/i8.rs"]
-pub mod i8;
-#[rustc_diagnostic_item = "isize_legacy_mod"]
-#[path = "num/shells/isize.rs"]
-pub mod isize;
-
-#[rustc_diagnostic_item = "u128_legacy_mod"]
-#[path = "num/shells/u128.rs"]
-pub mod u128;
-#[rustc_diagnostic_item = "u16_legacy_mod"]
-#[path = "num/shells/u16.rs"]
-pub mod u16;
-#[rustc_diagnostic_item = "u32_legacy_mod"]
-#[path = "num/shells/u32.rs"]
-pub mod u32;
-#[rustc_diagnostic_item = "u64_legacy_mod"]
-#[path = "num/shells/u64.rs"]
-pub mod u64;
-#[rustc_diagnostic_item = "u8_legacy_mod"]
-#[path = "num/shells/u8.rs"]
-pub mod u8;
-#[rustc_diagnostic_item = "usize_legacy_mod"]
-#[path = "num/shells/usize.rs"]
-pub mod usize;
+#[path = "num/shells/legacy_int_modules.rs"]
+mod legacy_int_modules;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
+#[allow(deprecated_in_future)]
+pub use legacy_int_modules::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
+#[stable(feature = "i128", since = "1.26.0")]
+#[allow(clippy::useless_attribute)] // FIXME false positive (https://github.com/rust-lang/rust-clippy/issues/15636)
+#[allow(deprecated_in_future)]
+pub use legacy_int_modules::{i128, u128};
 
 #[path = "num/f128.rs"]
 pub mod f128;
