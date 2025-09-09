@@ -1630,3 +1630,13 @@ pub(crate) struct CustomMirIncompatibleDialectAndPhase {
     #[label]
     pub phase_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_removed_library_feature)]
+pub(crate) struct RemovedFeature {
+    #[primary_span]
+    pub span: Span,
+    pub feature: Symbol,
+    pub since: Symbol,
+    pub reason: Symbol,
+}

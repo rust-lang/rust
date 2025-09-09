@@ -708,3 +708,8 @@ passes_useless_stability =
     this stability annotation is useless
     .label = useless stability annotation
     .item = the stability attribute annotates this item
+
+# message: base: removed feature
+passes_removed_library_feature = The library feature `{ $feature }` has been removed
+    .since = removed since { $since }
+    .reason = reason: { $reason }

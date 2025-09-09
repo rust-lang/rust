@@ -990,6 +990,23 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         all_implications: &UnordMap<Symbol, Symbol>,
     ) {
         for (feature, stability) in defined_features.to_sorted_vec() {
+            if let Some(info) = tcx.lib_features(LOCAL_CRATE).removed.get(&feature) {
+                // If the user enabled the removed feature with #![feature(...)] store span:
+                let user_span_opt = remaining_lib_features.swap_remove(&feature);
+                let primary_span = user_span_opt.unwrap_or(info.span);
+
+                // Emit structured diagnostic
+                tcx.dcx().emit_err(errors::RemovedFeature {
+                    span: primary_span,
+                    feature,
+                    since: info.since,
+                    reason: info.reason,
+                });
+
+                // Don't subsequently issue the "unknown feature" diagnostic.
+                continue;
+            }
+
             if let FeatureStability::AcceptedSince(since) = stability
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
@@ -1017,6 +1034,18 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 
             if remaining_lib_features.is_empty() && remaining_implications.is_empty() {
                 break;
+            }
+
+            if let Some(info) = tcx.lib_features(LOCAL_CRATE).removed.get(&feature) {
+                let user_span_opt = remaining_lib_features.swap_remove(&feature);
+                let primary_span = user_span_opt.unwrap_or(info.span);
+
+                tcx.dcx().emit_err(errors::RemovedFeature {
+                    span: primary_span,
+                    feature,
+                    since: info.since,
+                    reason: info.reason,
+                });
             }
         }
     }

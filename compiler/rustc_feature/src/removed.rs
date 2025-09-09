@@ -305,6 +305,7 @@ declare_features! (
     // `symbol.rs` when that happens.
     (removed, concat_idents, "1.90.0", Some(29599),
      Some("use the `${concat(..)}` metavariable expression instead"), 142704),
+    (removed, unstable_removed, "1.89.0", None, Some("test_reason")),
     // -------------------------------------------------------------------------
     // feature-group-end: removed library features
     // -------------------------------------------------------------------------

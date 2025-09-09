@@ -141,6 +141,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             let mut style = None;
             match attr {
+                Attribute::Parsed(AttributeKind::RemovedFeature(_)) => {
+                    // todo
+                }
                 Attribute::Parsed(AttributeKind::ProcMacro(_)) => {
                     self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
                 }

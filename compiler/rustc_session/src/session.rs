@@ -24,6 +24,7 @@ use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     LintEmitter, TerminalUrl, fallback_fluent_bundle,
 };
+use rustc_hir::RemovedFeature;
 use rustc_hir::limit::Limit;
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -138,6 +139,7 @@ pub struct Session {
 
     /// Set of enabled features for the current target, including unstable ones.
     pub unstable_target_features: FxIndexSet<Symbol>,
+    pub removed_features: Vec<RemovedFeature>,
 
     /// The version of the rustc process, possibly including a commit hash and description.
     pub cfg_version: &'static str,
@@ -1127,6 +1129,7 @@ pub fn build_session(
         target_filesearch,
         host_filesearch,
         invocation_temp,
+        removed_features: Vec::new(),
     };
 
     validate_commandline_args_with_session_available(&sess);

@@ -15,6 +15,7 @@ use rustc_errors::{
     DiagMessage, EmissionGuarantee, MultiSpan, StashKey,
 };
 use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
+use rustc_hir::RemovedFeature;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -249,6 +250,7 @@ pub fn feature_err_unstable_feature_bound(
 pub struct ParseSess {
     dcx: DiagCtxt,
     pub unstable_features: UnstableFeatures,
+    pub removed_features: Vec<RemovedFeature>,
     pub config: Cfg,
     pub check_config: CheckCfg,
     pub edition: Edition,
@@ -296,6 +298,7 @@ impl ParseSess {
     pub fn with_dcx(dcx: DiagCtxt, source_map: Arc<SourceMap>) -> Self {
         Self {
             dcx,
+            removed_features: Vec::new(),
             unstable_features: UnstableFeatures::from_environment(None),
             config: Cfg::default(),
             check_config: CheckCfg::default(),

@@ -8,7 +8,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Attribute, StabilityLevel, StableSince};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
+use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures, RemovedLibFeatureInfo};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, Symbol, sym};
@@ -36,6 +36,21 @@ impl<'tcx> LibFeatureCollector<'tcx> {
             Attribute::Parsed(AttributeKind::BodyStability { stability, span }) => {
                 (stability.feature, stability.level, *span)
             }
+            Attribute::Parsed(AttributeKind::RemovedFeature(removed)) => {
+                // `removed.since` is StableSince; convert it to a Symbol here.
+                // If conversion fails (Err variant), bail out (this mirrors stable handling).
+                // let since_sym = match removed.since {
+                //     StableSince::Version(v) => Symbol::intern(&v.to_string()),
+                //     StableSince::Current => sym::env_CFG_RELEASE,
+                //     StableSince::Err(_) => return None,
+                // };
+                // Build a StabilityLevel::Removed with a Symbol since to match the rest of the pipeline.
+                (
+                    removed.feature,
+                    StabilityLevel::Removed { since: removed.since, reason: removed.reason },
+                    attr.span(),
+                )
+            }
             _ => return None,
         };
 
@@ -46,6 +61,9 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                 StableSince::Current => sym::env_CFG_RELEASE,
                 StableSince::Err(_) => return None,
             }),
+            StabilityLevel::Removed { since, reason } => {
+                return Some((feature, FeatureStability::Removed { since, reason }, span));
+            }
         };
 
         Some((feature, feature_stability, span))
@@ -55,6 +73,30 @@ impl<'tcx> LibFeatureCollector<'tcx> {
         let existing_stability = self.lib_features.stability.get(&feature).cloned();
 
         match (stability, existing_stability) {
+            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Removed { .. }, _))) => {
+                // Already marked removed; probably shouldn’t accept stability.
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "stable",
+                    prev_declared: "removed",
+                });
+            }
+            (FeatureStability::Unstable { .. }, Some((FeatureStability::Removed { .. }, _))) => {
+                self.tcx.dcx().emit_err(FeaturePreviouslyDeclared {
+                    span,
+                    feature,
+                    declared: "unstable",
+                    prev_declared: "removed",
+                });
+            }
+            (FeatureStability::Removed { since, reason }, _) => {
+                // directly push into removed
+                self.lib_features
+                    .removed
+                    .insert(feature, RemovedLibFeatureInfo { since, reason, span });
+            }
+
             (_, None) => {
                 self.lib_features.stability.insert(feature, (stability, span));
             }

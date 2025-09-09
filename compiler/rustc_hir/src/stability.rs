@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
-use rustc_span::{ErrorGuaranteed, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::RustcVersion;
 use crate::attrs::PrintAttribute;
@@ -143,6 +143,10 @@ pub enum StabilityLevel {
         /// the `Symbol` is the deprecation message printed in that case.
         allowed_through_unstable_modules: Option<Symbol>,
     },
+    Removed {
+        since: Symbol,
+        reason: Symbol,
+    },
 }
 
 /// Rust release in which a feature is stabilized.
@@ -168,6 +172,7 @@ impl StabilityLevel {
         match *self {
             StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
+            StabilityLevel::Removed { .. } => None,
         }
     }
 }
@@ -204,4 +209,14 @@ impl UnstableReason {
             Self::Some(r) => Some(*r),
         }
     }
+}
+
+/// Represents the `#![unstable_removed]` crate-level attribute.
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(HashStable_Generic, PrintAttribute)]
+pub struct RemovedFeature {
+    pub span: Span,
+    pub feature: Symbol,
+    pub since: Symbol,
+    pub reason: Symbol,
 }

@@ -2,8 +2,8 @@ use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::{
-    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
-    StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
+    DefaultBodyStability, MethodKind, PartialConstStability, RemovedFeature, Stability,
+    StabilityLevel, StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
 };
 
 use super::prelude::*;
@@ -469,5 +469,151 @@ pub(crate) fn parse_unstability<S: Stage>(
             Some((feature, level))
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Default)]
+pub(crate) struct RemovedFeatureParser {
+    removed: Option<(RemovedFeature, Span)>,
+}
+
+impl<S: Stage> AttributeParser<S> for RemovedFeatureParser {
+    const ATTRIBUTES: AcceptMapping<Self, S> = &[(
+        &[sym::unstable_removed],
+        template!(List: &[r#"feature = "name", since = "1.2.3", reason = "...", issue = "N|none""#]),
+        |this, cx, args| {
+            // same staged-api restriction as other stability attrs
+            reject_outside_std!(cx);
+
+            let ArgParser::List(list) = args else {
+                cx.expected_list(cx.attr_span);
+                return;
+            };
+
+            let mut feature_opt: Option<Symbol> = None;
+            let mut reason_opt: Option<Symbol> = None;
+            let mut since_opt: Option<StableSince> = None;
+
+            for param in list.mixed() {
+                let param_span = param.span();
+                let Some(param) = param.meta_item() else {
+                    cx.emit_err(session_diagnostics::UnsupportedLiteral {
+                        span: param_span,
+                        reason: UnsupportedLiteralReason::Generic,
+                        is_bytestr: false,
+                        start_point_span: cx.sess().source_map().start_point(param_span),
+                    });
+                    return;
+                };
+
+                let word = param.path().word();
+                match word.map(|i| i.name) {
+                    Some(sym::feature) => {
+                        if insert_value_into_option_or_error(
+                            cx,
+                            &param,
+                            &mut feature_opt,
+                            word.unwrap(),
+                        )
+                        .is_none()
+                        {
+                            return;
+                        }
+                    }
+                    Some(sym::reason) => {
+                        if insert_value_into_option_or_error(
+                            cx,
+                            &param,
+                            &mut reason_opt,
+                            word.unwrap(),
+                        )
+                        .is_none()
+                        {
+                            return;
+                        }
+                    }
+                    Some(sym::since) => {
+                        if insert_value_into_option_or_error(
+                            cx,
+                            &param,
+                            &mut None::<Symbol>,
+                            word.unwrap(),
+                        )
+                        .is_none()
+                        {
+                            return;
+                        }
+                        // parse version string
+                        if let Some(s) = param.args().name_value().and_then(|nv| nv.value_as_str())
+                        {
+                            if s.as_str() == VERSION_PLACEHOLDER {
+                                since_opt = Some(StableSince::Current);
+                            } else if let Some(v) = super::util::parse_version(s) {
+                                since_opt = Some(StableSince::Version(v));
+                            } else {
+                                let err = cx.emit_err(session_diagnostics::InvalidSince {
+                                    span: cx.attr_span,
+                                });
+                                since_opt = Some(StableSince::Err(err));
+                            }
+                        } else {
+                            cx.expected_name_value(param.span(), Some(word.unwrap().name));
+                            return;
+                        }
+                    }
+                    _ => {
+                        cx.emit_err(session_diagnostics::UnknownMetaItem {
+                            span: param_span,
+                            item: param.path().to_string(),
+                            expected: &["feature", "reason", "since"],
+                        });
+                        return;
+                    }
+                }
+            }
+
+            // Validate presence and form of fields:
+            let feature = match feature_opt {
+                Some(f) if rustc_lexer::is_ident(f.as_str()) => f,
+                Some(_) => {
+                    cx.emit_err(session_diagnostics::NonIdentFeature { span: cx.attr_span });
+                    return;
+                }
+                None => {
+                    cx.emit_err(session_diagnostics::MissingFeature { span: cx.attr_span });
+                    return;
+                }
+            };
+
+            let since = match since_opt {
+                Some(s) => s,
+                None => {
+                    cx.emit_err(session_diagnostics::MissingSince { span: cx.attr_span });
+                    return;
+                }
+            };
+
+            let since_symbol = match since {
+                StableSince::Version(v) => Symbol::intern(&v.to_string()), // dynamic string — ok
+                StableSince::Current => sym::current,
+                StableSince::Err(_) => sym::err,
+            };
+
+            let removed = RemovedFeature {
+                feature,
+                reason: reason_opt.unwrap_or_else(|| sym::no_reason_given),
+                since: since_symbol,
+                span: cx.attr_span,
+            };
+
+            this.removed = Some((removed, cx.attr_span));
+        },
+    )];
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+
+    fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
+        self.removed.map(|(removed_feature, _span)| AttributeKind::RemovedFeature(removed_feature))
     }
 }

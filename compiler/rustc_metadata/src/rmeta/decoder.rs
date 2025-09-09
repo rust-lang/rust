@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::Safety;
@@ -1214,6 +1215,9 @@ impl<'a> CrateMetadataRef<'a> {
     /// Iterates over all the stability attributes in the given crate.
     fn get_lib_features(self) -> LibFeatures {
         LibFeatures {
+            stable: UnordMap::default(),
+            unstable: UnordMap::default(),
+            removed: UnordMap::default(),
             stability: self
                 .root
                 .lib_features

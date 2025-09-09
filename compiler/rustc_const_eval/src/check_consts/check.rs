@@ -468,6 +468,14 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Some(hir::ConstStability { level: hir::StabilityLevel::Stable { .. }, .. }) => {
                 // All good.
             }
+            Some(hir::ConstStability { level: hir::StabilityLevel::Removed { .. }, .. }) => {
+                // Treat removed like unstable, or hard-error.
+                // self.dcx().emit_err(errors::RemovedConstFeature {
+                //     span: self.span,
+                //     def_path: self.tcx.def_path_str(def_id),
+                // });
+                return;
+            }
             None => {
                 // This doesn't need a separate const-stability check -- const-stability equals
                 // regular stability, and regular stability is checked separately.
@@ -879,6 +887,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         || (!intrinsic.must_be_overridden
                             && is_fn_or_trait_safe_to_expose_on_stable(tcx, callee));
                     match tcx.lookup_const_stability(callee) {
+                        Some(hir::ConstStability {
+                            level: hir::StabilityLevel::Removed { .. },
+                            ..
+                        }) => {
+                            // Treat removed like unstable, or hard-error.
+                            // self.dcx().emit_err(errors::RemovedConstFeature {
+                            //     span: self.span,
+                            //     def_path: self.tcx.def_path_str(def_id),
+                            // });
+                            return;
+                        }
                         None => {
                             // This doesn't need a separate const-stability check -- const-stability equals
                             // regular stability, and regular stability is checked separately.

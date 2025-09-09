@@ -78,6 +78,7 @@ impl AttributeKind {
             ProcMacroDerive { .. } => No,
             PubTransparent(..) => Yes,
             RecursionLimit { .. } => No,
+            RemovedFeature(..) => No,
             Repr { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
             RustcLayoutScalarValidRangeEnd(..) => Yes,

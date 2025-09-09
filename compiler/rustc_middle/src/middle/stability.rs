@@ -8,7 +8,9 @@ use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
+use rustc_hir::{
+    self as hir, ConstStability, DefaultBodyStability, HirId, RemovedFeature, Stability,
+};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -25,6 +27,7 @@ use crate::ty::print::with_no_trimmed_paths;
 pub enum StabilityLevel {
     Unstable,
     Stable,
+    Removed,
 }
 
 #[derive(Copy, Clone)]
@@ -99,6 +102,10 @@ pub fn report_unstable(
 
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
     if is_in_effect { DEPRECATED } else { DEPRECATED_IN_FUTURE }
+}
+
+pub fn removed_features(tcx: TyCtxt<'_>) -> &[RemovedFeature] {
+    &tcx.sess.removed_features
 }
 
 #[derive(Subdiagnostic)]

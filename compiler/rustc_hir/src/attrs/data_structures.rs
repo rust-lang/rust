@@ -15,6 +15,7 @@ use thin_vec::ThinVec;
 
 use crate::attrs::pretty_printing::PrintAttribute;
 use crate::limit::Limit;
+use crate::stability::RemovedFeature;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
@@ -620,6 +621,9 @@ pub enum AttributeKind {
 
     /// Represents [`#[recursion_limit]`](https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute)
     RecursionLimit { attr_span: Span, limit_span: Span, limit: Limit },
+
+    /// Represents `#[]`
+    RemovedFeature(RemovedFeature),
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr { reprs: ThinVec<(ReprAttr, Span)>, first_span: Span },

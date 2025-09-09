@@ -1494,18 +1494,16 @@ pub(crate) fn print_constness_with_space(
 ) -> &'static str {
     match c {
         hir::Constness::Const => match (overall_stab, const_stab) {
-            // const stable...
             (_, Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }))
-            // ...or when feature(staged_api) is not set...
             | (_, None)
-            // ...or when const unstable, but overall unstable too
             | (None, Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => {
                 "const "
             }
-            // const unstable (and overall stable)
             (Some(_), Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. })) => "",
+            // NEW: handle removed const features
+            (None, Some(ConstStability { level: StabilityLevel::Removed { .. }, .. }))
+            | (Some(_), Some(ConstStability { level: StabilityLevel::Removed { .. }, .. })) => "",
         },
-        // not const
         hir::Constness::NotConst => "",
     }
 }
