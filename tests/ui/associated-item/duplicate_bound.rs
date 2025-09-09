@@ -1,3 +1,4 @@
+//@ edition: 2024
 //@ run-pass
 
 #![feature(associated_const_equality, return_type_notation)]
@@ -232,6 +233,10 @@ trait Trait2 {
 }
 
 type AlsoWorks = dyn Trait2<ASSOC = 3u32, ASSOC = 3u32>;
+
+trait Trait3 {
+    fn foo() -> impl Iterator<Item = i32, Item = u32>;
+}
 
 fn main() {
     callable(iter::empty::<i32>());

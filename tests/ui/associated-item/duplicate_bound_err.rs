@@ -1,3 +1,5 @@
+//@ edition: 2024
+
 #![feature(associated_const_equality, type_alias_impl_trait, return_type_notation)]
 #![allow(refining_impl_trait_internal)]
 
@@ -79,6 +81,19 @@ trait Trait2 {
 
 type MustFail2 = dyn Trait2<ASSOC = 3u32, ASSOC = 4u32>;
 //~^ ERROR conflicting associated type bounds
+
+trait Trait3 {
+    fn foo() -> impl Iterator<Item = i32, Item = u32>;
+}
+
+
+impl Trait3 for () {
+    fn foo() -> impl Iterator<Item = i32, Item = u32> {
+        //~^ ERROR[E0271]
+        //~| ERROR[E0271]
+        [2u32].into_iter()
+    }
+}
 
 fn main() {
     uncallable(iter::empty::<u32>()); //~ ERROR [E0271]
