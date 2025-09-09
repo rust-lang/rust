@@ -1384,6 +1384,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
+            Rvalue::NullaryOp(NullOp::FieldOffset, ty) => {
+                let &ty::Field(container, field_path) = ty.kind() else {
+                    bug!("expected `ty::Field`, found {ty:?}")
+                };
+                self.visit_rvalue(
+                    &Rvalue::NullaryOp(NullOp::OffsetOf(field_path), container),
+                    location,
+                )
+            }
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)

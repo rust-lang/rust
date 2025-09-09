@@ -642,9 +642,10 @@ impl Rvalue {
                     .discriminant_ty()
                     .ok_or_else(|| error!("Expected a `RigidTy` but found: {place_ty:?}"))
             }
-            Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
-                Ok(Ty::usize_ty())
-            }
+            Rvalue::NullaryOp(
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::FieldOffset,
+                _,
+            ) => Ok(Ty::usize_ty()),
             Rvalue::NullaryOp(NullOp::ContractChecks, _)
             | Rvalue::NullaryOp(NullOp::UbChecks, _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
@@ -1055,6 +1056,8 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
+    /// Returns the offset of the field represented by the type.
+    FieldOffset,
     /// cfg!(ub_checks), but at codegen time
     UbChecks,
     /// cfg!(contract_checks), but at codegen time

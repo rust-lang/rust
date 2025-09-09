@@ -626,6 +626,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             .bytes();
                         bx.cx().const_usize(val)
                     }
+                    mir::NullOp::FieldOffset => {
+                        let &ty::Field(container, field_path) = ty.kind() else {
+                            bug!("expected `ty::Field`, but found {ty:?}")
+                        };
+                        let layout = bx.cx().layout_of(container);
+                        let val = bx
+                            .tcx()
+                            .offset_of_subfield(bx.typing_env(), layout, field_path.iter())
+                            .bytes();
+                        bx.cx().const_usize(val)
+                    }
                     mir::NullOp::UbChecks => {
                         let val = bx.tcx().sess.ub_checks();
                         bx.cx().const_bool(val)

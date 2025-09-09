@@ -650,6 +650,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 NullOp::SizeOf
                 | NullOp::AlignOf
                 | NullOp::OffsetOf(_)
+                | NullOp::FieldOffset
                 | NullOp::UbChecks
                 | NullOp::ContractChecks,
                 _,

@@ -374,6 +374,18 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                         ));
                         terminator.kind = TerminatorKind::Goto { target };
                     }
+                    sym::unaligned_field_offset => {
+                        let target = target.unwrap();
+                        let ty = generic_args.type_at(0);
+                        block.statements.push(Statement::new(
+                            terminator.source_info,
+                            StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::NullaryOp(NullOp::FieldOffset, ty),
+                            ))),
+                        ));
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     _ => {}
                 }
             }
