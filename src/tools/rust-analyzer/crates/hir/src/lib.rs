@@ -2542,11 +2542,26 @@ impl Function {
         caller: Option<Function>,
         call_edition: Edition,
     ) -> bool {
-        let target_features = caller
-            .map(|caller| hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into())))
-            .unwrap_or_default();
+        let (target_features, target_feature_is_safe_in_target) = caller
+            .map(|caller| {
+                let target_features =
+                    hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into()));
+                let target_feature_is_safe_in_target =
+                    match &caller.krate(db).id.workspace_data(db).target {
+                        Ok(target) => hir_ty::target_feature_is_safe_in_target(target),
+                        Err(_) => false,
+                    };
+                (target_features, target_feature_is_safe_in_target)
+            })
+            .unwrap_or_else(|| (hir_ty::TargetFeatures::default(), false));
         matches!(
-            hir_ty::is_fn_unsafe_to_call(db, self.id, &target_features, call_edition),
+            hir_ty::is_fn_unsafe_to_call(
+                db,
+                self.id,
+                &target_features,
+                call_edition,
+                target_feature_is_safe_in_target
+            ),
             hir_ty::Unsafety::Unsafe
         )
     }

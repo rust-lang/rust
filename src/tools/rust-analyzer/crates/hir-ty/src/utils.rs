@@ -3,7 +3,10 @@
 
 use std::{cell::LazyCell, iter};
 
-use base_db::Crate;
+use base_db::{
+    Crate,
+    target::{self, TargetData},
+};
 use chalk_ir::{DebruijnIndex, fold::FallibleTypeFolder};
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
@@ -275,18 +278,23 @@ pub enum Unsafety {
     DeprecatedSafe2024,
 }
 
+pub fn target_feature_is_safe_in_target(target: &TargetData) -> bool {
+    matches!(target.arch, target::Arch::Wasm32 | target::Arch::Wasm64)
+}
+
 pub fn is_fn_unsafe_to_call(
     db: &dyn HirDatabase,
     func: FunctionId,
     caller_target_features: &TargetFeatures,
     call_edition: Edition,
+    target_feature_is_safe: bool,
 ) -> Unsafety {
     let data = db.function_signature(func);
     if data.is_unsafe() {
         return Unsafety::Unsafe;
     }
 
-    if data.has_target_feature() {
+    if data.has_target_feature() && !target_feature_is_safe {
         // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
         let callee_target_features =
             TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));
