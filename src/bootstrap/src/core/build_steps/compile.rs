@@ -21,6 +21,7 @@ use tracing::span;
 
 use crate::core::build_steps::gcc::{Gcc, GccOutput, GccTargetPair};
 use crate::core::build_steps::tool::{RustcPrivateCompilers, SourceType, copy_lld_artifacts};
+use crate::core::build_steps::tool::copy_wild_artifacts;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
 use crate::core::builder::{
@@ -2509,6 +2510,15 @@ impl Step for Assemble {
                     target_compiler,
                 ));
             copy_lld_artifacts(builder, lld_wrapper, target_compiler);
+        }
+
+        if builder.host_target.triple == "x86_64-unknown-linux-gnu" {
+            let wild_wrapper =
+                builder.ensure(crate::core::build_steps::tool::WildLinker::for_use_by_compiler(
+                    builder,
+                    target_compiler,
+                ));
+            copy_wild_artifacts(builder, wild_wrapper, target_compiler);
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {

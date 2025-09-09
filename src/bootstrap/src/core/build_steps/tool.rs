@@ -952,6 +952,107 @@ pub(crate) fn copy_lld_artifacts(
     }
 }
 
+/// Represents a built WildLinker, the `wild-linker` tool itself, and a directory
+/// containing a build of Wild.
+#[derive(Clone)]
+pub struct BuiltWildLinker {
+    tool: ToolBuildResult,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct WildLinker {
+    pub build_compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl WildLinker {
+    /// Returns `WildLinker` that should be **used** by the passed compiler.
+    pub fn for_use_by_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Self {
+        Self {
+            build_compiler: get_tool_target_compiler(
+                builder,
+                ToolTargetBuildMode::Dist(target_compiler),
+            ),
+            target: target_compiler.host,
+        }
+    }
+}
+
+impl Step for WildLinker {
+    type Output = BuiltWildLinker;
+
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/wild-linker")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(WildLinker {
+            build_compiler: get_tool_target_compiler(
+                run.builder,
+                ToolTargetBuildMode::Build(run.target),
+            ),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let tool = builder.ensure(ToolBuild {
+            build_compiler: self.build_compiler,
+            target: self.target,
+            tool: "wild-linker",
+            mode: Mode::ToolTarget,
+            path: "src/tools/wild-linker",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
+        });
+        BuiltWildLinker { tool }
+    }
+
+    fn metadata(&self) -> Option<StepMetadata> {
+        Some(StepMetadata::build("WildLinker", self.target).built_by(self.build_compiler))
+    }
+}
+
+pub(crate) fn copy_wild_artifacts(
+    builder: &Builder<'_>,
+    wild_wrapper: BuiltWildLinker,
+    target_compiler: Compiler,
+) {
+    let target = target_compiler.host;
+
+    let libdir_bin = builder.sysroot_target_bindir(target_compiler, target);
+    t!(fs::create_dir_all(&libdir_bin));
+
+    let dst_exe = exe("rust-wild", target);
+
+    // This seems wrong
+    builder.copy_link(
+        &wild_wrapper.tool.tool_path,
+        &libdir_bin.join(dst_exe),
+        FileType::Executable,
+    );
+
+    let self_contained_wild_dir = libdir_bin.join("wild-gcc-ld");
+    t!(fs::create_dir_all(&self_contained_wild_dir));
+
+    builder.copy_link(
+        &wild_wrapper.tool.tool_path,
+        &self_contained_wild_dir.join(exe("wild", target)),
+        FileType::Executable,
+    );
+    // Pretend it's `ld` binary so GCC picks it
+    builder.copy_link(
+        &wild_wrapper.tool.tool_path,
+        &self_contained_wild_dir.join(exe("ld", target)),
+        FileType::Executable,
+    );
+}
+
 /// Builds the `wasm-component-ld` linker wrapper, which is shipped with rustc to be executed on the
 /// host platform where rustc runs.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

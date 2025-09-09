@@ -45,6 +45,7 @@ members = [
   "src/tools/unicode-table-generator",
   "src/tools/unstable-book-gen",
   "src/tools/wasm-component-ld",
+  # "src/tools/wild-linker",
   "src/tools/x",
 # tidy-alphabetical-end
 ]
@@ -53,6 +54,7 @@ exclude = [
   "build",
   "compiler/rustc_codegen_cranelift",
   "compiler/rustc_codegen_gcc",
+  "src/tools/wild-linker",
   "src/bootstrap",
   "tests/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
@@ -92,4 +94,3 @@ codegen-units = 1
 # If you want to use a crate with local modifications, you can set a path or git dependency here.
 # For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
 #[patch.crates-io]
-
