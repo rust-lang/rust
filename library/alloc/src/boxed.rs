@@ -214,6 +214,7 @@ mod convert;
 mod iter;
 /// [`ThinBox`] implementation.
 mod thin;
+mod uninit;
 
 #[unstable(feature = "thin_box", issue = "92791")]
 pub use thin::ThinBox;
