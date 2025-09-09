@@ -138,7 +138,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
                 CRATE_NODE_ID,
                 span_use,
-                BuiltinLintDiag::MacroExpandedMacroExportsAccessedByAbsolutePaths(span_def),
+                errors::MacroExpandedMacroExportsAccessedByAbsolutePaths { definition: span_def },
             );
         }
 

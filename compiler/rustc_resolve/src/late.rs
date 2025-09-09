@@ -29,7 +29,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::ty::{DelegationFnSig, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
-use rustc_session::lint::{self, BuiltinLintDiag};
+use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
@@ -5225,7 +5225,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 lint::builtin::UNUSED_LABELS,
                 *id,
                 *span,
-                BuiltinLintDiag::UnusedLabel,
+                errors::UnusedLabel,
             );
         }
     }

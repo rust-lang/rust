@@ -720,9 +720,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         EXPORTED_PRIVATE_DEPENDENCIES,
                         binding_id,
                         binding.span,
-                        BuiltinLintDiag::ReexportPrivateDependency {
-                            kind: binding.res().descr().to_string(),
-                            name: key.ident.name.to_string(),
+                        crate::errors::ReexportPrivateDependency {
+                            name: key.ident.name,
+                            kind: binding.res().descr(),
                             krate: self.tcx.crate_name(reexported_def_id.krate),
                         },
                     );

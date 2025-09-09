@@ -3,7 +3,7 @@ use rustc_errors::{
     Applicability, Diag, ElidedLifetimeInPathSubdiag, EmissionGuarantee, IntoDiagArg, MultiSpan,
     Subdiagnostic,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::late::PatternSource;
@@ -564,6 +564,22 @@ pub(crate) struct ProcMacroSameCrate {
     pub(crate) span: Span,
     #[help]
     pub(crate) is_test: bool,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_proc_macro_derive_resolution_fallback)]
+pub(crate) struct ProcMacroDeriveResolutionFallback {
+    #[label]
+    pub span: Span,
+    pub ns_descr: &'static str,
+    pub ident: Ident,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_expanded_macro_exports_accessed_by_absolute_paths)]
+pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
+    #[note]
+    pub definition: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1276,3 +1292,40 @@ pub(crate) struct TraitImplMismatch {
     #[label(resolve_trait_impl_mismatch_label_item)]
     pub(crate) trait_item_span: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_legacy_derive_helpers)]
+pub(crate) struct LegacyDeriveHelpers {
+    #[label]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_extern_crate)]
+pub(crate) struct UnusedExternCrate {
+    #[label]
+    pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub removal_span: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_reexport_private_dependency)]
+pub(crate) struct ReexportPrivateDependency {
+    pub name: Symbol,
+    pub kind: &'static str,
+    pub krate: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_label)]
+pub(crate) struct UnusedLabel;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_unused_macro_use)]
+pub(crate) struct UnusedMacroUse;
+
+#[derive(LintDiagnostic)]
+#[diag(resolve_macro_use_deprecated)]
+#[help]
+pub(crate) struct MacroUseDeprecated;

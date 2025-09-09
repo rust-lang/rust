@@ -231,6 +231,9 @@ resolve_item_was_cfg_out = the item is gated here
 resolve_label_with_similar_name_reachable =
     a label with a similar name is reachable
 
+resolve_legacy_derive_helpers = derive helper attribute is used before it is introduced
+    .label = the attribute is introduced here
+
 resolve_lending_iterator_report_error =
     associated type `Iterator::Item` is declared without lifetime parameters, so using a borrowed type for them requires that lifetime to come from the implemented type
     .note = you can't create an `Iterator` that borrows each `Item` from itself, but you can instead create a new type that borrows your existing type and implement `Iterator` for that new type
@@ -260,6 +263,9 @@ resolve_macro_defined_later =
 resolve_macro_expanded_extern_crate_cannot_shadow_extern_arguments =
     macro-expanded `extern crate` items cannot shadow names passed with `--extern`
 
+resolve_macro_expanded_macro_exports_accessed_by_absolute_paths = macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths
+    .note = the macro is defined here
+
 resolve_macro_expected_found =
     expected {$expected}, found {$found} `{$macro_path}`
     .label = not {$article} {$expected}
@@ -267,6 +273,10 @@ resolve_macro_expected_found =
 resolve_macro_extern_deprecated =
     `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
     .help = try an outer attribute: `#[macro_use]`
+
+resolve_macro_use_deprecated =
+    applying the `#[macro_use]` attribute to an `extern crate` item is deprecated
+    .help = remove it and import macros at use sites with a `use` item instead
 
 resolve_macro_use_extern_crate_self = `#[macro_use]` is not supported on `extern crate self`
 
@@ -339,6 +349,9 @@ resolve_param_in_ty_of_const_param =
 
 resolve_pattern_doesnt_bind_name = pattern doesn't bind `{$name}`
 
+resolve_proc_macro_derive_resolution_fallback = cannot find {$ns_descr} `{$ident}` in this scope
+    .label = names from parent modules are not accessible without an explicit import
+
 resolve_proc_macro_same_crate = can't use a procedural macro from the same crate that defines it
     .help = you can define integration tests in a directory named `tests`
 
@@ -347,6 +360,9 @@ resolve_reexport_of_crate_public =
 
 resolve_reexport_of_private =
     re-export of private `{$ident}`
+
+resolve_reexport_private_dependency =
+    {$kind} `{$name}` from private dependency '{$krate}' is re-exported
 
 resolve_relative_2018 =
     relative paths are not supported in visibilities in 2018 edition or later
@@ -464,6 +480,14 @@ resolve_unreachable_label_suggestion_use_similarly_named =
 
 resolve_unreachable_label_with_similar_name_exists =
     a label with a similar name exists but is unreachable
+
+resolve_unused_extern_crate = unused extern crate
+    .label = unused
+    .suggestion = remove the unused `extern crate`
+
+resolve_unused_label = unused label
+
+resolve_unused_macro_use = unused `#[macro_use]` import
 
 resolve_variable_bound_with_different_mode =
     variable `{$variable_name}` is bound inconsistently across alternatives separated by `|`

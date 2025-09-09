@@ -1,4 +1,3 @@
-use lint::BuiltinLintDiag;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -352,7 +351,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::AvoidUsingIntelSyntax,
+                    errors::AvoidIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
@@ -360,7 +359,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    BuiltinLintDiag::AvoidUsingAttSyntax,
+                    errors::AvoidAttSyntax,
                 );
             }
         }

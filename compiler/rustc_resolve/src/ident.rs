@@ -4,7 +4,6 @@ use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_middle::bug;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::{ExpnId, ExpnKind, LocalExpnId, MacroKind, SyntaxContext};
@@ -520,7 +519,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
                                         lint_id,
                                         orig_ident.span,
-                                        BuiltinLintDiag::ProcMacroDeriveResolutionFallback {
+                                        errors::ProcMacroDeriveResolutionFallback {
                                             span: orig_ident.span,
                                             ns_descr: ns.descr(),
                                             ident,
