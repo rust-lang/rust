@@ -312,20 +312,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         *post-optimization*, contain either arrays (of any size
         or type) or address-taken locals.
 
-    basic
-        Generate stack canaries in functions that are heuristically
-        suspected to contain buffer overflows.
-
-        The heuristic is subject to change, but currently it
-        includes functions with local variables of `[T; N]`
-        type, where `T` is byte-sized and `N` >= 8.
-
-        This heuristic originated from C, where it detects
-        functions that allocate a `char buf[N];` buffer on the
-        stack, and are therefore likely to have a stack buffer overflow
-        in the case of a length-calculation error. It is *not* a good
-        heuristic for Rust code.
-
     none
         Do not generate stack canaries.
 "#

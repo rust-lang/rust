@@ -4,8 +4,6 @@
 //@ [all-z] compile-flags: -Z stack-protector=all
 //@ [strong] compile-flags: -C stack-protector=strong
 //@ [strong-z] compile-flags: -Z stack-protector=strong
-//@ [basic] compile-flags: -C stack-protector=basic
-//@ [basic-z] compile-flags: -Z stack-protector=basic
 //@ [strong-c-overrides-z] compile-flags: -C stack-protector=strong -Z stack-protector=all
 
 #![crate_type = "lib"]
@@ -43,18 +41,6 @@ pub fn foo() {
     // strong-c-overrides-z: attributes #0 = { {{.*}}sspstrong {{.*}} }
     // strong-c-overrides-z-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
     // strong-c-overrides-z-NOT: attributes #0 = { {{.*}}ssp {{.*}} }
-
-    // basic-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // basic: attributes #0 = { {{.*}}ssp {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-
-    // basic-z-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-z-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
-    // basic-z: attributes #0 = { {{.*}}ssp {{.*}} }
-    // basic-z-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
-    // basic-z-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
 
     // none-NOT: attributes #0 = { {{.*}}sspreq {{.*}} }
     // none-NOT: attributes #0 = { {{.*}}sspstrong {{.*}} }
