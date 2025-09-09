@@ -8,6 +8,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
@@ -853,14 +854,19 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
-                        NullOp::OffsetOf(fields) => fx
-                            .tcx
-                            .offset_of_subfield(
-                                ty::TypingEnv::fully_monomorphized(),
-                                layout,
-                                fields.iter(),
-                            )
-                            .bytes(),
+                        NullOp::FieldOffset => {
+                            let &ty::Field(container, field_path) = layout.ty.kind() else {
+                                bug!("FIXME(field_projections): better error")
+                            };
+                            let layout = fx.layout_of(container);
+                            fx.tcx
+                                .offset_of_subfield(
+                                    ty::TypingEnv::fully_monomorphized(),
+                                    layout,
+                                    field_path.iter(),
+                                )
+                                .bytes()
+                        }
                         NullOp::UbChecks => {
                             let val = fx.tcx.sess.ub_checks();
                             let val = CValue::by_val(

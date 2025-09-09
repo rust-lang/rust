@@ -204,7 +204,7 @@ enum Value<'tcx> {
     Len(VnIndex),
 
     // Operations.
-    NullaryOp(NullOp<'tcx>, Ty<'tcx>),
+    NullaryOp(NullOp, Ty<'tcx>),
     UnaryOp(UnOp, VnIndex),
     BinaryOp(BinOp, VnIndex, VnIndex),
     Cast {
@@ -492,11 +492,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf => arg_layout.size.bytes(),
                     NullOp::AlignOf => arg_layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => self
-                        .ecx
-                        .tcx
-                        .offset_of_subfield(self.typing_env(), arg_layout, fields.iter())
-                        .bytes(),
+                    NullOp::FieldOffset => {
+                        let &ty::Field(container, field_path) = arg_ty.kind() else {
+                            bug!(
+                                "FIXME(field_projections): should we really bug here, or return `None`?"
+                            )
+                        };
+                        let layout = self.ecx.layout_of(container).ok()?;
+                        self.ecx
+                            .tcx
+                            .offset_of_subfield(self.typing_env(), layout, field_path.iter())
+                            .bytes()
+                    }
                     NullOp::UbChecks => return None,
                     NullOp::ContractChecks => return None,
                 };

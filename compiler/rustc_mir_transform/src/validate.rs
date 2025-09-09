@@ -1341,14 +1341,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
             }
-            Rvalue::NullaryOp(NullOp::OffsetOf(indices), container) => {
+            Rvalue::NullaryOp(NullOp::FieldOffset, ty) => {
+                let ty::Field(container, field_path) = ty.kind() else {
+                    bug!("FIXME(field_projections): report error?")
+                };
                 let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
                     this.fail(location, format!("Out of bounds field {field:?} for {ty}"));
                 };
 
                 let mut current_ty = *container;
 
-                for (variant, field) in indices.iter() {
+                for (variant, field) in field_path.iter() {
                     match current_ty.kind() {
                         ty::Tuple(fields) => {
                             if variant != FIRST_VARIANT {

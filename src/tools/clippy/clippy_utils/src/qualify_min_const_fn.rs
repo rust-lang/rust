@@ -194,7 +194,7 @@ fn check_rvalue<'tcx>(
             }
         },
         Rvalue::NullaryOp(
-            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::FieldOffset | NullOp::UbChecks | NullOp::ContractChecks,
             _,
         )
         | Rvalue::ShallowInitBox(_, _) => Ok(()),

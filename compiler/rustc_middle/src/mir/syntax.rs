@@ -19,7 +19,7 @@ use smallvec::SmallVec;
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
 use crate::ty::adjustment::PointerCoercion;
-use crate::ty::{self, FieldPath, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
+use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex};
 
 /// Represents the "flavors" of MIR.
 ///
@@ -1439,7 +1439,7 @@ pub enum Rvalue<'tcx> {
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
-    NullaryOp(NullOp<'tcx>, Ty<'tcx>),
+    NullaryOp(NullOp, Ty<'tcx>),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1568,13 +1568,13 @@ pub enum AggregateKind<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
-pub enum NullOp<'tcx> {
+pub enum NullOp {
     /// Returns the size of a value of that type
     SizeOf,
     /// Returns the minimum alignment of a type
     AlignOf,
-    /// Returns the offset of a field
-    OffsetOf(FieldPath<'tcx>),
+    /// Returns the offset of the field represented by the type
+    FieldOffset,
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,

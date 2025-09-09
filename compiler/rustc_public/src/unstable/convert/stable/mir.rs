@@ -318,20 +318,18 @@ impl<'tcx> Stable<'tcx> for mir::FakeBorrowKind {
     }
 }
 
-impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
+impl<'tcx> Stable<'tcx> for mir::NullOp {
     type T = crate::mir::NullOp;
     fn stable<'cx>(
         &self,
-        tables: &mut Tables<'cx, BridgeTys>,
-        cx: &CompilerCtxt<'cx, BridgeTys>,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use rustc_middle::mir::NullOp::*;
         match self {
             SizeOf => crate::mir::NullOp::SizeOf,
             AlignOf => crate::mir::NullOp::AlignOf,
-            OffsetOf(indices) => crate::mir::NullOp::OffsetOf(
-                indices.iter().map(|idx| idx.stable(tables, cx)).collect(),
-            ),
+            FieldOffset => crate::mir::NullOp::FieldOffset,
             UbChecks => crate::mir::NullOp::UbChecks,
             ContractChecks => crate::mir::NullOp::ContractChecks,
         }

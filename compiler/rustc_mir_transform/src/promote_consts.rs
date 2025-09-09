@@ -452,10 +452,13 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::NullaryOp(op, _) => match op {
+            Rvalue::NullaryOp(op, ty) => match op {
                 NullOp::SizeOf => {}
                 NullOp::AlignOf => {}
-                NullOp::OffsetOf(_) => {}
+                NullOp::FieldOffset => match ty.kind() {
+                    ty::Field(..) => {}
+                    _ => bug!("FIXME(field_projections): should we report an error here?"),
+                },
                 NullOp::UbChecks => {}
                 NullOp::ContractChecks => {}
             },
