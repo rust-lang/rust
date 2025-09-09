@@ -696,36 +696,38 @@ impl<'a> AstValidator<'a> {
 
         match fn_ctxt {
             FnCtxt::Foreign => return,
-            FnCtxt::Free => match sig.header.ext {
-                Extern::Implicit(_) => {
-                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
-                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
-                            span: variadic_param.span,
-                            unsafe_span: sig.safety_span(),
-                        });
+            FnCtxt::Free | FnCtxt::Assoc(AssocCtxt::Impl { of_trait: false }) => {
+                match sig.header.ext {
+                    Extern::Implicit(_) => {
+                        if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                            self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                                span: variadic_param.span,
+                                unsafe_span: sig.safety_span(),
+                            });
+                        }
                     }
-                }
-                Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
-                    if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
-                        self.dcx().emit_err(errors::CVariadicBadExtern {
-                            span: variadic_param.span,
-                            abi: symbol_unescaped,
-                            extern_span: sig.extern_span(),
-                        });
-                    }
+                    Extern::Explicit(StrLit { symbol_unescaped, .. }, _) => {
+                        if !matches!(symbol_unescaped, sym::C | sym::C_dash_unwind) {
+                            self.dcx().emit_err(errors::CVariadicBadExtern {
+                                span: variadic_param.span,
+                                abi: symbol_unescaped,
+                                extern_span: sig.extern_span(),
+                            });
+                        }
 
-                    if !matches!(sig.header.safety, Safety::Unsafe(_)) {
-                        self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
-                            span: variadic_param.span,
-                            unsafe_span: sig.safety_span(),
-                        });
+                        if !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                            self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
+                                span: variadic_param.span,
+                                unsafe_span: sig.safety_span(),
+                            });
+                        }
+                    }
+                    Extern::None => {
+                        let err = errors::CVariadicNoExtern { span: variadic_param.span };
+                        self.dcx().emit_err(err);
                     }
                 }
-                Extern::None => {
-                    let err = errors::CVariadicNoExtern { span: variadic_param.span };
-                    self.dcx().emit_err(err);
-                }
-            },
+            }
             FnCtxt::Assoc(_) => {
                 // For now, C variable argument lists are unsupported in associated functions.
                 let err = errors::CVariadicAssociatedFunction { span: variadic_param.span };

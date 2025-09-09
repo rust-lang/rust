@@ -53,17 +53,17 @@ struct X;
 
 impl X {
     fn i_f1(x: isize, ...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn i_f2(...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     fn i_f3(..., x: isize, ...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     //~| ERROR `...` must be the last argument of a C-variadic function
     fn i_f4(..., x: isize, ...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     //~| ERROR `...` must be the last argument of a C-variadic function
     const fn i_f5(x: isize, ...) {}
-    //~^ ERROR associated functions cannot have a C variable argument list
+    //~^ ERROR `...` is not supported for non-extern functions
     //~| ERROR functions cannot be both `const` and C-variadic
     //~| ERROR destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
 }
