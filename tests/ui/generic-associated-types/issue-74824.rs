@@ -2,6 +2,8 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
+//@ dont-require-annotations: NOTE
+
 #![feature(associated_type_defaults)]
 
 use std::ops::Deref;
@@ -9,7 +11,7 @@ use std::ops::Deref;
 trait UnsafeCopy {
     type Copy<T>: Copy = Box<T>;
     //~^ ERROR the trait bound `Box<T>: Copy` is not satisfied
-    //~^^ ERROR the trait bound `T: Clone` is not satisfied
+    //[current]~| ERROR the trait bound `Box<T>: Clone` is not satisfied [E0277]
     fn copy<T>(x: &Self::Copy<T>) -> Self::Copy<T> {
         *x
     }
