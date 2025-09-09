@@ -1047,7 +1047,7 @@ fn check_type_defn<'tcx>(
             let needs_drop_copy = || {
                 packed && {
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
-                    let ty = tcx.erase_regions(ty);
+                    let ty = tcx.erase_and_anonymize_regions(ty);
                     assert!(!ty.has_infer());
                     ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
                 }

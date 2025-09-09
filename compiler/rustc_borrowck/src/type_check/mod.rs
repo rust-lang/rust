@@ -1892,7 +1892,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if is_diverging {
             // The signature in this call can reference region variables,
             // so erase them before calling a query.
-            let output_ty = self.tcx().erase_regions(sig.output());
+            let output_ty = self.tcx().erase_and_anonymize_regions(sig.output());
             if !output_ty
                 .is_privately_uninhabited(self.tcx(), self.infcx.typing_env(self.infcx.param_env))
             {
@@ -1986,7 +1986,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
-                ConstraintCategory::CallArgument(Some(self.infcx.tcx.erase_regions(func_ty)))
+                ConstraintCategory::CallArgument(Some(
+                    self.infcx.tcx.erase_and_anonymize_regions(func_ty),
+                ))
             } else {
                 ConstraintCategory::Boring
             };
@@ -2120,7 +2122,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Erase the regions from `ty` to get a global type. The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.
-        let erased_ty = tcx.erase_regions(ty);
+        let erased_ty = tcx.erase_and_anonymize_regions(ty);
         // FIXME(#132279): Using `Ty::is_sized` causes us to incorrectly handle opaques here.
         if !erased_ty.is_sized(tcx, self.infcx.typing_env(self.infcx.param_env)) {
             // in current MIR construction, all non-control-flow rvalue

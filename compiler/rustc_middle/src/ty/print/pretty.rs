@@ -1436,8 +1436,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 // anonymized regions, but the super projections can still
                                 // contain named regions. So we erase and anonymize everything
                                 // here to compare the types modulo regions below.
-                                let proj = p.tcx().erase_regions(proj);
-                                let super_proj = p.tcx().erase_regions(super_proj);
+                                let proj = p.tcx().erase_and_anonymize_regions(proj);
+                                let super_proj = p.tcx().erase_and_anonymize_regions(super_proj);
 
                                 proj == super_proj
                             });

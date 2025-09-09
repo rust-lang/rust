@@ -761,9 +761,9 @@ rustc_queries! {
     }
 
     /// Erases regions from `ty` to yield a new type.
-    /// Normally you would just use `tcx.erase_regions(value)`,
+    /// Normally you would just use `tcx.erase_and_anonymize_regions(value)`,
     /// however, which uses this query as a kind of cache.
-    query erase_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
+    query erase_and_anonymize_regions_ty(ty: Ty<'tcx>) -> Ty<'tcx> {
         // This query is not expected to have input -- as a result, it
         // is not a good candidates for "replay" because it is essentially a
         // pure function of its input (and hence the expectation is that

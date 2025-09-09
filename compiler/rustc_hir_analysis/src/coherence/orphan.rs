@@ -404,7 +404,7 @@ fn emit_orphan_check_error<'tcx>(
                     of_trait.trait_ref.path.span
                 };
 
-                ty = tcx.erase_regions(ty);
+                ty = tcx.erase_and_anonymize_regions(ty);
 
                 let is_foreign =
                     !trait_ref.def_id.is_local() && matches!(is_target_ty, IsFirstInputType::No);

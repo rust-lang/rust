@@ -341,7 +341,7 @@ fn compute_concrete_types_from_defining_uses<'tcx>(
         //
         // FIXME(-Znext-solver): This isn't necessary after all. We can remove this check again.
         if let Some((prev_decl_key, prev_span)) = decls_modulo_regions.insert(
-            rcx.infcx.tcx.erase_regions(opaque_type_key),
+            rcx.infcx.tcx.erase_and_anonymize_regions(opaque_type_key),
             (opaque_type_key, hidden_type.span),
         ) && let Some((arg1, arg2)) = std::iter::zip(
             prev_decl_key.iter_captured_args(infcx.tcx).map(|(_, arg)| arg),

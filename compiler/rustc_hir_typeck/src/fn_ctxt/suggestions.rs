@@ -1358,7 +1358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .infcx
                 .type_implements_trait(
                     clone_trait_def,
-                    [self.tcx.erase_regions(expected_ty)],
+                    [self.tcx.erase_and_anonymize_regions(expected_ty)],
                     self.param_env,
                 )
                 .must_apply_modulo_regions()

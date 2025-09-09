@@ -1558,7 +1558,7 @@ impl<'v> RootCollector<'_, 'v> {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
-                            Instance::new_raw(def_id, self.tcx.erase_regions(args))
+                            Instance::new_raw(def_id, self.tcx.erase_and_anonymize_regions(args))
                         }
                         _ => unreachable!(),
                     };
