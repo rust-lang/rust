@@ -882,6 +882,13 @@ pub(crate) struct RawDylibOnlyWindows {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_raw_dylib_macho_use_verbatim)]
+pub(crate) struct RawDylibMachoUseVerbatim {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_link_modifier)]
 pub(crate) struct InvalidLinkModifier {
     #[primary_span]

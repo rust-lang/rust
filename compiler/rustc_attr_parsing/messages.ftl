@@ -242,6 +242,12 @@ attr_parsing_raw_dylib_no_nul =
 attr_parsing_raw_dylib_elf_unstable =
     link kind `raw-dylib` is unstable on ELF platforms
 
+attr_parsing_raw_dylib_macho_unstable =
+    link kind `raw-dylib` is unstable on Mach-O platforms
+
+attr_parsing_raw_dylib_macho_use_verbatim =
+    link kind `raw-dylib` should use the `+verbatim` linkage modifier
+
 attr_parsing_raw_dylib_only_windows =
     link kind `raw-dylib` is only supported on Windows targets
 

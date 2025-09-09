@@ -13,8 +13,8 @@ use crate::fluent_generated;
 use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ImportNameTypeRaw, ImportNameTypeX86,
     IncompatibleWasmLink, InvalidLinkModifier, LinkFrameworkApple, LinkOrdinalOutOfRange,
-    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
-    WholeArchiveNeedsStatic,
+    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibMachoUseVerbatim,
+    RawDylibNoNul, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -218,6 +218,17 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             cx.emit_err(RawDylibNoNul { span: name_span });
         }
 
+        if sess.target.binary_format == BinaryFormat::MachO
+            && kind == Some(NativeLibKind::RawDylib)
+            && verbatim != Some(true)
+        {
+            // It is possible for us to emit a non-absolute path like `libSystem.dylib` in the
+            // binary and have that work as well, though it's unclear what the use-case of that
+            // would be, and it might lead to people accidentally specifying too "lax" linking.
+            // So let's disallow it for now.
+            cx.emit_err(RawDylibMachoUseVerbatim { span: cx.attr_span });
+        }
+
         result = Some(LinkEntry {
             span: cx.attr_span,
             kind: kind.unwrap_or(NativeLibKind::Unspecified),
@@ -286,22 +297,42 @@ impl LinkParser {
                 NativeLibKind::Framework { as_needed: None }
             }
             sym::raw_dash_dylib => {
-                if sess.target.is_like_windows {
-                    // raw-dylib is stable and working on Windows
-                } else if sess.target.binary_format == BinaryFormat::Elf && features.raw_dylib_elf()
-                {
-                    // raw-dylib is unstable on ELF, but the user opted in
-                } else if sess.target.binary_format == BinaryFormat::Elf && sess.is_nightly_build()
-                {
-                    feature_err(
-                        sess,
-                        sym::raw_dylib_elf,
-                        nv.value_span,
-                        fluent_generated::attr_parsing_raw_dylib_elf_unstable,
-                    )
-                    .emit();
-                } else {
-                    cx.emit_err(RawDylibOnlyWindows { span: nv.value_span });
+                match sess.target.binary_format {
+                    _ if sess.target.is_like_windows => {
+                        // raw-dylib is stable and working on Windows
+                    }
+
+                    BinaryFormat::Elf if features.raw_dylib_elf() => {
+                        // raw-dylib is unstable on ELF, but the user opted in
+                    }
+                    BinaryFormat::Elf if sess.is_nightly_build() => {
+                        // Incomplete, so don't recommend if not nightly.
+                        feature_err(
+                            sess,
+                            sym::raw_dylib_elf,
+                            nv.value_span,
+                            fluent_generated::attr_parsing_raw_dylib_elf_unstable,
+                        )
+                        .emit();
+                    }
+
+                    BinaryFormat::MachO if features.raw_dylib_macho() => {
+                        // raw-dylib is unstable on Mach-O, but the user opted in
+                    }
+                    BinaryFormat::MachO if sess.is_nightly_build() => {
+                        // Incomplete, so don't recommend if not nightly.
+                        feature_err(
+                            sess,
+                            sym::raw_dylib_macho,
+                            nv.value_span,
+                            fluent_generated::attr_parsing_raw_dylib_macho_unstable,
+                        )
+                        .emit();
+                    }
+
+                    _ => {
+                        cx.emit_err(RawDylibOnlyWindows { span: nv.value_span });
+                    }
                 }
 
                 NativeLibKind::RawDylib
