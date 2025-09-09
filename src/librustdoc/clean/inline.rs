@@ -801,7 +801,7 @@ fn build_macro(
                         source: utils::display_macro_source(cx, name, &def),
                         macro_rules: def.macro_rules,
                     },
-                    None,
+                    MacroKinds::BANG,
                 ),
                 None,
             ),
@@ -825,7 +825,7 @@ fn build_macro(
                         source: utils::display_macro_source(cx, name, &def),
                         macro_rules: def.macro_rules,
                     },
-                    Some(macro_kinds),
+                    macro_kinds,
                 );
                 let mut ret = vec![];
                 for kind in macro_kinds.iter().filter(|kind| *kind != MacroKinds::BANG) {

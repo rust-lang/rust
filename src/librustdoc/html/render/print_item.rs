@@ -317,34 +317,18 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let mut types = not_stripped_items.keys().copied().collect::<Vec<_>>();
         types.sort_unstable_by(|a, b| reorder(*a).cmp(&reorder(*b)));
 
-        let mut last_section: Option<super::ItemSection> = None;
-
         for type_ in types {
             let my_section = item_ty_to_section(type_);
-
-            // Only render section heading if the section changed
-            if last_section != Some(my_section) {
-                // Close the previous section if there was one
-                if last_section.is_some() {
-                    w.write_str(ITEM_TABLE_CLOSE)?;
-                }
-                let tag = if my_section == super::ItemSection::Reexports {
-                    REEXPORTS_TABLE_OPEN
-                } else {
-                    ITEM_TABLE_OPEN
-                };
-                write!(
-                    w,
-                    "{}",
-                    write_section_heading(
-                        my_section.name(),
-                        &cx.derive_id(my_section.id()),
-                        None,
-                        tag
-                    )
-                )?;
-                last_section = Some(my_section);
-            }
+            let tag = if my_section == super::ItemSection::Reexports {
+                REEXPORTS_TABLE_OPEN
+            } else {
+                ITEM_TABLE_OPEN
+            };
+            write!(
+                w,
+                "{}",
+                write_section_heading(my_section.name(), &cx.derive_id(my_section.id()), None, tag)
+            )?;
 
             for (_, myitem) in &not_stripped_items[&type_] {
                 let visibility_and_hidden = |item: &clean::Item| match item.visibility(tcx) {
@@ -478,9 +462,6 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                     }
                 }
             }
-        }
-        // Close the final section
-        if last_section.is_some() {
             w.write_str(ITEM_TABLE_CLOSE)?;
         }
 
@@ -1883,7 +1864,7 @@ fn item_macro(
     cx: &Context<'_>,
     it: &clean::Item,
     t: &clean::Macro,
-    kinds: Option<MacroKinds>,
+    kinds: MacroKinds,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         wrap_item(w, |w| {
@@ -1893,7 +1874,7 @@ fn item_macro(
             }
             write!(w, "{}", Escape(&t.source))
         })?;
-        if let Some(kinds) = kinds {
+        if kinds != MacroKinds::BANG {
             write!(
                 w,
                 "<h3 class='macro-info'>ⓘ This is {} {}</h3>",
