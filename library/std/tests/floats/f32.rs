@@ -193,13 +193,13 @@ fn test_atanh() {
 #[test]
 fn test_gamma() {
     // precision can differ between platforms
-    assert_approx_eq!(1.0f32.gamma(), 1.0f32);
-    assert_approx_eq!(2.0f32.gamma(), 1.0f32);
-    assert_approx_eq!(3.0f32.gamma(), 2.0f32);
+    assert_approx_eq!(1.0f32.gamma(), 1.0f32, APPROX_DELTA);
+    assert_approx_eq!(2.0f32.gamma(), 1.0f32, APPROX_DELTA);
+    assert_approx_eq!(3.0f32.gamma(), 2.0f32, APPROX_DELTA);
     assert_approx_eq!(4.0f32.gamma(), 6.0f32, APPROX_DELTA);
     assert_approx_eq!(5.0f32.gamma(), 24.0f32, APPROX_DELTA);
-    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt());
-    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt());
+    assert_approx_eq!(0.5f32.gamma(), consts::PI.sqrt(), APPROX_DELTA);
+    assert_approx_eq!((-0.5f32).gamma(), -2.0 * consts::PI.sqrt(), APPROX_DELTA);
     assert_eq!(0.0f32.gamma(), f32::INFINITY);
     assert_eq!((-0.0f32).gamma(), f32::NEG_INFINITY);
     assert!((-1.0f32).gamma().is_nan());
