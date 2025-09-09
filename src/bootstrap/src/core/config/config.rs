@@ -191,7 +191,6 @@ pub struct Config {
     pub rust_optimize: RustOptimize,
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
-
     pub rustc_debug_assertions: bool,
     pub std_debug_assertions: bool,
     pub tools_debug_assertions: bool,
@@ -222,6 +221,8 @@ pub struct Config {
     pub rust_validate_mir_opts: Option<u32>,
     pub rust_std_features: BTreeSet<String>,
     pub rust_break_on_ice: bool,
+    pub rust_parallel_frontend_threads: Option<u32>,
+
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -534,6 +535,7 @@ impl Config {
             backtrace_on_ice: rust_backtrace_on_ice,
             verify_llvm_ir: rust_verify_llvm_ir,
             thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit,
+            parallel_frontend_threads: rust_parallel_frontend_threads,
             remap_debuginfo: rust_remap_debuginfo,
             jemalloc: rust_jemalloc,
             test_compare_mode: rust_test_compare_mode,
@@ -1298,6 +1300,7 @@ impl Config {
             rust_overflow_checks_std: rust_overflow_checks_std
                 .or(rust_overflow_checks)
                 .unwrap_or(rust_debug == Some(true)),
+            rust_parallel_frontend_threads: rust_parallel_frontend_threads.map(threads_from_config),
             rust_profile_generate: flags_rust_profile_generate.or(rust_profile_generate),
             rust_profile_use: flags_rust_profile_use.or(rust_profile_use),
             rust_randomize_layout: rust_randomize_layout.unwrap_or(false),

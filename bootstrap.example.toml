@@ -859,6 +859,13 @@
 # Trigger a `DebugBreak` after an internal compiler error during bootstrap on Windows
 #rust.break-on-ice = true
 
+# Set the number of threads used during rustc compilation
+# The valid options are:
+# 1 - Use non-parallel compilation
+# N - Number of threads used for rustc compilation
+#
+#rust.parallel-frontend-threads = 1
+
 # =============================================================================
 # Distribution options
 #
