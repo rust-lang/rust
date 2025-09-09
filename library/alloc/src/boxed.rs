@@ -208,8 +208,6 @@ use core::task::{Context, Poll};
 use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::raw_vec::RawVec;
-#[cfg(not(no_global_oom_handling))]
-use crate::str::from_boxed_utf8_unchecked;
 
 /// Conversion related impls for `Box<_>` (`From`, `downcast`, etc)
 mod convert;
@@ -1955,7 +1953,7 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
+impl<T: CloneToUninit + ?Sized, A: Allocator + Clone> Clone for Box<T, A> {
     /// Returns a new box with a `clone()` of this box's contents.
     ///
     /// # Examples
@@ -1973,14 +1971,23 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     #[inline]
     fn clone(&self) -> Self {
         // Pre-allocate memory to allow writing the cloned value directly.
-        let mut boxed = Self::new_uninit_in(self.1.clone());
+        // SAFETY: `ptr::metadata` yields valid metadata for `T`.
+        let mut boxed = unsafe {
+            uninit::UninitBox::<T, A>::new_for_metadata_in(
+                ptr::metadata(Self::as_ptr(self)),
+                self.1.clone(),
+            )
+        };
+
+        // SAFETY: `boxed` points to an uninitialized `T` with the right layout.
         unsafe {
             (**self).clone_to_uninit(boxed.as_mut_ptr().cast());
             boxed.assume_init()
         }
     }
 
-    /// Copies `source`'s contents into `self` without creating a new allocation.
+    /// Copies `source`'s contents into `self` without creating a new allocation,
+    /// so long as the two have the same metadata.
     ///
     /// # Examples
     ///
@@ -1999,52 +2006,40 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// ```
     #[inline]
     fn clone_from(&mut self, source: &Self) {
-        (**self).clone_from(&(**source));
-    }
-}
+        trait MetadataEq: Copy {
+            fn meta_eq(self, other: Self) -> bool;
+        }
+        impl<T: Copy> MetadataEq for T {
+            // Comparing vtable pointer for trait objects can return true even
+            // if the concrete types are different, so we never allow them to
+            // go through `clone_from`.
+            #[inline]
+            default fn meta_eq(self, _: Self) -> bool {
+                false
+            }
+        }
+        impl MetadataEq for () {
+            // Sized types can always use `clone_from`
+            #[inline]
+            fn meta_eq(self, (): Self) -> bool {
+                true
+            }
+        }
+        impl MetadataEq for usize {
+            // Slice-like types can use `clone_from` if the two values are the
+            // same length.
+            #[inline]
+            fn meta_eq(self, other: Self) -> bool {
+                self == other
+            }
+        }
 
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl<T: Clone, A: Allocator + Clone> Clone for Box<[T], A> {
-    fn clone(&self) -> Self {
-        let alloc = Box::allocator(self).clone();
-        self.to_vec_in(alloc).into_boxed_slice()
-    }
-
-    /// Copies `source`'s contents into `self` without creating a new allocation,
-    /// so long as the two are of the same length.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = Box::new([5, 6, 7]);
-    /// let mut y = Box::new([8, 9, 10]);
-    /// let yp: *const [i32] = &*y;
-    ///
-    /// y.clone_from(&x);
-    ///
-    /// // The value is the same
-    /// assert_eq!(x, y);
-    ///
-    /// // And no allocation occurred
-    /// assert_eq!(yp, &*y);
-    /// ```
-    fn clone_from(&mut self, source: &Self) {
-        if self.len() == source.len() {
-            self.clone_from_slice(&source);
+        if ptr::metadata(&**self).meta_eq(ptr::metadata(&**source)) {
+            // SAFETY: `meta_eq` ensures that `self` is a valid destination to clone `source`
+            unsafe { (**source).clone_to_init(Box::as_mut_ptr(self).cast()) };
         } else {
             *self = source.clone();
         }
-    }
-}
-
-#[cfg(not(no_global_oom_handling))]
-#[stable(feature = "box_slice_clone", since = "1.3.0")]
-impl Clone for Box<str> {
-    fn clone(&self) -> Self {
-        // this makes a copy of the data
-        let buf: Box<[u8]> = self.as_bytes().into();
-        unsafe { from_boxed_utf8_unchecked(buf) }
     }
 }
 
