@@ -1,0 +1,2 @@
+error: incorrect value `basic` for unstable option `stack-protector` - one of (`none` (default), `basic`, `strong`, or `all`) was expected
+

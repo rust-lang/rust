@@ -757,8 +757,7 @@
 # Indicates whether stack protectors should be used
 # via `-Cstack-protector`.
 #
-# Valid options are : `none`(default),`basic`,`strong`, or `all`.
-# `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.
+# Valid options are : `none`(default), `strong`, or `all`.
 #rust.stack-protector = "none"
 
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
