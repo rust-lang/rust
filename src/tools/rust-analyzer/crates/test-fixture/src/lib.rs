@@ -1,6 +1,7 @@
 //! A set of high-level utility fixture methods to use in tests.
 use std::{any::TypeId, mem, str::FromStr, sync};
 
+use base_db::target::TargetData;
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
     DependencyBuilder, Env, FileChange, FileSet, FxIndexMap, LangCrateOrigin, SourceDatabase,
@@ -136,8 +137,11 @@ impl ChangeFixture {
             proc_macro_names,
             toolchain,
             target_data_layout,
+            target_arch,
         } = FixtureWithProjectMeta::parse(ra_fixture);
-        let target_data_layout = Ok(target_data_layout.into());
+        let target_data_layout = target_data_layout.into();
+        let target_arch = parse_target_arch(&target_arch);
+        let target = Ok(TargetData { arch: target_arch, data_layout: target_data_layout });
         let toolchain = Some({
             let channel = toolchain.as_deref().unwrap_or("stable");
             Version::parse(&format!("1.76.0-{channel}")).unwrap()
@@ -163,8 +167,7 @@ impl ChangeFixture {
 
         let mut file_position = None;
 
-        let crate_ws_data =
-            Arc::new(CrateWorkspaceData { data_layout: target_data_layout, toolchain });
+        let crate_ws_data = Arc::new(CrateWorkspaceData { target, toolchain });
 
         // FIXME: This is less than ideal
         let proc_macro_cwd = Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()));
@@ -392,6 +395,15 @@ impl ChangeFixture {
         change.source_change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
+    }
+}
+
+fn parse_target_arch(arch: &str) -> base_db::target::Arch {
+    use base_db::target::Arch::*;
+    match arch {
+        "wasm32" => Wasm32,
+        "wasm64" => Wasm64,
+        _ => Other,
     }
 }
 

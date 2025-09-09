@@ -3,6 +3,7 @@
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
 use base_db::Crate;
+use base_db::target::TargetLoadError;
 use chalk_ir::{Mutability, cast::Cast};
 use either::Either;
 use hir_def::{
@@ -337,7 +338,7 @@ impl Address {
 pub enum MirEvalError {
     ConstEvalError(String, Box<ConstEvalError>),
     LayoutError(LayoutError, Ty),
-    TargetDataLayoutNotAvailable(Arc<str>),
+    TargetDataLayoutNotAvailable(TargetLoadError),
     /// Means that code had undefined behavior. We don't try to actively detect UB, but if it was detected
     /// then use this type of error.
     UndefinedBehavior(String),

@@ -6,6 +6,7 @@ pub use salsa_macros;
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
 mod input;
+pub mod target;
 
 use std::{
     cell::RefCell,
@@ -20,8 +21,7 @@ pub use crate::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
         DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroLoadingError,
-        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
-        UniqueCrateData,
+        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, UniqueCrateData,
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};
@@ -359,8 +359,7 @@ impl Nonce {
 /// Crate related data shared by the whole workspace.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CrateWorkspaceData {
-    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
-    pub data_layout: TargetLayoutLoadResult,
+    pub target: Result<target::TargetData, target::TargetLoadError>,
     /// Toolchain version used to compile the crate.
     pub toolchain: Option<Version>,
 }
