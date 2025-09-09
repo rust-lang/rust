@@ -1,6 +1,6 @@
 //! Field Reflection
 
-/// Type representing a field of a `struct`.
+/// Type representing a (possibly unaligned) field of a `struct` or tuple.
 ///
 /// # Safety
 ///
@@ -22,7 +22,7 @@ pub unsafe trait UnalignedField: Sized {
     const OFFSET: usize = crate::intrinsics::unaligned_field_offset::<Self>();
 }
 
-/// Type representing an aligned field of a `struct`.
+/// Type representing an aligned field of a `struct` or tuple.
 ///
 /// # Safety
 ///
