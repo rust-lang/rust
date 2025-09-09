@@ -406,13 +406,15 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
 
         for type_ in types {
             let my_section = item_ty_to_section(type_);
-            let section_id = my_section.id();
-            let tag =
-                if section_id == "reexports" { REEXPORTS_TABLE_OPEN } else { ITEM_TABLE_OPEN };
+            let tag = if my_section == super::ItemSection::Reexports {
+                REEXPORTS_TABLE_OPEN
+            } else {
+                ITEM_TABLE_OPEN
+            };
             write!(
                 w,
                 "{}",
-                write_section_heading(my_section.name(), &cx.derive_id(section_id), None, tag)
+                write_section_heading(my_section.name(), &cx.derive_id(my_section.id()), None, tag)
             )?;
 
             for (_, myitem) in &not_stripped_items[&type_] {
@@ -1889,7 +1891,7 @@ fn item_macro(
     cx: &Context<'_>,
     it: &clean::Item,
     t: &clean::Macro,
-    kinds: Option<MacroKinds>,
+    kinds: MacroKinds,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         wrap_item(w, |w| {
@@ -1900,7 +1902,7 @@ fn item_macro(
             }
             write!(w, "{}", Escape(&t.source))
         })?;
-        if let Some(kinds) = kinds {
+        if kinds != MacroKinds::BANG {
             write!(
                 w,
                 "<h3 class='macro-info'>ⓘ This is {} {}</h3>",
