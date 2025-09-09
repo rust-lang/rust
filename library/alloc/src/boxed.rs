@@ -217,6 +217,8 @@ mod convert;
 mod iter;
 /// [`ThinBox`] implementation.
 mod thin;
+#[cfg(not(no_global_oom_handling))]
+mod uninit;
 
 #[stable(feature = "boxed_array_value_iter", since = "1.99.0")]
 pub use iter::BoxedArrayIntoIter;
