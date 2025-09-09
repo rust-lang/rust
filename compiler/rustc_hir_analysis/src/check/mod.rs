@@ -85,7 +85,9 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
-use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
+use rustc_middle::ty::{
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypingMode,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
@@ -233,8 +235,7 @@ fn missing_items_err(
     };
 
     // Obtain the level of indentation ending in `sugg_sp`.
-    let padding =
-        tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(|| String::new());
+    let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
     let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
         (Vec::new(), Vec::new(), Vec::new());
 
@@ -331,6 +332,7 @@ fn default_body_is_unstable(
 fn bounds_from_generic_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    assoc: ty::AssocItem,
 ) -> (String, String) {
     let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut projections = vec![];
@@ -354,34 +356,50 @@ fn bounds_from_generic_predicates<'tcx>(
     }
 
     let mut where_clauses = vec![];
-    let mut types_str = vec![];
-    for (ty, bounds) in types {
-        if let ty::Param(_) = ty.kind() {
-            let mut bounds_str = vec![];
-            for bound in bounds {
-                let mut projections_str = vec![];
-                for projection in &projections {
-                    let p = projection.skip_binder();
-                    if bound == tcx.parent(p.projection_term.def_id)
-                        && p.projection_term.self_ty() == ty
-                    {
-                        let name = tcx.item_name(p.projection_term.def_id);
-                        projections_str.push(format!("{} = {}", name, p.term));
+    let generics = tcx.generics_of(assoc.def_id);
+    let types_str = generics
+        .own_params
+        .iter()
+        .filter(|p| matches!(p.kind, GenericParamDefKind::Type { synthetic: false, .. }))
+        .map(|p| {
+            // we just checked that it's a type, so the unwrap can't fail
+            let ty = tcx.mk_param_from_def(p).as_type().unwrap();
+            if let Some(bounds) = types.get(&ty) {
+                let mut bounds_str = vec![];
+                for bound in bounds.iter().copied() {
+                    let mut projections_str = vec![];
+                    for projection in &projections {
+                        let p = projection.skip_binder();
+                        if bound == tcx.parent(p.projection_term.def_id)
+                            && p.projection_term.self_ty() == ty
+                        {
+                            let name = tcx.item_name(p.projection_term.def_id);
+                            projections_str.push(format!("{} = {}", name, p.term));
+                        }
+                    }
+                    let bound_def_path = tcx.def_path_str(bound);
+                    if projections_str.is_empty() {
+                        where_clauses.push(format!("{}: {}", ty, bound_def_path));
+                    } else {
+                        bounds_str.push(format!(
+                            "{}<{}>",
+                            bound_def_path,
+                            projections_str.join(", ")
+                        ));
                     }
                 }
-                let bound_def_path = tcx.def_path_str(bound);
-                if projections_str.is_empty() {
-                    where_clauses.push(format!("{}: {}", ty, bound_def_path));
+                if bounds_str.is_empty() {
+                    ty.to_string()
                 } else {
-                    bounds_str.push(format!("{}<{}>", bound_def_path, projections_str.join(", ")));
+                    format!("{}: {}", ty, bounds_str.join(" + "))
                 }
-            }
-            if bounds_str.is_empty() {
-                types_str.push(ty.to_string());
             } else {
-                types_str.push(format!("{}: {}", ty, bounds_str.join(" + ")));
+                ty.to_string()
             }
-        } else {
+        })
+        .collect::<Vec<_>>();
+    for (ty, bounds) in types.into_iter() {
+        if !matches!(ty.kind(), ty::Param(_)) {
             // Avoid suggesting the following:
             // fn foo<T, <T as Trait>::Bar>(_: T) where T: Trait, <T as Trait>::Bar: Other {}
             where_clauses.extend(
@@ -473,10 +491,10 @@ fn fn_sig_suggestion<'tcx>(
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
     let safety = sig.safety.prefix_str();
-    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);
+    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates, assoc);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
-    // not be present in the `fn` definition, not will we account for renamed
+    // not be present in the `fn` definition, nor will we account for renamed
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
@@ -512,6 +530,7 @@ fn suggestion_signature<'tcx>(
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
                 tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+                assoc,
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
