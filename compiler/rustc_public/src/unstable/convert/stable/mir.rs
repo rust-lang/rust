@@ -432,12 +432,7 @@ impl<'tcx> Stable<'tcx> for mir::CompoundPlace<'tcx> {
     ) -> Self::T {
         crate::mir::Place {
             local: self.local.as_usize(),
-            projection: self
-                .projection_chain
-                .iter()
-                .flatten()
-                .map(|e| e.stable(tables, cx))
-                .collect(),
+            projection: self.iter_projection_elems().map(|e| e.stable(tables, cx)).collect(),
         }
     }
 }

@@ -116,19 +116,33 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         visitor.patch.apply(body);
 
+        let append_projection = |projs: &List<_>, boxed_ty| {
+            let mut new_projections = projs.to_vec();
+
+            let (unique_ty, nonnull_ty, ptr_ty) =
+                build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
+
+            new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
+            // While we can't project into `NonNull<_>` in a basic block
+            // due to MCP#807, this is debug info where it's fine.
+            new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
+
+            tcx.mk_place_elems(&new_projections)
+        };
+
         for debug_info in body.var_debug_info.iter_mut() {
             if let VarDebugInfoContents::Place(place) = &mut debug_info.value {
                 let mut new_projection_chain = None;
+                let mut base_ty = place.base_place().ty(&body.local_decls, tcx);
 
-                let mut base_ty = PlaceTy::from_ty(body.local_decls.local_decls()[place.local].ty);
+                // If this is None, there are no derefs.
+                let Some((suffix, stem)) = place.projection_chain.split_last() else { continue };
 
-                // Maybe the first segment should just be empty if place starts with a deref?
-                let new_base =
-                    place.base_place().is_indirect_first_projection().then_some((0, List::empty()));
+                if let Some(boxed_ty) = base_ty.ty.boxed_ty() {
+                    place.direct_projection = append_projection(place.direct_projection, boxed_ty);
+                }
 
-                let Some((last, rest)) = place.projection_chain.split_last() else { continue };
-
-                for (i, projs) in new_base.into_iter().chain(rest.iter().copied().enumerate()) {
+                for (i, projs) in stem.iter().copied().enumerate() {
                     base_ty = base_ty.multi_projection_ty(tcx, projs);
 
                     if let Some(boxed_ty) = base_ty.ty.boxed_ty() {
@@ -136,17 +150,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                         let new_projection_chain = new_projection_chain
                             .get_or_insert_with(|| place.projection_chain[..i].to_vec());
 
-                        let mut new_projections = projs.to_vec();
-
-                        let (unique_ty, nonnull_ty, ptr_ty) =
-                            build_ptr_tys(tcx, boxed_ty, unique_did, nonnull_did);
-
-                        new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
-                        // While we can't project into `NonNull<_>` in a basic block
-                        // due to MCP#807, this is debug info where it's fine.
-                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
-
-                        new_projection_chain.push(tcx.mk_place_elems(&new_projections))
+                        new_projection_chain.push(append_projection(projs, boxed_ty));
                     } else if let Some(new_projection_chain) = new_projection_chain.as_mut() {
                         // Keep building up our projections list once we've started it.
                         new_projection_chain.push(projs);
@@ -155,7 +159,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
                 // Store the mutated projections if we actually changed something.
                 if let Some(mut new_projection_chain) = new_projection_chain {
-                    new_projection_chain.push(last);
+                    new_projection_chain.push(suffix);
                     place.projection_chain = tcx.mk_place_elem_chain(&new_projection_chain);
                 }
             }

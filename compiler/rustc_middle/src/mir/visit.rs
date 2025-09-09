@@ -1200,6 +1200,12 @@ macro_rules! visit_place_fns {
         ) {
             self.visit_local(&mut place.local, context, location);
 
+            if let Some(new_direct_projection) =
+                self.process_projection(&place.direct_projection, location)
+            {
+                place.direct_projection = self.tcx().mk_place_elems(&new_direct_projection);
+            }
+
             if let Some(new_projection_chain) =
                 self.process_projection_chain(&place.projection_chain, location)
             {

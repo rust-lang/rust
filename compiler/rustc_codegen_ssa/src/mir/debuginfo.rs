@@ -571,7 +571,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // FIXME change field to be projection chain
                         projection: bx
                             .tcx()
-                            .mk_place_elems_from_iter(place.projection_chain.iter().flatten()),
+                            .mk_place_elems_from_iter(place.iter_projection_elems()),
                     });
                 }
                 mir::VarDebugInfoContents::Const(c) => {

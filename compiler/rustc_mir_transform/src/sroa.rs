@@ -272,7 +272,8 @@ impl<'tcx> ReplacementVisitor<'tcx, '_> {
             let base_place = place.base_place();
 
             if let Some(repl) = self.replacements.replace_place(self.tcx, base_place.as_ref()) {
-                place.replace_base_place(repl, self.tcx);
+                place.local = repl.local;
+                place.direct_projection = repl.projection;
                 return vec![var_debug_info];
             }
 

@@ -170,7 +170,7 @@ impl<'tcx> MutVisitor<'tcx> for SelfArgVisitor<'tcx> {
         } else {
             self.visit_local(&mut place.local, context, location);
 
-            for elem in place.projection_chain.iter().flatten() {
+            for elem in place.iter_projection_elems() {
                 if let PlaceElem::Index(local) = elem {
                     assert_ne!(local, SELF_ARG);
                 }
