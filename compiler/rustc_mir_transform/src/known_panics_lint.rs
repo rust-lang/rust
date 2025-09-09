@@ -627,9 +627,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
                     NullOp::FieldOffset => {
                         let &ty::Field(container, field_path) = ty.kind() else {
-                            bug!(
-                                "FIXME(field_projections): should we really bug here, or return `None`?"
-                            )
+                            return None;
                         };
                         let layout = self.ecx.layout_of(container).ok()?;
                         self.tcx

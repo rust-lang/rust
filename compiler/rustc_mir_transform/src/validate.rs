@@ -1343,7 +1343,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             Rvalue::NullaryOp(NullOp::FieldOffset, ty) => {
                 let ty::Field(container, field_path) = ty.kind() else {
-                    bug!("FIXME(field_projections): report error?")
+                    span_bug!(
+                        self.body.span,
+                        "FIXME(field_projections): expected ty::Field, found {ty:?}"
+                    )
                 };
                 let fail_out_of_bounds = |this: &mut Self, location, field, ty| {
                     this.fail(location, format!("Out of bounds field {field:?} for {ty}"));
