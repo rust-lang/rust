@@ -2575,7 +2575,7 @@ impl ItemSection {
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
             Self::Attributes => "attributes",
-            Self::AttributeMacros => "attributes",
+            Self::AttributeMacros => "attribute-macros",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
         }
