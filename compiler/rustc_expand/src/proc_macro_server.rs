@@ -8,7 +8,7 @@ use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
-use rustc_parse::lexer::nfc_normalize;
+use rustc_parse::lexer::{StripTokens, nfc_normalize};
 use rustc_parse::parser::Parser;
 use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_proc_macro::bridge::{
@@ -485,8 +485,13 @@ impl server::FreeFunctions for Rustc<'_, '_> {
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {
         let name = FileName::proc_macro_source_code(s);
-        let mut parser =
-            unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
+
+        let mut parser = unwrap_or_emit_fatal(new_parser_from_source_str(
+            self.psess(),
+            name,
+            s.to_owned(),
+            StripTokens::Nothing,
+        ));
 
         let first_span = parser.token.span.data();
         let minus_present = parser.eat(exp!(Minus));
