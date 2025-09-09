@@ -4,8 +4,8 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
-    Symbol, db::HirDatabase, sym,
+    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase,
+    sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -352,8 +352,7 @@ pub(crate) fn runnable_fn(
     .call_site();
 
     let file_range = fn_source.syntax().original_file_range_with_macro_call_input(sema.db);
-    let update_test =
-        UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
 
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg, update_test })
@@ -388,7 +387,7 @@ pub(crate) fn runnable_mod(
         file_id: module_source.file_id.original_file(sema.db),
         range: module_syntax.text_range(),
     };
-    let update_test = UpdateTest::find_snapshot_macro(sema, &module_syntax, file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -428,8 +427,7 @@ pub(crate) fn runnable_impl(
     let impl_source = sema.source(*def)?;
     let impl_syntax = impl_source.syntax();
     let file_range = impl_syntax.original_file_range_with_macro_call_input(sema.db);
-    let update_test =
-        UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -475,7 +473,7 @@ fn runnable_mod_outline_definition(
         file_id: mod_source.file_id.original_file(sema.db),
         range: mod_syntax.text_range(),
     };
-    let update_test = UpdateTest::find_snapshot_macro(sema, &mod_syntax, file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -641,7 +639,7 @@ pub struct UpdateTest {
     pub snapbox: bool,
 }
 
-static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<ModPath>>> = OnceLock::new();
+static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<[Symbol; 2]>>> = OnceLock::new();
 
 impl UpdateTest {
     const EXPECT_CRATE: &str = "expect_test";
@@ -665,22 +663,17 @@ impl UpdateTest {
     const SNAPBOX_CRATE: &str = "snapbox";
     const SNAPBOX_MACROS: &[&str] = &["assert_data_eq", "file", "str"];
 
-    fn find_snapshot_macro(
-        sema: &Semantics<'_, RootDatabase>,
-        scope: &SyntaxNode,
-        file_range: hir::FileRange,
-    ) -> Self {
+    fn find_snapshot_macro(sema: &Semantics<'_, RootDatabase>, file_range: hir::FileRange) -> Self {
         fn init<'a>(
             krate_name: &'a str,
             paths: &[&str],
-            map: &mut FxHashMap<&'a str, Vec<ModPath>>,
+            map: &mut FxHashMap<&'a str, Vec<[Symbol; 2]>>,
         ) {
             let mut res = Vec::with_capacity(paths.len());
-            let krate = Name::new_symbol_root(Symbol::intern(krate_name));
+            let krate = Symbol::intern(krate_name);
             for path in paths {
-                let segments = [krate.clone(), Name::new_symbol_root(Symbol::intern(path))];
-                let mod_path = ModPath::from_segments(PathKind::Abs, segments);
-                res.push(mod_path);
+                let segments = [krate.clone(), Symbol::intern(path)];
+                res.push(segments);
             }
             map.insert(krate_name, res);
         }
@@ -694,11 +687,9 @@ impl UpdateTest {
         });
 
         let search_scope = SearchScope::file_range(file_range);
-        let find_macro = |paths: &[ModPath]| {
+        let find_macro = |paths: &[[Symbol; 2]]| {
             for path in paths {
-                let Some(items) = sema.resolve_mod_path(scope, path) else {
-                    continue;
-                };
+                let items = hir::resolve_absolute_path(sema.db, path.iter().cloned());
                 for item in items {
                     if let hir::ItemInNs::Macros(makro) = item
                         && Definition::Macro(makro)

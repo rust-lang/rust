@@ -10570,6 +10570,77 @@ macro_rules! str {
 }
 
 #[test]
+fn test_runnables_with_snapshot_tests_indirect_dep() {
+    check_actions(
+        r#"
+//- /lib.rs crate:foo deps:utils
+use utils::expect_test::expect;
+
+#[test]
+fn test$0() {
+    let actual = "new25";
+    expect!["new25"].assert_eq(&actual);
+}
+
+//- /expect-test/lib.rs crate:expect_test
+struct Expect;
+
+impl Expect {
+    fn assert_eq(&self, actual: &str) {}
+}
+
+#[macro_export]
+macro_rules! expect {
+    ($e:expr) => Expect; // dummy
+}
+
+//- /utils/lib.rs crate:utils deps:expect_test
+pub use expect_test;
+        "#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 44,
+                    },
+                ),
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 33..121,
+                            focus_range: 44..48,
+                            name: "test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: true,
+                            insta: false,
+                            snapbox: false,
+                        },
+                    },
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
 fn drop_glue() {
     check(
         r#"
