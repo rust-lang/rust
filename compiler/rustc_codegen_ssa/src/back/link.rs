@@ -1326,7 +1326,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     LinkerFlavor::Gnu(Cc::Yes, _)
                     | LinkerFlavor::Darwin(Cc::Yes, _)
                     | LinkerFlavor::WasmLld(Cc::Yes)
-                    | LinkerFlavor::Unix(Cc::Yes) => {
+                    | LinkerFlavor::Unix(Cc::Yes)
+                    | LinkerFlavor::Wild => {
                         if cfg!(any(target_os = "solaris", target_os = "illumos")) {
                             // On historical Solaris systems, "cc" may have
                             // been Sun Studio, which is not flag-compatible
@@ -1366,6 +1367,8 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 });
                 let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 let flavor = adjust_flavor_to_features(flavor, features);
+                let linker =
+                    if flavor == LinkerFlavor::Wild { PathBuf::from("cc") } else { linker };
                 Some((linker, flavor))
             }
             (None, None) => None,
@@ -2482,6 +2485,8 @@ fn add_order_independent_options(
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
+    add_wild_args(cmd, sess, flavor);
+
     add_apple_link_args(cmd, sess, flavor);
 
     let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
@@ -3400,6 +3405,28 @@ fn add_lld_args(
         if sess.target.linker_flavor != sess.host.linker_flavor {
             cmd.cc_arg(format!("--target={}", versioned_llvm_target(sess)));
         }
+    }
+}
+
+fn add_wild_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    if flavor != LinkerFlavor::Wild || std::env::var_os("BUILDING_RUSTC").is_some() {
+        return ();
+    }
+
+    let mut linker_path_exists = false;
+    for path in sess.get_tools_search_paths(false) {
+        let linker_path = path.join("wild-gcc-ld");
+        linker_path_exists |= linker_path.exists();
+        cmd.cc_arg({
+            let mut arg = OsString::from("-B");
+            arg.push(linker_path);
+            arg
+        });
+    }
+    if !linker_path_exists {
+        // As a sanity check, we emit an error if none of these paths exist: we want
+        // self-contained linking and have no linker.
+        sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
     }
 }
 

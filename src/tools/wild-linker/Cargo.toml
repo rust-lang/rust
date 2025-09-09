@@ -1,0 +1,7 @@
+[package]
+name = "wild-linker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+libwild = { git = "https://github.com/davidlattimore/wild", rev = "35f1e6e" }
