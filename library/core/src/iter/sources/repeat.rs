@@ -98,11 +98,11 @@ impl<A: Clone> Iterator for Repeat<A> {
     }
 
     fn last(self) -> Option<A> {
-        loop {}
+        Some(self.element)
     }
 
     fn count(self) -> usize {
-        loop {}
+        panic!("iterator is infinite");
     }
 }
 
