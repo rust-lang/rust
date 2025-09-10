@@ -1234,13 +1234,13 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// The `eq` argument should be a closure such that `eq(i, k)` returns true if `k` is equal to
     /// the `i`th key to be looked up.
-    pub fn get_many_mut<const N: usize>(
+    pub fn get_disjoint_mut<const N: usize>(
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
         unsafe {
-            let ptrs = self.get_many_mut_pointers(hashes, eq);
+            let ptrs = self.get_disjoint_mut_pointers(hashes, eq);
 
             for (i, cur) in ptrs.iter().enumerate() {
                 if cur.is_some() && ptrs[..i].contains(cur) {
@@ -1254,16 +1254,16 @@ impl<T, A: Allocator> RawTable<T, A> {
         }
     }
 
-    pub unsafe fn get_many_unchecked_mut<const N: usize>(
+    pub unsafe fn get_disjoint_unchecked_mut<const N: usize>(
         &mut self,
         hashes: [u64; N],
         eq: impl FnMut(usize, &T) -> bool,
     ) -> [Option<&'_ mut T>; N] {
-        let ptrs = self.get_many_mut_pointers(hashes, eq);
+        let ptrs = self.get_disjoint_mut_pointers(hashes, eq);
         ptrs.map(|ptr| ptr.map(|mut ptr| ptr.as_mut()))
     }
 
-    unsafe fn get_many_mut_pointers<const N: usize>(
+    unsafe fn get_disjoint_mut_pointers<const N: usize>(
         &mut self,
         hashes: [u64; N],
         mut eq: impl FnMut(usize, &T) -> bool,

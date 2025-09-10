@@ -1486,13 +1486,13 @@ where
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
     /// // Get Athenæum and Bodleian Library
-    /// let [Some(a), Some(b)] = libraries.get_many_mut([
+    /// let [Some(a), Some(b)] = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Bodleian Library",
     /// ]) else { panic!() };
     ///
     /// // Assert values of Athenæum and Library of Congress
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]);
@@ -1505,7 +1505,7 @@ where
     /// );
     ///
     /// // Missing keys result in None
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]);
@@ -1525,16 +1525,26 @@ where
     /// libraries.insert("Athenæum".to_string(), 1807);
     ///
     /// // Duplicate keys panic!
-    /// let got = libraries.get_many_mut([
+    /// let got = libraries.get_disjoint_mut([
     ///     "Athenæum",
     ///     "Athenæum",
     /// ]);
     /// ```
+    pub fn get_disjoint_mut<Q, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut V>; N]
+    where
+        Q: Hash + Equivalent<K> + ?Sized,
+    {
+        self.get_disjoint_mut_inner(ks)
+            .map(|res| res.map(|(_, v)| v))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once.
+    #[deprecated(note = "use `get_disjoint_mut` instead")]
     pub fn get_many_mut<Q, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut V>; N]
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_many_mut_inner(ks).map(|res| res.map(|(_, v)| v))
+        self.get_disjoint_mut(ks)
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, without validating that
@@ -1543,7 +1553,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be used if
     /// the key is missing.
     ///
-    /// For a safe alternative see [`get_many_mut`](`HashMap::get_many_mut`).
+    /// For a safe alternative see [`get_disjoint_mut`](`HashMap::get_disjoint_mut`).
     ///
     /// # Safety
     ///
@@ -1564,13 +1574,13 @@ where
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let [Some(a), Some(b)] = (unsafe { libraries.get_many_unchecked_mut([
+    /// let [Some(a), Some(b)] = (unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "Bodleian Library",
     /// ]) }) else { panic!() };
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let got = unsafe { libraries.get_many_unchecked_mut([
+    /// let got = unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "Library of Congress",
     /// ]) };
@@ -1583,13 +1593,27 @@ where
     /// );
     ///
     /// // SAFETY: The keys do not overlap.
-    /// let got = unsafe { libraries.get_many_unchecked_mut([
+    /// let got = unsafe { libraries.get_disjoint_unchecked_mut([
     ///     "Athenæum",
     ///     "New York Public Library",
     /// ]) };
     /// // Missing keys result in None
     /// assert_eq!(got, [Some(&mut 1807), None]);
     /// ```
+    pub unsafe fn get_disjoint_unchecked_mut<Q, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Option<&'_ mut V>; N]
+    where
+        Q: Hash + Equivalent<K> + ?Sized,
+    {
+        self.get_disjoint_unchecked_mut_inner(ks)
+            .map(|res| res.map(|(_, v)| v))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, without validating that
+    /// the values are unique.
+    #[deprecated(note = "use `get_disjoint_unchecked_mut` instead")]
     pub unsafe fn get_many_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
@@ -1597,8 +1621,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_many_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(_, v)| v))
+        self.get_disjoint_unchecked_mut(ks)
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1622,7 +1645,7 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_key_value_mut([
+    /// let got = libraries.get_disjoint_key_value_mut([
     ///     "Bodleian Library",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     /// ]);
@@ -1634,7 +1657,7 @@ where
     ///     ],
     /// );
     /// // Missing keys result in None
-    /// let got = libraries.get_many_key_value_mut([
+    /// let got = libraries.get_disjoint_key_value_mut([
     ///     "Bodleian Library",
     ///     "Gewandhaus",
     /// ]);
@@ -1649,12 +1672,26 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     ///
     /// // Duplicate keys result in panic!
-    /// let got = libraries.get_many_key_value_mut([
+    /// let got = libraries.get_disjoint_key_value_mut([
     ///     "Bodleian Library",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     /// ]);
     /// ```
+    pub fn get_disjoint_key_value_mut<Q, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Option<(&'_ K, &'_ mut V)>; N]
+    where
+        Q: Hash + Equivalent<K> + ?Sized,
+    {
+        self.get_disjoint_mut_inner(ks)
+            .map(|res| res.map(|(k, v)| (&*k, v)))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, with immutable
+    /// references to the corresponding keys.
+    #[deprecated(note = "use `get_disjoint_key_value_mut` instead")]
     pub fn get_many_key_value_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
@@ -1662,8 +1699,7 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_many_mut_inner(ks)
-            .map(|res| res.map(|(k, v)| (&*k, v)))
+        self.get_disjoint_key_value_mut(ks)
     }
 
     /// Attempts to get mutable references to `N` values in the map at once, with immutable
@@ -1672,7 +1708,7 @@ where
     /// Returns an array of length `N` with the results of each query. `None` will be returned if
     /// any of the keys are missing.
     ///
-    /// For a safe alternative see [`get_many_key_value_mut`](`HashMap::get_many_key_value_mut`).
+    /// For a safe alternative see [`get_disjoint_key_value_mut`](`HashMap::get_disjoint_key_value_mut`).
     ///
     /// # Safety
     ///
@@ -1692,7 +1728,7 @@ where
     /// libraries.insert("Herzogin-Anna-Amalia-Bibliothek".to_string(), 1691);
     /// libraries.insert("Library of Congress".to_string(), 1800);
     ///
-    /// let got = libraries.get_many_key_value_mut([
+    /// let got = libraries.get_disjoint_key_value_mut([
     ///     "Bodleian Library",
     ///     "Herzogin-Anna-Amalia-Bibliothek",
     /// ]);
@@ -1704,7 +1740,7 @@ where
     ///     ],
     /// );
     /// // Missing keys result in None
-    /// let got = libraries.get_many_key_value_mut([
+    /// let got = libraries.get_disjoint_key_value_mut([
     ///     "Bodleian Library",
     ///     "Gewandhaus",
     /// ]);
@@ -1716,6 +1752,20 @@ where
     ///     ],
     /// );
     /// ```
+    pub unsafe fn get_disjoint_key_value_unchecked_mut<Q, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Option<(&'_ K, &'_ mut V)>; N]
+    where
+        Q: Hash + Equivalent<K> + ?Sized,
+    {
+        self.get_disjoint_unchecked_mut_inner(ks)
+            .map(|res| res.map(|(k, v)| (&*k, v)))
+    }
+
+    /// Attempts to get mutable references to `N` values in the map at once, with immutable
+    /// references to the corresponding keys, without validating that the values are unique.
+    #[deprecated(note = "use `get_disjoint_key_value_unchecked_mut` instead")]
     pub unsafe fn get_many_key_value_unchecked_mut<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
@@ -1723,20 +1773,10 @@ where
     where
         Q: Hash + Equivalent<K> + ?Sized,
     {
-        self.get_many_unchecked_mut_inner(ks)
-            .map(|res| res.map(|(k, v)| (&*k, v)))
+        self.get_disjoint_key_value_unchecked_mut(ks)
     }
 
-    fn get_many_mut_inner<Q, const N: usize>(&mut self, ks: [&Q; N]) -> [Option<&'_ mut (K, V)>; N]
-    where
-        Q: Hash + Equivalent<K> + ?Sized,
-    {
-        let hashes = self.build_hashes_inner(ks);
-        self.table
-            .get_many_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
-    }
-
-    unsafe fn get_many_unchecked_mut_inner<Q, const N: usize>(
+    fn get_disjoint_mut_inner<Q, const N: usize>(
         &mut self,
         ks: [&Q; N],
     ) -> [Option<&'_ mut (K, V)>; N]
@@ -1745,7 +1785,19 @@ where
     {
         let hashes = self.build_hashes_inner(ks);
         self.table
-            .get_many_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+            .get_disjoint_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
+    }
+
+    unsafe fn get_disjoint_unchecked_mut_inner<Q, const N: usize>(
+        &mut self,
+        ks: [&Q; N],
+    ) -> [Option<&'_ mut (K, V)>; N]
+    where
+        Q: Hash + Equivalent<K> + ?Sized,
+    {
+        let hashes = self.build_hashes_inner(ks);
+        self.table
+            .get_disjoint_unchecked_mut(hashes, |i, (k, _)| ks[i].equivalent(k))
     }
 
     fn build_hashes_inner<Q, const N: usize>(&self, ks: [&Q; N]) -> [u64; N]
@@ -6056,20 +6108,20 @@ mod test_map {
     }
 
     #[test]
-    fn test_get_many_mut() {
+    fn test_get_disjoint_mut() {
         let mut map = HashMap::new();
         map.insert("foo".to_owned(), 0);
         map.insert("bar".to_owned(), 10);
         map.insert("baz".to_owned(), 20);
         map.insert("qux".to_owned(), 30);
 
-        let xs = map.get_many_mut(["foo", "qux"]);
+        let xs = map.get_disjoint_mut(["foo", "qux"]);
         assert_eq!(xs, [Some(&mut 0), Some(&mut 30)]);
 
-        let xs = map.get_many_mut(["foo", "dud"]);
+        let xs = map.get_disjoint_mut(["foo", "dud"]);
         assert_eq!(xs, [Some(&mut 0), None]);
 
-        let ys = map.get_many_key_value_mut(["bar", "baz"]);
+        let ys = map.get_disjoint_key_value_mut(["bar", "baz"]);
         assert_eq!(
             ys,
             [
@@ -6078,17 +6130,17 @@ mod test_map {
             ],
         );
 
-        let ys = map.get_many_key_value_mut(["bar", "dip"]);
+        let ys = map.get_disjoint_key_value_mut(["bar", "dip"]);
         assert_eq!(ys, [Some((&"bar".to_string(), &mut 10)), None]);
     }
 
     #[test]
     #[should_panic = "duplicate keys found"]
-    fn test_get_many_mut_duplicate() {
+    fn test_get_disjoint_mut_duplicate() {
         let mut map = HashMap::new();
         map.insert("foo".to_owned(), 0);
 
-        let _xs = map.get_many_mut(["foo", "foo"]);
+        let _xs = map.get_disjoint_mut(["foo", "foo"]);
     }
 
     #[test]
