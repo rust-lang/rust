@@ -48,6 +48,7 @@ const LICENSES: &[&str] = &[
 
 type ExceptionList = &'static [(&'static str, &'static str)];
 
+#[derive(Clone, Copy)]
 pub(crate) struct WorkspaceInfo<'a> {
     /// Path to the directory containing the workspace root Cargo.toml file.
     pub(crate) path: &'a str,
@@ -56,7 +57,8 @@ pub(crate) struct WorkspaceInfo<'a> {
     /// Optionally:
     /// * A list of crates for which dependencies need to be explicitly allowed.
     /// * The list of allowed dependencies.
-    pub(crate) crates_and_deps: Option<(&'a [&'a str], &'a [&'a str])>,
+    /// * The source code location of the allowed dependencies list
+    crates_and_deps: Option<(&'a [&'a str], &'a [&'a str], ListLocation)>,
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
 }
@@ -65,7 +67,7 @@ impl<'a> WorkspaceInfo<'a> {
     const fn new(
         path: &'a str,
         exceptions: ExceptionList,
-        crates_and_deps: Option<(&'a [&str], &'a [&str])>,
+        crates_and_deps: Option<(&'a [&str], &'a [&str], ListLocation)>,
         submodules: &'a [&str],
     ) -> Self {
         Self { path, exceptions, crates_and_deps, submodules }
@@ -76,18 +78,27 @@ impl<'a> WorkspaceInfo<'a> {
 // FIXME auto detect all cargo workspaces
 pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
     // The root workspace has to be first for check_rustfix to work.
-    WorkspaceInfo::new(".", EXCEPTIONS, Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES)), &[]),
+    WorkspaceInfo::new(
+        ".",
+        EXCEPTIONS,
+        Some((&["rustc-main"], PERMITTED_RUSTC_DEPENDENCIES, PERMITTED_RUSTC_DEPS_LOCATION)),
+        &[],
+    ),
     WorkspaceInfo::new(
         "library",
         EXCEPTIONS_STDLIB,
-        Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES)),
+        Some((&["sysroot"], PERMITTED_STDLIB_DEPENDENCIES, PERMITTED_STDLIB_DEPS_LOCATION)),
         &[],
     ),
     // Outside of the alphabetical section because rustfmt formats it using multiple lines.
     WorkspaceInfo::new(
         "compiler/rustc_codegen_cranelift",
         EXCEPTIONS_CRANELIFT,
-        Some((&["rustc_codegen_cranelift"], PERMITTED_CRANELIFT_DEPENDENCIES)),
+        Some((
+            &["rustc_codegen_cranelift"],
+            PERMITTED_CRANELIFT_DEPENDENCIES,
+            PERMITTED_CRANELIFT_DEPS_LOCATION,
+        )),
         &[],
     ),
     // tidy-alphabetical-start
@@ -261,6 +272,7 @@ const EXCEPTIONS_UEFI_QEMU_TEST: ExceptionList = &[
     ("r-efi", "MIT OR Apache-2.0 OR LGPL-2.1-or-later"), // LGPL is not acceptable, but we use it under MIT OR Apache-2.0
 ];
 
+#[derive(Clone, Copy)]
 struct ListLocation {
     path: &'static str,
     line: u32,
@@ -499,6 +511,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-end
 ];
 
+const PERMITTED_STDLIB_DEPS_LOCATION: ListLocation = location!(+2);
+
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
@@ -539,6 +553,8 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
+
+const PERMITTED_CRANELIFT_DEPS_LOCATION: ListLocation = location!(+2);
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
@@ -632,9 +648,9 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
         let metadata = t!(cmd.exec());
 
         check_license_exceptions(&metadata, path, exceptions, bad);
-        if let Some((crates, permitted_deps)) = crates_and_deps {
+        if let Some((crates, permitted_deps, location)) = crates_and_deps {
             let descr = crates.get(0).unwrap_or(&path);
-            check_permitted_dependencies(&metadata, descr, permitted_deps, crates, bad);
+            check_permitted_dependencies(&metadata, descr, permitted_deps, crates, location, bad);
         }
 
         if path == "library" {
@@ -882,6 +898,7 @@ fn check_permitted_dependencies(
     descr: &str,
     permitted_dependencies: &[&'static str],
     restricted_dependency_crates: &[&'static str],
+    permitted_location: ListLocation,
     bad: &mut bool,
 ) {
     let mut has_permitted_dep_error = false;
@@ -942,8 +959,7 @@ fn check_permitted_dependencies(
     }
 
     if has_permitted_dep_error {
-        let ListLocation { path, line } = PERMITTED_RUSTC_DEPS_LOCATION;
-        eprintln!("Go to `{path}:{line}` for the list.");
+        eprintln!("Go to `{}:{}` for the list.", permitted_location.path, permitted_location.line);
     }
 }
 
