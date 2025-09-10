@@ -25,7 +25,7 @@ pub struct Snapshot {
 pub(crate) enum UndoLog<'db> {
     DuplicateOpaqueType,
     OpaqueTypes(OpaqueTypeKey<'db>, Option<OpaqueHiddenType<'db>>),
-    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'db>>>),
+    TypeVariables(type_variable::UndoLog<'db>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'db>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<FloatVid>>),
@@ -51,6 +51,8 @@ impl_from! {
     RegionConstraintCollector(region_constraints::UndoLog<'db>),
 
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'db>>>),
+    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidSubKey>>),
+    TypeVariables(type_variable::UndoLog<'db>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<FloatVid>>),
 

@@ -25,7 +25,7 @@ use crate::{
     consteval_nextsolver::try_const_usize,
     db::HirDatabase,
     next_solver::{
-        DbInterner, GenericArgs, ParamEnv, SolverDefId, Ty, TyKind, TypingMode,
+        DbInterner, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, traits::ObligationCause},
         mapping::{ChalkToNextSolver, convert_args_for_result},
         project::solve_normalize::deeply_normalize,
@@ -323,14 +323,10 @@ pub fn layout_of_ty_query<'db>(
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
-        TyKind::Closure(c, args) => {
-            let id = match c {
-                SolverDefId::InternedClosureId(id) => id,
-                _ => unreachable!(),
-            };
-            let def = db.lookup_intern_closure(id);
+        TyKind::Closure(id, args) => {
+            let def = db.lookup_intern_closure(id.0);
             let infer = db.infer(def.0);
-            let (captures, _) = infer.closure_info(&id.into());
+            let (captures, _) = infer.closure_info(&id.0.into());
             let fields = captures
                 .iter()
                 .map(|it| {

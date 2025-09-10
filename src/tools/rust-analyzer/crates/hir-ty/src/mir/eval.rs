@@ -42,7 +42,7 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     method_resolution::{is_dyn_method, lookup_impl_const},
     next_solver::{
-        Ctor, DbInterner, SolverDefId,
+        DbInterner,
         mapping::{ChalkToNextSolver, convert_args_for_result, convert_ty_for_result},
     },
     static_lifetime,
@@ -2366,8 +2366,8 @@ impl<'db> Evaluator<'db> {
                 let new_id = self.vtable_map.id(ty);
                 self.write_memory(addr, &new_id.to_le_bytes())?;
             }
-            TyKind::Adt(id, args) => match id.def_id() {
-                SolverDefId::AdtId(AdtId::StructId(s)) => {
+            TyKind::Adt(id, args) => match id.def_id().0 {
+                AdtId::StructId(s) => {
                     for (i, (_, ty)) in self.db.field_types_ns(s.into()).iter().enumerate() {
                         let offset = layout.fields.offset(i).bytes_usize();
                         let ty = ty.instantiate(interner, args);
@@ -2380,8 +2380,8 @@ impl<'db> Evaluator<'db> {
                         )?;
                     }
                 }
-                SolverDefId::AdtId(AdtId::UnionId(_)) => (),
-                SolverDefId::AdtId(AdtId::EnumId(e)) => {
+                AdtId::UnionId(_) => (),
+                AdtId::EnumId(e) => {
                     if let Some((ev, layout)) = detect_variant_from_bytes(
                         &layout,
                         self.db,
@@ -2402,7 +2402,6 @@ impl<'db> Evaluator<'db> {
                         }
                     }
                 }
-                _ => unreachable!(),
             },
             TyKind::Tuple(tys) => {
                 for (id, ty) in tys.iter().enumerate() {
@@ -2472,38 +2471,24 @@ impl<'db> Evaluator<'db> {
         let interner = DbInterner::new_with(self.db, None, None);
         use rustc_type_ir::TyKind;
         match next_ty.kind() {
-            TyKind::FnDef(def, generic_args) => {
-                let def = match def {
-                    SolverDefId::FunctionId(id) => CallableDefId::FunctionId(id),
-                    SolverDefId::Ctor(Ctor::Struct(s)) => CallableDefId::StructId(s),
-                    SolverDefId::Ctor(Ctor::Enum(e)) => CallableDefId::EnumVariantId(e),
-                    _ => unreachable!(),
-                };
-                self.exec_fn_def(
-                    def,
-                    &convert_args_for_result(interner, generic_args.as_slice()),
-                    destination,
-                    args,
-                    locals,
-                    target_bb,
-                    span,
-                )
-            }
-            TyKind::Closure(id, generic_args) => {
-                let id = match id {
-                    SolverDefId::InternedClosureId(id) => id,
-                    _ => unreachable!(),
-                };
-                self.exec_closure(
-                    id.into(),
-                    bytes.slice(0..0),
-                    &convert_args_for_result(interner, generic_args.as_slice()),
-                    destination,
-                    args,
-                    locals,
-                    span,
-                )
-            }
+            TyKind::FnDef(def, generic_args) => self.exec_fn_def(
+                def.0,
+                &convert_args_for_result(interner, generic_args.as_slice()),
+                destination,
+                args,
+                locals,
+                target_bb,
+                span,
+            ),
+            TyKind::Closure(id, generic_args) => self.exec_closure(
+                id.0.into(),
+                bytes.slice(0..0),
+                &convert_args_for_result(interner, generic_args.as_slice()),
+                destination,
+                args,
+                locals,
+                span,
+            ),
             _ => Err(MirEvalError::InternalError("function pointer to non function".into())),
         }
     }

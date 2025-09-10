@@ -313,4 +313,12 @@ impl<'db> rustc_type_ir::InferCtxtLike for InferCtxt<'db> {
     fn reset_opaque_types(&self) {
         let _ = self.take_opaque_types();
     }
+
+    fn sub_unification_table_root_var(&self, var: rustc_type_ir::TyVid) -> rustc_type_ir::TyVid {
+        self.sub_unification_table_root_var(var)
+    }
+
+    fn sub_unify_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {
+        self.sub_unify_ty_vids_raw(a, b);
+    }
 }

@@ -20,7 +20,9 @@ use rustc_type_ir::{
 use salsa::plumbing::{AsId, FromId};
 use smallvec::SmallVec;
 
-use crate::next_solver::GenericArg;
+use crate::next_solver::{
+    CallableIdWrapper, ClosureIdWrapper, CoroutineIdWrapper, GenericArg, TypeAliasIdWrapper,
+};
 use crate::{
     db::HirDatabase,
     interner::InternedWrapperNoDebug,
@@ -599,10 +601,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         Ty::new(interner, TyKind::Adt(adt_def, args))
     }
 
-    fn new_foreign(
-        interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
-    ) -> Self {
+    fn new_foreign(interner: DbInterner<'db>, def_id: TypeAliasIdWrapper) -> Self {
         Ty::new(interner, TyKind::Foreign(def_id))
     }
 
@@ -617,7 +616,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: CoroutineIdWrapper,
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Coroutine(def_id, args))
@@ -625,7 +624,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_closure(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: CoroutineIdWrapper,
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineClosure(def_id, args))
@@ -633,7 +632,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_closure(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: ClosureIdWrapper,
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::Closure(def_id, args))
@@ -641,7 +640,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_witness(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: CoroutineIdWrapper,
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineWitness(def_id, args))
@@ -649,7 +648,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_witness_for_coroutine(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: CoroutineIdWrapper,
         coroutine_args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         // HACK: Coroutine witness types are lifetime erased, so they
@@ -714,7 +713,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_fn_def(
         interner: DbInterner<'db>,
-        def_id: <DbInterner<'db> as rustc_type_ir::Interner>::DefId,
+        def_id: CallableIdWrapper,
         args: <DbInterner<'db> as rustc_type_ir::Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::FnDef(def_id, args))

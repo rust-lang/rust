@@ -32,9 +32,10 @@ use crate::next_solver::{
 };
 use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
+use rustc_type_ir::inherent::IntoKind;
 use rustc_type_ir::{
-    AliasRelationDirection, AliasTyKind, CanonicalTyVarKind, CanonicalVarKind, InferTy,
-    TypeFoldable, UniverseIndex, Upcast, Variance,
+    AliasRelationDirection, AliasTyKind, CanonicalVarKind, InferTy, TypeFoldable, UniverseIndex,
+    Upcast, Variance,
     inherent::{SliceLike, Ty as _},
     relate::{
         Relate, TypeRelation, VarianceDiagInfo,
@@ -78,27 +79,13 @@ impl<'db> InferCtxt<'db> {
             .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
-        let canonical_inference_vars =
-            self.instantiate_canonical_vars(canonical.variables, |ui| universes[ui]);
-        let result = canonical.instantiate(self.interner, &canonical_inference_vars);
-        (result, canonical_inference_vars)
-    }
-
-    /// Given the "infos" about the canonical variables from some
-    /// canonical, creates fresh variables with the same
-    /// characteristics (see `instantiate_canonical_var` for
-    /// details). You can then use `instantiate` to instantiate the
-    /// canonical variable with these inference variables.
-    fn instantiate_canonical_vars(
-        &self,
-        variables: CanonicalVars<'db>,
-        universe_map: impl Fn(UniverseIndex) -> UniverseIndex,
-    ) -> CanonicalVarValues<'db> {
-        CanonicalVarValues {
-            var_values: self.interner.mk_args_from_iter(
-                variables.iter().map(|info| self.instantiate_canonical_var(info, &universe_map)),
-            ),
-        }
+        let var_values = CanonicalVarValues::instantiate(
+            self.interner,
+            canonical.variables,
+            |var_values, info| self.instantiate_canonical_var(info, var_values, |ui| universes[ui]),
+        );
+        let result = canonical.instantiate(self.interner, &var_values);
+        (result, var_values)
     }
 
     /// Given the "info" about a canonical variable, creates a fresh
@@ -112,21 +99,27 @@ impl<'db> InferCtxt<'db> {
     pub fn instantiate_canonical_var(
         &self,
         cv_info: CanonicalVarKind<DbInterner<'db>>,
+        previous_var_values: &[GenericArg<'db>],
         universe_map: impl Fn(UniverseIndex) -> UniverseIndex,
     ) -> GenericArg<'db> {
         match cv_info {
-            CanonicalVarKind::Ty(ty_kind) => {
-                let ty = match ty_kind {
-                    CanonicalTyVarKind::General(ui) => {
-                        self.next_ty_var_in_universe(universe_map(ui))
+            CanonicalVarKind::Ty { ui, sub_root } => {
+                let vid = self.next_ty_var_id_in_universe(universe_map(ui));
+                // If this inference variable is related to an earlier variable
+                // via subtyping, we need to add that info to the inference context.
+                if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
+                    if let TyKind::Infer(InferTy::TyVar(sub_root)) = prev.expect_ty().kind() {
+                        self.sub_unify_ty_vids_raw(vid, sub_root);
+                    } else {
+                        unreachable!()
                     }
-
-                    CanonicalTyVarKind::Int => self.next_int_var(),
-
-                    CanonicalTyVarKind::Float => self.next_float_var(),
-                };
-                ty.into()
+                }
+                Ty::new_var(self.interner, vid).into()
             }
+
+            CanonicalVarKind::Int => self.next_int_var().into(),
+
+            CanonicalVarKind::Float => self.next_float_var().into(),
 
             CanonicalVarKind::PlaceholderTy(PlaceholderTy { universe, bound }) => {
                 let universe_mapped = universe_map(universe);

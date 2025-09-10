@@ -243,12 +243,10 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                 }
                 chalk_ir::TyKind::FnDef(fn_def_id, substitution) => {
                     let def_id = CallableDefId::from_chalk(interner.db(), *fn_def_id);
-                    let id: SolverDefId = match def_id {
-                        CallableDefId::FunctionId(id) => id.into(),
-                        CallableDefId::StructId(id) => SolverDefId::Ctor(Ctor::Struct(id)),
-                        CallableDefId::EnumVariantId(id) => SolverDefId::Ctor(Ctor::Enum(id)),
-                    };
-                    rustc_type_ir::TyKind::FnDef(id, substitution.to_nextsolver(interner))
+                    rustc_type_ir::TyKind::FnDef(
+                        def_id.into(),
+                        substitution.to_nextsolver(interner),
+                    )
                 }
                 chalk_ir::TyKind::Str => rustc_type_ir::TyKind::Str,
                 chalk_ir::TyKind::Never => rustc_type_ir::TyKind::Never,
@@ -271,7 +269,7 @@ impl<'db> ChalkToNextSolver<'db, Ty<'db>> for chalk_ir::Ty<Interner> {
                     )
                 }
                 chalk_ir::TyKind::Foreign(foreign_def_id) => rustc_type_ir::TyKind::Foreign(
-                    SolverDefId::TypeAliasId(crate::from_foreign_def_id(*foreign_def_id)),
+                    crate::from_foreign_def_id(*foreign_def_id).into(),
                 ),
                 chalk_ir::TyKind::Error => rustc_type_ir::TyKind::Error(ErrorGuaranteed),
                 chalk_ir::TyKind::Dyn(dyn_ty) => {
@@ -734,15 +732,13 @@ impl<'db, T: HasInterner<Interner = Interner> + ChalkToNextSolver<'db, U>, U>
             interner,
             self.binders.iter(Interner).map(|k| match &k.kind {
                 chalk_ir::VariableKind::Ty(ty_variable_kind) => match ty_variable_kind {
-                    TyVariableKind::General => rustc_type_ir::CanonicalVarKind::Ty(
-                        rustc_type_ir::CanonicalTyVarKind::General(UniverseIndex::ROOT),
-                    ),
-                    TyVariableKind::Integer => {
-                        rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Int)
-                    }
-                    TyVariableKind::Float => rustc_type_ir::CanonicalVarKind::Ty(
-                        rustc_type_ir::CanonicalTyVarKind::Float,
-                    ),
+                    // FIXME(next-solver): the info is incorrect, but we have no way to store the information in Chalk.
+                    TyVariableKind::General => rustc_type_ir::CanonicalVarKind::Ty {
+                        ui: UniverseIndex::ROOT,
+                        sub_root: BoundVar::from_u32(0),
+                    },
+                    TyVariableKind::Integer => rustc_type_ir::CanonicalVarKind::Int,
+                    TyVariableKind::Float => rustc_type_ir::CanonicalVarKind::Float,
                 },
                 chalk_ir::VariableKind::Lifetime => {
                     rustc_type_ir::CanonicalVarKind::Region(UniverseIndex::ROOT)
@@ -767,24 +763,20 @@ impl<'db, T: NextSolverToChalk<'db, U>, U: HasInterner<Interner = Interner>>
         let binders = chalk_ir::CanonicalVarKinds::from_iter(
             Interner,
             self.variables.iter().map(|v| match v {
-                rustc_type_ir::CanonicalVarKind::Ty(
-                    rustc_type_ir::CanonicalTyVarKind::General(ui),
-                ) => chalk_ir::CanonicalVarKind::new(
-                    chalk_ir::VariableKind::Ty(TyVariableKind::General),
-                    chalk_ir::UniverseIndex { counter: ui.as_usize() },
+                rustc_type_ir::CanonicalVarKind::Ty { ui, sub_root: _ } => {
+                    chalk_ir::CanonicalVarKind::new(
+                        chalk_ir::VariableKind::Ty(TyVariableKind::General),
+                        chalk_ir::UniverseIndex { counter: ui.as_usize() },
+                    )
+                }
+                rustc_type_ir::CanonicalVarKind::Int => chalk_ir::CanonicalVarKind::new(
+                    chalk_ir::VariableKind::Ty(TyVariableKind::Integer),
+                    chalk_ir::UniverseIndex::root(),
                 ),
-                rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Int) => {
-                    chalk_ir::CanonicalVarKind::new(
-                        chalk_ir::VariableKind::Ty(TyVariableKind::Integer),
-                        chalk_ir::UniverseIndex::root(),
-                    )
-                }
-                rustc_type_ir::CanonicalVarKind::Ty(rustc_type_ir::CanonicalTyVarKind::Float) => {
-                    chalk_ir::CanonicalVarKind::new(
-                        chalk_ir::VariableKind::Ty(TyVariableKind::Float),
-                        chalk_ir::UniverseIndex::root(),
-                    )
-                }
+                rustc_type_ir::CanonicalVarKind::Float => chalk_ir::CanonicalVarKind::new(
+                    chalk_ir::VariableKind::Ty(TyVariableKind::Float),
+                    chalk_ir::UniverseIndex::root(),
+                ),
                 rustc_type_ir::CanonicalVarKind::Region(ui) => chalk_ir::CanonicalVarKind::new(
                     chalk_ir::VariableKind::Lifetime,
                     chalk_ir::UniverseIndex { counter: ui.as_usize() },
@@ -1520,13 +1512,7 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
             TyKind::Slice(ty)
         }
 
-        rustc_type_ir::TyKind::Foreign(foreign) => {
-            let def_id = match foreign {
-                SolverDefId::TypeAliasId(id) => id,
-                _ => unreachable!(),
-            };
-            TyKind::Foreign(to_foreign_def_id(def_id))
-        }
+        rustc_type_ir::TyKind::Foreign(foreign) => TyKind::Foreign(to_foreign_def_id(foreign.0)),
         rustc_type_ir::TyKind::Pat(_, _) => unimplemented!(),
         rustc_type_ir::TyKind::RawPtr(ty, mutability) => {
             let mutability = match mutability {
@@ -1537,40 +1523,22 @@ pub(crate) fn convert_ty_for_result<'db>(interner: DbInterner<'db>, ty: Ty<'db>)
             TyKind::Raw(mutability, ty)
         }
         rustc_type_ir::TyKind::FnDef(def_id, args) => {
-            let id = match def_id {
-                SolverDefId::FunctionId(id) => CallableDefId::FunctionId(id),
-                SolverDefId::Ctor(Ctor::Struct(id)) => CallableDefId::StructId(id),
-                SolverDefId::Ctor(Ctor::Enum(id)) => CallableDefId::EnumVariantId(id),
-                _ => unreachable!(),
-            };
             let subst = convert_args_for_result(interner, args.as_slice());
-            TyKind::FnDef(id.to_chalk(interner.db()), subst)
+            TyKind::FnDef(def_id.0.to_chalk(interner.db()), subst)
         }
 
         rustc_type_ir::TyKind::Closure(def_id, args) => {
-            let id = match def_id {
-                SolverDefId::InternedClosureId(id) => id,
-                _ => unreachable!(),
-            };
             let subst = convert_args_for_result(interner, args.as_slice());
-            TyKind::Closure(id.into(), subst)
+            TyKind::Closure(def_id.0.into(), subst)
         }
         rustc_type_ir::TyKind::CoroutineClosure(_, _) => unimplemented!(),
         rustc_type_ir::TyKind::Coroutine(def_id, args) => {
-            let id = match def_id {
-                SolverDefId::InternedCoroutineId(id) => id,
-                _ => unreachable!(),
-            };
             let subst = convert_args_for_result(interner, args.as_slice());
-            TyKind::Coroutine(id.into(), subst)
+            TyKind::Coroutine(def_id.0.into(), subst)
         }
         rustc_type_ir::TyKind::CoroutineWitness(def_id, args) => {
-            let id = match def_id {
-                SolverDefId::InternedCoroutineId(id) => id,
-                _ => unreachable!(),
-            };
             let subst = convert_args_for_result(interner, args.as_slice());
-            TyKind::CoroutineWitness(id.into(), subst)
+            TyKind::CoroutineWitness(def_id.0.into(), subst)
         }
 
         rustc_type_ir::TyKind::UnsafeBinder(_) => unimplemented!(),

@@ -84,6 +84,15 @@ impl LangItemTarget {
             _ => None,
         }
     }
+
+    pub fn as_adt(self) -> Option<AdtId> {
+        match self {
+            LangItemTarget::Union(it) => Some(it.into()),
+            LangItemTarget::EnumId(it) => Some(it.into()),
+            LangItemTarget::Struct(it) => Some(it.into()),
+            _ => None,
+        }
+    }
 }
 
 /// Salsa query. This will look for lang items in a specific crate.
@@ -287,6 +296,10 @@ impl LangItem {
 
     pub fn resolve_trait(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<TraitId> {
         lang_item(db, start_crate, self).and_then(|t| t.as_trait())
+    }
+
+    pub fn resolve_adt(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<AdtId> {
+        lang_item(db, start_crate, self).and_then(|t| t.as_adt())
     }
 
     pub fn resolve_enum(self, db: &dyn DefDatabase, start_crate: Crate) -> Option<EnumId> {
