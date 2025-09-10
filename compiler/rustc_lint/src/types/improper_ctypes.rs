@@ -283,8 +283,9 @@ enum IndirectionKind {
 }
 
 bitflags! {
+    /// "Permanent state" flags for VisitorState (kept when visiting new mir::Ty)
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    struct VisitorState: u8 {
+    struct PersistentStateFlags: u16 {
         /// For use in (externally-linked) static variables.
         const STATIC = 0b000001;
         /// For use in functions in general.
@@ -297,81 +298,11 @@ bitflags! {
         /// (struct/enum/union definitions, FnPtrs).
         const THEORETICAL = 0b010000;
     }
-}
 
-impl VisitorState {
-    // The values that can be set.
-    const STATIC_TY: Self = Self::STATIC;
-    const ARGUMENT_TY_IN_DEFINITION: Self =
-        Self::from_bits(Self::FUNC.bits() | Self::DEFINED.bits()).unwrap();
-    const RETURN_TY_IN_DEFINITION: Self =
-        Self::from_bits(Self::FUNC.bits() | Self::FN_RETURN.bits() | Self::DEFINED.bits()).unwrap();
-    const ARGUMENT_TY_IN_DECLARATION: Self = Self::FUNC;
-    const RETURN_TY_IN_DECLARATION: Self =
-        Self::from_bits(Self::FUNC.bits() | Self::FN_RETURN.bits()).unwrap();
-    const ARGUMENT_TY_IN_FNPTR: Self =
-        Self::from_bits(Self::FUNC.bits() | Self::THEORETICAL.bits()).unwrap();
-    const RETURN_TY_IN_FNPTR: Self =
-        Self::from_bits(Self::FUNC.bits() | Self::THEORETICAL.bits() | Self::FN_RETURN.bits())
-            .unwrap();
-
-    /// Get the proper visitor state for a given function's arguments.
-    fn argument_from_fnmode(fn_mode: CItemKind) -> Self {
-        match fn_mode {
-            CItemKind::Definition => VisitorState::ARGUMENT_TY_IN_DEFINITION,
-            CItemKind::Declaration => VisitorState::ARGUMENT_TY_IN_DECLARATION,
-        }
-    }
-
-    /// Get the proper visitor state for a given function's return type.
-    fn return_from_fnmode(fn_mode: CItemKind) -> Self {
-        match fn_mode {
-            CItemKind::Definition => VisitorState::RETURN_TY_IN_DEFINITION,
-            CItemKind::Declaration => VisitorState::RETURN_TY_IN_DECLARATION,
-        }
-    }
-
-    /// Whether the type is used in a function.
-    fn is_in_function(self) -> bool {
-        let ret = self.contains(Self::FUNC);
-        if ret {
-            debug_assert!(!self.contains(Self::STATIC));
-        }
-        ret
-    }
-    /// Whether the type is used (directly or not) in a function, in return position.
-    fn is_in_function_return(self) -> bool {
-        let ret = self.contains(Self::FN_RETURN);
-        if ret {
-            debug_assert!(self.is_in_function());
-        }
-        ret
-    }
-    /// Whether the type is used (directly or not) in a defined function.
-    /// In other words, whether or not we allow non-FFI-safe types behind a C pointer,
-    /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_defined_function(self) -> bool {
-        self.contains(Self::DEFINED) && self.is_in_function()
-    }
-
-    /// Whether the type is used (directly or not) in a function pointer type.
-    /// Here, we also allow non-FFI-safe types behind a C pointer,
-    /// to be treated as an opaque type on the other side of the FFI boundary.
-    fn is_in_fnptr(self) -> bool {
-        self.contains(Self::THEORETICAL) && self.is_in_function()
-    }
-
-    /// Whether we can expect type parameters and co in a given type.
-    fn can_expect_ty_params(self) -> bool {
-        // rust-defined functions, as well as FnPtrs
-        self.contains(Self::THEORETICAL) || self.is_in_defined_function()
-    }
-}
-
-bitflags! {
-    /// Data that summarises how an "outer type" surrounds its inner type(s)
+    /// "Ephemeral state" flags for VisitorState (lost when visiting new mir::Ty,
+    /// mostly contain info about the Ty immediately containing the current one).
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    struct OuterTyData: u8 {
+    struct EphemeralStateFlags: u8 {
         /// To annotate pointees (through Ref,RawPtr,Box).
         const IN_PTR = 0b000001;
         /// For pointees, show pointer mutability-or-ownership.
@@ -387,14 +318,39 @@ bitflags! {
         /// variable or a function/FnPtr
         const NO_OUTER_TY = 0b100000;
         /// For NO_OUTER_TY cases, show that we are being directly used by a FnPtr specifically
-        /// FIXME(ctypes): this is only used for "bad bahaviour" reproduced for compatibility's sake
+        /// FIXME(ctypes): this is only used for "bad behaviour" reproduced for compatibility's sake
         const NOOUT_FNPTR = 0b1000000;
     }
 }
 
-impl OuterTyData {
-    /// Get the proper data for a given outer type.
-    fn from_ty<'tcx>(ty: Ty<'tcx>) -> Self {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+struct VisitorState {
+    /// Flags describing both the immediate and overall context in which the current mir::Ty is
+    persistent_flags: PersistentStateFlags,
+    /// Flags describing both the immediate and overall context in which the current mir::Ty is
+    ephemeral_flags: EphemeralStateFlags,
+}
+
+impl PersistentStateFlags {
+    // The values that can be set.
+    const STATIC_TY: Self = Self::STATIC;
+    const ARGUMENT_TY_IN_DEFINITION: Self =
+        Self::from_bits(Self::FUNC.bits() | Self::DEFINED.bits()).unwrap();
+    const RETURN_TY_IN_DEFINITION: Self =
+        Self::from_bits(Self::FUNC.bits() | Self::FN_RETURN.bits() | Self::DEFINED.bits()).unwrap();
+    const ARGUMENT_TY_IN_DECLARATION: Self = Self::FUNC;
+    const RETURN_TY_IN_DECLARATION: Self =
+        Self::from_bits(Self::FUNC.bits() | Self::FN_RETURN.bits()).unwrap();
+    const ARGUMENT_TY_IN_FNPTR: Self =
+        Self::from_bits(Self::FUNC.bits() | Self::THEORETICAL.bits()).unwrap();
+    const RETURN_TY_IN_FNPTR: Self =
+        Self::from_bits(Self::FUNC.bits() | Self::THEORETICAL.bits() | Self::FN_RETURN.bits())
+            .unwrap();
+}
+
+impl EphemeralStateFlags {
+    /// modify self to change the ephemeral part of the flags
+    fn from_outer_ty<'tcx>(ty: Ty<'tcx>) -> Self {
         match ty.kind() {
             ty::FnPtr(..) => Self::NO_OUTER_TY | Self::NOOUT_FNPTR,
             k @ (ty::RawPtr(..) | ty::Ref(..)) => {
@@ -417,6 +373,106 @@ impl OuterTyData {
             ty::Tuple(..) | ty::Array(..) | ty::Slice(_) => Self::MEMORY_INLINED,
             k @ _ => bug!("Unexpected outer type {:?} of kind {:?}", ty, k),
         }
+    }
+}
+
+impl VisitorState {
+    /// From an existing state, compute the state of any subtype of the current type.
+    fn get_next<'tcx>(&self, current_ty: Ty<'tcx>) -> Self {
+        debug_assert!(!matches!(current_ty.kind(), ty::FnPtr(..)));
+        Self {
+            persistent_flags: self.persistent_flags,
+            ephemeral_flags: EphemeralStateFlags::from_outer_ty(current_ty),
+        }
+    }
+    fn get_next_in_fnptr<'tcx>(&self, current_ty: Ty<'tcx>, is_ret: bool) -> Self {
+        debug_assert!(matches!(current_ty.kind(), ty::FnPtr(..)));
+        Self {
+            persistent_flags: if is_ret {
+                PersistentStateFlags::RETURN_TY_IN_FNPTR
+            } else {
+                PersistentStateFlags::ARGUMENT_TY_IN_FNPTR
+            },
+            ephemeral_flags: EphemeralStateFlags::from_outer_ty(current_ty),
+        }
+    }
+
+    /// Generate the state for an "outermost" type that needs to be checked
+    fn entry_point(persistent_flags: PersistentStateFlags) -> Self {
+        Self { persistent_flags, ephemeral_flags: EphemeralStateFlags::NO_OUTER_TY }
+    }
+
+    /// Get the proper visitor state for a given function's arguments.
+    fn argument_from_fnmode(fn_mode: CItemKind) -> Self {
+        let p_flags = match fn_mode {
+            CItemKind::Definition => PersistentStateFlags::ARGUMENT_TY_IN_DEFINITION,
+            CItemKind::Declaration => PersistentStateFlags::ARGUMENT_TY_IN_DECLARATION,
+        };
+        Self::entry_point(p_flags)
+    }
+
+    /// Get the proper visitor state for a given function's return type.
+    fn return_from_fnmode(fn_mode: CItemKind) -> Self {
+        let p_flags = match fn_mode {
+            CItemKind::Definition => PersistentStateFlags::RETURN_TY_IN_DEFINITION,
+            CItemKind::Declaration => PersistentStateFlags::RETURN_TY_IN_DECLARATION,
+        };
+        Self::entry_point(p_flags)
+    }
+
+    /// Get the proper visitor state for a static variable's type
+    #[inline]
+    fn static_var() -> Self {
+        Self::entry_point(PersistentStateFlags::STATIC_TY)
+    }
+
+    /// Whether the type is used in a function.
+    fn is_in_function(&self) -> bool {
+        let ret = self.persistent_flags.contains(PersistentStateFlags::FUNC);
+        if ret {
+            debug_assert!(!self.persistent_flags.contains(PersistentStateFlags::STATIC));
+        }
+        ret
+    }
+    /// Whether the type is used (directly or not) in a function, in return position.
+    fn is_in_function_return(&self) -> bool {
+        let ret = self.persistent_flags.contains(PersistentStateFlags::FN_RETURN);
+        if ret {
+            debug_assert!(self.is_in_function());
+        }
+        ret
+    }
+
+    /// Whether the type is directly used in a function, in return position.
+    fn is_direct_function_return(&self) -> bool {
+        self.ephemeral_flags.contains(EphemeralStateFlags::NO_OUTER_TY)
+            && self.is_in_function_return()
+    }
+
+    /// Whether the type is directly used in a function.
+    fn is_direct_in_function(&self) -> bool {
+        self.ephemeral_flags.contains(EphemeralStateFlags::NO_OUTER_TY) && self.is_in_function()
+    }
+
+    /// Whether the type is used (directly or not) in a defined function.
+    /// In other words, whether or not we allow non-FFI-safe types behind a C pointer,
+    /// to be treated as an opaque type on the other side of the FFI boundary.
+    fn is_in_defined_function(&self) -> bool {
+        self.persistent_flags.contains(PersistentStateFlags::DEFINED) && self.is_in_function()
+    }
+
+    /// Whether the type is used (directly or not) in a function pointer type.
+    /// Here, we also allow non-FFI-safe types behind a C pointer,
+    /// to be treated as an opaque type on the other side of the FFI boundary.
+    fn is_in_fnptr(&self) -> bool {
+        self.persistent_flags.contains(PersistentStateFlags::THEORETICAL) && self.is_in_function()
+    }
+
+    /// Whether we can expect type parameters and co in a given type.
+    fn can_expect_ty_params(&self) -> bool {
+        // rust-defined functions, as well as FnPtrs
+        self.persistent_flags.contains(PersistentStateFlags::THEORETICAL)
+            || self.is_in_defined_function()
     }
 }
 
@@ -505,7 +561,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 {
                     FfiSafe
                 } else {
-                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
+                    self.visit_type(state.get_next(ty), inner_ty)
                 }
             }
         }
@@ -526,7 +582,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             if let Some(field) = super::transparent_newtype_field(self.cx.tcx, variant) {
                 // Transparent newtypes have at most one non-ZST field which needs to be checked..
                 let field_ty = get_type_from_field(self.cx, field, args);
-                match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
+                match self.visit_type(state.get_next(ty), field_ty) {
                     FfiUnsafe { ty, .. } if ty.is_unit() => (),
                     r => return r,
                 }
@@ -545,7 +601,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
             let field_ty = get_type_from_field(self.cx, field, args);
-            all_phantom &= match self.visit_type(state, OuterTyData::from_ty(ty), field_ty) {
+            all_phantom &= match self.visit_type(state.get_next(ty), field_ty) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -640,7 +696,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none() {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
             if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
-                return self.visit_type(state, OuterTyData::from_ty(ty), inner_ty);
+                return self.visit_type(state.get_next(ty), inner_ty);
             }
 
             return FfiUnsafe {
@@ -670,12 +726,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
-    fn visit_type(
-        &mut self,
-        state: VisitorState,
-        outer_ty: OuterTyData,
-        ty: Ty<'tcx>,
-    ) -> FfiResult<'tcx> {
+    fn visit_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         use FfiResult::*;
 
         let tcx = self.cx.tcx;
@@ -717,7 +768,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // Pattern types are just extra invariants on the type that you need to uphold,
             // but only the base type is relevant for being representable in FFI.
             // (note: this lint was written when pattern types could only be integers constrained to ranges)
-            ty::Pat(pat_ty, _) => self.visit_type(state, outer_ty, pat_ty),
+            // (also note: the lack of ".get_next(ty)" on the state is on purpose)
+            ty::Pat(pat_ty, _) => self.visit_type(state, pat_ty),
 
             // types which likely have a stable representation, if the target architecture defines those
             // note: before rust 1.77, 128-bit ints were not FFI-safe on x86_64
@@ -750,7 +802,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Tuple(tuple) => {
                 let empty_and_safe = if tuple.is_empty() {
                     // C functions can return void
-                    outer_ty.contains(OuterTyData::NO_OUTER_TY) && state.is_in_function_return()
+                    state.is_direct_function_return()
                 } else {
                     false
                 };
@@ -783,10 +835,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
 
             ty::Array(inner_ty, _) => {
-                if state.is_in_function()
-                    && outer_ty.contains(OuterTyData::NO_OUTER_TY)
+                if state.is_direct_in_function()
                     // FIXME(ctypes): VVV-this-VVV shouldn't be the case
-                    && !outer_ty.contains(OuterTyData::NOOUT_FNPTR)
+                    && !state.ephemeral_flags.contains(EphemeralStateFlags::NOOUT_FNPTR)
                 {
                     // C doesn't really support passing arrays by value - the only way to pass an array by value
                     // is through a struct.
@@ -798,7 +849,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 } else {
                     // let's allow phantoms to go through,
                     // since an array of 1-ZSTs is also a 1-ZST
-                    self.visit_type(state, OuterTyData::from_ty(ty), inner_ty)
+                    self.visit_type(state.get_next(ty), inner_ty)
                 }
             }
 
@@ -814,19 +865,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
-                    match self.visit_type(
-                        VisitorState::ARGUMENT_TY_IN_FNPTR,
-                        OuterTyData::from_ty(ty),
-                        *arg,
-                    ) {
+                    match self.visit_type(state.get_next_in_fnptr(ty, false), *arg) {
                         FfiSafe => {}
                         r => return r,
                     }
                 }
 
                 let ret_ty = sig.output();
-
-                self.visit_type(VisitorState::RETURN_TY_IN_FNPTR, OuterTyData::from_ty(ty), ret_ty)
+                self.visit_type(state.get_next_in_fnptr(ty, true), ret_ty)
             }
 
             ty::Foreign(..) => FfiSafe,
@@ -894,7 +940,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             return res;
         }
 
-        self.visit_type(state, OuterTyData::NO_OUTER_TY, ty)
+        self.visit_type(state, ty)
     }
 }
 
@@ -923,7 +969,7 @@ impl<'tcx> ImproperCTypesLint {
                     self.spans.push(ty.span);
                 }
 
-                hir::intravisit::walk_ty(self, ty)
+                hir::intravisit::walk_ty(self, ty);
             }
         }
 
@@ -998,7 +1044,7 @@ impl<'tcx> ImproperCTypesLint {
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
-        let ffi_res = visitor.check_type(VisitorState::STATIC_TY, ty);
+        let ffi_res = visitor.check_type(VisitorState::static_var(), ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
     }
 
@@ -1122,7 +1168,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             | hir::ItemKind::TyAlias(_, _, ty) => {
                 self.check_type_for_external_abi_fnptr(
                     cx,
-                    VisitorState::STATIC_TY,
+                    VisitorState::static_var(),
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                     CItemKind::Definition,
@@ -1156,7 +1202,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, field: &'tcx hir::FieldDef<'tcx>) {
         self.check_type_for_external_abi_fnptr(
             cx,
-            VisitorState::STATIC_TY,
+            VisitorState::static_var(),
             field.ty,
             cx.tcx.type_of(field.def_id).instantiate_identity(),
             CItemKind::Definition,
