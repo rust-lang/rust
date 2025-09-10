@@ -208,12 +208,14 @@ pub struct Range<'a> {
     pub end: Option<&'a Expr<'a>>,
     /// Whether the interval is open or closed.
     pub limits: ast::RangeLimits,
+    pub span: Span
 }
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
     #[allow(clippy::similar_names)]
     pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
+        let span = expr.range_span()?;
         match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
                 if matches!(
@@ -225,6 +227,7 @@ impl<'a> Range<'a> {
                     start: Some(arg1),
                     end: Some(arg2),
                     limits: ast::RangeLimits::Closed,
+                    span,
                 })
             },
             ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
@@ -232,12 +235,14 @@ impl<'a> Range<'a> {
                     start: None,
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
                 (QPath::LangItem(hir::LangItem::RangeFrom, ..), [field]) if field.ident.name == sym::start => {
                     Some(Range {
                         start: Some(field.expr),
                         end: None,
                         limits: ast::RangeLimits::HalfOpen,
+                        span,
                     })
                 },
                 (QPath::LangItem(hir::LangItem::Range, ..), [field1, field2]) => {
@@ -250,6 +255,7 @@ impl<'a> Range<'a> {
                         start: Some(start),
                         end: Some(end),
                         limits: ast::RangeLimits::HalfOpen,
+                        span,
                     })
                 },
                 (QPath::LangItem(hir::LangItem::RangeToInclusive, ..), [field]) if field.ident.name == sym::end => {
@@ -257,12 +263,14 @@ impl<'a> Range<'a> {
                         start: None,
                         end: Some(field.expr),
                         limits: ast::RangeLimits::Closed,
+                        span,
                     })
                 },
                 (QPath::LangItem(hir::LangItem::RangeTo, ..), [field]) if field.ident.name == sym::end => Some(Range {
                     start: None,
                     end: Some(field.expr),
                     limits: ast::RangeLimits::HalfOpen,
+                    span,
                 }),
                 _ => None,
             },
