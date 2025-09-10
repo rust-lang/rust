@@ -68,6 +68,7 @@ Term                                                  | Meaning
 <span id="rib">rib</span>                      |  A data structure in the name resolver that keeps track of a single scope for names. ([see more](../name-resolution.md))
 <span id="rpit">RPIT</span>                    |  A return-position `impl Trait`. ([see the reference](https://doc.rust-lang.org/reference/types/impl-trait.html#abstract-return-types)).
 <span id="rpitit">RPITIT</span>                |  A return-position `impl Trait` in trait. Unlike RPIT, this is desugared to a generic associated type (GAT). Introduced in [RFC 3425](https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html). ([see more](../return-position-impl-trait-in-trait.md))
+<span id="rustbuild">rustbuild</span>          |  A deprecated term for the part of bootstrap that is written in Rust
 <span id="scrutinee">scrutinee</span>          |  A scrutinee is the expression that is matched on in `match` expressions and similar pattern matching constructs. For example, in `match x { A => 1, B => 2 }`, the expression `x` is the scrutinee.
 <span id="sess">`sess`</span>                  |  The compiler _session_, which stores global data used throughout compilation
 <span id="side-tables">side tables</span>      |  Because the [AST](#ast) and HIR are immutable once created, we often carry extra information about them in the form of hashtables, indexed by the id of a particular node.
