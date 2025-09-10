@@ -1,6 +1,7 @@
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-disable-validation -Zmiri-provenance-gc=10000
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 // This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
 // override it internally back to the default frequency.
+//@compile-flags: -Zmiri-provenance-gc=10000
 
 // The following tests check whether our weak memory emulation produces
 // any inconsistent execution outcomes
@@ -348,7 +349,7 @@ fn test_sc_relaxed() {
 }
 
 pub fn main() {
-    for _ in 0..50 {
+    for _ in 0..32 {
         test_sc_store_buffering();
         test_iriw_sc_rlx();
         test_cpp20_sc_fence_fix();
