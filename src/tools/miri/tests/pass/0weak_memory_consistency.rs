@@ -14,13 +14,6 @@
 // To mitigate this, each test is ran enough times such that the chance
 // of spurious success is very low. These tests never spuriously fail.
 
-// Test cases and their consistent outcomes are from
-// http://svr-pes20-cppmem.cl.cam.ac.uk/cppmem/
-// Based on
-// M. Batty, S. Owens, S. Sarkar, P. Sewell and T. Weber,
-// "Mathematizing C++ concurrency", ACM SIGPLAN Notices, vol. 46, no. 1, pp. 55-66, 2011.
-// Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
-
 use std::sync::atomic::Ordering::*;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering, fence};
 use std::thread::spawn;
@@ -56,6 +49,7 @@ fn spin_until_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
     val
 }
 
+/// Test matching https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf, Figure 7
 fn test_corr() {
     let x = static_atomic(0);
     let y = static_atomic(0);
@@ -75,19 +69,25 @@ fn test_corr() {
     let j3 = spawn(move || { //                      |                    |
         spin_until_i32(&y, Acquire, 1); // <---------+                    |
         x.load(Relaxed) // <----------------------------------------------+
-        // The two reads on x are ordered by hb, so they cannot observe values
-        // differently from the modification order. If the first read observed
-        // 2, then the second read must observe 2 as well.
     });
 
     j1.join().unwrap();
     let r2 = j2.join().unwrap();
     let r3 = j3.join().unwrap();
+    // The two reads on x are ordered by hb, so they cannot observe values
+    // differently from the modification order. If the first read observed
+    // 2, then the second read must observe 2 as well.
     if r2 == 2 {
         assert_eq!(r3, 2);
     }
 }
 
+/// This test case is from:
+/// http://svr-pes20-cppmem.cl.cam.ac.uk/cppmem/, "WRC"
+/// Based on
+/// M. Batty, S. Owens, S. Sarkar, P. Sewell and T. Weber,
+/// "Mathematizing C++ concurrency", ACM SIGPLAN Notices, vol. 46, no. 1, pp. 55-66, 2011.
+/// Available: https://www.cl.cam.ac.uk/~pes20/cpp/popl085ap-sewell.pdf.
 fn test_wrc() {
     let x = static_atomic(0);
     let y = static_atomic(0);
@@ -114,6 +114,8 @@ fn test_wrc() {
     assert_eq!(r3, 1);
 }
 
+/// Another test from http://svr-pes20-cppmem.cl.cam.ac.uk/cppmem/:
+/// MP (na_rel+acq_na)
 fn test_message_passing() {
     let mut var = 0u32;
     let ptr = &mut var as *mut u32;
@@ -139,7 +141,8 @@ fn test_message_passing() {
     assert_eq!(r2, 1);
 }
 
-// LB+acq_rel+acq_rel
+/// Another test from http://svr-pes20-cppmem.cl.cam.ac.uk/cppmem/:
+/// LB+acq_rel+acq_rel
 fn test_load_buffering_acq_rel() {
     let x = static_atomic(0);
     let y = static_atomic(0);
