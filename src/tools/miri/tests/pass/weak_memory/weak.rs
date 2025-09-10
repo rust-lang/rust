@@ -69,6 +69,9 @@ fn seq_cst() -> bool {
     j2.join().unwrap();
     let r3 = j3.join().unwrap();
 
+    // Even though we force t3 to run last, it can still see the value 1.
+    // And it can *never* see the value 2!
+    assert!(r3 == 1 || r3 == 3);
     r3 == 1
 }
 
@@ -148,4 +151,9 @@ pub fn main() {
     assert_once(|| initialization_write(false));
     assert_once(|| initialization_write(true));
     assert_once(faa_replaced_by_load);
+
+    // Run seq_cst a few more times since it has an assertion we want to ensure holds always.
+    for _ in 0..50 {
+        seq_cst();
+    }
 }

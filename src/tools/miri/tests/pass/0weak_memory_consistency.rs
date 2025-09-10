@@ -49,7 +49,8 @@ fn spin_until_bool(loc: &AtomicBool, ord: Ordering, val: bool) -> bool {
     val
 }
 
-/// Test matching https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf, Figure 7
+/// Test matching https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf, Figure 7.
+/// (The Figure 8 test is in `weak_memory/weak.rs`.)
 fn test_corr() {
     let x = static_atomic(0);
     let y = static_atomic(0);
