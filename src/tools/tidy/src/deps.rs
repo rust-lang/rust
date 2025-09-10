@@ -621,7 +621,8 @@ pub fn check(root: &Path, cargo: &Path, bless: bool, bad: &mut bool) {
 
         check_license_exceptions(&metadata, path, exceptions, bad);
         if let Some((crates, permitted_deps)) = crates_and_deps {
-            check_permitted_dependencies(&metadata, path, permitted_deps, crates, bad);
+            let descr = crates.get(0).unwrap_or(&path);
+            check_permitted_dependencies(&metadata, descr, permitted_deps, crates, bad);
         }
 
         if path == "library" {
