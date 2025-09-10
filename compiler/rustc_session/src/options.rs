@@ -2216,7 +2216,7 @@ options! {
         "how to handle split-debuginfo, a platform-specific option"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
     stack_protector: Option<StackProtector> = (None, parse_stack_protector, [TRACKED],
-        "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
+        "control stack smashing protection strategy (`rustc --print stack-protector-strategies` for details)"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
@@ -2694,7 +2694,7 @@ written to standard error output)"),
         "hash algorithm of source files in debug info (`md5`, `sha1`, or `sha256`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
     stack_protector: Option<StackProtector> = (None, parse_stack_protector, [TRACKED],
-        "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
+        "control stack smashing protection strategy (`rustc --print stack-protector-strategies` for details)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
     staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],

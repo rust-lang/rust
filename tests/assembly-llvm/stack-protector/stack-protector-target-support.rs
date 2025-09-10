@@ -1,4 +1,4 @@
-// Test that stack smash protection code is emitted for all tier1 and tier2
+// Test that stack smashing protection code is emitted for all tier1 and tier2
 // targets, with the exception of nvptx64-nvidia-cuda
 //
 //@ add-minicore
