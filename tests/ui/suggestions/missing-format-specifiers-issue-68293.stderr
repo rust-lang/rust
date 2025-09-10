@@ -1,0 +1,49 @@
+error: argument never used
+  --> $DIR/missing-format-specifiers-issue-68293.rs:2:23
+   |
+LL |     println!("Hello", "World");
+   |              -------  ^^^^^^^ argument never used
+   |              |
+   |              formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     println!("Hello{}", "World");
+   |                    ++
+
+error: multiple unused formatting arguments
+  --> $DIR/missing-format-specifiers-issue-68293.rs:10:24
+   |
+LL |     println!("list: ", 1, 2, 3);
+   |              --------  ^  ^  ^ argument never used
+   |              |         |  |
+   |              |         |  argument never used
+   |              |         argument never used
+   |              multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 3 format specifiers
+   |
+LL |     println!("list: {}{}{}", 1, 2, 3);
+   |                     ++++++
+
+error: argument never used
+  --> $DIR/missing-format-specifiers-issue-68293.rs:20:36
+   |
+LL |     println!("list: {}, {}", 1, 2, 3);
+   |              --------------        ^ argument never used
+   |              |
+   |              formatting specifier missing
+
+error: multiple unused formatting arguments
+  --> $DIR/missing-format-specifiers-issue-68293.rs:27:29
+   |
+LL |     println!("list: {}", 1, 2, 3);
+   |              ----------     ^  ^ argument never used
+   |              |              |
+   |              |              argument never used
+   |              multiple missing formatting specifiers
+   |
+   = note: consider adding 2 format specifiers
+
+error: aborting due to 4 previous errors
+

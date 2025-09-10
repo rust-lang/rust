@@ -62,6 +62,11 @@ LL |     format!("", 1, 2);
    |             |   |
    |             |   argument never used
    |             multiple missing formatting specifiers
+   |
+help: format specifiers use curly braces, consider adding 2 format specifiers
+   |
+LL |     format!("{}{}", 1, 2);
+   |              ++++
 
 error: argument never used
   --> $DIR/ifmt-bad-arg.rs:33:22
@@ -102,6 +107,11 @@ LL |     format!("", foo=2);
    |             --      ^ named argument never used
    |             |
    |             formatting specifier missing
+   |
+help: format specifiers use curly braces, consider adding a format specifier
+   |
+LL |     format!("{}", foo=2);
+   |              ++
 
 error: multiple unused formatting arguments
   --> $DIR/ifmt-bad-arg.rs:38:32
@@ -111,6 +121,8 @@ LL |     format!("{} {}", 1, 2, foo=1, bar=2);
    |             |                  |
    |             |                  named argument never used
    |             multiple missing formatting specifiers
+   |
+   = note: consider adding 2 format specifiers
 
 error: duplicate argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:40:29
