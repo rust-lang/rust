@@ -106,6 +106,13 @@ impl CastCheck {
         self.expr_ty = table.eagerly_normalize_and_resolve_shallow_in(self.expr_ty.clone());
         self.cast_ty = table.eagerly_normalize_and_resolve_shallow_in(self.cast_ty.clone());
 
+        // This should always come first so that we apply the coercion, which impacts infer vars.
+        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty, CoerceNever::Yes) {
+            apply_adjustments(self.source_expr, adj);
+            set_coercion_cast(self.source_expr);
+            return Ok(());
+        }
+
         if self.expr_ty.contains_unknown() || self.cast_ty.contains_unknown() {
             return Ok(());
         }
@@ -123,12 +130,6 @@ impl CastCheck {
         // when the trait environment contains some recursive traits (See issue #18047)
         // We skip cast checks for such cases for now, until the next-gen solver.
         if contains_dyn_trait(&self.cast_ty) {
-            return Ok(());
-        }
-
-        if let Ok((adj, _)) = table.coerce(&self.expr_ty, &self.cast_ty, CoerceNever::Yes) {
-            apply_adjustments(self.source_expr, adj);
-            set_coercion_cast(self.source_expr);
             return Ok(());
         }
 
