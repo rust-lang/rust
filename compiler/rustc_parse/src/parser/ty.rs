@@ -951,10 +951,16 @@ impl<'a> Parser<'a> {
             || self.check(exp!(Tilde))
             || self.check_keyword(exp!(For))
             || self.check(exp!(OpenParen))
-            || self.check(exp!(OpenBracket))
+            || self.can_begin_maybe_const_bound()
             || self.check_keyword(exp!(Const))
             || self.check_keyword(exp!(Async))
             || self.check_keyword(exp!(Use))
+    }
+
+    fn can_begin_maybe_const_bound(&mut self) -> bool {
+        self.check(exp!(OpenBracket))
+            && self.look_ahead(1, |t| t.is_keyword(kw::Const))
+            && self.look_ahead(2, |t| *t == token::CloseBracket)
     }
 
     /// Parses a bound according to the grammar:
@@ -1137,10 +1143,7 @@ impl<'a> Parser<'a> {
             let span = tilde.to(self.prev_token.span);
             self.psess.gated_spans.gate(sym::const_trait_impl, span);
             BoundConstness::Maybe(span)
-        } else if self.check(exp!(OpenBracket))
-            && self.look_ahead(1, |t| t.is_keyword(kw::Const))
-            && self.look_ahead(2, |t| *t == token::CloseBracket)
-        {
+        } else if self.can_begin_maybe_const_bound() {
             let start = self.token.span;
             self.bump();
             self.expect_keyword(exp!(Const)).unwrap();
