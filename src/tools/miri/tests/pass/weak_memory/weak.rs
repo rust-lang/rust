@@ -1,9 +1,11 @@
 //@compile-flags: -Zmiri-ignore-leaks -Zmiri-fixed-schedule
+// This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
+// override it internally back to the default frequency.
+//@compile-flags: -Zmiri-provenance-gc=10000
 
-// Tests showing weak memory behaviours are exhibited. All tests
-// return true when the desired behaviour is seen.
-// This is scheduler and pseudo-RNG dependent, so each test is
-// run multiple times until one try returns true.
+// Tests showing weak memory behaviours are exhibited, even with a fixed scheule.
+// We run all tests a number of times and then check that we see the desired list of outcomes.
+
 // Spurious failure is possible, if you are really unlucky with
 // the RNG and always read the latest value from the store buffer.
 
@@ -31,129 +33,136 @@ fn spin_until(loc: &AtomicUsize, val: usize) -> usize {
     val
 }
 
-fn relaxed(initial_read: bool) -> bool {
-    let x = static_atomic(0);
-    let j1 = spawn(move || {
-        x.store(1, Relaxed);
-        // Preemption is disabled, so the store above will never be the
-        // latest store visible to another thread.
-        x.store(2, Relaxed);
+/// Check that the function produces the intended set of outcomes.
+#[track_caller]
+fn check_all_outcomes<T: Eq + std::hash::Hash + std::fmt::Display>(
+    expected: impl IntoIterator<Item = T>,
+    generate: impl Fn() -> T,
+) {
+    use std::collections::HashSet;
+
+    let expected: HashSet<T> = HashSet::from_iter(expected);
+    let mut seen = HashSet::new();
+    // Let's give it N times as many tries as we are expecting values.
+    let tries = expected.len() * 8;
+    for _ in 0..tries {
+        let val = generate();
+        assert!(expected.contains(&val), "got an unexpected value: {val}");
+        seen.insert(val);
+    }
+    // Let's see if we saw them all.
+    for val in expected {
+        if !seen.contains(&val) {
+            panic!("did not get value that should be possible: {val}");
+        }
+    }
+}
+
+fn relaxed() {
+    check_all_outcomes([0, 1, 2], || {
+        let x = static_atomic(0);
+        let j1 = spawn(move || {
+            x.store(1, Relaxed);
+            // Preemption is disabled, so the store above will never be the
+            // latest store visible to another thread.
+            x.store(2, Relaxed);
+        });
+
+        let j2 = spawn(move || x.load(Relaxed));
+
+        j1.join().unwrap();
+        let r2 = j2.join().unwrap();
+
+        // There are three possible values here: 0 (from the initial read), 1 (from the first relaxed
+        // read), and 2 (the last read).
+        r2
     });
-
-    let j2 = spawn(move || x.load(Relaxed));
-
-    j1.join().unwrap();
-    let r2 = j2.join().unwrap();
-
-    // There are three possible values here: 0 (from the initial read), 1 (from the first relaxed
-    // read), and 2 (the last read). The last case is boring and we cover the other two.
-    r2 == if initial_read { 0 } else { 1 }
 }
 
 // https://www.doc.ic.ac.uk/~afd/homepages/papers/pdfs/2017/POPL.pdf Figure 8
-fn seq_cst() -> bool {
-    let x = static_atomic(0);
+fn seq_cst() {
+    check_all_outcomes([1, 3], || {
+        let x = static_atomic(0);
 
-    let j1 = spawn(move || {
-        x.store(1, Relaxed);
+        let j1 = spawn(move || {
+            x.store(1, Relaxed);
+        });
+
+        let j2 = spawn(move || {
+            x.store(2, SeqCst);
+            x.store(3, SeqCst);
+        });
+
+        let j3 = spawn(move || x.load(SeqCst));
+
+        j1.join().unwrap();
+        j2.join().unwrap();
+        let r3 = j3.join().unwrap();
+
+        // Even though we force t3 to run last, it can still see the value 1.
+        // And it can *never* see the value 2!
+        r3
     });
-
-    let j2 = spawn(move || {
-        x.store(2, SeqCst);
-        x.store(3, SeqCst);
-    });
-
-    let j3 = spawn(move || x.load(SeqCst));
-
-    j1.join().unwrap();
-    j2.join().unwrap();
-    let r3 = j3.join().unwrap();
-
-    // Even though we force t3 to run last, it can still see the value 1.
-    // And it can *never* see the value 2!
-    assert!(r3 == 1 || r3 == 3);
-    r3 == 1
 }
 
-fn initialization_write(add_fence: bool) -> bool {
-    let x = static_atomic(11);
+fn initialization_write(add_fence: bool) {
+    check_all_outcomes([11, 22], || {
+        let x = static_atomic(11);
 
-    let wait = static_atomic(0);
+        let wait = static_atomic(0);
 
-    let j1 = spawn(move || {
-        x.store(22, Relaxed);
-        // Relaxed is intentional. We want to test if the thread 2 reads the initialisation write
-        // after a relaxed write
-        wait.store(1, Relaxed);
+        let j1 = spawn(move || {
+            x.store(22, Relaxed);
+            // Relaxed is intentional. We want to test if the thread 2 reads the initialisation write
+            // after a relaxed write
+            wait.store(1, Relaxed);
+        });
+
+        let j2 = spawn(move || {
+            spin_until(wait, 1);
+            if add_fence {
+                fence(AcqRel);
+            }
+            x.load(Relaxed)
+        });
+
+        j1.join().unwrap();
+        let r2 = j2.join().unwrap();
+
+        r2
     });
+}
 
-    let j2 = spawn(move || {
-        spin_until(wait, 1);
-        if add_fence {
-            fence(AcqRel);
+fn faa_replaced_by_load() {
+    check_all_outcomes([true, false], || {
+        // Example from https://github.com/llvm/llvm-project/issues/56450#issuecomment-1183695905
+        pub fn rdmw(storing: &AtomicUsize, sync: &AtomicUsize, loading: &AtomicUsize) -> usize {
+            storing.store(1, Relaxed);
+            fence(Release);
+            // sync.fetch_add(0, Relaxed);
+            sync.load(Relaxed);
+            fence(Acquire);
+            loading.load(Relaxed)
         }
-        x.load(Relaxed)
+
+        let x = static_atomic(0);
+        let y = static_atomic(0);
+        let z = static_atomic(0);
+
+        let t1 = spawn(move || rdmw(y, x, z));
+
+        let t2 = spawn(move || rdmw(z, x, y));
+
+        let a = t1.join().unwrap();
+        let b = t2.join().unwrap();
+        (a, b) == (0, 0)
     });
-
-    j1.join().unwrap();
-    let r2 = j2.join().unwrap();
-
-    r2 == 11
-}
-
-fn faa_replaced_by_load() -> bool {
-    // Example from https://github.com/llvm/llvm-project/issues/56450#issuecomment-1183695905
-    #[no_mangle]
-    pub fn rdmw(storing: &AtomicUsize, sync: &AtomicUsize, loading: &AtomicUsize) -> usize {
-        storing.store(1, Relaxed);
-        fence(Release);
-        // sync.fetch_add(0, Relaxed);
-        sync.load(Relaxed);
-        fence(Acquire);
-        loading.load(Relaxed)
-    }
-
-    let x = static_atomic(0);
-    let y = static_atomic(0);
-    let z = static_atomic(0);
-
-    // Since each thread is so short, we need to make sure that they truely run at the same time
-    // Otherwise t1 will finish before t2 even starts
-    let go = static_atomic(0);
-
-    let t1 = spawn(move || {
-        spin_until(go, 1);
-        rdmw(y, x, z)
-    });
-
-    let t2 = spawn(move || {
-        spin_until(go, 1);
-        rdmw(z, x, y)
-    });
-
-    go.store(1, Relaxed);
-
-    let a = t1.join().unwrap();
-    let b = t2.join().unwrap();
-    (a, b) == (0, 0)
-}
-
-/// Asserts that the function returns true at least once in 100 runs
-#[track_caller]
-fn assert_once(f: fn() -> bool) {
-    assert!(std::iter::repeat_with(|| f()).take(100).any(|x| x));
 }
 
 pub fn main() {
-    assert_once(|| relaxed(false));
-    assert_once(|| relaxed(true));
-    assert_once(seq_cst);
-    assert_once(|| initialization_write(false));
-    assert_once(|| initialization_write(true));
-    assert_once(faa_replaced_by_load);
-
-    // Run seq_cst a few more times since it has an assertion we want to ensure holds always.
-    for _ in 0..50 {
-        seq_cst();
-    }
+    relaxed();
+    seq_cst();
+    initialization_write(false);
+    initialization_write(true);
+    faa_replaced_by_load();
 }
