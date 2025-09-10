@@ -48,7 +48,6 @@
     - [\*-apple-visionos](platform-support/apple-visionos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [aarch64-unknown-linux-musl](platform-support/aarch64-unknown-linux-musl.md)
-    - [aarch64-unknown-none{,-softfloat}](aarch64-unknown-none.md)
     - [aarch64_be-unknown-none-softfloat](platform-support/aarch64_be-unknown-none-softfloat.md)
     - [aarch64_be-unknown-linux-musl](platform-support/aarch64_be-unknown-linux-musl.md)
     - [amdgcn-amd-amdhsa](platform-support/amdgcn-amd-amdhsa.md)

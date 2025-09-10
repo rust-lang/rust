@@ -21,13 +21,6 @@ See [`arm-none-eabi`](arm-none-eabi.md) for information applicable to all
 
 ## Requirements
 
-When using the big-endian version of this target, note that some variants of
-the Cortex-R have both big-endian instructions and data. This configuration is
-known as BE-32, while data-only big-endianness is known as BE-8. To build
-programs for BE-32 processors, the GNU linker must be used with the `-mbe32`
-option. See [ARM Cortex-R Series Programmer's Guide: Endianness][endianness]
-for more details about different endian modes.
-
 When using the hardfloat targets, the minimum floating-point features assumed
 are those of the `vfpv3-d16`, which includes single- and double-precision, with
 16 double-precision registers. This floating-point unit appears in Cortex-R4F
